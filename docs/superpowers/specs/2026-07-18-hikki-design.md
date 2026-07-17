@@ -151,7 +151,8 @@ Rust owns all I/O; the webview never touches the filesystem directly.
    - **Mode**: light / dark / system.
    - **Theme presets**: a gallery of bundled presets (e.g. Default, plus several curated color themes). Each preset is a complete shadcn token set (`--background`, `--foreground`, `--primary`, `--accent`, chart colors, sidebar colors, … in oklch) defining both light and dark variants, implemented as `[data-theme="<preset>"]` CSS blocks in `src/index.css`. Preview swatches in the gallery.
    - **Radius**: none / small / default / large (`--radius`).
-   - Applied by a `ThemeProvider` that sets `data-theme` and the `dark` class on `<html>`; persisted in localStorage; editor (`@blocknote/shadcn`) inherits tokens automatically.
+   - **Mode management uses `next-themes`** (exodus pattern: `attribute="class"`, `defaultTheme="system"`, `enableSystem`, `disableTransitionOnChange`), with a `NativeThemeBridge` side-effect component syncing the selection to the OS window chrome via `getCurrentWindow().setTheme()` — Tauri's analog of exodus's Electron `nativeTheme` bridge.
+   - Theme **preset** is applied as `data-theme` on `<html>` by a thin provider layered above next-themes; both persist (next-themes storageKey + localStorage for preset); editor (`@blocknote/shadcn`) inherits tokens automatically.
 3. **AI** — per-provider API key entry (Keychain-backed, masked, test-connection button), default model dropdown, voice-input experimental toggle.
 4. **Logs** — table viewer with level filter + text search, export to file, clear.
 5. **About & Updates** — app version, latest version, update status, check-now / install buttons.
