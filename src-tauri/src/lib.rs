@@ -1,6 +1,7 @@
 mod error;
 mod vault;
 mod document;
+mod index;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
