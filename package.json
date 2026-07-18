@@ -6,6 +6,7 @@
   "imports": {
     "#components/*": "./src/components/*.tsx",
     "#lib/*": "./src/lib/*.ts",
+    "#lib/backend/*": "./src/lib/backend/*.ts",
     "#hooks/*": "./src/hooks/*.ts"
   },
   "scripts": {
