@@ -58,6 +58,13 @@ fn doc_file(vault: &Path, id: &str) -> PathBuf {
     doc_dir(vault, id).join("document.json")
 }
 
+/// Ids are always UUIDs we generated; reject anything else so a
+/// frontend-supplied id can never traverse outside the vault.
+fn validate_id(id: &str) -> Result<()> {
+    uuid::Uuid::parse_str(id).map_err(|_| AppError::NotFound(id.to_string()))?;
+    Ok(())
+}
+
 fn write_doc(vault: &Path, doc: &Document) -> Result<()> {
     let dir = doc_dir(vault, &doc.id);
     fs::create_dir_all(dir.join("assets"))?;
@@ -84,6 +91,7 @@ pub fn create_document(vault: &Path, parent_id: Option<String>, title: &str) -> 
 }
 
 pub fn load_document(vault: &Path, id: &str) -> Result<Document> {
+    validate_id(id)?;
     let path = doc_file(vault, id);
     if !path.is_file() {
         return Err(AppError::NotFound(id.to_string()));
@@ -92,6 +100,7 @@ pub fn load_document(vault: &Path, id: &str) -> Result<Document> {
 }
 
 pub fn save_document(vault: &Path, mut doc: Document) -> Result<Document> {
+    validate_id(&doc.id)?;
     // Guard against saving a document that was never created.
     load_document(vault, &doc.id)?;
     doc.updated_at = now();
@@ -100,6 +109,7 @@ pub fn save_document(vault: &Path, mut doc: Document) -> Result<Document> {
 }
 
 pub fn delete_document(vault: &Path, id: &str) -> Result<Vec<String>> {
+    validate_id(id)?;
     let metas = list_documents(vault)?;
     let mut affected = vec![id.to_string()];
     // Walk down the tree collecting descendants.
@@ -205,5 +215,27 @@ mod tests {
         assert_eq!(metas.len(), 2);
         assert_eq!(metas[0].title, "first");
         assert_eq!(metas[1].title, "second");
+    }
+
+    #[test]
+    fn operations_reject_malformed_ids() {
+        let v = vault();
+        for bad in ["../escape", "..", "a/b", "not-a-uuid"] {
+            match load_document(v.path(), bad) {
+                Err(AppError::NotFound(_)) => {}
+                other => panic!("expected NotFound for {bad:?}, got {other:?}"),
+            }
+            match delete_document(v.path(), bad) {
+                Err(AppError::NotFound(_)) => {}
+                other => panic!("expected NotFound for {bad:?}, got {other:?}"),
+            }
+        }
+        let doc = create_document(v.path(), None, "ok").unwrap();
+        let mut evil = doc.clone();
+        evil.id = "../escape".into();
+        match save_document(v.path(), evil) {
+            Err(AppError::NotFound(_)) => {}
+            other => panic!("expected NotFound for evil id, got {other:?}"),
+        }
     }
 }
