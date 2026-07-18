@@ -10,12 +10,12 @@ export function AppShell() {
       <SidebarLeft />
       <SidebarInset className="h-svh overflow-hidden">
         <TitleBar />
-        <main
+        <div
           data-testid="page-content"
           className="min-h-0 flex-1 overflow-y-auto"
         >
           <Outlet />
-        </main>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   )

@@ -14,8 +14,8 @@ export function useTrafficLightInset(): boolean {
 
   useEffect(() => {
     if (!isMacTauri()) return
-    let unlisten: (() => void) | undefined
     let cancelled = false
+    let unlisten: (() => void) | undefined
     import('@tauri-apps/api/window').then(async ({ getCurrentWindow }) => {
       if (cancelled) return
       const win = getCurrentWindow()
@@ -25,7 +25,9 @@ export function useTrafficLightInset(): boolean {
           .then(setFullscreen)
           .catch(() => {})
       sync()
-      unlisten = await win.onResized(sync)
+      const stop = await win.onResized(sync)
+      if (cancelled) stop()
+      else unlisten = stop
     })
     return () => {
       cancelled = true
