@@ -3,6 +3,7 @@ mod commands;
 mod document;
 mod error;
 mod fsx;
+mod history;
 mod index;
 mod vault;
 

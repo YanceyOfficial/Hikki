@@ -103,6 +103,7 @@ pub fn save_document(vault: &Path, mut doc: Document) -> Result<Document> {
     validate_id(&doc.id)?;
     // Guard against saving a document that was never created.
     let existing = load_document(vault, &doc.id)?;
+    crate::history::maybe_snapshot(vault, &existing)?;
     // A pending autosave must never resurrect a trashed document; restoring
     // from Trash is an explicit separate operation.
     doc.deleted_at = existing.deleted_at;
