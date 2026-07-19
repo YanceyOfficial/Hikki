@@ -65,7 +65,7 @@ export default function DocumentPage() {
   return (
     <div
       data-testid="document-page"
-      className="mx-auto w-full max-w-3xl px-8 py-10"
+      className="mx-auto w-full max-w-3xl px-12 py-12"
     >
       <PageHeader doc={doc} onPatch={update} />
       <Editor

@@ -48,11 +48,11 @@ export function SidebarLeft(props: React.ComponentProps<typeof Sidebar>) {
     <Sidebar className="border-r-0" {...props}>
       <SidebarHeader>
         <div className="flex items-center justify-between px-2 pt-1">
-          <span className="text-base font-semibold">Hikki</span>
+          <span className="text-sm font-semibold tracking-tight">Hikki</span>
           <Button
             variant="ghost"
             size="icon"
-            className="size-7"
+            className="text-muted-foreground hover:text-foreground size-7 transition-colors"
             onClick={createDoc}
             data-testid="new-doc"
           >

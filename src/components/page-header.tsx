@@ -67,7 +67,7 @@ export function PageHeader({ doc, onPatch }: PageHeaderProps) {
   return (
     <header data-testid="page-header">
       {doc.cover ? (
-        <div className="group relative -mx-8 -mt-10 mb-6 h-48">
+        <div className="group relative -mx-12 -mt-12 mb-6 h-48">
           <img
             data-testid="doc-cover-image"
             src={backend.assetUrl(doc.id, doc.cover)}
@@ -153,7 +153,7 @@ export function PageHeader({ doc, onPatch }: PageHeaderProps) {
       </div>
       <input
         data-testid="doc-title"
-        className="mt-2 w-full bg-transparent text-4xl font-bold outline-none"
+        className="placeholder:text-muted-foreground/50 mt-2 w-full bg-transparent text-4xl font-bold outline-none"
         placeholder="Untitled"
         value={doc.title}
         onChange={(e) => onPatch({ title: e.target.value })}

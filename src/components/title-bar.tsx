@@ -10,7 +10,7 @@ export function TitleBar() {
       data-tauri-drag-region
       data-testid="titlebar"
       className={cn(
-        'bg-background flex h-11 shrink-0 items-center gap-2 border-b px-3',
+        'bg-background flex h-11 shrink-0 items-center gap-2 border-b border-border/60 px-3',
         inset && 'pl-[76px]'
       )}
     >
@@ -21,7 +21,7 @@ export function TitleBar() {
       />
       <span
         data-tauri-drag-region
-        className="text-muted-foreground text-sm font-medium select-none"
+        className="text-muted-foreground text-sm font-medium transition-colors select-none"
       >
         Hikki
       </span>
