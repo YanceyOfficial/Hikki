@@ -55,8 +55,13 @@ export function PageHeader({ doc, onPatch }: PageHeaderProps) {
 
   const uploadCover = async (file: File | undefined) => {
     if (!file) return
-    const imported = await backend.importAsset(doc.id, file)
-    onPatch({ cover: imported.fileName })
+    try {
+      const imported = await backend.importAsset(doc.id, file)
+      onPatch({ cover: imported.fileName })
+    } catch (error) {
+      // Full error funnel (toasts, HK codes) arrives in Phase 4.
+      console.error('hikki: cover upload failed', error)
+    }
   }
 
   return (
@@ -138,7 +143,11 @@ export function PageHeader({ doc, onPatch }: PageHeaderProps) {
           type="file"
           accept="image/*"
           className="hidden"
-          onChange={(e) => uploadCover(e.target.files?.[0])}
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            e.target.value = ''
+            void uploadCover(file)
+          }}
           data-testid="doc-cover-input"
         />
       </div>

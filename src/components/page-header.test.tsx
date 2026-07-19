@@ -1,7 +1,9 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { vi } from 'vitest'
 
 import { PageHeader } from '#components/page-header'
+import { backend } from '#lib/backend/index'
 import type { Doc } from '#lib/types'
 
 const doc = (over: Partial<Doc> = {}): Doc => ({
@@ -49,4 +51,33 @@ test('no cover -> add-cover control shown instead of image', () => {
   render(<PageHeader doc={doc()} onPatch={vi.fn()} />)
   expect(screen.queryByTestId('doc-cover-image')).not.toBeInTheDocument()
   expect(screen.getByTestId('doc-cover-add')).toBeInTheDocument()
+})
+
+test('failed cover upload is swallowed safely and does not patch', async () => {
+  const spy = vi
+    .spyOn(backend, 'importAsset')
+    .mockRejectedValueOnce(new Error('disk full'))
+  const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const onPatch = vi.fn()
+  render(<PageHeader doc={doc()} onPatch={onPatch} />)
+  const input = screen.getByTestId('doc-cover-input')
+  await userEvent.upload(
+    input,
+    new File([new Uint8Array([1])], 'c.png', { type: 'image/png' })
+  )
+  await waitFor(() => expect(spy).toHaveBeenCalled())
+  expect(onPatch).not.toHaveBeenCalled()
+  expect(errorSpy).toHaveBeenCalled()
+  spy.mockRestore()
+  errorSpy.mockRestore()
+})
+
+test('cover input value resets after selection so the same file can be re-picked', async () => {
+  render(<PageHeader doc={doc()} onPatch={vi.fn()} />)
+  const input = screen.getByTestId('doc-cover-input') as HTMLInputElement
+  await userEvent.upload(
+    input,
+    new File([new Uint8Array([1])], 'c.png', { type: 'image/png' })
+  )
+  await waitFor(() => expect(input.value).toBe(''))
 })
