@@ -115,11 +115,19 @@ impl Index {
         tx.execute("DELETE FROM document_fts", [])?;
         tx.commit()?;
         let metas = document::list_documents(vault)?;
+        let mut count = 0;
         for meta in &metas {
-            let doc = document::load_document(vault, &meta.id)?;
+            let doc = match document::load_document(vault, &meta.id) {
+                Ok(doc) => doc,
+                Err(err) => {
+                    eprintln!("hikki: skipping unindexable document {}: {err}", meta.id);
+                    continue;
+                }
+            };
             self.upsert(&doc)?;
+            count += 1;
         }
-        Ok(metas.len())
+        Ok(count)
     }
 }
 
@@ -263,5 +271,19 @@ mod tests {
         // Reconcile again: no duplicates.
         idx.reconcile(dir.path()).unwrap();
         assert_eq!(idx.search("alpha").unwrap().len(), 1);
+    }
+
+    #[test]
+    fn reconcile_skips_unreadable_docs() {
+        let dir = tempfile::tempdir().unwrap();
+        crate::vault::ensure_vault(dir.path()).unwrap();
+        document::create_document(dir.path(), None, "Good").unwrap();
+        let bad_dir = dir.path().join("documents").join(uuid::Uuid::new_v4().to_string());
+        std::fs::create_dir_all(&bad_dir).unwrap();
+        std::fs::write(bad_dir.join("document.json"), "not json").unwrap();
+        let mut idx = Index::open_in_memory().unwrap();
+        let count = idx.reconcile(dir.path()).unwrap();
+        assert_eq!(count, 1);
+        assert_eq!(idx.search("good").unwrap().len(), 1);
     }
 }

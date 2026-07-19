@@ -1,6 +1,7 @@
 mod commands;
 mod document;
 mod error;
+mod fsx;
 mod index;
 mod vault;
 

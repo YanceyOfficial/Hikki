@@ -68,7 +68,7 @@ fn validate_id(id: &str) -> Result<()> {
 fn write_doc(vault: &Path, doc: &Document) -> Result<()> {
     let dir = doc_dir(vault, &doc.id);
     fs::create_dir_all(dir.join("assets"))?;
-    fs::write(doc_file(vault, &doc.id), serde_json::to_string_pretty(doc)?)?;
+    crate::fsx::write_atomic(&doc_file(vault, &doc.id), serde_json::to_string_pretty(doc)?.as_bytes())?;
     Ok(())
 }
 
@@ -151,7 +151,13 @@ pub fn list_documents(vault: &Path) -> Result<Vec<DocumentMeta>> {
         if !file.is_file() {
             continue;
         }
-        let doc: Document = serde_json::from_str(&fs::read_to_string(file)?)?;
+        let doc: Document = match fs::read_to_string(&file).map_err(crate::error::AppError::from).and_then(|s| Ok(serde_json::from_str::<Document>(&s)?)) {
+            Ok(doc) => doc,
+            Err(err) => {
+                eprintln!("hikki: skipping unreadable document {}: {err}", file.display());
+                continue;
+            }
+        };
         metas.push(DocumentMeta::from(&doc));
     }
     metas.sort_by(|a, b| a.created_at.cmp(&b.created_at));
@@ -268,5 +274,17 @@ mod tests {
             Err(AppError::NotFound(_)) => {}
             other => panic!("expected NotFound for evil id, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn list_documents_skips_unreadable_docs() {
+        let v = vault();
+        create_document(v.path(), None, "Good").unwrap();
+        let bad_dir = v.path().join("documents").join(uuid::Uuid::new_v4().to_string());
+        fs::create_dir_all(&bad_dir).unwrap();
+        fs::write(bad_dir.join("document.json"), "{ truncated garba").unwrap();
+        let metas = list_documents(v.path()).unwrap();
+        assert_eq!(metas.len(), 1);
+        assert_eq!(metas[0].title, "Good");
     }
 }
