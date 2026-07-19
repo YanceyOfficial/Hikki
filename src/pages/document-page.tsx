@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router'
 
 import { Editor } from '#components/editor'
+import { PageHeader } from '#components/page-header'
 import { backend } from '#lib/backend/index'
 import { debounce } from '#lib/debounce'
 import { refreshDocsAtom } from '#lib/store'
@@ -66,13 +67,7 @@ export default function DocumentPage() {
       data-testid="document-page"
       className="mx-auto w-full max-w-3xl px-8 py-10"
     >
-      <input
-        data-testid="doc-title"
-        className="w-full bg-transparent text-4xl font-bold outline-none"
-        placeholder="Untitled"
-        value={doc.title}
-        onChange={(e) => update({ title: e.target.value })}
-      />
+      <PageHeader doc={doc} onPatch={update} />
       <Editor
         key={doc.id}
         docId={doc.id}
