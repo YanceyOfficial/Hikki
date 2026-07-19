@@ -61,3 +61,13 @@ test('search matches title and body case-insensitively, skipping deleted', async
   expect(await b.search('trashed')).toHaveLength(0)
   expect(await b.search('  ')).toHaveLength(0)
 })
+
+test('importAsset returns a url and assetUrl resolves it later', async () => {
+  const b = new MemoryBackend()
+  const doc = await b.createDocument(null, 'D')
+  const file = new File([new Uint8Array([9])], 'pic.png')
+  const imported = await b.importAsset(doc.id, file)
+  expect(imported.fileName).toBe('pic.png')
+  expect(imported.url).toBeTruthy()
+  expect(b.assetUrl(doc.id, 'pic.png')).toBe(imported.url)
+})

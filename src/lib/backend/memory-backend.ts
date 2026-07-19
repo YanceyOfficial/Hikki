@@ -1,4 +1,4 @@
-import type { Backend } from '#lib/backend/backend'
+import type { Backend, ImportedAsset } from '#lib/backend/backend'
 import type { Doc, DocumentMeta, SearchHit, VaultInfo } from '#lib/types'
 
 const notFound = (id: string) =>
@@ -12,6 +12,7 @@ const toMeta = ({
 
 export class MemoryBackend implements Backend {
   private docs = new Map<string, Doc>()
+  private assets = new Map<string, string>()
 
   async getVaultInfo(): Promise<VaultInfo> {
     const alive = [...this.docs.values()].filter((d) => d.deletedAt === null)
@@ -99,5 +100,21 @@ export class MemoryBackend implements Backend {
 
   async rebuildIndex(): Promise<number> {
     return [...this.docs.values()].length
+  }
+
+  async importAsset(docId: string, file: File): Promise<ImportedAsset> {
+    const url =
+      typeof URL.createObjectURL === 'function'
+        ? URL.createObjectURL(file)
+        : `memory-asset:${docId}/${file.name}`
+    this.assets.set(`${docId}/${file.name}`, url)
+    return { fileName: file.name, url }
+  }
+
+  assetUrl(docId: string, fileName: string): string {
+    return (
+      this.assets.get(`${docId}/${fileName}`) ??
+      `memory-asset:${docId}/${fileName}`
+    )
   }
 }
