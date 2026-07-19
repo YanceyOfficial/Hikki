@@ -1,5 +1,5 @@
 import { useSetAtom } from 'jotai'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router'
 
 import { backend } from '#lib/backend/index'
@@ -12,7 +12,6 @@ export default function DocumentPage() {
   const [doc, setDoc] = useState<Doc | null>(null)
   const [notFound, setNotFound] = useState(false)
   const refresh = useSetAtom(refreshDocsAtom)
-  const latest = useRef<Doc | null>(null)
 
   const save = useMemo(
     () =>
@@ -31,7 +30,6 @@ export default function DocumentPage() {
       .then((loaded) => {
         if (active) {
           setDoc(loaded)
-          latest.current = loaded
         }
       })
       .catch(() => active && setNotFound(true))
@@ -55,7 +53,6 @@ export default function DocumentPage() {
 
   const update = (next: Doc) => {
     setDoc(next)
-    latest.current = next
     save(next)
   }
 

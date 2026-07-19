@@ -102,7 +102,10 @@ pub fn load_document(vault: &Path, id: &str) -> Result<Document> {
 pub fn save_document(vault: &Path, mut doc: Document) -> Result<Document> {
     validate_id(&doc.id)?;
     // Guard against saving a document that was never created.
-    load_document(vault, &doc.id)?;
+    let existing = load_document(vault, &doc.id)?;
+    // A pending autosave must never resurrect a trashed document; restoring
+    // from Trash is an explicit separate operation.
+    doc.deleted_at = existing.deleted_at;
     doc.updated_at = now();
     write_doc(vault, &doc)?;
     Ok(doc)
@@ -112,12 +115,17 @@ pub fn delete_document(vault: &Path, id: &str) -> Result<Vec<String>> {
     validate_id(id)?;
     let metas = list_documents(vault)?;
     let mut affected = vec![id.to_string()];
-    // Walk down the tree collecting descendants.
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    seen.insert(id.to_string());
+    // Walk down the tree collecting descendants, guarding against cycles
+    // (e.g. hand-edited vault files with a parent_id loop).
     let mut i = 0;
     while i < affected.len() {
         let current = affected[i].clone();
         for m in metas.iter().filter(|m| m.parent_id.as_deref() == Some(&current)) {
-            affected.push(m.id.clone());
+            if seen.insert(m.id.clone()) {
+                affected.push(m.id.clone());
+            }
         }
         i += 1;
     }
@@ -215,6 +223,29 @@ mod tests {
         assert_eq!(metas.len(), 2);
         assert_eq!(metas[0].title, "first");
         assert_eq!(metas[1].title, "second");
+    }
+
+    #[test]
+    fn save_preserves_deleted_at_of_trashed_document() {
+        let v = vault();
+        let doc = create_document(v.path(), None, "Note").unwrap();
+        let stale = doc.clone(); // snapshot taken before the delete
+        delete_document(v.path(), &doc.id).unwrap();
+        let saved = save_document(v.path(), stale).unwrap();
+        assert!(saved.deleted_at.is_some());
+        assert!(load_document(v.path(), &doc.id).unwrap().deleted_at.is_some());
+    }
+
+    #[test]
+    fn delete_terminates_on_parent_cycle() {
+        let v = vault();
+        let a = create_document(v.path(), None, "A").unwrap();
+        let b = create_document(v.path(), Some(a.id.clone()), "B").unwrap();
+        let mut a2 = load_document(v.path(), &a.id).unwrap();
+        a2.parent_id = Some(b.id.clone());
+        save_document(v.path(), a2).unwrap(); // now A <-> B cycle
+        let affected = delete_document(v.path(), &a.id).unwrap();
+        assert_eq!(affected.len(), 2);
     }
 
     #[test]

@@ -49,9 +49,13 @@ export class MemoryBackend implements Backend {
   }
 
   async saveDocument(doc: Doc): Promise<Doc> {
-    if (!this.docs.has(doc.id)) throw notFound(doc.id)
+    const existing = this.docs.get(doc.id)
+    if (!existing) throw notFound(doc.id)
     const saved = {
       ...structuredClone(doc),
+      // A pending autosave must never resurrect a trashed document;
+      // restoring from Trash is an explicit separate operation.
+      deletedAt: existing.deletedAt,
       updatedAt: new Date().toISOString()
     }
     this.docs.set(saved.id, saved)
@@ -61,9 +65,15 @@ export class MemoryBackend implements Backend {
   async deleteDocument(id: string): Promise<string[]> {
     if (!this.docs.has(id)) throw notFound(id)
     const affected = [id]
+    const seen = new Set<string>([id])
+    // Walk down the tree collecting descendants, guarding against cycles
+    // (e.g. a hand-edited parentId loop).
     for (let i = 0; i < affected.length; i++) {
       for (const doc of this.docs.values()) {
-        if (doc.parentId === affected[i]) affected.push(doc.id)
+        if (doc.parentId === affected[i] && !seen.has(doc.id)) {
+          seen.add(doc.id)
+          affected.push(doc.id)
+        }
       }
     }
     const now = new Date().toISOString()

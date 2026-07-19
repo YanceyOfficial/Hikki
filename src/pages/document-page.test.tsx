@@ -34,6 +34,16 @@ test('typing autosaves after debounce', async () => {
   )
 })
 
+test('flushes pending save on unmount', async () => {
+  const doc = await backend.createDocument(null, 'Before')
+  const { unmount } = renderPage(doc.id)
+  const input = await screen.findByTestId('doc-title')
+  await userEvent.clear(input)
+  await userEvent.type(input, 'After')
+  unmount()
+  expect((await backend.loadDocument(doc.id)).title).toBe('After')
+})
+
 test('unknown id shows not-found state', async () => {
   renderPage('missing-id')
   expect(await screen.findByTestId('doc-not-found')).toBeInTheDocument()

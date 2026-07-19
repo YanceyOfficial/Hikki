@@ -34,6 +34,24 @@ test('delete is soft and recursive', async () => {
   expect(metas.every((m) => m.deletedAt !== null)).toBe(true)
 })
 
+test('save does not resurrect a deleted document', async () => {
+  const b = new MemoryBackend()
+  const doc = await b.createDocument(null, 'Note')
+  await b.deleteDocument(doc.id)
+  const saved = await b.saveDocument({ ...doc, title: 'stale edit' })
+  expect(saved.deletedAt).not.toBeNull()
+  expect((await b.loadDocument(doc.id)).deletedAt).not.toBeNull()
+})
+
+test('delete terminates on parent cycle', async () => {
+  const b = new MemoryBackend()
+  const a = await b.createDocument(null, 'A')
+  const c = await b.createDocument(a.id, 'C')
+  await b.saveDocument({ ...(await b.loadDocument(a.id)), parentId: c.id })
+  const affected = await b.deleteDocument(a.id)
+  expect(affected.sort()).toEqual([a.id, c.id].sort())
+})
+
 test('search matches title and body case-insensitively, skipping deleted', async () => {
   const b = new MemoryBackend()
   await b.createDocument(null, 'Groceries')
