@@ -5,6 +5,29 @@ import { MemoryRouter, Route, Routes } from 'react-router'
 import { backend } from '#lib/backend/index'
 import DocumentPage from '#pages/document-page'
 
+// BlockNote cannot render under jsdom (ProseMirror needs real layout APIs),
+// so the real editor is only exercised by Task 9's Playwright e2e tests.
+vi.mock('#components/editor', () => ({
+  Editor: ({
+    docId,
+    initialBlocks,
+    onBlocksChange
+  }: {
+    docId: string
+    initialBlocks: unknown[]
+    onBlocksChange: (blocks: unknown[]) => void
+  }) => (
+    <button
+      data-testid="mock-editor"
+      data-doc-id={docId}
+      data-block-count={initialBlocks.length}
+      onClick={() => onBlocksChange([{ type: 'paragraph', content: 'edited' }])}
+    >
+      mock editor
+    </button>
+  )
+}))
+
 const renderPage = (id: string) =>
   render(
     <MemoryRouter initialEntries={[`/doc/${id}`]}>
@@ -47,4 +70,26 @@ test('flushes pending save on unmount', async () => {
 test('unknown id shows not-found state', async () => {
   renderPage('missing-id')
   expect(await screen.findByTestId('doc-not-found')).toBeInTheDocument()
+})
+
+test('renders the editor with the loaded blocks', async () => {
+  const doc = await backend.createDocument(null, 'Has editor')
+  await backend.saveDocument({ ...doc, blocks: [{ type: 'paragraph' }] })
+  renderPage(doc.id)
+  const editor = await screen.findByTestId('mock-editor')
+  expect(editor).toHaveAttribute('data-doc-id', doc.id)
+  expect(editor).toHaveAttribute('data-block-count', '1')
+})
+
+test('block changes are autosaved', async () => {
+  const doc = await backend.createDocument(null, 'Blocks')
+  renderPage(doc.id)
+  await userEvent.click(await screen.findByTestId('mock-editor'))
+  await waitFor(
+    async () =>
+      expect((await backend.loadDocument(doc.id)).blocks).toEqual([
+        { type: 'paragraph', content: 'edited' }
+      ]),
+    { timeout: 3000 }
+  )
 })

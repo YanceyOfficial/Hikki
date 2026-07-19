@@ -2,6 +2,7 @@ import { useSetAtom } from 'jotai'
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router'
 
+import { Editor } from '#components/editor'
 import { backend } from '#lib/backend/index'
 import { debounce } from '#lib/debounce'
 import { refreshDocsAtom } from '#lib/store'
@@ -51,9 +52,13 @@ export default function DocumentPage() {
   }
   if (!doc) return null
 
-  const update = (next: Doc) => {
-    setDoc(next)
-    save(next)
+  const update = (patch: Partial<Doc>) => {
+    setDoc((prev) => {
+      if (!prev) return prev
+      const next = { ...prev, ...patch }
+      save(next)
+      return next
+    })
   }
 
   return (
@@ -66,14 +71,14 @@ export default function DocumentPage() {
         className="w-full bg-transparent text-4xl font-bold outline-none"
         placeholder="Untitled"
         value={doc.title}
-        onChange={(e) => update({ ...doc, title: e.target.value })}
+        onChange={(e) => update({ title: e.target.value })}
       />
-      <p
-        data-testid="editor-placeholder"
-        className="text-muted-foreground mt-6 text-sm"
-      >
-        The editor lands in Phase 2.
-      </p>
+      <Editor
+        key={doc.id}
+        docId={doc.id}
+        initialBlocks={doc.blocks}
+        onBlocksChange={(blocks) => update({ blocks })}
+      />
     </div>
   )
 }
