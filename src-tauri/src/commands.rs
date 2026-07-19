@@ -138,6 +138,16 @@ pub fn set_vault_path(state: State<AppState>, path: String) -> Result<VaultInfo>
     set_vault_path_impl(&state, path)
 }
 
+pub fn import_asset_impl(state: &AppState, doc_id: String, file_name: String, bytes: Vec<u8>) -> Result<String> {
+    let vault_path = lock(&state.settings).vault_path.clone();
+    crate::asset::import_asset(&vault_path, &doc_id, &file_name, &bytes)
+}
+
+#[tauri::command]
+pub fn import_asset(state: State<AppState>, doc_id: String, file_name: String, bytes: Vec<u8>) -> Result<String> {
+    import_asset_impl(&state, doc_id, file_name, bytes)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -215,5 +225,14 @@ mod tests {
         // index (as required), the doc must disappear from the listing.
         lock(&state.index).remove(&doc.id).unwrap();
         assert!(list_documents_impl(&state).unwrap().is_empty());
+    }
+
+    #[test]
+    fn import_asset_stores_and_returns_file_name() {
+        let (_v, _d, state) = state();
+        let doc = create_document_impl(&state, None, "D".into()).unwrap();
+        let stored = import_asset_impl(&state, doc.id.clone(), "a.png".into(), vec![1, 2, 3]).unwrap();
+        let vault_path = std::path::PathBuf::from(get_vault_info_impl(&state).unwrap().vault_path);
+        assert!(vault_path.join("documents").join(&doc.id).join("assets").join(&stored).is_file());
     }
 }

@@ -1,3 +1,4 @@
+mod asset;
 mod commands;
 mod document;
 mod error;
@@ -37,6 +38,7 @@ pub fn run() {
             commands::search,
             commands::rebuild_index,
             commands::set_vault_path,
+            commands::import_asset,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

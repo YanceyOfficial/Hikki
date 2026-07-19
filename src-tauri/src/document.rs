@@ -60,7 +60,7 @@ fn doc_file(vault: &Path, id: &str) -> PathBuf {
 
 /// Ids are always UUIDs we generated; reject anything else so a
 /// frontend-supplied id can never traverse outside the vault.
-fn validate_id(id: &str) -> Result<()> {
+pub(crate) fn validate_id(id: &str) -> Result<()> {
     uuid::Uuid::parse_str(id).map_err(|_| AppError::NotFound(id.to_string()))?;
     Ok(())
 }
