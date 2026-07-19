@@ -14,6 +14,24 @@ use tauri::Manager;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .register_uri_scheme_protocol("hikki-asset", |ctx, request| {
+            let app = ctx.app_handle();
+            let state = app.state::<commands::AppState>();
+            let vault_path = state.settings.lock().unwrap_or_else(std::sync::PoisonError::into_inner).vault_path.clone();
+            match asset::resolve_asset_path(&vault_path, request.uri().path()) {
+                Ok(path) => {
+                    let mime = asset::mime_for(&path);
+                    match std::fs::read(&path) {
+                        Ok(body) => tauri::http::Response::builder()
+                            .header("Content-Type", mime)
+                            .body(body)
+                            .unwrap(),
+                        Err(_) => tauri::http::Response::builder().status(404).body(Vec::new()).unwrap(),
+                    }
+                }
+                Err(_) => tauri::http::Response::builder().status(404).body(Vec::new()).unwrap(),
+            }
+        })
         .setup(|app| {
             let app_data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&app_data_dir)?;
