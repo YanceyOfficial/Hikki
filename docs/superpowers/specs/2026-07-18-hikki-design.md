@@ -84,6 +84,16 @@ Properties:
 - Fully rebuildable by scanning the vault (startup reconciliation + Settings "Rebuild index" action).
 - A Rust file-watcher (`notify` crate) detects external changes (iCloud sync from another device, manual edits) and re-indexes changed documents, emitting an event so open views refresh.
 
+### Version history (snapshots)
+
+Every document keeps a rolling history of full snapshots so users can review and restore earlier versions:
+
+- Storage: `documents/<uuid>/history/<UTC-timestamp>.json` — a full copy of `document.json` taken **before** an overwrite. Plain files → syncs with the vault, rebuild-free.
+- Write policy: on `save_document`, snapshot the current on-disk version if the newest snapshot is older than **10 minutes** (or none exists). Rapid autosaves therefore coalesce into at most one snapshot per interval.
+- Retention: keep the newest **50** snapshots per document; prune oldest on write.
+- Restore: snapshot the current state first, then copy the chosen version over `document.json`, bump `updatedAt`, reindex. Restore never destroys the pre-restore state.
+- Phasing: snapshot writing starts in Phase 2 (so history accumulates from day one); the history UI (browse versions with relative times, preview, Restore) ships with Phase 6 extras.
+
 ## 4. Rust backend (Tauri)
 
 Rust owns all I/O; the webview never touches the filesystem directly.
@@ -199,6 +209,7 @@ Data from SQLite (`dashboard_stats`, `activity`):
 - **Quick search**: `⌘K` palette with FTS results + recents.
 - **Keyboard shortcuts**: `⌘K` palette, `⌘,` settings, `⌘N` new doc, `⌘J` writing tools, `⌘⇧F` search; help sheet listing all.
 - **Breadcrumbs**: derived from `parentId` chain in the editor header.
+- **Version history UI**: per-document panel listing snapshots (relative times), read-only preview, and Restore — backed by the §3 snapshot store.
 
 ## 12. Testing strategy (TDD)
 
@@ -210,17 +221,36 @@ Data from SQLite (`dashboard_stats`, `activity`):
 ## 13. Implementation phases
 
 1. **Foundation** — vault fs + SQLite index in Rust, IPC layer, router + `AppShell`, sidebar wired to real tree.
-2. **Editor** — BlockNote integration, autosave, assets, page header (title/icon/cover).
+2. **Editor** — BlockNote integration, autosave, assets, page header (title/icon/cover), version-history snapshots (storage side), soft design-language pass (§15).
 3. **AI Writing Tools** — provider client, popover UI, streaming preview, model selector.
 4. **Settings + errors/toasts/logging** — dialog sections (incl. Appearance multi-theme presets), Keychain, error codes, log pipeline + viewer.
 5. **Dashboard** — stats queries + charts + heatmap.
-6. **Extras** — favorites, backlinks, templates, `⌘K` palette, shortcuts, trash.
+6. **Extras** — favorites, backlinks, templates, `⌘K` palette, shortcuts, trash, version-history UI.
 7. **Voice input** — recorder UI + OpenAI STT (experimental flag).
 8. **Updater + CI** — release workflow, updater wiring, upgrade pill.
 
 `CLAUDE.md` and `README.md` are updated as each phase lands (commands, architecture, conventions). `IMG_6065.jpeg` deleted after the Writing Tools UI ships.
 
-## 14. Out of scope (v1)
+## 14. Design language
+
+Raw shadcn defaults read generic; Hikki aims for a **soft, calm, Notion-like** feel. This binds all UI work from Phase 2 onward:
+
+- **Color**: warm, low-contrast neutrals — background slightly warm off-white (dark mode: warm dark gray, never pure black), foreground a soft near-black, borders barely-there (`border-border/60`-level contrast), muted icon/chrome colors.
+- **Shape**: `--radius` ≈ 0.625rem; popovers/menus with soft, diffuse shadows rather than hard borders.
+- **Density & type**: generous whitespace in the editor column; smaller quiet chrome (13px sidebar rows); titles bold but never harsh.
+- **Motion**: 150–200ms ease-out color/opacity transitions on hover/active; no abrupt state jumps.
+- **Interaction**: hover states are subtle background tints (`bg-muted`-tinted), not outlines; destructive actions styled calmly until confirmed.
+- Applied via shadcn token tuning in `src/assets/globals.css` (both modes) plus component-level polish; theme presets (§8 Appearance) build on the same token system.
+
+## 15. Future roadmap (post-v1 backlog, not scheduled)
+
+Captured for later; explicitly **not** part of phases 1–8:
+
+- **Database features** (Notion-style): table view, list view, board, forms; typed properties/fields on documents; views saved per page.
+- **Template authoring & import**: create templates from existing pages; import/export template files (beyond the bundled templates in Phase 6).
+- Cross-platform asset-URL portability pass (stored `hikki-asset://` URLs are platform-shaped).
+
+## 16. Out of scope (v1)
 
 - Real-time collaboration, sharing, cloud accounts.
 - Mobile targets.
