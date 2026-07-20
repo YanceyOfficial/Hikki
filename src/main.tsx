@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { createHashRouter, RouterProvider } from 'react-router'
 
 import { AppShell } from '#components/app-shell'
+import { ThemeProvider } from '#components/theme-provider'
 import DashboardPage from '#pages/dashboard-page'
 import DocumentPage from '#pages/document-page'
 
@@ -19,6 +20,8 @@ const router = createHashRouter([
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <ThemeProvider>
+      <RouterProvider router={router} />
+    </ThemeProvider>
   </React.StrictMode>
 )

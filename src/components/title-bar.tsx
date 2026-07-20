@@ -1,3 +1,7 @@
+import { Moon, Sun } from 'lucide-react'
+import { useTheme } from 'next-themes'
+
+import { Button } from '#components/ui/button'
 import { Separator } from '#components/ui/separator'
 import { SidebarTrigger } from '#components/ui/sidebar'
 import { useTrafficLightInset } from '#hooks/use-traffic-light-inset'
@@ -5,6 +9,7 @@ import { cn } from '#lib/utils'
 
 export function TitleBar() {
   const inset = useTrafficLightInset()
+  const { resolvedTheme, setTheme } = useTheme()
   return (
     <header
       data-tauri-drag-region
@@ -25,6 +30,21 @@ export function TitleBar() {
       >
         Hikki
       </span>
+      <div className="flex-1" />
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-7"
+        data-testid="theme-toggle"
+        onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+      >
+        {resolvedTheme === 'dark' ? (
+          <Sun className="size-4" />
+        ) : (
+          <Moon className="size-4" />
+        )}
+        <span className="sr-only">Toggle theme</span>
+      </Button>
     </header>
   )
 }
