@@ -242,6 +242,18 @@ Raw shadcn defaults read generic; Hikki aims for a **soft, calm, Notion-like** f
 - **Interaction**: hover states are subtle background tints (`bg-muted`-tinted), not outlines; destructive actions styled calmly until confirmed.
 - Applied via shadcn token tuning in `src/assets/globals.css` (both modes) plus component-level polish; theme presets (§8 Appearance) build on the same token system.
 
+## 14a. Design/library decisions from Phase-2 user review (2026-07-20)
+
+Amendments locked after visually reviewing Phase 2 against Notion references:
+
+- **Window chrome bug**: `tauri.conf.json` shipped the template's `"transparent": true`, never revisited. Combined with `titleBarStyle: "Overlay"`, macOS window transparency is a known source of drag-region hit-testing and traffic-light rendering glitches. Fix: `"transparent": false` — the app paints its own opaque background via CSS tokens anyway, so nothing is lost visually.
+- **Theming pulled forward**: a minimal `next-themes` `ThemeProvider` (+ `NativeThemeBridge` syncing `getCurrentWindow().setTheme()`, per the exodus pattern already agreed in §8) lands now, ahead of Phase 4, specifically so dark mode is reachable and the editor's dark-mode correctness can actually be verified. The full Appearance panel (preset gallery, radius picker) stays in Phase 4 — this is just the provider + a lightweight toggle.
+- **BlockNote re-skinning**: `@blocknote/shadcn`'s `BlockNoteView` accepts a `shadCNComponents` prop overriding its internal Button/Tooltip/Popover/DropdownMenu/etc. with our own `src/components/ui/*` instances, and a `theme="light"|"dark"` prop. Both are wired so BlockNote's toolbar, tooltips, and menus render as pixel-identical citizens of our own design system rather than BlockNote's bundled look-alikes. BlockNote's own `--bn-colors-*`/`--bn-border-radius*`/`--bn-shadow-*` CSS variables (scoped under `.bn-root`) are retargeted to reference our tokens for the parts `shadCNComponents` doesn't cover (editor background/text, code block chrome). `.bn-editor`'s built-in `padding-inline: 54px` is reset to 0 — our own page wrapper owns horizontal padding, avoiding the double-indent the built-in gutter caused.
+- **Code block syntax highlighting**: BlockNote's `codeBlock` feature is highlight-capable but ships no highlighter by default (only `@shikijs/types`, not the `shiki` runtime). We add `shiki` and wire `codeBlock.createHighlighter`.
+- **Emoji picker**: swapped from a hardcoded 30-emoji grid to **frimousse** — a headless, composable, shadcn-native emoji picker (search, categories, keyboard nav, virtualized) — matching our "always use the real component, never reinvent" rule from §1.
+- **Table of contents**: **react-fluid-toc** (the user's own package) — headings are derived from `editor.document` (BlockNote doesn't render semantic `<h1-6>` tags, so we assign `id` attributes onto the rendered heading DOM nodes ourselves for anchor/scroll-spy targeting).
+- **Comments**: BlockNote ships an **open-source** Comments/Threads system (`ThreadStore` abstract class, `CommentsExtension`, `AddCommentButton`) — distinct from the commercial-only AI package this project already excludes. We implement our own `VaultThreadStore` (satisfying `ThreadStore`'s `createThread`/`addComment`/`resolveThread`/etc.) persisting threads as a new field on `Doc`, saved through the existing autosave path — no new Rust IPC surface needed for v1. Single local user: `resolveUsers` returns a fixed local identity, no auth/roles.
+
 ## 15. Future roadmap (post-v1 backlog, not scheduled)
 
 Captured for later; explicitly **not** part of phases 1–8:
