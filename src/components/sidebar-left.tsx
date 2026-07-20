@@ -13,11 +13,14 @@ import {
   SidebarMenuButton,
   SidebarMenuItem
 } from '#components/ui/sidebar'
+import { useTrafficLightInset } from '#hooks/use-traffic-light-inset'
 import { backend } from '#lib/backend/index'
 import { docMetasAtom, refreshDocsAtom } from '#lib/store'
 import { buildTree } from '#lib/tree'
+import { cn } from '#lib/utils'
 
 export function SidebarLeft(props: React.ComponentProps<typeof Sidebar>) {
+  const inset = useTrafficLightInset()
   const metas = useAtomValue(docMetasAtom)
   const refresh = useSetAtom(refreshDocsAtom)
   const navigate = useNavigate()
@@ -47,8 +50,20 @@ export function SidebarLeft(props: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar className="border-r-0" {...props}>
       <SidebarHeader>
-        <div className="flex items-center justify-between px-2 pt-1">
-          <span className="text-sm font-semibold tracking-tight">Hikki</span>
+        <div
+          data-tauri-drag-region
+          data-testid="sidebar-header-row"
+          className={cn(
+            'flex items-center justify-between px-2 pt-1',
+            inset && 'pl-[76px]'
+          )}
+        >
+          <span
+            data-tauri-drag-region
+            className="text-sm font-semibold tracking-tight"
+          >
+            Hikki
+          </span>
           <Button
             variant="ghost"
             size="icon"
