@@ -24,7 +24,7 @@ pub fn load_settings(app_data_dir: &Path) -> AppSettings {
 pub fn save_settings(app_data_dir: &Path, settings: &AppSettings) -> io::Result<()> {
     fs::create_dir_all(app_data_dir)?;
     let json = serde_json::to_string_pretty(settings).expect("settings serialize");
-    fs::write(app_data_dir.join("settings.json"), json)
+    crate::fsx::write_atomic(&app_data_dir.join("settings.json"), json.as_bytes())
 }
 
 pub fn ensure_vault(root: &Path) -> io::Result<()> {

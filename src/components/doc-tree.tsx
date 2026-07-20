@@ -43,9 +43,10 @@ function TreeItem({
         <SidebarMenuButton
           isActive={meta.id === activeId}
           onClick={() => onSelect(meta.id)}
+          className="transition-colors duration-150"
           data-testid={`doc-item-${meta.id}`}
         >
-          <span className="flex size-4 items-center justify-center">
+          <span className="text-muted-foreground flex size-4 items-center justify-center">
             {meta.icon ?? <FileText className="size-4" />}
           </span>
           <span className="truncate">{meta.title || 'Untitled'}</span>
@@ -54,7 +55,7 @@ function TreeItem({
           <CollapsibleTrigger
             render={
               <SidebarMenuAction
-                className="left-1 bg-transparent"
+                className="left-1 bg-transparent transition-colors duration-150"
                 showOnHover
                 data-testid={`doc-toggle-${meta.id}`}
               />
@@ -67,6 +68,7 @@ function TreeItem({
           <DropdownMenuTrigger
             render={
               <SidebarMenuAction
+                className="transition-colors duration-150"
                 showOnHover
                 data-testid={`doc-actions-${meta.id}`}
               />

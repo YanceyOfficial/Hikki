@@ -30,7 +30,7 @@ pub struct VaultInfo {
 
 pub fn get_vault_info_impl(state: &AppState) -> Result<VaultInfo> {
     let settings = lock(&state.settings);
-    let metas = document::list_documents(&settings.vault_path)?;
+    let metas = lock(&state.index).list_metas()?;
     Ok(VaultInfo {
         vault_path: settings.vault_path.to_string_lossy().into_owned(),
         document_count: metas.iter().filter(|m| m.deleted_at.is_none()).count(),
@@ -38,8 +38,7 @@ pub fn get_vault_info_impl(state: &AppState) -> Result<VaultInfo> {
 }
 
 pub fn list_documents_impl(state: &AppState) -> Result<Vec<DocumentMeta>> {
-    let settings = lock(&state.settings);
-    document::list_documents(&settings.vault_path)
+    lock(&state.index).list_metas()
 }
 
 pub fn create_document_impl(state: &AppState, parent_id: Option<String>, title: String) -> Result<Document> {
@@ -139,6 +138,16 @@ pub fn set_vault_path(state: State<AppState>, path: String) -> Result<VaultInfo>
     set_vault_path_impl(&state, path)
 }
 
+pub fn import_asset_impl(state: &AppState, doc_id: String, file_name: String, bytes: Vec<u8>) -> Result<String> {
+    let vault_path = lock(&state.settings).vault_path.clone();
+    crate::asset::import_asset(&vault_path, &doc_id, &file_name, &bytes)
+}
+
+#[tauri::command]
+pub fn import_asset(state: State<AppState>, doc_id: String, file_name: String, bytes: Vec<u8>) -> Result<String> {
+    import_asset_impl(&state, doc_id, file_name, bytes)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -206,5 +215,24 @@ mod tests {
         let result = set_vault_path_impl(&state, new_vault.path().to_string_lossy().into_owned());
         assert!(result.is_err());
         assert_eq!(get_vault_info_impl(&state).unwrap().vault_path, old_path);
+    }
+
+    #[test]
+    fn list_documents_serves_from_index() {
+        let (_v, _d, state) = state();
+        let doc = create_document_impl(&state, None, "Indexed".into()).unwrap();
+        // Remove from the index only — fs still has the doc. If list reads the
+        // index (as required), the doc must disappear from the listing.
+        lock(&state.index).remove(&doc.id).unwrap();
+        assert!(list_documents_impl(&state).unwrap().is_empty());
+    }
+
+    #[test]
+    fn import_asset_stores_and_returns_file_name() {
+        let (_v, _d, state) = state();
+        let doc = create_document_impl(&state, None, "D".into()).unwrap();
+        let stored = import_asset_impl(&state, doc.id.clone(), "a.png".into(), vec![1, 2, 3]).unwrap();
+        let vault_path = std::path::PathBuf::from(get_vault_info_impl(&state).unwrap().vault_path);
+        assert!(vault_path.join("documents").join(&doc.id).join("assets").join(&stored).is_file());
     }
 }

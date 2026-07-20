@@ -60,7 +60,7 @@ fn doc_file(vault: &Path, id: &str) -> PathBuf {
 
 /// Ids are always UUIDs we generated; reject anything else so a
 /// frontend-supplied id can never traverse outside the vault.
-fn validate_id(id: &str) -> Result<()> {
+pub(crate) fn validate_id(id: &str) -> Result<()> {
     uuid::Uuid::parse_str(id).map_err(|_| AppError::NotFound(id.to_string()))?;
     Ok(())
 }
@@ -68,7 +68,7 @@ fn validate_id(id: &str) -> Result<()> {
 fn write_doc(vault: &Path, doc: &Document) -> Result<()> {
     let dir = doc_dir(vault, &doc.id);
     fs::create_dir_all(dir.join("assets"))?;
-    fs::write(doc_file(vault, &doc.id), serde_json::to_string_pretty(doc)?)?;
+    crate::fsx::write_atomic(&doc_file(vault, &doc.id), serde_json::to_string_pretty(doc)?.as_bytes())?;
     Ok(())
 }
 
@@ -103,6 +103,9 @@ pub fn save_document(vault: &Path, mut doc: Document) -> Result<Document> {
     validate_id(&doc.id)?;
     // Guard against saving a document that was never created.
     let existing = load_document(vault, &doc.id)?;
+    if let Err(err) = crate::history::maybe_snapshot(vault, &existing) {
+        eprintln!("hikki: snapshot failed for {}: {err}", existing.id);
+    }
     // A pending autosave must never resurrect a trashed document; restoring
     // from Trash is an explicit separate operation.
     doc.deleted_at = existing.deleted_at;
@@ -151,7 +154,13 @@ pub fn list_documents(vault: &Path) -> Result<Vec<DocumentMeta>> {
         if !file.is_file() {
             continue;
         }
-        let doc: Document = serde_json::from_str(&fs::read_to_string(file)?)?;
+        let doc: Document = match fs::read_to_string(&file).map_err(crate::error::AppError::from).and_then(|s| Ok(serde_json::from_str::<Document>(&s)?)) {
+            Ok(doc) => doc,
+            Err(err) => {
+                eprintln!("hikki: skipping unreadable document {}: {err}", file.display());
+                continue;
+            }
+        };
         metas.push(DocumentMeta::from(&doc));
     }
     metas.sort_by(|a, b| a.created_at.cmp(&b.created_at));
@@ -268,5 +277,45 @@ mod tests {
             Err(AppError::NotFound(_)) => {}
             other => panic!("expected NotFound for evil id, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn save_document_snapshots_previous_state() {
+        let v = vault();
+        let doc = create_document(v.path(), None, "Original title").unwrap();
+        let mut edited = doc.clone();
+        edited.title = "Edited title".into();
+        save_document(v.path(), edited).unwrap();
+        let snaps = crate::history::list_snapshots(v.path(), &doc.id).unwrap();
+        assert_eq!(snaps.len(), 1);
+        let raw = std::fs::read_to_string(
+            v.path().join("documents").join(&doc.id).join("history").join(&snaps[0]),
+        ).unwrap();
+        let snapshot: Document = serde_json::from_str(&raw).unwrap();
+        assert_eq!(snapshot.title, "Original title");
+    }
+
+    #[test]
+    fn save_succeeds_even_when_snapshot_fails() {
+        let v = vault();
+        let doc = create_document(v.path(), None, "A").unwrap();
+        // Occupy the history path with a FILE so create_dir_all fails inside maybe_snapshot.
+        std::fs::write(v.path().join("documents").join(&doc.id).join("history"), b"not a dir").unwrap();
+        let mut edited = doc.clone();
+        edited.title = "B".into();
+        let saved = save_document(v.path(), edited).unwrap();
+        assert_eq!(saved.title, "B");
+    }
+
+    #[test]
+    fn list_documents_skips_unreadable_docs() {
+        let v = vault();
+        create_document(v.path(), None, "Good").unwrap();
+        let bad_dir = v.path().join("documents").join(uuid::Uuid::new_v4().to_string());
+        fs::create_dir_all(&bad_dir).unwrap();
+        fs::write(bad_dir.join("document.json"), "{ truncated garba").unwrap();
+        let metas = list_documents(v.path()).unwrap();
+        assert_eq!(metas.len(), 1);
+        assert_eq!(metas[0].title, "Good");
     }
 }

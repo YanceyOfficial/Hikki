@@ -2,6 +2,9 @@ import { useSetAtom } from 'jotai'
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router'
 
+import { Editor } from '#components/editor'
+import { EditorBoundary } from '#components/editor-boundary'
+import { PageHeader } from '#components/page-header'
 import { backend } from '#lib/backend/index'
 import { debounce } from '#lib/debounce'
 import { refreshDocsAtom } from '#lib/store'
@@ -51,29 +54,29 @@ export default function DocumentPage() {
   }
   if (!doc) return null
 
-  const update = (next: Doc) => {
-    setDoc(next)
-    save(next)
+  const update = (patch: Partial<Doc>) => {
+    setDoc((prev) => {
+      if (!prev) return prev
+      const next = { ...prev, ...patch }
+      save(next)
+      return next
+    })
   }
 
   return (
     <div
       data-testid="document-page"
-      className="mx-auto w-full max-w-3xl px-8 py-10"
+      className="mx-auto w-full max-w-3xl px-12 py-12"
     >
-      <input
-        data-testid="doc-title"
-        className="w-full bg-transparent text-4xl font-bold outline-none"
-        placeholder="Untitled"
-        value={doc.title}
-        onChange={(e) => update({ ...doc, title: e.target.value })}
-      />
-      <p
-        data-testid="editor-placeholder"
-        className="text-muted-foreground mt-6 text-sm"
-      >
-        The editor lands in Phase 2.
-      </p>
+      <PageHeader doc={doc} onPatch={update} />
+      <EditorBoundary>
+        <Editor
+          key={doc.id}
+          docId={doc.id}
+          initialBlocks={doc.blocks}
+          onBlocksChange={(blocks) => update({ blocks })}
+        />
+      </EditorBoundary>
     </div>
   )
 }

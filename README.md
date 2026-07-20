@@ -3,7 +3,7 @@
 A Notion-like, local-first note-taking app for macOS.
 
 - **Your files, yours** — documents live as plain JSON + assets in `~/Hikki` (relocatable, iCloud-friendly). A derived SQLite FTS5 index powers instant search and is always rebuildable.
-- **Editor** — BlockNote block editor (Phase 2), AI Writing Tools in the style of Apple Intelligence (Phase 3), experimental voice input (Phase 7).
+- **Editor** — BlockNote block editor with slash commands, images and file attachments stored inside your vault; AI Writing Tools (Phase 3) and voice input (Phase 7) are next.
 - **Stack** — Tauri 2 (Rust), React 19, shadcn/ui, Jotai, Vite.
 
 ## Development

@@ -1,5 +1,10 @@
 import type { Doc, DocumentMeta, SearchHit, VaultInfo } from '#lib/types'
 
+export interface ImportedAsset {
+  fileName: string
+  url: string
+}
+
 export interface Backend {
   getVaultInfo(): Promise<VaultInfo>
   listDocuments(): Promise<DocumentMeta[]>
@@ -9,4 +14,6 @@ export interface Backend {
   deleteDocument(id: string): Promise<string[]>
   search(query: string): Promise<SearchHit[]>
   rebuildIndex(): Promise<number>
+  importAsset(docId: string, file: File): Promise<ImportedAsset>
+  assetUrl(docId: string, fileName: string): string
 }

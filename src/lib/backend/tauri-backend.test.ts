@@ -56,3 +56,23 @@ test('rust error payloads reject with code intact', async () => {
     code: 'HK-1003'
   })
 })
+
+test('importAsset sends bytes and maps the stored name to a URL', async () => {
+  const calls: Array<[string, unknown]> = []
+  mockIPC((cmd, args) => {
+    calls.push([cmd, args])
+    return 'stored-uuid.png'
+  })
+  const file = new File([new Uint8Array([1, 2, 3])], 'photo.png')
+  const result = await new TauriBackend().importAsset('doc-1', file)
+  expect(calls).toEqual([
+    [
+      'import_asset',
+      { docId: 'doc-1', fileName: 'photo.png', bytes: [1, 2, 3] }
+    ]
+  ])
+  expect(result).toEqual({
+    fileName: 'stored-uuid.png',
+    url: 'hikki-asset://localhost/doc-1/stored-uuid.png'
+  })
+})
