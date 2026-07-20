@@ -127,3 +127,49 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+.bn-editor {
+  padding-inline: 0 !important;
+  background-color: transparent !important;
+}
+
+/* BlockNote theming: retarget its internal CSS-variable layer (scoped under
+   .bn-root) to our own design tokens, so the editor surface, code-block
+   chrome, and any BlockNote-internal UI shadCNComponents doesn't cover
+   read as part of our soft palette instead of BlockNote's defaults. */
+.bn-root {
+  --bn-colors-editor-text: var(--foreground);
+  --bn-colors-editor-background: var(--background);
+  --bn-colors-menu-text: var(--popover-foreground);
+  --bn-colors-menu-background: var(--popover);
+  --bn-colors-tooltip-text: var(--popover-foreground);
+  --bn-colors-tooltip-background: var(--popover);
+  --bn-colors-hovered-text: var(--accent-foreground);
+  --bn-colors-hovered-background: var(--accent);
+  --bn-colors-selected-text: var(--accent-foreground);
+  --bn-colors-selected-background: var(--accent);
+  --bn-colors-disabled-text: var(--muted-foreground);
+  --bn-colors-disabled-background: var(--muted);
+  --bn-colors-shadow: var(--border);
+  --bn-colors-border: var(--border);
+  --bn-colors-side-menu: var(--muted-foreground);
+  --bn-border-radius: var(--radius-md);
+  --bn-shadow-medium: 0 4px 16px -4px oklch(0 0 0 / 8%);
+  --bn-shadow-light: 0 2px 8px -2px oklch(0 0 0 / 6%);
+}
+
+/* More breathing room between blocks than BlockNote's tight 3px default. */
+.bn-block-content {
+  padding-block: 6px !important;
+}

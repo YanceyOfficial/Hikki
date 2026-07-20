@@ -12,7 +12,7 @@ export function AppShell() {
         <TitleBar />
         <div
           data-testid="page-content"
-          className="min-h-0 flex-1 overflow-y-auto"
+          className="no-scrollbar min-h-0 flex-1 overflow-y-auto"
         >
           <Outlet />
         </div>
