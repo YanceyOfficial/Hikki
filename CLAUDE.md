@@ -19,7 +19,7 @@ Notion-like local-first note app. Tauri 2 + React 19 + BlockNote + shadcn/ui + J
 - **Assets:** imported via `import_asset` command into `documents/<uuid>/assets/`, served by the custom `hikki-asset://` protocol (vault-scoped, UUID + single-component filename validation). Frontend builds URLs with `backend.assetUrl()` and `#lib/asset-url`.
 - **Editor:** BlockNote (`#components/editor`) inside `src/pages/document-page.tsx`; block changes flow through the same debounced `save_document` autosave as the title. jsdom can't render BlockNote — unit tests mock `#components/editor`; real editor behavior is covered by Playwright.
 - **Frontend backend layer:** components use only `backend` from `#lib/backend/index` — `TauriBackend` (IPC) in Tauri, `MemoryBackend` in plain browsers (dev + Playwright). Never call `invoke` outside `src/lib/backend/`.
-- **Sidebar:** document tree metadata served from SQLite `documents` table via `Index::list_metas`; frontend renders the tree view in the left sidebar, supports drag-to-reorder and hierarchical nesting via `parentId`.
+- **Sidebar:** document tree metadata served from SQLite `documents` table via `Index::list_metas`; frontend renders the tree view in the left sidebar, supports collapse/expand, delete via dropdown, and hierarchical nesting via `parentId` (drag-to-reorder arrives in a later phase).
 - **State:** Jotai (`#lib/store`), doc tree built by pure `buildTree` (`#lib/tree`).
 - **Routing:** `createHashRouter` — `/` dashboard, `/doc/:id` editor; `AppShell` owns the macOS titlebar (drag region + traffic-light inset via `useTrafficLightInset`).
 - **Version history:** `history.rs` writes rolling snapshots to `documents/<uuid>/history/` on save (10-min coalescing, 50 kept); history UI arrives in Phase 6.
