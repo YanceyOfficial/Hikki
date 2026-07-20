@@ -103,7 +103,9 @@ pub fn save_document(vault: &Path, mut doc: Document) -> Result<Document> {
     validate_id(&doc.id)?;
     // Guard against saving a document that was never created.
     let existing = load_document(vault, &doc.id)?;
-    crate::history::maybe_snapshot(vault, &existing)?;
+    if let Err(err) = crate::history::maybe_snapshot(vault, &existing) {
+        eprintln!("hikki: snapshot failed for {}: {err}", existing.id);
+    }
     // A pending autosave must never resurrect a trashed document; restoring
     // from Trash is an explicit separate operation.
     doc.deleted_at = existing.deleted_at;
@@ -275,6 +277,34 @@ mod tests {
             Err(AppError::NotFound(_)) => {}
             other => panic!("expected NotFound for evil id, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn save_document_snapshots_previous_state() {
+        let v = vault();
+        let doc = create_document(v.path(), None, "Original title").unwrap();
+        let mut edited = doc.clone();
+        edited.title = "Edited title".into();
+        save_document(v.path(), edited).unwrap();
+        let snaps = crate::history::list_snapshots(v.path(), &doc.id).unwrap();
+        assert_eq!(snaps.len(), 1);
+        let raw = std::fs::read_to_string(
+            v.path().join("documents").join(&doc.id).join("history").join(&snaps[0]),
+        ).unwrap();
+        let snapshot: Document = serde_json::from_str(&raw).unwrap();
+        assert_eq!(snapshot.title, "Original title");
+    }
+
+    #[test]
+    fn save_succeeds_even_when_snapshot_fails() {
+        let v = vault();
+        let doc = create_document(v.path(), None, "A").unwrap();
+        // Occupy the history path with a FILE so create_dir_all fails inside maybe_snapshot.
+        std::fs::write(v.path().join("documents").join(&doc.id).join("history"), b"not a dir").unwrap();
+        let mut edited = doc.clone();
+        edited.title = "B".into();
+        let saved = save_document(v.path(), edited).unwrap();
+        assert_eq!(saved.title, "B");
     }
 
     #[test]

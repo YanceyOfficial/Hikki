@@ -23,10 +23,23 @@ pub fn run() {
                 Ok(path) => {
                     let mime = asset::mime_for(&path);
                     match std::fs::read(&path) {
-                        Ok(body) => tauri::http::Response::builder()
-                            .header("Content-Type", mime)
-                            .body(body)
-                            .unwrap(),
+                        Ok(body) => {
+                            let range_header = request.headers().get("range").and_then(|v| v.to_str().ok());
+                            match asset::parse_range(range_header, body.len() as u64) {
+                                Some((start, end)) => tauri::http::Response::builder()
+                                    .status(206)
+                                    .header("Content-Type", mime)
+                                    .header("Accept-Ranges", "bytes")
+                                    .header("Content-Range", format!("bytes {start}-{end}/{}", body.len()))
+                                    .body(body[start as usize..=end as usize].to_vec())
+                                    .unwrap(),
+                                None => tauri::http::Response::builder()
+                                    .header("Content-Type", mime)
+                                    .header("Accept-Ranges", "bytes")
+                                    .body(body)
+                                    .unwrap(),
+                            }
+                        }
                         Err(_) => tauri::http::Response::builder().status(404).body(Vec::new()).unwrap(),
                     }
                 }

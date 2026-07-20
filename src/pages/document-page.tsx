@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router'
 
 import { Editor } from '#components/editor'
+import { EditorBoundary } from '#components/editor-boundary'
 import { PageHeader } from '#components/page-header'
 import { backend } from '#lib/backend/index'
 import { debounce } from '#lib/debounce'
@@ -68,12 +69,14 @@ export default function DocumentPage() {
       className="mx-auto w-full max-w-3xl px-12 py-12"
     >
       <PageHeader doc={doc} onPatch={update} />
-      <Editor
-        key={doc.id}
-        docId={doc.id}
-        initialBlocks={doc.blocks}
-        onBlocksChange={(blocks) => update({ blocks })}
-      />
+      <EditorBoundary>
+        <Editor
+          key={doc.id}
+          docId={doc.id}
+          initialBlocks={doc.blocks}
+          onBlocksChange={(blocks) => update({ blocks })}
+        />
+      </EditorBoundary>
     </div>
   )
 }

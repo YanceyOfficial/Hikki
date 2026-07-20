@@ -50,6 +50,45 @@ pub fn resolve_asset_path(vault: &Path, url_path: &str) -> Result<PathBuf> {
     Ok(path)
 }
 
+/// Parse a single HTTP Range header ("bytes=start-end", "bytes=start-",
+/// "bytes=-suffix") against a resource of `len` bytes. Returns the inclusive
+/// (start, end) byte offsets, or None when absent/invalid/unsatisfiable
+/// (callers then serve the full body with 200).
+pub fn parse_range(header: Option<&str>, len: u64) -> Option<(u64, u64)> {
+    if len == 0 {
+        return None;
+    }
+    let spec = header?.strip_prefix("bytes=")?;
+    // Multi-range requests are not supported; fall back to a full body.
+    if spec.contains(',') {
+        return None;
+    }
+    let (start_str, end_str) = spec.split_once('-')?;
+    if start_str.is_empty() {
+        // Suffix form: "-N" means the last N bytes.
+        let suffix: u64 = end_str.parse().ok()?;
+        if suffix == 0 {
+            return None;
+        }
+        let start = len.saturating_sub(suffix);
+        return Some((start, len - 1));
+    }
+    let start: u64 = start_str.parse().ok()?;
+    if start >= len {
+        return None;
+    }
+    let end: u64 = if end_str.is_empty() {
+        len - 1
+    } else {
+        let parsed: u64 = end_str.parse().ok()?;
+        parsed.min(len - 1)
+    };
+    if start > end {
+        return None;
+    }
+    Some((start, end))
+}
+
 pub fn mime_for(path: &Path) -> &'static str {
     match path.extension().and_then(|e| e.to_str()).map(|e| e.to_ascii_lowercase()).as_deref() {
         Some("png") => "image/png",
@@ -138,5 +177,25 @@ mod tests {
         assert_eq!(mime_for(Path::new("a.JPG")), "image/jpeg");
         assert_eq!(mime_for(Path::new("a.pdf")), "application/pdf");
         assert_eq!(mime_for(Path::new("a.weird")), "application/octet-stream");
+    }
+
+    #[test]
+    fn parse_range_handles_common_forms() {
+        assert_eq!(parse_range(Some("bytes=0-499"), 1000), Some((0, 499)));
+        assert_eq!(parse_range(Some("bytes=500-"), 1000), Some((500, 999)));
+        assert_eq!(parse_range(Some("bytes=-200"), 1000), Some((800, 999)));
+        assert_eq!(parse_range(Some("bytes=0-1999"), 1000), Some((0, 999))); // clamp end
+    }
+
+    #[test]
+    fn parse_range_rejects_invalid_or_unsatisfiable() {
+        assert_eq!(parse_range(None, 1000), None);
+        assert_eq!(parse_range(Some("bytes=abc"), 1000), None);
+        assert_eq!(parse_range(Some("bytes=1000-"), 1000), None); // start >= len
+        assert_eq!(parse_range(Some("bytes=5-2"), 1000), None); // inverted
+        assert_eq!(parse_range(Some("items=0-1"), 1000), None); // wrong unit
+        assert_eq!(parse_range(Some("bytes=0-1,5-9"), 1000), None); // multi-range unsupported
+        assert_eq!(parse_range(Some("bytes=-0"), 1000), None);
+        assert_eq!(parse_range(None, 0), None);
     }
 }
