@@ -319,7 +319,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 - [ ] **Step 1: Wire `theme` and `shadCNComponents` into the editor**
 
-Rewrite `src/components/editor.tsx`:
+**Important:** `src/components/editor.tsx` already has a `schema: BlockNoteSchema.create().extend({ blockSpecs: { codeBlock: createCodeBlockSpec({...}) } })` config wired in ahead of this task (early code-highlighting work, further overhauled by Task 6) — **merge** the `theme`/`shadCNComponents`/`onChange` additions below into the existing file; do not paste over it wholesale and delete the `schema` config. The snippet shows the target shape of the non-`codeBlock` parts of the file.
 
 ```tsx
 import '@blocknote/core/fonts/inter.css'
@@ -466,89 +466,197 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 5: Code-block syntax highlighting via shiki
+### Task 5: Deeper BlockNote chrome reskin (referencing Notion)
 
 **Files:**
 
-- Modify: `src/components/editor.tsx`, `package.json`
+- Modify: `src/assets/globals.css`, and any BlockNote-adjacent component created so far (`src/components/editor.tsx`) if a fix requires a prop, not just CSS.
 
-**Interfaces:**
+**Interfaces:** none new — visual only.
 
-- Produces: code blocks render with real syntax highlighting for common languages.
+**Why this task exists:** Task 4's CSS-variable retargeting (`--bn-colors-*`) and `shadCNComponents` override fix the editor's background, menu/tooltip colors, and remove the tooltip arrow — but the user's follow-up review after seeing that land was explicit: BlockNote's own block-level chrome (the drag-handle "⠿" grip, the "+" add-block button, the slash-menu item rows, the selected-block outline) is still built from BlockNote's own hardcoded shapes/spacing (confirmed in its compiled CSS: e.g. `.bn-side-menu` fixed pixel heights, a flat `4px solid #64a0ff` selection outline hardcoded in RGB — not a CSS variable at all) and reads as "生硬" (stiff/raw) next to Notion's much softer treatment. This task goes past color variables into actual per-element overrides.
 
-- [ ] **Step 1: Add shiki**
+- [ ] **Step 1: Inspect what Task 4 did and did not fix**
 
-```bash
-pnpm add shiki
+With the dev server running and a document open containing several blocks, hover over a block to reveal the drag-handle and "+" button, open the slash menu, and select a block (to see its selection outline). Compare directly against Notion's own treatment (the reference screenshots were reviewed with the user during planning: soft, low-contrast, generously spaced, no hard-edged blue outline). Note in your report every element that still looks "raw shadcn/BlockNote-default" after Task 4.
+
+- [ ] **Step 2: Override the hardcoded selection outline**
+
+BlockNote's compiled CSS hardcodes `.bn-block-content.ProseMirror-selectednode > *, .ProseMirror-selectednode > .bn-block-content > * { border-radius: 4px; outline: 4px solid #64a0ff; }` — a bright, hard-edged blue outline with no variable indirection. Add an override to `src/assets/globals.css` (near the existing `.bn-root`/`.bn-editor` rules from Task 4) using our own token and something softer than a solid 4px ring:
+
+```css
+.bn-block-content.ProseMirror-selectednode > *,
+.ProseMirror-selectednode > .bn-block-content > * {
+  outline: 2px solid var(--ring) !important;
+  outline-offset: 2px;
+  border-radius: var(--radius-md) !important;
+}
 ```
 
-- [ ] **Step 2: Investigate the exact wiring before writing final code**
+- [ ] **Step 3: Soften the side menu (drag handle + add-block button)**
 
-`@blocknote/core`'s `codeBlock` feature (confirmed present in `node_modules/@blocknote/core/types/src/blocks/Code/`) accepts a `createHighlighter: () => Promise<HighlighterGeneric<any, any>>` option but ships no default highlighter or bundled example in this checkout (only `@shikijs/types` is a dependency, not the `shiki` runtime — this is why code blocks currently render as plain unhighlighted text). Before writing final code:
+Inspect `.bn-side-menu`/`.bn-button` (or whatever the rendered class turns out to be — check the live DOM, BlockNote's class names shift between versions) for the drag-handle and "+" buttons. Add overrides so their hover state uses `var(--accent)` (not BlockNote's hardcoded hover gray) and their icon color uses `var(--muted-foreground)`, with a `border-radius: var(--radius-sm)` and a `transition: background-color 150ms ease-out` for a calmer hover feel matching spec §14's "150–200ms ease-out" rule. Use the actual class names you observe in the running app's DOM, not guessed ones.
 
-1. Read `node_modules/@blocknote/core/types/src/blocks/Code/block.d.ts` and `shiki.d.ts` in full (already partially explored — re-check for how `createHighlighter`'s return value is consumed, i.e. what theme name(s) or method calls `lazyShikiPlugin` expects).
-2. Check `node_modules/shiki`'s own exports (`createHighlighter` function signature — it typically takes `{ themes: string[], langs: string[] }` and returns a highlighter supporting `codeToHtml`/`codeToTokens` for any of the loaded themes/langs).
-3. Prefer a small, curated language list over `bundledLanguages` (all languages) to keep bundle size sane: at minimum `javascript`, `typescript`, `tsx`, `jsx`, `json`, `python`, `rust`, `bash`, `css`, `html`, `markdown`, `sql`, `yaml`.
-4. Pick a theme pair that reads well against the app's warm palette — since code blocks keep their own dark chrome (`#161616` background, unaffected by Task 4), a single dark-appropriate shiki theme (e.g. `github-dark` or `one-dark-pro`) is likely sufficient rather than needing a light/dark pair; confirm by checking whether `createHighlighter`'s theme selection is driven by the editor's `theme` prop (light/dark) or is independent. If BlockNote picks a theme name matching its own light/dark state automatically, provide both a light and dark theme in the `themes` array (e.g. `github-light` and `github-dark`); if not, ship just the one dark theme matching the code block's fixed dark chrome.
+- [ ] **Step 4: Soften the slash-menu / suggestion-menu rows**
 
-- [ ] **Step 3: Wire it in**
+Inspect the slash menu's item rows (class likely `.bn-suggestion-menu-item` or similar — confirm in DOM). If BlockNote's `shadCNComponents` override from Task 4 didn't already route these through our own components (the suggestion menu is a separate UI surface from the formatting-toolbar's dropdowns/tooltips/popovers — check whether it's covered by `shadCNComponents` or is its own hardcoded list), add overrides for row padding (more generous, matching spec §14), hover background (`var(--accent)`), and the container's border/shadow (`var(--border)` / soft shadow, matching Tasks 3/4's popover treatment) so it doesn't look like a visually distinct component from our own dropdowns.
 
-In `src/components/editor.tsx`, add the `codeBlock` option to `useCreateBlockNote`'s config object (alongside `initialContent`/`uploadFile`):
+- [ ] **Step 5: Verify and screenshot**
 
-```tsx
-import { createHighlighter } from 'shiki'
-// ...
+Run: `pnpm test && pnpm exec tsc --noEmit`
+Expected: green, clean (visual-only, no test should break).
 
-const editor = useCreateBlockNote(
-  {
-    initialContent:
-      initialBlocks.length > 0 ? (initialBlocks as Block[]) : undefined,
-    uploadFile: async (file: File) =>
-      (await backend.importAsset(docId, file)).url,
-    codeBlock: {
-      createHighlighter: () =>
-        createHighlighter({
-          themes: ['github-dark'],
-          langs: [
-            'javascript',
-            'typescript',
-            'tsx',
-            'jsx',
-            'json',
-            'python',
-            'rust',
-            'bash',
-            'css',
-            'html',
-            'markdown',
-            'sql',
-            'yaml'
-          ]
-        })
-    }
-  },
-  [docId]
-)
-```
+Screenshot the editor with a block selected and the slash menu open (same mechanism as Task 3), saved to the scratchpad as `ux-fixes-blocknote-chrome.png`, path noted in your report. Compare side-by-side (mentally, in your report) against the Notion reference direction from planning: does it now read as part of one cohesive, soft design system rather than two visually distinct products bolted together?
 
-Adjust the exact `themes`/`langs` values based on what Step 2's investigation found actually works — this is a starting point, not a mandate if the real API disagrees.
-
-- [ ] **Step 4: Verify with a real check, not just tsc**
-
-Run: `pnpm test && pnpm exec tsc --noEmit` (must stay green/clean). Then start the dev server and manually create a code block with some JavaScript in it via the running app (or drive it with a quick Playwright script) to CONFIRM tokens actually render with color — a clean typecheck does not prove the highlighter loaded and ran. Note in your report exactly how you verified this and what you saw (e.g. "keywords rendered in a distinct color, strings in another").
-
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src package.json pnpm-lock.yaml
-git commit -m "feat: syntax-highlighted code blocks via shiki
+git add src
+git commit -m "style: soften BlockNote's block chrome (selection outline, side menu, slash menu)
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ```
 
 ---
 
-### Task 6: Full-width cover, last-updated time
+### Task 6: Code-block syntax highlighting — broad language support + auto-detect on paste
+
+**Files:**
+
+- Modify: `src/components/editor.tsx`, `package.json`, `pnpm-lock.yaml`
+- Delete: `src/lib/shiki.bundle.ts` (superseded by the plain `shiki` package — see below)
+
+**Interfaces:**
+
+- Produces: code blocks render with real syntax highlighting across a broad set of common languages; pasting a recognizable code snippet into an untyped/default-language code block best-effort auto-detects and sets its language.
+
+**Starting point — build on what's already there, don't start from zero:** `editor.tsx` already has a working `codeBlock` schema wired via a hand-generated `src/lib/shiki.bundle.ts` (built with shiki's `@shikijs/codegen` tool), but it's scoped to only 3 languages (`javascript`/`typescript`/`vue` families) and uses two themes (`light-plus`/`dark-plus`) that the user found ugly against our palette. A codegen'd bundle is a legitimate size-optimization technique, but for a desktop app (not a size-sensitive public website) it adds a fragile generated file for no real benefit — **replace it with the plain `shiki` package**, which lazy-loads languages on demand internally and needs no custom bundle file at all.
+
+- [ ] **Step 1: Swap to the plain shiki package**
+
+```bash
+pnpm add shiki
+pnpm remove @shikijs/core @shikijs/engine-javascript @shikijs/langs-precompiled @shikijs/themes @shikijs/types
+```
+
+Delete `src/lib/shiki.bundle.ts`.
+
+- [ ] **Step 2: Broaden the language list and fix the theme/styling**
+
+In `src/components/editor.tsx`, update the `codeBlock: createCodeBlockSpec({...})` config (inside the existing `BlockNoteSchema.create().extend({ blockSpecs: { codeBlock: ... } })`):
+
+```tsx
+import { createHighlighter } from 'shiki'
+// (remove the old `import { createHighlighter } from '#lib/shiki.bundle'`)
+
+// ...inside createCodeBlockSpec({...}):
+supportedLanguages: {
+  typescript: { name: 'TypeScript', aliases: ['ts'] },
+  javascript: { name: 'JavaScript', aliases: ['js'] },
+  tsx: { name: 'TSX' },
+  jsx: { name: 'JSX' },
+  vue: { name: 'Vue' },
+  python: { name: 'Python', aliases: ['py'] },
+  rust: { name: 'Rust', aliases: ['rs'] },
+  go: { name: 'Go' },
+  java: { name: 'Java' },
+  c: { name: 'C' },
+  cpp: { name: 'C++' },
+  csharp: { name: 'C#', aliases: ['cs'] },
+  php: { name: 'PHP' },
+  ruby: { name: 'Ruby', aliases: ['rb'] },
+  swift: { name: 'Swift' },
+  kotlin: { name: 'Kotlin' },
+  sql: { name: 'SQL' },
+  bash: { name: 'Bash', aliases: ['sh', 'shell'] },
+  json: { name: 'JSON' },
+  yaml: { name: 'YAML', aliases: ['yml'] },
+  toml: { name: 'TOML' },
+  markdown: { name: 'Markdown', aliases: ['md'] },
+  html: { name: 'HTML' },
+  css: { name: 'CSS' },
+  scss: { name: 'SCSS' },
+  dockerfile: { name: 'Dockerfile' },
+  graphql: { name: 'GraphQL' }
+},
+createHighlighter: () =>
+  createHighlighter({
+    themes: ['github-dark-default'],
+    langs: [
+      'typescript', 'javascript', 'tsx', 'jsx', 'vue', 'python', 'rust', 'go',
+      'java', 'c', 'cpp', 'csharp', 'php', 'ruby', 'swift', 'kotlin', 'sql',
+      'bash', 'json', 'yaml', 'toml', 'markdown', 'html', 'css', 'scss',
+      'dockerfile', 'graphql'
+    ]
+  })
+```
+
+`shiki`'s `createHighlighter` lazy-loads each requested language via dynamic import internally — listing ~26 languages here does not bundle all of them eagerly. Confirm the theme name `github-dark-default` is current shiki's actual bundled theme id (check `node_modules/shiki`'s theme list/exports — theme ids do shift between shiki major versions; adjust if it's named differently in the installed version) and that it reads well (softer than the raw `#161616`/pure-white default the user called "丑") — if a single dark theme still looks flat against our palette, consider layering a subtle border/padding tweak on the code block container (`globals.css`, scoped to `[data-content-type=codeBlock]`) rather than fighting the shiki theme itself.
+
+- [ ] **Step 3: Best-effort language auto-detection on paste**
+
+The user specifically asked for this "尤其是复制一段代码过来" (especially when pasting a code snippet). Shiki itself does not do language detection (it only highlights a known language) — implement a small, honest heuristic, not a false promise of ML-grade detection:
+
+1. Hook into the code block's paste handling. Check `node_modules/@blocknote/core/types/src/blocks/Code/` and BlockNote's own docs/source for whether pasting a fenced markdown code block (` ```python ... ``` `) into the editor already auto-creates a code block with the language read from the fence annotation — if so, that path already works and needs no new code; verify it with a manual paste test before building anything.
+2. For the remaining gap — pasting _unfenced_ code directly into an existing code block whose language is still the default — write a small pure function `guessLanguage(code: string): string | undefined` in a new file `src/lib/guess-language.ts` using simple, explainable signature-pattern matching (not a dependency, not ML): e.g. `def ` + trailing `:` lines → python; `fn ` + `->` / `let mut` → rust; `func ` + `package ` → go; `<?php` → php; `#include` + `int main(` → c/cpp; `import ` + `from` (no `require(`) vs `require(`/`module.exports` → distinguishing ES-module-style vs CommonJS is unreliable enough that both can just map to javascript/typescript generically (don't over-claim precision here); `SELECT ` + `FROM` (case-insensitive) → sql. Keep the function small and testable — a handful of `if` checks returning early, not a scoring engine.
+3. Wire it: on the code block's paste event (check BlockNote's block-level event hooks, or a ProseMirror-level paste handler exposed via `useCreateBlockNote`'s options — investigate the actual hook point rather than guessing), if the target code block's current language is the default/unset AND `guessLanguage` returns a confident match, call the block's language-setting API (`editor.updateBlock` with the new `props.language`) with the guessed value.
+
+- [ ] **Step 4: Write tests for the detection heuristic**
+
+Create `src/lib/guess-language.test.ts` with one test per language pattern from Step 3.2 (a short realistic snippet in, expected language name out) plus a test that ambiguous/plain-text input returns `undefined` rather than guessing wrong. Run `pnpm test` to verify these pass — this is the one part of this task that's cleanly unit-testable in isolation from BlockNote/DOM.
+
+- [ ] **Step 5: Verify with a real check, not just tsc**
+
+Run: `pnpm test && pnpm exec tsc --noEmit` (must stay green/clean). Then start the dev server and manually: (a) create a code block, type some Python, confirm real colored tokens render (not flat text); (b) paste an unfenced Rust snippet into a fresh default-language code block and confirm the language auto-switches to Rust; (c) try at least 3 more languages from the broadened list to spot-check highlighting actually works for them, not just the 3 the old bundle supported. Note exactly what you saw for each check in your report — a clean typecheck proves nothing about whether the highlighter or the detection heuristic actually fired.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src package.json pnpm-lock.yaml
+git commit -m "feat: broaden code-block language support and add paste language detection
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 7: Editing UX — keep trailing empty space at the bottom of the editor
+
+**Files:**
+
+- Modify: `src/components/editor.tsx`
+
+**Interfaces:** none new.
+
+**The ask:** the user wants to be able to click below the last block and start typing without first pressing Enter repeatedly to create empty paragraphs — i.e. some clickable empty space below the content that continues the document, similar to Notion's behavior of the whole remaining page height being "live" for continuing to type.
+
+- [ ] **Step 1: Check what BlockNote already provides**
+
+BlockNote's compiled CSS already includes a `.bn-trailing-block { cursor: text; height: 30px }` rule, suggesting a built-in "trailing block" affordance (a thin clickable strip below the last real block that creates/focuses a new paragraph on click) already exists. Reproduce this in the running app first: click just below the last block's text and confirm whether typing starts immediately. If it already works but the clickable strip is just too thin (30px) to feel natural, this is a CSS-only fix (Step 2). If clicking below the content does nothing, investigate `useCreateBlockNote`'s options / `@blocknote/core`'s docs for a `trailingBlock` config option before writing custom click-handling from scratch.
+
+- [ ] **Step 2: Widen the trailing click zone**
+
+If the built-in trailing block exists but is too thin, override its height in `src/assets/globals.css` (or wherever Task 4/5's overrides live) to something generous — e.g. `.bn-trailing-block { min-height: 240px !important; }` — so a large portion of the remaining vertical space below the content is click-to-continue, without needing to touch component code. If no built-in mechanism exists at all, implement a minimal fallback: a click handler on empty space below the editor (inside the `Editor` component's wrapper `<div>`) that calls the editor's API to focus/create a trailing empty paragraph and place the cursor there — check `BlockNoteEditor`'s exposed methods (`editor.focus()`, appending a block) before writing this, and keep it as small as the built-in mechanism allows.
+
+- [ ] **Step 3: Verify**
+
+Run: `pnpm test && pnpm exec tsc --noEmit`
+Expected: green, clean.
+
+Manually verify in the dev server: click well below the last line of a document's content and confirm you can type immediately without pressing Enter first. Note what you observed in your report.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src
+git commit -m "feat: widen the trailing click-to-continue zone below editor content
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 8: Full-width cover, last-updated time
 
 **Files:**
 
@@ -621,7 +729,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 7: Emoji picker — swap to frimousse
+### Task 9: Emoji picker — swap to frimousse
 
 **Files:**
 
@@ -677,7 +785,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 8: Comments — VaultThreadStore + wiring into the editor
+### Task 10: Comments — VaultThreadStore + wiring into the editor
 
 **Files:**
 
@@ -753,7 +861,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 9: Table of contents via react-fluid-toc
+### Task 11: Table of contents via react-fluid-toc
 
 **Files:**
 
@@ -806,7 +914,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 10: Fix the block-type "+" popover getting compressed near the viewport bottom
+### Task 12: Fix the block-type "+" popover getting compressed near the viewport bottom
 
 **Files:**
 
@@ -848,7 +956,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 11: E2e coverage for the new UI
+### Task 13: E2e coverage for the new UI
 
 **Files:**
 
@@ -856,7 +964,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 **Interfaces:**
 
-- Consumes: `theme-toggle`, `table-of-contents`, comment-related testids from Tasks 2, 8, 9.
+- Consumes: `theme-toggle`, `table-of-contents`, comment-related testids from Tasks 2, 10, 11.
 
 - [ ] **Step 1: Append tests**
 
@@ -865,6 +973,7 @@ Add e2e tests (real flows, no weakened assertions) for:
 - Theme toggle: click `theme-toggle`, confirm `<html>` gains the `dark` class (or whatever next-themes' `attribute="class"` produces) and the icon swaps.
 - Comment flow: create a doc, type some text in the editor, select it, trigger the add-comment action, type a comment body, submit, confirm a thread indicator appears in the editor.
 - Table of contents: create a doc with at least two headings (typed via the editor, e.g. `# Heading one` markdown shortcut if BlockNote supports it, or via the slash menu), confirm `table-of-contents` testid is visible and lists both headings, click one and confirm the page scrolls to it.
+- Code block: create a code block, type recognizable Python (e.g. `def add(a, b):\n    return a + b`), confirm the rendered code block contains styled token spans (not just plain text) — a coarse but reliable signal that highlighting fired.
 
 Use real testids discovered during Tasks 2/8/9's implementation — if any of these flows turn out to be too brittle for reliable e2e assertion (e.g. exact scroll-position checks), scope the assertion to what's reliably observable (element visible, correct text present) rather than skipping the test entirely.
 
@@ -889,7 +998,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 12: Documentation sync (run LAST)
+### Task 14: Documentation sync (run LAST)
 
 **Files:**
 
@@ -897,7 +1006,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 - [ ] **Step 1: Update `CLAUDE.md`**
 
-Add/update bullets under Architecture reflecting: next-themes wiring (`#components/theme-provider`, native window-chrome sync via `getCurrentWindow().setTheme`), BlockNote re-skinned via `shadCNComponents` + `theme` prop + retargeted `--bn-colors-*` CSS variables (note: `.bn-editor{padding-inline:0}` override so our own wrapper owns horizontal spacing), shiki-backed code highlighting, frimousse-based emoji picker, comments via `VaultThreadStore` (`#lib/vault-thread-store`) implementing BlockNote's open-source `ThreadStore`, table of contents via react-fluid-toc with manual heading-id injection (BlockNote doesn't render semantic heading tags). Verify every command/path claim against the actual shipped code before writing it (same accuracy discipline as prior docs-sync tasks — do not describe anything you haven't confirmed exists).
+Add/update bullets under Architecture reflecting: next-themes wiring (`#components/theme-provider`, native window-chrome sync via `getCurrentWindow().setTheme`), BlockNote re-skinned via `shadCNComponents` + `theme` prop + retargeted `--bn-colors-*` CSS variables plus a deeper per-element chrome pass (selection outline, side menu, slash menu — Task 5) (note: `.bn-editor{padding-inline:0}` override so our own wrapper owns horizontal spacing), shiki-backed code highlighting across ~26 languages with best-effort paste language detection (`#lib/guess-language`), frimousse-based emoji picker, comments via `VaultThreadStore` (`#lib/vault-thread-store`) implementing BlockNote's open-source `ThreadStore`, table of contents via react-fluid-toc with manual heading-id injection (BlockNote doesn't render semantic heading tags), widened trailing click-to-continue zone below editor content. Verify every command/path claim against the actual shipped code before writing it (same accuracy discipline as prior docs-sync tasks — do not describe anything you haven't confirmed exists).
 
 - [ ] **Step 2: Update `README.md`**
 
@@ -916,7 +1025,9 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ## Self-review notes
 
-- **Coverage vs. the user's 15-item list:** (1) window drag/traffic-light → Task 1. (2) cover full-width → Task 6. (3) code-block highlighting → Task 5. (4) emoji library → Task 7. (5) selection popover "add comment" + tooltip diamond → Tasks 8 + 3. (6) last-updated time → Task 6. (7) `.no-scrollbar` on the editor's scroll container → Task 4. (8) TOC via react-fluid-toc → Task 9. (9) block-to-block spacing → Task 4. (10) `.bn-editor` padding-inline reset → Task 4. (11) editor background matching app bg → Task 4. (12) light/dark parity referencing exodus → Tasks 2 + 4 (next-themes wiring + BlockNote `theme` prop + retargeted tokens). (13) overall softness vs. Notion references → Tasks 3 + 4 (shared shadCNComponents wiring means one softening pass reaches both native UI and BlockNote's UI). (14) "+" popover viewport compression → Task 10. (15) overall popover aesthetic upgrade → Task 3.
-- **Task ordering matters:** Task 2 (next-themes) must land before Task 4 (BlockNote `theme` prop needs `useTheme`) and before Task 3 can be visually verified in dark mode. Task 3 (soften our own components) must land before Task 4 wires `shadCNComponents` at those same components, so BlockNote inherits the softened look immediately rather than needing a second pass. Task 8 (comments) depends on nothing from 3-7 functionally but is easiest to review after the editor's shape has stabilized from Tasks 4-5.
+- **Coverage vs. the user's original 15-item list:** (1) window drag/traffic-light → Task 1. (2) cover full-width → Task 8. (3) code-block highlighting → Tasks 5 (user's initial wiring, superseded) + 6 (broadened + auto-detect). (4) emoji library → Task 9. (5) selection popover "add comment" + tooltip diamond → Tasks 10 + 3. (6) last-updated time → Task 8. (7) `.no-scrollbar` on the editor's scroll container → Task 4 (already applied by the user directly to `globals.css`/`.bn-editor`, verify in Task 4). (8) TOC via react-fluid-toc → Task 11. (9) block-to-block spacing → Task 4. (10) `.bn-editor` padding-inline reset → Task 4 (already applied by the user directly). (11) editor background matching app bg → Task 4 (already applied by the user directly via `.bn-editor{background-color:transparent}`). (12) light/dark parity referencing exodus → Tasks 2 + 4 (next-themes wiring + BlockNote `theme` prop + retargeted tokens). (13) overall softness vs. Notion references → Tasks 3 + 4 + 5 (shared shadCNComponents wiring reaches both native UI and BlockNote's toolbar/menu UI; Task 5 goes further into BlockNote's own hardcoded per-element chrome that CSS variables alone don't cover). (14) "+" popover viewport compression → Task 12. (15) overall popover aesthetic upgrade → Task 3.
+- **Coverage vs. the mid-execution follow-up feedback (after Tasks 1-3 landed):** ugly/narrow code highlighting + more languages + auto-detect on paste → Task 6. Editor UX (trailing click-to-continue space) → Task 7. Deeper BlockNote component reskin referencing Notion → Task 5. Testing methodology (Playwright drives the web page, not the actual Tauri client) → addressed as a standalone research finding relayed to the user (`tauri-driver` has no macOS support; `@wdio/tauri-service`'s embedded provider does, but is a separate toolchain decision) rather than a plan task — introducing a new E2E runner mid-batch is a scope decision for the user, not something to fold in silently.
+- **Task ordering matters:** Task 2 (next-themes) must land before Task 4 (BlockNote `theme` prop needs `useTheme`) and before Task 3 can be visually verified in dark mode. Task 3 (soften our own components) must land before Task 4 wires `shadCNComponents` at those same components, so BlockNote inherits the softened look immediately rather than needing a second pass. Task 5 (deeper chrome reskin) depends on Task 4 having landed first (it builds on top of the CSS-variable layer, going further into hardcoded per-element overrides). Task 6 (shiki broadening) replaces Task 5-era... — no: Task 6 replaces the user's _pre-Task-1_ manual shiki wiring already present in `editor.tsx`, not anything from this plan's own Task 5. Task 10 (comments) depends on nothing from 4-9 functionally but is easiest to review after the editor's shape has stabilized.
+- **Reconciling in-flight manual changes:** before Task 4 runs, the working tree already contains (a) the user's own `.no-scrollbar` and `.bn-editor` (padding/background) additions to `globals.css` — Task 4's implementer must build on these, not duplicate or revert them; (b) the user's own shiki/`codeBlock` schema wiring in `editor.tsx` (superseded by Task 6) — Task 4's implementer must merge `theme`/`shadCNComponents` into the existing file, not overwrite it; (c) Tasks 1-2's already-committed work. A regression was caught and fixed during planning: an uncommitted `globals.css` edit had reverted the Phase-2 warm design tokens back to stock shadcn gray/blue (likely an unrelated shadcn-CLI regeneration) — restored before Task 4 begins.
 - **Type consistency:** `Doc.threads: unknown` (Task 8) mirrors the existing `Doc.blocks: unknown[]` pattern (opaque, BlockNote-owned shape, Rust never interprets it). `VaultThreadStore`'s constructor/`onChange` shape is defined once in Task 8 and consumed by `document-page.tsx` in the same task — no cross-task drift risk since both live in one task.
 - **Uncertainty flagged honestly:** Tasks 5 (shiki wiring specifics), 7 (frimousse per-item API), 8 (exact `useCreateBlockNote` comments-config key name and default-toolbar customization point), 9 (heading DOM structure), and 10 (root cause of the viewport-compression bug) all instruct the implementer to verify against the actually-installed package/runtime DOM before finalizing, rather than presenting unverified guesses as settled fact — consistent with how this project has handled uncertain third-party APIs in every prior phase.
