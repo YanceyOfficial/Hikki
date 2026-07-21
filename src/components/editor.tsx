@@ -5,13 +5,14 @@ import {
   createCodeBlockSpec,
   type Block
 } from '@blocknote/core'
-import { useCreateBlockNote } from '@blocknote/react'
+import { SideMenuController, useCreateBlockNote } from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/shadcn'
 import { useTheme } from 'next-themes'
 import { useLayoutEffect, useRef } from 'react'
 import { createHighlighter } from 'shiki'
 
 import { CodeBlockCopyOverlay } from '#components/code-block-copy-overlay'
+import { EditorSideMenu } from '#components/editor-side-menu'
 import { Button } from '#components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '#components/ui/popover'
 import {
@@ -235,12 +236,20 @@ export function Editor({ docId, initialBlocks, onBlocksChange }: EditorProps) {
         editor={editor}
         theme={colorMode}
         onChange={() => onBlocksChange(editor.document)}
+        // The built-in side menu is disabled here and remounted manually
+        // below via `SideMenuController` - see editor-side-menu.tsx's doc
+        // comment for why (swapping BlockNote's own react-icons SVGs for
+        // lucide-react ones has no dedicated prop; this is the supported
+        // customization point for replacing the default side-menu buttons).
+        sideMenu={false}
         shadCNComponents={{
           Button: { Button },
           Tooltip: { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger },
           Popover: { Popover, PopoverContent, PopoverTrigger }
         }}
-      />
+      >
+        <SideMenuController sideMenu={EditorSideMenu} />
+      </BlockNoteView>
       {/* Not remounted on the `colorMode` key change above - it just watches
           `containerRef`'s DOM, so it naturally survives BlockNoteView being
           torn down and recreated underneath it. See its own doc comment for

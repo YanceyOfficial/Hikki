@@ -353,6 +353,79 @@
   color: var(--accent-foreground);
 }
 
+/* Side menu vertical alignment: BlockNote's compiled CSS hardcodes this
+   floating menu's own height per block type (`.bn-side-menu{height:30px}`,
+   `[data-block-type=heading][data-level="1"]{height:108px}`, etc., confirmed
+   in node_modules/@blocknote/react/dist/style.css) so that centering its
+   button (`.bn-side-menu{justify-content:center;align-items:center;
+   display:flex}`) lines the icon up with the middle of that block type's
+   text - but those numbers assume BlockNote's own default block padding
+   (`.bn-block-content{padding:3px 0}`, plus an extra, heading-only
+   `padding-top:18px`). The "more breathing room" rule above
+   (`.bn-block-content{padding-block:6px !important}`) changes every block's
+   *actual* rendered height without updating these to match: for a plain
+   paragraph that's a 6px undercount (live-measured: a hovered one-line
+   paragraph's `.bn-block-content` renders 36px tall, not 30), pushing the
+   icon 3px above the text's true vertical center. It's worse for headings,
+   because that `!important` also wipes out the heading-only 18px top
+   padding (flattening it to the same symmetric 6px/6px as everything else),
+   so BlockNote's h1/h2/h3 heights are dramatically *overcounted* instead
+   (live-measured h1: 108px assumed vs. 84px actual - a 12px opposite-
+   direction offset, icon sitting well below the heading's center).
+
+   Recomputed each to the actual live-measured `.bn-block-content` height
+   under our current padding for the default case and headings 1-3;
+   file/audio/url-embed heights aren't independently re-measured live (no
+   heading-style extra padding override exists for them in BlockNote's
+   source, so the same uniform +6px this task's padding change added
+   everywhere else applies to them too - derived, not guessed blind).
+   Because our padding is symmetric (equal top/bottom) for every block type,
+   matching the side-menu's own box height to the block's is sufficient on
+   its own to re-center the icon: both boxes already share the same top edge
+   (floating-ui's `left-start` placement - confirmed live), so centering
+   within equal-height boxes centers on the same point.
+
+   Also nudges the whole menu slightly further left (per spec), rather than
+   flush against the block's edge - `.bn-side-menu` itself (not its
+   floating-positioned parent) is a plain, non-absolutely-positioned element,
+   so a transform here shifts it within that parent without touching
+   BlockNote's own floating-ui positioning math. No `offset` middleware is
+   configured on this floating element (confirmed in
+   node_modules/@blocknote/react/src/components/SideMenu/SideMenuController.tsx
+   - only `placement: "left-start"`), so it's placed with zero gap by
+   default; a transform is a simpler fix than adding an `offset` middleware,
+   which would need `@floating-ui/react` as a new direct dependency (it's
+   currently only a transitive one, not hoisted to top-level node_modules -
+   confirmed empty `ls node_modules/@floating-ui`). */
+.bn-side-menu {
+  height: 36px !important;
+  transform: translateX(-4px);
+}
+
+.bn-side-menu[data-block-type='heading'][data-level='1'] {
+  height: 84px !important;
+}
+
+.bn-side-menu[data-block-type='heading'][data-level='2'] {
+  height: 60px !important;
+}
+
+.bn-side-menu[data-block-type='heading'][data-level='3'] {
+  height: 43px !important;
+}
+
+.bn-side-menu[data-block-type='file'] {
+  height: 44px !important;
+}
+
+.bn-side-menu[data-block-type='audio'] {
+  height: 66px !important;
+}
+
+.bn-side-menu[data-url='false'] {
+  height: 60px !important;
+}
+
 /* Slash / suggestion menu: confirmed in the live DOM as `#bn-suggestion-menu`
    (class `.bn-suggestion-menu`, the listbox) containing `.bn-suggestion-menu-
    item` rows (role="option"). Note BlockNote reuses that exact same item
