@@ -190,10 +190,16 @@ function useCodeBlockPositions(
  * as literal `\n` characters in text nodes (its ProseMirror node type is
  * marked `code: true`, so `.textContent` already handles that case fine) -
  * but ProseMirror itself renders a `<br class="ProseMirror-trailingBreak">`
- * placeholder for a blank line's cursor position, and a review flagged
- * `prosemirror-highlight`'s shiki decorations as another potential source of
- * `<br>` elements between lines. Reading `.textContent` naively would
- * silently drop any of those, joining separate lines into one.
+ * as a cursor-positioning aid at the end of a block that's empty or ends in
+ * a blank line. That `<br>` does NOT represent an independent line break:
+ * the `\n` count it might seem to add is already fully present in the
+ * preceding text node(s), so converting it to another `\n` double-counts
+ * and produces a spurious extra blank line (or, for a wholly empty block,
+ * a spurious `"\n"` where `""` is correct). It's therefore treated as a
+ * no-op. A review also flagged `prosemirror-highlight`'s shiki decorations
+ * as a potential source of `<br>` elements between lines - in practice this
+ * never happens (shiki's decorations only ever produce `<span>`s) - but any
+ * other `<br>` is still a real line break and is handled defensively.
  *
  * `Element.innerText` handles `<br>` correctly but requires layout (it
  * returns inconsistent results for detached/hidden elements and isn't
@@ -207,7 +213,9 @@ export function extractCodeBlockText(codeElement: Element): string {
     if (node.nodeType === Node.TEXT_NODE) {
       parts.push(node.textContent ?? '')
     } else if (node.nodeName === 'BR') {
-      parts.push('\n')
+      if (!(node as Element).classList?.contains('ProseMirror-trailingBreak')) {
+        parts.push('\n')
+      }
     } else if (node instanceof Element) {
       parts.push(extractCodeBlockText(node))
     }
