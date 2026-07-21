@@ -13,6 +13,7 @@ import { useLayoutEffect, useRef } from 'react'
 import { createHighlighter } from 'shiki'
 
 import { CodeBlockCopyOverlay } from '#components/code-block-copy-overlay'
+import { CommentThreadsSidebar } from '#components/comment-threads-sidebar'
 import { EditorSideMenu } from '#components/editor-side-menu'
 import { Button } from '#components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '#components/ui/popover'
@@ -280,6 +281,11 @@ export function Editor({
         }}
       >
         <SideMenuController sideMenu={EditorSideMenu} />
+        {/* Mitigates BlockNote's own #1701: the comment mark isn't part of
+            the `Block[]` JSON model, so it doesn't survive a reload - this
+            keeps every thread discoverable via `doc.threads` regardless.
+            See comment-threads-sidebar.tsx's doc comment for the full story. */}
+        <CommentThreadsSidebar />
       </BlockNoteView>
       {/* Not remounted on the `colorMode` key change above - it just watches
           `containerRef`'s DOM, so it naturally survives BlockNoteView being

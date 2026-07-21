@@ -490,3 +490,30 @@
 .bn-trailing-block {
   min-height: 240px !important;
 }
+
+/* Comments "show all comments" panel (comment-threads-sidebar.tsx): lists
+   every thread below the document body so threads stay discoverable after a
+   reload, even once their inline highlight is gone (BlockNote's own #1701 -
+   the comment mark isn't part of the `Block[]` JSON model, so it's never
+   persisted). Two hardcoded-pixel defaults in BlockNote's bundled comments UI
+   don't fit that placement:
+
+   - `@blocknote/shadcn`'s comment `Card` (comments/Card.tsx) hardcodes
+     `w-[300px]` - sized for a small composer floating beside an inline
+     highlight, not a section sitting inline in the document column. Stretch
+     it to the column's own width instead.
+   - `.bn-thread.selected` (in the base `@blocknote/react/style.css`, imported
+     by `@blocknote/shadcn/style.css`) hardcodes a literal blue
+     (`#f5f9fd`/`#20242a` in dark mode) rather than reading any
+     `--bn-colors-*` custom property, so unlike everything else it doesn't
+     pick up the `.bn-root` retargeting above. Point it at our own accent
+     tokens instead - same `!important`-for-import-order reasoning as that
+     block. */
+.bn-threads-sidebar .bn-thread {
+  width: 100% !important;
+}
+
+.bn-threads-sidebar .bn-thread.selected {
+  background-color: var(--accent) !important;
+  border-color: var(--border) !important;
+}
