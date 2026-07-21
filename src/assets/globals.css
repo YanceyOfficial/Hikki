@@ -217,10 +217,44 @@
 .bn-block-content[data-content-type='codeBlock'] {
   background-color: var(--code-block-background) !important;
   color: var(--code-block-foreground) !important;
-  border: 1px solid var(--code-block-border) !important;
   border-radius: var(--radius-md) !important;
   font-size: 14px;
 }
+
+/* Language-picker <select>: @blocknote/core's block spec (block.ts, in
+   node_modules/@blocknote/core - not overridable, see below) renders this as
+   a bare native <select> with no BlockNote-level hook to swap in a custom
+   component. @blocknote/shadcn's compiled CSS hardcodes its text
+   `color:#fff` with `opacity:0` at rest, revealed to `opacity:.5` on
+   hover/focus - invisible-by-design against BlockNote's own hardcoded dark
+   codeBlock background above. Once that background became our light-in-
+   `:root` `--code-block-background` token, white-on-near-white text in light
+   mode failed contrast entirely (not just "subtle" - genuinely unreadable).
+   Retarget only the color, to the same `--code-block-foreground` token the
+   container itself already uses above, and leave the opacity-on-hover reveal
+   behavior untouched - that reveal is deliberate BlockNote UX, not the bug.
+
+   No override point exists for this control: `createCodeBlockSpec`'s
+   `CodeBlockOptions` (block.ts) only exposes `indentLineWithTab`,
+   `defaultLanguage`, `supportedLanguages`, and `createHighlighter` - there is
+   no render-prop/slot for the picker UI itself. The block's `render()` is a
+   plain-DOM (non-React) NodeView baked directly into `createBlockConfig`,
+   and the shiki-highlighter wiring it depends on (`lazyShikiPlugin`) isn't
+   part of the package's public exports either - reimplementing the whole
+   spec from scratch to swap just this one element would mean forking that
+   internal integration, which is worse than this small CSS override. */
+.bn-block-content[data-content-type='codeBlock'] > div > select {
+  color: var(--code-block-foreground) !important;
+}
+
+/* Note: the copy-to-clipboard button (editor.tsx's `CodeBlockCopyOverlay`)
+   needs no CSS here - it isn't a descendant of `.bn-block-content`. It lives
+   in its own absolutely-positioned overlay layer, styled entirely with
+   Tailwind classes in that component. See its doc comment for why it's a
+   sibling overlay rather than DOM injected into BlockNote's own codeBlock
+   container (the first version of this button did exactly that, and it
+   reliably crashed the editor - ProseMirror's internal DOM-integrity
+   MutationObserver fought with ours over that injected node). */
 
 /* Checklist checkbox: BlockNote renders a bare native <input type="checkbox">
    with a hardcoded, oddly non-square box (compiled CSS:

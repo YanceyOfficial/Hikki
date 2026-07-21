@@ -11,6 +11,7 @@ import { useTheme } from 'next-themes'
 import { useLayoutEffect, useRef } from 'react'
 import { createHighlighter } from 'shiki'
 
+import { CodeBlockCopyOverlay } from '#components/code-block-copy-overlay'
 import { Button } from '#components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '#components/ui/popover'
 import {
@@ -216,8 +217,12 @@ export function Editor({ docId, initialBlocks, onBlocksChange }: EditorProps) {
     // an acceptable trade-off for an explicit theme toggle.
     [docId, colorMode]
   )
+  const containerRef = useRef<HTMLDivElement | null>(null)
   return (
-    <div data-testid="editor" className="mt-4">
+    // `relative` anchors `CodeBlockCopyOverlay`'s absolutely-positioned
+    // overlay layer (a DOM sibling of BlockNoteView, not a descendant of its
+    // contentEditable tree - see that component's doc comment for why).
+    <div data-testid="editor" className="relative mt-4" ref={containerRef}>
       <BlockNoteView
         // BlockNote's code-block highlighter is cached on internal
         // ProseMirror plugin state that survives a mere `editor` prop swap -
@@ -236,6 +241,11 @@ export function Editor({ docId, initialBlocks, onBlocksChange }: EditorProps) {
           Popover: { Popover, PopoverContent, PopoverTrigger }
         }}
       />
+      {/* Not remounted on the `colorMode` key change above - it just watches
+          `containerRef`'s DOM, so it naturally survives BlockNoteView being
+          torn down and recreated underneath it. See its own doc comment for
+          why this is a DOM overlay rather than a BlockNote extension point. */}
+      <CodeBlockCopyOverlay containerRef={containerRef} />
     </div>
   )
 }
