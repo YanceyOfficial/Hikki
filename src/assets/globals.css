@@ -147,29 +147,115 @@
 /* BlockNote theming: retarget its internal CSS-variable layer (scoped under
    .bn-root) to our own design tokens, so the editor surface, code-block
    chrome, and any BlockNote-internal UI shadCNComponents doesn't cover
-   read as part of our soft palette instead of BlockNote's defaults. */
+   read as part of our soft palette instead of BlockNote's defaults.
+
+   !important is required on every declaration here: @blocknote/shadcn ships
+   its own `.bn-root { --bn-colors-*: #fff / #efefef / ... }` block (imported
+   inside editor.tsx, so it's injected into the document *after* this
+   stylesheet). Both selectors are `.bn-root` — identical specificity — so
+   without !important, source order alone lets BlockNote's hardcoded hex
+   defaults silently win the cascade and this whole block becomes inert.
+   (Confirmed live via getComputedStyle: every one of these custom properties
+   was resolving to BlockNote's own default, not ours, until !important was
+   added.) */
 .bn-root {
-  --bn-colors-editor-text: var(--foreground);
-  --bn-colors-editor-background: var(--background);
-  --bn-colors-menu-text: var(--popover-foreground);
-  --bn-colors-menu-background: var(--popover);
-  --bn-colors-tooltip-text: var(--popover-foreground);
-  --bn-colors-tooltip-background: var(--popover);
-  --bn-colors-hovered-text: var(--accent-foreground);
-  --bn-colors-hovered-background: var(--accent);
-  --bn-colors-selected-text: var(--accent-foreground);
-  --bn-colors-selected-background: var(--accent);
-  --bn-colors-disabled-text: var(--muted-foreground);
-  --bn-colors-disabled-background: var(--muted);
-  --bn-colors-shadow: var(--border);
-  --bn-colors-border: var(--border);
-  --bn-colors-side-menu: var(--muted-foreground);
-  --bn-border-radius: var(--radius-md);
-  --bn-shadow-medium: 0 4px 16px -4px oklch(0 0 0 / 8%);
-  --bn-shadow-light: 0 2px 8px -2px oklch(0 0 0 / 6%);
+  --bn-colors-editor-text: var(--foreground) !important;
+  --bn-colors-editor-background: var(--background) !important;
+  --bn-colors-menu-text: var(--popover-foreground) !important;
+  --bn-colors-menu-background: var(--popover) !important;
+  --bn-colors-tooltip-text: var(--popover-foreground) !important;
+  --bn-colors-tooltip-background: var(--popover) !important;
+  --bn-colors-hovered-text: var(--accent-foreground) !important;
+  --bn-colors-hovered-background: var(--accent) !important;
+  --bn-colors-selected-text: var(--accent-foreground) !important;
+  --bn-colors-selected-background: var(--accent) !important;
+  --bn-colors-disabled-text: var(--muted-foreground) !important;
+  --bn-colors-disabled-background: var(--muted) !important;
+  --bn-colors-shadow: var(--border) !important;
+  --bn-colors-border: var(--border) !important;
+  --bn-colors-side-menu: var(--muted-foreground) !important;
+  --bn-border-radius: var(--radius-md) !important;
+  --bn-shadow-medium: 0 4px 16px -4px oklch(0 0 0 / 8%) !important;
+  --bn-shadow-light: 0 2px 8px -2px oklch(0 0 0 / 6%) !important;
 }
 
 /* More breathing room between blocks than BlockNote's tight 3px default. */
 .bn-block-content {
   padding-block: 6px !important;
+}
+
+/* Selected-block outline: BlockNote hardcodes a bright, hard-edged
+   `outline: 4px solid #64a0ff` on this exact selector with no variable
+   indirection at all (confirmed in @blocknote/core's compiled CSS). Replace
+   it with our own ring token, offset so it reads as a soft halo rather than a
+   blunt rectangle. */
+.bn-block-content.ProseMirror-selectednode > *,
+.ProseMirror-selectednode > .bn-block-content > * {
+  outline: 2px solid var(--ring) !important;
+  outline-offset: 2px;
+  border-radius: var(--radius-md) !important;
+}
+
+/* Side menu (drag-handle "Open block menu" + "Add block" buttons): confirmed
+   in the live DOM — both render through our own Button component (Task 4's
+   shadCNComponents wiring: ghost variant, rounded-lg, hover:bg-muted), with
+   BlockNote layering its own ".bn-button" class and a `text-gray-400` on top.
+   That text-gray-400 never actually applies (Tailwind's content scanner never
+   sees classNames BlockNote injects dynamically from node_modules, so the
+   utility is never generated) and the button falls back to full-contrast
+   --foreground instead of a muted icon color. Their hover also lands on our
+   Button's generic --muted rather than the --accent that BlockNote's own
+   --bn-colors-hovered-background already uses everywhere else — soften both,
+   and calm the hover transition per spec §14 (150-200ms ease-out). */
+.bn-side-menu .bn-button {
+  color: var(--muted-foreground);
+  border-radius: var(--radius-sm) !important;
+  transition: background-color 150ms ease-out;
+}
+
+.bn-side-menu .bn-button:hover,
+.bn-side-menu .bn-button[aria-expanded='true'] {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground);
+}
+
+/* Slash / suggestion menu: confirmed in the live DOM as `#bn-suggestion-menu`
+   (class `.bn-suggestion-menu`, the listbox) containing `.bn-suggestion-menu-
+   item` rows (role="option"). Note BlockNote reuses that exact same item
+   class on the icon wrapper and label/description divs *inside* each row
+   too, so scope to `[role='option']` to hit only the row itself.
+
+   The container already carries shadcn-style utility classNames (bg-popover,
+   border, shadow-md, rounded-md, p-1) — this is a separate BlockNote-shadcn
+   component, not one of Task 4's shadCNComponents overrides, and isn't fully
+   equivalent to our own Popover/DropdownMenu treatment: `shadow-md` in
+   particular never generates any actual box-shadow (same dynamic-className
+   content-scanning gap as above), so the menu currently renders with no
+   shadow at all, plus a harder full-opacity border and tighter padding than
+   our own popover surfaces (src/components/ui/popover.tsx). Bring it in
+   line.
+
+   `.bn-menu-dropdown` (confirmed as the class on the drag-handle's own
+   "Delete / Colors" block-context menu, opened from the same side-menu
+   button styled above) shares this identical container markup and the same
+   dead-shadow defect, so it's included here too — without it, the slash menu
+   would read soft while the block-context menu right next to it stayed
+   stiff, undermining the "one cohesive system" goal this task is for. */
+.bn-suggestion-menu,
+.bn-menu-dropdown {
+  padding: 6px;
+  border-color: color-mix(in oklch, var(--border) 60%, transparent);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 16px -4px oklch(0 0 0 / 8%);
+}
+
+.bn-suggestion-menu-item[role='option'] {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+}
+
+.bn-suggestion-menu-item[role='option']:hover,
+.bn-suggestion-menu-item[role='option'][aria-selected='true'] {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
 }
