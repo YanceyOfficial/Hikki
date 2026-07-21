@@ -219,6 +219,7 @@ mod tests {
             icon: None,
             cover: None,
             blocks,
+            threads: serde_json::Value::Object(serde_json::Map::new()),
             created_at: "2026-01-01T00:00:00Z".into(),
             updated_at: "2026-01-01T00:00:00Z".into(),
             deleted_at: None,

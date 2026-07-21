@@ -15,6 +15,10 @@ pub struct Document {
     pub icon: Option<String>,
     pub cover: Option<String>,
     pub blocks: serde_json::Value,
+    // Opaque BlockNote `ThreadStore` snapshot (comment threads). Rust never
+    // interprets its contents - only `blocks` gets walked by `extract_text`
+    // for search - it just round-trips like `blocks` does.
+    pub threads: serde_json::Value,
     pub created_at: String,
     pub updated_at: String,
     pub deleted_at: Option<String>,
@@ -82,6 +86,7 @@ pub fn create_document(vault: &Path, parent_id: Option<String>, title: &str) -> 
         icon: None,
         cover: None,
         blocks: serde_json::Value::Array(vec![]),
+        threads: serde_json::Value::Object(serde_json::Map::new()),
         created_at: ts.clone(),
         updated_at: ts,
         deleted_at: None,

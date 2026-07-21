@@ -7,6 +7,7 @@ const toMeta = ({
   schemaVersion: _s,
   cover: _c,
   blocks: _b,
+  threads: _t,
   ...meta
 }: Doc): DocumentMeta => meta
 
@@ -35,6 +36,7 @@ export class MemoryBackend implements Backend {
       icon: null,
       cover: null,
       blocks: [],
+      threads: {},
       createdAt: now,
       updatedAt: now,
       deletedAt: null

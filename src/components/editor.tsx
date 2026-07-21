@@ -5,6 +5,7 @@ import {
   createCodeBlockSpec,
   type Block
 } from '@blocknote/core'
+import { CommentsExtension } from '@blocknote/core/comments'
 import { SideMenuController, useCreateBlockNote } from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/shadcn'
 import { useTheme } from 'next-themes'
@@ -23,11 +24,13 @@ import {
 } from '#components/ui/tooltip'
 import { backend } from '#lib/backend/index'
 import { guessLanguage } from '#lib/guess-language'
+import type { VaultThreadStore } from '#lib/vault-thread-store'
 
 interface EditorProps {
   docId: string
   initialBlocks: unknown[]
   onBlocksChange: (blocks: unknown[]) => void
+  threadStore: VaultThreadStore
 }
 
 // Kept as a constant so the paste-detection handler below can recognize a
@@ -65,7 +68,12 @@ const SUPPORTED_CODE_LANGUAGES = [
   'graphql'
 ] as const
 
-export function Editor({ docId, initialBlocks, onBlocksChange }: EditorProps) {
+export function Editor({
+  docId,
+  initialBlocks,
+  onBlocksChange,
+  threadStore
+}: EditorProps) {
   const { resolvedTheme } = useTheme()
   const colorMode = resolvedTheme === 'dark' ? 'dark' : 'light'
   // See the comment on `createHighlighter` below for why only the single
@@ -207,7 +215,28 @@ export function Editor({ docId, initialBlocks, onBlocksChange }: EditorProps) {
         }
 
         return handled
-      }
+      },
+      // Registers BlockNote's open-source Comments extension (additive -
+      // BlockNote merges this list into its own default extensions, it
+      // doesn't replace them; see `ExtensionManager`'s constructor in
+      // `@blocknote/core`). This alone is enough to light up comments end
+      // to end: the default `FormattingToolbar` already renders
+      // `AddCommentButton` (it self-hides via `editor.getExtension`
+      // ("comments") when this extension isn't registered - see
+      // `@blocknote/react`'s `AddCommentButton.tsx`), and `BlockNoteView`
+      // always renders `FloatingComposerController`/`FloatingThreadController`
+      // once the extension is present (`BlockNoteDefaultUI.tsx`) - no
+      // additional wiring or custom toolbar needed here.
+      extensions: [
+        CommentsExtension({
+          threadStore,
+          // v1 scope: a single local user, no auth - every comment author
+          // resolves to the same fixed identity (see VaultThreadStore's
+          // `LOCAL_USER_ID`).
+          resolveUsers: async (userIds) =>
+            userIds.map((id) => ({ id, username: 'You', avatarUrl: '' }))
+        })
+      ]
     },
     // `colorMode` is included so the editor (and its code-block highlighter)
     // is recreated when the app's light/dark mode changes - see the
@@ -215,8 +244,10 @@ export function Editor({ docId, initialBlocks, onBlocksChange }: EditorProps) {
     // latest `initialBlocks` on that remount, and `onBlocksChange` keeps
     // that prop in sync on every edit (src/pages/document-page.tsx), so no
     // content is lost - only the cursor position/undo stack reset, which is
-    // an acceptable trade-off for an explicit theme toggle.
-    [docId, colorMode]
+    // an acceptable trade-off for an explicit theme toggle. `threadStore` is
+    // included too, though in practice it's already stable for as long as
+    // `docId` is unchanged (document-page.tsx memoizes it on `doc.id`).
+    [docId, colorMode, threadStore]
   )
   const containerRef = useRef<HTMLDivElement | null>(null)
   return (

@@ -12,6 +12,7 @@ export interface Doc extends DocumentMeta {
   schemaVersion: number
   cover: string | null
   blocks: unknown[]
+  threads: unknown
 }
 
 export interface SearchHit {

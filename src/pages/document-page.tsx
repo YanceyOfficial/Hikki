@@ -9,6 +9,10 @@ import { backend } from '#lib/backend/index'
 import { debounce } from '#lib/debounce'
 import { refreshDocsAtom } from '#lib/store'
 import type { Doc } from '#lib/types'
+import {
+  VaultThreadStore,
+  type SerializedThread
+} from '#lib/vault-thread-store'
 
 export default function DocumentPage() {
   const { id } = useParams<{ id: string }>()
@@ -23,6 +27,30 @@ export default function DocumentPage() {
       }, 800),
     [refresh]
   )
+
+  // One `VaultThreadStore` per document, seeded once from `doc.threads` (the
+  // shape the store expects, an array - `doc.threads` is `unknown` on `Doc`
+  // and even defaults to `{}` on freshly-created documents, hence the
+  // `Array.isArray` guard) and rebuilt only when the document itself
+  // changes, not on every keystroke/comment edit. `onChange` patches
+  // `threads` back into `doc` through the exact same debounced autosave
+  // path `blocks`/`title` already use (see `update` below - not called
+  // directly here since it's declared after this hook and referencing it
+  // here would hit its temporal-dead-zone on first render).
+  const threadStore = useMemo(() => {
+    const initial =
+      doc && Array.isArray(doc.threads)
+        ? (doc.threads as SerializedThread[])
+        : []
+    return new VaultThreadStore(initial, (serialized) => {
+      setDoc((prev) => {
+        if (!prev) return prev
+        const next = { ...prev, threads: serialized }
+        save(next)
+        return next
+      })
+    })
+  }, [doc?.id])
 
   useEffect(() => {
     let active = true
@@ -75,6 +103,7 @@ export default function DocumentPage() {
           docId={doc.id}
           initialBlocks={doc.blocks}
           onBlocksChange={(blocks) => update({ blocks })}
+          threadStore={threadStore}
         />
       </EditorBoundary>
     </div>
