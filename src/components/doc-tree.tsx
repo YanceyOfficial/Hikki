@@ -37,33 +37,37 @@ function TreeItem({
   onDelete
 }: { node: TreeNode } & Omit<DocTreeProps, 'nodes'>) {
   const { meta, children } = node
+  const hasChildren = children.length > 0
   return (
-    <Collapsible defaultOpen>
+    <Collapsible defaultOpen className="group/collapsible">
       <SidebarMenuItem>
-        <SidebarMenuButton
-          isActive={meta.id === activeId}
-          onClick={() => onSelect(meta.id)}
-          className="transition-colors duration-150"
-          data-testid={`doc-item-${meta.id}`}
-        >
-          <span className="text-muted-foreground flex size-4 items-center justify-center">
-            {meta.icon ?? <FileText className="size-4" />}
-          </span>
-          <span className="truncate">{meta.title || 'Untitled'}</span>
-        </SidebarMenuButton>
-        {children.length > 0 && (
-          <CollapsibleTrigger
-            render={
-              <SidebarMenuAction
-                className="left-1 bg-transparent transition-colors duration-150"
-                showOnHover
-                data-testid={`doc-toggle-${meta.id}`}
-              />
-            }
+        <div className="flex items-center gap-0.5">
+          {hasChildren && (
+            <CollapsibleTrigger
+              render={
+                <button
+                  type="button"
+                  aria-label="Toggle nested documents"
+                  className="text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex size-5 shrink-0 items-center justify-center rounded-md transition-colors duration-150"
+                  data-testid={`doc-toggle-${meta.id}`}
+                />
+              }
+            >
+              <ChevronRight className="size-4 shrink-0 transition-transform group-data-open/collapsible:rotate-90" />
+            </CollapsibleTrigger>
+          )}
+          <SidebarMenuButton
+            isActive={meta.id === activeId}
+            onClick={() => onSelect(meta.id)}
+            className="w-auto min-w-0 flex-1 transition-colors duration-150"
+            data-testid={`doc-item-${meta.id}`}
           >
-            <ChevronRight className="transition-transform data-[state=open]:rotate-90" />
-          </CollapsibleTrigger>
-        )}
+            <span className="text-muted-foreground flex size-4 items-center justify-center">
+              {meta.icon ?? <FileText className="size-4" />}
+            </span>
+            <span className="truncate">{meta.title || 'Untitled'}</span>
+          </SidebarMenuButton>
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
@@ -87,7 +91,7 @@ function TreeItem({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        {children.length > 0 && (
+        {hasChildren && (
           <CollapsibleContent>
             <SidebarMenuSub className="mr-0 pr-0">
               {children.map((child) => (

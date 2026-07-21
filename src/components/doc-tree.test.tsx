@@ -71,3 +71,15 @@ test('delete action fires onDelete', async () => {
   await userEvent.click(await screen.findByTestId('doc-delete-a'))
   expect(onDelete).toHaveBeenCalledWith('a')
 })
+
+test('expand/collapse toggle only renders for nodes with children', () => {
+  setup()
+  expect(screen.getByTestId('doc-toggle-a')).toBeInTheDocument()
+  expect(screen.queryByTestId('doc-toggle-b')).not.toBeInTheDocument()
+})
+
+test('toggling expand/collapse does not select the row', async () => {
+  const { onSelect } = setup()
+  await userEvent.click(screen.getByTestId('doc-toggle-a'))
+  expect(onSelect).not.toHaveBeenCalled()
+})
