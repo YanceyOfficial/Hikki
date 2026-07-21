@@ -314,6 +314,10 @@
   transform: rotate(45deg);
 }
 
+.bn-block-outer:not([data-prev-depth-changed]):before {
+  display: none !important;
+}
+
 /* Selected-block outline: BlockNote hardcodes a bright, hard-edged
    `outline: 4px solid #64a0ff` on this exact selector with no variable
    indirection at all (confirmed in @blocknote/core's compiled CSS). Replace
