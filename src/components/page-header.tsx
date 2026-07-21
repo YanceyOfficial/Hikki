@@ -71,6 +71,12 @@ export function PageHeader({ doc, onPatch }: PageHeaderProps) {
           <PopoverContent align="start">
             <EmojiPicker.Root
               onEmojiSelect={({ emoji }) => pickIcon(emoji)}
+              // Hikki is offline-first and must never depend on a CDN for a
+              // core UI feature: this points frimousse at data.json/messages.json
+              // self-hosted under public/emojibase-data (synced from the
+              // emojibase-data dependency by scripts/copy-emojibase-data.mjs)
+              // instead of its default cdn.jsdelivr.net fetch.
+              emojibaseUrl="/emojibase-data"
               className="flex h-72 w-full flex-col gap-2"
             >
               <EmojiPicker.Search

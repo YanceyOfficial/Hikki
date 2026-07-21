@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Self-hosted emoji picker data, synced from the emojibase-data dependency by
+# scripts/copy-emojibase-data.mjs (runs via the `dev`/`build` scripts) - not
+# committed, since it's fully reproducible from node_modules.
+/public/emojibase-data/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

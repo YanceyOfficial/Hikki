@@ -11,8 +11,8 @@
     "#pages/*": "./src/pages/*.tsx"
   },
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
+    "dev": "node scripts/copy-emojibase-data.mjs && vite",
+    "build": "node scripts/copy-emojibase-data.mjs && tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
     "test": "vitest run",
@@ -38,6 +38,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
+    "emojibase-data": "^17.0.0",
     "frimousse": "^0.3.0",
     "immer": "^11.1.11",
     "jotai": "^2.20.2",

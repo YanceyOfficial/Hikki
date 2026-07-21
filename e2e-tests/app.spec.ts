@@ -71,6 +71,14 @@ test('slash menu opens in the editor', async ({ page }) => {
 })
 
 test('set a page icon from the picker', async ({ page }) => {
+  // Hikki is offline-first: frimousse must resolve its emoji dataset from the
+  // app's own locally self-hosted public/emojibase-data (see page-header.tsx's
+  // `emojibaseUrl`), never its default cdn.jsdelivr.net fetch. Block that CDN
+  // host outright so a regression back to the network default fails this test
+  // (aborted request -> stuck loading spinner -> the assertions below time
+  // out) instead of silently depending on a real, non-deterministic network
+  // call that happened to succeed.
+  await page.route('https://cdn.jsdelivr.net/**', (route) => route.abort())
   await page.goto('/')
   await page.getByTestId('new-doc').click()
   await page.getByTestId('doc-icon-button').click()
