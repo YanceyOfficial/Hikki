@@ -15,3 +15,15 @@ if (typeof window !== 'undefined' && !window.matchMedia) {
     dispatchEvent: () => false
   })
 }
+
+// jsdom doesn't implement ResizeObserver. frimousse's emoji picker
+// (page-header.tsx) constructs one synchronously on mount to measure its
+// virtualized list, so any test rendering it without this stub would throw
+// `ReferenceError: ResizeObserver is not defined`.
+if (typeof window !== 'undefined' && !window.ResizeObserver) {
+  window.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+}

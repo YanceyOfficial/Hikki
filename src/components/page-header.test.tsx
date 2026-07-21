@@ -1,10 +1,74 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vitest'
+import { afterEach, beforeEach, vi } from 'vitest'
 
 import { PageHeader } from '#components/page-header'
 import { backend } from '#lib/backend/index'
 import type { Doc } from '#lib/types'
+
+// frimousse (the real emoji picker library, see page-header.tsx) fetches its
+// emoji dataset from emojibase's CDN on mount. jsdom's global `fetch` would
+// otherwise hit the real network from every test run, which is slow and
+// non-deterministic in CI - so these two endpoints are stubbed with a tiny,
+// real-shaped emojibase-data fixture (confirmed against frimousse's actual
+// parsing logic in node_modules/frimousse/dist/index.js) covering just enough
+// emoji to exercise real search: a "rocket" match and a decoy that shouldn't
+// match it.
+const EMOJIBASE_DATA = [
+  {
+    emoji: '🚀',
+    group: 5,
+    label: 'rocket',
+    tags: ['space', 'launch'],
+    version: 1
+  },
+  {
+    emoji: '😀',
+    group: 5,
+    label: 'grinning face',
+    tags: ['happy', 'smile'],
+    version: 1
+  }
+]
+
+const EMOJIBASE_MESSAGES = {
+  groups: [{ key: 'travel-places', order: 5, message: 'travel & places' }],
+  subgroups: [{ key: 'country-flag', order: 999, message: 'country flag' }],
+  skinTones: [
+    { key: 'light', message: 'light skin tone' },
+    { key: 'medium-light', message: 'medium-light skin tone' },
+    { key: 'medium', message: 'medium skin tone' },
+    { key: 'medium-dark', message: 'medium-dark skin tone' },
+    { key: 'dark', message: 'dark skin tone' }
+  ]
+}
+
+function fakeJsonResponse(body: unknown): Response {
+  return {
+    headers: { get: () => null },
+    json: () => Promise.resolve(body)
+  } as unknown as Response
+}
+
+beforeEach(() => {
+  localStorage.clear()
+  sessionStorage.clear()
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith('/data.json'))
+        return Promise.resolve(fakeJsonResponse(EMOJIBASE_DATA))
+      if (url.endsWith('/messages.json'))
+        return Promise.resolve(fakeJsonResponse(EMOJIBASE_MESSAGES))
+      throw new Error(`unexpected fetch in test: ${url}`)
+    })
+  )
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 const doc = (over: Partial<Doc> = {}): Doc => ({
   schemaVersion: 1,
@@ -31,11 +95,39 @@ test('picking an emoji patches the icon and remove clears it', async () => {
   const onPatch = vi.fn()
   render(<PageHeader doc={doc({ icon: '📝' })} onPatch={onPatch} />)
   await userEvent.click(screen.getByTestId('doc-icon-button'))
-  await userEvent.click(await screen.findByTestId('doc-icon-option-🚀'))
+  // frimousse's search input is a real <input type="search">, which carries
+  // the implicit "searchbox" ARIA role - no custom testid needed.
+  await userEvent.type(await screen.findByRole('searchbox'), 'rocket')
+  // Each rendered emoji is a real <button>, but frimousse explicitly sets
+  // role="gridcell" on it (its list is an ARIA grid: role="grid" >
+  // role="row" > role="gridcell", confirmed in the library's source) and
+  // aria-label to the emoji's label ("Rocket") - so this is the real,
+  // library-native way to target one rendered result, not an invented testid.
+  await userEvent.click(
+    await screen.findByRole('gridcell', { name: /rocket/i })
+  )
   expect(onPatch).toHaveBeenCalledWith({ icon: '🚀' })
   await userEvent.click(screen.getByTestId('doc-icon-button'))
   await userEvent.click(await screen.findByTestId('doc-icon-remove'))
   expect(onPatch).toHaveBeenCalledWith({ icon: null })
+})
+
+test('searching for an emoji filters out non-matching results', async () => {
+  const onPatch = vi.fn()
+  render(<PageHeader doc={doc()} onPatch={onPatch} />)
+  await userEvent.click(screen.getByTestId('doc-icon-button'))
+  // Both fixture emoji are visible before any search narrows the list.
+  await screen.findByRole('gridcell', { name: /grinning/i })
+  await userEvent.type(await screen.findByRole('searchbox'), 'rocket')
+  // frimousse debounces re-filtering, so the decoy's removal is asserted via
+  // waitFor rather than a synchronous query (a bare query right after typing
+  // can still see the pre-filter render and pass for the wrong reason).
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('gridcell', { name: /grinning/i })
+    ).not.toBeInTheDocument()
+  )
+  expect(screen.getByRole('gridcell', { name: /rocket/i })).toBeInTheDocument()
 })
 
 test('cover renders from assetUrl and can be removed', async () => {

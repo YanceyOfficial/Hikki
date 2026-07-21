@@ -74,7 +74,13 @@ test('set a page icon from the picker', async ({ page }) => {
   await page.goto('/')
   await page.getByTestId('new-doc').click()
   await page.getByTestId('doc-icon-button').click()
-  await page.getByTestId('doc-icon-option-🚀').click()
+  // frimousse's search input is a plain <input type="search">, exposed via
+  // the implicit "searchbox" role; each rendered result is a real <button>
+  // that frimousse gives role="gridcell" (its list is an ARIA grid) and an
+  // aria-label of the emoji's name - "rocket" narrows real, live emoji data
+  // down to a single match to click.
+  await page.getByRole('searchbox').fill('rocket')
+  await page.getByRole('gridcell', { name: 'Rocket' }).click()
   await expect(page.getByTestId('doc-icon-button')).toContainText('🚀')
 })
 
