@@ -182,6 +182,39 @@ function useCodeBlockPositions(
   return positions
 }
 
+/**
+ * Reads the plain-text contents of a rendered code block's `<code>` element.
+ *
+ * `Element.textContent` silently drops `<br>` elements instead of turning
+ * them into `\n`. BlockNote's codeBlock content normally stores line breaks
+ * as literal `\n` characters in text nodes (its ProseMirror node type is
+ * marked `code: true`, so `.textContent` already handles that case fine) -
+ * but ProseMirror itself renders a `<br class="ProseMirror-trailingBreak">`
+ * placeholder for a blank line's cursor position, and a review flagged
+ * `prosemirror-highlight`'s shiki decorations as another potential source of
+ * `<br>` elements between lines. Reading `.textContent` naively would
+ * silently drop any of those, joining separate lines into one.
+ *
+ * `Element.innerText` handles `<br>` correctly but requires layout (it
+ * returns inconsistent results for detached/hidden elements and isn't
+ * reliable in jsdom), which would make this untestable. This walks the DOM
+ * manually instead, exported so it can be unit-tested against hand-built
+ * fixtures independent of the overlay's layout/positioning logic.
+ */
+export function extractCodeBlockText(codeElement: Element): string {
+  const parts: string[] = []
+  for (const node of codeElement.childNodes) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      parts.push(node.textContent ?? '')
+    } else if (node.nodeName === 'BR') {
+      parts.push('\n')
+    } else if (node instanceof Element) {
+      parts.push(extractCodeBlockText(node))
+    }
+  }
+  return parts.join('')
+}
+
 function CodeBlockCopyButton({
   element,
   style
@@ -200,7 +233,8 @@ function CodeBlockCopyButton({
       title={label}
       style={style}
       onClick={() => {
-        const text = element.querySelector('pre code')?.textContent ?? ''
+        const codeElement = element.querySelector('pre code')
+        const text = codeElement ? extractCodeBlockText(codeElement) : ''
         void copy(text)
       }}
       className={cn(

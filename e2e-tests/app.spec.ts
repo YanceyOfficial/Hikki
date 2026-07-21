@@ -77,3 +77,38 @@ test('set a page icon from the picker', async ({ page }) => {
   await page.getByTestId('doc-icon-option-🚀').click()
   await expect(page.getByTestId('doc-icon-button')).toContainText('🚀')
 })
+
+test.describe('code block copy button', () => {
+  // Chromium blocks the Clipboard API without an explicit grant; the app
+  // itself needs no such permission from real users (a user-initiated click
+  // satisfies the browser's own secure-clipboard-access check), this is only
+  // needed so the automated click in this test can exercise the real
+  // `navigator.clipboard.writeText` call instead of it silently rejecting.
+  test.use({ permissions: ['clipboard-write'] })
+
+  test('shows the copied state after copying a multi-line code block', async ({
+    page
+  }) => {
+    await page.goto('/')
+    await page.getByTestId('new-doc').click()
+    const editable = page
+      .getByTestId('editor')
+      .locator('[contenteditable="true"]')
+      .first()
+    await editable.click()
+    // ``` + Enter is BlockNote's markdown shortcut that converts the
+    // current block into a codeBlock; Enter again while inside it inserts a
+    // soft line break (ProseMirror's codeBlock node is a `code: true` node,
+    // so this never creates a new block).
+    await page.keyboard.type('```')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('const greeting = "hello world";')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('console.log(greeting);')
+
+    const copyButton = page.getByTestId('code-block-copy')
+    await expect(copyButton).toBeVisible()
+    await copyButton.click()
+    await expect(copyButton).toHaveAttribute('aria-label', 'Copied')
+  })
+})
