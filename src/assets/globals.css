@@ -355,3 +355,27 @@
   background-color: var(--accent);
   color: var(--accent-foreground);
 }
+
+/* Trailing click-to-continue zone: BlockNote already appends an invisible
+   `.bn-trailing-block` widget (no background/border - it's pure clickable
+   space, not a visible box) after the last block, which on click/mousedown
+   inserts a fresh empty paragraph and places the cursor in it
+   (@blocknote/core's `trailingNode` plugin). That mechanism itself works -
+   confirmed live: clicking it creates the paragraph and typing starts
+   immediately, no Enter needed. The problem is purely its size: the
+   compiled default is `height: 30px` (@blocknote/shadcn's bundled
+   style.css), a sliver easy to miss below the last line of text, with
+   everything past it (document-page.tsx has no min-height on the editor's
+   wrapper or its parent) being plain, non-interactive page background.
+   `min-height` (rather than re-declaring `height`) is enough on its own -
+   it clamps the widget's used height upward without needing to fight the
+   existing `height: 30px` declaration - but `!important` is still needed
+   for the same reason as `.bn-editor`/`.bn-root` above: @blocknote/shadcn's
+   stylesheet is imported inside editor.tsx, so it's injected into the
+   document after this one, and would otherwise win any tie on cascade
+   order. 240px turns a barely-discoverable strip into a large, Notion-like
+   "click anywhere below the content to keep typing" area, without adding
+   any visible empty box (the widget stays unstyled/invisible either way). */
+.bn-trailing-block {
+  min-height: 240px !important;
+}
