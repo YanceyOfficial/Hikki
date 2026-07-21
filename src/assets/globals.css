@@ -184,6 +184,23 @@
   padding-block: 6px !important;
 }
 
+/* Code block chrome: @blocknote/shadcn's compiled CSS hardcodes this exact
+   selector's background/text to a flat `#161616` / `#fff` with no variable
+   indirection (confirmed in its compiled stylesheet), regardless of theme or
+   light/dark mode - this is the "丑" (ugly) box the user flagged. Shiki's
+   `github-dark-default` theme (configured in editor.tsx) already colors
+   individual tokens via inline styles on each span; it never touches this
+   container background itself. Bring the container in line with that same
+   theme's own background/foreground (bg #0d1117 / fg #e6edf3) instead of
+   fighting the shiki theme, and add a soft border so the block reads as a
+   deliberately bounded surface rather than a raw black rectangle sitting on
+   the page. */
+.bn-block-content[data-content-type='codeBlock'] {
+  background-color: #0d1117 !important;
+  color: #e6edf3 !important;
+  border: 1px solid rgb(255 255 255 / 10%) !important;
+}
+
 /* Selected-block outline: BlockNote hardcodes a bright, hard-edged
    `outline: 4px solid #64a0ff` on this exact selector with no variable
    indirection at all (confirmed in @blocknote/core's compiled CSS). Replace
