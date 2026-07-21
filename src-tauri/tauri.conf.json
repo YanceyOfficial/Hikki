@@ -13,13 +13,13 @@
     "windows": [
       {
         "title": "hikki",
-        "width": 1200,
-        "height": 800,
+        "width": 1320,
+        "height": 860,
         "decorations": true,
         "hiddenTitle": true,
         "transparent": false,
         "titleBarStyle": "Overlay",
-        "trafficLightPosition": { "x": 16, "y": 16 }
+        "trafficLightPosition": { "x": 14, "y": 20 }
       }
     ],
     "security": {

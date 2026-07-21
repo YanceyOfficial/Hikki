@@ -8,6 +8,7 @@ import {
 import { useCreateBlockNote } from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/shadcn'
 import { useTheme } from 'next-themes'
+import { useLayoutEffect, useRef } from 'react'
 import { createHighlighter } from 'shiki'
 
 import { Button } from '#components/ui/button'
@@ -64,6 +65,48 @@ const SUPPORTED_CODE_LANGUAGES = [
 
 export function Editor({ docId, initialBlocks, onBlocksChange }: EditorProps) {
   const { resolvedTheme } = useTheme()
+  const colorMode = resolvedTheme === 'dark' ? 'dark' : 'light'
+  // See the comment on `createHighlighter` below for why only the single
+  // currently-active theme is loaded here, not both.
+  const codeBlockTheme = colorMode === 'dark' ? 'min-dark' : 'min-light'
+
+  // @blocknote/core's `lazyShikiPlugin` caches the shiki highlighter (and
+  // the parser built from it) on `globalThis` via `Symbol.for(...)` - a
+  // *page-lifetime* global, not per-editor-instance state (see
+  // `blocks-DGsP5WKr.js`: `let t = globalThis; ...; t[Cn] = t[Cn] ||
+  // e.createHighlighter()`). That means whichever theme is loaded the
+  // *first* time any code block is ever highlighted in this page session
+  // wins forever after - neither recreating the BlockNote editor (the
+  // `colorMode` dependency below) nor remounting BlockNoteView (the `key`
+  // below) helps, since both still hit the same already-populated global
+  // slot instead of calling our `createHighlighter` again. Empirically
+  // confirmed: toggling light/dark live left code blocks rendering in the
+  // *previous* mode's colors (sometimes to the point of the text being
+  // unreadable against the new background) until a full page reload.
+  //
+  // Since BlockNote used the global symbol registry (`Symbol.for`, not a
+  // module-private `Symbol()`), that slot is intentionally reachable from
+  // outside its module - so clear it ourselves whenever the resolved mode
+  // actually changes, forcing the next highlight to recreate the highlighter
+  // with the theme that matches the *current* mode. This runs in a
+  // `useLayoutEffect` (not a plain `useEffect`) so the clear is committed
+  // synchronously after DOM mutations but before the browser paints -
+  // before BlockNoteView's own remounted (new `key`) tree gets its first
+  // paint, and before/alongside BlockNote's own plugin-init effects (which
+  // also run in the layout-effect phase) that first call into the
+  // highlighter.
+  const lastColorModeRef = useRef<typeof colorMode | null>(null)
+  useLayoutEffect(() => {
+    if (
+      lastColorModeRef.current !== null &&
+      lastColorModeRef.current !== colorMode
+    ) {
+      const globalSlots = globalThis as unknown as Record<symbol, unknown>
+      delete globalSlots[Symbol.for('blocknote.shikiHighlighterPromise')]
+      delete globalSlots[Symbol.for('blocknote.shikiParser')]
+    }
+    lastColorModeRef.current = colorMode
+  }, [colorMode])
   const editor = useCreateBlockNote(
     {
       schema: BlockNoteSchema.create().extend({
@@ -101,18 +144,30 @@ export function Editor({ docId, initialBlocks, onBlocksChange }: EditorProps) {
               graphql: { name: 'GraphQL' }
             },
             // This creates a highlighter, it can be asynchronous to load it
-            // afterwards. The plain `shiki` package (unlike the old hand-
-            // generated `shiki.bundle.ts`) lazy-loads each of these languages
-            // via dynamic import internally, so listing all ~26 here doesn't
-            // bundle them eagerly. `github-dark-default` is shiki 4.x's
-            // bundled id for the softer GitHub dark palette (bg #0d1117 /
-            // fg #e6edf3) - a single dark theme so the code block reads
-            // consistently regardless of the app's light/dark mode; see the
-            // matching container-chrome override in globals.css for why the
-            // surrounding box needed a fix too.
+            // afterwards. The plain `shiki` package lazy-loads each of these
+            // languages via dynamic import internally, so listing all ~26
+            // here doesn't bundle them eagerly.
+            //
+            // `min-light`/`min-dark` are shiki's minimal, low-saturation
+            // themes - closer to this app's soft palette than the more
+            // vivid `github-*` themes. BlockNote's own highlight plugin
+            // (`prosemirror-highlight`'s shiki adapter) always tokenizes
+            // with `highlighter.getLoadedThemes()[0]` - there's no per-
+            // render theme switch. Only ever loading the *one* theme that
+            // matches the current mode (rather than both, reordered) avoids
+            // relying on that array-order behavior: empirically, loading
+            // both `min-light` and `min-dark` into the same highlighter and
+            // reordering which came first still left some default/plain
+            // tokens resolving against the *other* theme's color (e.g. a
+            // dark-mode block rendering plain punctuation in min-light's
+            // near-black `#24292e` - invisible against a dark background).
+            // `codeBlockTheme` (closed over `colorMode`, in the dependency
+            // array below) re-creates the whole editor - and therefore a
+            // fresh highlighter loaded with only the correct theme -
+            // whenever the app's light/dark mode flips.
             createHighlighter: () =>
               createHighlighter({
-                themes: ['github-dark-default'],
+                themes: [codeBlockTheme],
                 langs: [...SUPPORTED_CODE_LANGUAGES]
               })
           })
@@ -152,13 +207,28 @@ export function Editor({ docId, initialBlocks, onBlocksChange }: EditorProps) {
         return handled
       }
     },
-    [docId]
+    // `colorMode` is included so the editor (and its code-block highlighter)
+    // is recreated when the app's light/dark mode changes - see the
+    // `codeBlockThemes` comment above. `initialContent` is re-read from the
+    // latest `initialBlocks` on that remount, and `onBlocksChange` keeps
+    // that prop in sync on every edit (src/pages/document-page.tsx), so no
+    // content is lost - only the cursor position/undo stack reset, which is
+    // an acceptable trade-off for an explicit theme toggle.
+    [docId, colorMode]
   )
   return (
     <div data-testid="editor" className="mt-4">
       <BlockNoteView
+        // BlockNote's code-block highlighter is cached on internal
+        // ProseMirror plugin state that survives a mere `editor` prop swap -
+        // toggling light/dark live (as opposed to a fresh page load already
+        // in the target mode) left the *first* mode's shiki theme cached and
+        // in use even after `editor` was recreated with the other theme.
+        // Forcing a full remount via `key` sidesteps that stale-plugin-state
+        // cache entirely.
+        key={colorMode}
         editor={editor}
-        theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
+        theme={colorMode}
         onChange={() => onBlocksChange(editor.document)}
         shadCNComponents={{
           Button: { Button },

@@ -81,6 +81,18 @@
   --sidebar-accent-foreground: oklch(0.32 0.012 60);
   --sidebar-border: oklch(0.93 0.004 85);
   --sidebar-ring: oklch(0.72 0.01 60);
+  /* Dedicated code-block surface tokens (rather than reusing --muted /
+     --foreground / --border): those general-purpose tokens are tuned for
+     many other UI surfaces and, measured against shiki's own `min-light` /
+     `min-dark` theme backgrounds, produce measurably lower contrast for a
+     couple of token color categories - enough to cross from passing to
+     failing WCAG AA (4.5:1) text contrast in light mode. These are pulled
+     closer to shiki's own near-white/near-black backgrounds while still
+     being derived from this app's warm hue family (not shiki's neutral
+     gray) and still flipping between :root/.dark. */
+  --code-block-background: oklch(0.965 0.004 85);
+  --code-block-foreground: oklch(0.28 0.012 60);
+  --code-block-border: oklch(0.9 0.004 85);
 }
 
 .dark {
@@ -117,6 +129,9 @@
   --sidebar-accent-foreground: oklch(0.9 0.004 85);
   --sidebar-border: oklch(0.32 0.006 60);
   --sidebar-ring: oklch(0.5 0.012 60);
+  --code-block-background: oklch(0.19 0.006 60);
+  --code-block-foreground: oklch(0.92 0.004 85);
+  --code-block-border: oklch(0.3 0.006 60);
 }
 
 @layer base {
@@ -185,20 +200,84 @@
 }
 
 /* Code block chrome: @blocknote/shadcn's compiled CSS hardcodes this exact
-   selector's background/text to a flat `#161616` / `#fff` with no variable
-   indirection (confirmed in its compiled stylesheet), regardless of theme or
-   light/dark mode - this is the "丑" (ugly) box the user flagged. Shiki's
-   `github-dark-default` theme (configured in editor.tsx) already colors
-   individual tokens via inline styles on each span; it never touches this
-   container background itself. Bring the container in line with that same
-   theme's own background/foreground (bg #0d1117 / fg #e6edf3) instead of
-   fighting the shiki theme, and add a soft border so the block reads as a
-   deliberately bounded surface rather than a raw black rectangle sitting on
-   the page. */
+   selector's background/text with no variable indirection (confirmed in its
+   compiled stylesheet) - this is the "丑" (ugly) box the user flagged.
+   Shiki's `min-light`/`min-dark` themes (editor.tsx - chosen for their
+   minimal, low-saturation palette rather than the more vivid `github-*`
+   themes) already color individual tokens via inline styles on each span;
+   they never touch this container background. Route the container itself
+   through dedicated `--code-block-*` tokens (which already flip with
+   `.dark`, see the `:root`/`.dark` definitions above) rather than the
+   general-purpose `--muted`/`--foreground`/`--border` tokens or either shiki
+   theme's own raw editor.background: reviewer-measured contrast ratios
+   showed the general-purpose tokens reduce contrast enough to fail WCAG AA
+   for some token color categories in light mode versus shiki's own
+   calibrated backgrounds, so this surface gets its own tunable tokens
+   instead of sharing ones used across many other UI surfaces. */
 .bn-block-content[data-content-type='codeBlock'] {
-  background-color: #0d1117 !important;
-  color: #e6edf3 !important;
-  border: 1px solid rgb(255 255 255 / 10%) !important;
+  background-color: var(--code-block-background) !important;
+  color: var(--code-block-foreground) !important;
+  border: 1px solid var(--code-block-border) !important;
+  border-radius: var(--radius-md) !important;
+  font-size: 14px;
+}
+
+/* Checklist checkbox: BlockNote renders a bare native <input type="checkbox">
+   with a hardcoded, oddly non-square box (compiled CSS:
+   `.bn-block-content[data-content-type=checkListItem]>div>input{width:12px;
+   height:24px}`) - a raw OS control sitting inside an otherwise fully
+   custom-styled editor reads as visibly out of place. Reset it to a small
+   square that follows our own tokens instead, with a manually-drawn
+   checkmark since `appearance:none` also removes the native one. */
+.bn-block-content[data-content-type='checkListItem'] > div:has(> input) {
+  display: flex;
+  align-items: center;
+}
+
+.bn-block-content[data-content-type='checkListItem'] input[type='checkbox'] {
+  appearance: none;
+  position: relative;
+  flex-shrink: 0;
+  width: 16px !important;
+  height: 16px !important;
+  margin: 0 8px 0 4px !important;
+  border: 1.5px solid var(--muted-foreground);
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease-out,
+    border-color 150ms ease-out;
+}
+
+.bn-block-content[data-content-type='checkListItem']
+  input[type='checkbox']:hover {
+  border-color: var(--foreground);
+}
+
+.bn-block-content[data-content-type='checkListItem']
+  input[type='checkbox']:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.bn-block-content[data-content-type='checkListItem']
+  input[type='checkbox']:checked {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+.bn-block-content[data-content-type='checkListItem']
+  input[type='checkbox']:checked::after {
+  content: '';
+  position: absolute;
+  left: 4.5px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--primary-foreground);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
 }
 
 /* Selected-block outline: BlockNote hardcodes a bright, hard-edged

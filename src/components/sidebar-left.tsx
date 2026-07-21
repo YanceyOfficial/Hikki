@@ -11,16 +11,26 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
-  SidebarMenuItem
+  SidebarMenuItem,
+  useSidebar
 } from '#components/ui/sidebar'
 import { useTrafficLightInset } from '#hooks/use-traffic-light-inset'
 import { backend } from '#lib/backend/index'
 import { docMetasAtom, refreshDocsAtom } from '#lib/store'
+import { sidebarHeaderNeedsInset } from '#lib/traffic-light-gate'
 import { buildTree } from '#lib/tree'
 import { cn } from '#lib/utils'
 
 export function SidebarLeft(props: React.ComponentProps<typeof Sidebar>) {
-  const inset = useTrafficLightInset()
+  const trafficLight = useTrafficLightInset()
+  // Mirror of TitleBar's own gating: this header only sits at the window's
+  // corner (and therefore only needs the inset) when the sidebar is actually
+  // open on desktop. Collapsed (offcanvas) it's translated off-screen, and on
+  // mobile it renders as an overlay Sheet rather than taking this corner, so
+  // in both of those cases TitleBar reserves the inset instead. See
+  // `#lib/traffic-light-gate` for the shared gating logic (and its tests).
+  const { isMobile, state } = useSidebar()
+  const inset = sidebarHeaderNeedsInset(trafficLight, isMobile, state)
   const metas = useAtomValue(docMetasAtom)
   const refresh = useSetAtom(refreshDocsAtom)
   const navigate = useNavigate()
@@ -54,7 +64,7 @@ export function SidebarLeft(props: React.ComponentProps<typeof Sidebar>) {
           data-tauri-drag-region
           data-testid="sidebar-header-row"
           className={cn(
-            'flex items-center justify-between px-2 pt-1',
+            'flex items-center justify-between px-2 pt-1 h-4.5',
             inset && 'pl-[76px]'
           )}
         >
