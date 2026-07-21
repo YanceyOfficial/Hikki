@@ -1,3 +1,4 @@
+import { formatDistanceToNow } from 'date-fns'
 import { ImagePlus, SmilePlus, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 
@@ -67,7 +68,7 @@ export function PageHeader({ doc, onPatch }: PageHeaderProps) {
   return (
     <header data-testid="page-header">
       {doc.cover ? (
-        <div className="group relative -mx-12 -mt-12 mb-6 h-48">
+        <div className="group relative left-1/2 -mt-12 mb-6 h-56 w-[100cqw] -translate-x-1/2">
           <img
             data-testid="doc-cover-image"
             src={backend.assetUrl(doc.id, doc.cover)}
@@ -77,7 +78,7 @@ export function PageHeader({ doc, onPatch }: PageHeaderProps) {
           <Button
             variant="secondary"
             size="sm"
-            className="absolute right-3 bottom-3 opacity-0 transition-opacity group-hover:opacity-100"
+            className="absolute right-6 bottom-3 opacity-0 transition-opacity group-hover:opacity-100"
             onClick={() => onPatch({ cover: null })}
             data-testid="doc-cover-remove"
           >
@@ -158,6 +159,13 @@ export function PageHeader({ doc, onPatch }: PageHeaderProps) {
         value={doc.title}
         onChange={(e) => onPatch({ title: e.target.value })}
       />
+      <p
+        data-testid="doc-updated-at"
+        className="text-muted-foreground mt-1 text-xs"
+      >
+        Edited{' '}
+        {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
+      </p>
     </header>
   )
 }

@@ -81,3 +81,13 @@ test('cover input value resets after selection so the same file can be re-picked
   )
   await waitFor(() => expect(input.value).toBe(''))
 })
+
+test('shows a relative last-updated time', () => {
+  render(
+    <PageHeader
+      doc={doc({ updatedAt: '2026-01-01T00:00:00Z' })}
+      onPatch={vi.fn()}
+    />
+  )
+  expect(screen.getByTestId('doc-updated-at')).toHaveTextContent(/\S/)
+})
