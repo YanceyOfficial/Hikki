@@ -18,6 +18,13 @@ pub struct Document {
     // Opaque BlockNote `ThreadStore` snapshot (comment threads). Rust never
     // interprets its contents - only `blocks` gets walked by `extract_text`
     // for search - it just round-trips like `blocks` does.
+    //
+    // `#[serde(default)]` is load-bearing: documents written before this
+    // field existed (Phase 1/2) have no `threads` key at all, and without a
+    // default `serde_json::Value` (unlike `Option<T>`) fails deserialization
+    // outright rather than tolerating the missing key. See
+    // `legacy_document_without_threads_field_deserializes` below.
+    #[serde(default)]
     pub threads: serde_json::Value,
     pub created_at: String,
     pub updated_at: String,
@@ -310,6 +317,33 @@ mod tests {
         edited.title = "B".into();
         let saved = save_document(v.path(), edited).unwrap();
         assert_eq!(saved.title, "B");
+    }
+
+    #[test]
+    fn legacy_document_without_threads_field_deserializes() {
+        // Regression test: documents written before the `threads` field was
+        // introduced (Phase 1/2) must still load. Without `#[serde(default)]`
+        // on `Document::threads`, this JSON (which has every field except
+        // `threads`) fails deserialization with "missing field `threads`",
+        // which in turn makes `load_document` error and `list_documents`
+        // silently skip the doc (see `list_documents_skips_unreadable_docs`
+        // above) - i.e. old documents vanish from the sidebar and search.
+        let legacy_json = r#"{
+            "schemaVersion": 1,
+            "id": "5b1f7e0a-6e3a-4c1a-9b1a-9f2e2e2b2b2b",
+            "parentId": null,
+            "title": "Legacy note",
+            "icon": null,
+            "cover": null,
+            "blocks": [],
+            "createdAt": "2026-01-01T00:00:00Z",
+            "updatedAt": "2026-01-01T00:00:00Z",
+            "deletedAt": null
+        }"#;
+        let doc: Document = serde_json::from_str(legacy_json).expect(
+            "legacy document.json without a `threads` field must still deserialize",
+        );
+        assert_eq!(doc.threads, serde_json::Value::Null);
     }
 
     #[test]
