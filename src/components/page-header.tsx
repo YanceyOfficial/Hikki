@@ -36,7 +36,7 @@ export function PageHeader({ doc, onPatch }: PageHeaderProps) {
   return (
     <header data-testid="page-header">
       {doc.cover ? (
-        <div className="group relative left-1/2 -mt-12 mb-6 h-56 w-[100cqw] -translate-x-1/2">
+        <div className="group relative left-1/2 -mt-12 mb-6 h-[30vh] max-h-70 w-[100cqw] -translate-x-1/2">
           <img
             data-testid="doc-cover-image"
             src={backend.assetUrl(doc.id, doc.cover)}
