@@ -541,3 +541,30 @@
 .fluid-toc a:not([data-active='true']):hover {
   color: var(--foreground) !important;
 }
+
+/* Inline comment-thread highlight (`@blocknote/core`'s own
+   `.bn-thread-mark`, applied to the exact text a thread was created on -
+   see comment-threads-sidebar.tsx's doc comment for the full round-trip
+   story). Its shipped default is a flat 15%-alpha `#ffc80026` background
+   (`.bn-thread-mark-selected` for the active thread is 25%-alpha,
+   `#ffc80040`) - a fixed, non-theme-aware hex that a live design review
+   found nearly invisible against this app's own warm, low-contrast cream
+   background (§14): the two low-saturation warm tones sit too close
+   together in lightness for the tint to read as a highlight at a glance,
+   which was the actual substance of "I can't tell what text a comment is
+   attached to" - the mark was there, just not visible enough to notice.
+   `!important` is required for the same reason as the `.bn-root` block
+   above: `@blocknote/core`'s stylesheet loads after this one, and both
+   rules target the exact same selector so source order alone decides.
+   A bottom-border underline (rather than only a stronger fill) is added on
+   top so the anchor stays legible even when a thread's text already carries
+   its own background color style (`[data-background-color]`, see the
+   `--value` swatch rules elsewhere in this file) - a fill alone would either
+   be invisible under an opaque swatch or fight it for the same pixels. */
+.bn-thread-mark:not([data-orphan='true']) {
+  background: oklch(0.75 0.13 85 / 22%) !important;
+  border-bottom: 2px solid oklch(0.6 0.15 60 / 70%) !important;
+}
+.bn-thread-mark .bn-thread-mark-selected {
+  background: oklch(0.75 0.13 85 / 38%) !important;
+}

@@ -20,18 +20,17 @@ export default function DocumentPage() {
   const [doc, setDoc] = useState<Doc | null>(null)
   const [notFound, setNotFound] = useState(false)
   const refresh = useSetAtom(refreshDocsAtom)
-  // Shared right-margin rail DOM node: tracked via a callback ref (not a
-  // plain `useRef`) so its value change itself triggers a re-render, letting
-  // `Editor`/`CommentThreadsSidebar` react to the node becoming available
-  // after the rail `<div>` first mounts. This is the single shared rail slot
-  // for the page - `TableOfContents` below renders as a genuine JSX child of
-  // the rail `<div>`, while `CommentThreadsSidebar` (mounted deep inside
-  // `Editor`'s `<BlockNoteView>`) paints into the same `<div>` via
-  // `ReactDOM.createPortal`. Both approaches target the same DOM element;
-  // React reconciles the portal's appended children independently of the
-  // container's own JSX children, so they simply end up as DOM siblings
-  // under the same parent - nothing conflicts.
-  const [pageRailNode, setPageRailNode] = useState<HTMLDivElement | null>(null)
+  // Small `fixed`-positioned anchor DOM node for the floating comments badge:
+  // tracked via a callback ref (not a plain `useRef`) so its value change
+  // itself triggers a re-render, letting `Editor`/`CommentThreadsSidebar`
+  // react to the node becoming available after the anchor `<div>` first
+  // mounts. `CommentThreadsSidebar` (mounted deep inside `Editor`'s
+  // `<BlockNoteView>`) paints its trigger button + popover into this node via
+  // `ReactDOM.createPortal` - see its own doc comment for why it needs a
+  // portal at all (BlockNoteContext/ComponentsContext access) rather than
+  // just rendering here directly.
+  const [commentsAnchorNode, setCommentsAnchorNode] =
+    useState<HTMLDivElement | null>(null)
 
   const save = useMemo(
     () =>
@@ -105,11 +104,8 @@ export default function DocumentPage() {
   }
 
   return (
-    <div
-      data-testid="document-page"
-      className="mx-auto flex w-full max-w-7xl gap-10 px-12 py-12"
-    >
-      <div className="mx-auto max-w-3xl min-w-0 flex-1">
+    <div data-testid="document-page" className="px-12 py-12">
+      <div className="mx-auto max-w-3xl min-w-0">
         <PageHeader doc={doc} onPatch={update} />
         <EditorBoundary>
           <Editor
@@ -118,19 +114,21 @@ export default function DocumentPage() {
             initialBlocks={doc.blocks}
             onBlocksChange={(blocks) => update({ blocks })}
             threadStore={threadStore}
-            commentsPortalTarget={pageRailNode}
+            commentsPortalTarget={commentsAnchorNode}
           />
         </EditorBoundary>
       </div>
+      <TableOfContents blocks={doc.blocks} />
+      {/* Floating anchor for CommentThreadsSidebar (mounted inside
+          Editor/BlockNoteView) to portal its trigger button + popover into -
+          see the comment on `commentsAnchorNode` above. Empty until that
+          portal paints into it, and renders nothing itself when there are no
+          threads (CommentThreadsSidebar's own empty-state check). */}
       <div
-        ref={setPageRailNode}
-        data-testid="page-rail"
-        className="hidden w-[300px] shrink-0 flex-col gap-6 2xl:flex"
-      >
-        <TableOfContents blocks={doc.blocks} />
-        {/* Comments portal in via CommentThreadsSidebar, mounted inside
-            Editor/BlockNoteView - see the comment on `pageRailNode` above. */}
-      </div>
+        ref={setCommentsAnchorNode}
+        data-testid="comments-anchor"
+        className="fixed right-6 bottom-6 z-40"
+      />
     </div>
   )
 }

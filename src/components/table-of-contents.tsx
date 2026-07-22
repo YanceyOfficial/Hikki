@@ -1,5 +1,9 @@
+import { ListTree } from 'lucide-react'
 import { useRef } from 'react'
 import { FluidToc, type TocItem } from 'react-fluid-toc'
+
+import { Button } from '#components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '#components/ui/popover'
 
 /**
  * BlockNote's `heading` blocks are plain `div`s under the hood (confirmed via
@@ -24,6 +28,16 @@ import { FluidToc, type TocItem } from 'react-fluid-toc'
  * regardless of how many nested scrollable ancestors sit in between, so it
  * works unmodified in both this app's nested-scroll layout and a plain
  * `window`-scrolls-everything page.
+ *
+ * Rendered as its own small always-available floating badge (Notion-style,
+ * per a live design review against a real Notion screenshot), not a
+ * permanent in-flow or wide-rail-only column: unlike `CommentThreadsSidebar`,
+ * this component only ever needed `blocks` - a plain prop already available
+ * in document-page.tsx, no BlockNote context - so it never needed a portal;
+ * it owns its own `fixed`-positioned wrapper directly. Stacked in the same
+ * bottom-right corner as the comments badge but higher up, so both are
+ * simultaneously visible and clickable without overlapping (verified live at
+ * the app's 1320px default width).
  */
 
 interface InlineContentNode {
@@ -139,24 +153,43 @@ export function TableOfContents({ blocks }: TableOfContentsProps) {
   if (items.length === 0) return null
 
   return (
-    <div
-      data-testid="table-of-contents"
-      className="border-border/60 border-b pb-6"
-    >
-      <p className="text-muted-foreground mb-2 text-xs font-medium">
-        On this page
-      </p>
-      <FluidToc
-        items={items}
-        scrollOffset={SCROLL_OFFSET}
-        className="fluid-toc"
-        onItemClick={(id, event) => {
-          event.preventDefault()
-          document
-            .getElementById(id)
-            ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }}
-      />
+    <div className="fixed right-6 bottom-24 z-40">
+      <Popover>
+        <PopoverTrigger
+          render={
+            <Button
+              variant="secondary"
+              size="icon-lg"
+              className="rounded-full shadow-md"
+              data-testid="toc-toggle"
+            />
+          }
+        >
+          <ListTree className="size-4" />
+        </PopoverTrigger>
+        <PopoverContent
+          align="end"
+          side="top"
+          sideOffset={12}
+          data-testid="table-of-contents"
+          className="flex max-h-[70vh] w-72 flex-col gap-2 overflow-y-auto"
+        >
+          <p className="text-muted-foreground text-xs font-medium">
+            On this page
+          </p>
+          <FluidToc
+            items={items}
+            scrollOffset={SCROLL_OFFSET}
+            className="fluid-toc"
+            onItemClick={(id, event) => {
+              event.preventDefault()
+              document
+                .getElementById(id)
+                ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }}
+          />
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }

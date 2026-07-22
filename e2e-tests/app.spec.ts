@@ -263,15 +263,11 @@ test('code block: typing Python triggers real shiki syntax highlighting', async 
   await expect(editable.locator('pre code')).toContainText('return a + b')
 })
 
-test.describe('right rail (table of contents and comments)', () => {
-  // Both table-of-contents.tsx and comment-threads-sidebar.tsx render into
-  // document-page.tsx's `page-rail`, which is `hidden ... 2xl:flex` -
-  // Tailwind's `2xl` breakpoint is a 1536px min-width, well above
-  // Playwright's default ~1280px viewport. Confirmed live: at the default
-  // viewport the rail (and its portaled content) still exists in the DOM,
-  // it's simply `display:none`, so `toBeVisible()` assertions on anything
-  // inside it need a wide-enough viewport.
-  test.use({ viewport: { width: 1600, height: 900 } })
+test.describe('floating badges (table of contents and comments)', () => {
+  // Both table-of-contents.tsx and comment-threads-sidebar.tsx are small
+  // always-available floating toggle buttons (Notion-style), not gated
+  // behind any breakpoint - so these run at Playwright's normal default
+  // viewport, matching the app's real 1320px default window width.
 
   test('selecting text and adding a comment creates a thread', async ({
     page
@@ -322,10 +318,13 @@ test.describe('right rail (table of contents and comments)', () => {
       'Selectable phrase here'
     )
     // The same thread also renders as a card in comment-threads-sidebar.tsx,
-    // portaled into document-page.tsx's `page-rail` (see that component's
-    // doc comment) - the persistent record of the thread that survives even
-    // if the inline mark above didn't (BlockNote's own #1701, see
-    // comment-threads-sidebar.tsx).
+    // portaled into document-page.tsx's floating `comments-anchor` (see that
+    // component's doc comment) - the persistent record of the thread that
+    // survives even if the inline mark above didn't (BlockNote's own #1701,
+    // see comment-threads-sidebar.tsx). Collapsed behind its own floating
+    // toggle button by default, so it must be opened before its contents are
+    // visible.
+    await page.getByTestId('comments-toggle').click()
     const sidebar = page.getByTestId('comment-threads-sidebar')
     await expect(sidebar).toBeVisible()
     await expect(sidebar).toContainText('This needs review')
@@ -355,6 +354,9 @@ test.describe('right rail (table of contents and comments)', () => {
     await page.keyboard.press('Enter')
     await page.keyboard.type('# Heading two')
 
+    // The outline is collapsed behind its own floating toggle button by
+    // default, so it must be opened before its contents are visible.
+    await page.getByTestId('toc-toggle').click()
     const toc = page.getByTestId('table-of-contents')
     await expect(toc).toBeVisible()
     await expect(toc.getByRole('link', { name: 'Heading one' })).toBeVisible()

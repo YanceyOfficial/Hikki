@@ -23,7 +23,7 @@ vi.mock('#components/editor', () => ({
       data-testid="mock-editor"
       data-doc-id={docId}
       data-block-count={initialBlocks.length}
-      data-has-rail-target={commentsPortalTarget !== null}
+      data-has-comments-anchor={commentsPortalTarget !== null}
       onClick={() => onBlocksChange([{ type: 'paragraph', content: 'edited' }])}
     >
       mock editor
@@ -84,13 +84,13 @@ test('renders the editor with the loaded blocks', async () => {
   expect(editor).toHaveAttribute('data-block-count', '1')
 })
 
-test('provides the editor with a real rail DOM node to portal comments into', async () => {
-  const doc = await backend.createDocument(null, 'Has rail')
+test('provides the editor with a real anchor DOM node to portal comments into', async () => {
+  const doc = await backend.createDocument(null, 'Has anchor')
   renderPage(doc.id)
-  expect(await screen.findByTestId('page-rail')).toBeInTheDocument()
+  expect(await screen.findByTestId('comments-anchor')).toBeInTheDocument()
   await waitFor(() =>
     expect(screen.getByTestId('mock-editor')).toHaveAttribute(
-      'data-has-rail-target',
+      'data-has-comments-anchor',
       'true'
     )
   )

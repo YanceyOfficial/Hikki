@@ -13,7 +13,7 @@
     "windows": [
       {
         "title": "hikki",
-        "width": 1600,
+        "width": 1320,
         "height": 860,
         "decorations": true,
         "hiddenTitle": true,

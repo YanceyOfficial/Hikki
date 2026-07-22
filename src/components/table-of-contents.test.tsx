@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 import { extractTocItems, TableOfContents } from '#components/table-of-contents'
 
@@ -43,7 +44,7 @@ test('walks nested children for headings inside container blocks', () => {
   expect(items).toEqual([{ id: 'nested-h', text: 'Nested heading', depth: 3 }])
 })
 
-test('renders heading text as visible list items and excludes the paragraph', () => {
+test('opening the floating toggle reveals heading text and excludes the paragraph', async () => {
   render(
     <TableOfContents
       blocks={[
@@ -53,7 +54,9 @@ test('renders heading text as visible list items and excludes the paragraph', ()
       ]}
     />
   )
-  expect(screen.getByTestId('table-of-contents')).toBeInTheDocument()
+  expect(screen.queryByTestId('table-of-contents')).not.toBeInTheDocument()
+  await userEvent.click(screen.getByTestId('toc-toggle'))
+  expect(await screen.findByTestId('table-of-contents')).toBeInTheDocument()
   expect(screen.getByText('Intro')).toBeInTheDocument()
   expect(screen.getByText('Details')).toBeInTheDocument()
   expect(screen.queryByText('Just a paragraph')).not.toBeInTheDocument()

@@ -1,5 +1,9 @@
 import { ThreadsSidebar, useThreads } from '@blocknote/react'
+import { MessageSquare } from 'lucide-react'
 import { createPortal } from 'react-dom'
+
+import { Button } from '#components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '#components/ui/popover'
 
 /**
  * Mitigates a structural BlockNote limitation (confirmed via BlockNote's own
@@ -34,31 +38,25 @@ import { createPortal } from 'react-dom'
  * components off `ComponentsContext`/`ShadCNComponentsContext` - both are
  * only provided within `BlockNoteView`'s subtree (see
  * `@blocknote/react`'s `BlockNoteView.tsx` and `@blocknote/shadcn`'s
- * `BlockNoteView.tsx`). That's still true even now that the cards need to
- * *visually* land in document-page.tsx's right-margin rail rather than
- * inline: this component keeps mounting inside `<BlockNoteView>` to read
- * those contexts, and instead uses `ReactDOM.createPortal` to paint its
- * output into `portalTarget` - a plain DOM node document-page.tsx owns
- * (`pageRailNode`) and passes down through `Editor`'s `commentsPortalTarget`
- * prop. React context still flows through the component tree the portal was
- * created from, not through the DOM, so this works even though the portaled
- * output ends up physically outside `<BlockNoteView>`'s own DOM subtree.
+ * `BlockNoteView.tsx`). That's still true under this component's current
+ * floating-badge shape: this component keeps mounting inside `<BlockNoteView>`
+ * to read those contexts, and instead uses `ReactDOM.createPortal` to paint
+ * its output into `portalTarget` - a small `fixed`-positioned anchor `<div>`
+ * document-page.tsx owns and passes down through `Editor`'s
+ * `commentsPortalTarget` prop. React context still flows through the
+ * component tree the portal was created from, not through the DOM, so this
+ * works even though the portaled output ends up physically outside
+ * `<BlockNoteView>`'s own DOM subtree.
  *
- * v1 scope, styled after Notion's floating comment cards but simplified:
- * every thread renders as a stacked vertical list of cards in this
- * persistent rail (literally what `ThreadsSidebar` is designed for - its own
- * source doc comment calls it "similar to Google Docs' Show All Comments
- * sidebar"), not per-thread floating beside its own highlighted text at a
- * matching scroll position. `ThreadsSidebar` only exposes `threadPositions`
- * as ProseMirror document offsets (`from`/`to`), not pixel coordinates -
- * turning that into scroll-synced Y positions (`editor.view.coordsAtPos`,
- * scroll/resize listeners, collision handling between nearby threads) is a
- * substantially larger feature, out of scope here.
- *
- * Kept deliberately simple for v1: no collapse/toggle affordance (there's no
- * existing pattern for one in this app, and BlockNote's own default UI has
- * no comments-count badge to hang a toggle off), just an always-rendered
- * portal that paints nothing when there are no threads at all.
+ * Styled after Notion's own floating comments affordance (confirmed against
+ * a live Notion screenshot during design review): a small always-available
+ * badge - a chat-bubble icon plus `threads.size` - anchored to a fixed
+ * corner of the viewport rather than a permanent in-flow or wide-rail-only
+ * column. Clicking it opens a `Popover` containing the same `ThreadsSidebar`
+ * list used before; collapsed by default so it costs no reading-column width
+ * at any window size, and works identically whether the window is narrow or
+ * wide. Renders nothing at all when there are no threads (`threads.size ===
+ * 0`), so the badge never occupies screen space it has nothing to show for.
  */
 interface CommentThreadsSidebarProps {
   portalTarget: HTMLElement | null
@@ -74,9 +72,30 @@ export function CommentThreadsSidebar({
   }
 
   const content = (
-    <div data-testid="comment-threads-sidebar" className="flex flex-col gap-3">
-      <ThreadsSidebar filter="all" sort="position" />
-    </div>
+    <Popover>
+      <PopoverTrigger
+        render={
+          <Button
+            variant="secondary"
+            size="lg"
+            className="gap-1.5 rounded-full shadow-md"
+            data-testid="comments-toggle"
+          />
+        }
+      >
+        <MessageSquare className="size-4" />
+        {threads.size}
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        side="top"
+        sideOffset={12}
+        data-testid="comment-threads-sidebar"
+        className="flex max-h-[70vh] w-80 flex-col gap-3 overflow-y-auto"
+      >
+        <ThreadsSidebar filter="all" sort="position" />
+      </PopoverContent>
+    </Popover>
   )
 
   return portalTarget ? createPortal(content, portalTarget) : content
