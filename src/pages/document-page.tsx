@@ -19,6 +19,14 @@ export default function DocumentPage() {
   const [doc, setDoc] = useState<Doc | null>(null)
   const [notFound, setNotFound] = useState(false)
   const refresh = useSetAtom(refreshDocsAtom)
+  // Shared right-margin rail DOM node: tracked via a callback ref (not a
+  // plain `useRef`) so its value change itself triggers a re-render, letting
+  // `Editor`/`CommentThreadsSidebar` react to the node becoming available
+  // after the rail `<div>` first mounts. This is the single shared rail slot
+  // for the page - Task 12 (table of contents) stacks its own section inside
+  // this same container later, so nothing here should assume comments are
+  // its only consumer.
+  const [pageRailNode, setPageRailNode] = useState<HTMLDivElement | null>(null)
 
   const save = useMemo(
     () =>
@@ -94,18 +102,26 @@ export default function DocumentPage() {
   return (
     <div
       data-testid="document-page"
-      className="mx-auto w-full max-w-3xl px-12 py-12"
+      className="mx-auto flex w-full max-w-7xl gap-10 px-12 py-12"
     >
-      <PageHeader doc={doc} onPatch={update} />
-      <EditorBoundary>
-        <Editor
-          key={doc.id}
-          docId={doc.id}
-          initialBlocks={doc.blocks}
-          onBlocksChange={(blocks) => update({ blocks })}
-          threadStore={threadStore}
-        />
-      </EditorBoundary>
+      <div className="mx-auto max-w-3xl min-w-0 flex-1">
+        <PageHeader doc={doc} onPatch={update} />
+        <EditorBoundary>
+          <Editor
+            key={doc.id}
+            docId={doc.id}
+            initialBlocks={doc.blocks}
+            onBlocksChange={(blocks) => update({ blocks })}
+            threadStore={threadStore}
+            commentsPortalTarget={pageRailNode}
+          />
+        </EditorBoundary>
+      </div>
+      <div
+        ref={setPageRailNode}
+        data-testid="page-rail"
+        className="hidden w-[300px] shrink-0 2xl:block"
+      />
     </div>
   )
 }

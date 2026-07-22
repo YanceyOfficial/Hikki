@@ -32,6 +32,7 @@ interface EditorProps {
   initialBlocks: unknown[]
   onBlocksChange: (blocks: unknown[]) => void
   threadStore: VaultThreadStore
+  commentsPortalTarget: HTMLElement | null
 }
 
 // Kept as a constant so the paste-detection handler below can recognize a
@@ -73,7 +74,8 @@ export function Editor({
   docId,
   initialBlocks,
   onBlocksChange,
-  threadStore
+  threadStore,
+  commentsPortalTarget
 }: EditorProps) {
   const { resolvedTheme } = useTheme()
   const colorMode = resolvedTheme === 'dark' ? 'dark' : 'light'
@@ -285,7 +287,7 @@ export function Editor({
             the `Block[]` JSON model, so it doesn't survive a reload - this
             keeps every thread discoverable via `doc.threads` regardless.
             See comment-threads-sidebar.tsx's doc comment for the full story. */}
-        <CommentThreadsSidebar />
+        <CommentThreadsSidebar portalTarget={commentsPortalTarget} />
       </BlockNoteView>
       {/* Not remounted on the `colorMode` key change above - it just watches
           `containerRef`'s DOM, so it naturally survives BlockNoteView being

@@ -11,16 +11,19 @@ vi.mock('#components/editor', () => ({
   Editor: ({
     docId,
     initialBlocks,
-    onBlocksChange
+    onBlocksChange,
+    commentsPortalTarget
   }: {
     docId: string
     initialBlocks: unknown[]
     onBlocksChange: (blocks: unknown[]) => void
+    commentsPortalTarget: HTMLElement | null
   }) => (
     <button
       data-testid="mock-editor"
       data-doc-id={docId}
       data-block-count={initialBlocks.length}
+      data-has-rail-target={commentsPortalTarget !== null}
       onClick={() => onBlocksChange([{ type: 'paragraph', content: 'edited' }])}
     >
       mock editor
@@ -79,6 +82,18 @@ test('renders the editor with the loaded blocks', async () => {
   const editor = await screen.findByTestId('mock-editor')
   expect(editor).toHaveAttribute('data-doc-id', doc.id)
   expect(editor).toHaveAttribute('data-block-count', '1')
+})
+
+test('provides the editor with a real rail DOM node to portal comments into', async () => {
+  const doc = await backend.createDocument(null, 'Has rail')
+  renderPage(doc.id)
+  expect(await screen.findByTestId('page-rail')).toBeInTheDocument()
+  await waitFor(() =>
+    expect(screen.getByTestId('mock-editor')).toHaveAttribute(
+      'data-has-rail-target',
+      'true'
+    )
+  )
 })
 
 test('block changes are autosaved', async () => {
