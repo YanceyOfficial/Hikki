@@ -1185,7 +1185,70 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 15: Documentation sync (run LAST)
+### Task 15: Fix missing elevation on BlockNote's comment cards (`shadow-sm` never compiles)
+
+**Context (live user report, screenshot-driven):** after Task 11 shipped the right-side comments rail, the user reported the "add comment" composer (the floating card that appears when you select text and click the formatting toolbar's comment button — BlockNote's own `FloatingComposerController`/`FloatingComposer`, auto-rendered once `CommentsExtension` is registered) looks broken: it renders with no visible border/shadow distinguishing it from the page, so it reads as if it's part of the document flow rather than a floating overlay, overlapping surrounding text with nothing to separate the two.
+
+**Root cause, confirmed via a real compiled build (not guesswork):** `FloatingComposer` and `ThreadsSidebar`'s `Thread` component both render through the same `Components.Comments.Card` → `ShadCNComponents.Card.Card`, which (since this app never overrides `shadCNComponents.Card` in `editor.tsx`) falls back to `@blocknote/shadcn`'s own bundled default (`node_modules/@blocknote/shadcn/src/components/ui/card.tsx`):
+
+```tsx
+className={cn(
+  "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
+  className,
+)}
+```
+
+Running `pnpm exec vite build --mode development --outDir /tmp/hikki-css-check` and grepping the compiled `assets/*.css` confirms `.border{border-style:...;border-width:1px}` and `.bg-card{background-color:var(--card)}` both compile correctly (their tokens are used bare elsewhere in this app's own `src/components/ui/card.tsx`), but **no `.shadow-sm{...}` rule exists anywhere in the compiled output** — only `.shadow-lg`, `.shadow-md`, `.shadow-xl`, `.shadow-none` compile, because those are the only shadow utilities this app's own source ever uses literally, unprefixed. Tailwind v4's JIT scanner only generates a utility class if its exact literal token appears somewhere in scanned source — `shadow-sm` never does, anywhere in this codebase — so every comment card (both the floating composer and every posted-thread card in the rail) silently loses its entire `box-shadow`, leaving only a 1px border to read as "elevated," which is not enough contrast against this app's soft, low-contrast palette.
+
+This is the exact same category of bug Task 11 already found and fixed once for `bg-accent`/`text-accent-foreground` (BlockNote's `Card.tsx` selected-state styling) via a `@source inline(...)` Tailwind v4 safelist directive already present in `globals.css`:
+
+```css
+@source inline("bg-accent text-accent-foreground");
+```
+
+**Files:**
+
+- Modify: `src/assets/globals.css`
+
+- [ ] **Step 1: Extend the existing safelist**
+
+Add `shadow-sm` to the existing `@source inline(...)` directive near the top of `globals.css` (do not add a second, separate directive — one list is clearer):
+
+```css
+@source inline("bg-accent text-accent-foreground shadow-sm");
+```
+
+- [ ] **Step 2: Verify the fix compiles, via a real build (not just visual inspection)**
+
+```bash
+pnpm exec vite build --mode development --outDir /tmp/hikki-css-check-verify
+grep -oE '\.shadow-sm\{[^}]*\}' /tmp/hikki-css-check-verify/assets/*.css
+rm -rf /tmp/hikki-css-check-verify
+```
+
+Expected: the grep now prints a real `.shadow-sm{...}` rule (previously printed nothing — confirm this yourself before/after if you want to see the delta).
+
+- [ ] **Step 3: Live-verify in both themes**
+
+With the dev server running (`pnpm dev`), open a document, select some text, click the formatting toolbar's comment button, and confirm the composer now renders with a visible shadow clearly separating it from the page — no longer looking like inline content. Add a comment and confirm the resulting card in the right rail (`page-rail`) also now shows the same shadow. Check both light and dark theme (the shadow's actual visibility differs between themes — `--tw-shadow-color` defaults to a black-based alpha value; if it reads as too subtle or too harsh in dark mode, that's your judgment call to adjust, but don't silently skip checking dark mode). Screenshot to the scratchpad as `ux-fixes-comment-card-shadow.png` (one screenshot per theme is fine).
+
+- [ ] **Step 4: Run the full test suite**
+
+Run: `pnpm test && pnpm exec tsc --noEmit`
+Expected: all pass, clean (this is a CSS-only change; no test file should need updating, but confirm nothing broke).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/assets/globals.css
+git commit -m "fix: restore missing shadow on BlockNote comment cards
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 16: Documentation sync (run LAST)
 
 **Files:**
 
