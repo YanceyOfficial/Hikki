@@ -861,7 +861,194 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 11: Table of contents via react-fluid-toc
+### Task 11: Reposition comments to a right-side rail (Notion reference)
+
+**Files:**
+
+- Modify: `src/pages/document-page.tsx`, `src/components/editor.tsx`, `src/components/comment-threads-sidebar.tsx`, `src/assets/globals.css`
+- Test: `src/pages/document-page.test.tsx`
+
+**Interfaces:**
+
+- Produces: `document-page.tsx` renders a shared right-margin rail container (`data-testid="page-rail"`, a plain `<div>` whose DOM node is tracked via `useState<HTMLDivElement | null>` set through a callback `ref`, exposed internally as `pageRailNode`) alongside the existing centered `max-w-3xl` reading column. This rail is the _single shared_ right-margin slot for the page — Task 12 (table of contents) stacks its own section inside this same container later; do not build anything in this task that assumes it's the only consumer.
+- `Editor`'s props gain `commentsPortalTarget: HTMLElement | null`, forwarded from `document-page.tsx`'s `pageRailNode`.
+- `CommentThreadsSidebar`'s props change from `{}` to `{ portalTarget: HTMLElement | null }`; when `portalTarget` is non-null it renders via `ReactDOM.createPortal` into that node instead of inline.
+
+**Context:** Right now `CommentThreadsSidebar` (`src/components/comment-threads-sidebar.tsx`) renders as the last child of `<BlockNoteView>` in `editor.tsx:283-289`, appearing as a full-width block below the document body, inside the _same_ centered column as the rest of the page (`document-page.tsx`'s `mx-auto w-full max-w-3xl px-12 py-12` wrapper) — not a side panel at all. The user attached a real Notion screenshot and asked for this to move to the right margin, styled like Notion's own floating comment cards: avatar, author name, timestamp, and comment body, with a "Reply…" input (attachment/mention/send icons) visible on whichever card is currently active/selected.
+
+Good news: BlockNote's own `Comment`/`Card` components (`node_modules/@blocknote/react/src/components/Comments/Comment.tsx`, `node_modules/@blocknote/shadcn/src/comments/Card.tsx` — read both in full before starting) already render exactly that shape (avatar/name via the `authorInfo` prop, `timeString`, the comment body, hover-revealed actions, and a full reply composer on the selected thread). Nothing needs to change in _what_ is shown — only _where_ it renders and how the rail itself is styled.
+
+The reason this can't just be "move the JSX to `document-page.tsx`": `ThreadsSidebar`/`useThreads` (used inside `CommentThreadsSidebar`) read the editor off `BlockNoteContext`, and the card components off `ComponentsContext`/`ShadCNComponentsContext` — both are provided only inside `<BlockNoteView>`'s own subtree (confirmed via `@blocknote/react`'s `BlockNoteView.tsx` and `@blocknote/shadcn`'s `BlockNoteView.tsx` during the review that preceded this task). So `CommentThreadsSidebar` must keep rendering _inside_ `<BlockNoteView>`, but its rendered output needs to _physically_ land in a DOM node outside the centered reading column. `ReactDOM.createPortal` is the standard bridge for exactly this: the component keeps reading context from where it's mounted in the React tree, while painting into an arbitrary DOM node elsewhere on the page.
+
+**Explicitly out of scope for this task** (state this in your report; don't attempt it): per-thread vertical position-syncing so each card floats beside its own highlighted text at the matching scroll position (which is what real Notion actually does). `ThreadsSidebar` only exposes `threadPositions` as ProseMirror document offsets (`from`/`to`), not pixel coordinates — turning that into scroll-synced Y positions (via `editor.view.coordsAtPos`, scroll/resize listeners, and collision handling when two threads sit close together) is a substantially larger feature. This task ships a simpler, still Notion-inspired v1: every thread stacked as a vertical list of cards in a persistent right rail — which is literally what BlockNote's own `ThreadsSidebar` is designed for (its source doc comment: "similar to Google Docs' Show All Comments sidebar"), not per-anchor floating.
+
+**Known v1 trade-off, also worth stating in your report:** the rail is hidden below a viewport/container breakpoint (see Step 1). Below that breakpoint, comments become inaccessible (not just repositioned) — a regression versus today's always-visible-but-ugly placement. Given this is a fixed-size desktop Tauri app (not a responsive public website), that's an acceptable v1 trade-off, not something to solve here with a responsive inline fallback.
+
+- [ ] **Step 1: Restructure `document-page.tsx`'s layout**
+
+Replace the current single centered wrapper with a flex row: the existing reading column (now `flex-1`, self-centering via `mx-auto` when the rail is hidden) plus a new rail `<div>`:
+
+```tsx
+const [pageRailNode, setPageRailNode] = useState<HTMLDivElement | null>(null)
+```
+
+```tsx
+return (
+  <div
+    data-testid="document-page"
+    className="mx-auto flex w-full max-w-6xl gap-10 px-12 py-12"
+  >
+    <div className="mx-auto min-w-0 max-w-3xl flex-1">
+      <PageHeader doc={doc} onPatch={update} />
+      <EditorBoundary>
+        <Editor
+          key={doc.id}
+          docId={doc.id}
+          initialBlocks={doc.blocks}
+          onBlocksChange={(blocks) => update({ blocks })}
+          threadStore={threadStore}
+          commentsPortalTarget={pageRailNode}
+        />
+      </EditorBoundary>
+    </div>
+    <div
+      ref={setPageRailNode}
+      data-testid="page-rail"
+      className="hidden w-[300px] shrink-0 xl:block"
+    />
+  </div>
+)
+```
+
+Treat `max-w-6xl`, the `xl:` breakpoint, and the rail's `w-[300px]` as a _starting point_, not a fixed requirement — verify live with the dev server running (`pnpm dev`, or drive it via the Playwright MCP tools) that: the reading column still looks centered and unchanged in width when the rail is hidden or empty; the rail doesn't visually collide with `SidebarLeft` at the app's normal window size; the rail comfortably fits BlockNote's `300px`-wide cards without its own horizontal scrollbar. Adjust the numbers if they don't hold up, the same way Task 5's per-block-type side-menu heights were tuned empirically rather than guessed.
+
+- [ ] **Step 2: Thread the portal target through `Editor`**
+
+In `src/components/editor.tsx`, add `commentsPortalTarget: HTMLElement | null` to `EditorProps` and pass it through:
+
+```tsx
+<CommentThreadsSidebar portalTarget={commentsPortalTarget} />
+```
+
+- [ ] **Step 3: Portal `CommentThreadsSidebar`'s output into the rail**
+
+Rewrite `src/components/comment-threads-sidebar.tsx`:
+
+```tsx
+import { ThreadsSidebar, useThreads } from '@blocknote/react'
+import { createPortal } from 'react-dom'
+
+interface CommentThreadsSidebarProps {
+  portalTarget: HTMLElement | null
+}
+
+export function CommentThreadsSidebar({
+  portalTarget
+}: CommentThreadsSidebarProps) {
+  const threads = useThreads()
+
+  if (threads.size === 0) {
+    return null
+  }
+
+  const content = (
+    <div data-testid="comment-threads-sidebar" className="flex flex-col gap-3">
+      <ThreadsSidebar filter="all" sort="position" />
+    </div>
+  )
+
+  return portalTarget ? createPortal(content, portalTarget) : content
+}
+```
+
+Keep the doc comment explaining _why_ this exists (BlockNote's #1701, the `filter="all"` quirk, why it must stay inside `<BlockNoteView>`) — update it to describe the rail placement instead of the old in-flow placement, and add the context/out-of-scope reasoning from this task above. Drop the "Comments" `<h2>` heading and the `border-t`/`mt-10` divider treatment from the old in-flow version — those made sense as a section break below the document body; they don't fit a rail that already reads as its own distinct column. If you think an empty-state affordance is still worth keeping, that's your call to make and justify in your report, not a requirement.
+
+- [ ] **Step 4: Clean up the now-obsolete CSS workarounds in `globals.css`**
+
+Read the existing block around `.bn-threads-sidebar` (currently documented as being for the old in-flow placement). Two things change now that cards render in an actual ~300px rail instead of a full-width in-flow section:
+
+1. `.bn-threads-sidebar .bn-thread { width: 100% !important; }` was added to stretch BlockNote's hardcoded `w-[300px]` `Card` to fill the old full-width section. Now that the rail itself is ~300px wide, `Card`'s native `w-[300px]` is already correct — this override is very likely redundant (verify live; remove it if the cards render correctly without it).
+2. `.bn-threads-sidebar .bn-thread.selected { ... }` was a workaround for `@blocknote/shadcn`'s `Card.tsx` applying its selected-state styling via **bare, unprefixed** Tailwind utility classes (`bg-accent`, `text-accent-foreground` — see `node_modules/@blocknote/shadcn/src/comments/Card.tsx`), which this app's Tailwind v4 JIT scanner never compiles, since every other occurrence of those class names anywhere in `src/` is variant-prefixed (`hover:bg-accent`, etc.), and the scanner only generates classes it finds literally in scanned source files. That workaround is _also_ dead — `Card.tsx` never actually sets a class literally named `selected` on the DOM (that `.bn-thread.selected` CSS selector target comes from BlockNote's _base_, non-shadcn `@blocknote/react/style.css`, for a different component variant this app doesn't use), so the override never matched anything either.
+
+   Fix the real problem at its root instead: add a Tailwind v4 safelist directive near the top of `globals.css`, next to the existing `@import` statements —
+
+   ```css
+   @source inline("bg-accent text-accent-foreground");
+   ```
+
+   This forces Tailwind to actually generate those two utility classes, so `Card.tsx`'s own `selected ? "bg-accent text-accent-foreground" : ""` starts working correctly with zero custom CSS needed. Delete the old `.bn-threads-sidebar .bn-thread.selected { ... }` rule entirely, and rewrite the doc comment above this section to describe the rail placement and the `@source inline` fix instead of the old in-flow reasoning. Verify live (both themes) that selecting a thread now tints it with the app's actual `--accent` token rather than going more transparent.
+
+- [ ] **Step 5: Add a regression test for the rail wiring**
+
+`document-page.test.tsx` already mocks `Editor` (jsdom can't render real BlockNote/ProseMirror). Extend that mock to also read `commentsPortalTarget` so a test can assert `document-page.tsx` actually creates and forwards a real DOM node:
+
+```tsx
+vi.mock('#components/editor', () => ({
+  Editor: ({
+    docId,
+    initialBlocks,
+    onBlocksChange,
+    commentsPortalTarget
+  }: {
+    docId: string
+    initialBlocks: unknown[]
+    onBlocksChange: (blocks: unknown[]) => void
+    commentsPortalTarget: HTMLElement | null
+  }) => (
+    <button
+      data-testid="mock-editor"
+      data-doc-id={docId}
+      data-block-count={initialBlocks.length}
+      data-has-rail-target={commentsPortalTarget !== null}
+      onClick={() => onBlocksChange([{ type: 'paragraph', content: 'edited' }])}
+    >
+      mock editor
+    </button>
+  )
+}))
+```
+
+Add a test:
+
+```tsx
+test('provides the editor with a real rail DOM node to portal comments into', async () => {
+  const doc = await backend.createDocument(null, 'Has rail')
+  renderPage(doc.id)
+  expect(await screen.findByTestId('page-rail')).toBeInTheDocument()
+  await waitFor(() =>
+    expect(screen.getByTestId('mock-editor')).toHaveAttribute(
+      'data-has-rail-target',
+      'true'
+    )
+  )
+})
+```
+
+(The `waitFor` accounts for the one-render lag between initial mount, when the callback ref hasn't fired yet and `pageRailNode` is still `null`, and the following render once it has.)
+
+- [ ] **Step 6: Run tests to verify they pass**
+
+Run: `pnpm test && pnpm exec tsc --noEmit`
+Expected: all pass, clean.
+
+- [ ] **Step 7: Live-verify the actual comment placement**
+
+jsdom can't render real BlockNote, so the portal itself is only exercised live. With the dev server running (`pnpm dev`, mocked IPC — same setup Task 9/10 used), open a document, select some text, add a comment via the formatting toolbar's comment button, and confirm: the comment card renders inside the `page-rail` container on the right (not below the document body); it keeps working correctly after adding a second comment (cards stack, don't overlap); selecting a card visually tints it with the app's accent color (Step 4's fix); it looks correct in both light and dark theme (toggle via the theme button). Screenshot to the scratchpad as `ux-fixes-comments-rail.png`.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add src
+git commit -m "feat: reposition comments to a right-side rail
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 12: Table of contents via react-fluid-toc
+
+**Depends on Task 11:** Task 11 establishes `document-page.tsx`'s shared right-margin rail (`data-testid="page-rail"`, the `pageRailNode` DOM node) for the comments panel. This task reuses that same rail as a second stacked section — it does not create its own independent right-margin element.
 
 **Files:**
 
@@ -870,7 +1057,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 **Interfaces:**
 
-- Produces: `TableOfContents` component `{ blocks: unknown[] }`, rendering a right-side floating list of headings (Notion places this in the right margin for long documents — check the pasted screenshots for placement cues) that scrolls to and highlights the active heading.
+- Produces: `TableOfContents` component `{ blocks: unknown[] }`, rendered as a section inside the shared `page-rail` container Task 11 already renders in `document-page.tsx` (stacked above or below the comments section — check which reads better live; Notion itself places the TOC above comments when both are present), rendering a list of headings that scrolls to and highlights the active heading. Do not give it its own fixed/absolute positioning — it lives in normal flow inside the rail `<div>`, which Task 11 already positions.
 
 **Investigation needed (BlockNote doesn't render semantic heading tags):** BlockNote's `heading` blocks render as plain `div`s styled to look like headings (confirmed via its compiled CSS — `[data-content-type=heading]{--level:3em;...}`, no actual `<h1>`-`<h6>` element), so `react-fluid-toc`'s DOM-scanning `extractHeadings` helper (which looks for real `<h2>`/`<h3>` tags) will find nothing. Instead: derive the heading list directly from `editor.document` (walk the block tree for `type === 'heading'`, reading `props.level` and the block's plain-text content), and inject a real `id` attribute onto each heading's rendered DOM node yourself (BlockNote's DOM uses `data-id` on `.bn-block-outer`, not `id` on the heading element — after each editor change, query `[data-id="${block.id}"] [data-content-type="heading"]` inside the editor's root and set `.id = block.id` on it) so `react-fluid-toc`'s anchor-scrolling and `IntersectionObserver`-based active-heading detection have real elements to find via `document.getElementById`.
 
@@ -893,7 +1080,7 @@ Expected: FAIL — module doesn't exist.
 
 - [ ] **Step 4: Implement**
 
-`src/components/table-of-contents.tsx`: a small pure function extracting `TocItem[]` from a BlockNote blocks array (walk recursively including nested `children`, filter `type === 'heading'`, join `content` array's text nodes for the label, map `props.level` to `depth`), then render `<FluidToc items={items} scrollOffset={56} />` (56 ≈ titlebar height) wrapped in a `data-testid="table-of-contents"` container, returning `null` when `items.length === 0`. Position it as a fixed/absolute right-margin column in `document-page.tsx` (check the Notion screenshots' TOC placement — typically appears past the content column on wide viewports; hide it on narrow ones with a Tailwind breakpoint like `xl:block hidden` rather than always rendering it cramped).
+`src/components/table-of-contents.tsx`: a small pure function extracting `TocItem[]` from a BlockNote blocks array (walk recursively including nested `children`, filter `type === 'heading'`, join `content` array's text nodes for the label, map `props.level` to `depth`), then render `<FluidToc items={items} scrollOffset={56} />` (56 ≈ titlebar height) wrapped in a `data-testid="table-of-contents"` container, returning `null` when `items.length === 0`. Render it as a section inside Task 11's shared `page-rail` container in `document-page.tsx` (that container already handles the responsive show/hide behavior — don't duplicate a second breakpoint here).
 
 - [ ] **Step 5: Wire heading id injection**
 
@@ -914,7 +1101,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 12: Fix the block-type "+" popover getting compressed near the viewport bottom
+### Task 13: Fix the block-type "+" popover getting compressed near the viewport bottom
 
 **Files:**
 
@@ -956,7 +1143,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 13: E2e coverage for the new UI
+### Task 14: E2e coverage for the new UI
 
 **Files:**
 
@@ -998,7 +1185,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 14: Documentation sync (run LAST)
+### Task 15: Documentation sync (run LAST)
 
 **Files:**
 
@@ -1025,7 +1212,8 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ## Self-review notes
 
-- **Coverage vs. the user's original 15-item list:** (1) window drag/traffic-light → Task 1. (2) cover full-width → Task 8. (3) code-block highlighting → Tasks 5 (user's initial wiring, superseded) + 6 (broadened + auto-detect). (4) emoji library → Task 9. (5) selection popover "add comment" + tooltip diamond → Tasks 10 + 3. (6) last-updated time → Task 8. (7) `.no-scrollbar` on the editor's scroll container → Task 4 (already applied by the user directly to `globals.css`/`.bn-editor`, verify in Task 4). (8) TOC via react-fluid-toc → Task 11. (9) block-to-block spacing → Task 4. (10) `.bn-editor` padding-inline reset → Task 4 (already applied by the user directly). (11) editor background matching app bg → Task 4 (already applied by the user directly via `.bn-editor{background-color:transparent}`). (12) light/dark parity referencing exodus → Tasks 2 + 4 (next-themes wiring + BlockNote `theme` prop + retargeted tokens). (13) overall softness vs. Notion references → Tasks 3 + 4 + 5 (shared shadCNComponents wiring reaches both native UI and BlockNote's toolbar/menu UI; Task 5 goes further into BlockNote's own hardcoded per-element chrome that CSS variables alone don't cover). (14) "+" popover viewport compression → Task 12. (15) overall popover aesthetic upgrade → Task 3.
+- **Task 11 added later (post-Task-10 live feedback):** after the comments feature (Task 10) landed and its `ThreadsSidebar` mitigation was reviewed, the user asked (referencing a real Notion screenshot) to reposition the comments panel from its full-width in-flow placement to a right-side rail matching Notion's floating-card treatment, and more broadly to keep studying Notion's design (color/layout/interaction) as an ongoing lens on this work — not a one-off task. Task 11 covers the concrete, scoped part (the rail); the broader "keep referencing Notion" instruction is applied opportunistically across tasks rather than as its own deliverable.
+- **Coverage vs. the user's original 15-item list:** (1) window drag/traffic-light → Task 1. (2) cover full-width → Task 8. (3) code-block highlighting → Tasks 5 (user's initial wiring, superseded) + 6 (broadened + auto-detect). (4) emoji library → Task 9. (5) selection popover "add comment" + tooltip diamond → Tasks 10 + 3. (6) last-updated time → Task 8. (7) `.no-scrollbar` on the editor's scroll container → Task 4 (already applied by the user directly to `globals.css`/`.bn-editor`, verify in Task 4). (8) TOC via react-fluid-toc → Task 12. (9) block-to-block spacing → Task 4. (10) `.bn-editor` padding-inline reset → Task 4 (already applied by the user directly). (11) editor background matching app bg → Task 4 (already applied by the user directly via `.bn-editor{background-color:transparent}`). (12) light/dark parity referencing exodus → Tasks 2 + 4 (next-themes wiring + BlockNote `theme` prop + retargeted tokens). (13) overall softness vs. Notion references → Tasks 3 + 4 + 5 (shared shadCNComponents wiring reaches both native UI and BlockNote's toolbar/menu UI; Task 5 goes further into BlockNote's own hardcoded per-element chrome that CSS variables alone don't cover). (14) "+" popover viewport compression → Task 13. (15) overall popover aesthetic upgrade → Task 3.
 - **Coverage vs. the mid-execution follow-up feedback (after Tasks 1-3 landed):** ugly/narrow code highlighting + more languages + auto-detect on paste → Task 6. Editor UX (trailing click-to-continue space) → Task 7. Deeper BlockNote component reskin referencing Notion → Task 5. Testing methodology (Playwright drives the web page, not the actual Tauri client) → addressed as a standalone research finding relayed to the user (`tauri-driver` has no macOS support; `@wdio/tauri-service`'s embedded provider does, but is a separate toolchain decision) rather than a plan task — introducing a new E2E runner mid-batch is a scope decision for the user, not something to fold in silently.
 - **Task ordering matters:** Task 2 (next-themes) must land before Task 4 (BlockNote `theme` prop needs `useTheme`) and before Task 3 can be visually verified in dark mode. Task 3 (soften our own components) must land before Task 4 wires `shadCNComponents` at those same components, so BlockNote inherits the softened look immediately rather than needing a second pass. Task 5 (deeper chrome reskin) depends on Task 4 having landed first (it builds on top of the CSS-variable layer, going further into hardcoded per-element overrides). Task 6 (shiki broadening) replaces Task 5-era... — no: Task 6 replaces the user's _pre-Task-1_ manual shiki wiring already present in `editor.tsx`, not anything from this plan's own Task 5. Task 10 (comments) depends on nothing from 4-9 functionally but is easiest to review after the editor's shape has stabilized.
 - **Reconciling in-flight manual changes:** before Task 4 runs, the working tree already contains (a) the user's own `.no-scrollbar` and `.bn-editor` (padding/background) additions to `globals.css` — Task 4's implementer must build on these, not duplicate or revert them; (b) the user's own shiki/`codeBlock` schema wiring in `editor.tsx` (superseded by Task 6) — Task 4's implementer must merge `theme`/`shadCNComponents` into the existing file, not overwrite it; (c) Tasks 1-2's already-committed work. A regression was caught and fixed during planning: an uncommitted `globals.css` edit had reverted the Phase-2 warm design tokens back to stock shadcn gray/blue (likely an unrelated shadcn-CLI regeneration) — restored before Task 4 begins.
