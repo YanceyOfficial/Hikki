@@ -1420,38 +1420,80 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 19: Fix right-rail layout competing with the reading column (live user feedback, post-Task-18)
+### Task 19: Replace the wide-only rail with always-available floating badges for comments and TOC (live user feedback, post-Task-18, supersedes an earlier draft of this task)
 
-**Context:** After Task 18 (docs sync) and the whole-branch final review's two fix rounds had already landed, the user tested the app live at the new 1600px default window and reported (with a screenshot) six real problems with the comments/TOC rail: popover styling, the cover image appearing to leave a gap/overlap, comment marks being invisible in the document body, the reading column looking squeezed/shifted left, blank space beside the cover, and a request to confirm the comments UI leans on BlockNote's own built-in components rather than reinventing them.
+**Context:** After Task 18 (docs sync) and the whole-branch final review's two fix rounds had already landed (including widening the default window to 1600px specifically so the comments/TOC rail — gated behind Tailwind's `2xl`, 1536px, breakpoint — would be visible out of the box), the user tested the app live and pushed back on that whole approach: requiring a wide window just to see comments/TOC squeezes the reading column narrower than it should be and isn't worth it. Referencing a real Notion screenshot, the user asked for Notion's actual pattern instead — a small persistent floating badge (a chat-bubble icon with an unread/total count, bottom-right of the document) that toggles a compact popover with the comment threads, available at **any** window width, not just wide ones. Asked whether the table of contents should get the same treatment, the user chose yes — both features should become small always-available floating toggles instead of a wide-rail-only column.
 
-**Root cause, found and fixed live (not guessed):** `document-page.tsx`'s `page-rail` container was a `flex` sibling of the reading column (`className="mx-auto flex w-full max-w-7xl gap-10 ..."`, both columns inside one flex row). The moment `page-rail` became visible at the `2xl` breakpoint, it consumed real flex space, silently shifting the reading column left of true-center — and since `page-header.tsx`'s full-bleed cover image derives its horizontal centering from the reading column's own position (`left-1/2 -translate-x-1/2`), the cover shifted with it, leaving a visible gap of blank space on its right edge. This explains three of the six reported symptoms (squeezed/shifted content, cover overlap, blank space beside cover) as one single root cause, not three separate bugs.
+This supersedes an earlier, uncommitted draft of this task that tried to fix the _previous_ design (decoupling the wide rail's flex layout from the reading column via absolute positioning + centering math) — that fix is no longer needed, because the wide rail itself is being removed. If you find that draft's changes still sitting uncommitted in `src/pages/document-page.tsx` when you start, discard them (`git diff src/pages/document-page.tsx` then `git checkout -- src/pages/document-page.tsx` if still present — check first, a previous session already discarded most of it). **Do not discard `src/assets/globals.css`'s `.bn-thread-mark` visibility fix** if it's still uncommitted — that part is unrelated to the rail-layout problem (it makes the inline comment-highlight mark visible against this app's low-contrast palette) and is still correct regardless of this redesign; keep it and fold it into this task's commit.
 
-**Fix applied (already implemented, uncommitted at the start of this task — verify, don't redo):**
+**Global constraints for this task:**
 
-- `document-page.tsx`: `page-rail` changed from a flex sibling to `absolute`-positioned (`right-12`, with its vertical `top` offset computed from a `ResizeObserver`-measured `PageHeader` height, mirroring `heading-anchor-overlay.tsx`'s existing DOM-measurement pattern), so it no longer competes for horizontal space at all. The reading column's width becomes `max-w-3xl 2xl:max-w-[min(48rem,calc(100%-680px))]` — below `2xl` this is unchanged (a plain 768px centered column); at `2xl`+ it shrinks just enough to stay dead-centered in the full row while never sitting under the rail, matching the exact space the absolutely-positioned rail now reserves.
-- `globals.css`: strengthened `.bn-thread-mark`'s visibility — BlockNote's shipped default (`#ffc80026`, 15%-alpha) was found nearly invisible against this app's warm, low-contrast cream background; replaced with a stronger themed fill plus a bottom-border underline (so the mark stays legible even under a block's own `[data-background-color]` swatch, which a fill alone would either be invisible under or fight for the same pixels).
-- Verified (per the report, confirm yourself): `ThreadsSidebar`/`Card`/`FloatingComposerController`/`FloatingThreadController` are already BlockNote's own built-in components, not hand-rolled — no change needed for that part of the feedback, just confirmation.
+- Revert `src-tauri/tauri.conf.json`'s window `width` from `1600` back to `1320` (undoing the earlier widen-the-window fix — no longer needed once nothing requires a wide window to be usable). Leave `height` (`860`) and `trafficLightPosition` untouched.
+- Remove the `2xl`-breakpoint gating entirely for both features — they must be visible and usable at the app's normal 1320px default, not just above some width threshold.
+- Both floating triggers must still render nothing at all when there's nothing to show (zero comment threads → no comments badge; zero headings → no TOC badge) — preserving the existing, already-correct empty-state behavior of both components.
+- Reuse the existing internals as-is: `ThreadsSidebar`/`Card`/`FloatingComposerController`/`FloatingThreadController` (BlockNote's own components, confirmed genuine in the prior draft of this task) for comments, and the existing `FluidToc`-based heading list for TOC. This task changes how each is _triggered and contained_ (a toggleable popover instead of an always-expanded column), not their internal rendering.
+- Use this app's own `Popover`/`PopoverTrigger`/`PopoverContent`/`Button` (`#components/ui/popover`, `#components/ui/button`) for both floating triggers — these are the same primitives already fixed in Tasks 16/17 to correctly support `asChild`/`render`, so building on them here is safe.
 
-**Known residual issue, NOT fixed, explicitly out of scope for this task:** BlockNote's transient floating popover (`FloatingComposerController`/`FloatingThreadController`, appears when clicking an existing comment mark) can still partially overlap a cover image in the specific case where the commented text sits immediately below one — its positioning isn't exposed for customization the way `SuggestionMenuController` was for Task 13's fix. Confirm this is still true and still low-frequency/minor before accepting it as a documented trade-off; do not attempt to fix it as part of this task unless it turns out to be trivial.
+**Design, and why it fits this codebase's existing architecture cleanly:**
 
-- [ ] **Step 1: Verify the existing uncommitted diff**
+`CommentThreadsSidebar` (`src/components/comment-threads-sidebar.tsx`) must keep mounting inside `<BlockNoteView>` to read `useThreads()`/`BlockNoteContext`/`ComponentsContext` — this doesn't change. What changes is what it renders and portals: instead of an always-visible `<div><ThreadsSidebar .../></div>`, it now renders a small floating trigger button (showing a chat icon + `threads.size`) wrapped in a `Popover`, with `ThreadsSidebar` moved inside `PopoverContent` — collapsed by default, expanding only on click. It still portals this whole thing (button + popover) into a `portalTarget` DOM node — but that target is now a small, `fixed`-positioned anchor `<div>` in `document-page.tsx` (e.g. `fixed right-6 bottom-6 z-40`), not a wide rail column. This is the _same_ portal mechanism Task 11 already established, just aimed at a much smaller anchor.
 
-The fix described above should already be present, uncommitted, in the working tree (`git diff --stat` should show `src/pages/document-page.tsx` and `src/assets/globals.css`). Read both diffs in full. Do not assume they're correct — independently re-derive the centering math (`min(48rem, calc(100% - 680px))` — confirm `680px` really matches `2 * (300px rail width + 40px gap)` as claimed) and verify live (via `pnpm dev` + your Playwright browser tools, at the app's real default window size of 1600×860) that: the reading column is genuinely centered (not just visually close) both with and without the rail visible; the cover image spans full width with no gap on either edge; a comment mark is now clearly visible against the document body in both light and dark theme; the rail no longer overlaps the reading column or cover at any point during a resize between ~1200px and ~1920px wide.
+`TableOfContents` (`src/components/table-of-contents.tsx`) is simpler: it only ever needed `blocks` (already available in `document-page.tsx`, no BlockNote context required), so it never needed a portal at all — you can give it its own `fixed`-positioned wrapper directly inside the component (no anchor div needed in `document-page.tsx` for this one), following the same trigger-button-plus-`Popover` pattern, at a position that doesn't collide with the comments badge (e.g. stacked above it in the same corner, or a different corner — your call, verify live and adjust).
 
-- [ ] **Step 2: Confirm the "BlockNote's own built-ins" claim**
+Net effect on `document-page.tsx`: the big `page-rail` div, `pageRailNode` state, and the `2xl:max-w-[...]`/centering-math complexity all go away. The reading column goes back to being a plain, unconditional `mx-auto max-w-3xl` column — simpler than at any point since Task 11, because nothing needs to reserve space for a rail that no longer exists in the document flow at all (both floating triggers are `fixed`, entirely outside normal layout).
 
-Confirm `ThreadsSidebar`, `Card`, `FloatingComposerController`, and `FloatingThreadController` are genuinely BlockNote's own exported components (not reimplemented) by checking their import sources in `editor.tsx`/`comment-threads-sidebar.tsx` against `@blocknote/react`'s actual exports.
+**Files:**
 
-- [ ] **Step 3: Run the full check set**
+- Modify: `src/pages/document-page.tsx`, `src/components/comment-threads-sidebar.tsx`, `src/components/table-of-contents.tsx`, `src/components/editor.tsx` (only if the `commentsPortalTarget` prop's type/threading needs updating to match the new smaller anchor — check, it likely doesn't need to change shape at all, just what DOM node it ends up pointing at), `src-tauri/tauri.conf.json`, `src/assets/globals.css` (keep the existing uncommitted `.bn-thread-mark` fix, described above)
+- Test: `src/pages/document-page.test.tsx` (currently asserts a `page-rail` testid and `data-has-rail-target` — both need to change to match whatever new testid(s) you introduce for the comments anchor), `e2e-tests/app.spec.ts` (the `right rail (table of contents and comments)` describe block currently forces `test.use({ viewport: { width: 1600, height: 900 } })` specifically to make the old wide-only rail visible — this is no longer necessary once both features work at the default width; update the tests to open each floating trigger's popover and assert its contents, at the app's normal default viewport)
+
+- [ ] **Step 1: Check for and handle the previous draft's leftover changes**
+
+```bash
+git status --short
+git diff --stat
+```
+
+If `src/pages/document-page.tsx` shows uncommitted changes, read them — if they're the old absolute-positioning/centering-math approach described above, discard them (`git checkout -- src/pages/document-page.tsx`). If `src/assets/globals.css` shows an uncommitted `.bn-thread-mark` addition, keep it (read it to confirm it matches the description above, then leave it in place — you'll commit it as part of this task).
+
+- [ ] **Step 2: Revert the window width**
+
+In `src-tauri/tauri.conf.json`, change `"width": 1600` back to `"width": 1320`. Leave `"height": 860` and `"trafficLightPosition"` untouched.
+
+- [ ] **Step 3: Redesign `CommentThreadsSidebar`**
+
+Read the current full file first. Restructure it to render a `Popover` whose trigger is a small `Button` (icon + count, e.g. a lucide `MessageSquare` icon next to `{threads.size}`), and whose `PopoverContent` contains the existing `<ThreadsSidebar filter="all" sort="position" />`. Keep the `threads.size === 0 → return null` early exit exactly as before. Keep the `createPortal(..., portalTarget)` wrapping exactly as before — only what's being portaled changes shape (a collapsed button-with-popover instead of an always-expanded list). Update its doc comment to describe the new floating-badge design instead of the old in-rail one (keep the still-accurate parts: the BlockNoteContext/ComponentsContext reasoning for why it must mount inside `<BlockNoteView>`, the `filter="all"` upstream quirk, the #1701 orphaned-thread mitigation).
+
+- [ ] **Step 4: Redesign `TableOfContents`**
+
+Read the current full file first. Wrap the existing `<FluidToc .../>` (keep its props/`onItemClick` exactly as-is — those are unrelated, already-correct fixes from Task 12/13) inside a `Popover` + trigger `Button` (e.g. a lucide `ListTree` or similar icon), positioned via a `fixed` wrapper `<div>` directly in this component (no portal needed — this component already receives `blocks` as a plain prop, no BlockNote context dependency). Keep the `items.length === 0 → return null` early exit. Pick a `fixed` position that doesn't collide with the comments badge — verify live and adjust (e.g., stack it directly above the comments button in the same corner with a small gap, or place it in a different corner entirely; your call, but check both are simultaneously visible and clickable without overlapping).
+
+- [ ] **Step 5: Simplify `document-page.tsx`**
+
+Remove `pageRailNode`/`setPageRailNode` state and the `page-rail` div entirely. Add a small `fixed`-positioned anchor `<div>` (e.g. `data-testid="comments-anchor"`, `className="fixed right-6 bottom-6 z-40"`) as the new `commentsPortalTarget` for `Editor`. Remove `<TableOfContents blocks={doc.blocks} />` from this file entirely if Step 4 gave it its own self-contained `fixed` wrapper — it no longer needs to be composed alongside the rail here (render it as a sibling wherever makes sense given the removed rail structure; your call). The reading column goes back to a plain `<div className="mx-auto max-w-3xl min-w-0">` (or equivalent) with no `2xl`-conditional width math.
+
+- [ ] **Step 6: Update the unit test**
+
+In `src/pages/document-page.test.tsx`, update the mock `Editor` and the test currently named `'provides the editor with a real rail DOM node to portal comments into'` to match your new anchor testid/prop shape from Step 5 (rename the test description if `page-rail`/"rail" no longer accurately describes it).
+
+- [ ] **Step 7: Update the e2e tests**
+
+In `e2e-tests/app.spec.ts`, remove the `test.use({ viewport: { width: 1600, height: 900 } })` override on the `right rail (table of contents and comments)` describe block (no longer needed — both features should now work at Playwright's default viewport, matching the app's real 1320px default). Update both tests inside it to first click each feature's floating trigger button to open its popover before asserting on its contents (previously the content was always visible; now it's collapsed by default). Rename the describe block if "rail" no longer fits.
+
+- [ ] **Step 8: Live-verify at the real default size**
+
+With the dev server running (`pnpm dev`), confirm at the app's actual default window size (1320×860, matching Step 2's reverted config) that: with zero comments/headings, neither floating button appears; after adding a heading and a comment, both floating buttons appear, don't overlap each other, and each opens a working popover with the correct content when clicked; the reading column is a plain, always-centered column with no width changes based on whether either popover is open; both look correct and "soft"/on-theme in light and dark mode. Screenshot to the scratchpad.
+
+- [ ] **Step 9: Run the full check set**
 
 Run: `pnpm test && pnpm exec tsc --noEmit && pnpm e2e && cargo test --manifest-path src-tauri/Cargo.toml`
 Expected: all green.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
-git add src/pages/document-page.tsx src/assets/globals.css
-git commit -m "fix: decouple right rail from reading-column flex layout
+git add src src-tauri
+git commit -m "fix: replace wide-only rail with always-available floating badges for comments and TOC
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ```
