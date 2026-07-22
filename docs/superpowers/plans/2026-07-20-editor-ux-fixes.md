@@ -1420,6 +1420,44 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ---
 
+### Task 19: Fix right-rail layout competing with the reading column (live user feedback, post-Task-18)
+
+**Context:** After Task 18 (docs sync) and the whole-branch final review's two fix rounds had already landed, the user tested the app live at the new 1600px default window and reported (with a screenshot) six real problems with the comments/TOC rail: popover styling, the cover image appearing to leave a gap/overlap, comment marks being invisible in the document body, the reading column looking squeezed/shifted left, blank space beside the cover, and a request to confirm the comments UI leans on BlockNote's own built-in components rather than reinventing them.
+
+**Root cause, found and fixed live (not guessed):** `document-page.tsx`'s `page-rail` container was a `flex` sibling of the reading column (`className="mx-auto flex w-full max-w-7xl gap-10 ..."`, both columns inside one flex row). The moment `page-rail` became visible at the `2xl` breakpoint, it consumed real flex space, silently shifting the reading column left of true-center — and since `page-header.tsx`'s full-bleed cover image derives its horizontal centering from the reading column's own position (`left-1/2 -translate-x-1/2`), the cover shifted with it, leaving a visible gap of blank space on its right edge. This explains three of the six reported symptoms (squeezed/shifted content, cover overlap, blank space beside cover) as one single root cause, not three separate bugs.
+
+**Fix applied (already implemented, uncommitted at the start of this task — verify, don't redo):**
+
+- `document-page.tsx`: `page-rail` changed from a flex sibling to `absolute`-positioned (`right-12`, with its vertical `top` offset computed from a `ResizeObserver`-measured `PageHeader` height, mirroring `heading-anchor-overlay.tsx`'s existing DOM-measurement pattern), so it no longer competes for horizontal space at all. The reading column's width becomes `max-w-3xl 2xl:max-w-[min(48rem,calc(100%-680px))]` — below `2xl` this is unchanged (a plain 768px centered column); at `2xl`+ it shrinks just enough to stay dead-centered in the full row while never sitting under the rail, matching the exact space the absolutely-positioned rail now reserves.
+- `globals.css`: strengthened `.bn-thread-mark`'s visibility — BlockNote's shipped default (`#ffc80026`, 15%-alpha) was found nearly invisible against this app's warm, low-contrast cream background; replaced with a stronger themed fill plus a bottom-border underline (so the mark stays legible even under a block's own `[data-background-color]` swatch, which a fill alone would either be invisible under or fight for the same pixels).
+- Verified (per the report, confirm yourself): `ThreadsSidebar`/`Card`/`FloatingComposerController`/`FloatingThreadController` are already BlockNote's own built-in components, not hand-rolled — no change needed for that part of the feedback, just confirmation.
+
+**Known residual issue, NOT fixed, explicitly out of scope for this task:** BlockNote's transient floating popover (`FloatingComposerController`/`FloatingThreadController`, appears when clicking an existing comment mark) can still partially overlap a cover image in the specific case where the commented text sits immediately below one — its positioning isn't exposed for customization the way `SuggestionMenuController` was for Task 13's fix. Confirm this is still true and still low-frequency/minor before accepting it as a documented trade-off; do not attempt to fix it as part of this task unless it turns out to be trivial.
+
+- [ ] **Step 1: Verify the existing uncommitted diff**
+
+The fix described above should already be present, uncommitted, in the working tree (`git diff --stat` should show `src/pages/document-page.tsx` and `src/assets/globals.css`). Read both diffs in full. Do not assume they're correct — independently re-derive the centering math (`min(48rem, calc(100% - 680px))` — confirm `680px` really matches `2 * (300px rail width + 40px gap)` as claimed) and verify live (via `pnpm dev` + your Playwright browser tools, at the app's real default window size of 1600×860) that: the reading column is genuinely centered (not just visually close) both with and without the rail visible; the cover image spans full width with no gap on either edge; a comment mark is now clearly visible against the document body in both light and dark theme; the rail no longer overlaps the reading column or cover at any point during a resize between ~1200px and ~1920px wide.
+
+- [ ] **Step 2: Confirm the "BlockNote's own built-ins" claim**
+
+Confirm `ThreadsSidebar`, `Card`, `FloatingComposerController`, and `FloatingThreadController` are genuinely BlockNote's own exported components (not reimplemented) by checking their import sources in `editor.tsx`/`comment-threads-sidebar.tsx` against `@blocknote/react`'s actual exports.
+
+- [ ] **Step 3: Run the full check set**
+
+Run: `pnpm test && pnpm exec tsc --noEmit && pnpm e2e && cargo test --manifest-path src-tauri/Cargo.toml`
+Expected: all green.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/pages/document-page.tsx src/assets/globals.css
+git commit -m "fix: decouple right rail from reading-column flex layout
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
+```
+
+---
+
 ## Self-review notes
 
 - **Task 11 added later (post-Task-10 live feedback):** after the comments feature (Task 10) landed and its `ThreadsSidebar` mitigation was reviewed, the user asked (referencing a real Notion screenshot) to reposition the comments panel from its full-width in-flow placement to a right-side rail matching Notion's floating-card treatment, and more broadly to keep studying Notion's design (color/layout/interaction) as an ongoing lens on this work — not a one-off task. Task 11 covers the concrete, scoped part (the rail); the broader "keep referencing Notion" instruction is applied opportunistically across tasks rather than as its own deliverable.
