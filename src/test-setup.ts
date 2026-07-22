@@ -27,3 +27,19 @@ if (typeof window !== 'undefined' && !window.ResizeObserver) {
     disconnect() {}
   }
 }
+
+// jsdom doesn't implement IntersectionObserver either. react-fluid-toc's
+// `useTocSpy` (table-of-contents.tsx) constructs one synchronously on mount
+// to scroll-spy the active heading, so any test rendering `TableOfContents`/
+// `FluidToc` without this stub would throw
+// `ReferenceError: IntersectionObserver is not defined`.
+if (typeof window !== 'undefined' && !window.IntersectionObserver) {
+  window.IntersectionObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+    takeRecords() {
+      return []
+    }
+  } as unknown as typeof IntersectionObserver
+}

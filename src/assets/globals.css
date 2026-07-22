@@ -106,6 +106,18 @@
   --code-block-background: oklch(0.965 0.004 85);
   --code-block-foreground: oklch(0.28 0.012 60);
   --code-block-border: oklch(0.9 0.004 85);
+  /* `react-fluid-toc`'s own CSS-variable theming hooks (table-of-contents.tsx)
+     - declared once here rather than duplicated in `.dark` below, since a
+     `var(--border)` reference resolves against whichever value `--border`
+     itself carries on the same element once `.dark`'s override has already
+     won the cascade; see the `.dark` block's own token overrides. Mapped onto
+     this app's existing warm/muted tokens instead of the library's
+     hardcoded zinc default (`#71717a`) so the TOC reads as part of the same
+     soft palette, not a generic component. */
+  --fluid-toc-rail: var(--border);
+  --fluid-toc-accent: var(--foreground);
+  --fluid-toc-active: var(--foreground);
+  --fluid-toc-muted: var(--muted-foreground);
 }
 
 .dark {
@@ -519,3 +531,13 @@
    ""`) also needs no override - see the `@source inline(...)` directive near
    the top of this file for why that previously did nothing and how it's
    fixed at the root instead. */
+
+/* Table of contents (table-of-contents.tsx, stacked above the comments rail
+   in the same `page-rail` container): `FluidToc` renders its own entries with
+   inline styles (color read from the `--fluid-toc-*` variables set on `:root`
+   above), so there's little left to theme here beyond a hover affordance the
+   library doesn't provide out of the box - `!important` is required to win
+   over the inline `color` it sets per-entry. */
+.fluid-toc a:not([data-active='true']):hover {
+  color: var(--foreground) !important;
+}

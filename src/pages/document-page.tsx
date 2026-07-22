@@ -5,6 +5,7 @@ import { useParams } from 'react-router'
 import { Editor } from '#components/editor'
 import { EditorBoundary } from '#components/editor-boundary'
 import { PageHeader } from '#components/page-header'
+import { TableOfContents } from '#components/table-of-contents'
 import { backend } from '#lib/backend/index'
 import { debounce } from '#lib/debounce'
 import { refreshDocsAtom } from '#lib/store'
@@ -23,9 +24,13 @@ export default function DocumentPage() {
   // plain `useRef`) so its value change itself triggers a re-render, letting
   // `Editor`/`CommentThreadsSidebar` react to the node becoming available
   // after the rail `<div>` first mounts. This is the single shared rail slot
-  // for the page - Task 12 (table of contents) stacks its own section inside
-  // this same container later, so nothing here should assume comments are
-  // its only consumer.
+  // for the page - `TableOfContents` below renders as a genuine JSX child of
+  // the rail `<div>`, while `CommentThreadsSidebar` (mounted deep inside
+  // `Editor`'s `<BlockNoteView>`) paints into the same `<div>` via
+  // `ReactDOM.createPortal`. Both approaches target the same DOM element;
+  // React reconciles the portal's appended children independently of the
+  // container's own JSX children, so they simply end up as DOM siblings
+  // under the same parent - nothing conflicts.
   const [pageRailNode, setPageRailNode] = useState<HTMLDivElement | null>(null)
 
   const save = useMemo(
@@ -120,8 +125,12 @@ export default function DocumentPage() {
       <div
         ref={setPageRailNode}
         data-testid="page-rail"
-        className="hidden w-[300px] shrink-0 2xl:block"
-      />
+        className="hidden w-[300px] shrink-0 flex-col gap-6 2xl:flex"
+      >
+        <TableOfContents blocks={doc.blocks} />
+        {/* Comments portal in via CommentThreadsSidebar, mounted inside
+            Editor/BlockNoteView - see the comment on `pageRailNode` above. */}
+      </div>
     </div>
   )
 }

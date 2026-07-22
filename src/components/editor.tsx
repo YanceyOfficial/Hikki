@@ -15,6 +15,10 @@ import { createHighlighter } from 'shiki'
 import { CodeBlockCopyOverlay } from '#components/code-block-copy-overlay'
 import { CommentThreadsSidebar } from '#components/comment-threads-sidebar'
 import { EditorSideMenu } from '#components/editor-side-menu'
+import {
+  HeadingAnchors,
+  useHeadingAnchors
+} from '#components/heading-anchor-overlay'
 import { Button } from '#components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '#components/ui/popover'
 import {
@@ -253,6 +257,15 @@ export function Editor({
     [docId, colorMode, threadStore]
   )
   const containerRef = useRef<HTMLDivElement | null>(null)
+
+  // See heading-anchor-overlay.tsx's doc comment for why this exists and why
+  // it's a DOM-sibling overlay rather than an `id` set directly on the
+  // heading's own rendered node.
+  const [headingAnchors, recomputeHeadingAnchors] = useHeadingAnchors(
+    containerRef,
+    editor
+  )
+
   return (
     // `relative` anchors `CodeBlockCopyOverlay`'s absolutely-positioned
     // overlay layer (a DOM sibling of BlockNoteView, not a descendant of its
@@ -269,7 +282,10 @@ export function Editor({
         key={colorMode}
         editor={editor}
         theme={colorMode}
-        onChange={() => onBlocksChange(editor.document)}
+        onChange={() => {
+          onBlocksChange(editor.document)
+          recomputeHeadingAnchors()
+        }}
         // The built-in side menu is disabled here and remounted manually
         // below via `SideMenuController` - see editor-side-menu.tsx's doc
         // comment for why (swapping BlockNote's own react-icons SVGs for
@@ -294,6 +310,10 @@ export function Editor({
           torn down and recreated underneath it. See its own doc comment for
           why this is a DOM overlay rather than a BlockNote extension point. */}
       <CodeBlockCopyOverlay containerRef={containerRef} />
+      {/* Real DOM `id`s for table-of-contents.tsx's `FluidToc` to scroll to/
+          observe - see heading-anchor-overlay.tsx's doc comment for why this
+          can't just be an `id` set on the heading's own rendered node. */}
+      <HeadingAnchors anchors={headingAnchors} />
     </div>
   )
 }
