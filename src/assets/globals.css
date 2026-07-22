@@ -516,28 +516,29 @@
   min-height: 240px !important;
 }
 
-/* Comments right rail (comment-threads-sidebar.tsx, portaled into
-   document-page.tsx's `page-rail` container): lists every thread in a
-   persistent ~300px-wide column to the right of the reading column, so
-   threads stay discoverable after a reload even once their inline highlight
-   is gone (BlockNote's own #1701 - the comment mark isn't part of the
-   `Block[]` JSON model, so it's never persisted).
+/* Comments (comment-threads-sidebar.tsx): a small floating badge - a
+   chat-bubble icon plus `threads.size` - fixed to the bottom-right of the
+   viewport, portaled into document-page.tsx's `comments-anchor` node. Clicking
+   it opens a popover listing every thread, so threads stay discoverable after
+   a reload even once their inline highlight is gone (BlockNote's own #1701 -
+   the comment mark isn't part of the `Block[]` JSON model, so it's never
+   persisted).
 
-   No width override is needed here anymore: `@blocknote/shadcn`'s comment
-   `Card` (comments/Card.tsx) hardcodes `w-[300px]`, which now matches the
-   rail's own width instead of needing to be stretched to fill a full-width
-   in-flow section (the old placement this used to work around). Card's
-   selected-state tint (`selected ? "bg-accent text-accent-foreground" :
-   ""`) also needs no override - see the `@source inline(...)` directive near
-   the top of this file for why that previously did nothing and how it's
-   fixed at the root instead. */
+   `@blocknote/shadcn`'s comment `Card` (comments/Card.tsx) hardcodes
+   `w-[300px]`, which fits comfortably inside the popover here with no width
+   override needed. Card's selected-state tint (`selected ?
+   "bg-accent text-accent-foreground" : ""`) also needs no override - see the
+   `@source inline(...)` directive near the top of this file for why that
+   previously did nothing and how it's fixed at the root instead. */
 
-/* Table of contents (table-of-contents.tsx, stacked above the comments rail
-   in the same `page-rail` container): `FluidToc` renders its own entries with
-   inline styles (color read from the `--fluid-toc-*` variables set on `:root`
-   above), so there's little left to theme here beyond a hover affordance the
-   library doesn't provide out of the box - `!important` is required to win
-   over the inline `color` it sets per-entry. */
+/* Table of contents (table-of-contents.tsx): its own separate floating badge,
+   fixed above the comments badge in the same bottom-right corner (it needs no
+   portal - unlike comments, it never depends on BlockNote's context, so it
+   owns its own fixed positioning directly). `FluidToc` renders its own
+   entries with inline styles (color read from the `--fluid-toc-*` variables
+   set on `:root` above), so there's little left to theme here beyond a hover
+   affordance the library doesn't provide out of the box - `!important` is
+   required to win over the inline `color` it sets per-entry. */
 .fluid-toc a:not([data-active='true']):hover {
   color: var(--foreground) !important;
 }

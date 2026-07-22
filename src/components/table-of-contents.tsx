@@ -162,6 +162,7 @@ export function TableOfContents({ blocks }: TableOfContentsProps) {
               size="icon-lg"
               className="rounded-full shadow-md"
               data-testid="toc-toggle"
+              aria-label="Table of contents"
             />
           }
         >
