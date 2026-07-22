@@ -70,6 +70,66 @@ test('slash menu opens in the editor', async ({ page }) => {
   ).toBeVisible()
 })
 
+test('block-type suggestion menu flips upward instead of compressing near the bottom of a scrolled document', async ({
+  page
+}) => {
+  await page.goto('/')
+  await page.getByTestId('new-doc').click()
+  const editable = page
+    .getByTestId('editor')
+    .locator('[contenteditable="true"]')
+    .first()
+  await editable.click()
+
+  // Enough short blocks to make the document taller than the viewport, so
+  // the cursor lands near the bottom edge once scrolled all the way down -
+  // the exact condition that used to trigger the bug: the block-type menu
+  // compressed itself into the sliver of space below the cursor instead of
+  // flipping to open above it, even with far more room available there.
+  await page.keyboard.type(
+    Array.from({ length: 40 }, (_, i) => `Filler line ${i + 1}`).join('\n')
+  )
+
+  await page.getByTestId('page-content').evaluate((el) => {
+    el.scrollTop = el.scrollHeight
+  })
+
+  await page.keyboard.type('/')
+
+  const menu = page.locator('#bn-suggestion-menu')
+  await expect(menu).toBeVisible()
+
+  const { menuRect, caretTop, viewportHeight } = await page.evaluate(() => {
+    const menuEl = document.getElementById('bn-suggestion-menu')
+    // The element floating-ui actually positions/sizes is the nearest
+    // non-static ancestor, not `#bn-suggestion-menu` itself (that's just
+    // the scrollable item list inside it) - see editor.tsx's
+    // `chooseVerticalPlacement` doc comment for the full DOM structure.
+    let floating: HTMLElement | null = menuEl
+    while (floating && getComputedStyle(floating).position === 'static') {
+      floating = floating.parentElement
+    }
+    const rect = (floating ?? menuEl!).getBoundingClientRect()
+    const selection = window.getSelection()
+    const caretRect =
+      selection && selection.rangeCount > 0
+        ? selection.getRangeAt(0).getBoundingClientRect()
+        : null
+    return {
+      menuRect: { top: rect.top, bottom: rect.bottom },
+      caretTop: caretRect?.top ?? null,
+      viewportHeight: window.innerHeight
+    }
+  })
+
+  expect(caretTop).not.toBeNull()
+  // Stays fully within the viewport...
+  expect(menuRect.top).toBeGreaterThanOrEqual(0)
+  expect(menuRect.bottom).toBeLessThanOrEqual(viewportHeight + 1)
+  // ...and specifically opened *above* the cursor rather than below it.
+  expect(menuRect.bottom).toBeLessThanOrEqual((caretTop as number) + 1)
+})
+
 test('set a page icon from the picker', async ({ page }) => {
   // Hikki is offline-first: frimousse must resolve its emoji dataset from the
   // app's own locally self-hosted public/emojibase-data (see page-header.tsx's

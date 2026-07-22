@@ -6,8 +6,13 @@ import {
   type Block
 } from '@blocknote/core'
 import { CommentsExtension } from '@blocknote/core/comments'
-import { SideMenuController, useCreateBlockNote } from '@blocknote/react'
+import {
+  SideMenuController,
+  SuggestionMenuController,
+  useCreateBlockNote
+} from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/shadcn'
+import { offset, shift, size, type Middleware } from '@floating-ui/react'
 import { useTheme } from 'next-themes'
 import { useLayoutEffect, useRef } from 'react'
 import { createHighlighter } from 'shiki'
@@ -37,6 +42,70 @@ interface EditorProps {
   onBlocksChange: (blocks: unknown[]) => void
   threadStore: VaultThreadStore
   commentsPortalTarget: HTMLElement | null
+}
+
+// Fixes the block-type suggestion menu ("/" or the side menu's "+" button)
+// compressing itself into a sliver of space below the cursor instead of
+// flipping above it, near the bottom of a scrolled document - reproduced via
+// Playwright (long document, cursor pinned near the viewport's bottom edge,
+// open the menu there: with far more room above the cursor than below, the
+// menu still rendered squashed into the small space below it).
+//
+// Root cause (found by instrumenting a diagnostic middleware and inspecting
+// floating-ui's own per-pass state - see the Task 13 report for the full
+// trace): BlockNote's stock config runs `autoPlacement`/`flip` *before*
+// `size()`, and `size()` shrinks the menu to fit by mutating the floating
+// element's `maxHeight` directly. That mutation changes the floating
+// element's own size, which - because `GenericPopover` watches it with
+// `autoUpdate`'s `ResizeObserver` - queues another full re-run of the
+// pipeline. On that re-run, `platform.getElementRects()` measures the
+// element *as `size()` last left it*, i.e. already shrunk to fit whichever
+// side was previously picked - so the placement logic evaluates overflow
+// against that stale, artificially-small height, finds "it fits" trivially,
+// and never reconsiders the other side even when it would fit the menu's
+// *true* (unconstrained) height far better. This reproduced identically
+// with both `autoPlacement` (BlockNote's default) and `flip` swapped in -
+// it's an inherent interaction with `size()`'s DOM-mutating `apply`, not a
+// quirk of either placement middleware. Directly injecting the menu's true
+// unconstrained height back into the shared `rects` (floating-ui's
+// documented `reset: { rects }` escape hatch) does fix the side it picks,
+// but then corrupts `shift`/`size`'s *positioning* math, which also reads
+// `rects.floating.height` - so the menu ends up on the right side but
+// floating off-screen with a gap, sized for a height it was never actually
+// given.
+//
+// This middleware sidesteps all of that by never touching the shared
+// `rects` at all. It asks floating-ui's own `detectOverflow` a narrower
+// question - "with `elementContext: 'reference'`, how much room is there
+// between the cursor and the clipping boundary above vs. below it?" (see
+// `detectOverflow` in `@floating-ui/core`: with that option it measures
+// `rects.reference` against the boundary and ignores the floating
+// element's position/size entirely) - which is exactly the "which side has
+// more room" comparison this menu needs, computed independently of
+// whatever height `size()` last left the menu at. It then resets
+// `placement` directly if the better side differs from the current one,
+// leaving `offset`/`shift`/`size` afterward to size and position the menu
+// normally for whichever side won - so nothing about the actual layout math
+// is disturbed, only which side is chosen.
+const chooseVerticalPlacement: Middleware = {
+  name: 'choose-vertical-placement',
+  async fn(state) {
+    const overflow = await state.platform.detectOverflow(state, {
+      elementContext: 'reference',
+      padding: 10
+    })
+    const availableAbove = -overflow.top
+    const availableBelow = -overflow.bottom
+    // Ties (including the common case of both sides having ample room) keep
+    // "bottom", matching the default/expected placement for a menu opened
+    // while typing.
+    const betterSide = availableAbove > availableBelow ? 'top' : 'bottom'
+    const currentSide = state.placement.split('-')[0]
+    if (betterSide === currentSide) {
+      return {}
+    }
+    return { reset: { placement: `${betterSide}-start` } }
+  }
 }
 
 // Kept as a constant so the paste-detection handler below can recognize a
@@ -292,6 +361,13 @@ export function Editor({
         // lucide-react ones has no dedicated prop; this is the supported
         // customization point for replacing the default side-menu buttons).
         sideMenu={false}
+        // The built-in block-type suggestion menu (opened by typing "/" or
+        // by the side menu's "+" button - both route through the same
+        // `SuggestionMenu` extension, see editor-side-menu.tsx's
+        // `openSuggestionMenu('/')`) is disabled here too and remounted
+        // manually below with corrected positioning middleware - see that
+        // `SuggestionMenuController`'s doc comment for why.
+        slashMenu={false}
         shadCNComponents={{
           Button: { Button },
           Tooltip: { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger },
@@ -299,6 +375,39 @@ export function Editor({
         }}
       >
         <SideMenuController sideMenu={EditorSideMenu} />
+        {/* Reimplements BlockNote's own default slash-menu wiring
+            (`BlockNoteDefaultUI.tsx`: same `triggerCharacter` and
+            `shouldOpen`, disabling it inside tables) but replaces
+            `autoPlacement` with `chooseVerticalPlacement` (defined above -
+            see its doc comment for the full root-cause trace and why a
+            plain `flip()` swap isn't enough either). `offset`, `shift`, and
+            the `size` callback are otherwise copied verbatim from
+            BlockNote's own `SuggestionMenuController` source
+            (`@blocknote/react`) so behavior is unchanged in every other
+            respect (including the still-shrink-to-fit behavior on the
+            genuinely-chosen side, when even that side is too small for the
+            full menu). */}
+        <SuggestionMenuController
+          triggerCharacter="/"
+          shouldOpen={(state) =>
+            !state.selection.$from.parent.type.isInGroup('tableContent')
+          }
+          floatingUIOptions={{
+            useFloatingOptions: {
+              middleware: [
+                offset(10),
+                chooseVerticalPlacement,
+                shift(),
+                size({
+                  apply({ elements, availableHeight }) {
+                    elements.floating.style.maxHeight = `${Math.max(0, availableHeight)}px`
+                  },
+                  padding: 10
+                })
+              ]
+            }
+          }}
+        />
         {/* Mitigates BlockNote's own #1701: the comment mark isn't part of
             the `Block[]` JSON model, so it doesn't survive a reload - this
             keeps every thread discoverable via `doc.threads` regardless.
