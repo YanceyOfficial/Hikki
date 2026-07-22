@@ -1248,7 +1248,89 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 16: Documentation sync (run LAST)
+### Task 16: Fix BlockNote toolbar buttons rendering as nested `<button>` elements (Tooltip `asChild`/`render` mismatch)
+
+**Context (surfaced during Task 14's e2e work, confirmed by two independent reviewers):** every button in BlockNote's toolbar UI that uses a `mainTooltip` (side menu buttons, formatting toolbar buttons, the comment composer's "Save" button, badges) renders wrapped in an _extra_ real `<button>` element — producing a live React console error (`<button> cannot contain a nested <button>`) and a duplicate element in the accessibility tree for every single one of them (confirmed live: `getByRole('button', {name: 'Add comment'})` and similar locators strict-mode-match two elements, worked around with `.last()` in Task 14's e2e tests — that workaround stays in place after this task, since it's still valid, just no longer strictly necessary).
+
+**Root cause, already confirmed (no further investigation needed — implement directly):** `@blocknote/shadcn`'s bundled toolbar components (`node_modules/@blocknote/shadcn/src/toolbar/Toolbar.tsx:110` and `node_modules/@blocknote/shadcn/src/badge/Badge.tsx:50`) call `<ShadCNComponents.Tooltip.TooltipTrigger asChild>{someButton}</ShadCNComponents.Tooltip.TooltipTrigger>` — the Radix convention, where `asChild` makes the trigger merge its behavior onto its single child instead of rendering its own wrapping element. This app's own `TooltipTrigger` (`src/components/ui/tooltip.tsx:24`) wraps `@base-ui/react/tooltip`'s `Trigger`, which has **no `asChild` concept at all** — Base UI's own type declarations (`node_modules/@base-ui/react/tooltip/trigger/TooltipTrigger.d.ts`) show it "Renders a `<button>` element" unconditionally, with `render` (Base UI's actual polymorphic escape hatch, part of `BaseUIComponentProps`) as the supported way to swap in a custom element. Since our `TooltipTrigger` just spreads `...props` (including the meaningless `asChild` boolean) onto Base UI's `Trigger` and ignores `children` isn't specially handled, `asChild` does nothing — the component always renders its own real `<button>` around whatever child was passed, producing the nested-button bug.
+
+**This codebase already has a working precedent for the correct bridge** — `src/components/ui/sidebar.tsx:522` already does `<TooltipTrigger render={render} />`, passing a React element into Base UI's `render` prop to have the Trigger merge onto that element instead of rendering its own. This task applies the same pattern generically inside `TooltipTrigger` itself, so every caller that passes Radix-style `asChild` (i.e. every BlockNote toolbar component) gets correct behavior automatically, with zero changes needed anywhere else.
+
+**Files:**
+
+- Modify: `src/components/ui/tooltip.tsx`
+- Test: `src/components/ui/tooltip.test.tsx` (create if it doesn't already exist — check first)
+
+**Interfaces:** `TooltipTrigger`'s prop type widens to accept an optional `asChild?: boolean` in addition to its existing Base UI `Trigger.Props` — purely an interop shim for Radix-style callers (BlockNote), not part of Base UI's own contract. No change to `TooltipTrigger`'s existing `render`-based call sites (`sidebar.tsx`) — the fix must not disturb that already-working usage.
+
+- [ ] **Step 1: Check for an existing test file first**
+
+```bash
+ls src/components/ui/tooltip.test.tsx 2>/dev/null || echo "no existing test file"
+```
+
+If component tests for `src/components/ui/*.tsx` primitives don't already exist elsewhere in this codebase as an established pattern (check a couple of sibling files, e.g. `src/components/ui/popover.tsx`/`dropdown-menu.tsx`, for a `.test.tsx` counterpart), a full jsdom+Testing-Library unit test for this one component may not fit this codebase's conventions — in that case, skip straight to a live/manual + Playwright verification instead of inventing a new testing pattern for one file. Use your judgement based on what you find; state your reasoning in your report either way.
+
+- [ ] **Step 2: Fix `TooltipTrigger`**
+
+In `src/components/ui/tooltip.tsx`, change:
+
+```tsx
+function TooltipTrigger({ ...props }: TooltipPrimitive.Trigger.Props) {
+  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />
+}
+```
+
+to something equivalent to:
+
+```tsx
+function TooltipTrigger({
+  asChild,
+  children,
+  ...props
+}: TooltipPrimitive.Trigger.Props & {
+  asChild?: boolean
+  children?: React.ReactNode
+}) {
+  return (
+    <TooltipPrimitive.Trigger
+      data-slot="tooltip-trigger"
+      render={asChild ? (children as React.ReactElement) : undefined}
+      {...props}
+    >
+      {asChild ? undefined : children}
+    </TooltipPrimitive.Trigger>
+  )
+}
+```
+
+Add the `React` import if this file doesn't already have one in scope (check — it may already, or you may need `import type { ReactElement, ReactNode } from 'react'` instead of the full namespace import, whichever matches this codebase's existing style in sibling `ui/` files). Verify the actual prop name Base UI expects for this (`render`, per its type declarations already cited above) rather than assuming the snippet above is letter-perfect — re-check `TooltipTrigger.d.ts` yourself before finalizing.
+
+- [ ] **Step 3: Verify live**
+
+With the dev server running (`pnpm dev`), open the browser devtools console, open a document, hover over a formatting-toolbar button (or the side-menu "+"/drag-handle buttons, or trigger the comment composer's Save button) and confirm: (a) no `<button> cannot contain a nested <button>` console error appears, (b) the tooltip itself still shows correctly on hover with the same visual styling as before, (c) `getByRole('button', {name: ...})` for one of these buttons now matches exactly one element, not two (spot check this via the Playwright browser tools' accessibility snapshot). Also confirm the _existing_, already-working `render`-based usage (a sidebar item with a tooltip, e.g. collapse the sidebar to icon-only mode if that's what triggers `sidebar.tsx`'s tooltip path — check `sidebar.tsx` around line 522 for the exact condition) still renders and behaves identically to before this change.
+
+- [ ] **Step 4: Remove the now-unnecessary `.last()` workarounds (optional, your judgement)**
+
+Task 14's e2e tests added `.last()` to `getByRole('button', {name: 'Add comment'})` and `getByRole('button', {name: 'Save'})` specifically to work around this bug. Now that it's fixed, `.last()` should still work (there's only one matching element now, so `.last()` is a no-op) — you can leave it as-is (harmless) or simplify it back to a plain `getByRole(...)` call for clarity. Your call; if you simplify it, re-run `pnpm e2e` to confirm nothing broke.
+
+- [ ] **Step 5: Run the full check set**
+
+Run: `pnpm test && pnpm exec tsc --noEmit && pnpm e2e`
+Expected: all green (94 or more unit tests depending on whether Step 1 added a new test file; 13 e2e tests).
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src e2e-tests
+git commit -m "fix: bridge BlockNote's asChild tooltip triggers onto Base UI's render prop
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 17: Documentation sync (run LAST)
 
 **Files:**
 
