@@ -299,16 +299,7 @@ test.describe('right rail (table of contents and comments)', () => {
     // `CommentsExtension` is registered (see editor.tsx's doc comment on
     // `extensions: [CommentsExtension(...)]`) - finding it here is itself
     // confirmation the real extension wiring is live, not a stand-in.
-    //
-    // `.last()` below (here and for "Save") works around a pre-existing,
-    // unrelated bug in this app's Tooltip wiring (confirmed live, and
-    // visible as a React "cannot be a descendant of" console error): every
-    // toolbar/composer button using `mainTooltip` renders wrapped in an
-    // extra real `<button>` (the tooltip trigger, from an `asChild` prop not
-    // being applied), so `getByRole('button', ...)` matches both that outer
-    // wrapper and the real inner button with the same accessible name -
-    // `.last()` is the actual, innermost, clickable one in DOM order.
-    const addComment = page.getByRole('button', { name: 'Add comment' }).last()
+    const addComment = page.getByRole('button', { name: 'Add comment' })
     await expect(addComment).toBeVisible()
     await addComment.click()
 
@@ -321,7 +312,7 @@ test.describe('right rail (table of contents and comments)', () => {
       .first()
     await composer.click()
     await page.keyboard.type('This needs review')
-    await page.getByRole('button', { name: 'Save' }).last().click()
+    await page.getByRole('button', { name: 'Save' }).click()
 
     // BlockNote wraps the commented selection in a real
     // `<span class="bn-thread-mark" data-bn-thread-id="...">` - confirmed
