@@ -13,7 +13,7 @@
    selected-state styling silently does nothing. This directive safelists
    them so the library's own class names work with zero custom CSS needed
    (see the `.bn-thread`-related comment further down for the full story). */
-@source inline("bg-accent text-accent-foreground");
+@source inline("bg-accent text-accent-foreground shadow-sm");
 
 @custom-variant dark (&:is(.dark *));
 
