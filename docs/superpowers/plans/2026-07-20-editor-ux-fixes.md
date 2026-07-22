@@ -1330,7 +1330,72 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 17: Documentation sync (run LAST)
+### Task 17: Fix BlockNote's "Create link" button rendering as a nested `<button>` (Popover `asChild`/`render` mismatch)
+
+**Context:** Task 16 fixed the identical bug for `TooltipTrigger`. Task 16's reviewer independently reproduced a second instance of the exact same bug shape on `PopoverTrigger`: BlockNote's formatting toolbar's "Create link" button (which opens a URL-entry popover) renders wrapped in an extra real `<button>`, with the same `<button> cannot contain a nested <button>` console error and the same accessibility-tree duplication (`getByRole('button', {name: 'Create link'})` matches 2 elements).
+
+**Root cause, already confirmed — no further investigation needed:** `node_modules/@blocknote/shadcn/src/popover/popover.tsx:47` calls `<ShadCNComponents.Popover.PopoverTrigger ref={ref} asChild={true}>{...}</ShadCNComponents.Popover.PopoverTrigger>` — the same Radix-style `asChild` convention that broke `TooltipTrigger` in Task 16. This app's `PopoverTrigger` (`src/components/ui/popover.tsx`) currently just spreads `...props` onto Base UI's `PopoverPrimitive.Trigger` with no `asChild` handling at all — identical gap to what `TooltipTrigger` had before Task 16's fix.
+
+**Files:**
+
+- Modify: `src/components/ui/popover.tsx`
+
+- [ ] **Step 1: Apply the same bridge pattern Task 16 used**
+
+In `src/components/ui/popover.tsx`, change:
+
+```tsx
+function PopoverTrigger({ ...props }: PopoverPrimitive.Trigger.Props) {
+  return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />
+}
+```
+
+to the same shape as Task 16's fixed `TooltipTrigger` (read `src/components/ui/tooltip.tsx`'s current `TooltipTrigger` first — it now has the exact pattern to mirror here):
+
+```tsx
+function PopoverTrigger({
+  asChild,
+  children,
+  ...props
+}: PopoverPrimitive.Trigger.Props & {
+  asChild?: boolean
+  children?: React.ReactNode
+}) {
+  return (
+    <PopoverPrimitive.Trigger
+      data-slot="popover-trigger"
+      render={asChild ? (children as React.ReactElement) : undefined}
+      {...props}
+    >
+      {asChild ? undefined : children}
+    </PopoverPrimitive.Trigger>
+  )
+}
+```
+
+Verify against `node_modules/@base-ui/react/popover/trigger/PopoverTrigger.d.ts` that `PopoverPrimitive.Trigger` accepts the same `render` prop shape as `TooltipPrimitive.Trigger` did (it should, both come from Base UI's shared component-props convention, but confirm rather than assume) before finalizing.
+
+- [ ] **Step 2: Verify live**
+
+With the dev server running (`pnpm dev`), select some text in the editor, open the formatting toolbar, click "Create link," and confirm: no `<button> cannot contain a nested <button>` console error, the URL-entry popover still opens and displays correctly, and (via the Playwright browser tools' accessibility snapshot) `getByRole('button', {name: 'Create link'})` now matches exactly one element instead of two. Also confirm this app's own other `Popover`/`PopoverTrigger` usages elsewhere (e.g. `src/components/page-header.tsx`'s emoji/icon picker, which does NOT use `asChild` — check it renders identically to before, unaffected by this change).
+
+- [ ] **Step 3: Run the full check set**
+
+Run: `pnpm test && pnpm exec tsc --noEmit && pnpm e2e`
+Expected: all green (94 unit tests, clean typecheck, 13 e2e tests).
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src
+git commit -m "fix: bridge BlockNote's asChild popover triggers onto Base UI's render prop
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 18: Documentation sync (run LAST)
 
 **Files:**
 
