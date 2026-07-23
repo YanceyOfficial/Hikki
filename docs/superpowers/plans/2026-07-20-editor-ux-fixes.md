@@ -1555,12 +1555,94 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ### Task 21: Cluster nearby comment markers and expand them on wide windows
 
-**Depends on Task 20.** This task adds the two things Task 20 deliberately deferred:
+**Depends on Task 20 (complete, commits `6c8ed70`/`eed8fee`, reviewed and approved).** Task 20's real behavior is now known — this task's specifics below are written against it, not guessed in advance. Live user feedback (a second real screenshot, after Task 20 shipped) confirmed the per-thread positioning itself is right, but asked for two more things Task 20 deliberately deferred:
 
-1. **Proximity clustering**: threads whose computed positions (from Task 20) land within some pixel threshold of each other (verify a sensible value live — the reference screenshot shows two comments on adjacent checklist lines merging into one "2" badge, while a comment near a code block much further down stays separate) should render as a single marker showing the cluster's thread count, opening a popover listing all threads in that cluster (each still rendered via `Thread`, stacked).
-2. **Width-responsive expansion**: on a sufficiently wide window, markers (or clusters) should render their content directly and persistently, with no click needed — closer to Notion's actual floating-card behavior — while narrower windows keep Task 20's click-to-open marker behavior. Pick a concrete, empirically-verified width threshold (this app's default window is 1320px per Task 19's revert — decide whether "wide enough" means comfortably above that, and verify live that the always-expanded cards don't collide with the reading column or with each other at whatever width you choose).
+1. **Proximity clustering**: threads whose computed `top` (from Task 20's `useMarkerTops`) land within some pixel threshold of each other should render as a single marker showing the cluster's combined thread count, opening a popover that lists every thread in that cluster (each still rendered via `Thread`, stacked with a divider or gap between them). A reasonable starting threshold is somewhere around 1.5-2x a marker's own height (Task 20's markers are `size="sm"` buttons, ~28px tall) — verify live with two comments made on adjacent lines of text (should cluster) versus two comments separated by a full paragraph or more (should stay separate), and tune from there.
+2. **Width-responsive expansion**: on a sufficiently wide window, each marker/cluster should render its `Thread` content directly, persistently, no click needed — the reading column plus a real, uncollapsed card gutter, closer to Notion's own floating-card behavior — while narrower windows keep Task 20's click-to-open marker behavior unchanged. This app's default window is 1320px (Task 19's revert). For an expanded card gutter to sit beside a full-width `max-w-3xl` (768px) reading column without squeezing it (the exact problem Task 11/19 already solved once for the old wide-rail design — re-read those tasks' math before picking a number here), the window needs roughly 768px (reading column) + 256px (sidebar) + ~96px (page padding) + card width + gutter gap comfortably available — work out the actual arithmetic against a real card width (BlockNote's own `Card` is `w-[300px]`) before picking a threshold, rather than reusing a round number by feel. Verify live that at your chosen threshold, expanded cards never overlap the reading column and the column itself never has to shrink to make room (a squeeze regression here would repeat a mistake this same plan already fixed once).
 
-**Do not start this task until Task 20 is implemented, reviewed, and its positioning is confirmed solid** — clustering and responsive expansion both build directly on Task 20's per-thread coordinates; if those coordinates are wrong, this task will just amplify the problem. Write this task's own detailed brief once Task 20 has landed and its real behavior (exact marker sizes, exact typical spacing between nearby comments in practice) is known, rather than guessing those specifics now.
+**Design questions to resolve, verify live, and document your choice on (there isn't one obviously-correct answer for these — use your judgment, but be deliberate, not arbitrary):**
+
+- **Does clustering still apply in wide/expanded mode, or only in the narrow/collapsed mode?** A reasonable default: narrow mode clusters nearby threads into one combined badge (since screen space is tight and a click is already required); wide/expanded mode instead gives every thread its own always-visible card and uses **collision avoidance** (nudge a card down slightly if its natural position would overlap the card above it, rather than merging them) — closer to how Notion's own wide-screen comment rail behaves. This avoids losing per-thread granularity exactly when there's enough room to show it. State which approach you implemented and why.
+- **Collision avoidance for expanded cards**: if you go the route above, this needs a real (if simple) algorithm — sort clusters/threads by natural `top`, walk through them, and push any card down whose natural position would overlap the bottom edge of the previous (already-placed) card, tracking cumulative offset. Keep it simple; this doesn't need to be pixel-perfect, just non-overlapping and stable (no jitter) as the user scrolls or adds/removes comments.
+- **Re-render structure**: Task 20's `CommentMarker` always wraps its `Thread` in a `Popover`/`PopoverTrigger`/`PopoverContent`. In wide/expanded mode there's no trigger to click — decide whether that's a separate rendering branch (a plain `fixed`-positioned `<div>` wrapping `Thread` directly, no `Popover` at all) versus forcing the existing `Popover` permanently open (the latter is likely simpler but check it doesn't carry unwanted overlay/backdrop/focus-trap behavior meant for an actual popover interaction — a permanently-"open" popover and a plain always-rendered div are not necessarily equivalent; verify which one behaves correctly, e.g. does it still allow normal text selection/interaction with the rest of the page while "open"?).
+
+**Also fold into this task (small, related, found via the same live feedback round):** the orphaned-thread reference text currently reads `"Original content deleted"` (BlockNote's own default dictionary string, `dict.comments.deleted_reference_text`, confirmed at `node_modules/@blocknote/core/src/i18n/locales/en.ts:387`) — misleading in this app, since orphaning here happens on **every** reload (not just genuine content deletion, per this file's own `#1701` doc comment), and the comment body itself is never actually lost (`doc.threads`/`VaultThreadStore` round-trip it correctly). Override just this one string via `useCreateBlockNote`'s `dictionary` option in `src/components/editor.tsx` — `dictionary: {...en, comments: {...en.comments, deleted_reference_text: '<your wording>'}}` (`en` importable from `@blocknote/core`; confirmed `options.dictionary` REPLACES the whole default dictionary object rather than deep-merging, per `BlockNoteEditor.ts:448` — spreading the full `en` object first and overriding only this one nested field is required, not optional). Pick honest, accurate wording (e.g. something conveying "this comment is still here, but lost its exact position after a reload" rather than implying content was deleted) — this is user-facing copy, so make it clear and not alarming, but don't overthink the exact phrasing; a reasonable, honest sentence is enough.
+
+**Files:**
+
+- Modify: `src/components/comment-threads-sidebar.tsx` (clustering + wide-mode rendering), `src/components/editor.tsx` (dictionary override)
+- Test: update/extend `e2e-tests/app.spec.ts`'s comment test(s) for the new clustering/wide-mode behavior
+
+- [ ] **Step 1: Read Task 20's current implementation in full**
+
+Read `src/components/comment-threads-sidebar.tsx` completely (it's short, but every piece of this task builds directly on its current structure — `useMarkerTops`, `clampTop`, `CommentMarker`, the constants at the top).
+
+- [ ] **Step 2: Implement clustering (narrow/default mode)**
+
+Group threads by proximity of their computed `top` values (orphaned threads, already grouped by Task 20's own stacking logic, can be treated as their own cluster or left as individually-stacked markers — your call, verify live which reads better). Render one marker per cluster; its popover lists every thread in that cluster via stacked `<Thread>` components.
+
+- [ ] **Step 3: Implement the width-responsive expanded mode**
+
+Work out and verify a concrete width threshold (see the arithmetic guidance above). Above it, render every thread/cluster's content directly and persistently per the design questions above; below it, keep clustering + click-to-open exactly as Step 2 built it.
+
+- [ ] **Step 4: Fix the orphaned-thread dictionary string**
+
+Apply the `dictionary` override in `editor.tsx` as described above.
+
+- [ ] **Step 5: Live-verify**
+
+With the dev server running: create several comments at varying distances from each other, confirm clustering behaves sensibly at the default (narrow) width; widen the browser past your chosen threshold and confirm cards expand automatically with no click, correctly avoid overlapping each other and the reading column, and collapse back to clustered markers when narrowed again; reload the page and confirm the orphaned-thread popover now shows your new, accurate wording instead of "Original content deleted" (while the comment body itself is still intact). Check both light and dark theme. Screenshot to the scratchpad.
+
+- [ ] **Step 6: Run the full check set**
+
+Run: `pnpm test && pnpm exec tsc --noEmit && pnpm e2e && cargo test --manifest-path src-tauri/Cargo.toml`
+Expected: all green.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src e2e-tests
+git commit -m "feat: cluster nearby comment markers and expand them on wide windows
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 22: Reskin the comment write/display module's visual styling
+
+**Context:** Live user feedback (the same round as Task 21's triggering screenshot): "写评论/展示评论的模块样式都很丑" (the write-comment/display-comment module styling is all ugly). This phase already did deep visual reskin passes on BlockNote's toolbar/menu chrome (Tasks 3, 4, 5) and fixed a couple of narrow, specific comment-styling bugs (Task 15's `shadow-sm` fix, Task 20's review fixing the marker/TOC-toggle gap) — but the comment **card/composer contents themselves** (the reply input, the "Save" button, spacing inside `Thread`/`Comment`, avatar treatment, etc.) haven't had the same dedicated design pass BlockNote's other chrome got, and still likely read as close to stock/default.
+
+**Files:**
+
+- Modify: `src/assets/globals.css` (primary — this codebase's established approach for reskinning BlockNote-owned components it doesn't have a `shadCNComponents` override slot for, following the exact pattern already used for `.bn-root`, the side menu, the slash menu, and the checklist checkbox in earlier tasks)
+- Possibly: `src/components/comment-threads-sidebar.tsx` if any wrapper-level spacing/layout needs adjusting (not the underlying BlockNote components — those stay as `Thread`/`Comment`/`Card`, reused per Tasks 19-21's established approach; this task is a CSS/visual pass, not a rebuild)
+
+- [ ] **Step 1: Inventory what actually looks wrong, live**
+
+With the dev server running, create a comment, open its marker/popover, and look closely (both light and dark theme) at: the `Thread` card's overall spacing/padding, the avatar (currently a plain letter-in-circle — check `node_modules/@blocknote/react/src/components/Comments/Comment.tsx`'s `authorInfo` rendering and whatever shadcn `Avatar`-equivalent component it resolves to), the reply composer's input styling and "Save"/"Cancel" button treatment, the hover-revealed action toolbar (emoji/more-actions), and the reaction-emoji-picker's own popup styling. Compare against this app's established soft/warm/low-contrast design language (spec §14) and note concretely what reads as "raw"/unstyled versus the rest of the app.
+
+- [ ] **Step 2: Apply targeted CSS fixes**
+
+For each concrete issue found in Step 1, add scoped overrides to `globals.css` following this file's own established conventions (check whether `!important` is needed the same way `.bn-root`/`.bn-editor`/etc. needed it — due to BlockNote's own stylesheet loading after this one; don't add `!important` reflexively where it isn't actually required, verify via the compiled bundle or live computed styles the same way earlier tasks did). Reuse this app's existing design tokens (`--card`, `--border`, `--muted-foreground`, `--accent`, etc.) rather than introducing new hardcoded colors.
+
+- [ ] **Step 3: Live-verify before/after in both themes**
+
+Screenshot the comment card/composer before and after your changes (scratchpad), in both light and dark theme, and confirm the improvement is real and doesn't regress anything Tasks 15/19/20/21 already fixed (the `shadow-sm` fix, marker positioning, the dictionary string).
+
+- [ ] **Step 4: Run the full check set**
+
+Run: `pnpm test && pnpm exec tsc --noEmit && pnpm e2e`
+Expected: all green (this is a CSS-only task; if any test asserted specific classes you changed, update it, but don't expect behavioral test changes).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/assets/globals.css
+git commit -m "style: reskin the comment write/display module to match the app's design language
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
+```
 
 ---
 
