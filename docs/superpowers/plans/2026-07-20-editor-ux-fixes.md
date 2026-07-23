@@ -1500,6 +1500,70 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ---
 
+### Task 20: Position each comment marker near its actual location in the document (supersedes the single aggregate badge)
+
+**Context:** After Task 19 shipped (a single floating badge showing the total comment count, opening a popover with the full thread list), the user tested it live and pushed back again, referencing a second real Notion screenshot: Notion doesn't aggregate every comment into one global button — each comment (or a small cluster of comments sitting close together) collapses to its own small badge, positioned near where that comment actually is in the document (e.g. one badge with count "2" next to a checklist item, a separate badge with count "1" next to a code block further down the page) — not one combined button for the whole document.
+
+**Also folded into this task: a real crash the user hit.** Clicking the collapsed comments badge crashed the page (`EditorBoundary`'s fallback: "This page's content couldn't be displayed"). Root-caused via a live investigation (not guessed): BlockNote's own `EmojiPicker` component (the "add reaction" trigger shown when hovering a posted comment) passes a raw `<div onClick>` as its Popover trigger's child, but `@blocknote/shadcn`'s internal Popover wrapper unconditionally passes `asChild={true}` regardless of what child it's given — landing that `<div>` in Base UI's `render` prop, which (with `nativeButton` left at its default `true`) fires a real Base UI dev-mode error ("expected a non-`<button>`..."), since Base UI assumes the rendered element already has real button semantics when `nativeButton` isn't told otherwise. **This is already fixed** (commit `3f5c5d6`, already on this branch) by making `src/components/ui/popover.tsx`'s `PopoverTrigger` introspect whether the `asChild` child is literally a `'div'` host element (BlockNote's own internal call sites are inconsistent - some pass real `<button>`s, `EmojiPicker` alone passes a `<div>`) and only then set `nativeButton={false}`. Verified live (zero console errors on both the div-child and button-child cases, `pnpm test`/`tsc`/`e2e` all green) — but this could **not** be fully confirmed as the exact cause of the user's crash, since no subagent can drive the user's actual compiled Tauri app with its real, already-populated vault (which likely has orphaned threads accumulated from earlier testing in this same phase — a state no fresh dev-server session can reproduce). If the user still sees the crash after this branch's fix lands, that needs its own fresh investigation with real reproduction details from the actual app, not a guess layered on top of this one.
+
+**Scope for this task (deliberately narrow — verify one piece at a time, don't attempt the full redesign in one shot):** replace the single aggregate badge with one small floating marker **per thread**, positioned at that thread's real, actual position in the document (not clustered, not responsive to window width yet — both of those are explicitly deferred to Task 21, immediately following this one). Every thread gets its own marker; if two threads happen to render close enough together to visually overlap, that's an accepted, temporary rough edge for this task specifically (Task 21 addresses it via clustering). Each marker still requires a click to reveal its own thread's content (the "always-expanded on wide screens" requirement is also deferred to Task 21) — this task is purely about _fixing the positioning_, not the click-vs-always-visible question.
+
+**Technical approach, already confirmed via source-reading (verify before use, don't re-derive from scratch):**
+
+- `useExtensionState(CommentsExtension)` (from `@blocknote/react`, already used internally by BlockNote's own `ThreadsSidebar` — see `node_modules/@blocknote/react/src/components/Comments/ThreadsSidebar.tsx`) returns `{ selectedThreadId, threadPositions }`, where `threadPositions` is a `Map<threadId, { from: number; to: number }>` giving each thread's ProseMirror document-position range. Threads with no entry in this map are orphaned (their inline mark was lost — the #1701 limitation `comment-threads-sidebar.tsx`'s doc comment already explains).
+- For threads WITH a position, `editor.prosemirrorView?.coordsAtPos(threadPosition.from)` (a real, already-typed method on the editor's ProseMirror view — no new import/dependency needed; confirmed this is accessible without importing `@tiptap/core`'s `posToDOMRect` or `prosemirror-view` directly, since `@tiptap/core` isn't a hoisted top-level dependency of this app and importing from it directly would break under this project's strict pnpm layout) returns `{ top, bottom, left, right }` in viewport-relative pixels — exactly what's needed to position a `fixed` marker.
+- This must be recomputed on scroll and resize, exactly like the two existing DOM-position-tracking overlays already in this codebase (`src/components/code-block-copy-overlay.tsx`, `src/components/heading-anchor-overlay.tsx`) — read both for the established pattern (what they attach listeners to, whether it's the window or a specific nested scroll container — this app's content scrolls via its own nested `overflow-y-auto` element, not `window`, per prior tasks' findings) before writing new tracking logic from scratch.
+- For orphaned threads (no entry in `threadPositions`): they can't be positioned "near where they were" — that information is genuinely gone (the #1701 limitation). Give them a sensible fallback location (e.g., stack them at a fixed spot such as the top of the right margin, or keep them in a small always-present "other comments" affordance) rather than dropping them from the UI entirely — they must remain discoverable, just without a meaningful document-relative position.
+- `Thread` (from `@blocknote/react` — confirmed a genuine public export, `node_modules/@blocknote/react/src/index.ts` re-exports it via `export * from "./components/Comments/Thread.js"`) renders a single thread's full card (avatar, comments, reply composer when selected) given `{ thread, referenceText?, orphaned?, selected?, ... }` props — this is the same component `ThreadsSidebar`'s internal `ThreadItem` wraps, so each marker's popover should render `<Thread thread={...} referenceText={...} orphaned={...} />` directly instead of the full `<ThreadsSidebar filter="all" sort="position" />` list (which would show every thread, not just this marker's own one). `getReferenceText` (also a genuine public export of `@blocknote/react`, confirmed alongside `Thread`) computes the same reference-text/orphaned-fallback string `ThreadsSidebar` uses internally — reuse it rather than reimplementing.
+
+**Files:**
+
+- Modify: `src/components/comment-threads-sidebar.tsx` (the main rewrite — read the current full file first, including its doc comment, before changing anything)
+- Test: existing e2e coverage in `e2e-tests/app.spec.ts` (the `floating badges` describe block's comment test currently asserts a single `comments-toggle`/`comment-threads-sidebar` testid pair — this needs to change to match whatever new testid(s) you introduce for individual markers)
+
+- [ ] **Step 1: Read the prerequisites**
+
+Read `src/components/comment-threads-sidebar.tsx` (current state), `src/components/code-block-copy-overlay.tsx` and `src/components/heading-anchor-overlay.tsx` (the established scroll/resize-tracking pattern), and `node_modules/@blocknote/react/src/components/Comments/ThreadsSidebar.tsx` (for `getReferenceText`'s exact signature and the `threadPositions`/orphaned-detection logic) in full.
+
+- [ ] **Step 2: Redesign `CommentThreadsSidebar` for per-thread markers**
+
+Replace the single `Popover`/badge/`ThreadsSidebar`-list structure with: for each thread from `useThreads()`, compute its position (via Step above), track it with scroll/resize listeners, and render one small marker `fixed`-positioned at that thread's computed `top` (clamped to stay within the viewport — verify live what a sensible clamp range is), each with its own click-to-open `Popover` containing `<Thread thread={thread} referenceText={getReferenceText(editor, threadPosition)} orphaned={!threadPosition} />`. Keep the overall "renders nothing when `threads.size === 0`" behavior. Keep the existing `createPortal(..., portalTarget)` wrapping — the portal target itself (`comments-anchor` in `document-page.tsx`) may need to become a plain container `<div>` that all the individual markers portal their own content into, rather than a single anchor point; verify what shape makes sense once you see how the markers actually need to position themselves (each marker likely needs its own `fixed` positioning independent of the anchor div's own position, in which case the anchor div's exact position may matter less than it used to — your call, verify live).
+
+- [ ] **Step 3: Update the e2e test**
+
+In `e2e-tests/app.spec.ts`, update the comment-related test in the `floating badges` describe block to match the new per-marker structure (find and click the specific marker for the comment it creates, rather than a single shared toggle).
+
+- [ ] **Step 4: Live-verify**
+
+With the dev server running, create a document with well-separated content (e.g. a paragraph near the top and a code block much further down), add one comment near the top and one near the bottom, and confirm: two separate markers appear, positioned near their respective content (not both in the same spot); scrolling the document moves each marker correctly to track its anchor text; clicking each marker opens a popover showing only that thread's content; an orphaned thread (delete the commented text entirely, or reload if that reproduces orphaning per this app's known #1701 behavior) still renders a marker somewhere discoverable rather than disappearing. Check both light and dark theme. Screenshot to the scratchpad.
+
+- [ ] **Step 5: Run the full check set**
+
+Run: `pnpm test && pnpm exec tsc --noEmit && pnpm e2e && cargo test --manifest-path src-tauri/Cargo.toml`
+Expected: all green.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src e2e-tests
+git commit -m "fix: position comment markers near their actual location in the document
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 21: Cluster nearby comment markers and expand them on wide windows
+
+**Depends on Task 20.** This task adds the two things Task 20 deliberately deferred:
+
+1. **Proximity clustering**: threads whose computed positions (from Task 20) land within some pixel threshold of each other (verify a sensible value live — the reference screenshot shows two comments on adjacent checklist lines merging into one "2" badge, while a comment near a code block much further down stays separate) should render as a single marker showing the cluster's thread count, opening a popover listing all threads in that cluster (each still rendered via `Thread`, stacked).
+2. **Width-responsive expansion**: on a sufficiently wide window, markers (or clusters) should render their content directly and persistently, with no click needed — closer to Notion's actual floating-card behavior — while narrower windows keep Task 20's click-to-open marker behavior. Pick a concrete, empirically-verified width threshold (this app's default window is 1320px per Task 19's revert — decide whether "wide enough" means comfortably above that, and verify live that the always-expanded cards don't collide with the reading column or with each other at whatever width you choose).
+
+**Do not start this task until Task 20 is implemented, reviewed, and its positioning is confirmed solid** — clustering and responsive expansion both build directly on Task 20's per-thread coordinates; if those coordinates are wrong, this task will just amplify the problem. Write this task's own detailed brief once Task 20 has landed and its real behavior (exact marker sizes, exact typical spacing between nearby comments in practice) is known, rather than guessing those specifics now.
+
+---
+
 ## Self-review notes
 
 - **Task 11 added later (post-Task-10 live feedback):** after the comments feature (Task 10) landed and its `ThreadsSidebar` mitigation was reviewed, the user asked (referencing a real Notion screenshot) to reposition the comments panel from its full-width in-flow placement to a right-side rail matching Notion's floating-card treatment, and more broadly to keep studying Notion's design (color/layout/interaction) as an ongoing lens on this work — not a one-off task. Task 11 covers the concrete, scoped part (the rail); the broader "keep referencing Notion" instruction is applied opportunistically across tasks rather than as its own deliverable.
