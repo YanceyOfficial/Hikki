@@ -179,6 +179,63 @@
   }
 }
 
+/* Scrollable popover content (the TOC list, comment marker/cluster popovers,
+   expanded comment cards - all share `PopoverContent`'s `data-slot=
+   "popover-content"`, see popover.tsx) always scrolled correctly (confirmed
+   live via `scrollTop` at up to 60 headings) - the actual problem is that it
+   didn't *look* scrollable: macOS/Chromium's overlay scrollbars only render
+   while a scroll gesture is in progress, so a long list reads as "stuck" or
+   cut off until the user happens to try scrolling it. `::-webkit-scrollbar`
+   below is a real improvement for classic (non-overlay) scrollbar setups
+   (Windows/Linux, or macOS with "Always show scrollbars" set), but WebKit's
+   own overlay-scrollbar mode ignores these pseudo-elements entirely (a
+   platform limitation `::-webkit-scrollbar` can't override, confirmed live -
+   it made no visible difference in this app's default macOS/Chromium overlay
+   mode). The scroll-shadow gradient just below is what actually fixes the
+   overlay case: a soft fade at the bottom (or both edges, once scrolled past
+   the top) that's only visible when there's genuinely more content in that
+   direction - a well-established pure-CSS technique (no JS scroll listener
+   needed), using `background-attachment: local` gradients that scroll with
+   the content to mask/reveal a `background-attachment: scroll` shadow layer
+   underneath. Matches `bg-popover` (`PopoverContent`'s own background) so the
+   fade blends rather than showing a hard color seam. */
+[data-slot='popover-content']::-webkit-scrollbar {
+  width: 8px;
+}
+[data-slot='popover-content']::-webkit-scrollbar-track {
+  background: transparent;
+}
+[data-slot='popover-content']::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 9999px;
+}
+[data-slot='popover-content'] {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  background-image:
+    linear-gradient(var(--popover) 30%, transparent),
+    linear-gradient(transparent, var(--popover) 70%) 0 100%,
+    radial-gradient(
+      farthest-side at 50% 0,
+      color-mix(in oklch, var(--foreground) 15%, transparent) 0%,
+      transparent 100%
+    ),
+    radial-gradient(
+        farthest-side at 50% 100%,
+        color-mix(in oklch, var(--foreground) 15%, transparent) 0%,
+        transparent 100%
+      )
+      0 100%;
+  background-repeat: no-repeat;
+  background-color: var(--popover);
+  background-size:
+    100% 24px,
+    100% 24px,
+    100% 10px,
+    100% 10px;
+  background-attachment: local, local, scroll, scroll;
+}
+
 .bn-editor {
   padding-inline: 0 !important;
   background-color: transparent !important;
