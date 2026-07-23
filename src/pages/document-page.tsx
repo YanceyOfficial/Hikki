@@ -20,15 +20,18 @@ export default function DocumentPage() {
   const [doc, setDoc] = useState<Doc | null>(null)
   const [notFound, setNotFound] = useState(false)
   const refresh = useSetAtom(refreshDocsAtom)
-  // Small `fixed`-positioned anchor DOM node for the floating comments badge:
-  // tracked via a callback ref (not a plain `useRef`) so its value change
-  // itself triggers a re-render, letting `Editor`/`CommentThreadsSidebar`
-  // react to the node becoming available after the anchor `<div>` first
-  // mounts. `CommentThreadsSidebar` (mounted deep inside `Editor`'s
-  // `<BlockNoteView>`) paints its trigger button + popover into this node via
-  // `ReactDOM.createPortal` - see its own doc comment for why it needs a
-  // portal at all (BlockNoteContext/ComponentsContext access) rather than
-  // just rendering here directly.
+  // Plain portal mount node for comment markers: tracked via a callback ref
+  // (not a plain `useRef`) so its value change itself triggers a re-render,
+  // letting `Editor`/`CommentThreadsSidebar` react to the node becoming
+  // available after this `<div>` first mounts. `CommentThreadsSidebar`
+  // (mounted deep inside `Editor`'s `<BlockNoteView>`) paints one marker per
+  // thread into this node via `ReactDOM.createPortal` - see its own doc
+  // comment for why it needs a portal at all (BlockNoteContext/
+  // ComponentsContext access) rather than just rendering here directly. Each
+  // marker positions itself independently via its own inline `fixed` `top`
+  // (computed from that thread's real document position), so - unlike
+  // Task 19's single anchored badge - this node no longer needs its own
+  // fixed-corner position; it's just a mount point.
   const [commentsAnchorNode, setCommentsAnchorNode] =
     useState<HTMLDivElement | null>(null)
 
@@ -119,16 +122,12 @@ export default function DocumentPage() {
         </EditorBoundary>
       </div>
       <TableOfContents blocks={doc.blocks} />
-      {/* Floating anchor for CommentThreadsSidebar (mounted inside
-          Editor/BlockNoteView) to portal its trigger button + popover into -
-          see the comment on `commentsAnchorNode` above. Empty until that
-          portal paints into it, and renders nothing itself when there are no
+      {/* Plain portal mount point for CommentThreadsSidebar (mounted inside
+          Editor/BlockNoteView) to paint its per-thread markers into - see the
+          comment on `commentsAnchorNode` above. Empty until that portal
+          paints into it, and renders nothing itself when there are no
           threads (CommentThreadsSidebar's own empty-state check). */}
-      <div
-        ref={setCommentsAnchorNode}
-        data-testid="comments-anchor"
-        className="fixed right-6 bottom-6 z-40"
-      />
+      <div ref={setCommentsAnchorNode} data-testid="comments-anchor" />
     </div>
   )
 }

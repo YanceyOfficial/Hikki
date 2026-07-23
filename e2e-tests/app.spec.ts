@@ -314,20 +314,25 @@ test.describe('floating badges (table of contents and comments)', () => {
     // `<span class="bn-thread-mark" data-bn-thread-id="...">` - confirmed
     // live in the rendered DOM - which is the "thread indicator" left behind
     // in the editor body itself.
-    await expect(editable.locator('.bn-thread-mark')).toContainText(
-      'Selectable phrase here'
-    )
-    // The same thread also renders as a card in comment-threads-sidebar.tsx,
-    // portaled into document-page.tsx's floating `comments-anchor` (see that
-    // component's doc comment) - the persistent record of the thread that
-    // survives even if the inline mark above didn't (BlockNote's own #1701,
-    // see comment-threads-sidebar.tsx). Collapsed behind its own floating
-    // toggle button by default, so it must be opened before its contents are
-    // visible.
-    await page.getByTestId('comments-toggle').click()
-    const sidebar = page.getByTestId('comment-threads-sidebar')
-    await expect(sidebar).toBeVisible()
-    await expect(sidebar).toContainText('This needs review')
+    const threadMark = editable.locator('.bn-thread-mark')
+    await expect(threadMark).toContainText('Selectable phrase here')
+    const threadId = await threadMark.getAttribute('data-bn-thread-id')
+
+    // The same thread also renders as its own floating marker via
+    // comment-threads-sidebar.tsx, portaled into document-page.tsx's
+    // `comments-anchor` (see that component's doc comment) - the persistent
+    // record of the thread that survives even if the inline mark above
+    // didn't (BlockNote's own #1701, see comment-threads-sidebar.tsx). One
+    // marker exists per thread (`comment-marker-${threadId}`), independently
+    // positioned near that thread's real location in the document and
+    // collapsed behind its own click-to-open popover - not a single shared
+    // toggle for every thread in the document.
+    const marker = page.getByTestId(`comment-marker-${threadId}`)
+    await expect(marker).toBeVisible()
+    await marker.click()
+    const popover = page.getByTestId(`comment-marker-popover-${threadId}`)
+    await expect(popover).toBeVisible()
+    await expect(popover).toContainText('This needs review')
   })
 
   test('table of contents lists headings and scrolls to the clicked one', async ({
