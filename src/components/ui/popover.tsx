@@ -7,6 +7,24 @@ function Popover({ ...props }: PopoverPrimitive.Root.Props) {
   return <PopoverPrimitive.Root data-slot="popover" {...props} />
 }
 
+// `asChild` callers hand us an arbitrary element to render in place of Base
+// UI's default `<button>`. Base UI validates both directions - `nativeButton`
+// (default `true`) assumes the rendered element already has real button
+// semantics, and warns if it doesn't; explicitly setting `nativeButton={false}`
+// warns right back if the element turns out to actually be a `<button>` (see
+// its own message: "Use a non-<button> in the `render` prop, or set
+// `nativeButton` to `true`"). So there's no single safe default - it depends
+// on what the child actually is. BlockNote's own internal `asChild` callers
+// are inconsistent here: `CreateLinkButton`/`EditLinkButton`/etc. pass a real
+// `<button>`-rendering component (confirmed via `@blocknote/react`'s source -
+// `Components.FormattingToolbar.Button`), while `EmojiPicker` (the "add
+// reaction" trigger on comments) passes a raw `<div onClick>` - a real, raw
+// host element we CAN introspect via `children.type` since it's a string tag,
+// not a component reference.
+function isDivElement(node: React.ReactNode): boolean {
+  return React.isValidElement(node) && node.type === 'div'
+}
+
 function PopoverTrigger({
   asChild,
   children,
@@ -19,6 +37,7 @@ function PopoverTrigger({
     <PopoverPrimitive.Trigger
       data-slot="popover-trigger"
       render={asChild ? (children as React.ReactElement) : undefined}
+      nativeButton={asChild && isDivElement(children) ? false : undefined}
       {...props}
     >
       {asChild ? undefined : children}
