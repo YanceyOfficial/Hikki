@@ -1,4 +1,56 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
+
+/**
+ * Selects a whole paragraph's text and drives BlockNote's "Add comment"
+ * flow (same steps as the "selecting text and adding a comment" test below)
+ * to completion - factored out because the clustering/wide-mode tests need
+ * to create several comments in one document.
+ *
+ * Selects via `document.createRange`/`window.getSelection` (scoped to the
+ * editor's own contenteditable) rather than `.click()` on the paragraph
+ * plus Home/Shift+End: confirmed live that once an earlier thread in the
+ * same document already has a floating marker/popover near the top of the
+ * page (comment-threads-sidebar.tsx positions markers via
+ * `coordsAtPos`/`fixed`, not in normal document flow), a plain mouse click
+ * on a *later* paragraph can land on that still-rendered marker/popover
+ * instead of the intended text, corrupting the selection. Building a Range
+ * directly sidesteps hit-testing entirely and is otherwise indistinguishable,
+ * at the ProseMirror level, from a real drag-selection.
+ */
+async function addCommentToLine(
+  page: Page,
+  editable: Locator,
+  lineText: string,
+  commentBody: string
+) {
+  await editable.evaluate((editorEl, text) => {
+    const paragraphs = Array.from(editorEl.querySelectorAll('p'))
+    const target = paragraphs.find((p) => p.textContent === text)
+    if (!target) {
+      throw new Error(`paragraph not found: ${text}`)
+    }
+    const range = document.createRange()
+    range.selectNodeContents(target)
+    const selection = window.getSelection()
+    selection?.removeAllRanges()
+    selection?.addRange(range)
+  }, lineText)
+
+  await page.getByRole('button', { name: 'Add comment' }).click()
+  // Same nested BlockNote comment-composer instance the existing single-
+  // comment test below uses - see its own comment for why there's no
+  // dedicated testid and no extra click is needed before typing.
+  const composer = page
+    .locator('.bn-comment-editor [contenteditable="true"]')
+    .first()
+  await composer.click()
+  await page.keyboard.type(commentBody)
+  await page.getByRole('button', { name: 'Save' }).click()
+  // Closes the just-saved thread's own popover (comment-threads-sidebar.tsx
+  // leaves it open after Save) so it can't visually/functionally overlap
+  // whatever paragraph this helper selects next.
+  await page.keyboard.press('Escape')
+}
 
 test('dashboard is the home route', async ({ page }) => {
   await page.goto('/')
@@ -333,6 +385,135 @@ test.describe('floating badges (table of contents and comments)', () => {
     const popover = page.getByTestId(`comment-marker-popover-${threadId}`)
     await expect(popover).toBeVisible()
     await expect(popover).toContainText('This needs review')
+  })
+
+  test('nearby comments cluster into one marker; a distant comment stays separate', async ({
+    page
+  }) => {
+    await page.goto('/')
+    await page.getByTestId('new-doc').click()
+    const editable = page
+      .getByTestId('editor')
+      .locator('[contenteditable="true"]')
+      .first()
+    await editable.click()
+
+    // Two adjacent lines land well under comment-threads-sidebar.tsx's
+    // CLUSTER_DISTANCE_THRESHOLD (48px, see that file's doc comment for the
+    // live-verified derivation), so their markers must merge into one
+    // combined badge. Several filler paragraphs put "Gamma" 100px+ away,
+    // comfortably past the threshold, so it must stay its own marker.
+    await page.keyboard.type('Alpha line one')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('Beta line two')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type(
+      Array.from({ length: 8 }, (_, i) => `Filler paragraph ${i + 1}`).join(
+        '\n'
+      )
+    )
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('Gamma far away')
+
+    await addCommentToLine(page, editable, 'Alpha line one', 'Alpha comment')
+    await addCommentToLine(page, editable, 'Beta line two', 'Beta comment')
+    await addCommentToLine(page, editable, 'Gamma far away', 'Gamma comment')
+
+    // `data-thread-count` (comment-threads-sidebar.tsx's `ClusterMarker`) is
+    // only ever rendered on the trigger button, never on its popover, so
+    // this can't accidentally double-count popover content.
+    const clusterMarker = page.locator('[data-thread-count="2"]')
+    await expect(clusterMarker).toHaveCount(1)
+    const soloMarker = page.locator('[data-thread-count="1"]')
+    await expect(soloMarker).toHaveCount(1)
+
+    await clusterMarker.click()
+    const clusterPopover = page.locator(
+      '[data-testid^="comment-marker-popover-"]'
+    )
+    await expect(clusterPopover).toContainText('Alpha comment')
+    await expect(clusterPopover).toContainText('Beta comment')
+    await expect(clusterPopover).not.toContainText('Gamma comment')
+  })
+
+  test.describe('wide window (comment cards expanded)', () => {
+    // Comfortably above comment-threads-sidebar.tsx's WIDE_MODE_MIN_WIDTH
+    // (1720px, see that file's doc comment for the full arithmetic) so every
+    // thread renders as its own persistent card with no click needed,
+    // instead of narrow mode's clustered, click-to-open markers.
+    test.use({ viewport: { width: 1800, height: 900 } })
+
+    test('wide windows expand every thread into its own card, collision-avoided and clear of the reading column', async ({
+      page
+    }) => {
+      await page.goto('/')
+      await page.getByTestId('new-doc').click()
+      const editable = page
+        .getByTestId('editor')
+        .locator('[contenteditable="true"]')
+        .first()
+      await editable.click()
+
+      // Same adjacent-lines setup as the clustering test above - close
+      // enough to cluster in narrow mode - but wide mode must never merge
+      // threads (see comment-threads-sidebar.tsx's doc comment on why:
+      // merging would throw away per-thread granularity exactly when
+      // there's screen space to show it). Beta's body is deliberately long
+      // so its card is taller than `DEFAULT_EXPANDED_CARD_HEIGHT`, giving
+      // `layoutExpandedCards`'s collision avoidance real work to do.
+      await page.keyboard.type('Alpha line one')
+      await page.keyboard.press('Enter')
+      await page.keyboard.type('Beta line two')
+
+      await addCommentToLine(page, editable, 'Alpha line one', 'Alpha comment')
+      await addCommentToLine(
+        page,
+        editable,
+        'Beta line two',
+        'Beta comment with enough extra text to make this card noticeably ' +
+          'taller than the default assumed height, so collision avoidance ' +
+          'has real work to do pushing it clear of the card above.'
+      )
+
+      // No clustered badge exists at all in wide mode - every thread is its
+      // own always-visible card (`ExpandedCards`, not `ClusteredMarkers`).
+      await expect(page.locator('[data-thread-count]')).toHaveCount(0)
+      const cards = page.getByTestId(/^comment-card-/)
+      await expect(cards).toHaveCount(2)
+      const alphaCard = cards.filter({ hasText: 'Alpha comment' })
+      const betaCard = cards.filter({ hasText: 'Beta comment' })
+      await expect(alphaCard).toBeVisible()
+      await expect(betaCard).toBeVisible()
+
+      // Collision avoidance: Beta's card must clear Alpha's card's measured
+      // bottom edge rather than sitting at its own overlapping natural
+      // position. Polled because card height comes from an async
+      // `ResizeObserver` measurement (`useExpandedCardHeights`), not the
+      // first render.
+      await expect
+        .poll(async () => {
+          const alphaBox = await alphaCard.boundingBox()
+          const betaBox = await betaCard.boundingBox()
+          if (!alphaBox || !betaBox) return false
+          return betaBox.y >= alphaBox.y + alphaBox.height
+        })
+        .toBe(true)
+
+      // Neither card overlaps the reading column - the same squeeze
+      // regression Task 11/19 already fixed once for the old wide-rail
+      // design (see comment-threads-sidebar.tsx's `WIDE_MODE_MIN_WIDTH` doc
+      // comment).
+      const columnBox = await page.locator('.max-w-3xl').boundingBox()
+      const alphaBox = await alphaCard.boundingBox()
+      const betaBox = await betaCard.boundingBox()
+      expect(columnBox).not.toBeNull()
+      expect(alphaBox).not.toBeNull()
+      expect(betaBox).not.toBeNull()
+      expect(alphaBox!.x).toBeGreaterThanOrEqual(
+        columnBox!.x + columnBox!.width
+      )
+      expect(betaBox!.x).toBeGreaterThanOrEqual(columnBox!.x + columnBox!.width)
+    })
   })
 
   test('table of contents lists headings and scrolls to the clicked one', async ({

@@ -6,6 +6,12 @@ import {
   type Block
 } from '@blocknote/core'
 import { CommentsExtension } from '@blocknote/core/comments'
+// `en` (the default English dictionary) is only exported from this
+// `/locales` subpath, not the package root - confirmed via
+// `@blocknote/core`'s own `package.json` `exports` map, whose root `"."`
+// entry re-exports `i18n/dictionary.js` (the `Dictionary` *type*) but not
+// `i18n/locales/index.js` (the actual locale objects like `en`).
+import { en } from '@blocknote/core/locales'
 import {
   SideMenuController,
   SuggestionMenuController,
@@ -291,6 +297,36 @@ export function Editor({
         }
 
         return handled
+      },
+      // Overrides just one string in BlockNote's default English dictionary:
+      // the orphaned-thread reference text shown when a comment's original
+      // highlighted text can no longer be found (BlockNote's own
+      // `getReferenceText` reads `editor.dictionary.comments
+      // .deleted_reference_text` - see comment-threads-sidebar.tsx's
+      // `Thread`/`orphaned` usage). Stock BlockNote's wording here is
+      // "Original content deleted" - misleading in this app specifically,
+      // since orphaning happens here on *every* reload (BlockNote's own
+      // #1701: the comment mark isn't part of the persisted `Block[]` JSON
+      // model, so it never survives a reload - see
+      // comment-threads-sidebar.tsx's doc comment), not just genuine content
+      // deletion, and the comment body itself is never actually lost
+      // (`doc.threads`/`VaultThreadStore` round-trip it correctly - the
+      // *position* is what's gone, not the content).
+      //
+      // `useCreateBlockNote`'s `dictionary` option *replaces* the whole
+      // default dictionary object rather than deep-merging with it
+      // (confirmed via `@blocknote/core`'s `BlockNoteEditor.ts`:
+      // `this.dictionary = options.dictionary || en`) - so the full `en`
+      // object is spread first and only this one nested field is
+      // overridden, rather than passing just the one changed key and losing
+      // every other string in the dictionary.
+      dictionary: {
+        ...en,
+        comments: {
+          ...en.comments,
+          deleted_reference_text:
+            "This comment's position couldn't be restored after reloading — the comment itself wasn't deleted."
+        }
       },
       // Registers BlockNote's open-source Comments extension (additive -
       // BlockNote merges this list into its own default extensions, it

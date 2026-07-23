@@ -9,7 +9,7 @@ import {
   useThreads
 } from '@blocknote/react'
 import { MessageSquare } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import { Button } from '#components/ui/button'
@@ -31,15 +31,85 @@ import { cn } from '#lib/utils'
  *
  * Task 19 first shipped this as a single aggregate badge (chat icon + total
  * count) opening a popover listing every thread via BlockNote's own
- * `ThreadsSidebar`. Live user testing against a real Notion screenshot
- * pushed back: Notion doesn't aggregate every comment into one button - each
- * thread gets its own small marker, positioned near where it actually is in
- * the document. Task 20 (this version) replaces the aggregate badge with one
- * marker **per thread**, each independently positioned and independently
- * clickable. Note what's deliberately still NOT here (both explicitly
- * deferred to Task 21): proximity clustering of nearby threads into a single
- * badge, and always-expanded (no-click) rendering on wide windows - this is
- * scoped purely to fixing *positioning*.
+ * `ThreadsSidebar`. Task 20 replaced that with one marker **per thread**,
+ * each independently positioned near its real document location. Live user
+ * feedback after Task 20 shipped asked for two more things (this task, 21):
+ *
+ * 1. **Proximity clustering** (narrow/default mode): threads whose computed
+ *    `top` values land within `CLUSTER_DISTANCE_THRESHOLD` of each other
+ *    render as one combined marker instead of several overlapping ones.
+ *    `clusterEntries` below does this via simple chain-linkage - sort by
+ *    `top`, walk through, and start a new cluster whenever the gap to the
+ *    *previous* (not the cluster's first) entry exceeds the threshold. This
+ *    also happens to give orphaned threads (stacked `ORPHANED_MARKER_GAP`,
+ *    44px, apart - see below) a single combined badge for free whenever
+ *    there's more than one, since 44px is comfortably under the clustering
+ *    threshold - verified live that this reads better than a column of
+ *    individually-stacked orphaned markers, so no special-casing was added
+ *    to keep them separate.
+ *
+ * 2. **Width-responsive expansion**: on a sufficiently wide window, every
+ *    thread renders its own `Thread` card directly and persistently - no
+ *    click needed - closer to Notion's own floating-card rail. Two design
+ *    questions the task brief left open, resolved as follows:
+ *
+ *    - **Does clustering still apply in wide mode?** No - `ExpandedCards`
+ *      renders one card *per thread*, never merged, because wide mode by
+ *      definition has the screen space clustering exists to save; merging
+ *      would throw away per-thread granularity exactly when there's room to
+ *      show it. Overlaps between naturally-close threads are instead solved
+ *      with collision avoidance (below), matching Notion's own wide-rail
+ *      behavior more closely than a cluster badge would.
+ *    - **Collision avoidance**: `layoutExpandedCards` sorts entries by
+ *      natural `top`, walks through in order, and pushes each card down to
+ *      `max(naturalTop, previousCard's measured bottom + gap)` whenever its
+ *      natural position would overlap the card above it, tracking a running
+ *      `prevBottom`. Card heights are variable (a thread with 10 replies is
+ *      much taller than one with a single comment), so they're measured live
+ *      via a `ResizeObserver` per card (`useExpandedCardHeights` - same
+ *      established pattern as `useMarkerTops` below and this codebase's other
+ *      DOM-measuring overlays), falling back to `DEFAULT_EXPANDED_CARD_HEIGHT`
+ *      for the one frame before a card's first real measurement lands. This
+ *      is deterministic and jitter-free in steady state: the same
+ *      entries+heights always produce the same layout, and heights only
+ *      change when a thread's actual rendered content does (a reply added,
+ *      not spurious re-renders).
+ *    - **Popover vs. plain `fixed` div**: expanded cards use a plain `fixed`
+ *      `<div>` wrapping `Thread` directly, *not* a permanently-`open`
+ *      `Popover`. `Thread`'s own `Card` (BlockNote's `@blocknote/shadcn`
+ *      `Card.tsx`, confirmed via its source) already supplies the full card
+ *      chrome - border, shadow, `w-[300px]` - so no extra frame is needed
+ *      around it. A permanently-open `Popover` was considered simpler
+ *      (reusing the exact narrow-mode markup) but rejected: it needs a real
+ *      anchor element for floating-ui to position against, which fights our
+ *      own collision-avoided `top`/`left` values, and while this app's
+ *      `Popover` (`@base-ui/react`) defaults `modal={false}` (no backdrop,
+ *      no focus trap, no scroll lock - confirmed via
+ *      `@base-ui/react/popover/root/PopoverRoot.d.ts`), there's no reason to
+ *      route through floating-ui's positioning logic at all for a case
+ *      where every pixel is already computed by hand.
+ *
+ * **Wide-mode width threshold arithmetic** (`WIDE_MODE_MIN_WIDTH`): the
+ * reading column is `max-w-3xl` (768px) inside `document-page.tsx`'s
+ * `px-12` (48px each side, 96px total) padded area, itself to the right of
+ * the 256px (`16rem`, `ui/sidebar.tsx`'s `SIDEBAR_WIDTH`) left sidebar - so
+ * the column reaches its full 768px width (no squeeze, matching Task 9/11's
+ * existing constraint) once the window is at least 256+96+768 = 1120px, and
+ * is centered (`mx-auto`) within whatever space remains beyond that. That
+ * centering is the subtlety a flat "sum the widths" estimate misses: every
+ * pixel the window grows past 1120 is split *in half* between the column's
+ * left slack and its right slack, so only half of any extra window width
+ * actually becomes usable space to the column's right - the wide-mode card
+ * (BlockNote's own 300px-wide `Card`, plus a 24px gutter clear of the
+ * column, plus this app's existing 24px (`right-6`) margin from the window's
+ * own right edge, matching every other floating badge in this file) needs
+ * `2*24 (gutter) + 2*24 (right margin) + 2*300 (card) + 1024 = 1720`px of
+ * window width before it's guaranteed to clear the column with no overlap
+ * (full derivation, in case this needs revisiting: column's right edge sits
+ * at `1072 + (W-1120)/2`; the card's left edge sits at `W-24-300`; setting
+ * their difference to the 24px gutter and solving for `W` gives 1720).
+ * Verified live via Playwright resize that 1720px leaves a clean gap and
+ * that the column never shrinks below `max-w-3xl` at or above it.
  *
  * Positioning: for a thread WITH a position, `threadPositions.get(id).from`
  * is a ProseMirror document position - `editor.prosemirrorView
@@ -72,30 +142,35 @@ import { cn } from '#lib/utils'
  * helper and flag BlockNote's own `ThreadsSidebar` uses internally - see
  * `node_modules/@blocknote/react/src/components/Comments/ThreadsSidebar.tsx`)
  * drive `Thread`'s header text and `bn-thread-orphaned` styling so an
- * orphaned thread still reads as "content deleted" rather than looking like
- * an ordinary comment.
+ * orphaned thread still reads as content-with-a-lost-position rather than
+ * looking like an ordinary comment. That header text itself comes from this
+ * app's own overridden `deleted_reference_text` dictionary string
+ * (`editor.tsx`) - not BlockNote's stock "Original content deleted", which is
+ * misleading here since orphaning happens on *every* reload, not genuine
+ * content deletion, and the comment body itself always survives (see
+ * `editor.tsx`'s dictionary override for the full reasoning).
  *
- * Each marker renders `<Thread thread={...} referenceText={...}
+ * Each marker/card renders `<Thread thread={...} referenceText={...}
  * orphaned={...} />` directly (also a genuine public `@blocknote/react`
  * export - `node_modules/@blocknote/react/src/index.ts` re-exports it from
  * `./components/Comments/Thread.js`) rather than the full `<ThreadsSidebar
- * filter="all" sort="position" />` list, since a single marker's popover
- * must show only that marker's own thread, not every thread in the document.
+ * filter="all" sort="position" />` list, since a single marker's popover (or
+ * expanded card) must show only its own thread(s), not every thread in the
+ * document.
  *
  * Still mounted as a child of `<BlockNoteView>` in editor.tsx (not
  * document-page.tsx) for the same reason as before: `useThreads`/
  * `useExtensionState`/`Thread` read the editor and the shadcn comment-card
  * components off `BlockNoteContext`/`ComponentsContext` - both are only
- * provided within `BlockNoteView`'s own subtree. Each marker still paints via
- * `ReactDOM.createPortal` into `portalTarget` - document-page.tsx's
+ * provided within `BlockNoteView`'s own subtree. Each marker/card still
+ * paints via `ReactDOM.createPortal` into `portalTarget` - document-page.tsx's
  * `comments-anchor` div - so its DOM output can live outside
- * `BlockNoteView`'s own tree (each marker positions itself independently via
- * its own inline `fixed` `top`, so - unlike Task 19's single anchored badge -
- * the anchor div's own position no longer matters; it's now just a plain
- * portal mount point, see document-page.tsx). React context still flows
- * through the component tree the portal was created from, not through the
- * DOM, so this keeps working even though the portaled output ends up
- * physically outside `BlockNoteView`'s own DOM subtree.
+ * `BlockNoteView`'s own tree (each positions itself independently via its
+ * own inline `fixed` `top`, so the anchor div's own position doesn't matter;
+ * it's just a plain portal mount point, see document-page.tsx). React context
+ * still flows through the component tree the portal was created from, not
+ * through the DOM, so this keeps working even though the portaled output
+ * ends up physically outside `BlockNoteView`'s own DOM subtree.
  *
  * Renders nothing at all when there are no threads (`threads.size === 0`),
  * so no marker ever occupies screen space it has nothing to show for.
@@ -117,8 +192,35 @@ interface CommentThreadsSidebarProps {
 const MARKER_TOP_MIN = 64
 const MARKER_BOTTOM_MARGIN = 176
 // Vertical spacing between stacked orphaned markers (no real document
-// position to place them at - see the doc comment above).
+// position to place them at - see the doc comment above). Deliberately under
+// CLUSTER_DISTANCE_THRESHOLD so multiple orphaned threads chain-cluster into
+// one badge in narrow mode instead of stacking as separate ones (verified
+// live - reads cleaner).
 const ORPHANED_MARKER_GAP = 44
+// Narrow/default mode: threads whose natural `top` values land within this
+// many pixels of their neighbor chain-cluster into one combined marker.
+// Task 20's markers are `size="sm"` buttons, ~28px tall; the task brief
+// suggested starting around 1.5-2x that (42-56px). Verified live: two
+// comments placed on adjacent lines of body text land ~34-40px apart
+// (line-height plus the small block-to-block gap) and need to cluster; two
+// comments separated by a full filler paragraph land 100px+ apart and must
+// stay separate. 48px sits inside the adjacent-lines gap and well under the
+// full-paragraph gap.
+const CLUSTER_DISTANCE_THRESHOLD = 48
+// See the doc comment above for the full derivation.
+const WIDE_MODE_MIN_WIDTH = 1720
+// Gap kept between two collision-avoided expanded cards (see
+// `layoutExpandedCards`).
+const EXPANDED_CARD_GAP = 16
+// Assumed card height for one render frame, before a card's first real
+// `ResizeObserver` measurement lands (see `useExpandedCardHeights`).
+const DEFAULT_EXPANDED_CARD_HEIGHT = 160
+
+interface ThreadEntry {
+  thread: ThreadData
+  threadPosition: { from: number; to: number } | undefined
+  naturalTop: number
+}
 
 export function CommentThreadsSidebar({
   portalTarget
@@ -126,33 +228,47 @@ export function CommentThreadsSidebar({
   const editor = useBlockNoteEditor<any, any, any>()
   const threads = useThreads()
   const { threadPositions } = useExtensionState(CommentsExtension)
-  const markerTops = useMarkerTops(editor, threadPositions)
+  const entries = useThreadEntries(editor, threads, threadPositions)
+  const isWide = useIsWideMode()
 
   if (threads.size === 0) {
     return null
   }
 
-  let orphanedIndex = 0
-  const markers = Array.from(threads.values()).map((thread) => {
-    const threadPosition = threadPositions.get(thread.id)
-    const rawTop = markerTops.get(thread.id)
-    const top =
-      rawTop === undefined
-        ? MARKER_TOP_MIN + orphanedIndex++ * ORPHANED_MARKER_GAP
-        : clampTop(rawTop)
+  const content = isWide ? (
+    <ExpandedCards editor={editor} entries={entries} />
+  ) : (
+    <ClusteredMarkers editor={editor} entries={entries} />
+  )
 
-    return (
-      <CommentMarker
-        key={thread.id}
-        editor={editor}
-        thread={thread}
-        threadPosition={threadPosition}
-        top={top}
-      />
-    )
-  })
+  return portalTarget ? createPortal(content, portalTarget) : content
+}
 
-  return portalTarget ? createPortal(markers, portalTarget) : markers
+/**
+ * Computes every thread's natural (unclamped, unclustered) viewport-relative
+ * `top` - shared by both the narrow-mode clustering path and the wide-mode
+ * collision-avoidance path below, so positioning logic for a single thread
+ * lives in exactly one place.
+ */
+function useThreadEntries(
+  editor: BlockNoteEditor<any, any, any>,
+  threads: Map<string, ThreadData>,
+  threadPositions: Map<string, { from: number; to: number }>
+): ThreadEntry[] {
+  const markerTops = useMarkerTops(editor, threadPositions)
+
+  return useMemo(() => {
+    let orphanedIndex = 0
+    return Array.from(threads.values()).map((thread) => {
+      const threadPosition = threadPositions.get(thread.id)
+      const rawTop = markerTops.get(thread.id)
+      const naturalTop =
+        rawTop === undefined
+          ? MARKER_TOP_MIN + orphanedIndex++ * ORPHANED_MARKER_GAP
+          : rawTop
+      return { thread, threadPosition, naturalTop }
+    })
+  }, [threads, threadPositions, markerTops])
 }
 
 function clampTop(top: number): number {
@@ -161,6 +277,64 @@ function clampTop(top: number): number {
     window.innerHeight - MARKER_BOTTOM_MARGIN
   )
   return Math.min(Math.max(top, MARKER_TOP_MIN), max)
+}
+
+/**
+ * Groups thread entries whose natural `top` values chain within
+ * `CLUSTER_DISTANCE_THRESHOLD` of their immediate neighbor into one cluster
+ * (sorted ascending, so this is a single linear pass - not full pairwise
+ * comparison). A cluster's own `top` is its topmost entry's natural `top`.
+ */
+function clusterEntries(entries: ThreadEntry[]): {
+  key: string
+  top: number
+  entries: ThreadEntry[]
+}[] {
+  const sorted = [...entries].sort((a, b) => a.naturalTop - b.naturalTop)
+  const clusters: { key: string; top: number; entries: ThreadEntry[] }[] = []
+
+  for (const entry of sorted) {
+    const current = clusters[clusters.length - 1]
+    const previous = current?.entries[current.entries.length - 1]
+    if (
+      current &&
+      previous &&
+      entry.naturalTop - previous.naturalTop <= CLUSTER_DISTANCE_THRESHOLD
+    ) {
+      current.entries.push(entry)
+    } else {
+      clusters.push({
+        key: entry.thread.id,
+        top: entry.naturalTop,
+        entries: [entry]
+      })
+    }
+  }
+
+  return clusters
+}
+
+function ClusteredMarkers({
+  editor,
+  entries
+}: {
+  editor: BlockNoteEditor<any, any, any>
+  entries: ThreadEntry[]
+}) {
+  const clusters = clusterEntries(entries)
+
+  return (
+    <>
+      {clusters.map((cluster) => (
+        <ClusterMarker
+          key={cluster.key}
+          editor={editor}
+          entries={cluster.entries}
+          top={clampTop(cluster.top)}
+        />
+      ))}
+    </>
+  )
 }
 
 /**
@@ -218,18 +392,47 @@ function useMarkerTops(
   }, [editor, threadPositions, tick])
 }
 
-function CommentMarker({
+/**
+ * Tracks whether the window is wide enough to switch from narrow mode
+ * (clustered, click-to-open markers) to wide mode (every thread expanded
+ * into a persistent card) - see the component doc comment above for the full
+ * `WIDE_MODE_MIN_WIDTH` arithmetic. Mirrors `use-mobile.ts`'s
+ * `matchMedia`-plus-`change`-listener pattern, the established way this
+ * codebase tracks a width breakpoint reactively.
+ */
+function useIsWideMode(): boolean {
+  const [isWide, setIsWide] = useState(
+    () => window.innerWidth >= WIDE_MODE_MIN_WIDTH
+  )
+
+  useEffect(() => {
+    const mql = window.matchMedia(`(min-width: ${WIDE_MODE_MIN_WIDTH}px)`)
+    const onChange = () => setIsWide(window.innerWidth >= WIDE_MODE_MIN_WIDTH)
+    mql.addEventListener('change', onChange)
+    onChange()
+    return () => mql.removeEventListener('change', onChange)
+  }, [])
+
+  return isWide
+}
+
+function ClusterMarker({
   editor,
-  thread,
-  threadPosition,
+  entries,
   top
 }: {
   editor: BlockNoteEditor<any, any, any>
-  thread: ThreadData
-  threadPosition: { from: number; to: number } | undefined
+  entries: ThreadEntry[]
   top: number
 }) {
-  const orphaned = !threadPosition
+  const isCluster = entries.length > 1
+  const orphaned = entries.every((entry) => !entry.threadPosition)
+  const badgeCount = isCluster
+    ? entries.length
+    : entries[0].thread.comments.length
+  const idSuffix = isCluster
+    ? `cluster-${entries.map((entry) => entry.thread.id).join('-')}`
+    : entries[0].thread.id
 
   return (
     <Popover>
@@ -243,28 +446,159 @@ function CommentMarker({
               orphaned && 'opacity-70'
             )}
             style={{ top }}
-            data-testid={`comment-marker-${thread.id}`}
-            data-thread-id={thread.id}
+            data-testid={`comment-marker-${idSuffix}`}
+            data-thread-count={entries.length}
             data-orphaned={orphaned || undefined}
           />
         }
       >
         <MessageSquare className="size-3.5" />
-        {thread.comments.length}
+        {badgeCount}
       </PopoverTrigger>
       <PopoverContent
         side="left"
         align="start"
         sideOffset={12}
-        data-testid={`comment-marker-popover-${thread.id}`}
+        data-testid={`comment-marker-popover-${idSuffix}`}
         className="flex max-h-[70vh] w-80 flex-col overflow-y-auto"
       >
-        <Thread
-          thread={thread}
-          referenceText={getReferenceText(editor, threadPosition)}
-          orphaned={orphaned}
-        />
+        {isCluster ? (
+          <div className="divide-border/60 flex flex-col divide-y">
+            {entries.map((entry) => (
+              <div key={entry.thread.id} className="py-3 first:pt-0 last:pb-0">
+                <Thread
+                  thread={entry.thread}
+                  referenceText={getReferenceText(editor, entry.threadPosition)}
+                  orphaned={!entry.threadPosition}
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <Thread
+            thread={entries[0].thread}
+            referenceText={getReferenceText(editor, entries[0].threadPosition)}
+            orphaned={orphaned}
+          />
+        )}
       </PopoverContent>
     </Popover>
+  )
+}
+
+/**
+ * Wide-mode collision avoidance: sorts by natural `top`, then walks through
+ * pushing each card down to clear the previous (already-placed) card's
+ * measured bottom edge whenever its natural position would overlap it.
+ * Deterministic given the same `entries`/`heights` inputs, so this only
+ * changes when a thread's real position or a card's real measured height
+ * changes - not on every render - which is what keeps it jitter-free.
+ */
+function layoutExpandedCards(
+  entries: ThreadEntry[],
+  heights: Map<string, number>
+): Map<string, number> {
+  const sorted = [...entries].sort((a, b) => a.naturalTop - b.naturalTop)
+  const positions = new Map<string, number>()
+  let prevBottom = -Infinity
+
+  for (const entry of sorted) {
+    const top = Math.max(entry.naturalTop, MARKER_TOP_MIN, prevBottom)
+    positions.set(entry.thread.id, top)
+    const height = heights.get(entry.thread.id) ?? DEFAULT_EXPANDED_CARD_HEIGHT
+    prevBottom = top + height + EXPANDED_CARD_GAP
+  }
+
+  return positions
+}
+
+/**
+ * Measures each expanded card's real rendered height via one shared
+ * `ResizeObserver` (same established pattern as `useMarkerTops` above),
+ * keyed by thread id through a `data-card-id` attribute set on the observed
+ * node rather than through the `ResizeObserverEntry`'s target identity
+ * directly, since cards can unmount/remount as threads are added/removed.
+ */
+function useExpandedCardHeights() {
+  const [heights, setHeights] = useState<Map<string, number>>(new Map())
+  const observerRef = useRef<ResizeObserver | null>(null)
+  const nodesRef = useRef<Map<string, Element>>(new Map())
+
+  useEffect(() => {
+    const observer = new ResizeObserver((observedEntries) => {
+      setHeights((prev) => {
+        let changed = false
+        const next = new Map(prev)
+        for (const observedEntry of observedEntries) {
+          const id = (observedEntry.target as HTMLElement).dataset.cardId
+          const height = observedEntry.contentRect.height
+          if (id && next.get(id) !== height) {
+            next.set(id, height)
+            changed = true
+          }
+        }
+        return changed ? next : prev
+      })
+    })
+    observerRef.current = observer
+    return () => observer.disconnect()
+  }, [])
+
+  const registerCard = useCallback((id: string, node: HTMLElement | null) => {
+    const observer = observerRef.current
+    const prevNode = nodesRef.current.get(id)
+    if (prevNode && observer) {
+      observer.unobserve(prevNode)
+    }
+    if (node) {
+      nodesRef.current.set(id, node)
+      observer?.observe(node)
+    } else {
+      nodesRef.current.delete(id)
+    }
+  }, [])
+
+  return { heights, registerCard }
+}
+
+function ExpandedCards({
+  editor,
+  entries
+}: {
+  editor: BlockNoteEditor<any, any, any>
+  entries: ThreadEntry[]
+}) {
+  const { heights, registerCard } = useExpandedCardHeights()
+  const positions = useMemo(
+    () => layoutExpandedCards(entries, heights),
+    [entries, heights]
+  )
+
+  return (
+    <>
+      {entries.map((entry) => {
+        const orphaned = !entry.threadPosition
+        return (
+          <div
+            key={entry.thread.id}
+            ref={(node) => registerCard(entry.thread.id, node)}
+            data-card-id={entry.thread.id}
+            className={cn(
+              'fixed right-6 z-40 max-h-[70vh] overflow-y-auto',
+              orphaned && 'opacity-70'
+            )}
+            style={{ top: positions.get(entry.thread.id) ?? entry.naturalTop }}
+            data-testid={`comment-card-${entry.thread.id}`}
+            data-orphaned={orphaned || undefined}
+          >
+            <Thread
+              thread={entry.thread}
+              referenceText={getReferenceText(editor, entry.threadPosition)}
+              orphaned={orphaned}
+            />
+          </div>
+        )
+      })}
+    </>
   )
 }
