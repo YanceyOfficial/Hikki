@@ -106,11 +106,16 @@ interface CommentThreadsSidebarProps {
 
 // Keeps every marker clear of the titlebar (~56px - see
 // table-of-contents.tsx's `SCROLL_OFFSET`) above, and the table-of-contents
-// floating toggle (`right-6 bottom-24` - table-of-contents.tsx) below,
-// regardless of scroll position. Verified live against this app's real
-// viewport at both its default size and resized down.
+// floating toggle (`right-6 bottom-24`, `icon-lg` = 36px tall -
+// table-of-contents.tsx) below, regardless of scroll position. A
+// max-clamped marker's bottom edge sits at
+// `innerHeight - MARKER_BOTTOM_MARGIN + <marker height, ~28px for
+// size="sm">`; the TOC toggle's own top edge sits at
+// `innerHeight - bottom-24(96px) - 36px = innerHeight - 132px` - so this
+// needs to clear `132 - 28 = 104px` with room to spare, not just barely
+// touch it (160 leaves an exact zero-pixel gap, found live during review).
 const MARKER_TOP_MIN = 64
-const MARKER_BOTTOM_MARGIN = 160
+const MARKER_BOTTOM_MARGIN = 176
 // Vertical spacing between stacked orphaned markers (no real document
 // position to place them at - see the doc comment above).
 const ORPHANED_MARKER_GAP = 44
