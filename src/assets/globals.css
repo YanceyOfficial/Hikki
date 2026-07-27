@@ -588,6 +588,56 @@
    `@source inline(...)` directive near the top of this file for why that
    previously did nothing and how it's fixed at the root instead. */
 
+/* Comment write/display module reskin (live user feedback: "写评论/展示评论的
+   模块样式都很丑" - the write-comment/display-comment module styling is all
+   ugly). Live inspection (both themes, via the dev server) found the actual
+   `Thread`/`Comment` card chrome itself (avatar, hover action toolbar,
+   reaction badges, the "..." menu, the emoji-reaction picker, an in-place
+   comment edit's Save/Cancel pair) already reads correctly on-brand - all of
+   those route through this app's own `shadCNComponents`/token-driven
+   surfaces (Button, Popover, the `.bn-menu-dropdown`/`.bn-action-toolbar`
+   rules elsewhere in this file) or a self-contained third-party widget
+   (emoji-mart, themed via its own `theme` prop) that already matches.
+
+   The one genuinely broken/"raw" spot, confirmed via getComputedStyle: the
+   brand-new-thread composer (`@blocknote/react`'s `FloatingComposer.tsx` -
+   opened by selecting text and clicking "Add comment" in the formatting
+   toolbar) renders its `CommentEditor` as a *direct* child of
+   `Components.Comments.Card` (`.bn-thread`), with no `CardSection` in
+   between - unlike `Thread`'s own reply composer and `Comment`'s own
+   display/edit editor, both of which sit inside a `CardSection`
+   (comments/Card.tsx, `bn-thread-comments`/`bn-thread-composer`, `p-4`) one
+   level deeper. Card itself only ever supplies vertical padding (`py-6`, no
+   horizontal). Combined with this file's own `.bn-editor
+   { padding-inline: 0 !important }` above (intended for the *main* document
+   editor, but matching by class on *any* nested BlockNoteView, including
+   this one), the net result - confirmed live via bounding rects - was the
+   comment text and the "Save" button sitting flush against the card's own
+   1px border with a literal 0px gap, on every new comment.
+
+   Scoped with a direct-child combinator (`.bn-thread > .bn-comment-editor`)
+   so only this un-padded case is touched: Thread's reply composer and
+   Comment's display/edit editor both nest `.bn-comment-editor` inside a
+   `CardSection` div first, so they never match this selector and keep their
+   already-correct `p-4` inset untouched (verified live: their computed
+   padding was already 16px on all sides, nothing to fix there). `!important`
+   is required on the padding-inline override for the same reason as every
+   other `.bn-editor` rule in this file: it's fighting this file's *own*
+   earlier `!important` declaration on the same class, and per the CSS
+   cascade, only a later `!important` (at equal-or-higher specificity, which
+   this compound selector has) can win against one - a non-important override
+   is silently ignored regardless of specificity or source order. 16px
+   matches the `p-4` inset already used by the sibling `CardSection`s, so a
+   thread reads identically whether its first comment was just composed or
+   is being re-viewed after a reload. */
+.bn-thread > .bn-comment-editor .bn-editor {
+  padding-inline: 16px !important;
+}
+
+.bn-thread > .bn-comment-actions-wrapper {
+  padding-inline: 16px;
+}
+
 /* Table of contents (table-of-contents.tsx): its own separate floating badge,
    fixed above the comments badge in the same bottom-right corner (it needs no
    portal - unlike comments, it never depends on BlockNote's context, so it
