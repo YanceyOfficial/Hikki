@@ -179,17 +179,56 @@ interface CommentThreadsSidebarProps {
   portalTarget: HTMLElement | null
 }
 
-// Keeps every marker clear of the titlebar (~56px - see
-// table-of-contents.tsx's `SCROLL_OFFSET`) above, and the table-of-contents
-// floating toggle (`right-6 bottom-24`, `icon-lg` = 36px tall -
-// table-of-contents.tsx) below, regardless of scroll position. A
-// max-clamped marker's bottom edge sits at
+// Absolute floor: never let a marker/card render above the titlebar (~56px -
+// see table-of-contents.tsx's `SCROLL_OFFSET`), no matter what. Task 20/21
+// hardcoded this as the *entire* top-clamp value (`MARKER_TOP_MIN = 64`) -
+// Task 23 found (live user report, reproduced directly) that this collides
+// with a cover image (page-header.tsx, up to ~280px tall via `max-h-70`):
+// an orphaned thread's marker/card, and any marker whose natural position
+// happened to clamp against this same floor, rendered pinned to a fixed
+// y=64 even when a full-bleed cover image occupied that exact region
+// (confirmed live: cover at y=36..306, orphaned card at y=64, height=243,
+// bottom=307 - overlapping almost exactly).
+//
+// `useMarkerTops` below now computes a dynamic `markerTopMin` from
+// `editor.domElement?.getBoundingClientRect().top` - the real, live top
+// edge of the ProseMirror content area - clamped with
+// `Math.max(TITLEBAR_CLEARANCE, thatValue)` so it never goes *below* this
+// floor once the cover/header scrolls out of view (verified live: scrolled
+// past the cover, `editor.domElement`'s top goes negative and the `Math.max`
+// correctly falls back to plain titlebar clearance). This self-corrects
+// whether a cover is present or not and whether the user has scrolled past
+// it, without hardcoding any cover-specific height.
+//
+// One nuance verified live, worth recording: `editor.domElement`'s top
+// also includes this app's fixed per-document header chrome (icon/cover
+// button row + title + "Edited…" timestamp, page-header.tsx) - measured at
+// ~208px above the editor even with NO cover present (vs. this constant's
+// bare 64px). That header content is confined to the `max-w-3xl` reading
+// column, though, never the right margin where markers/cards actually
+// render (`fixed right-6`) - so raising the floor by that amount changes
+// the *number* for a no-cover document but not anything visible: that
+// region of the right margin is empty screen space either way. Live-checked
+// both with and without a cover, scrolled and unscrolled, to confirm no
+// visual regression before accepting this rather than adding a
+// cover-specific DOM query (which `page-header.tsx`'s cover `<img>` has no
+// stable non-testid selector for - and testids are stripped from
+// production builds, per vite.config.ts's `react-remove-properties`, so
+// they can't be relied on for real app behavior anyway).
+//
+// `clampTop`'s floor, `layoutExpandedCards`' `Math.max`, and the
+// orphaned-thread stacking formula in `useThreadEntries` all take this
+// dynamic `markerTopMin` as a parameter now instead of reading a
+// module-level constant, so all three stay consistent by construction.
+const TITLEBAR_CLEARANCE = 64
+// Keeps every marker clear of the table-of-contents floating toggle
+// (`right-6 bottom-24`, `icon-lg` = 36px tall - table-of-contents.tsx) below,
+// regardless of scroll position. A max-clamped marker's bottom edge sits at
 // `innerHeight - MARKER_BOTTOM_MARGIN + <marker height, ~28px for
 // size="sm">`; the TOC toggle's own top edge sits at
 // `innerHeight - bottom-24(96px) - 36px = innerHeight - 132px` - so this
 // needs to clear `132 - 28 = 104px` with room to spare, not just barely
 // touch it (160 leaves an exact zero-pixel gap, found live during review).
-const MARKER_TOP_MIN = 64
 const MARKER_BOTTOM_MARGIN = 176
 // Vertical spacing between stacked orphaned markers (no real document
 // position to place them at - see the doc comment above). Deliberately under
@@ -228,7 +267,11 @@ export function CommentThreadsSidebar({
   const editor = useBlockNoteEditor<any, any, any>()
   const threads = useThreads()
   const { threadPositions } = useExtensionState(CommentsExtension)
-  const entries = useThreadEntries(editor, threads, threadPositions)
+  const { entries, markerTopMin } = useThreadEntries(
+    editor,
+    threads,
+    threadPositions
+  )
   const isWide = useIsWideMode()
 
   if (threads.size === 0) {
@@ -236,9 +279,17 @@ export function CommentThreadsSidebar({
   }
 
   const content = isWide ? (
-    <ExpandedCards editor={editor} entries={entries} />
+    <ExpandedCards
+      editor={editor}
+      entries={entries}
+      markerTopMin={markerTopMin}
+    />
   ) : (
-    <ClusteredMarkers editor={editor} entries={entries} />
+    <ClusteredMarkers
+      editor={editor}
+      entries={entries}
+      markerTopMin={markerTopMin}
+    />
   )
 
   return portalTarget ? createPortal(content, portalTarget) : content
@@ -248,35 +299,41 @@ export function CommentThreadsSidebar({
  * Computes every thread's natural (unclamped, unclustered) viewport-relative
  * `top` - shared by both the narrow-mode clustering path and the wide-mode
  * collision-avoidance path below, so positioning logic for a single thread
- * lives in exactly one place.
+ * lives in exactly one place. Also returns `markerTopMin` (see
+ * `useMarkerTops`) so callers can pass the *same* dynamic floor value into
+ * `clampTop`/`layoutExpandedCards` below, keeping every one of this file's
+ * three former `MARKER_TOP_MIN` call sites consistent by construction
+ * instead of each reading its own copy.
  */
 function useThreadEntries(
   editor: BlockNoteEditor<any, any, any>,
   threads: Map<string, ThreadData>,
   threadPositions: Map<string, { from: number; to: number }>
-): ThreadEntry[] {
-  const markerTops = useMarkerTops(editor, threadPositions)
+): { entries: ThreadEntry[]; markerTopMin: number } {
+  const { tops: markerTops, markerTopMin } = useMarkerTops(
+    editor,
+    threadPositions
+  )
 
-  return useMemo(() => {
+  const entries = useMemo(() => {
     let orphanedIndex = 0
     return Array.from(threads.values()).map((thread) => {
       const threadPosition = threadPositions.get(thread.id)
       const rawTop = markerTops.get(thread.id)
       const naturalTop =
         rawTop === undefined
-          ? MARKER_TOP_MIN + orphanedIndex++ * ORPHANED_MARKER_GAP
+          ? markerTopMin + orphanedIndex++ * ORPHANED_MARKER_GAP
           : rawTop
       return { thread, threadPosition, naturalTop }
     })
-  }, [threads, threadPositions, markerTops])
+  }, [threads, threadPositions, markerTops, markerTopMin])
+
+  return { entries, markerTopMin }
 }
 
-function clampTop(top: number): number {
-  const max = Math.max(
-    MARKER_TOP_MIN,
-    window.innerHeight - MARKER_BOTTOM_MARGIN
-  )
-  return Math.min(Math.max(top, MARKER_TOP_MIN), max)
+function clampTop(top: number, markerTopMin: number): number {
+  const max = Math.max(markerTopMin, window.innerHeight - MARKER_BOTTOM_MARGIN)
+  return Math.min(Math.max(top, markerTopMin), max)
 }
 
 /**
@@ -316,10 +373,12 @@ function clusterEntries(entries: ThreadEntry[]): {
 
 function ClusteredMarkers({
   editor,
-  entries
+  entries,
+  markerTopMin
 }: {
   editor: BlockNoteEditor<any, any, any>
   entries: ThreadEntry[]
+  markerTopMin: number
 }) {
   const clusters = clusterEntries(entries)
 
@@ -330,7 +389,7 @@ function ClusteredMarkers({
           key={cluster.key}
           editor={editor}
           entries={cluster.entries}
-          top={clampTop(cluster.top)}
+          top={clampTop(cluster.top, markerTopMin)}
         />
       ))}
     </>
@@ -340,20 +399,30 @@ function ClusteredMarkers({
 /**
  * Computes each positioned thread's current viewport-relative `top` (see the
  * component doc comment above for the full `coordsAtPos` rationale), keyed by
- * thread id. Orphaned threads (no entry in `threadPositions`) simply have no
- * entry in the returned map - the caller falls back to a stacked position for
- * those.
+ * thread id, plus `markerTopMin` - the dynamic top-clearance floor described
+ * at `TITLEBAR_CLEARANCE`'s doc comment above, computed here (rather than in
+ * a second, separately-timed effect) specifically so it shares this same
+ * `tick` recompute cycle. Orphaned threads (no entry in `threadPositions`)
+ * simply have no entry in the returned map - the caller falls back to a
+ * stacked position (anchored at `markerTopMin`) for those.
  *
  * `tick` exists purely to force a recompute on scroll/resize/layout-shift:
- * `coordsAtPos` reads live DOM layout, not React state, so there's nothing to
- * put directly in a dependency array for "the window scrolled" - bumping a
- * counter on each such event and depending on it is the same trick
- * `code-block-copy-overlay.tsx` uses for the same reason.
+ * `coordsAtPos` and `getBoundingClientRect` both read live DOM layout, not
+ * React state, so there's nothing to put directly in a dependency array for
+ * "the window scrolled" - bumping a counter on each such event and depending
+ * on it is the same trick `code-block-copy-overlay.tsx` uses for the same
+ * reason. Note the `ResizeObserver` below only fires on `editor.domElement`'s
+ * own size changing, not merely its position - a cover being added/removed
+ * above it (page-header.tsx) doesn't resize the editor itself, only shifts
+ * it, so that case relies on the `scroll`/`resize` listeners (or a later
+ * scroll/resize after the cover changes) to pick up the new `markerTopMin`,
+ * matching this hook's pre-existing scope (documented above, not a new gap
+ * introduced by this task).
  */
 function useMarkerTops(
   editor: BlockNoteEditor<any, any, any>,
   threadPositions: Map<string, { from: number; to: number }>
-) {
+): { tops: Map<string, number>; markerTopMin: number } {
   const [tick, setTick] = useState(0)
 
   useEffect(() => {
@@ -380,7 +449,7 @@ function useMarkerTops(
     }
   }, [editor])
 
-  return useMemo(() => {
+  const tops = useMemo(() => {
     const tops = new Map<string, number>()
     for (const [threadId, position] of threadPositions) {
       const coords = editor.prosemirrorView?.coordsAtPos(position.from)
@@ -390,6 +459,13 @@ function useMarkerTops(
     }
     return tops
   }, [editor, threadPositions, tick])
+
+  const markerTopMin = useMemo(() => {
+    const contentTop = editor.domElement?.getBoundingClientRect().top
+    return Math.max(TITLEBAR_CLEARANCE, contentTop ?? TITLEBAR_CLEARANCE)
+  }, [editor, tick])
+
+  return { tops, markerTopMin }
 }
 
 /**
@@ -496,14 +572,15 @@ function ClusterMarker({
  */
 function layoutExpandedCards(
   entries: ThreadEntry[],
-  heights: Map<string, number>
+  heights: Map<string, number>,
+  markerTopMin: number
 ): Map<string, number> {
   const sorted = [...entries].sort((a, b) => a.naturalTop - b.naturalTop)
   const positions = new Map<string, number>()
   let prevBottom = -Infinity
 
   for (const entry of sorted) {
-    const top = Math.max(entry.naturalTop, MARKER_TOP_MIN, prevBottom)
+    const top = Math.max(entry.naturalTop, markerTopMin, prevBottom)
     positions.set(entry.thread.id, top)
     const height = heights.get(entry.thread.id) ?? DEFAULT_EXPANDED_CARD_HEIGHT
     prevBottom = top + height + EXPANDED_CARD_GAP
@@ -563,15 +640,17 @@ function useExpandedCardHeights() {
 
 function ExpandedCards({
   editor,
-  entries
+  entries,
+  markerTopMin
 }: {
   editor: BlockNoteEditor<any, any, any>
   entries: ThreadEntry[]
+  markerTopMin: number
 }) {
   const { heights, registerCard } = useExpandedCardHeights()
   const positions = useMemo(
-    () => layoutExpandedCards(entries, heights),
-    [entries, heights]
+    () => layoutExpandedCards(entries, heights, markerTopMin),
+    [entries, heights, markerTopMin]
   )
 
   return (
