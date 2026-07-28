@@ -1646,6 +1646,46 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 ---
 
+### Task 23: Comment markers/cards render on top of the cover image
+
+**Context:** Live user report, confirmed root-caused before writing this task (not guessed): when a document has a cover image (`page-header.tsx`, up to ~280px tall), comment markers/cards can render visually on top of it.
+
+**Root cause, already confirmed via live reproduction:** `src/components/comment-threads-sidebar.tsx`'s `MARKER_TOP_MIN = 64` (and the constant of the same name/value used for the narrow-mode `clampTop`'s floor, and for stacking orphaned threads at `MARKER_TOP_MIN + orphanedIndex * ORPHANED_MARKER_GAP`) was chosen purely to clear the ~56px titlebar (per its own doc comment) — it has no idea a cover image might occupy the viewport's top ~280px. Reproduced directly: uploaded a cover (renders at roughly y=36 to y=306 in a real browser), added a comment, then forced the thread to orphan (theme toggle, the established equivalent of a reload per this file's own `#1701` doc comment) — the orphaned marker/card rendered at `y=64, height=243` (bottom edge 307), overlapping the cover's `y=36..306` almost exactly. A thread with a real (non-orphaned) position usually doesn't hit this in practice, since normal document flow already pushes its natural `coordsAtPos` position below the cover — but anything that falls back to the hardcoded `MARKER_TOP_MIN` floor (orphaned threads, or a non-orphaned thread whose natural position happens to still clamp against that floor) collides with the cover whenever one is present.
+
+**Fix direction (validated during investigation, implement and verify — don't re-derive from scratch, but do confirm live rather than trusting this blindly):** replace the hardcoded `MARKER_TOP_MIN = 64` constant with a value computed dynamically from where the actual document content begins — `editor.domElement?.getBoundingClientRect().top` (the real, live top edge of the ProseMirror content area, already accessible in this file — `editor` is already threaded through `useMarkerTops`/the component) is a good candidate, clamped with `Math.max(64, thatValue)` so it never goes _below_ the titlebar-clearance floor once the user scrolls the cover/header out of view (at which point `editor.domElement`'s top edge goes negative or above the titlebar, and the `Math.max` correctly falls back to the plain 64px titlebar clearance — no cover-specific special-casing needed). This should self-correct automatically whether a cover is present or not, and whether the user has scrolled past it or not, without hardcoding anything about cover image heights specifically. Recompute this on the same scroll/resize/layout-shift tick `useMarkerTops` already tracks, rather than only once on mount.
+
+**Files:**
+
+- Modify: `src/components/comment-threads-sidebar.tsx`
+
+- [ ] **Step 1: Read the current implementation in full**
+
+Read `src/components/comment-threads-sidebar.tsx` completely — `MARKER_TOP_MIN`'s current usages (the narrow-mode `clampTop` floor, the wide-mode `layoutExpandedCards`'s `Math.max(entry.naturalTop, MARKER_TOP_MIN, prevBottom)`, and the orphaned-thread stacking formula) all need to use whatever dynamic value replaces the current hardcoded constant, consistently — don't fix only one call site and leave the others using the stale hardcoded value.
+
+- [ ] **Step 2: Implement the dynamic top-clearance calculation**
+
+Compute it inside (or alongside) `useMarkerTops`/`useThreadEntries` so it shares the same scroll/resize/`tick` recompute cycle already established, rather than adding a second, separately-timed measurement effect. Verify empirically whether `editor.domElement`'s top edge is the right reference point (per the investigation above) or whether some other measurement reads better live — state your reasoning either way in your report.
+
+- [ ] **Step 3: Live-verify across all the scenarios that matter**
+
+With the dev server running: (a) a document WITH a cover and an orphaned thread — confirm the marker/card no longer overlaps the cover, rendering at or below its bottom edge instead; (b) the same document scrolled down past the cover — confirm the marker/card correctly moves back up to the plain titlebar-clearance position once the cover is out of view (don't leave it artificially pinned low forever); (c) a document with NO cover — confirm behavior is unchanged from before this fix (still clears just the titlebar); (d) re-verify narrow-mode clustering, wide-mode expansion, and collision avoidance (Task 21) all still work correctly with the new dynamic floor — this touches shared logic all three modes depend on. Check both light and dark theme.
+
+- [ ] **Step 4: Run the full check set**
+
+Run: `pnpm test && pnpm exec tsc --noEmit && pnpm e2e && cargo test --manifest-path src-tauri/Cargo.toml`
+Expected: all green.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/components/comment-threads-sidebar.tsx
+git commit -m "fix: keep comment markers clear of the cover image
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
+```
+
+---
+
 ## Self-review notes
 
 - **Task 11 added later (post-Task-10 live feedback):** after the comments feature (Task 10) landed and its `ThreadsSidebar` mitigation was reviewed, the user asked (referencing a real Notion screenshot) to reposition the comments panel from its full-width in-flow placement to a right-side rail matching Notion's floating-card treatment, and more broadly to keep studying Notion's design (color/layout/interaction) as an ongoing lens on this work — not a one-off task. Task 11 covers the concrete, scoped part (the rail); the broader "keep referencing Notion" instruction is applied opportunistically across tasks rather than as its own deliverable.
