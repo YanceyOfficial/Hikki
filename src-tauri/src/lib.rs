@@ -1,3 +1,4 @@
+mod ai;
 mod asset;
 mod commands;
 mod document;
@@ -71,6 +72,11 @@ pub fn run() {
             commands::rebuild_index,
             commands::set_vault_path,
             commands::import_asset,
+            commands::get_api_key,
+            commands::set_api_key,
+            commands::delete_api_key,
+            commands::save_ai_settings,
+            commands::get_ai_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

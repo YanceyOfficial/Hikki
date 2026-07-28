@@ -10,6 +10,8 @@ pub enum AppError {
     NotFound(String),
     #[error("index error: {0}")]
     Index(#[from] rusqlite::Error),
+    #[error("keychain error: {0}")]
+    Keychain(#[from] keyring::Error),
 }
 
 impl AppError {
@@ -19,6 +21,7 @@ impl AppError {
             AppError::Json(_) => "HK-1002",
             AppError::NotFound(_) => "HK-1003",
             AppError::Index(_) => "HK-2001",
+            AppError::Keychain(_) => "HK-3001",
         }
     }
 }

@@ -85,7 +85,7 @@ pub fn set_vault_path_impl(state: &AppState, path: String) -> Result<VaultInfo> 
     vault::ensure_vault(&new_root)?;
     {
         let mut settings = lock(&state.settings);
-        let candidate = AppSettings { vault_path: new_root };
+        let candidate = AppSettings { vault_path: new_root, ..settings.clone() };
         vault::save_settings(&state.app_data_dir, &candidate)?;
         *settings = candidate;
     }
@@ -148,6 +148,47 @@ pub fn import_asset(state: State<AppState>, doc_id: String, file_name: String, b
     import_asset_impl(&state, doc_id, file_name, bytes)
 }
 
+#[tauri::command]
+pub fn get_api_key(provider: String) -> Result<Option<String>> {
+    crate::ai::get_api_key_impl(&provider)
+}
+
+#[tauri::command]
+pub fn set_api_key(provider: String, key: String) -> Result<()> {
+    crate::ai::set_api_key_impl(&provider, &key)
+}
+
+#[tauri::command]
+pub fn delete_api_key(provider: String) -> Result<()> {
+    crate::ai::delete_api_key_impl(&provider)
+}
+
+pub fn save_ai_settings_impl(
+    state: &AppState,
+    default_ai_provider: Option<String>,
+    default_ai_model: Option<String>,
+) -> Result<AppSettings> {
+    let mut settings = lock(&state.settings);
+    let candidate = AppSettings { default_ai_provider, default_ai_model, ..settings.clone() };
+    vault::save_settings(&state.app_data_dir, &candidate)?;
+    *settings = candidate.clone();
+    Ok(candidate)
+}
+
+#[tauri::command]
+pub fn save_ai_settings(
+    state: State<AppState>,
+    default_ai_provider: Option<String>,
+    default_ai_model: Option<String>,
+) -> Result<AppSettings> {
+    save_ai_settings_impl(&state, default_ai_provider, default_ai_model)
+}
+
+#[tauri::command]
+pub fn get_ai_settings(state: State<AppState>) -> Result<AppSettings> {
+    Ok(lock(&state.settings).clone())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -158,7 +199,11 @@ mod tests {
         vault::ensure_vault(vault_dir.path()).unwrap();
         let state = AppState {
             app_data_dir: data_dir.path().to_path_buf(),
-            settings: Mutex::new(AppSettings { vault_path: vault_dir.path().to_path_buf() }),
+            settings: Mutex::new(AppSettings {
+                vault_path: vault_dir.path().to_path_buf(),
+                default_ai_provider: None,
+                default_ai_model: None,
+            }),
             index: Mutex::new(Index::open_in_memory().unwrap()),
         };
         (vault_dir, data_dir, state)
@@ -225,6 +270,27 @@ mod tests {
         // index (as required), the doc must disappear from the listing.
         lock(&state.index).remove(&doc.id).unwrap();
         assert!(list_documents_impl(&state).unwrap().is_empty());
+    }
+
+    #[test]
+    fn save_ai_settings_impl_persists_and_preserves_vault_path() {
+        let (_vault_dir, _data_dir, state) = state();
+        let before_vault_path = lock(&state.settings).vault_path.clone();
+
+        let updated = save_ai_settings_impl(
+            &state,
+            Some("anthropic".to_string()),
+            Some("claude-test-model".to_string()),
+        )
+        .unwrap();
+
+        assert_eq!(updated.default_ai_provider, Some("anthropic".to_string()));
+        assert_eq!(updated.default_ai_model, Some("claude-test-model".to_string()));
+        assert_eq!(updated.vault_path, before_vault_path);
+
+        // Reloading from disk must see the same values.
+        let reloaded = vault::load_settings(&state.app_data_dir);
+        assert_eq!(reloaded.default_ai_provider, Some("anthropic".to_string()));
     }
 
     #[test]
