@@ -1,4 +1,10 @@
-import type { Doc, DocumentMeta, SearchHit, VaultInfo } from '#lib/types'
+import type {
+  AiSettings,
+  Doc,
+  DocumentMeta,
+  SearchHit,
+  VaultInfo
+} from '#lib/types'
 
 export interface ImportedAsset {
   fileName: string
@@ -16,4 +22,9 @@ export interface Backend {
   rebuildIndex(): Promise<number>
   importAsset(docId: string, file: File): Promise<ImportedAsset>
   assetUrl(docId: string, fileName: string): string
+  getApiKey(provider: string): Promise<string | null>
+  setApiKey(provider: string, key: string): Promise<void>
+  deleteApiKey(provider: string): Promise<void>
+  getAiSettings(): Promise<AiSettings>
+  saveAiSettings(settings: AiSettings): Promise<AiSettings>
 }

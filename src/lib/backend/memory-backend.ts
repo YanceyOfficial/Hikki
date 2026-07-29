@@ -1,5 +1,11 @@
 import type { Backend, ImportedAsset } from '#lib/backend/backend'
-import type { Doc, DocumentMeta, SearchHit, VaultInfo } from '#lib/types'
+import type {
+  AiSettings,
+  Doc,
+  DocumentMeta,
+  SearchHit,
+  VaultInfo
+} from '#lib/types'
 
 const notFound = (id: string) =>
   Object.assign(new Error(`document not found: ${id}`), { code: 'HK-1003' })
@@ -14,6 +20,11 @@ const toMeta = ({
 export class MemoryBackend implements Backend {
   private docs = new Map<string, Doc>()
   private assets = new Map<string, string>()
+  private apiKeys = new Map<string, string>()
+  private aiSettings: AiSettings = {
+    defaultAiProvider: null,
+    defaultAiModel: null
+  }
 
   async getVaultInfo(): Promise<VaultInfo> {
     const alive = [...this.docs.values()].filter((d) => d.deletedAt === null)
@@ -118,5 +129,26 @@ export class MemoryBackend implements Backend {
       this.assets.get(`${docId}/${fileName}`) ??
       `memory-asset:${docId}/${fileName}`
     )
+  }
+
+  async getApiKey(provider: string): Promise<string | null> {
+    return this.apiKeys.get(provider) ?? null
+  }
+
+  async setApiKey(provider: string, key: string): Promise<void> {
+    this.apiKeys.set(provider, key)
+  }
+
+  async deleteApiKey(provider: string): Promise<void> {
+    this.apiKeys.delete(provider)
+  }
+
+  async getAiSettings(): Promise<AiSettings> {
+    return this.aiSettings
+  }
+
+  async saveAiSettings(settings: AiSettings): Promise<AiSettings> {
+    this.aiSettings = settings
+    return this.aiSettings
   }
 }

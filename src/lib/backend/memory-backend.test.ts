@@ -71,3 +71,28 @@ test('importAsset returns a url and assetUrl resolves it later', async () => {
   expect(imported.url).toBeTruthy()
   expect(b.assetUrl(doc.id, 'pic.png')).toBe(imported.url)
 })
+
+test('api key round-trips through set/get/delete', async () => {
+  const b = new MemoryBackend()
+  expect(await b.getApiKey('openai')).toBeNull()
+  await b.setApiKey('openai', 'sk-test-123')
+  expect(await b.getApiKey('openai')).toBe('sk-test-123')
+  await b.deleteApiKey('openai')
+  expect(await b.getApiKey('openai')).toBeNull()
+})
+
+test('ai settings persist in memory across calls', async () => {
+  const b = new MemoryBackend()
+  const initial = await b.getAiSettings()
+  expect(initial).toEqual({ defaultAiProvider: null, defaultAiModel: null })
+
+  const saved = await b.saveAiSettings({
+    defaultAiProvider: 'anthropic',
+    defaultAiModel: 'claude-test'
+  })
+  expect(saved).toEqual({
+    defaultAiProvider: 'anthropic',
+    defaultAiModel: 'claude-test'
+  })
+  expect(await b.getAiSettings()).toEqual(saved)
+})

@@ -2,7 +2,13 @@ import { invoke } from '@tauri-apps/api/core'
 
 import { protocolAssetUrl } from '#lib/asset-url'
 import type { Backend, ImportedAsset } from '#lib/backend/backend'
-import type { Doc, DocumentMeta, SearchHit, VaultInfo } from '#lib/types'
+import type {
+  AiSettings,
+  Doc,
+  DocumentMeta,
+  SearchHit,
+  VaultInfo
+} from '#lib/types'
 
 export class TauriBackend implements Backend {
   getVaultInfo() {
@@ -40,5 +46,23 @@ export class TauriBackend implements Backend {
   }
   assetUrl(docId: string, fileName: string): string {
     return protocolAssetUrl(docId, fileName)
+  }
+  getApiKey(provider: string) {
+    return invoke<string | null>('get_api_key', { provider })
+  }
+  setApiKey(provider: string, key: string) {
+    return invoke<void>('set_api_key', { provider, key })
+  }
+  deleteApiKey(provider: string) {
+    return invoke<void>('delete_api_key', { provider })
+  }
+  getAiSettings() {
+    return invoke<AiSettings>('get_ai_settings')
+  }
+  saveAiSettings(settings: AiSettings) {
+    return invoke<AiSettings>('save_ai_settings', {
+      defaultAiProvider: settings.defaultAiProvider,
+      defaultAiModel: settings.defaultAiModel
+    })
   }
 }

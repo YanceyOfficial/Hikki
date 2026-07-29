@@ -25,3 +25,8 @@ export interface VaultInfo {
   vaultPath: string
   documentCount: number
 }
+
+export interface AiSettings {
+  defaultAiProvider: string | null
+  defaultAiModel: string | null
+}
