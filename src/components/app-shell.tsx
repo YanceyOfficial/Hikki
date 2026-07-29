@@ -3,6 +3,7 @@ import { Outlet } from 'react-router'
 import { SidebarLeft } from '#components/sidebar-left'
 import { TitleBar } from '#components/title-bar'
 import { SidebarInset, SidebarProvider } from '#components/ui/sidebar'
+import { Toaster } from '#components/ui/sonner'
 
 export function AppShell() {
   return (
@@ -17,6 +18,7 @@ export function AppShell() {
           <Outlet />
         </div>
       </SidebarInset>
+      <Toaster />
     </SidebarProvider>
   )
 }
