@@ -63,3 +63,13 @@ test('yields exactly one error event, no delta/done, when no API key is configur
     (events[0] as { type: 'error'; message: string }).message.toLowerCase()
   ).toContain('key')
 })
+
+test('yields a single error event, not an uncaught rejection, when the getApiKey IPC call itself rejects', async () => {
+  getAiModels() // initialize the singleton (and its faux provider) first
+  vi.mocked(backend.getApiKey).mockRejectedValue(
+    new Error('keychain access denied')
+  )
+
+  const events = await collect({ kind: 'proofread' }, 'some text')
+  expect(events).toEqual([{ type: 'error', message: 'keychain access denied' }])
+})

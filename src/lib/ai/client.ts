@@ -37,7 +37,16 @@ export async function* streamWritingTool(
     return
   }
 
-  const apiKey = await backend.getApiKey(options.provider)
+  let apiKey: string | null
+  try {
+    apiKey = await backend.getApiKey(options.provider)
+  } catch (err) {
+    yield {
+      type: 'error',
+      message: err instanceof Error ? err.message : String(err)
+    }
+    return
+  }
   if (!apiKey) {
     yield {
       type: 'error',
