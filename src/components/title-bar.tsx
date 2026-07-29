@@ -1,6 +1,7 @@
 import { Moon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
 
+import { AiSettingsDialog } from '#components/ai-settings-dialog'
 import { Button } from '#components/ui/button'
 import { SidebarTrigger, useSidebar } from '#components/ui/sidebar'
 import { useTrafficLightInset } from '#hooks/use-traffic-light-inset'
@@ -30,6 +31,10 @@ export function TitleBar() {
     >
       <SidebarTrigger data-testid="sidebar-toggle" />
       <div className="flex-1" />
+      {/* Provisional entry point for Task 8's minimal AI settings dialog -
+          Phase 4's real Settings shell (spec §8) will supersede this with a
+          proper navigation entry. */}
+      <AiSettingsDialog />
       <Button
         variant="ghost"
         size="icon"
