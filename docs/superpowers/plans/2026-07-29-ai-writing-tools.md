@@ -346,6 +346,8 @@ git commit -m "feat: wire up tauri-plugin-http and replace global fetch in the T
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ```
 
+**Amendment (added after Task 6 landed, 2026-07-29):** the implementer correctly flagged that `http:default` grants the fetch _capability_ but no origin _scope_ — an empty scope silently blocks every real request regardless of how correctly everything else is wired. This has since been resolved directly (outside the numbered task sequence, since the origins were already fixed by spec §14b's provider decision and needed no further design work): `src-tauri/capabilities/default.json`'s `http:default` entry now carries an explicit `allow` scope for `https://api.openai.com/*` and `https://api.anthropic.com/*`. No further action needed on this point in later tasks.
+
 ---
 
 ### Task 3: Extend the `Backend` abstraction with AI key/settings IPC
@@ -1041,6 +1043,8 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 This is deliberately **not** the 5-section Settings shell from spec §8 — a single small dialog, matching the "minimal Phase-4 pull-forward" scope from spec §14b. Do not build navigation/section infrastructure here; that's Phase 4's job.
 
+**Amendment (added after Task 6 landed, 2026-07-29):** Task 6's implementer discovered and fixed a real bug in the original draft of this plan's model-lookup code — `models.getModels(provider)`/`models.getModel(provider, id)` are strictly scoped to that provider's own registered bucket. In dev/test mode, `getAiModels()` (Task 4) registers a single `fauxProvider()` under the id `"faux"`, never under `"openai"`/`"anthropic"`, so any lookup scoped to a nominal provider id returns nothing there. Task 6 fixed this in `client.ts` by scanning the full combined catalog (`models.getModels().find((c) => c.id === modelId)`) instead of filtering by provider bucket. The Step 3 code below has already been corrected to use the equivalent pattern for `testConnection` — do not revert to a provider-scoped `getModels(provider)`/`getModel(provider, id)` call, it will silently break Step 6's live dev-mode verification (the "Test connection" button would always fail with "no model or key" since the faux catalog never appears under `"openai"`/`"anthropic"`).
+
 - [ ] **Step 1: Write the failing test**
 
 Create `src/components/ai-settings-dialog.test.tsx` (React Testing Library, following this codebase's existing component-test conventions — check a similar existing test file, e.g. `page-header.test.tsx`, for the exact render/query helpers already in use):
@@ -1135,7 +1139,15 @@ export function AiSettingsDialog() {
     setTestState((s) => ({ ...s, [provider]: 'testing' }))
     try {
       const models = getAiModels()
-      const model = models.getModels(provider)[0]
+      // Scoped `getModels(provider)` only finds models registered under that
+      // exact provider id - in dev/test mode the faux provider registers as
+      // "faux", not "openai"/"anthropic", so it would never appear here. Fall
+      // back to the first model in the full catalog when the provider-scoped
+      // lookup comes up empty (dev/faux mode); in the real Tauri app the
+      // scoped lookup always succeeds since openaiProvider()/anthropicProvider()
+      // register under those literal ids. Mirrors the fix applied in Task 6's
+      // client.ts for the same underlying pi-ai scoping behavior.
+      const model = models.getModels(provider)[0] ?? models.getModels()[0]
       const apiKey = await backend.getApiKey(provider)
       if (!model || !apiKey) throw new Error('no model or key')
       await models.complete(
@@ -1152,9 +1164,10 @@ export function AiSettingsDialog() {
   }
 
   const allModels = getAiModels()
-  const modelOptions = [defaultProvider || AI_PROVIDER_IDS[0]].flatMap((p) =>
-    allModels.getModels(p as AiProviderId)
-  )
+  const modelOptions = [defaultProvider || AI_PROVIDER_IDS[0]].flatMap((p) => {
+    const scoped = allModels.getModels(p as AiProviderId)
+    return scoped.length > 0 ? scoped : allModels.getModels()
+  })
 
   const saveDefaults = async (provider: string, model: string) => {
     setDefaultProvider(provider)
