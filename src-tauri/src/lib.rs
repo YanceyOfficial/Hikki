@@ -16,6 +16,7 @@ use tauri::Manager;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_http::init())
         .register_uri_scheme_protocol("hikki-asset", |ctx, request| {
             let app = ctx.app_handle();
             let state = app.state::<commands::AppState>();
