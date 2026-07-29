@@ -16,3 +16,18 @@ test('renders exactly one main landmark', () => {
   expect(screen.getAllByRole('main')).toHaveLength(1)
   expect(screen.getByTestId('child')).toBeInTheDocument()
 })
+
+test('mounts the sonner toaster', () => {
+  render(
+    <MemoryRouter>
+      <Routes>
+        <Route path="/" element={<AppShell />}>
+          <Route index element={<div data-testid="child" />} />
+        </Route>
+      </Routes>
+    </MemoryRouter>
+  )
+  expect(
+    screen.getByRole('region', { name: /notifications/i })
+  ).toBeInTheDocument()
+})
