@@ -13,6 +13,9 @@ import { CommentsExtension } from '@blocknote/core/comments'
 // `i18n/locales/index.js` (the actual locale objects like `en`).
 import { en } from '@blocknote/core/locales'
 import {
+  FormattingToolbar,
+  FormattingToolbarController,
+  getFormattingToolbarItems,
   SideMenuController,
   SuggestionMenuController,
   useCreateBlockNote
@@ -20,7 +23,7 @@ import {
 import { BlockNoteView } from '@blocknote/shadcn'
 import { offset, shift, size, type Middleware } from '@floating-ui/react'
 import { useTheme } from 'next-themes'
-import { useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createHighlighter } from 'shiki'
 
 import { CodeBlockCopyOverlay } from '#components/code-block-copy-overlay'
@@ -38,6 +41,7 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from '#components/ui/tooltip'
+import { WritingToolsButton } from '#components/writing-tools-button'
 import { backend } from '#lib/backend/index'
 import { guessLanguage } from '#lib/guess-language'
 import type { VaultThreadStore } from '#lib/vault-thread-store'
@@ -371,6 +375,42 @@ export function Editor({
     editor
   )
 
+  // Entry point for the (as yet unbuilt) Writing Tools popover - Task 10
+  // fills in the real popover body; for now this only proves the wiring
+  // works (see the placeholder div below).
+  const [writingToolsOpen, setWritingToolsOpen] = useState(false)
+
+  // `⌘J` mirrors the button's own click handler. Scoped to this editor's own
+  // container (not `window`) so it doesn't fire while focus is elsewhere in
+  // the app (e.g. the sidebar or a dialog). Gated on `editor.getSelection()`
+  // being defined - confirmed against `@blocknote/core`'s own
+  // `BlockNoteEditor.getSelection()` (delegates to
+  // `_selectionManager.getSelection()`) that this returns `undefined` for a
+  // collapsed selection (a bare cursor, no highlighted text) and a real
+  // object once a range is selected - the same check
+  // `BasicTextStyleButton`/`CreateLinkButton` use to decide whether to
+  // render at all, and equivalent to the formatting toolbar's own visibility
+  // condition (`FormattingToolbarExtension`'s `shouldShow`: hidden whenever
+  // `tr.selection.empty`).
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.metaKey &&
+        event.key === 'j' &&
+        editor.getSelection() !== undefined
+      ) {
+        event.preventDefault()
+        setWritingToolsOpen(true)
+      }
+    }
+
+    container.addEventListener('keydown', handleKeyDown)
+    return () => container.removeEventListener('keydown', handleKeyDown)
+  }, [editor])
+
   return (
     // `relative` anchors `CodeBlockCopyOverlay`'s absolutely-positioned
     // overlay layer (a DOM sibling of BlockNoteView, not a descendant of its
@@ -404,6 +444,19 @@ export function Editor({
         // manually below with corrected positioning middleware - see that
         // `SuggestionMenuController`'s doc comment for why.
         slashMenu={false}
+        // The built-in formatting toolbar (shown on a text selection - Bold,
+        // Italic, "Add comment", "Create link", etc.) is disabled here too
+        // and remounted manually below via `FormattingToolbarController`, so
+        // the Writing Tools entry point can be appended to its item list.
+        // `BlockNoteView`'s own `formattingToolbar` prop is boolean-only
+        // (confirmed against `@blocknote/react`'s `BlockNoteDefaultUIProps`
+        // - `false` just skips mounting the default
+        // `FormattingToolbarController` entirely, there's no
+        // render-prop/children override on `BlockNoteView` itself) - a
+        // custom toolbar's item list requires mounting
+        // `FormattingToolbarController` directly, same shape as
+        // `SideMenuController` above.
+        formattingToolbar={false}
         shadCNComponents={{
           Button: { Button },
           Tooltip: { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger },
@@ -449,6 +502,24 @@ export function Editor({
             keeps every thread discoverable via `doc.threads` regardless.
             See comment-threads-sidebar.tsx's doc comment for the full story. */}
         <CommentThreadsSidebar portalTarget={commentsPortalTarget} />
+        {/* Reimplements BlockNote's own default formatting-toolbar item list
+            (`getFormattingToolbarItems()` - Bold, Italic, "Add comment",
+            "Create link", etc., unchanged) with one extra button appended:
+            the Writing Tools entry point. `formattingToolbar` here is a
+            plain component (`FC<FormattingToolbarProps>`, confirmed against
+            `FormattingToolbarController`'s own prop type) rendered with no
+            props of its own, matching every other override in this file. */}
+        <FormattingToolbarController
+          formattingToolbar={() => (
+            <FormattingToolbar>
+              {getFormattingToolbarItems()}
+              <WritingToolsButton
+                key="writingToolsButton"
+                onClick={() => setWritingToolsOpen(true)}
+              />
+            </FormattingToolbar>
+          )}
+        />
       </BlockNoteView>
       {/* Not remounted on the `colorMode` key change above - it just watches
           `containerRef`'s DOM, so it naturally survives BlockNoteView being
@@ -459,6 +530,13 @@ export function Editor({
           observe - see heading-anchor-overlay.tsx's doc comment for why this
           can't just be an `id` set on the heading's own rendered node. */}
       <HeadingAnchors anchors={headingAnchors} />
+      {/* Temporary stand-in for Task 10's real Writing Tools popover - just
+          enough to prove the button/⌘J wiring reaches this component's
+          state. To be deleted once Task 10 replaces it with the actual
+          popover body. */}
+      {writingToolsOpen && (
+        <div data-testid="writing-tools-placeholder">Writing Tools</div>
+      )}
     </div>
   )
 }
