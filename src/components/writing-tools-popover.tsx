@@ -13,6 +13,7 @@ import {
   X
 } from 'lucide-react'
 import { useEffect, useState, type ComponentProps } from 'react'
+import { toast } from 'sonner'
 
 import { Button } from '#components/ui/button'
 import { Input } from '#components/ui/input'
@@ -115,6 +116,9 @@ export function WritingToolsPopover({
         } else if (event.type === 'error') {
           setPhase('error')
           setErrorMessage(event.message)
+          toast.error('Writing Tools request failed', {
+            description: event.message
+          })
           return
         } else if (event.type === 'done') {
           setPhase('previewing')
@@ -127,8 +131,10 @@ export function WritingToolsPopover({
       // still throw outside that generator's own handling: getAiSettings()
       // above rejecting, or a synchronous throw inside the generator body
       // before its first yield.
+      const message = err instanceof Error ? err.message : String(err)
       setPhase('error')
-      setErrorMessage(err instanceof Error ? err.message : String(err))
+      setErrorMessage(message)
+      toast.error('Writing Tools request failed', { description: message })
     }
   }
 

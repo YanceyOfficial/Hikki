@@ -567,3 +567,170 @@ test.describe('floating badges (table of contents and comments)', () => {
     await expect(headingOne).toBeInViewport()
   })
 })
+
+test.describe('Writing Tools', () => {
+  /**
+   * Configures a default provider/model - and, critically, an API key - via
+   * Task 8's AI Settings dialog. `runAction` (writing-tools-popover.tsx)
+   * refuses to start a stream at all without a saved default provider/model,
+   * but there's a second, independent guard one layer down: `streamWritingTool`
+   * (client.ts) short-circuits with a "No API key configured" error if
+   * `backend.getApiKey(provider)` comes back null - which it always does in
+   * MemoryBackend until `setApiKey` has been called. Confirmed live: with only
+   * the provider/model configured (no key saved), Proofread never reaches the
+   * faux model stream at all - it errors immediately on the missing key. The
+   * key's actual value is never validated by the faux provider, so any
+   * non-empty string works.
+   */
+  async function configureAiSettings(page: Page) {
+    await page.getByTestId('ai-settings-trigger').click()
+    await page
+      .getByTestId('ai-settings-default-provider')
+      .selectOption('openai')
+    await page.getByTestId('ai-settings-key-openai').fill('sk-test-key')
+    await page.getByTestId('ai-settings-save-openai').click()
+    await page
+      .getByTestId('ai-settings-default-model')
+      .selectOption({ index: 1 })
+    await page.keyboard.press('Escape')
+  }
+
+  /**
+   * Scripts the dev/test-mode faux provider's next response (see models.ts's
+   * `getAiModels()`) directly from the test, with no real network call and no
+   * production-code testing seam. `#lib/ai/models`'s `__getFauxProviderForTesting()`
+   * was built for exactly this - scripting responses via `.setResponses(...)` -
+   * but it's a plain module export, meant to be reached by unit tests running
+   * in the same JS process. From Playwright's separate browser process, a
+   * dynamic `import()` of the same source path Vite's dev server already
+   * served to the running page resolves to that *same* live module instance
+   * (confirmed live: `__getFauxProviderForTesting()` doesn't throw its
+   * "call getAiModels() first" guard, meaning it's the app's own already-
+   * initialized singleton, not a fresh one) - so this reaches the real faux
+   * handle already wired into the app's editor, not a disconnected copy.
+   *
+   * This matters because the faux provider's own default, un-scripted
+   * behavior (confirmed by reading node_modules/@earendil-works/pi-ai's
+   * dist/providers/faux.js directly, and live: proofreading with a valid key
+   * but no scripted response) is an immediate, deterministic error - "No more
+   * faux responses queued" (faux.js's `createFauxCore`'s `stream()`: an empty
+   * `pendingResponses` array makes `pendingResponses.shift()` return
+   * `undefined`, and `!step` builds and emits an error message reading
+   * exactly that) - never some default echoed/placeholder text. Without
+   * scripting a response, every Writing Tools action in this dev/e2e
+   * environment ends in the popover's error phase, never its previewing
+   * phase - which is what the "failed request" test below exercises directly,
+   * and why the other two tests below need this helper to reach a real
+   * preview at all.
+   */
+  async function scriptFauxResponse(page: Page, text: string) {
+    await page.evaluate(async (responseText) => {
+      const models = await import('/src/lib/ai/models.ts')
+      models.__getFauxProviderForTesting().setResponses([
+        {
+          role: 'assistant',
+          content: [{ type: 'text', text: responseText }],
+          stopReason: 'stop'
+        }
+      ])
+    }, text)
+  }
+
+  test('proofreading selected text streams a result and replaces it', async ({
+    page
+  }) => {
+    await page.goto('/')
+    await page.getByTestId('new-doc').click()
+    await configureAiSettings(page)
+
+    const editable = page
+      .getByTestId('editor')
+      .locator('[contenteditable="true"]')
+      .first()
+    await editable.click()
+    await page.keyboard.type('This sentance has a typo.')
+    await page.keyboard.press('Home')
+    await page.keyboard.down('Shift')
+    await page.keyboard.press('End')
+    await page.keyboard.up('Shift')
+
+    await scriptFauxResponse(page, 'This sentence has no typo.')
+
+    await page.getByTestId('writing-tools-button').click()
+    await page.getByTestId('writing-tools-proofread').click()
+
+    await expect(page.getByTestId('writing-tools-preview')).toBeVisible()
+    await expect(page.getByTestId('writing-tools-replace')).toBeVisible({
+      timeout: 10000
+    })
+
+    await page.getByTestId('writing-tools-replace').click()
+    await expect(editable).toContainText('This sentence has no typo.')
+    await expect(editable).not.toContainText('This sentance has a typo.')
+  })
+
+  test('discarding a result leaves the original text untouched', async ({
+    page
+  }) => {
+    await page.goto('/')
+    await page.getByTestId('new-doc').click()
+    await configureAiSettings(page)
+
+    const editable = page
+      .getByTestId('editor')
+      .locator('[contenteditable="true"]')
+      .first()
+    await editable.click()
+    await page.keyboard.type('Keep this exact text.')
+    await page.keyboard.press('Home')
+    await page.keyboard.down('Shift')
+    await page.keyboard.press('End')
+    await page.keyboard.up('Shift')
+
+    await scriptFauxResponse(page, 'A completely rewritten sentence.')
+
+    await page.getByTestId('writing-tools-button').click()
+    await page.getByTestId('writing-tools-rewrite').click()
+    await expect(page.getByTestId('writing-tools-discard')).toBeVisible({
+      timeout: 10000
+    })
+    await page.getByTestId('writing-tools-discard').click()
+
+    await expect(editable).toContainText('Keep this exact text.')
+  })
+
+  test('a failed request surfaces both the inline error and a toast', async ({
+    page
+  }) => {
+    await page.goto('/')
+    await page.getByTestId('new-doc').click()
+    await configureAiSettings(page)
+
+    const editable = page
+      .getByTestId('editor')
+      .locator('[contenteditable="true"]')
+      .first()
+    await editable.click()
+    await page.keyboard.type('Keep this exact text.')
+    await page.keyboard.press('Home')
+    await page.keyboard.down('Shift')
+    await page.keyboard.press('End')
+    await page.keyboard.up('Shift')
+
+    // No scriptFauxResponse() call here - deliberately, to hit the faux
+    // provider's own deterministic "no response queued" error (see
+    // scriptFauxResponse's doc comment above) and confirm writing-tools-popover.tsx's
+    // toast.error(...) call (alongside the pre-existing inline
+    // writing-tools-error state) actually fires.
+    await page.getByTestId('writing-tools-button').click()
+    await page.getByTestId('writing-tools-proofread').click()
+
+    await expect(page.getByTestId('writing-tools-error')).toContainText(
+      'No more faux responses queued'
+    )
+    await expect(page.locator('[data-sonner-toast]')).toContainText(
+      'No more faux responses queued'
+    )
+    await expect(editable).toContainText('Keep this exact text.')
+  })
+})
