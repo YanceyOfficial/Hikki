@@ -52,6 +52,48 @@ async function addCommentToLine(
   await page.keyboard.press('Escape')
 }
 
+/**
+ * Selects an exact substring within a single paragraph line, via the same
+ * `document.createRange`/`window.getSelection` technique as
+ * `addCommentToLine` above - used by the Writing Tools partial-selection
+ * regression test below to select just ONE WORD in the middle of a longer
+ * sentence, rather than the whole line (`Home` -> `Shift+End`, as every
+ * other Writing Tools test in this file does). BlockNote paragraphs with no
+ * inline formatting render as a single text node, so `paragraph.firstChild`
+ * is that node and plain `indexOf`/`length` arithmetic gives exact character
+ * offsets into it.
+ */
+async function selectWordInLine(
+  editable: Locator,
+  lineText: string,
+  word: string
+) {
+  await editable.evaluate(
+    (editorEl, { lineText, word }) => {
+      const paragraphs = Array.from(editorEl.querySelectorAll('p'))
+      const target = paragraphs.find((p) => p.textContent === lineText)
+      if (!target) {
+        throw new Error(`paragraph not found: ${lineText}`)
+      }
+      const textNode = target.firstChild
+      if (!textNode || textNode.nodeType !== Node.TEXT_NODE) {
+        throw new Error('expected a single text node inside the paragraph')
+      }
+      const start = lineText.indexOf(word)
+      if (start === -1) {
+        throw new Error(`word "${word}" not found in line: ${lineText}`)
+      }
+      const range = document.createRange()
+      range.setStart(textNode, start)
+      range.setEnd(textNode, start + word.length)
+      const selection = window.getSelection()
+      selection?.removeAllRanges()
+      selection?.addRange(range)
+    },
+    { lineText, word }
+  )
+}
+
 test('dashboard is the home route', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByTestId('dashboard-page')).toBeVisible()
@@ -728,9 +770,142 @@ test.describe('Writing Tools', () => {
     await expect(page.getByTestId('writing-tools-error')).toContainText(
       'No more faux responses queued'
     )
-    await expect(page.locator('[data-sonner-toast]')).toContainText(
-      'No more faux responses queued'
-    )
+    // Scoped to `data-type="error"` rather than the bare `[data-sonner-toast]`
+    // selector: `configureAiSettings` above now also triggers its own
+    // (still-visible) success toast from ai-settings-dialog.tsx's Save button
+    // (whole-branch-review Finding 3), so the unscoped selector would match
+    // two toasts and fail Playwright's strict-mode single-match requirement.
+    await expect(
+      page.locator('[data-sonner-toast][data-type="error"]')
+    ).toContainText('No more faux responses queued')
     await expect(editable).toContainText('Keep this exact text.')
+  })
+
+  /**
+   * Regression test for the whole-branch review's Finding 1 (critical,
+   * data-loss bug): `editor.tsx`'s `openWritingTools()` used to send only
+   * `editor.getSelectedText()` (the highlighted sub-range) to the AI, while
+   * `onReplace` always replaces the FULL block(s) `editor.getSelection()`
+   * captured - which, per BlockNote's own `getSelection()` source (see
+   * editor.tsx's doc comment on `writingToolsSelection`), is the whole
+   * paragraph even for a selection that only highlights one word inside it.
+   * So Replace used to swap the entire paragraph for a new one containing
+   * only the AI's rewrite of that one word, silently deleting everything
+   * else in the paragraph. The fix sends the full captured block(s)' text
+   * (`editor.blocksToMarkdownLossy(blocks)`) to the AI instead.
+   *
+   * Every other Writing Tools test in this file selects a whole line via
+   * `Home` -> `Shift+End`, where the selected text and the full block's text
+   * are identical - none of them can catch this bug. This test selects just
+   * ONE WORD in the middle of a longer sentence instead.
+   */
+  test('proofreading a partial (mid-sentence) selection preserves the surrounding, unselected text', async ({
+    page
+  }) => {
+    await page.goto('/')
+    await page.getByTestId('new-doc').click()
+    await configureAiSettings(page)
+
+    const editable = page
+      .getByTestId('editor')
+      .locator('[contenteditable="true"]')
+      .first()
+    await editable.click()
+    const sentence = 'The quick brown fox jumps over the lazy dog.'
+    await page.keyboard.type(sentence)
+
+    // A genuine partial, within-block selection - just the word "brown" -
+    // not a whole-line selection.
+    await selectWordInLine(editable, sentence, 'brown')
+
+    // Echoes back exactly the text that was actually sent to the AI as "the
+    // text to work on" (`context.messages[0].content`, mirroring
+    // `userMessageFor` in prompts.ts), rather than a canned reply -
+    // `pendingResponses` entries in the faux provider can be functions of
+    // the request `context` (see `node_modules/@earendil-works/pi-ai`'s
+    // `dist/providers/faux.js`: `typeof step === "function" ? await
+    // step(context, ...) : step`). Unlike `scriptFauxResponse` above, this
+    // genuinely fails if the text sent to the AI ever regresses back to just
+    // the highlighted sub-range: in that case this echoes back just
+    // "brown", and Replace would leave only "brown" in the document.
+    await page.evaluate(async () => {
+      const models = await import('/src/lib/ai/models.ts')
+      models.__getFauxProviderForTesting().setResponses([
+        (context: { messages: { content: string }[] }) => ({
+          role: 'assistant',
+          content: [{ type: 'text', text: context.messages[0].content }],
+          stopReason: 'stop'
+        })
+      ])
+    })
+
+    await page.getByTestId('writing-tools-button').click()
+    await page.getByTestId('writing-tools-proofread').click()
+    await expect(page.getByTestId('writing-tools-replace')).toBeVisible({
+      timeout: 10000
+    })
+    await page.getByTestId('writing-tools-replace').click()
+
+    // If only the highlighted word had been captured and sent to the AI
+    // (the bug), replacing the whole paragraph block with the echoed
+    // response would leave just "brown" - silently deleting everything
+    // else in the sentence.
+    await expect(editable).toContainText('The quick')
+    await expect(editable).toContainText('fox jumps over the lazy dog.')
+  })
+
+  /**
+   * Regression test for the whole-branch review's Finding 2 (markdown-
+   * producing transforms applied as plain text): the `table`/`list`/
+   * `keyPoints` transform system prompts (`#lib/ai/prompts`) explicitly ask
+   * the AI for markdown output, but `onReplace`/`onInsertBelow` used to wrap
+   * the AI's raw text as a single hardcoded `{ type: 'paragraph', content:
+   * text }` block - so a markdown bullet list like "- item 1\n- item 2" got
+   * inserted as one paragraph of literal markdown syntax text, never as real
+   * BlockNote list-item blocks. The fix parses the AI's output through
+   * `editor.tryParseMarkdownToBlocks` first.
+   */
+  test('the "list" transform inserts real BlockNote list blocks, not literal markdown syntax', async ({
+    page
+  }) => {
+    await page.goto('/')
+    await page.getByTestId('new-doc').click()
+    await configureAiSettings(page)
+
+    const editable = page
+      .getByTestId('editor')
+      .locator('[contenteditable="true"]')
+      .first()
+    await editable.click()
+    await page.keyboard.type('Some content to turn into a list.')
+    await page.keyboard.press('Home')
+    await page.keyboard.down('Shift')
+    await page.keyboard.press('End')
+    await page.keyboard.up('Shift')
+
+    await scriptFauxResponse(
+      page,
+      '- First point\n- Second point\n- Third point'
+    )
+
+    await page.getByTestId('writing-tools-button').click()
+    await page.getByTestId('writing-tools-transform-list').click()
+    await expect(page.getByTestId('writing-tools-replace')).toBeVisible({
+      timeout: 10000
+    })
+    await page.getByTestId('writing-tools-replace').click()
+
+    // Each bullet becomes its own real BlockNote list-item block
+    // (`data-content-type="bulletListItem"`, confirmed against the
+    // installed `@blocknote/core`'s block-rendering source,
+    // `schema/blocks/internal.ts`'s `blockContent.setAttribute
+    // ("data-content-type", blockType)`) - not one paragraph of literal
+    // "- " markdown syntax, which is what the pre-fix code produced.
+    await expect(
+      editable.locator('[data-content-type="bulletListItem"]')
+    ).toHaveCount(3)
+    await expect(editable).toContainText('First point')
+    await expect(editable).toContainText('Third point')
+    await expect(editable).not.toContainText('- First point')
   })
 })

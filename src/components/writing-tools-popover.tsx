@@ -35,9 +35,12 @@ type WritingToolsAnchor = ComponentProps<typeof PopoverContent>['anchor']
 interface WritingToolsPopoverProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  // The plain text selected in the editor when the popover was opened
-  // (`editor.getSelectedText()` at open-time, captured in `editor.tsx`) -
-  // this is what gets sent to the AI as the text to proofread/rewrite/etc.
+  // The full text of the block(s) touched by the editor's selection when the
+  // popover was opened (`editor.blocksToMarkdownLossy(blocks)` at open-time,
+  // captured in `editor.tsx` - see its doc comment on `writingToolsSelection`
+  // for why this is the full captured block(s)' text rather than just the
+  // highlighted sub-range) - this is what gets sent to the AI as the text to
+  // proofread/rewrite/etc.
   selectedText: string
   // Applies the finished preview text back into the document via BlockNote's
   // own `editor.replaceBlocks`/`editor.insertBlocks` APIs (spec §14b - never

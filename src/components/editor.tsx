@@ -394,19 +394,42 @@ export function Editor({
     getBoundingClientRect: () => DOMRect
   } | null>(null)
 
-  // The block range the popover should act on, captured once at the moment
-  // it opens rather than re-read live while the popover is up (the user's
-  // BlockNote selection collapses the instant they click into the popover's
-  // own describe-input/buttons, which live outside the editor's
-  // contentEditable). `editor.getSelection()` returns `{ blocks: Block[] }`
-  // - all blocks (fully) spanned by the current selection - or `undefined`
-  // for a selection that doesn't cross a block boundary; `getSelectedText()`
-  // returns the plain-text contents of the selection regardless (both
-  // confirmed against the installed `@blocknote/core`'s
-  // `BlockNoteEditor.d.ts`: `getSelection(): Selection | undefined` /
-  // `getSelectedText(): string`, where `Selection = { blocks: Block[] }`).
-  // Falling back to the block under the cursor keeps `onReplace`/
-  // `onInsertBelow` well-defined even in that single-block case.
+  // The block range - and the text sent to the AI - the popover should act
+  // on, captured once at the moment it opens rather than re-read live while
+  // the popover is up (the user's BlockNote selection collapses the instant
+  // they click into the popover's own describe-input/buttons, which live
+  // outside the editor's contentEditable).
+  //
+  // `editor.getSelection()` returns `{ blocks: Block[] }` - ALL blocks fully
+  // spanned by the current selection, in full, even when the selection only
+  // highlights a sub-range within a single block. Confirmed against the
+  // installed `@blocknote/core`'s own source
+  // (`api/blockManipulation/selections/selection.ts`'s `getSelection()`): it
+  // returns `undefined` only when `tr.selection.empty` (a collapsed, bare
+  // cursor) or the selection is a NodeSelection (e.g. a selected image
+  // block) - never for an ordinary, partial, within-block text selection,
+  // which still walks up to the enclosing block(s) and returns them whole.
+  // The `getTextCursorPosition().block` fallback below exists for that
+  // genuinely-collapsed-cursor case (⌘J with no highlighted text at all),
+  // not for "the selection stays within one block" - that case is already
+  // covered by `getSelection()` itself.
+  //
+  // `text` is therefore captured as `editor.blocksToMarkdownLossy(blocks)` -
+  // the full text of the captured block(s) - rather than
+  // `editor.getSelectedText()`'s sub-range text. Sending only the
+  // sub-range's text to the AI while `onReplace` below replaces the WHOLE
+  // captured block(s) with the AI's output was a real data-loss bug: e.g.
+  // selecting just "brown" inside "The quick brown fox jumps." sent only
+  // "brown" to the AI, and Replace then swapped the ENTIRE paragraph for a
+  // new one containing just the AI's rewrite of that one word - silently
+  // deleting "The quick"/"fox jumps." everywhere else in the block.
+  // `blocksToMarkdownLossy` (confirmed against `BlockNoteEditor.d.ts`:
+  // `blocksToMarkdownLossy(blocks?: PartialBlock[]): string`, a synchronous
+  // method) is BlockNote's own block-array-to-text serializer - it returns
+  // markdown syntax rather than bare plain text, but that's an acceptable
+  // (arguably better) "text to work on" for the AI: still fully readable,
+  // and it preserves structure (e.g. existing bold/lists) that flattening to
+  // plain text would otherwise lose.
   const [writingToolsSelection, setWritingToolsSelection] = useState<{
     blocks: Block[]
     text: string
@@ -419,11 +442,12 @@ export function Editor({
         ? selection.getRangeAt(0).getBoundingClientRect()
         : null
     setWritingToolsAnchor(rect ? { getBoundingClientRect: () => rect } : null)
+    const blocks = editor.getSelection()?.blocks ?? [
+      editor.getTextCursorPosition().block
+    ]
     setWritingToolsSelection({
-      blocks: editor.getSelection()?.blocks ?? [
-        editor.getTextCursorPosition().block
-      ],
-      text: editor.getSelectedText()
+      blocks,
+      text: editor.blocksToMarkdownLossy(blocks)
     })
     setWritingToolsOpen(true)
   }
@@ -585,17 +609,37 @@ export function Editor({
         selectedText={writingToolsSelection?.text ?? ''}
         onReplace={(text) => {
           // Replaces the blocks that were selected when the popover opened
-          // with a single new paragraph containing the AI's output, via
-          // BlockNote's own block-replacement API - never raw `Doc.blocks`
-          // mutation (spec §14b). `replaceBlocks(blocksToRemove:
-          // BlockIdentifier[], blocksToInsert: PartialBlock[])` - confirmed
-          // against `BlockNoteEditor.d.ts`; a full `Block` (has an `id`)
-          // satisfies `BlockIdentifier` (`{ id: string } | string`)
-          // structurally, so the captured blocks can be passed directly.
+          // with the AI's output, via BlockNote's own block-replacement API
+          // - never raw `Doc.blocks` mutation (spec §14b).
+          // `replaceBlocks(blocksToRemove: BlockIdentifier[], blocksToInsert:
+          // PartialBlock[])` - confirmed against `BlockNoteEditor.d.ts`; a
+          // full `Block` (has an `id`) satisfies `BlockIdentifier` (`{ id:
+          // string } | string`) structurally, so the captured blocks can be
+          // passed directly as `blocksToRemove`.
+          //
+          // The AI's raw text is parsed through `editor.tryParseMarkdownToBlocks`
+          // (confirmed against `BlockNoteEditor.d.ts`:
+          // `tryParseMarkdownToBlocks(markdown: string): Block[]`, synchronous)
+          // rather than hardcoded as a single `{ type: 'paragraph', content:
+          // text }` block. The system prompts in `#lib/ai/prompts` explicitly
+          // ask for markdown output for several actions (e.g. "a markdown
+          // table" for the `table` transform, "a bulleted list" for
+          // `list`/`keyPoints`) - inserting that raw markdown syntax as one
+          // literal paragraph would show the user "| a | b |" text instead of
+          // an actual table. Parsing it back into real blocks applies to every
+          // action's output uniformly: plain single-line text with no markdown
+          // syntax parses right back into a single equivalent paragraph block
+          // (confirmed against the installed source,
+          // `api/parsers/markdown/parseMarkdown.ts`'s `markdownToBlocks` /
+          // `markdownToHtml.ts`'s tokenizer: an unadorned line becomes one
+          // `<p>` and therefore one paragraph block), so this is a strict
+          // superset of the previous behavior for the existing plain-text e2e
+          // fixtures.
           if (writingToolsSelection) {
-            editor.replaceBlocks(writingToolsSelection.blocks, [
-              { type: 'paragraph', content: text }
-            ])
+            editor.replaceBlocks(
+              writingToolsSelection.blocks,
+              editor.tryParseMarkdownToBlocks(text)
+            )
           }
           setWritingToolsOpen(false)
         }}
@@ -604,10 +648,12 @@ export function Editor({
           // BlockIdentifier, placement?: 'before' | 'after')` - the
           // reference is a single block, not an array, so this inserts
           // after the *last* block of the captured selection, leaving the
-          // original text untouched above it.
+          // original text untouched above it. Parses the AI's output through
+          // `tryParseMarkdownToBlocks` for the same reason as `onReplace`
+          // above.
           if (writingToolsSelection) {
             editor.insertBlocks(
-              [{ type: 'paragraph', content: text }],
+              editor.tryParseMarkdownToBlocks(text),
               writingToolsSelection.blocks[
                 writingToolsSelection.blocks.length - 1
               ],

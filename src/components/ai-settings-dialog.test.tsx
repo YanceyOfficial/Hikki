@@ -1,9 +1,18 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { expect, test } from 'vitest'
+import { toast } from 'sonner'
+import { beforeEach, expect, test, vi } from 'vitest'
 
 import { AiSettingsDialog } from '#components/ai-settings-dialog'
 import { backend } from '#lib/backend/index'
+
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn() }
+}))
+
+beforeEach(() => {
+  vi.clearAllMocks()
+})
 
 test('saving an API key persists it through the backend', async () => {
   render(<AiSettingsDialog />)
@@ -32,4 +41,76 @@ test('changing the default model persists through the backend', async () => {
     const settings = await backend.getAiSettings()
     expect(settings.defaultAiModel).not.toBeNull()
   })
+})
+
+test('a failed API key save surfaces a toast instead of failing silently', async () => {
+  const setApiKeySpy = vi
+    .spyOn(backend, 'setApiKey')
+    .mockRejectedValueOnce(new Error('Keychain write failed'))
+  render(<AiSettingsDialog />)
+  await userEvent.click(screen.getByTestId('ai-settings-trigger'))
+
+  const openaiKeyInput = await screen.findByTestId('ai-settings-key-openai')
+  await userEvent.type(openaiKeyInput, 'sk-test-key')
+  await userEvent.click(screen.getByTestId('ai-settings-save-openai'))
+
+  await waitFor(() => {
+    expect(toast.error).toHaveBeenCalledWith(
+      'Failed to save openai API key',
+      expect.objectContaining({ description: 'Keychain write failed' })
+    )
+  })
+  expect(toast.success).not.toHaveBeenCalled()
+  setApiKeySpy.mockRestore()
+})
+
+test('a successful API key save surfaces a success toast', async () => {
+  render(<AiSettingsDialog />)
+  await userEvent.click(screen.getByTestId('ai-settings-trigger'))
+
+  const openaiKeyInput = await screen.findByTestId('ai-settings-key-openai')
+  await userEvent.type(openaiKeyInput, 'sk-test-key')
+  await userEvent.click(screen.getByTestId('ai-settings-save-openai'))
+
+  await waitFor(() => {
+    expect(toast.success).toHaveBeenCalledWith('Saved openai API key')
+  })
+})
+
+test('a failed settings load surfaces a toast instead of an unhandled rejection', async () => {
+  const getAiSettingsSpy = vi
+    .spyOn(backend, 'getAiSettings')
+    .mockRejectedValueOnce(new Error('IPC channel closed'))
+  render(<AiSettingsDialog />)
+  await userEvent.click(screen.getByTestId('ai-settings-trigger'))
+
+  await waitFor(() => {
+    expect(toast.error).toHaveBeenCalledWith(
+      'Failed to load AI settings',
+      expect.objectContaining({ description: 'IPC channel closed' })
+    )
+  })
+  getAiSettingsSpy.mockRestore()
+})
+
+test('a failed default provider/model save surfaces a toast', async () => {
+  const saveAiSettingsSpy = vi
+    .spyOn(backend, 'saveAiSettings')
+    .mockRejectedValueOnce(new Error('disk full'))
+  render(<AiSettingsDialog />)
+  await userEvent.click(screen.getByTestId('ai-settings-trigger'))
+
+  const modelSelect = await screen.findByTestId('ai-settings-default-model')
+  await userEvent.selectOptions(
+    modelSelect,
+    modelSelect.querySelectorAll('option')[1] as HTMLOptionElement
+  )
+
+  await waitFor(() => {
+    expect(toast.error).toHaveBeenCalledWith(
+      'Failed to save default AI provider/model',
+      expect.objectContaining({ description: 'disk full' })
+    )
+  })
+  saveAiSettingsSpy.mockRestore()
 })

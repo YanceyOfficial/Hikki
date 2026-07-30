@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
 import { Button } from '#components/ui/button'
 import {
@@ -49,14 +50,38 @@ export function AiSettingsDialog() {
 
   useEffect(() => {
     if (!open) return
-    backend.getAiSettings().then((settings) => {
-      setDefaultProvider(settings.defaultAiProvider ?? '')
-      setDefaultModel(settings.defaultAiModel ?? '')
-    })
+    backend
+      .getAiSettings()
+      .then((settings) => {
+        setDefaultProvider(settings.defaultAiProvider ?? '')
+        setDefaultModel(settings.defaultAiModel ?? '')
+      })
+      .catch((err) => {
+        // Without this `.catch`, a rejected `getAiSettings()` IPC call (e.g.
+        // the vault/index unavailable) became an unhandled promise rejection
+        // - the dialog just silently kept showing blank/stale defaults with
+        // no indication anything had gone wrong.
+        toast.error('Failed to load AI settings', {
+          description: err instanceof Error ? err.message : String(err)
+        })
+      })
   }, [open])
 
   const saveKey = async (provider: AiProviderId) => {
-    await backend.setApiKey(provider, keys[provider])
+    try {
+      await backend.setApiKey(provider, keys[provider])
+      // The only feedback the Save button gave on success or failure alike
+      // was... nothing - a failed keychain write looked identical to a
+      // successful one until a later AI request confusingly failed with "No
+      // API key configured". A brief success toast (mirroring the failure
+      // toast below) is enough signal without adding persistent UI state to
+      // this deliberately minimal dialog (spec §14b).
+      toast.success(`Saved ${provider} API key`)
+    } catch (err) {
+      toast.error(`Failed to save ${provider} API key`, {
+        description: err instanceof Error ? err.message : String(err)
+      })
+    }
   }
 
   const testConnection = async (provider: AiProviderId) => {
@@ -96,10 +121,20 @@ export function AiSettingsDialog() {
   const saveDefaults = async (provider: string, model: string) => {
     setDefaultProvider(provider)
     setDefaultModel(model)
-    await backend.saveAiSettings({
-      defaultAiProvider: provider || null,
-      defaultAiModel: model || null
-    })
+    try {
+      await backend.saveAiSettings({
+        defaultAiProvider: provider || null,
+        defaultAiModel: model || null
+      })
+    } catch (err) {
+      // The two `<select>`s above already reflect the change optimistically
+      // via the `setDefaultProvider`/`setDefaultModel` calls above, so a
+      // failed persist here would otherwise look identical to a successful
+      // one until the next reload silently reverted the selection.
+      toast.error('Failed to save default AI provider/model', {
+        description: err instanceof Error ? err.message : String(err)
+      })
+    }
   }
 
   return (
