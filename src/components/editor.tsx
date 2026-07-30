@@ -394,6 +394,24 @@ export function Editor({
     getBoundingClientRect: () => DOMRect
   } | null>(null)
 
+  // The block range the popover should act on, captured once at the moment
+  // it opens rather than re-read live while the popover is up (the user's
+  // BlockNote selection collapses the instant they click into the popover's
+  // own describe-input/buttons, which live outside the editor's
+  // contentEditable). `editor.getSelection()` returns `{ blocks: Block[] }`
+  // - all blocks (fully) spanned by the current selection - or `undefined`
+  // for a selection that doesn't cross a block boundary; `getSelectedText()`
+  // returns the plain-text contents of the selection regardless (both
+  // confirmed against the installed `@blocknote/core`'s
+  // `BlockNoteEditor.d.ts`: `getSelection(): Selection | undefined` /
+  // `getSelectedText(): string`, where `Selection = { blocks: Block[] }`).
+  // Falling back to the block under the cursor keeps `onReplace`/
+  // `onInsertBelow` well-defined even in that single-block case.
+  const [writingToolsSelection, setWritingToolsSelection] = useState<{
+    blocks: Block[]
+    text: string
+  } | null>(null)
+
   const openWritingTools = () => {
     const selection = window.getSelection()
     const rect =
@@ -401,6 +419,12 @@ export function Editor({
         ? selection.getRangeAt(0).getBoundingClientRect()
         : null
     setWritingToolsAnchor(rect ? { getBoundingClientRect: () => rect } : null)
+    setWritingToolsSelection({
+      blocks: editor.getSelection()?.blocks ?? [
+        editor.getTextCursorPosition().block
+      ],
+      text: editor.getSelectedText()
+    })
     setWritingToolsOpen(true)
   }
 
@@ -558,11 +582,38 @@ export function Editor({
         open={writingToolsOpen}
         onOpenChange={setWritingToolsOpen}
         anchor={writingToolsAnchor}
-        onActionSelected={(action) => {
-          // Task 11 wires this to the actual streaming call; for now just
-          // close the popover so the flow is at least visibly complete
-          // end-to-end.
-          console.log('Writing tool action selected', action)
+        selectedText={writingToolsSelection?.text ?? ''}
+        onReplace={(text) => {
+          // Replaces the blocks that were selected when the popover opened
+          // with a single new paragraph containing the AI's output, via
+          // BlockNote's own block-replacement API - never raw `Doc.blocks`
+          // mutation (spec §14b). `replaceBlocks(blocksToRemove:
+          // BlockIdentifier[], blocksToInsert: PartialBlock[])` - confirmed
+          // against `BlockNoteEditor.d.ts`; a full `Block` (has an `id`)
+          // satisfies `BlockIdentifier` (`{ id: string } | string`)
+          // structurally, so the captured blocks can be passed directly.
+          if (writingToolsSelection) {
+            editor.replaceBlocks(writingToolsSelection.blocks, [
+              { type: 'paragraph', content: text }
+            ])
+          }
+          setWritingToolsOpen(false)
+        }}
+        onInsertBelow={(text) => {
+          // `insertBlocks(blocksToInsert: PartialBlock[], referenceBlock:
+          // BlockIdentifier, placement?: 'before' | 'after')` - the
+          // reference is a single block, not an array, so this inserts
+          // after the *last* block of the captured selection, leaving the
+          // original text untouched above it.
+          if (writingToolsSelection) {
+            editor.insertBlocks(
+              [{ type: 'paragraph', content: text }],
+              writingToolsSelection.blocks[
+                writingToolsSelection.blocks.length - 1
+              ],
+              'after'
+            )
+          }
           setWritingToolsOpen(false)
         }}
       />

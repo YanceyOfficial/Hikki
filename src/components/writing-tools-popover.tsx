@@ -17,7 +17,10 @@ import { useEffect, useState, type ComponentProps } from 'react'
 import { Button } from '#components/ui/button'
 import { Input } from '#components/ui/input'
 import { Popover, PopoverContent } from '#components/ui/popover'
+import { streamWritingTool } from '#lib/ai/client'
+import type { AiProviderId } from '#lib/ai/models'
 import type { WritingToolAction } from '#lib/ai/prompts'
+import { backend } from '#lib/backend/index'
 
 // The anchor Base UI's `Positioner` measures against - see popover.tsx's doc
 // comment on `PopoverContent`'s `anchor` prop for why this is required here
@@ -31,7 +34,16 @@ type WritingToolsAnchor = ComponentProps<typeof PopoverContent>['anchor']
 interface WritingToolsPopoverProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onActionSelected: (action: WritingToolAction) => void
+  // The plain text selected in the editor when the popover was opened
+  // (`editor.getSelectedText()` at open-time, captured in `editor.tsx`) -
+  // this is what gets sent to the AI as the text to proofread/rewrite/etc.
+  selectedText: string
+  // Applies the finished preview text back into the document via BlockNote's
+  // own `editor.replaceBlocks`/`editor.insertBlocks` APIs (spec §14b - never
+  // raw `Doc.blocks` mutation). Both close the popover on the `editor.tsx`
+  // side once applied.
+  onReplace: (text: string) => void
+  onInsertBelow: (text: string) => void
   anchor?: WritingToolsAnchor
 }
 
@@ -51,21 +63,74 @@ const TRANSFORMS = [
 export function WritingToolsPopover({
   open,
   onOpenChange,
-  onActionSelected,
+  selectedText,
+  onReplace,
+  onInsertBelow,
   anchor
 }: WritingToolsPopoverProps) {
   const [describeValue, setDescribeValue] = useState('')
+  const [phase, setPhase] = useState<
+    'idle' | 'streaming' | 'previewing' | 'error'
+  >('idle')
+  const [previewText, setPreviewText] = useState('')
+  const [errorMessage, setErrorMessage] = useState('')
 
   // Base UI's `Popover.Popup` stays mounted across a close/reopen cycle
   // (confirmed live: typing into the describe input, firing an action, then
   // reopening the popover showed the previous text still there) - reset on
-  // every open so each invocation starts from a blank input rather than
-  // carrying over whatever was typed last time.
+  // every open so each invocation starts from a blank input/idle state
+  // rather than carrying over whatever was typed/streamed last time.
   useEffect(() => {
     if (open) {
       setDescribeValue('')
+      setPhase('idle')
+      setPreviewText('')
+      setErrorMessage('')
     }
   }, [open])
+
+  const runAction = async (action: WritingToolAction) => {
+    setPhase('streaming')
+    setPreviewText('')
+    // Provider/model resolution: Task 8's saved defaults, via
+    // backend.getAiSettings() - read them once when starting a stream rather
+    // than holding them in component state that could go stale if the user
+    // changes defaults in another window.
+    const settings = await backend.getAiSettings()
+    if (!settings.defaultAiProvider || !settings.defaultAiModel) {
+      setPhase('error')
+      setErrorMessage(
+        'No default AI provider/model configured. Open AI Settings first.'
+      )
+      return
+    }
+    try {
+      for await (const event of streamWritingTool(action, selectedText, {
+        provider: settings.defaultAiProvider as AiProviderId,
+        modelId: settings.defaultAiModel
+      })) {
+        if (event.type === 'delta') {
+          setPreviewText((prev) => prev + event.text)
+        } else if (event.type === 'error') {
+          setPhase('error')
+          setErrorMessage(event.message)
+          return
+        } else if (event.type === 'done') {
+          setPhase('previewing')
+        }
+      }
+    } catch (err) {
+      // Defensive backstop only - `streamWritingTool` already yields a clean
+      // `error` event for its own internal failure cases (missing API key,
+      // model not found, IPC rejection). This catches a truly unexpected
+      // exception thrown before/outside that generator's own try/catch, e.g.
+      // from `backend.getAiSettings()` above.
+      setPhase('error')
+      setErrorMessage(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  const streaming = phase === 'streaming'
 
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
@@ -93,12 +158,13 @@ export function WritingToolsPopover({
           onChange={(e) => setDescribeValue(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && describeValue.trim()) {
-              onActionSelected({
+              runAction({
                 kind: 'custom',
                 instruction: describeValue.trim()
               })
             }
           }}
+          disabled={streaming}
           className="bg-muted h-9 rounded-full px-3.5"
           data-testid="writing-tools-describe-input"
         />
@@ -107,7 +173,8 @@ export function WritingToolsPopover({
           <Button
             variant="secondary"
             className="h-auto flex-1 flex-col gap-1 rounded-xl py-2.5"
-            onClick={() => onActionSelected({ kind: 'proofread' })}
+            onClick={() => runAction({ kind: 'proofread' })}
+            disabled={streaming}
             data-testid="writing-tools-proofread"
           >
             <SpellCheck2 className="size-4" />
@@ -116,7 +183,8 @@ export function WritingToolsPopover({
           <Button
             variant="secondary"
             className="h-auto flex-1 flex-col gap-1 rounded-xl py-2.5"
-            onClick={() => onActionSelected({ kind: 'rewrite' })}
+            onClick={() => runAction({ kind: 'rewrite' })}
+            disabled={streaming}
             data-testid="writing-tools-rewrite"
           >
             <RefreshCw className="size-4" />
@@ -130,7 +198,8 @@ export function WritingToolsPopover({
               key={tone}
               variant="secondary"
               className="h-auto flex-1 flex-col gap-1 rounded-xl py-2"
-              onClick={() => onActionSelected({ kind: 'tone', tone })}
+              onClick={() => runAction({ kind: 'tone', tone })}
+              disabled={streaming}
               data-testid={`writing-tools-tone-${tone}`}
             >
               <Icon className="size-4" />
@@ -145,7 +214,8 @@ export function WritingToolsPopover({
               key={transform}
               variant="secondary"
               className="h-auto flex-col gap-1 rounded-xl px-1 py-2.5"
-              onClick={() => onActionSelected({ kind: 'transform', transform })}
+              onClick={() => runAction({ kind: 'transform', transform })}
+              disabled={streaming}
               data-testid={`writing-tools-transform-${transform}`}
             >
               <Icon className="size-4" />
@@ -158,11 +228,12 @@ export function WritingToolsPopover({
           variant="secondary"
           className="h-9 w-full justify-between rounded-full px-3.5"
           onClick={() =>
-            onActionSelected({
+            runAction({
               kind: 'compose',
               instruction: describeValue.trim()
             })
           }
+          disabled={streaming}
           data-testid="writing-tools-compose"
         >
           <span className="flex items-center gap-2">
@@ -171,6 +242,62 @@ export function WritingToolsPopover({
           </span>
           <ChevronRight className="size-4" />
         </Button>
+
+        {(phase === 'streaming' || phase === 'previewing') && (
+          <div
+            data-testid="writing-tools-preview"
+            className="bg-muted max-h-48 overflow-y-auto rounded-xl px-3.5 py-2.5 text-sm whitespace-pre-wrap"
+          >
+            {previewText}
+          </div>
+        )}
+
+        {phase === 'previewing' && (
+          <div className="flex gap-2">
+            <Button
+              variant="default"
+              className="flex-1 rounded-full"
+              onClick={() => onReplace(previewText)}
+              data-testid="writing-tools-replace"
+            >
+              Replace
+            </Button>
+            <Button
+              variant="secondary"
+              className="flex-1 rounded-full"
+              onClick={() => onInsertBelow(previewText)}
+              data-testid="writing-tools-insert-below"
+            >
+              Insert below
+            </Button>
+            <Button
+              variant="ghost"
+              className="rounded-full"
+              onClick={() => setPhase('idle')}
+              data-testid="writing-tools-discard"
+            >
+              Discard
+            </Button>
+          </div>
+        )}
+
+        {phase === 'error' && (
+          <div
+            data-testid="writing-tools-error"
+            className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700 dark:bg-red-950 dark:text-red-300"
+          >
+            <p>{errorMessage}</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-1 h-auto px-0 py-0 text-xs underline"
+              onClick={() => setPhase('idle')}
+              data-testid="writing-tools-error-dismiss"
+            >
+              Dismiss
+            </Button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   )
