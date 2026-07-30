@@ -173,3 +173,27 @@ test('shows an error state when no default AI provider/model is configured', asy
   })
   expect(streamWritingTool).not.toHaveBeenCalled()
 })
+
+test('shows an error state, not a stuck spinner, when getAiSettings itself rejects', async () => {
+  const getAiSettingsSpy = vi
+    .spyOn(backend, 'getAiSettings')
+    .mockRejectedValueOnce(new Error('IPC channel closed'))
+  render(
+    <WritingToolsPopover
+      open={true}
+      onOpenChange={() => {}}
+      selectedText="hi there"
+      onReplace={vi.fn()}
+      onInsertBelow={vi.fn()}
+    />
+  )
+  await userEvent.click(screen.getByTestId('writing-tools-proofread'))
+
+  await waitFor(() => {
+    expect(screen.getByTestId('writing-tools-error')).toHaveTextContent(
+      'IPC channel closed'
+    )
+  })
+  expect(streamWritingTool).not.toHaveBeenCalled()
+  getAiSettingsSpy.mockRestore()
+})

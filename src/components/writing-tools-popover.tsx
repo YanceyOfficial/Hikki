@@ -92,19 +92,20 @@ export function WritingToolsPopover({
   const runAction = async (action: WritingToolAction) => {
     setPhase('streaming')
     setPreviewText('')
-    // Provider/model resolution: Task 8's saved defaults, via
-    // backend.getAiSettings() - read them once when starting a stream rather
-    // than holding them in component state that could go stale if the user
-    // changes defaults in another window.
-    const settings = await backend.getAiSettings()
-    if (!settings.defaultAiProvider || !settings.defaultAiModel) {
-      setPhase('error')
-      setErrorMessage(
-        'No default AI provider/model configured. Open AI Settings first.'
-      )
-      return
-    }
     try {
+      // Provider/model resolution: Task 8's saved defaults, via
+      // backend.getAiSettings() - read them once when starting a stream
+      // rather than holding them in component state that could go stale if
+      // the user changes defaults in another window. Inside this try/catch
+      // because it's a real IPC call in Tauri mode and can reject.
+      const settings = await backend.getAiSettings()
+      if (!settings.defaultAiProvider || !settings.defaultAiModel) {
+        setPhase('error')
+        setErrorMessage(
+          'No default AI provider/model configured. Open AI Settings first.'
+        )
+        return
+      }
       for await (const event of streamWritingTool(action, selectedText, {
         provider: settings.defaultAiProvider as AiProviderId,
         modelId: settings.defaultAiModel
@@ -120,11 +121,12 @@ export function WritingToolsPopover({
         }
       }
     } catch (err) {
-      // Defensive backstop only - `streamWritingTool` already yields a clean
-      // `error` event for its own internal failure cases (missing API key,
-      // model not found, IPC rejection). This catches a truly unexpected
-      // exception thrown before/outside that generator's own try/catch, e.g.
-      // from `backend.getAiSettings()` above.
+      // `streamWritingTool` already yields a clean `error` event for its own
+      // internal failure cases (missing API key, model not found, IPC
+      // rejection) - see client.ts. This catch backstops anything that can
+      // still throw outside that generator's own handling: getAiSettings()
+      // above rejecting, or a synchronous throw inside the generator body
+      // before its first yield.
       setPhase('error')
       setErrorMessage(err instanceof Error ? err.message : String(err))
     }
