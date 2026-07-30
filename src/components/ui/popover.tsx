@@ -45,21 +45,33 @@ function PopoverTrigger({
   )
 }
 
+// `anchor` is forwarded straight through to Base UI's `Positioner` (confirmed
+// against `useAnchorPositioning` in `@base-ui/react`'s source: with no
+// `anchor` and no mounted `PopoverTrigger`, the positioner has no reference
+// element to measure against at all, not merely a default-to-origin - the
+// popup never becomes `isPositioned`). Every existing caller renders a
+// `PopoverTrigger` as a sibling and never passes this, so it's an
+// additive, backward-compatible prop - only `writing-tools-popover.tsx`
+// (Task 10) needs it, since it's opened from a toolbar button that lives in
+// a completely different part of the tree (BlockNote's own floating
+// formatting toolbar) rather than as a sibling `PopoverTrigger` here.
 function PopoverContent({
   className,
   align = 'center',
   alignOffset = 0,
   side = 'bottom',
   sideOffset = 4,
+  anchor,
   ...props
 }: PopoverPrimitive.Popup.Props &
   Pick<
     PopoverPrimitive.Positioner.Props,
-    'align' | 'alignOffset' | 'side' | 'sideOffset'
+    'align' | 'alignOffset' | 'side' | 'sideOffset' | 'anchor'
   >) {
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Positioner
+        anchor={anchor}
         align={align}
         alignOffset={alignOffset}
         side={side}

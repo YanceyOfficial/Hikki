@@ -42,6 +42,7 @@ import {
   TooltipTrigger
 } from '#components/ui/tooltip'
 import { WritingToolsButton } from '#components/writing-tools-button'
+import { WritingToolsPopover } from '#components/writing-tools-popover'
 import { backend } from '#lib/backend/index'
 import { guessLanguage } from '#lib/guess-language'
 import type { VaultThreadStore } from '#lib/vault-thread-store'
@@ -375,10 +376,33 @@ export function Editor({
     editor
   )
 
-  // Entry point for the (as yet unbuilt) Writing Tools popover - Task 10
-  // fills in the real popover body; for now this only proves the wiring
-  // works (see the placeholder div below).
+  // Entry point for the Writing Tools popover (Task 10's real popover body,
+  // wired in below via `WritingToolsPopover`).
   const [writingToolsOpen, setWritingToolsOpen] = useState(false)
+  // The button that opens this popover (`WritingToolsButton`) is rendered by
+  // BlockNote's own floating formatting toolbar - a different part of the
+  // component tree than `WritingToolsPopover` below, positioned by
+  // BlockNote's own floating-ui instance, not this one. So there's no
+  // sibling `PopoverTrigger` this popover can anchor against (see
+  // popover.tsx's doc comment on `PopoverContent`'s `anchor` prop for why
+  // that matters to Base UI specifically). Snapshotting the live text
+  // selection's bounding rect as a virtual anchor element the moment the
+  // popover opens sidesteps that entirely - it needs no ref into BlockNote's
+  // own floating toolbar DOM, and it's exactly where the user's attention
+  // already is.
+  const [writingToolsAnchor, setWritingToolsAnchor] = useState<{
+    getBoundingClientRect: () => DOMRect
+  } | null>(null)
+
+  const openWritingTools = () => {
+    const selection = window.getSelection()
+    const rect =
+      selection && selection.rangeCount > 0
+        ? selection.getRangeAt(0).getBoundingClientRect()
+        : null
+    setWritingToolsAnchor(rect ? { getBoundingClientRect: () => rect } : null)
+    setWritingToolsOpen(true)
+  }
 
   // `⌘J` mirrors the button's own click handler. Scoped to this editor's own
   // container (not `window`) so it doesn't fire while focus is elsewhere in
@@ -403,7 +427,7 @@ export function Editor({
         editor.getSelection() !== undefined
       ) {
         event.preventDefault()
-        setWritingToolsOpen(true)
+        openWritingTools()
       }
     }
 
@@ -515,7 +539,7 @@ export function Editor({
               {getFormattingToolbarItems()}
               <WritingToolsButton
                 key="writingToolsButton"
-                onClick={() => setWritingToolsOpen(true)}
+                onClick={openWritingTools}
               />
             </FormattingToolbar>
           )}
@@ -530,13 +554,18 @@ export function Editor({
           observe - see heading-anchor-overlay.tsx's doc comment for why this
           can't just be an `id` set on the heading's own rendered node. */}
       <HeadingAnchors anchors={headingAnchors} />
-      {/* Temporary stand-in for Task 10's real Writing Tools popover - just
-          enough to prove the button/⌘J wiring reaches this component's
-          state. To be deleted once Task 10 replaces it with the actual
-          popover body. */}
-      {writingToolsOpen && (
-        <div data-testid="writing-tools-placeholder">Writing Tools</div>
-      )}
+      <WritingToolsPopover
+        open={writingToolsOpen}
+        onOpenChange={setWritingToolsOpen}
+        anchor={writingToolsAnchor}
+        onActionSelected={(action) => {
+          // Task 11 wires this to the actual streaming call; for now just
+          // close the popover so the flow is at least visibly complete
+          // end-to-end.
+          console.log('Writing tool action selected', action)
+          setWritingToolsOpen(false)
+        }}
+      />
     </div>
   )
 }
