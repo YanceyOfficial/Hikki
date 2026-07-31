@@ -6,11 +6,16 @@ import { createHashRouter, RouterProvider } from 'react-router'
 import { AppShell } from '#components/app-shell'
 import { ThemeProvider } from '#components/theme-provider'
 import { isTauri } from '#lib/backend/index'
+import { createScopedFetch } from '#lib/scoped-fetch'
 import DashboardPage from '#pages/dashboard-page'
 import DocumentPage from '#pages/document-page'
 
 if (isTauri()) {
-  window.fetch = tauriFetch as unknown as typeof window.fetch
+  const nativeFetch = window.fetch.bind(window)
+  window.fetch = createScopedFetch(
+    nativeFetch,
+    tauriFetch as unknown as typeof fetch
+  )
 }
 
 const router = createHashRouter([
