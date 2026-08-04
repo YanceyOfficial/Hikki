@@ -5,10 +5,13 @@ import { beforeEach, expect, test, vi } from 'vitest'
 
 import { AiSettingsDialog } from '#components/ai-settings-dialog'
 import { backend } from '#lib/backend/index'
+import { reportError } from '#lib/errors'
 
 vi.mock('sonner', () => ({
   toast: { error: vi.fn(), success: vi.fn() }
 }))
+
+vi.mock('#lib/errors', () => ({ reportError: vi.fn() }))
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -55,10 +58,10 @@ test('a failed API key save surfaces a toast instead of failing silently', async
   await userEvent.click(screen.getByTestId('ai-settings-save-openai'))
 
   await waitFor(() => {
-    expect(toast.error).toHaveBeenCalledWith(
-      'Failed to save openai API key',
-      expect.objectContaining({ description: 'Keychain write failed' })
-    )
+    expect(reportError).toHaveBeenCalledWith('HK-3003', {
+      provider: 'openai',
+      message: 'Keychain write failed'
+    })
   })
   expect(toast.success).not.toHaveBeenCalled()
   setApiKeySpy.mockRestore()
@@ -85,10 +88,9 @@ test('a failed settings load surfaces a toast instead of an unhandled rejection'
   await userEvent.click(screen.getByTestId('ai-settings-trigger'))
 
   await waitFor(() => {
-    expect(toast.error).toHaveBeenCalledWith(
-      'Failed to load AI settings',
-      expect.objectContaining({ description: 'IPC channel closed' })
-    )
+    expect(reportError).toHaveBeenCalledWith('HK-3002', {
+      message: 'IPC channel closed'
+    })
   })
   getAiSettingsSpy.mockRestore()
 })
@@ -107,10 +109,9 @@ test('a failed default provider/model save surfaces a toast', async () => {
   )
 
   await waitFor(() => {
-    expect(toast.error).toHaveBeenCalledWith(
-      'Failed to save default AI provider/model',
-      expect.objectContaining({ description: 'disk full' })
-    )
+    expect(reportError).toHaveBeenCalledWith('HK-3004', {
+      message: 'disk full'
+    })
   })
   saveAiSettingsSpy.mockRestore()
 })

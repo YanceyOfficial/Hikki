@@ -1,6 +1,9 @@
 import { act, renderHook } from '@testing-library/react'
 
 import { useCopyToClipboard } from '#hooks/use-copy-to-clipboard'
+import { reportError } from '#lib/errors'
+
+vi.mock('#lib/errors', () => ({ reportError: vi.fn() }))
 
 function stubClipboard(writeText: (text: string) => Promise<void>) {
   Object.assign(navigator, { clipboard: { writeText: vi.fn(writeText) } })
@@ -87,7 +90,6 @@ test('a second copy before the delay elapses restarts the window', async () => {
 
 test('a failed clipboard write does not flip copied to true', async () => {
   stubClipboard(() => Promise.reject(new Error('denied')))
-  const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
   const { result } = renderHook(() => useCopyToClipboard())
 
@@ -96,5 +98,5 @@ test('a failed clipboard write does not flip copied to true', async () => {
   })
 
   expect(result.current.copied).toBe(false)
-  expect(errorSpy).toHaveBeenCalled()
+  expect(reportError).toHaveBeenCalledWith('HK-1007', { message: 'denied' })
 })

@@ -12,6 +12,7 @@ import {
 import { Input } from '#components/ui/input'
 import { AI_PROVIDER_IDS, getAiModels, type AiProviderId } from '#lib/ai/models'
 import { backend } from '#lib/backend/index'
+import { reportError } from '#lib/errors'
 
 // Plain native <select>s, not the `combobox.tsx` primitive: that component
 // wraps @base-ui/react's async Combobox (its own `input-group.tsx`
@@ -61,8 +62,8 @@ export function AiSettingsDialog() {
         // the vault/index unavailable) became an unhandled promise rejection
         // - the dialog just silently kept showing blank/stale defaults with
         // no indication anything had gone wrong.
-        toast.error('Failed to load AI settings', {
-          description: err instanceof Error ? err.message : String(err)
+        reportError('HK-3002', {
+          message: err instanceof Error ? err.message : String(err)
         })
       })
   }, [open])
@@ -78,8 +79,9 @@ export function AiSettingsDialog() {
       // this deliberately minimal dialog (spec §14b).
       toast.success(`Saved ${provider} API key`)
     } catch (err) {
-      toast.error(`Failed to save ${provider} API key`, {
-        description: err instanceof Error ? err.message : String(err)
+      reportError('HK-3003', {
+        provider,
+        message: err instanceof Error ? err.message : String(err)
       })
     }
   }
@@ -131,8 +133,8 @@ export function AiSettingsDialog() {
       // via the `setDefaultProvider`/`setDefaultModel` calls above, so a
       // failed persist here would otherwise look identical to a successful
       // one until the next reload silently reverted the selection.
-      toast.error('Failed to save default AI provider/model', {
-        description: err instanceof Error ? err.message : String(err)
+      reportError('HK-3004', {
+        message: err instanceof Error ? err.message : String(err)
       })
     }
   }

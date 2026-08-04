@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { reportError } from '#lib/errors'
+
 interface UseCopyToClipboardOptions {
   /** How long `copied` stays true after a successful copy, in ms. */
   resetDelayMs?: number
@@ -30,9 +32,9 @@ export function useCopyToClipboard({
       try {
         await navigator.clipboard.writeText(text)
       } catch (error) {
-        // No toast system exists yet (tracked separately) to surface this to
-        // the user - log it rather than fail with no trace at all.
-        console.error('hikki: failed to copy code block to clipboard', error)
+        reportError('HK-1007', {
+          message: error instanceof Error ? error.message : String(error)
+        })
         return
       }
 

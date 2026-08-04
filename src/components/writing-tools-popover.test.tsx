@@ -5,10 +5,13 @@ import { beforeEach, test, expect, vi } from 'vitest'
 import { WritingToolsPopover } from '#components/writing-tools-popover'
 import { streamWritingTool } from '#lib/ai/client'
 import { backend } from '#lib/backend/index'
+import { reportError } from '#lib/errors'
 
 vi.mock('#lib/ai/client', () => ({
   streamWritingTool: vi.fn()
 }))
+
+vi.mock('#lib/errors', () => ({ reportError: vi.fn() }))
 
 async function* fakeStream(chunks: string[]) {
   for (const chunk of chunks) {
@@ -148,6 +151,9 @@ test('shows an error state when the stream yields an error event', async () => {
       'No API key configured'
     )
   })
+  expect(reportError).toHaveBeenCalledWith('HK-3005', {
+    message: 'No API key configured for openai'
+  })
 })
 
 test('shows an error state when no default AI provider/model is configured', async () => {
@@ -195,5 +201,8 @@ test('shows an error state, not a stuck spinner, when getAiSettings itself rejec
     )
   })
   expect(streamWritingTool).not.toHaveBeenCalled()
+  expect(reportError).toHaveBeenCalledWith('HK-3005', {
+    message: 'IPC channel closed'
+  })
   getAiSettingsSpy.mockRestore()
 })

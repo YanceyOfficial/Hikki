@@ -4,17 +4,19 @@ import { afterEach, beforeEach, vi } from 'vitest'
 
 import { PageHeader } from '#components/page-header'
 import { backend } from '#lib/backend/index'
+import { reportError } from '#lib/errors'
 import type { Doc } from '#lib/types'
 
+vi.mock('#lib/errors', () => ({ reportError: vi.fn() }))
+
 // frimousse (the real emoji picker library, see page-header.tsx) fetches its
-// emoji dataset from emojibase's CDN on mount. jsdom's global `fetch` would
-// otherwise hit the real network from every test run, which is slow and
+// emoji dataset from a CDN on mount. jsdom's global `fetch` would otherwise
+// hit the real network from every test run, which is slow and
 // non-deterministic in CI - so these two endpoints are stubbed with a tiny,
-// real-shaped emojibase-data fixture (confirmed against frimousse's actual
-// parsing logic in node_modules/frimousse/dist/index.js) covering just enough
-// emoji to exercise real search: a "rocket" match and a decoy that shouldn't
-// match it.
-const EMOJIBASE_DATA = [
+// real-shaped fixture (confirmed against frimousse's actual parsing logic in
+// node_modules/frimousse/dist/index.js) covering just enough emoji to
+// exercise real search: a "rocket" match and a decoy that shouldn't match it.
+const FIXTURE_EMOJI_DATA = [
   {
     emoji: '🚀',
     group: 5,
@@ -31,7 +33,7 @@ const EMOJIBASE_DATA = [
   }
 ]
 
-const EMOJIBASE_MESSAGES = {
+const FIXTURE_EMOJI_MESSAGES = {
   groups: [{ key: 'travel-places', order: 5, message: 'travel & places' }],
   subgroups: [{ key: 'country-flag', order: 999, message: 'country flag' }],
   skinTones: [
@@ -58,9 +60,9 @@ beforeEach(() => {
     vi.fn((input: RequestInfo | URL) => {
       const url = String(input)
       if (url.endsWith('/data.json'))
-        return Promise.resolve(fakeJsonResponse(EMOJIBASE_DATA))
+        return Promise.resolve(fakeJsonResponse(FIXTURE_EMOJI_DATA))
       if (url.endsWith('/messages.json'))
-        return Promise.resolve(fakeJsonResponse(EMOJIBASE_MESSAGES))
+        return Promise.resolve(fakeJsonResponse(FIXTURE_EMOJI_MESSAGES))
       throw new Error(`unexpected fetch in test: ${url}`)
     })
   )
@@ -150,7 +152,6 @@ test('failed cover upload is swallowed safely and does not patch', async () => {
   const spy = vi
     .spyOn(backend, 'importAsset')
     .mockRejectedValueOnce(new Error('disk full'))
-  const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
   const onPatch = vi.fn()
   render(<PageHeader doc={doc()} onPatch={onPatch} />)
   const input = screen.getByTestId('doc-cover-input')
@@ -160,9 +161,8 @@ test('failed cover upload is swallowed safely and does not patch', async () => {
   )
   await waitFor(() => expect(spy).toHaveBeenCalled())
   expect(onPatch).not.toHaveBeenCalled()
-  expect(errorSpy).toHaveBeenCalled()
+  expect(reportError).toHaveBeenCalledWith('HK-1004', { message: 'disk full' })
   spy.mockRestore()
-  errorSpy.mockRestore()
 })
 
 test('cover input value resets after selection so the same file can be re-picked', async () => {

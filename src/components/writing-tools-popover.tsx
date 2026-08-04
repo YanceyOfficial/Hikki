@@ -13,7 +13,6 @@ import {
   X
 } from 'lucide-react'
 import { useEffect, useState, type ComponentProps } from 'react'
-import { toast } from 'sonner'
 
 import { Button } from '#components/ui/button'
 import { Input } from '#components/ui/input'
@@ -22,6 +21,7 @@ import { streamWritingTool } from '#lib/ai/client'
 import type { AiProviderId } from '#lib/ai/models'
 import type { WritingToolAction } from '#lib/ai/prompts'
 import { backend } from '#lib/backend/index'
+import { reportError } from '#lib/errors'
 
 // The anchor Base UI's `Positioner` measures against - see popover.tsx's doc
 // comment on `PopoverContent`'s `anchor` prop for why this is required here
@@ -119,9 +119,7 @@ export function WritingToolsPopover({
         } else if (event.type === 'error') {
           setPhase('error')
           setErrorMessage(event.message)
-          toast.error('Writing Tools request failed', {
-            description: event.message
-          })
+          reportError('HK-3005', { message: event.message })
           return
         } else if (event.type === 'done') {
           setPhase('previewing')
@@ -137,7 +135,7 @@ export function WritingToolsPopover({
       const message = err instanceof Error ? err.message : String(err)
       setPhase('error')
       setErrorMessage(message)
-      toast.error('Writing Tools request failed', { description: message })
+      reportError('HK-3005', { message: message })
     }
   }
 

@@ -1,5 +1,7 @@
 import { Component, type ReactNode } from 'react'
 
+import { reportError } from '#lib/errors'
+
 interface EditorBoundaryProps {
   children: ReactNode
 }
@@ -20,7 +22,9 @@ export class EditorBoundary extends Component<
   }
 
   componentDidCatch(error: unknown) {
-    console.error('hikki: editor failed to render', error)
+    reportError('HK-1006', {
+      message: error instanceof Error ? error.message : String(error)
+    })
   }
 
   render() {
