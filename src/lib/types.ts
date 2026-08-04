@@ -30,3 +30,18 @@ export interface AiSettings {
   defaultAiProvider: string | null
   defaultAiModel: string | null
 }
+
+export type LogLevel = 'info' | 'warn' | 'error'
+
+export interface LogEntry {
+  level: LogLevel
+  scope: string
+  message: string
+  data?: unknown
+  timestamp: string
+}
+
+export interface LogFilter {
+  level?: LogLevel
+  query?: string
+}

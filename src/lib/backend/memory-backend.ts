@@ -3,6 +3,8 @@ import type {
   AiSettings,
   Doc,
   DocumentMeta,
+  LogEntry,
+  LogFilter,
   SearchHit,
   VaultInfo
 } from '#lib/types'
@@ -25,10 +27,12 @@ export class MemoryBackend implements Backend {
     defaultAiProvider: null,
     defaultAiModel: null
   }
+  private vaultPath = '(in-memory)'
+  private logs: LogEntry[] = []
 
   async getVaultInfo(): Promise<VaultInfo> {
     const alive = [...this.docs.values()].filter((d) => d.deletedAt === null)
-    return { vaultPath: '(in-memory)', documentCount: alive.length }
+    return { vaultPath: this.vaultPath, documentCount: alive.length }
   }
 
   async listDocuments(): Promise<DocumentMeta[]> {
@@ -150,5 +154,30 @@ export class MemoryBackend implements Backend {
   async saveAiSettings(settings: AiSettings): Promise<AiSettings> {
     this.aiSettings = settings
     return this.aiSettings
+  }
+
+  async setVaultPath(path: string): Promise<VaultInfo> {
+    this.vaultPath = path
+    return { vaultPath: this.vaultPath, documentCount: this.docs.size }
+  }
+
+  async appendLog(entry: LogEntry): Promise<void> {
+    this.logs.push(entry)
+  }
+
+  async readLogs(filter: LogFilter): Promise<LogEntry[]> {
+    return this.logs
+      .filter((e) => !filter.level || e.level === filter.level)
+      .filter(
+        (e) =>
+          !filter.query ||
+          e.message.toLowerCase().includes(filter.query.toLowerCase())
+      )
+      .slice()
+      .reverse()
+  }
+
+  async clearLogs(): Promise<void> {
+    this.logs = []
   }
 }

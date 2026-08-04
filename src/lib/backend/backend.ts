@@ -2,6 +2,8 @@ import type {
   AiSettings,
   Doc,
   DocumentMeta,
+  LogEntry,
+  LogFilter,
   SearchHit,
   VaultInfo
 } from '#lib/types'
@@ -27,4 +29,8 @@ export interface Backend {
   deleteApiKey(provider: string): Promise<void>
   getAiSettings(): Promise<AiSettings>
   saveAiSettings(settings: AiSettings): Promise<AiSettings>
+  setVaultPath(path: string): Promise<VaultInfo>
+  appendLog(entry: LogEntry): Promise<void>
+  readLogs(filter: LogFilter): Promise<LogEntry[]>
+  clearLogs(): Promise<void>
 }

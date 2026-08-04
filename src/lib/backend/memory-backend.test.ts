@@ -96,3 +96,29 @@ test('ai settings persist in memory across calls', async () => {
   })
   expect(await b.getAiSettings()).toEqual(saved)
 })
+
+test('setVaultPath returns updated vault info, and later getVaultInfo calls reflect it too', async () => {
+  const backend = new MemoryBackend()
+  const info = await backend.setVaultPath('/tmp/some-vault')
+  expect(info.vaultPath).toBe('/tmp/some-vault')
+  expect((await backend.getVaultInfo()).vaultPath).toBe('/tmp/some-vault')
+})
+
+test('appendLog/readLogs/clearLogs round-trip in memory', async () => {
+  const backend = new MemoryBackend()
+  await backend.appendLog({
+    level: 'error',
+    scope: 'test',
+    message: 'boom',
+    timestamp: new Date().toISOString()
+  })
+  const logs = await backend.readLogs({})
+  expect(logs).toHaveLength(1)
+  expect(logs[0].message).toBe('boom')
+
+  const filtered = await backend.readLogs({ level: 'info' })
+  expect(filtered).toHaveLength(0)
+
+  await backend.clearLogs()
+  expect(await backend.readLogs({})).toHaveLength(0)
+})

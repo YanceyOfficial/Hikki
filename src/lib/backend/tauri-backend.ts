@@ -6,6 +6,8 @@ import type {
   AiSettings,
   Doc,
   DocumentMeta,
+  LogEntry,
+  LogFilter,
   SearchHit,
   VaultInfo
 } from '#lib/types'
@@ -64,5 +66,17 @@ export class TauriBackend implements Backend {
       defaultAiProvider: settings.defaultAiProvider,
       defaultAiModel: settings.defaultAiModel
     })
+  }
+  setVaultPath(path: string) {
+    return invoke<VaultInfo>('set_vault_path', { path })
+  }
+  appendLog(entry: LogEntry) {
+    return invoke<void>('append_log', { entry })
+  }
+  readLogs(filter: LogFilter) {
+    return invoke<LogEntry[]>('read_logs', { filter })
+  }
+  clearLogs() {
+    return invoke<void>('clear_logs')
   }
 }
