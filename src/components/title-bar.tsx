@@ -1,10 +1,13 @@
-import { Moon, Sun } from 'lucide-react'
+import { useSetAtom } from 'jotai'
+import { Moon, Settings as SettingsIcon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
+import { useEffect } from 'react'
 
-import { AiSettingsDialog } from '#components/ai-settings-dialog'
+import { SettingsDialog } from '#components/settings-dialog'
 import { Button } from '#components/ui/button'
 import { SidebarTrigger, useSidebar } from '#components/ui/sidebar'
 import { useTrafficLightInset } from '#hooks/use-traffic-light-inset'
+import { openSettingsAtom } from '#lib/store'
 import { titleBarNeedsInset } from '#lib/traffic-light-gate'
 import { cn } from '#lib/utils'
 
@@ -20,6 +23,19 @@ export function TitleBar() {
   const { isMobile, state } = useSidebar()
   const inset = titleBarNeedsInset(trafficLight, isMobile, state)
   const { resolvedTheme, setTheme } = useTheme()
+  const openSettings = useSetAtom(openSettingsAtom)
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === ',' && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault()
+        openSettings()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [openSettings])
+
   return (
     <header
       data-tauri-drag-region
@@ -31,10 +47,17 @@ export function TitleBar() {
     >
       <SidebarTrigger data-testid="sidebar-toggle" />
       <div className="flex-1" />
-      {/* Provisional entry point for Task 8's minimal AI settings dialog -
-          Phase 4's real Settings shell (spec §8) will supersede this with a
-          proper navigation entry. */}
-      <AiSettingsDialog />
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-7"
+        data-testid="settings-trigger"
+        onClick={() => openSettings()}
+      >
+        <SettingsIcon className="size-4" />
+        <span className="sr-only">Settings</span>
+      </Button>
+      <SettingsDialog />
       <Button
         variant="ghost"
         size="icon"

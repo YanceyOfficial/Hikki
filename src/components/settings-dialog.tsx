@@ -1,161 +1,62 @@
-'use client'
+import { useAtom } from 'jotai'
 
+import { Dialog, DialogContent } from '#components/ui/dialog'
 import {
-  BellIcon,
-  MenuIcon,
-  HomeIcon,
-  PaintbrushIcon,
-  MessageCircleIcon,
-  GlobeIcon,
-  KeyboardIcon,
-  CheckIcon,
-  VideoIcon,
-  LinkIcon,
-  LockIcon,
-  SettingsIcon
-} from 'lucide-react'
-import * as React from 'react'
+  settingsDialogOpenAtom,
+  settingsDialogSectionAtom,
+  type SettingsSection
+} from '#lib/store'
+import { cn } from '#lib/utils'
 
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator
-} from '#components/ui/breadcrumb'
-import { Button } from '#components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-  DialogTrigger
-} from '#components/ui/dialog'
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider
-} from '#components/ui/sidebar'
-
-const data = {
-  nav: [
-    {
-      name: 'Notifications',
-      icon: <BellIcon />
-    },
-    {
-      name: 'Navigation',
-      icon: <MenuIcon />
-    },
-    {
-      name: 'Home',
-      icon: <HomeIcon />
-    },
-    {
-      name: 'Appearance',
-      icon: <PaintbrushIcon />
-    },
-    {
-      name: 'Messages & media',
-      icon: <MessageCircleIcon />
-    },
-    {
-      name: 'Language & region',
-      icon: <GlobeIcon />
-    },
-    {
-      name: 'Accessibility',
-      icon: <KeyboardIcon />
-    },
-    {
-      name: 'Mark as read',
-      icon: <CheckIcon />
-    },
-    {
-      name: 'Audio & video',
-      icon: <VideoIcon />
-    },
-    {
-      name: 'Connected accounts',
-      icon: <LinkIcon />
-    },
-    {
-      name: 'Privacy & visibility',
-      icon: <LockIcon />
-    },
-    {
-      name: 'Advanced',
-      icon: <SettingsIcon />
-    }
-  ]
-}
+const SECTIONS: { id: SettingsSection; label: string }[] = [
+  { id: 'general', label: 'General' },
+  { id: 'appearance', label: 'Appearance' },
+  { id: 'ai', label: 'AI' },
+  { id: 'logs', label: 'Logs' },
+  { id: 'about', label: 'About & Updates' }
+]
 
 export function SettingsDialog() {
-  const [open, setOpen] = React.useState(true)
+  const [open, setOpen] = useAtom(settingsDialogOpenAtom)
+  const [section, setSection] = useAtom(settingsDialogSectionAtom)
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button size="sm" />}>Open Dialog</DialogTrigger>
-      <DialogContent className="overflow-hidden p-0 md:max-h-[500px] md:max-w-[700px] lg:max-w-[800px]">
-        <DialogTitle className="sr-only">Settings</DialogTitle>
-        <DialogDescription className="sr-only">
-          Customize your settings here.
-        </DialogDescription>
-        <SidebarProvider className="items-start">
-          <Sidebar collapsible="none" className="hidden md:flex">
-            <SidebarContent>
-              <SidebarGroup>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {data.nav.map((item) => (
-                      <SidebarMenuItem key={item.name}>
-                        <SidebarMenuButton
-                          isActive={item.name === 'Messages & media'}
-                          render={<a href="#" />}
-                        >
-                          {item.icon}
-                          <span>{item.name}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            </SidebarContent>
-          </Sidebar>
-          <main className="flex h-[480px] flex-1 flex-col overflow-hidden">
-            <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-              <div className="flex items-center gap-2 px-4">
-                <Breadcrumb>
-                  <BreadcrumbList>
-                    <BreadcrumbItem className="hidden md:block">
-                      <BreadcrumbLink href="#">Settings</BreadcrumbLink>
-                    </BreadcrumbItem>
-                    <BreadcrumbSeparator className="hidden md:block" />
-                    <BreadcrumbItem>
-                      <BreadcrumbPage>Messages & media</BreadcrumbPage>
-                    </BreadcrumbItem>
-                  </BreadcrumbList>
-                </Breadcrumb>
-              </div>
-            </header>
-            <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4 pt-0">
-              {Array.from({
-                length: 10
-              }).map((_, i) => (
-                <div
-                  key={i}
-                  className="bg-muted/50 aspect-video max-w-3xl rounded-xl"
-                />
-              ))}
-            </div>
-          </main>
-        </SidebarProvider>
+      <DialogContent
+        data-testid="settings-dialog"
+        className="flex h-125 w-175 max-w-none gap-0 p-0"
+      >
+        <nav className="bg-muted/40 flex w-40 shrink-0 flex-col gap-1 border-r p-2">
+          {SECTIONS.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              data-testid={`settings-nav-${s.id}`}
+              onClick={() => setSection(s.id)}
+              className={cn(
+                'rounded-md px-2.5 py-1.5 text-left text-sm transition-colors',
+                section === s.id
+                  ? 'bg-accent text-accent-foreground'
+                  : 'text-muted-foreground hover:bg-accent/50'
+              )}
+            >
+              {s.label}
+            </button>
+          ))}
+        </nav>
+        <div className="min-w-0 flex-1 overflow-y-auto p-6">
+          {/* Task 8-11 each replace one of these placeholders with the
+              section's real content - this task builds only the shell. */}
+          {section === 'general' && (
+            <div data-testid="settings-section-general" />
+          )}
+          {section === 'appearance' && (
+            <div data-testid="settings-section-appearance" />
+          )}
+          {section === 'ai' && <div data-testid="settings-section-ai" />}
+          {section === 'logs' && <div data-testid="settings-section-logs" />}
+          {section === 'about' && <div data-testid="settings-section-about" />}
+        </div>
       </DialogContent>
     </Dialog>
   )
