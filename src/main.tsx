@@ -4,8 +4,10 @@ import ReactDOM from 'react-dom/client'
 import { createHashRouter, RouterProvider } from 'react-router'
 
 import { AppShell } from '#components/app-shell'
+import { ErrorBoundary } from '#components/error-boundary'
 import { ThemeProvider } from '#components/theme-provider'
 import { isTauri } from '#lib/backend/index'
+import { reportError } from '#lib/errors'
 import { createScopedFetch } from '#lib/scoped-fetch'
 import DashboardPage from '#pages/dashboard-page'
 import DocumentPage from '#pages/document-page'
@@ -17,6 +19,15 @@ if (isTauri()) {
     tauriFetch as unknown as typeof fetch
   )
 }
+
+window.addEventListener('unhandledrejection', (event) => {
+  reportError('HK-9001', {
+    message:
+      event.reason instanceof Error
+        ? event.reason.message
+        : String(event.reason)
+  })
+})
 
 const router = createHashRouter([
   {
@@ -31,8 +42,10 @@ const router = createHashRouter([
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <ThemeProvider>
-      <RouterProvider router={router} />
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <RouterProvider router={router} />
+      </ThemeProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 )
