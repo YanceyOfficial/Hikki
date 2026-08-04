@@ -189,6 +189,24 @@ pub fn get_ai_settings(state: State<AppState>) -> Result<AppSettings> {
     Ok(lock(&state.settings).clone())
 }
 
+#[tauri::command]
+pub fn append_log(state: State<AppState>, entry: crate::logging::LogEntry) -> Result<()> {
+    crate::logging::append_log_impl(&state.app_data_dir, entry)
+}
+
+#[tauri::command]
+pub fn read_logs(
+    state: State<AppState>,
+    filter: crate::logging::LogFilter,
+) -> Result<Vec<crate::logging::LogEntry>> {
+    crate::logging::read_logs_impl(&state.app_data_dir, filter)
+}
+
+#[tauri::command]
+pub fn clear_logs(state: State<AppState>) -> Result<()> {
+    crate::logging::clear_logs_impl(&state.app_data_dir)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -6,6 +6,7 @@ mod error;
 mod fsx;
 mod history;
 mod index;
+mod logging;
 mod vault;
 
 use std::sync::Mutex;
@@ -78,6 +79,9 @@ pub fn run() {
             commands::delete_api_key,
             commands::save_ai_settings,
             commands::get_ai_settings,
+            commands::append_log,
+            commands::read_logs,
+            commands::clear_logs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
