@@ -225,14 +225,52 @@ test('block-type suggestion menu flips upward instead of compressing near the bo
 })
 
 test('set a page icon from the picker', async ({ page }) => {
-  // Hikki is offline-first: frimousse must resolve its emoji dataset from the
-  // app's own locally self-hosted public/emojibase-data (see page-header.tsx's
-  // `emojibaseUrl`), never its default cdn.jsdelivr.net fetch. Block that CDN
-  // host outright so a regression back to the network default fails this test
-  // (aborted request -> stuck loading spinner -> the assertions below time
-  // out) instead of silently depending on a real, non-deterministic network
-  // call that happened to succeed.
-  await page.route('https://cdn.jsdelivr.net/**', (route) => route.abort())
+  // frimousse (src/components/ui/emoji-picker.tsx) resolves its emoji dataset
+  // from its own default cdn.jsdelivr.net URL (no self-hosting - see that
+  // file's own history/comments). Route those two exact requests to a tiny,
+  // deterministic fixture instead of letting them hit the real network, so
+  // this test never depends on a real, non-deterministic CDN call succeeding
+  // (matching the same fixture shape already used in page-header.test.tsx's
+  // unit test).
+  const FIXTURE_EMOJI_DATA = [
+    {
+      emoji: '🚀',
+      group: 5,
+      label: 'rocket',
+      tags: ['space', 'launch'],
+      version: 1
+    },
+    {
+      emoji: '😀',
+      group: 5,
+      label: 'grinning face',
+      tags: ['happy', 'smile'],
+      version: 1
+    }
+  ]
+  const FIXTURE_EMOJI_MESSAGES = {
+    groups: [{ key: 'travel-places', order: 5, message: 'travel & places' }],
+    subgroups: [{ key: 'country-flag', order: 999, message: 'country flag' }],
+    skinTones: [
+      { key: 'light', message: 'light skin tone' },
+      { key: 'medium-light', message: 'medium-light skin tone' },
+      { key: 'medium', message: 'medium skin tone' },
+      { key: 'medium-dark', message: 'medium-dark skin tone' },
+      { key: 'dark', message: 'dark skin tone' }
+    ]
+  }
+  // The path segment below is a real, external fact (frimousse's default CDN
+  // URL genuinely embeds the upstream npm package's name), not a leftover
+  // reference to a local dependency - this app no longer installs or
+  // self-hosts that package.
+  await page.route(
+    'https://cdn.jsdelivr.net/npm/emojibase-data@**/data.json',
+    (route) => route.fulfill({ json: FIXTURE_EMOJI_DATA })
+  )
+  await page.route(
+    'https://cdn.jsdelivr.net/npm/emojibase-data@**/messages.json',
+    (route) => route.fulfill({ json: FIXTURE_EMOJI_MESSAGES })
+  )
   await page.goto('/')
   await page.getByTestId('new-doc').click()
   await page.getByTestId('doc-icon-button').click()
@@ -625,7 +663,8 @@ test.describe('Writing Tools', () => {
    * non-empty string works.
    */
   async function configureAiSettings(page: Page) {
-    await page.getByTestId('ai-settings-trigger').click()
+    await page.getByTestId('settings-trigger').click()
+    await page.getByTestId('settings-nav-ai').click()
     await page
       .getByTestId('ai-settings-default-provider')
       .selectOption('openai')
@@ -772,12 +811,17 @@ test.describe('Writing Tools', () => {
     )
     // Scoped to `data-type="error"` rather than the bare `[data-sonner-toast]`
     // selector: `configureAiSettings` above now also triggers its own
-    // (still-visible) success toast from ai-settings-dialog.tsx's Save button
+    // (still-visible) success toast from ai-section.tsx's Save button
     // (whole-branch-review Finding 3), so the unscoped selector would match
     // two toasts and fail Playwright's strict-mode single-match requirement.
+    // The toast's own text is the fixed HK-3005 message from
+    // `reportError` (Task 6's retrofit), not the raw per-instance error -
+    // the dynamic detail ("No more faux responses queued") still reaches the
+    // inline `writing-tools-error` state above and the structured log
+    // context, just not the toast copy anymore.
     await expect(
       page.locator('[data-sonner-toast][data-type="error"]')
-    ).toContainText('No more faux responses queued')
+    ).toContainText('The Writing Tools request failed.')
     await expect(editable).toContainText('Keep this exact text.')
   })
 

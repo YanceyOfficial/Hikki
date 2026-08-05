@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { toast } from 'sonner'
 import { beforeEach, expect, test, vi } from 'vitest'
 
-import { AiSettingsDialog } from '#components/ai-settings-dialog'
+import { AiSection } from '#components/settings/ai-section'
 import { backend } from '#lib/backend/index'
 import { reportError } from '#lib/errors'
 
@@ -18,8 +18,7 @@ beforeEach(() => {
 })
 
 test('saving an API key persists it through the backend', async () => {
-  render(<AiSettingsDialog />)
-  await userEvent.click(screen.getByTestId('ai-settings-trigger'))
+  render(<AiSection />)
 
   const openaiKeyInput = await screen.findByTestId('ai-settings-key-openai')
   await userEvent.type(openaiKeyInput, 'sk-test-key')
@@ -31,8 +30,7 @@ test('saving an API key persists it through the backend', async () => {
 })
 
 test('changing the default model persists through the backend', async () => {
-  render(<AiSettingsDialog />)
-  await userEvent.click(screen.getByTestId('ai-settings-trigger'))
+  render(<AiSection />)
 
   const modelSelect = await screen.findByTestId('ai-settings-default-model')
   await userEvent.selectOptions(
@@ -50,8 +48,7 @@ test('a failed API key save surfaces a toast instead of failing silently', async
   const setApiKeySpy = vi
     .spyOn(backend, 'setApiKey')
     .mockRejectedValueOnce(new Error('Keychain write failed'))
-  render(<AiSettingsDialog />)
-  await userEvent.click(screen.getByTestId('ai-settings-trigger'))
+  render(<AiSection />)
 
   const openaiKeyInput = await screen.findByTestId('ai-settings-key-openai')
   await userEvent.type(openaiKeyInput, 'sk-test-key')
@@ -68,8 +65,7 @@ test('a failed API key save surfaces a toast instead of failing silently', async
 })
 
 test('a successful API key save surfaces a success toast', async () => {
-  render(<AiSettingsDialog />)
-  await userEvent.click(screen.getByTestId('ai-settings-trigger'))
+  render(<AiSection />)
 
   const openaiKeyInput = await screen.findByTestId('ai-settings-key-openai')
   await userEvent.type(openaiKeyInput, 'sk-test-key')
@@ -84,8 +80,7 @@ test('a failed settings load surfaces a toast instead of an unhandled rejection'
   const getAiSettingsSpy = vi
     .spyOn(backend, 'getAiSettings')
     .mockRejectedValueOnce(new Error('IPC channel closed'))
-  render(<AiSettingsDialog />)
-  await userEvent.click(screen.getByTestId('ai-settings-trigger'))
+  render(<AiSection />)
 
   await waitFor(() => {
     expect(reportError).toHaveBeenCalledWith('HK-3002', {
@@ -99,8 +94,7 @@ test('a failed default provider/model save surfaces a toast', async () => {
   const saveAiSettingsSpy = vi
     .spyOn(backend, 'saveAiSettings')
     .mockRejectedValueOnce(new Error('disk full'))
-  render(<AiSettingsDialog />)
-  await userEvent.click(screen.getByTestId('ai-settings-trigger'))
+  render(<AiSection />)
 
   const modelSelect = await screen.findByTestId('ai-settings-default-model')
   await userEvent.selectOptions(

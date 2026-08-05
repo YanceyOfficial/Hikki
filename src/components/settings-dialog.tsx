@@ -1,6 +1,7 @@
 import { useAtom } from 'jotai'
 
 import { AboutSection } from '#components/settings/about-section'
+import { AiSection } from '#components/settings/ai-section'
 import { AppearanceSection } from '#components/settings/appearance-section'
 import { GeneralSection } from '#components/settings/general-section'
 import { Dialog, DialogContent } from '#components/ui/dialog'
@@ -48,8 +49,8 @@ export function SettingsDialog() {
           ))}
         </nav>
         <div className="min-w-0 flex-1 overflow-y-auto p-6">
-          {/* Tasks 9-11 each replace one of the remaining placeholders with
-              the section's real content. */}
+          {/* Task 11 replaces the remaining placeholder with the section's
+              real content. */}
           {section === 'general' && (
             <div data-testid="settings-section-general">
               <GeneralSection />
@@ -60,7 +61,11 @@ export function SettingsDialog() {
               <AppearanceSection />
             </div>
           )}
-          {section === 'ai' && <div data-testid="settings-section-ai" />}
+          {section === 'ai' && (
+            <div data-testid="settings-section-ai">
+              <AiSection />
+            </div>
+          )}
           {section === 'logs' && <div data-testid="settings-section-logs" />}
           {section === 'about' && (
             <div data-testid="settings-section-about">

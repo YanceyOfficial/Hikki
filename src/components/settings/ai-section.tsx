@@ -2,13 +2,6 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { Button } from '#components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
-} from '#components/ui/dialog'
 import { Input } from '#components/ui/input'
 import { AI_PROVIDER_IDS, getAiModels, type AiProviderId } from '#lib/ai/models'
 import { backend } from '#lib/backend/index'
@@ -37,8 +30,7 @@ const TEST_STATE_LABEL: Record<ConnectionTestState, string> = {
   error: 'Failed'
 }
 
-export function AiSettingsDialog() {
-  const [open, setOpen] = useState(false)
+export function AiSection() {
   const [keys, setKeys] = useState<Record<AiProviderId, string>>({
     openai: '',
     anthropic: ''
@@ -50,7 +42,6 @@ export function AiSettingsDialog() {
   const [defaultModel, setDefaultModel] = useState<string>('')
 
   useEffect(() => {
-    if (!open) return
     backend
       .getAiSettings()
       .then((settings) => {
@@ -60,13 +51,13 @@ export function AiSettingsDialog() {
       .catch((err) => {
         // Without this `.catch`, a rejected `getAiSettings()` IPC call (e.g.
         // the vault/index unavailable) became an unhandled promise rejection
-        // - the dialog just silently kept showing blank/stale defaults with
+        // - the section just silently kept showing blank/stale defaults with
         // no indication anything had gone wrong.
         reportError('HK-3002', {
           message: err instanceof Error ? err.message : String(err)
         })
       })
-  }, [open])
+  }, [])
 
   const saveKey = async (provider: AiProviderId) => {
     try {
@@ -76,7 +67,7 @@ export function AiSettingsDialog() {
       // successful one until a later AI request confusingly failed with "No
       // API key configured". A brief success toast (mirroring the failure
       // toast below) is enough signal without adding persistent UI state to
-      // this deliberately minimal dialog (spec §14b).
+      // this deliberately minimal section (spec §14b).
       toast.success(`Saved ${provider} API key`)
     } catch (err) {
       reportError('HK-3003', {
@@ -140,78 +131,64 @@ export function AiSettingsDialog() {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={
-          <Button variant="ghost" size="sm" data-testid="ai-settings-trigger" />
-        }
-      >
-        AI Settings
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>AI Writing Tools</DialogTitle>
-        </DialogHeader>
-        <div className="flex flex-col gap-3">
-          {AI_PROVIDER_IDS.map((provider) => (
-            <div key={provider} className="flex items-center gap-2">
-              <Input
-                type="password"
-                placeholder={`${provider} API key`}
-                value={keys[provider]}
-                onChange={(e) =>
-                  setKeys((k) => ({ ...k, [provider]: e.target.value }))
-                }
-                data-testid={`ai-settings-key-${provider}`}
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => saveKey(provider)}
-                data-testid={`ai-settings-save-${provider}`}
-              >
-                Save
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => testConnection(provider)}
-                data-testid={`ai-settings-test-${provider}`}
-              >
-                {TEST_STATE_LABEL[testState[provider]]}
-              </Button>
-            </div>
-          ))}
-          <div className="border-border/60 flex items-center gap-2 border-t pt-3">
-            <select
-              value={defaultProvider}
-              onChange={(e) => saveDefaults(e.target.value, '')}
-              data-testid="ai-settings-default-provider"
-              className={selectClassName}
-            >
-              <option value="">Choose a provider…</option>
-              {AI_PROVIDER_IDS.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-            <select
-              value={defaultModel}
-              onChange={(e) => saveDefaults(defaultProvider, e.target.value)}
-              data-testid="ai-settings-default-model"
-              className={selectClassName}
-            >
-              <option value="">Choose a model…</option>
-              {modelOptions.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name ?? m.id}
-                </option>
-              ))}
-            </select>
-          </div>
+    <div className="flex flex-col gap-3">
+      {AI_PROVIDER_IDS.map((provider) => (
+        <div key={provider} className="flex items-center gap-2">
+          <Input
+            type="password"
+            placeholder={`${provider} API key`}
+            value={keys[provider]}
+            onChange={(e) =>
+              setKeys((k) => ({ ...k, [provider]: e.target.value }))
+            }
+            data-testid={`ai-settings-key-${provider}`}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => saveKey(provider)}
+            data-testid={`ai-settings-save-${provider}`}
+          >
+            Save
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => testConnection(provider)}
+            data-testid={`ai-settings-test-${provider}`}
+          >
+            {TEST_STATE_LABEL[testState[provider]]}
+          </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      ))}
+      <div className="border-border/60 flex items-center gap-2 border-t pt-3">
+        <select
+          value={defaultProvider}
+          onChange={(e) => saveDefaults(e.target.value, '')}
+          data-testid="ai-settings-default-provider"
+          className={selectClassName}
+        >
+          <option value="">Choose a provider…</option>
+          {AI_PROVIDER_IDS.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+        <select
+          value={defaultModel}
+          onChange={(e) => saveDefaults(defaultProvider, e.target.value)}
+          data-testid="ai-settings-default-model"
+          className={selectClassName}
+        >
+          <option value="">Choose a model…</option>
+          {modelOptions.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name ?? m.id}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
   )
 }
