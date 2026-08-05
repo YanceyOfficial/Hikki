@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
+use crate::fsx;
 
 pub const MAX_LOG_BYTES: u64 = 5 * 1024 * 1024;
 pub const MAX_ROTATED_FILES: usize = 5;
@@ -108,6 +109,24 @@ pub fn clear_logs_impl(app_data_dir: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Re-runs the same filter `read_logs_impl` uses so the exported file always
+/// matches exactly what the Logs section has on screen, then writes the
+/// result as JSONL (one entry per line, oldest-to-newest - the natural order
+/// for a file someone might grep/tail later, unlike the UI's newest-first
+/// list) to `target` via the same atomic temp+rename write every other
+/// on-disk write in this app uses.
+pub fn export_logs_impl(app_data_dir: &Path, target: &Path, filter: LogFilter) -> Result<()> {
+    let mut entries = read_logs_impl(app_data_dir, filter)?;
+    entries.reverse();
+    let mut content = String::new();
+    for entry in &entries {
+        content.push_str(&serde_json::to_string(entry)?);
+        content.push('\n');
+    }
+    fsx::write_atomic(target, content.as_bytes())?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -188,5 +207,38 @@ mod tests {
         // only the fresh entry in the new current log is readable.
         assert_eq!(logs.len(), 1);
         assert_eq!(logs[0].message, "fresh");
+    }
+
+    #[test]
+    fn export_logs_writes_filtered_entries_as_jsonl() {
+        let dir = tempfile::tempdir().unwrap();
+        append_log_impl(dir.path(), entry("info", "calm")).unwrap();
+        append_log_impl(dir.path(), entry("error", "boom")).unwrap();
+        let target = dir.path().join("export.jsonl");
+        let filter = LogFilter { level: Some("error".to_string()), query: None };
+        export_logs_impl(dir.path(), &target, filter).unwrap();
+
+        let content = fs::read_to_string(&target).unwrap();
+        let lines: Vec<&str> = content.lines().collect();
+        assert_eq!(lines.len(), 1);
+        let exported: LogEntry = serde_json::from_str(lines[0]).unwrap();
+        assert_eq!(exported.message, "boom");
+    }
+
+    #[test]
+    fn export_logs_writes_entries_oldest_to_newest() {
+        let dir = tempfile::tempdir().unwrap();
+        append_log_impl(dir.path(), entry("info", "first")).unwrap();
+        append_log_impl(dir.path(), entry("info", "second")).unwrap();
+        let target = dir.path().join("export.jsonl");
+        export_logs_impl(dir.path(), &target, LogFilter::default()).unwrap();
+
+        let content = fs::read_to_string(&target).unwrap();
+        let lines: Vec<&str> = content.lines().collect();
+        assert_eq!(lines.len(), 2);
+        let first: LogEntry = serde_json::from_str(lines[0]).unwrap();
+        let second: LogEntry = serde_json::from_str(lines[1]).unwrap();
+        assert_eq!(first.message, "first");
+        assert_eq!(second.message, "second");
     }
 }

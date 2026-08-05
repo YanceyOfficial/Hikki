@@ -207,6 +207,15 @@ pub fn clear_logs(state: State<AppState>) -> Result<()> {
     crate::logging::clear_logs_impl(&state.app_data_dir)
 }
 
+#[tauri::command]
+pub fn export_logs(
+    state: State<AppState>,
+    path: String,
+    filter: crate::logging::LogFilter,
+) -> Result<()> {
+    crate::logging::export_logs_impl(&state.app_data_dir, std::path::Path::new(&path), filter)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -180,4 +180,10 @@ export class MemoryBackend implements Backend {
   async clearLogs(): Promise<void> {
     this.logs = []
   }
+
+  // No real filesystem exists in browser/dev mode to write an export file
+  // to - this deliberately no-ops rather than simulating a write, matching
+  // how other native-only affordances (the native folder/save pickers
+  // themselves) already behave outside a real Tauri webview.
+  async exportLogs(): Promise<void> {}
 }

@@ -79,4 +79,7 @@ export class TauriBackend implements Backend {
   clearLogs() {
     return invoke<void>('clear_logs')
   }
+  exportLogs(path: string, filter: LogFilter) {
+    return invoke<void>('export_logs', { path, filter })
+  }
 }

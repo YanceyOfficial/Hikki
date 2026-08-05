@@ -33,4 +33,5 @@ export interface Backend {
   appendLog(entry: LogEntry): Promise<void>
   readLogs(filter: LogFilter): Promise<LogEntry[]>
   clearLogs(): Promise<void>
+  exportLogs(path: string, filter: LogFilter): Promise<void>
 }

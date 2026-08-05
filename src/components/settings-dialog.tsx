@@ -4,6 +4,7 @@ import { AboutSection } from '#components/settings/about-section'
 import { AiSection } from '#components/settings/ai-section'
 import { AppearanceSection } from '#components/settings/appearance-section'
 import { GeneralSection } from '#components/settings/general-section'
+import { LogsSection } from '#components/settings/logs-section'
 import { Dialog, DialogContent } from '#components/ui/dialog'
 import {
   settingsDialogOpenAtom,
@@ -49,8 +50,6 @@ export function SettingsDialog() {
           ))}
         </nav>
         <div className="min-w-0 flex-1 overflow-y-auto p-6">
-          {/* Task 11 replaces the remaining placeholder with the section's
-              real content. */}
           {section === 'general' && (
             <div data-testid="settings-section-general">
               <GeneralSection />
@@ -66,7 +65,11 @@ export function SettingsDialog() {
               <AiSection />
             </div>
           )}
-          {section === 'logs' && <div data-testid="settings-section-logs" />}
+          {section === 'logs' && (
+            <div data-testid="settings-section-logs">
+              <LogsSection />
+            </div>
+          )}
           {section === 'about' && (
             <div data-testid="settings-section-about">
               <AboutSection />
