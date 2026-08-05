@@ -178,6 +178,9 @@ test('shows an error state when no default AI provider/model is configured', asy
     )
   })
   expect(streamWritingTool).not.toHaveBeenCalled()
+  expect(reportError).toHaveBeenCalledWith('HK-3005', {
+    message: 'No default AI provider/model configured. Open AI Settings first.'
+  })
 })
 
 test('shows an error state, not a stuck spinner, when getAiSettings itself rejects', async () => {

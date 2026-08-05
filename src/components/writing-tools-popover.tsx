@@ -104,10 +104,11 @@ export function WritingToolsPopover({
       // because it's a real IPC call in Tauri mode and can reject.
       const settings = await backend.getAiSettings()
       if (!settings.defaultAiProvider || !settings.defaultAiModel) {
-        setPhase('error')
-        setErrorMessage(
+        const message =
           'No default AI provider/model configured. Open AI Settings first.'
-        )
+        setPhase('error')
+        setErrorMessage(message)
+        reportError('HK-3005', { message })
         return
       }
       for await (const event of streamWritingTool(action, selectedText, {

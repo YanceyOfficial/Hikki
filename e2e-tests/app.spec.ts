@@ -953,3 +953,74 @@ test.describe('Writing Tools', () => {
     await expect(editable).not.toContainText('- First point')
   })
 })
+
+test.describe('Settings dialog', () => {
+  test('opens via the title-bar gear icon and navigates between sections', async ({
+    page
+  }) => {
+    await page.goto('/')
+    await page.getByTestId('settings-trigger').click()
+    await expect(page.getByTestId('settings-section-general')).toBeVisible()
+    await page.getByTestId('settings-nav-appearance').click()
+    await expect(page.getByTestId('settings-section-appearance')).toBeVisible()
+  })
+
+  test('opens via the ⌘, keyboard shortcut', async ({ page }) => {
+    await page.goto('/')
+    // Waits for a real, always-rendered element rather than firing the
+    // keypress immediately after `goto` - `title-bar.tsx`'s keydown
+    // listener is registered in a `useEffect`, which runs after React's
+    // initial commit; without this wait the keypress can race that effect
+    // under load (confirmed live: this test passed reliably in isolation
+    // but flaked when run as part of the full suite).
+    await expect(page.getByTestId('titlebar')).toBeVisible()
+    // Not `page.keyboard.press('Meta+,')`: that combined shorthand is
+    // unreliable for this specific OS-reserved combo in headless Chromium
+    // specifically (confirmed live - the same shorthand passes in `--headed`
+    // mode, and the real app itself opens Settings correctly on a genuine
+    // Cmd+, keypress) - separate down/press/up calls dispatch it correctly
+    // in both modes.
+    await page.keyboard.down('Meta')
+    await page.keyboard.press(',')
+    await page.keyboard.up('Meta')
+    await expect(page.getByTestId('settings-dialog')).toBeVisible()
+  })
+
+  test('Appearance mode buttons change the app theme', async ({ page }) => {
+    await page.goto('/')
+    await page.getByTestId('settings-trigger').click()
+    await page.getByTestId('settings-nav-appearance').click()
+    await page.getByTestId('appearance-mode-dark').click()
+    await expect(page.locator('html')).toHaveClass(/dark/)
+    await page.getByTestId('appearance-mode-light').click()
+    await expect(page.locator('html')).not.toHaveClass(/dark/)
+  })
+
+  test('Logs section shows entries, filters, and clears', async ({ page }) => {
+    await page.goto('/')
+    // Trigger at least one real logged event first - the missing-defaults
+    // Writing Tools error path (writing-tools-popover.tsx's runAction) calls
+    // reportError('HK-3005', ...) even before a real AI request is attempted,
+    // since no AI settings have been configured in this fresh test session.
+    await page.getByTestId('new-doc').click()
+    const editable = page
+      .getByTestId('editor')
+      .locator('[contenteditable="true"]')
+      .first()
+    await editable.click()
+    await page.keyboard.type('Some text.')
+    await page.keyboard.press('Home')
+    await page.keyboard.down('Shift')
+    await page.keyboard.press('End')
+    await page.keyboard.up('Shift')
+    await page.getByTestId('writing-tools-button').click()
+    await page.getByTestId('writing-tools-proofread').click()
+    await expect(page.getByTestId('writing-tools-error')).toBeVisible()
+
+    await page.getByTestId('settings-trigger').click()
+    await page.getByTestId('settings-nav-logs').click()
+    await expect(page.getByTestId('log-row').first()).toBeVisible()
+    await page.getByTestId('logs-clear').click()
+    await expect(page.getByTestId('log-row')).toHaveCount(0)
+  })
+})
