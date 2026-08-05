@@ -1,6 +1,7 @@
 import { useAtom } from 'jotai'
 
 import { AboutSection } from '#components/settings/about-section'
+import { AppearanceSection } from '#components/settings/appearance-section'
 import { GeneralSection } from '#components/settings/general-section'
 import { Dialog, DialogContent } from '#components/ui/dialog'
 import {
@@ -55,7 +56,9 @@ export function SettingsDialog() {
             </div>
           )}
           {section === 'appearance' && (
-            <div data-testid="settings-section-appearance" />
+            <div data-testid="settings-section-appearance">
+              <AppearanceSection />
+            </div>
           )}
           {section === 'ai' && <div data-testid="settings-section-ai" />}
           {section === 'logs' && <div data-testid="settings-section-logs" />}
