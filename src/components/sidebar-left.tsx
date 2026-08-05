@@ -1,22 +1,25 @@
 import { useAtomValue, useSetAtom } from 'jotai'
-import { LayoutDashboard, Plus } from 'lucide-react'
+import { LayoutDashboard, Plus, Settings as SettingsIcon } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 
 import { DocTree } from '#components/doc-tree'
+import { SettingsDialog } from '#components/settings-dialog'
 import { Button } from '#components/ui/button'
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarRail,
   useSidebar
 } from '#components/ui/sidebar'
 import { useTrafficLightInset } from '#hooks/use-traffic-light-inset'
 import { backend } from '#lib/backend/index'
-import { docMetasAtom, refreshDocsAtom } from '#lib/store'
+import { docMetasAtom, openSettingsAtom, refreshDocsAtom } from '#lib/store'
 import { sidebarHeaderNeedsInset } from '#lib/traffic-light-gate'
 import { buildTree } from '#lib/tree'
 import { cn } from '#lib/utils'
@@ -35,10 +38,22 @@ export function SidebarLeft(props: React.ComponentProps<typeof Sidebar>) {
   const refresh = useSetAtom(refreshDocsAtom)
   const navigate = useNavigate()
   const location = useLocation()
+  const openSettings = useSetAtom(openSettingsAtom)
 
   useEffect(() => {
     refresh()
   }, [refresh])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === ',' && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault()
+        openSettings()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [openSettings])
 
   const nodes = useMemo(() => buildTree(metas), [metas])
   const activeId = location.pathname.startsWith('/doc/')
@@ -106,6 +121,22 @@ export function SidebarLeft(props: React.ComponentProps<typeof Sidebar>) {
           onDelete={deleteDoc}
         />
       </SidebarContent>
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              data-testid="settings-trigger"
+              onClick={() => openSettings()}
+            >
+              <SettingsIcon />
+              <span>Settings</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+      <SidebarRail />
+
+      <SettingsDialog />
     </Sidebar>
   )
 }

@@ -319,44 +319,6 @@ test.describe('code block copy button', () => {
   })
 })
 
-test('theme toggle switches the app between light and dark', async ({
-  page
-}) => {
-  await page.goto('/')
-  const toggle = page.getByTestId('theme-toggle')
-
-  // next-themes' `attribute="class"` (theme-provider.tsx) writes the
-  // *resolved* theme directly as `<html>`'s class - not an empty class in
-  // light mode with "dark" merely added/removed. Playwright's own default
-  // color-scheme emulation is "light", but reading the real starting class
-  // here (rather than assuming "light") keeps this robust against that
-  // default ever changing.
-  const initialClass = await page.evaluate(
-    () => document.documentElement.className
-  )
-  expect(['light', 'dark']).toContain(initialClass)
-
-  await toggle.click()
-  const nextClass = await page.evaluate(
-    () => document.documentElement.className
-  )
-  expect(nextClass).not.toBe(initialClass)
-
-  // The button's icon swaps with the theme too - title-bar.tsx renders Sun
-  // once `resolvedTheme === 'dark'` (so clicking it again returns to light)
-  // and Moon otherwise; confirmed live via the rendered lucide icon's own
-  // `lucide-sun`/`lucide-moon` class (lucide-react always adds one).
-  await expect(
-    toggle.locator(nextClass === 'dark' ? 'svg.lucide-sun' : 'svg.lucide-moon')
-  ).toBeVisible()
-
-  await toggle.click()
-  const finalClass = await page.evaluate(
-    () => document.documentElement.className
-  )
-  expect(finalClass).toBe(initialClass)
-})
-
 test('code block: typing Python triggers real shiki syntax highlighting', async ({
   page
 }) => {
@@ -665,14 +627,16 @@ test.describe('Writing Tools', () => {
   async function configureAiSettings(page: Page) {
     await page.getByTestId('settings-trigger').click()
     await page.getByTestId('settings-nav-ai').click()
-    await page
-      .getByTestId('ai-settings-default-provider')
-      .selectOption('openai')
+    // Base UI's Select renders a trigger <button> (role="combobox"), not a
+    // native <select> - open it, then click the matching option in the
+    // portaled listbox, rather than Playwright's .selectOption() (native
+    // <select>-only).
+    await page.getByTestId('ai-settings-default-provider').click()
+    await page.getByRole('option', { name: 'openai' }).click()
     await page.getByTestId('ai-settings-key-openai').fill('sk-test-key')
     await page.getByTestId('ai-settings-save-openai').click()
-    await page
-      .getByTestId('ai-settings-default-model')
-      .selectOption({ index: 1 })
+    await page.getByTestId('ai-settings-default-model').click()
+    await page.getByRole('option').first().click()
     await page.keyboard.press('Escape')
   }
 
@@ -955,25 +919,25 @@ test.describe('Writing Tools', () => {
 })
 
 test.describe('Settings dialog', () => {
-  test('opens via the title-bar gear icon and navigates between sections', async ({
+  test('opens via the sidebar footer gear icon and navigates between sections', async ({
     page
   }) => {
     await page.goto('/')
     await page.getByTestId('settings-trigger').click()
     await expect(page.getByTestId('settings-section-general')).toBeVisible()
-    await page.getByTestId('settings-nav-appearance').click()
-    await expect(page.getByTestId('settings-section-appearance')).toBeVisible()
+    await page.getByTestId('settings-nav-ai').click()
+    await expect(page.getByTestId('settings-section-ai')).toBeVisible()
   })
 
   test('opens via the ⌘, keyboard shortcut', async ({ page }) => {
     await page.goto('/')
     // Waits for a real, always-rendered element rather than firing the
-    // keypress immediately after `goto` - `title-bar.tsx`'s keydown
+    // keypress immediately after `goto` - `sidebar-left.tsx`'s keydown
     // listener is registered in a `useEffect`, which runs after React's
     // initial commit; without this wait the keypress can race that effect
     // under load (confirmed live: this test passed reliably in isolation
     // but flaked when run as part of the full suite).
-    await expect(page.getByTestId('titlebar')).toBeVisible()
+    await expect(page.getByTestId('settings-trigger')).toBeVisible()
     // Not `page.keyboard.press('Meta+,')`: that combined shorthand is
     // unreliable for this specific OS-reserved combo in headless Chromium
     // specifically (confirmed live - the same shorthand passes in `--headed`
@@ -986,10 +950,12 @@ test.describe('Settings dialog', () => {
     await expect(page.getByTestId('settings-dialog')).toBeVisible()
   })
 
-  test('Appearance mode buttons change the app theme', async ({ page }) => {
+  test('Appearance mode buttons in the General section change the app theme', async ({
+    page
+  }) => {
     await page.goto('/')
     await page.getByTestId('settings-trigger').click()
-    await page.getByTestId('settings-nav-appearance').click()
+    await expect(page.getByTestId('settings-section-general')).toBeVisible()
     await page.getByTestId('appearance-mode-dark').click()
     await expect(page.locator('html')).toHaveClass(/dark/)
     await page.getByTestId('appearance-mode-light').click()

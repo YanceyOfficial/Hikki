@@ -32,11 +32,12 @@ test('saving an API key persists it through the backend', async () => {
 test('changing the default model persists through the backend', async () => {
   render(<AiSection />)
 
-  const modelSelect = await screen.findByTestId('ai-settings-default-model')
-  await userEvent.selectOptions(
-    modelSelect,
-    modelSelect.querySelectorAll('option')[1] as HTMLOptionElement
-  )
+  // Base UI's Select renders a trigger <button> (role="combobox"), not a
+  // native <select> - open it, then click the first option in the portaled
+  // listbox, rather than userEvent.selectOptions (native-<select>-only).
+  await userEvent.click(await screen.findByTestId('ai-settings-default-model'))
+  const options = await screen.findAllByRole('option')
+  await userEvent.click(options[0])
 
   await waitFor(async () => {
     const settings = await backend.getAiSettings()
@@ -96,11 +97,9 @@ test('a failed default provider/model save surfaces a toast', async () => {
     .mockRejectedValueOnce(new Error('disk full'))
   render(<AiSection />)
 
-  const modelSelect = await screen.findByTestId('ai-settings-default-model')
-  await userEvent.selectOptions(
-    modelSelect,
-    modelSelect.querySelectorAll('option')[1] as HTMLOptionElement
-  )
+  await userEvent.click(await screen.findByTestId('ai-settings-default-model'))
+  const options = await screen.findAllByRole('option')
+  await userEvent.click(options[0])
 
   await waitFor(() => {
     expect(reportError).toHaveBeenCalledWith('HK-3004', {

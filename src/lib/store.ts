@@ -9,7 +9,7 @@ export const refreshDocsAtom = atom(null, async (_get, set) => {
   set(docMetasAtom, await backend.listDocuments())
 })
 
-export type SettingsSection = 'general' | 'appearance' | 'ai' | 'logs' | 'about'
+export type SettingsSection = 'general' | 'ai' | 'logs' | 'about'
 
 export const settingsDialogOpenAtom = atom(false)
 export const settingsDialogSectionAtom = atom<SettingsSection>('general')

@@ -2,24 +2,18 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { Button } from '#components/ui/button'
+import { Field, FieldGroup } from '#components/ui/field'
 import { Input } from '#components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '#components/ui/select'
 import { AI_PROVIDER_IDS, getAiModels, type AiProviderId } from '#lib/ai/models'
 import { backend } from '#lib/backend/index'
 import { reportError } from '#lib/errors'
-
-// Plain native <select>s, not the `combobox.tsx` primitive: that component
-// wraps @base-ui/react's async Combobox (its own `input-group.tsx`
-// dependency, portal/positioner machinery, collection-filtering) which is
-// built for a searchable, dynamically-loaded item list. The provider list is
-// two fixed ids and the model list is a small synchronous array already
-// filtered by provider - there's nothing to search and nothing loads
-// asynchronously, so the combobox's extra machinery would be pure overhead.
-// A native <select> also matches this app's existing low-key form patterns
-// (see `Input` above) better than pulling in a heavier styled primitive for
-// a one-off. Revisit if/when Phase 4's full Settings shell needs a richer,
-// searchable model picker.
-const selectClassName =
-  'h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30'
 
 type ConnectionTestState = 'idle' | 'testing' | 'ok' | 'error'
 
@@ -131,9 +125,9 @@ export function AiSection() {
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <FieldGroup>
       {AI_PROVIDER_IDS.map((provider) => (
-        <div key={provider} className="flex items-center gap-2">
+        <Field key={provider} orientation="horizontal">
           <Input
             type="password"
             placeholder={`${provider} API key`}
@@ -159,36 +153,48 @@ export function AiSection() {
           >
             {TEST_STATE_LABEL[testState[provider]]}
           </Button>
-        </div>
+        </Field>
       ))}
-      <div className="border-border/60 flex items-center gap-2 border-t pt-3">
-        <select
-          value={defaultProvider}
-          onChange={(e) => saveDefaults(e.target.value, '')}
-          data-testid="ai-settings-default-provider"
-          className={selectClassName}
+      <Field
+        orientation="horizontal"
+        className="border-border/60 border-t pt-3"
+      >
+        <Select
+          items={AI_PROVIDER_IDS.map((p) => ({ label: p, value: p }))}
+          value={defaultProvider || null}
+          onValueChange={(value) => saveDefaults(value ?? '', '')}
         >
-          <option value="">Choose a provider…</option>
-          {AI_PROVIDER_IDS.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
-        <select
-          value={defaultModel}
-          onChange={(e) => saveDefaults(defaultProvider, e.target.value)}
-          data-testid="ai-settings-default-model"
-          className={selectClassName}
+          <SelectTrigger data-testid="ai-settings-default-provider" size="sm">
+            <SelectValue placeholder="Choose a provider…" />
+          </SelectTrigger>
+          <SelectContent>
+            {AI_PROVIDER_IDS.map((p) => (
+              <SelectItem key={p} value={p}>
+                {p}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          items={modelOptions.map((m) => ({
+            label: m.name ?? m.id,
+            value: m.id
+          }))}
+          value={defaultModel || null}
+          onValueChange={(value) => saveDefaults(defaultProvider, value ?? '')}
         >
-          <option value="">Choose a model…</option>
-          {modelOptions.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name ?? m.id}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
+          <SelectTrigger data-testid="ai-settings-default-model" size="sm">
+            <SelectValue placeholder="Choose a model…" />
+          </SelectTrigger>
+          <SelectContent>
+            {modelOptions.map((m) => (
+              <SelectItem key={m.id} value={m.id}>
+                {m.name ?? m.id}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+    </FieldGroup>
   )
 }

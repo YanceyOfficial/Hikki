@@ -7,7 +7,14 @@ vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn() }))
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
 
 import { GeneralSection } from '#components/settings/general-section'
+import { ThemeProvider } from '#components/theme-provider'
 import { backend } from '#lib/backend/index'
+
+// `useTheme()` is used directly by GeneralSection's own AppearanceSwitcher
+// now that Appearance is folded in, not a separate section - every render
+// needs the same ThemeProvider wrapping appearance-section.test.tsx used.
+const renderGeneral = () =>
+  render(<GeneralSection />, { wrapper: ThemeProvider })
 
 beforeEach(async () => {
   vi.mocked(openDialog).mockReset()
@@ -19,7 +26,7 @@ beforeEach(async () => {
 })
 
 test('shows the current vault path on mount', async () => {
-  render(<GeneralSection />)
+  renderGeneral()
   await waitFor(() =>
     expect(screen.getByTestId('vault-path')).toHaveTextContent('(in-memory)')
   )
@@ -27,7 +34,7 @@ test('shows the current vault path on mount', async () => {
 
 test('choosing a folder from the native picker updates the vault path', async () => {
   vi.mocked(openDialog).mockResolvedValue('/tmp/new-vault')
-  render(<GeneralSection />)
+  renderGeneral()
   await waitFor(() => screen.getByTestId('vault-path'))
   await userEvent.click(screen.getByTestId('change-vault-path'))
   await waitFor(() =>
@@ -37,7 +44,7 @@ test('choosing a folder from the native picker updates the vault path', async ()
 
 test('cancelling the native picker (null result) leaves the vault path unchanged', async () => {
   vi.mocked(openDialog).mockResolvedValue(null)
-  render(<GeneralSection />)
+  renderGeneral()
   await waitFor(() => screen.getByTestId('vault-path'))
   await userEvent.click(screen.getByTestId('change-vault-path'))
   await waitFor(() =>
@@ -47,9 +54,21 @@ test('cancelling the native picker (null result) leaves the vault path unchanged
 
 test('rebuild index button calls backend.rebuildIndex', async () => {
   const spy = vi.spyOn(backend, 'rebuildIndex')
-  render(<GeneralSection />)
+  renderGeneral()
   await waitFor(() => screen.getByTestId('vault-path'))
   await userEvent.click(screen.getByTestId('rebuild-index'))
   await waitFor(() => expect(spy).toHaveBeenCalled())
   spy.mockRestore()
+})
+
+test('clicking Dark sets the theme to dark', async () => {
+  renderGeneral()
+  await userEvent.click(screen.getByTestId('appearance-mode-dark'))
+  expect(document.documentElement.className).toContain('dark')
+})
+
+test('clicking Light sets the theme to light', async () => {
+  renderGeneral()
+  await userEvent.click(screen.getByTestId('appearance-mode-light'))
+  expect(document.documentElement.className).not.toContain('dark')
 })

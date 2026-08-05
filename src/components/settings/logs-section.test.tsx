@@ -49,7 +49,11 @@ test('level filter narrows the visible rows', async () => {
   })
   render(<LogsSection />)
   await screen.findAllByTestId('log-row')
-  await userEvent.selectOptions(screen.getByTestId('log-level-filter'), 'error')
+  // Base UI's Select renders a trigger <button> (role="combobox"), not a
+  // native <select> - open it, then click the "Error" option in the
+  // portaled listbox, rather than userEvent.selectOptions.
+  await userEvent.click(screen.getByTestId('log-level-filter'))
+  await userEvent.click(await screen.findByRole('option', { name: 'Error' }))
   await waitFor(async () => {
     const rows = await screen.findAllByTestId('log-row')
     expect(rows).toHaveLength(1)

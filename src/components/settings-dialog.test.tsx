@@ -27,8 +27,8 @@ test('shows the General section by default and switches sections on nav click', 
   getDefaultStore().set(settingsDialogOpenAtom, true)
   render(<SettingsDialog />)
   expect(screen.getByTestId('settings-section-general')).toBeInTheDocument()
-  await userEvent.click(screen.getByTestId('settings-nav-appearance'))
-  expect(screen.getByTestId('settings-section-appearance')).toBeInTheDocument()
+  await userEvent.click(screen.getByTestId('settings-nav-ai'))
+  expect(screen.getByTestId('settings-section-ai')).toBeInTheDocument()
   expect(
     screen.queryByTestId('settings-section-general')
   ).not.toBeInTheDocument()

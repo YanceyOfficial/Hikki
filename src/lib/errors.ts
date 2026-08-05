@@ -28,7 +28,7 @@ interface ErrorDefinition {
   message: string
   severity: ErrorSeverity
   /** When present, the toast gets an action button opening Settings to this section. */
-  openSettings?: 'general' | 'appearance' | 'ai' | 'logs' | 'about'
+  openSettings?: 'general' | 'ai' | 'logs' | 'about'
 }
 
 const ERROR_DEFINITIONS: Record<HkErrorCode, ErrorDefinition> = {

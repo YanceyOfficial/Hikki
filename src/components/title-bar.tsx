@@ -1,13 +1,5 @@
-import { useSetAtom } from 'jotai'
-import { Moon, Settings as SettingsIcon, Sun } from 'lucide-react'
-import { useTheme } from 'next-themes'
-import { useEffect } from 'react'
-
-import { SettingsDialog } from '#components/settings-dialog'
-import { Button } from '#components/ui/button'
 import { SidebarTrigger, useSidebar } from '#components/ui/sidebar'
 import { useTrafficLightInset } from '#hooks/use-traffic-light-inset'
-import { openSettingsAtom } from '#lib/store'
 import { titleBarNeedsInset } from '#lib/traffic-light-gate'
 import { cn } from '#lib/utils'
 
@@ -22,19 +14,6 @@ export function TitleBar() {
   // `#lib/traffic-light-gate` for the shared gating logic (and its tests).
   const { isMobile, state } = useSidebar()
   const inset = titleBarNeedsInset(trafficLight, isMobile, state)
-  const { resolvedTheme, setTheme } = useTheme()
-  const openSettings = useSetAtom(openSettingsAtom)
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === ',' && (event.metaKey || event.ctrlKey)) {
-        event.preventDefault()
-        openSettings()
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [openSettings])
 
   return (
     <header
@@ -47,31 +26,6 @@ export function TitleBar() {
     >
       <SidebarTrigger data-testid="sidebar-toggle" />
       <div className="flex-1" />
-      <Button
-        variant="ghost"
-        size="icon"
-        className="size-7"
-        data-testid="settings-trigger"
-        onClick={() => openSettings()}
-      >
-        <SettingsIcon className="size-4" />
-        <span className="sr-only">Settings</span>
-      </Button>
-      <SettingsDialog />
-      <Button
-        variant="ghost"
-        size="icon"
-        className="size-7"
-        data-testid="theme-toggle"
-        onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-      >
-        {resolvedTheme === 'dark' ? (
-          <Sun className="size-4" />
-        ) : (
-          <Moon className="size-4" />
-        )}
-        <span className="sr-only">Toggle theme</span>
-      </Button>
     </header>
   )
 }

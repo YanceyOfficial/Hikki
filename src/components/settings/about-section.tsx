@@ -1,6 +1,13 @@
 import { getVersion } from '@tauri-apps/api/app'
 import { useEffect, useState } from 'react'
 
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldTitle
+} from '#components/ui/field'
+
 export function AboutSection() {
   // `getVersion()` calls Tauri's IPC bridge (`window.__TAURI_INTERNALS__.invoke`),
   // which doesn't exist in a plain browser (Vite dev server, Playwright) - it
@@ -16,11 +23,13 @@ export function AboutSection() {
   }, [])
 
   return (
-    <div className="flex flex-col gap-2">
-      <p className="text-sm font-medium">Hikki</p>
-      <p data-testid="app-version" className="text-muted-foreground text-sm">
-        Version {version}
-      </p>
-    </div>
+    <FieldGroup>
+      <Field>
+        <FieldTitle>Hikki</FieldTitle>
+        <FieldDescription data-testid="app-version">
+          Version {version}
+        </FieldDescription>
+      </Field>
+    </FieldGroup>
   )
 }
