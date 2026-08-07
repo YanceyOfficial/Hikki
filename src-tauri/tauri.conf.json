@@ -31,7 +31,7 @@
         "img-src": "'self' hikki-asset: data: blob: http://hikki-asset.localhost",
         "media-src": "'self' hikki-asset: data: blob: http://hikki-asset.localhost",
         "font-src": "'self' data:",
-        "connect-src": "'self' ipc: http://ipc.localhost"
+        "connect-src": "'self' ipc: http://ipc.localhost https://cdn.jsdelivr.net"
       },
       "devCsp": {
         "default-src": "'self'",
@@ -40,7 +40,7 @@
         "img-src": "'self' hikki-asset: data: blob: http://localhost:1420 http://hikki-asset.localhost",
         "media-src": "'self' hikki-asset: data: blob: http://localhost:1420 http://hikki-asset.localhost",
         "font-src": "'self' data: http://localhost:1420",
-        "connect-src": "'self' ipc: http://ipc.localhost ws://localhost:1420 http://localhost:1420"
+        "connect-src": "'self' ipc: http://ipc.localhost ws://localhost:1420 http://localhost:1420 https://cdn.jsdelivr.net"
       }
     }
   },
