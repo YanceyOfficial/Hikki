@@ -18,6 +18,18 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --breakpoint-3xl: 1600px;
+  --breakpoint-4xl: 2000px;
+  --font-sans: var(--font-sans);
+  --font-heading: var(--font-heading);
+  --font-mono: var(--font-mono);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -42,13 +54,6 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -57,43 +62,58 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-foreground);
+  --color-code: var(--code);
+  --color-code-foreground: var(--code-foreground);
+  --color-code-highlight: var(--code-highlight);
+  --color-code-number: var(--code-number);
+  --color-selection: var(--selection);
+  --color-selection-foreground: var(--selection-foreground);
 }
 
 :root {
-  /* Warm, low-contrast neutrals (§14 design language) — soft off-white, never
-     stark white/black, so chrome reads calm rather than default-shadcn. */
-  --background: oklch(0.99 0.003 90);
-  --foreground: oklch(0.32 0.012 60);
-  --card: oklch(0.99 0.003 90);
-  --card-foreground: oklch(0.32 0.012 60);
-  --popover: oklch(0.995 0.002 90);
-  --popover-foreground: oklch(0.32 0.012 60);
-  --primary: oklch(0.32 0.012 60);
-  --primary-foreground: oklch(0.99 0.003 90);
-  --secondary: oklch(0.96 0.004 85);
-  --secondary-foreground: oklch(0.32 0.012 60);
-  --muted: oklch(0.965 0.004 85);
-  --muted-foreground: oklch(0.55 0.01 60);
-  --accent: oklch(0.955 0.005 85);
-  --accent-foreground: oklch(0.32 0.012 60);
-  --destructive: oklch(0.58 0.19 25);
-  --border: oklch(0.92 0.004 85);
-  --input: oklch(0.92 0.004 85);
-  --ring: oklch(0.72 0.01 60);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
-  --sidebar: oklch(0.975 0.004 85);
-  --sidebar-foreground: oklch(0.32 0.012 60);
-  --sidebar-primary: oklch(0.32 0.012 60);
-  --sidebar-primary-foreground: oklch(0.99 0.003 90);
-  --sidebar-accent: oklch(0.955 0.005 85);
-  --sidebar-accent-foreground: oklch(0.32 0.012 60);
-  --sidebar-border: oklch(0.93 0.004 85);
-  --sidebar-ring: oklch(0.72 0.01 60);
+  --background: oklch(1 0 0);
+  --foreground: oklch(0% 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0% 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0% 0 0);
+  --primary: oklch(0% 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.97 0.01 17);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: var(--color-blue-300);
+  --chart-2: var(--color-blue-500);
+  --chart-3: var(--color-blue-600);
+  --chart-4: var(--color-blue-700);
+  --chart-5: var(--color-blue-800);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0% 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+  --surface: oklch(0.98 0 0);
+  --surface-foreground: var(--foreground);
+  --code: var(--surface);
+  --code-foreground: var(--surface-foreground);
+  --code-highlight: oklch(0.96 0 0);
+  --code-number: oklch(0.56 0 0);
+  --selection: oklch(0% 0 0);
+  --selection-foreground: oklch(1 0 0);
   /* Dedicated code-block surface tokens (rather than reusing --muted /
      --foreground / --border): those general-purpose tokens are tuned for
      many other UI surfaces and, measured against shiki's own `min-light` /
@@ -121,42 +141,62 @@
 }
 
 .dark {
-  /* Warm dark grays — never pure black — same low-contrast, muted-chrome
-     intent as :root above. */
-  --background: oklch(0.22 0.006 60);
-  --foreground: oklch(0.9 0.004 85);
-  --card: oklch(0.245 0.007 60);
-  --card-foreground: oklch(0.9 0.004 85);
-  --popover: oklch(0.25 0.007 60);
-  --popover-foreground: oklch(0.9 0.004 85);
-  --primary: oklch(0.88 0.005 85);
-  --primary-foreground: oklch(0.22 0.006 60);
-  --secondary: oklch(0.28 0.007 60);
-  --secondary-foreground: oklch(0.9 0.004 85);
-  --muted: oklch(0.27 0.007 60);
-  --muted-foreground: oklch(0.63 0.01 60);
-  --accent: oklch(0.29 0.007 60);
-  --accent-foreground: oklch(0.9 0.004 85);
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.371 0 0);
+  --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(0.32 0.006 60);
-  --input: oklch(0.32 0.006 60);
-  --ring: oklch(0.5 0.012 60);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.2 0.006 60);
-  --sidebar-foreground: oklch(0.9 0.004 85);
-  --sidebar-primary: oklch(0.88 0.005 85);
-  --sidebar-primary-foreground: oklch(0.22 0.006 60);
-  --sidebar-accent: oklch(0.27 0.007 60);
-  --sidebar-accent-foreground: oklch(0.9 0.004 85);
-  --sidebar-border: oklch(0.32 0.006 60);
-  --sidebar-ring: oklch(0.5 0.012 60);
-  --code-block-background: oklch(0.19 0.006 60);
-  --code-block-foreground: oklch(0.92 0.004 85);
-  --code-block-border: oklch(0.3 0.006 60);
+  --destructive-foreground: oklch(0.58 0.22 27);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: var(--color-blue-300);
+  --chart-2: var(--color-blue-500);
+  --chart-3: var(--color-blue-600);
+  --chart-4: var(--color-blue-700);
+  --chart-5: var(--color-blue-800);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.439 0 0);
+  --surface: oklch(0.2 0 0);
+  --surface-foreground: oklch(0.708 0 0);
+  --code: var(--surface);
+  --code-foreground: var(--surface-foreground);
+  --code-highlight: oklch(0.27 0 0);
+  --code-number: oklch(0.72 0 0);
+  --selection: oklch(0.922 0 0);
+  --selection-foreground: oklch(0.205 0 0);
+  /* Missing here was the actual bug: `.bn-block-content[data-content-type=
+     'codeBlock']` (further down this file) forces its background/foreground
+     to these tokens via !important, but with no dark-mode value the code
+     block's own container stayed pinned to its light-mode near-white
+     background even after switching to dark - only the syntax token colors
+     inside it (shiki's own per-token inline styles, recreated correctly by
+     editor.tsx's colorMode-keyed highlighter machinery) actually updated.
+     Matched to this palette's other dark-mode surface tokens (--surface/
+     --surface-foreground/--border) rather than re-deriving bespoke
+     shiki-contrast-tuned values, since the WCAG-contrast concern the
+     light-mode tokens above were tuned for was measured against shiki's
+     `min-light` theme specifically - shiki's `min-dark` theme's own token
+     colors already read fine against a plain dark neutral surface. */
+  --code-block-background: oklch(0.2 0 0);
+  --code-block-foreground: oklch(0.708 0 0);
+  --code-block-border: oklch(1 0 0 / 10%);
 }
 
 @layer base {
@@ -358,7 +398,7 @@
   height: 16px !important;
   margin: 0 8px 0 4px !important;
   border: 1.5px solid var(--muted-foreground);
-  border-radius: var(--radius-sm);
+  border-radius: calc(var(--radius) * 0.375);
   background-color: transparent;
   cursor: pointer;
   transition:
@@ -427,6 +467,7 @@
   color: var(--muted-foreground);
   border-radius: var(--radius-sm) !important;
   transition: background-color 150ms ease-out;
+  width: 24px;
 }
 
 .bn-side-menu .bn-button:hover,
