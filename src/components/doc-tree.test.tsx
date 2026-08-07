@@ -23,20 +23,34 @@ const nodes: TreeNode[] = [
   }
 ]
 
+const threeLevelNodes: TreeNode[] = [
+  {
+    meta: meta('a', 'Grandparent'),
+    children: [
+      {
+        meta: meta('b', 'Parent'),
+        children: [{ meta: meta('c', 'Child'), children: [] }]
+      }
+    ]
+  }
+]
+
 const setup = (over: Partial<React.ComponentProps<typeof DocTree>> = {}) => {
   const onSelect = vi.fn()
   const onDelete = vi.fn()
+  const onCreateChild = vi.fn()
   render(
     <SidebarProvider>
       <DocTree
         nodes={nodes}
         onSelect={onSelect}
         onDelete={onDelete}
+        onCreateChild={onCreateChild}
         {...over}
       />
     </SidebarProvider>
   )
-  return { onSelect, onDelete }
+  return { onSelect, onDelete, onCreateChild }
 }
 
 test('renders nested titles', () => {
@@ -53,6 +67,7 @@ test('untitled documents get a fallback label', () => {
         nodes={[{ meta: meta('x', ''), children: [] }]}
         onSelect={onSelect}
         onDelete={vi.fn()}
+        onCreateChild={vi.fn()}
       />
     </SidebarProvider>
   )
@@ -72,6 +87,13 @@ test('delete action fires onDelete', async () => {
   expect(onDelete).toHaveBeenCalledWith('a')
 })
 
+test('add-child action fires onCreateChild with the parent id', async () => {
+  const { onCreateChild } = setup()
+  await userEvent.click(screen.getByTestId('doc-actions-a'))
+  await userEvent.click(await screen.findByTestId('doc-add-child-a'))
+  expect(onCreateChild).toHaveBeenCalledWith('a')
+})
+
 test('expand/collapse toggle only renders for nodes with children', () => {
   setup()
   expect(screen.getByTestId('doc-toggle-a')).toBeInTheDocument()
@@ -82,4 +104,38 @@ test('toggling expand/collapse does not select the row', async () => {
   const { onSelect } = setup()
   await userEvent.click(screen.getByTestId('doc-toggle-a'))
   expect(onSelect).not.toHaveBeenCalled()
+})
+
+test('hovering a nested child does not reveal its ancestor actions', async () => {
+  setup()
+  await userEvent.hover(screen.getByTestId('doc-item-b'))
+  expect(screen.getByTestId('doc-actions-b').className).toContain(
+    'md:opacity-100'
+  )
+  expect(screen.getByTestId('doc-actions-a').className).not.toContain(
+    'md:opacity-100'
+  )
+})
+
+test('moving the pointer onto the actions button keeps it visible', async () => {
+  setup()
+  await userEvent.hover(screen.getByTestId('doc-item-a'))
+  await userEvent.hover(screen.getByTestId('doc-actions-a'))
+  expect(screen.getByTestId('doc-actions-a').className).toContain(
+    'md:opacity-100'
+  )
+})
+
+test('collapsing a nested item does not affect its still-open ancestor', async () => {
+  setup({ nodes: threeLevelNodes })
+  // Both start expanded (`defaultOpen`); collapse just the middle item ("b")
+  // while its grandparent ("a") stays open - regression coverage for the
+  // chevron rotation cascading via a reused Tailwind named group (see
+  // doc-tree.tsx's `[&[data-panel-open]>svg]:rotate-90` comment).
+  await userEvent.click(screen.getByTestId('doc-toggle-b'))
+  expect(screen.getByTestId('doc-toggle-a')).toHaveAttribute('data-panel-open')
+  expect(screen.getByTestId('doc-toggle-b')).not.toHaveAttribute(
+    'data-panel-open'
+  )
+  expect(screen.queryByText('Child')).not.toBeInTheDocument()
 })

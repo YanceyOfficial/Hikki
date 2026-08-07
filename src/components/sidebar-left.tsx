@@ -66,6 +66,12 @@ export function SidebarLeft(props: React.ComponentProps<typeof Sidebar>) {
     navigate(`/doc/${doc.id}`)
   }
 
+  const createChildDoc = async (parentId: string) => {
+    const doc = await backend.createDocument(parentId, '')
+    await refresh()
+    navigate(`/doc/${doc.id}`)
+  }
+
   const deleteDoc = async (id: string) => {
     await backend.deleteDocument(id)
     await refresh()
@@ -119,6 +125,7 @@ export function SidebarLeft(props: React.ComponentProps<typeof Sidebar>) {
           activeId={activeId}
           onSelect={(id) => navigate(`/doc/${id}`)}
           onDelete={deleteDoc}
+          onCreateChild={createChildDoc}
         />
       </SidebarContent>
       <SidebarFooter>
