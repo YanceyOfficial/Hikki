@@ -357,6 +357,133 @@ test('code block: typing Python triggers real shiki syntax highlighting', async 
   await expect(editable.locator('pre code')).toContainText('return a + b')
 })
 
+test.describe('page mentions ("@")', () => {
+  test('typing "@" and selecting an existing document inserts a mention and navigates on click', async ({
+    page
+  }) => {
+    await page.goto('/')
+    await page.getByTestId('new-doc').click()
+    await page.getByTestId('doc-title').fill('Target Document')
+    const targetId = new URL(page.url()).hash.replace('#/doc/', '')
+
+    await page.getByTestId('new-doc').click()
+    const editable = page
+      .getByTestId('editor')
+      .locator('[contenteditable="true"]')
+      .first()
+    await editable.click()
+    await page.keyboard.type('Hello ')
+    await page.keyboard.type('@Targ')
+    await page.getByRole('option', { name: 'Target Document' }).click()
+
+    const mention = page.getByTestId(`page-mention-${targetId}`)
+    await expect(mention).toBeVisible()
+    await expect(mention).toHaveText('Target Document')
+    await expect(editable).not.toContainText('@Targ')
+
+    await mention.click()
+    await expect(page).toHaveURL(`#/doc/${targetId}`)
+  })
+
+  test('typing "@" with no matches offers "+ Create", which creates and links a new document', async ({
+    page
+  }) => {
+    await page.goto('/')
+    await page.getByTestId('new-doc').click()
+    const editable = page
+      .getByTestId('editor')
+      .locator('[contenteditable="true"]')
+      .first()
+    await editable.click()
+    await page.keyboard.type('@Brand New Doc')
+
+    const createOption = page.getByRole('option', {
+      name: '+ Create "Brand New Doc"'
+    })
+    await expect(createOption).toBeVisible()
+    await createOption.click()
+
+    await expect(
+      page.getByTestId('doc-tree').getByText('Brand New Doc')
+    ).toBeVisible()
+    const newDocLink = editable.locator('[data-testid^="page-mention-"]')
+    await expect(newDocLink).toHaveText('Brand New Doc')
+  })
+
+  test('deleting a mentioned document renders its mention as broken and non-clickable', async ({
+    page
+  }) => {
+    await page.goto('/')
+    await page.getByTestId('new-doc').click()
+    await page.getByTestId('doc-title').fill('Doomed Target')
+    const targetId = new URL(page.url()).hash.replace('#/doc/', '')
+
+    await page.getByTestId('new-doc').click()
+    const editable = page
+      .getByTestId('editor')
+      .locator('[contenteditable="true"]')
+      .first()
+    await editable.click()
+    await page.keyboard.type('@Doomed')
+    await page.getByRole('option', { name: 'Doomed Target' }).click()
+    await expect(page.getByTestId(`page-mention-${targetId}`)).toBeVisible()
+
+    await page.getByTestId(`doc-actions-${targetId}`).click()
+    await page.getByTestId(`doc-delete-${targetId}`).click()
+
+    const broken = page.getByTestId(`page-mention-broken-${targetId}`)
+    await expect(broken).toBeVisible()
+    await expect(broken).toHaveText('Doomed Target')
+  })
+})
+
+test('code block: syntax highlighting re-colors every token after a live theme switch', async ({
+  page
+}) => {
+  // Regression test for a bug where switching light/dark live (as opposed
+  // to loading a fresh page already in the target mode) left a code
+  // block's shiki tokens rendering in the *previous* mode's colors -
+  // `prosemirror-highlight`'s `DecorationCache` only invalidates an entry
+  // when a node's content changes, never when the highlighter/theme
+  // changes, and recreating the BlockNote editor alone didn't reset it (see
+  // editor.tsx's `isBridging` comment for the full root cause). This left
+  // some tokens unreadable against the new background - full brightness for
+  // scopes the old theme colored explicitly, unreadably dim for anything
+  // that fell back to the old theme's now-mismatched default color.
+  await page.goto('/')
+  await page.getByTestId('settings-trigger').click()
+  await page.getByTestId('appearance-mode-light').click()
+  await page.keyboard.press('Escape')
+
+  await page.getByTestId('new-doc').click()
+  const editable = page
+    .getByTestId('editor')
+    .locator('[contenteditable="true"]')
+    .first()
+  await editable.click()
+  await page.keyboard.type('```javascript')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('function debounce(func, wait) {')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('return func;')
+
+  const firstToken = editable.locator('pre code span.shiki').first()
+  await expect(firstToken).toBeVisible()
+  const lightColor = await firstToken.evaluate(
+    (el) => getComputedStyle(el).color
+  )
+
+  await page.getByTestId('settings-trigger').click()
+  await page.getByTestId('appearance-mode-dark').click()
+  await page.keyboard.press('Escape')
+
+  await expect(editable.locator('pre code')).toContainText(
+    'function debounce(func, wait) {'
+  )
+  await expect(editable.locator('pre code')).toContainText('return func;')
+  await expect(firstToken).not.toHaveCSS('color', lightColor)
+})
+
 test.describe('floating badges (table of contents and comments)', () => {
   // Both table-of-contents.tsx and comment-threads-sidebar.tsx are small
   // always-available floating toggle buttons (Notion-style), not gated

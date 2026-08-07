@@ -13,6 +13,7 @@ import { CommentsExtension } from '@blocknote/core/comments'
 // `i18n/locales/index.js` (the actual locale objects like `en`).
 import { en } from '@blocknote/core/locales'
 import {
+  type DefaultReactSuggestionItem,
   FormattingToolbar,
   FormattingToolbarController,
   getFormattingToolbarItems,
@@ -22,8 +23,10 @@ import {
 } from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/shadcn'
 import { offset, shift, size, type Middleware } from '@floating-ui/react'
+import { useAtomValue, useSetAtom } from 'jotai'
+import { FileText } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createHighlighter } from 'shiki'
 
 import { CodeBlockCopyOverlay } from '#components/code-block-copy-overlay'
@@ -33,6 +36,7 @@ import {
   HeadingAnchors,
   useHeadingAnchors
 } from '#components/heading-anchor-overlay'
+import { createPageMentionSpec } from '#components/page-mention'
 import { Button } from '#components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '#components/ui/popover'
 import {
@@ -45,6 +49,8 @@ import { WritingToolsButton } from '#components/writing-tools-button'
 import { WritingToolsPopover } from '#components/writing-tools-popover'
 import { backend } from '#lib/backend/index'
 import { guessLanguage } from '#lib/guess-language'
+import { searchPageMentionCandidates } from '#lib/page-mention'
+import { docMetasAtom, refreshDocsAtom } from '#lib/store'
 import type { VaultThreadStore } from '#lib/vault-thread-store'
 
 interface EditorProps {
@@ -173,40 +179,72 @@ export function Editor({
   // `blocks-DGsP5WKr.js`: `let t = globalThis; ...; t[Cn] = t[Cn] ||
   // e.createHighlighter()`). That means whichever theme is loaded the
   // *first* time any code block is ever highlighted in this page session
-  // wins forever after - neither recreating the BlockNote editor (the
-  // `colorMode` dependency below) nor remounting BlockNoteView (the `key`
-  // below) helps, since both still hit the same already-populated global
-  // slot instead of calling our `createHighlighter` again. Empirically
-  // confirmed: toggling light/dark live left code blocks rendering in the
-  // *previous* mode's colors (sometimes to the point of the text being
-  // unreadable against the new background) until a full page reload.
+  // wins forever after unless this slot is cleared - so clear it ourselves
+  // whenever the resolved mode actually changes, forcing the next highlight
+  // to recreate the highlighter with the theme that matches the *current*
+  // mode.
   //
-  // Since BlockNote used the global symbol registry (`Symbol.for`, not a
-  // module-private `Symbol()`), that slot is intentionally reachable from
-  // outside its module - so clear it ourselves whenever the resolved mode
-  // actually changes, forcing the next highlight to recreate the highlighter
-  // with the theme that matches the *current* mode. This runs in a
-  // `useLayoutEffect` (not a plain `useEffect`) so the clear is committed
-  // synchronously after DOM mutations but before the browser paints -
-  // before BlockNoteView's own remounted (new `key`) tree gets its first
-  // paint, and before/alongside BlockNote's own plugin-init effects (which
-  // also run in the layout-effect phase) that first call into the
-  // highlighter.
-  const lastColorModeRef = useRef<typeof colorMode | null>(null)
-  useLayoutEffect(() => {
-    if (
-      lastColorModeRef.current !== null &&
-      lastColorModeRef.current !== colorMode
-    ) {
-      const globalSlots = globalThis as unknown as Record<symbol, unknown>
-      delete globalSlots[Symbol.for('blocknote.shikiHighlighterPromise')]
-      delete globalSlots[Symbol.for('blocknote.shikiParser')]
+  // That alone isn't sufficient, though: `prosemirror-highlight` (the
+  // library backing the codeBlock spec's syntax highlighting) caches each
+  // code block's rendered decorations in a `DecorationCache` keyed by doc
+  // position, and only evicts an entry when that node's *content* changes
+  // (see its `DecorationCache.invalidate`, a `node.eq()` check) - never when
+  // the highlighter/theme changes. Recreating the BlockNote editor (the
+  // `colorMode` dependency below) does not reset this on its own: emprically
+  // confirmed via a DOM-identity probe that swapping `editor`, even combined
+  // with a `key={colorMode}` remount on `BlockNoteView`, left the exact same
+  // `.ProseMirror` DOM node (and therefore the same ProseMirror plugin
+  // state/cache) in place - so every already-highlighted code block kept
+  // rendering with its *original* mode's colors. Live-toggling light/dark
+  // left some tokens (whichever scopes the old theme colored explicitly)
+  // full-brightness while others (resolving to the old theme's now-wrong
+  // default/plain color) looked dim or unreadable against the new
+  // background, until a full page reload actually threw the old plugin
+  // state away.
+  //
+  // Forcing BlockNoteView out of the tree for one render (`isBridging`
+  // below) closes that gap - but only if the *editor object itself* is
+  // never mounted before that gap happens. Detecting the change in a
+  // `useLayoutEffect` (tried first) was too late: by the time an effect
+  // runs, the render that already recomputed `editor` (via `useCreateBlockNote`'s
+  // `colorMode` dependency below) had already committed, and `BlockNoteView`
+  // had already mounted - and therefore attached its ProseMirror view - onto
+  // that new-but-now-doomed-to-be-replaced `editor` object. Since
+  // `useMemo`-based hooks like `useCreateBlockNote` return the *same* object
+  // on the next render as long as its deps haven't changed again, forcing a
+  // gap at that point just re-mounted BlockNoteView onto that *same*,
+  // already-attached editor - reattaching its already-stale view/plugin
+  // state right back, gap or no gap.
+  //
+  // Detecting the change *during render* (React's documented "adjust state
+  // while rendering" pattern - a conditional `setState` call in the render
+  // body itself, not inside an effect) avoids this: React discards this
+  // render's output and immediately re-renders with the updated state
+  // *before ever committing to the DOM*, so the `editor` object created via
+  // `useCreateBlockNote` on the discarded render is created but never handed
+  // to `BlockNoteView` - it sits untouched until the *following* render (once
+  // `isBridging` flips back), which reuses that same, still-never-mounted
+  // editor object and gives it its first, genuinely fresh mount.
+  const lastColorModeRef = useRef(colorMode)
+  const [isBridging, setIsBridging] = useState(false)
+  if (!isBridging && lastColorModeRef.current !== colorMode) {
+    const globalSlots = globalThis as unknown as Record<symbol, unknown>
+    delete globalSlots[Symbol.for('blocknote.shikiHighlighterPromise')]
+    delete globalSlots[Symbol.for('blocknote.shikiParser')]
+    setIsBridging(true)
+  }
+  useEffect(() => {
+    if (isBridging) {
+      lastColorModeRef.current = colorMode
+      setIsBridging(false)
     }
-    lastColorModeRef.current = colorMode
-  }, [colorMode])
+  }, [isBridging, colorMode])
   const editor = useCreateBlockNote(
     {
       schema: BlockNoteSchema.create().extend({
+        inlineContentSpecs: {
+          pageMention: createPageMentionSpec()
+        },
         blockSpecs: {
           codeBlock: createCodeBlockSpec({
             indentLineWithTab: true,
@@ -431,9 +469,46 @@ export function Editor({
   // and it preserves structure (e.g. existing bold/lists) that flattening to
   // plain text would otherwise lose.
   const [writingToolsSelection, setWritingToolsSelection] = useState<{
-    blocks: Block[]
+    blocks: (typeof editor.document)[number][]
     text: string
   } | null>(null)
+
+  const pageMentionMetas = useAtomValue(docMetasAtom)
+  const refreshDocMetas = useSetAtom(refreshDocsAtom)
+
+  const getPageMentionItems = async (
+    query: string
+  ): Promise<DefaultReactSuggestionItem[]> => {
+    const matches = searchPageMentionCandidates(query, pageMentionMetas)
+    if (matches.length > 0) {
+      return matches.map((meta) => ({
+        title: meta.title || 'Untitled',
+        icon: meta.icon ? (
+          <span>{meta.icon}</span>
+        ) : (
+          <FileText className="size-4" />
+        ),
+        onItemClick: () => {
+          editor.insertInlineContent([
+            { type: 'pageMention', props: { docId: meta.id } }
+          ])
+        }
+      }))
+    }
+    if (query.trim().length === 0) return []
+    return [
+      {
+        title: `+ Create "${query}"`,
+        onItemClick: async () => {
+          const doc = await backend.createDocument(null, query)
+          await refreshDocMetas()
+          editor.insertInlineContent([
+            { type: 'pageMention', props: { docId: doc.id } }
+          ])
+        }
+      }
+    ]
+  }
 
   const openWritingTools = () => {
     const selection = window.getSelection()
@@ -488,55 +563,58 @@ export function Editor({
     // overlay layer (a DOM sibling of BlockNoteView, not a descendant of its
     // contentEditable tree - see that component's doc comment for why).
     <div data-testid="editor" className="relative mt-4" ref={containerRef}>
-      <BlockNoteView
-        // BlockNote's code-block highlighter is cached on internal
-        // ProseMirror plugin state that survives a mere `editor` prop swap -
-        // toggling light/dark live (as opposed to a fresh page load already
-        // in the target mode) left the *first* mode's shiki theme cached and
-        // in use even after `editor` was recreated with the other theme.
-        // Forcing a full remount via `key` sidesteps that stale-plugin-state
-        // cache entirely.
-        key={colorMode}
-        editor={editor}
-        theme={colorMode}
-        onChange={() => {
-          onBlocksChange(editor.document)
-          recomputeHeadingAnchors()
-        }}
-        // The built-in side menu is disabled here and remounted manually
-        // below via `SideMenuController` - see editor-side-menu.tsx's doc
-        // comment for why (swapping BlockNote's own react-icons SVGs for
-        // lucide-react ones has no dedicated prop; this is the supported
-        // customization point for replacing the default side-menu buttons).
-        sideMenu={false}
-        // The built-in block-type suggestion menu (opened by typing "/" or
-        // by the side menu's "+" button - both route through the same
-        // `SuggestionMenu` extension, see editor-side-menu.tsx's
-        // `openSuggestionMenu('/')`) is disabled here too and remounted
-        // manually below with corrected positioning middleware - see that
-        // `SuggestionMenuController`'s doc comment for why.
-        slashMenu={false}
-        // The built-in formatting toolbar (shown on a text selection - Bold,
-        // Italic, "Add comment", "Create link", etc.) is disabled here too
-        // and remounted manually below via `FormattingToolbarController`, so
-        // the Writing Tools entry point can be appended to its item list.
-        // `BlockNoteView`'s own `formattingToolbar` prop is boolean-only
-        // (confirmed against `@blocknote/react`'s `BlockNoteDefaultUIProps`
-        // - `false` just skips mounting the default
-        // `FormattingToolbarController` entirely, there's no
-        // render-prop/children override on `BlockNoteView` itself) - a
-        // custom toolbar's item list requires mounting
-        // `FormattingToolbarController` directly, same shape as
-        // `SideMenuController` above.
-        formattingToolbar={false}
-        shadCNComponents={{
-          Button: { Button },
-          Tooltip: { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger },
-          Popover: { Popover, PopoverContent, PopoverTrigger }
-        }}
-      >
-        <SideMenuController sideMenu={EditorSideMenu} />
-        {/* Reimplements BlockNote's own default slash-menu wiring
+      {/* `isBridging` forces this whole subtree out of the tree for one
+          render whenever `colorMode` flips - see the comment above for why
+          a mere `key={colorMode}` on `BlockNoteView` wasn't enough to reset
+          the code-block highlighter's stale decoration cache. */}
+      {!isBridging && (
+        <BlockNoteView
+          key={colorMode}
+          editor={editor}
+          theme={colorMode}
+          onChange={() => {
+            onBlocksChange(editor.document)
+            recomputeHeadingAnchors()
+          }}
+          // The built-in side menu is disabled here and remounted manually
+          // below via `SideMenuController` - see editor-side-menu.tsx's doc
+          // comment for why (swapping BlockNote's own react-icons SVGs for
+          // lucide-react ones has no dedicated prop; this is the supported
+          // customization point for replacing the default side-menu buttons).
+          sideMenu={false}
+          // The built-in block-type suggestion menu (opened by typing "/" or
+          // by the side menu's "+" button - both route through the same
+          // `SuggestionMenu` extension, see editor-side-menu.tsx's
+          // `openSuggestionMenu('/')`) is disabled here too and remounted
+          // manually below with corrected positioning middleware - see that
+          // `SuggestionMenuController`'s doc comment for why.
+          slashMenu={false}
+          // The built-in formatting toolbar (shown on a text selection - Bold,
+          // Italic, "Add comment", "Create link", etc.) is disabled here too
+          // and remounted manually below via `FormattingToolbarController`, so
+          // the Writing Tools entry point can be appended to its item list.
+          // `BlockNoteView`'s own `formattingToolbar` prop is boolean-only
+          // (confirmed against `@blocknote/react`'s `BlockNoteDefaultUIProps`
+          // - `false` just skips mounting the default
+          // `FormattingToolbarController` entirely, there's no
+          // render-prop/children override on `BlockNoteView` itself) - a
+          // custom toolbar's item list requires mounting
+          // `FormattingToolbarController` directly, same shape as
+          // `SideMenuController` above.
+          formattingToolbar={false}
+          shadCNComponents={{
+            Button: { Button },
+            Tooltip: {
+              Tooltip,
+              TooltipContent,
+              TooltipProvider,
+              TooltipTrigger
+            },
+            Popover: { Popover, PopoverContent, PopoverTrigger }
+          }}
+        >
+          <SideMenuController sideMenu={EditorSideMenu} />
+          {/* Reimplements BlockNote's own default slash-menu wiring
             (`BlockNoteDefaultUI.tsx`: same `triggerCharacter` and
             `shouldOpen`, disabling it inside tables) but replaces
             `autoPlacement` with `chooseVerticalPlacement` (defined above -
@@ -548,51 +626,74 @@ export function Editor({
             respect (including the still-shrink-to-fit behavior on the
             genuinely-chosen side, when even that side is too small for the
             full menu). */}
-        <SuggestionMenuController
-          triggerCharacter="/"
-          shouldOpen={(state) =>
-            !state.selection.$from.parent.type.isInGroup('tableContent')
-          }
-          floatingUIOptions={{
-            useFloatingOptions: {
-              middleware: [
-                offset(10),
-                chooseVerticalPlacement,
-                shift(),
-                size({
-                  apply({ elements, availableHeight }) {
-                    elements.floating.style.maxHeight = `${Math.max(0, availableHeight)}px`
-                  },
-                  padding: 10
-                })
-              ]
+          <SuggestionMenuController
+            triggerCharacter="/"
+            shouldOpen={(state) =>
+              !state.selection.$from.parent.type.isInGroup('tableContent')
             }
-          }}
-        />
-        {/* Mitigates BlockNote's own #1701: the comment mark isn't part of
+            floatingUIOptions={{
+              useFloatingOptions: {
+                middleware: [
+                  offset(10),
+                  chooseVerticalPlacement,
+                  shift(),
+                  size({
+                    apply({ elements, availableHeight }) {
+                      elements.floating.style.maxHeight = `${Math.max(0, availableHeight)}px`
+                    },
+                    padding: 10
+                  })
+                ]
+              }
+            }}
+          />
+          {/* "@" page-mention picker - reuses `chooseVerticalPlacement` (see
+              its doc comment above) so it flips near the viewport edge the
+              same way the "/" menu does. */}
+          <SuggestionMenuController
+            triggerCharacter="@"
+            getItems={getPageMentionItems}
+            floatingUIOptions={{
+              useFloatingOptions: {
+                middleware: [
+                  offset(10),
+                  chooseVerticalPlacement,
+                  shift(),
+                  size({
+                    apply({ elements, availableHeight }) {
+                      elements.floating.style.maxHeight = `${Math.max(0, availableHeight)}px`
+                    },
+                    padding: 10
+                  })
+                ]
+              }
+            }}
+          />
+          {/* Mitigates BlockNote's own #1701: the comment mark isn't part of
             the `Block[]` JSON model, so it doesn't survive a reload - this
             keeps every thread discoverable via `doc.threads` regardless.
             See comment-threads-sidebar.tsx's doc comment for the full story. */}
-        <CommentThreadsSidebar portalTarget={commentsPortalTarget} />
-        {/* Reimplements BlockNote's own default formatting-toolbar item list
+          <CommentThreadsSidebar portalTarget={commentsPortalTarget} />
+          {/* Reimplements BlockNote's own default formatting-toolbar item list
             (`getFormattingToolbarItems()` - Bold, Italic, "Add comment",
             "Create link", etc., unchanged) with one extra button appended:
             the Writing Tools entry point. `formattingToolbar` here is a
             plain component (`FC<FormattingToolbarProps>`, confirmed against
             `FormattingToolbarController`'s own prop type) rendered with no
             props of its own, matching every other override in this file. */}
-        <FormattingToolbarController
-          formattingToolbar={() => (
-            <FormattingToolbar>
-              {getFormattingToolbarItems()}
-              <WritingToolsButton
-                key="writingToolsButton"
-                onClick={openWritingTools}
-              />
-            </FormattingToolbar>
-          )}
-        />
-      </BlockNoteView>
+          <FormattingToolbarController
+            formattingToolbar={() => (
+              <FormattingToolbar>
+                {getFormattingToolbarItems()}
+                <WritingToolsButton
+                  key="writingToolsButton"
+                  onClick={openWritingTools}
+                />
+              </FormattingToolbar>
+            )}
+          />
+        </BlockNoteView>
+      )}
       {/* Not remounted on the `colorMode` key change above - it just watches
           `containerRef`'s DOM, so it naturally survives BlockNoteView being
           torn down and recreated underneath it. See its own doc comment for
