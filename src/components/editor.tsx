@@ -630,12 +630,15 @@ export function Editor({
     return (
       <div
         data-testid="page-mention-menu"
+        role="listbox"
         className="bg-popover text-popover-foreground ring-foreground/10 flex flex-col gap-0.5 rounded-lg p-1 shadow-md ring-1"
       >
         {items.map((item, i) => (
           <button
             key={i}
             type="button"
+            role="option"
+            aria-selected={false}
             data-testid={`page-mention-item-${item.kind}-${i}`}
             className="hover:bg-accent flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
             onClick={() => {
