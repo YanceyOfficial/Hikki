@@ -808,6 +808,47 @@ test.describe('Writing Tools', () => {
     }, text)
   }
 
+  test('the Writing Tools popover is genuinely visible when opened', async ({
+    page
+  }) => {
+    // Regression test for a bug where the popover rendered into the DOM
+    // (and passed `toBeVisible()`) but was actually invisible on screen -
+    // `PopoverContent`'s underlying floating-ui `Positioner` element got
+    // permanently stuck at its initial `opacity: 0; left: 0; top: 0`
+    // placeholder state, because the `anchor` prop this popover requires
+    // (it has no `PopoverTrigger`, since its own opener button lives in
+    // BlockNote's floating formatting toolbar, not as a sibling) was being
+    // silently dropped rather than forwarded to `Positioner`. Playwright's
+    // `toBeVisible()` doesn't check CSS `opacity` (only `display`/
+    // `visibility`/zero size), so that assertion alone can't catch this -
+    // this test checks computed opacity directly instead.
+    await page.goto('/')
+    await page.getByTestId('new-doc').click()
+
+    const editable = page
+      .getByTestId('editor')
+      .locator('[contenteditable="true"]')
+      .first()
+    await editable.click()
+    await page.keyboard.type('Some selected text.')
+    await page.keyboard.press('Home')
+    await page.keyboard.down('Shift')
+    await page.keyboard.press('End')
+    await page.keyboard.up('Shift')
+
+    await page.getByTestId('writing-tools-button').click()
+
+    const popover = page.getByTestId('writing-tools-popover')
+    await expect(popover).toBeVisible()
+    // The `opacity: 0` that hides the popover when floating-ui never
+    // resolves a position lives on the Positioner element (Base UI's
+    // `PopoverPrimitive.Positioner`, the popover's direct DOM parent) -
+    // `getComputedStyle` doesn't propagate an ancestor's opacity into a
+    // descendant's own computed value, so this has to check that specific
+    // element, not the popover content node itself.
+    await expect(popover.locator('xpath=..')).not.toHaveCSS('opacity', '0')
+  })
+
   test('proofreading selected text streams a result and replaces it', async ({
     page
   }) => {
