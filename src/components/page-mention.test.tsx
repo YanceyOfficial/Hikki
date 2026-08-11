@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { getDefaultStore } from 'jotai'
 
 import { PageMentionRender } from '#components/page-mention'
+import { headingCacheAtom } from '#lib/heading-mention-cache'
 import { docMetasAtom } from '#lib/store'
 import type { DocumentMeta } from '#lib/types'
 
@@ -18,6 +19,7 @@ const meta = (over: Partial<DocumentMeta> = {}): DocumentMeta => ({
 
 afterEach(() => {
   getDefaultStore().set(docMetasAtom, [])
+  getDefaultStore().set(headingCacheAtom, {})
 })
 
 test('renders the icon and title of a live document', () => {
@@ -52,6 +54,62 @@ test('renders a broken pill with a "Missing page" label for an unknown docId', (
   expect(screen.getByTestId('page-mention-broken-ghost')).toHaveTextContent(
     'Missing page'
   )
+})
+
+test('renders the document title with the heading snapshot when the heading still exists', () => {
+  getDefaultStore().set(docMetasAtom, [meta({ id: 'a', title: 'Alpha' })])
+  getDefaultStore().set(headingCacheAtom, {
+    a: {
+      status: 'loaded',
+      updatedAt: '2026-01-01T00:00:00Z',
+      headings: [{ id: 'h1', text: 'Section Three', depth: 1 }]
+    }
+  })
+  render(
+    <PageMentionRender
+      inlineContent={{
+        props: { docId: 'a', headingId: 'h1', headingText: 'Section Three' }
+      }}
+    />
+  )
+  expect(screen.getByTestId('page-mention-a')).toHaveTextContent(
+    'Alpha → Section Three'
+  )
+})
+
+test('degrades to a plain whole-document mention when the heading no longer exists', () => {
+  getDefaultStore().set(docMetasAtom, [meta({ id: 'a', title: 'Alpha' })])
+  getDefaultStore().set(headingCacheAtom, {
+    a: {
+      status: 'loaded',
+      updatedAt: '2026-01-01T00:00:00Z',
+      headings: [{ id: 'h2', text: 'A different section', depth: 1 }]
+    }
+  })
+  render(
+    <PageMentionRender
+      inlineContent={{
+        props: { docId: 'a', headingId: 'h1', headingText: 'Section Three' }
+      }}
+    />
+  )
+  const pill = screen.getByTestId('page-mention-a')
+  expect(pill).toHaveTextContent('Alpha')
+  expect(pill).not.toHaveTextContent('Section Three')
+})
+
+test('renders the plain whole-document mention while the heading cache has not loaded yet', () => {
+  getDefaultStore().set(docMetasAtom, [meta({ id: 'a', title: 'Alpha' })])
+  render(
+    <PageMentionRender
+      inlineContent={{
+        props: { docId: 'a', headingId: 'h1', headingText: 'Section Three' }
+      }}
+    />
+  )
+  const pill = screen.getByTestId('page-mention-a')
+  expect(pill).toHaveTextContent('Alpha')
+  expect(pill).not.toHaveTextContent('Section Three')
 })
 
 test('clicking a resolved mention navigates via the hash router', () => {

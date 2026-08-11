@@ -1,4 +1,5 @@
 import {
+  resolveHeadingMentionText,
   resolvePageMentionDisplay,
   searchPageMentionCandidates
 } from '#lib/page-mention'
@@ -50,6 +51,22 @@ test('renders a docId with no matching meta at all as broken with a "Missing pag
     icon: null,
     isBroken: true
   })
+})
+
+test('resolves the heading snapshot text when the heading id is still present', () => {
+  expect(resolveHeadingMentionText('h1', 'Section Three', ['h1', 'h2'])).toBe(
+    'Section Three'
+  )
+})
+
+test('resolves to null when the heading id is no longer present', () => {
+  expect(
+    resolveHeadingMentionText('h1', 'Section Three', ['h2', 'h3'])
+  ).toBeNull()
+})
+
+test('resolves to null for an empty headingId (a plain whole-document mention)', () => {
+  expect(resolveHeadingMentionText('', 'Section Three', ['h1'])).toBeNull()
 })
 
 test('an empty query returns every alive document', () => {

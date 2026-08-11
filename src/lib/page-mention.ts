@@ -19,6 +19,16 @@ export function resolvePageMentionDisplay(
   }
 }
 
+export function resolveHeadingMentionText(
+  headingId: string,
+  headingText: string,
+  currentHeadingIds: string[]
+): string | null {
+  if (!headingId) return null
+  if (!currentHeadingIds.includes(headingId)) return null
+  return headingText
+}
+
 export function searchPageMentionCandidates(
   query: string,
   metas: DocumentMeta[]
