@@ -1,6 +1,6 @@
 import { useSetAtom } from 'jotai'
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router'
+import { useParams, useSearchParams } from 'react-router'
 
 import { Editor } from '#components/editor'
 import { EditorBoundary } from '#components/editor-boundary'
@@ -17,6 +17,8 @@ import {
 
 export default function DocumentPage() {
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
+  const headingId = searchParams.get('heading')
   const [doc, setDoc] = useState<Doc | null>(null)
   const [notFound, setNotFound] = useState(false)
   const refresh = useSetAtom(refreshDocsAtom)
@@ -84,6 +86,34 @@ export default function DocumentPage() {
       save.flush()
     }
   }, [id, save])
+
+  // Scrolls to a heading-targeted mention's target once its real DOM anchor
+  // exists - heading-anchor-overlay.tsx's `HeadingAnchors` only paints
+  // anchors for the document currently mounted in the editor, so this can't
+  // assume the id is present the instant `doc` loads; it isn't rendered
+  // until Editor's own `useHeadingAnchors` effect runs on its next paint.
+  // Polls a small, bounded number of frames rather than retrying forever -
+  // if the id genuinely isn't there (heading deleted, stale link), this is
+  // a silent no-op, the same outcome as a plain whole-document mention.
+  useEffect(() => {
+    if (!doc || !headingId) return
+    let cancelled = false
+    let attempts = 0
+    const tryScroll = () => {
+      if (cancelled) return
+      const el = document.getElementById(headingId)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        return
+      }
+      attempts += 1
+      if (attempts < 20) requestAnimationFrame(tryScroll)
+    }
+    tryScroll()
+    return () => {
+      cancelled = true
+    }
+  }, [doc, headingId])
 
   if (notFound) {
     return (

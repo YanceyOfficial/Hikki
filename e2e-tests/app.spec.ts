@@ -437,6 +437,178 @@ test.describe('page mentions ("@")', () => {
   })
 })
 
+test.describe('heading-targeted page mentions', () => {
+  async function createDocWithHeadings(page: Page, title: string) {
+    await page.getByTestId('new-doc').click()
+    await page.getByTestId('doc-title').fill(title)
+    const docId = new URL(page.url()).hash.replace('#/doc/', '').split('?')[0]
+    const editable = page
+      .getByTestId('editor')
+      .locator('[contenteditable="true"]')
+      .first()
+    await editable.click()
+    await page.keyboard.type('# Section One')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('First section content.')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('# Section Two')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('Second section content.')
+    return docId
+  }
+
+  test('drilling into a document with headings, filtering, and inserting shows the heading snapshot', async ({
+    page
+  }) => {
+    await page.goto('/')
+    const targetId = await createDocWithHeadings(page, 'Target Doc')
+
+    await page.getByTestId('new-doc').click()
+    const editable = page
+      .getByTestId('editor')
+      .locator('[contenteditable="true"]')
+      .first()
+    await editable.click()
+    await page.keyboard.type('@Target')
+
+    await page.getByTestId('page-mention-item-drillable-document-0').click()
+    await expect(page.getByTestId('page-mention-menu')).toContainText(
+      '← Target Doc (whole document)'
+    )
+    await expect(page.getByTestId('page-mention-menu')).toContainText(
+      'Section One'
+    )
+    await expect(page.getByTestId('page-mention-menu')).toContainText(
+      'Section Two'
+    )
+
+    await page.keyboard.type(' Two')
+    await expect(page.getByTestId('page-mention-menu')).not.toContainText(
+      'Section One'
+    )
+    await page.getByTestId('page-mention-item-heading-1').click()
+
+    const mention = page.getByTestId(`page-mention-${targetId}`)
+    await expect(mention).toBeVisible()
+    await expect(mention).toHaveText('Target Doc → Section Two')
+    await expect(editable).not.toContainText('@Target')
+  })
+
+  test('the "whole document" escape hatch inserts a plain mention with no heading', async ({
+    page
+  }) => {
+    await page.goto('/')
+    const targetId = await createDocWithHeadings(page, 'Escape Doc')
+
+    await page.getByTestId('new-doc').click()
+    const editable = page
+      .getByTestId('editor')
+      .locator('[contenteditable="true"]')
+      .first()
+    await editable.click()
+    await page.keyboard.type('@Escape')
+    await page.getByTestId('page-mention-item-drillable-document-0').click()
+    await page.getByTestId('page-mention-item-whole-document-0').click()
+
+    const mention = page.getByTestId(`page-mention-${targetId}`)
+    await expect(mention).toHaveText('Escape Doc')
+  })
+
+  test('clicking a heading-targeted mention navigates and scrolls to that heading', async ({
+    page
+  }) => {
+    await page.goto('/')
+    const targetId = await createDocWithHeadings(page, 'Scroll Doc')
+
+    await page.getByTestId('new-doc').click()
+    const editable = page
+      .getByTestId('editor')
+      .locator('[contenteditable="true"]')
+      .first()
+    await editable.click()
+    await page.keyboard.type('@Scroll')
+    await page.getByTestId('page-mention-item-drillable-document-0').click()
+    await page.getByTestId('page-mention-item-heading-1').click()
+
+    await page.getByTestId(`page-mention-${targetId}`).click()
+    await expect(page).toHaveURL(new RegExp(`#/doc/${targetId}\\?heading=`))
+    await expect(
+      page.getByRole('heading', { name: 'Section Two' })
+    ).toBeInViewport()
+  })
+
+  test('deleting the target heading (document intact) degrades the mention to whole-document', async ({
+    page
+  }) => {
+    await page.goto('/')
+    const targetId = await createDocWithHeadings(page, 'Degrade Doc')
+
+    await page.getByTestId('new-doc').click()
+    const editable = page
+      .getByTestId('editor')
+      .locator('[contenteditable="true"]')
+      .first()
+    await editable.click()
+    await page.keyboard.type('@Degrade')
+    await page.getByTestId('page-mention-item-drillable-document-0').click()
+    await page.getByTestId('page-mention-item-heading-2').click()
+
+    const mention = page.getByTestId(`page-mention-${targetId}`)
+    await expect(mention).toHaveText('Degrade Doc → Section Two')
+
+    // Delete just the target heading, leaving the document itself intact.
+    await page.getByTestId('doc-tree').getByText('Degrade Doc').click()
+    const targetEditable = page
+      .getByTestId('editor')
+      .locator('[contenteditable="true"]')
+      .first()
+    // `document-page.tsx` loads the target document's content asynchronously
+    // after navigating to it - waiting for the heading to actually be
+    // visible (a real, auto-retrying Playwright assertion) avoids racing
+    // that load, unlike a bare `locator.evaluate()` below, which takes a
+    // single snapshot with no retry and can run before BlockNote has
+    // rendered any blocks at all.
+    await expect(
+      targetEditable.getByRole('heading', { name: 'Section Two' })
+    ).toBeVisible()
+    // Selects the whole heading block's text via `document.createRange`/
+    // `window.getSelection` rather than Home/Shift+End keyboard navigation -
+    // confirmed live that firing Home, Shift+End, and Backspace back-to-back
+    // with no gaps races ProseMirror's own selection-state commit: the
+    // Backspace can land before the Shift+End extension has actually been
+    // applied, silently deleting nothing. This mirrors `addCommentToLine`'s
+    // selection technique elsewhere in this file, which sidesteps the same
+    // class of race.
+    await targetEditable.evaluate((editorEl, text) => {
+      const heading = Array.from(
+        editorEl.querySelectorAll('[data-content-type="heading"]')
+      ).find((el) => el.textContent === text)
+      if (!heading) {
+        throw new Error(`heading not found: ${text}`)
+      }
+      const range = document.createRange()
+      range.selectNodeContents(heading)
+      const selection = window.getSelection()
+      selection?.removeAllRanges()
+      selection?.addRange(range)
+    }, 'Section Two')
+    await page.keyboard.press('Backspace')
+
+    // The heading deletion goes through the same 800ms-debounced autosave as
+    // every other edit (document-page.tsx's `save`) - navigating away does
+    // flush it immediately via that effect's cleanup, but the resulting
+    // save -> refresh(docMetasAtom) -> heading-cache refetch chain still
+    // needs a little real time to settle. Waiting out the debounce window
+    // itself (rather than the flush-on-navigate race) keeps this
+    // deterministic instead of depending on exactly how fast the click below
+    // fires relative to the last keystroke.
+    await page.waitForTimeout(1000)
+
+    await page.getByTestId('doc-tree').getByText('Untitled').click()
+    await expect(mention).toHaveText('Degrade Doc')
+  })
+})
+
 test('code block: syntax highlighting re-colors every token after a live theme switch', async ({
   page
 }) => {
