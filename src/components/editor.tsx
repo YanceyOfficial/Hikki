@@ -49,6 +49,7 @@ import { WritingToolsButton } from '#components/writing-tools-button'
 import { WritingToolsPopover } from '#components/writing-tools-popover'
 import { backend } from '#lib/backend/index'
 import { guessLanguage } from '#lib/guess-language'
+import { loadHeadings } from '#lib/heading-mention-cache'
 import { searchPageMentionCandidates } from '#lib/page-mention'
 import { docMetasAtom, refreshDocsAtom } from '#lib/store'
 import type { VaultThreadStore } from '#lib/vault-thread-store'
@@ -476,12 +477,114 @@ export function Editor({
   const pageMentionMetas = useAtomValue(docMetasAtom)
   const refreshDocMetas = useSetAtom(refreshDocsAtom)
 
+  // A `getItems`-returned item can be one of five kinds - the custom
+  // `PageMentionMenu` below (needed because BlockNote's own default menu
+  // component always closes the "@" session on any item click, incompatible
+  // with "drilling into a document's headings without closing the menu" -
+  // confirmed against the compiled `@blocknote/react` source) decides
+  // per-kind whether to handle a click itself (`drillable-document`) or
+  // hand it to the framework's own close+insert flow (every other kind).
+  type PageMentionItem = DefaultReactSuggestionItem & {
+    kind:
+      | 'document'
+      | 'drillable-document'
+      | 'heading'
+      | 'whole-document'
+      | 'create'
+    docId?: string
+    docUpdatedAt?: string
+  }
+
+  const [drill, setDrill] = useState<{
+    docId: string
+    docTitle: string
+    docUpdatedAt: string
+    queryPrefixLength: number
+  } | null>(null)
+  // `getItems` always runs (and this ref is set) before any render the user
+  // could click a "drill in" item from - `SuggestionMenuProps` doesn't
+  // expose the raw query text to the render component directly, so this is
+  // how `PageMentionMenu`'s click handler learns "what's been typed so far"
+  // at the exact moment the user drills in.
+  const latestQueryRef = useRef('')
+
   const getPageMentionItems = async (
     query: string
-  ): Promise<DefaultReactSuggestionItem[]> => {
+  ): Promise<PageMentionItem[]> => {
+    latestQueryRef.current = query
+    // A fresh "@" session's query can only ever grow from the point it was
+    // drilled in at - if it's shorter than that, the previous session was
+    // abandoned (Escape, clicked away) without resetting `drill`, and this
+    // is actually a brand new session starting over. `setDrill` doesn't
+    // affect the `drill` binding already captured by this running closure,
+    // so `effectiveDrill` (not `drill`) is what the rest of this call uses.
+    const isFreshSession =
+      drill !== null && query.length < drill.queryPrefixLength
+    if (isFreshSession) setDrill(null)
+    const effectiveDrill = isFreshSession ? null : drill
+
+    if (effectiveDrill) {
+      const headingQuery = query
+        .slice(effectiveDrill.queryPrefixLength)
+        .toLowerCase()
+      const cached = await loadHeadings(
+        effectiveDrill.docId,
+        effectiveDrill.docUpdatedAt
+      )
+      const filtered = cached.filter((h) =>
+        h.text.toLowerCase().includes(headingQuery)
+      )
+      return [
+        {
+          kind: 'whole-document',
+          docId: effectiveDrill.docId,
+          title: `← ${effectiveDrill.docTitle} (whole document)`,
+          onItemClick: () => {
+            setDrill(null)
+            editor.insertInlineContent([
+              {
+                type: 'pageMention',
+                props: {
+                  docId: effectiveDrill.docId,
+                  headingId: '',
+                  headingText: ''
+                }
+              }
+            ])
+          }
+        },
+        ...filtered.map((h) => ({
+          kind: 'heading' as const,
+          title: h.text,
+          onItemClick: () => {
+            setDrill(null)
+            editor.insertInlineContent([
+              {
+                type: 'pageMention',
+                props: {
+                  docId: effectiveDrill.docId,
+                  headingId: h.id,
+                  headingText: h.text
+                }
+              }
+            ])
+          }
+        }))
+      ]
+    }
+
     const matches = searchPageMentionCandidates(query, pageMentionMetas)
     if (matches.length > 0) {
-      return matches.map((meta) => ({
+      const withHeadingInfo = await Promise.all(
+        matches.map(async (meta) => ({
+          meta,
+          headings: await loadHeadings(meta.id, meta.updatedAt)
+        }))
+      )
+      return withHeadingInfo.map(({ meta, headings }) => ({
+        kind: headings.length > 0 ? 'drillable-document' : 'document',
+        docId: meta.id,
+        docUpdatedAt: meta.updatedAt,
         title: meta.title || 'Untitled',
         icon: meta.icon ? (
           <span>{meta.icon}</span>
@@ -490,7 +593,10 @@ export function Editor({
         ),
         onItemClick: () => {
           editor.insertInlineContent([
-            { type: 'pageMention', props: { docId: meta.id } }
+            {
+              type: 'pageMention',
+              props: { docId: meta.id, headingId: '', headingText: '' }
+            }
           ])
         }
       }))
@@ -498,16 +604,62 @@ export function Editor({
     if (query.trim().length === 0) return []
     return [
       {
+        kind: 'create',
         title: `+ Create "${query}"`,
         onItemClick: async () => {
           const doc = await backend.createDocument(null, query)
           await refreshDocMetas()
           editor.insertInlineContent([
-            { type: 'pageMention', props: { docId: doc.id } }
+            {
+              type: 'pageMention',
+              props: { docId: doc.id, headingId: '', headingText: '' }
+            }
           ])
         }
       }
     ]
+  }
+
+  function PageMentionMenu({
+    items,
+    onItemClick
+  }: {
+    items: PageMentionItem[]
+    onItemClick?: (item: PageMentionItem) => void
+  }) {
+    return (
+      <div
+        data-testid="page-mention-menu"
+        className="bg-popover text-popover-foreground ring-foreground/10 flex flex-col gap-0.5 rounded-lg p-1 shadow-md ring-1"
+      >
+        {items.map((item, i) => (
+          <button
+            key={i}
+            type="button"
+            data-testid={`page-mention-item-${item.kind}-${i}`}
+            className="hover:bg-accent flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
+            onClick={() => {
+              if (item.kind === 'drillable-document' && item.docId) {
+                setDrill({
+                  docId: item.docId,
+                  docTitle: item.title,
+                  docUpdatedAt: item.docUpdatedAt ?? '',
+                  // The query text at the moment of drilling in (e.g. "N5")
+                  // - any further typing after this point narrows the
+                  // heading list, not a fresh document search.
+                  queryPrefixLength: latestQueryRef.current.length
+                })
+                return
+              }
+              onItemClick?.(item)
+            }}
+          >
+            {item.icon}
+            <span>{item.title}</span>
+          </button>
+        ))}
+      </div>
+    )
   }
 
   const openWritingTools = () => {
@@ -653,6 +805,7 @@ export function Editor({
           <SuggestionMenuController
             triggerCharacter="@"
             getItems={getPageMentionItems}
+            suggestionMenuComponent={PageMentionMenu}
             floatingUIOptions={{
               useFloatingOptions: {
                 middleware: [
