@@ -9,7 +9,8 @@ import {
   resolvePageMentionDisplay
 } from '#lib/page-mention'
 import { docMetasAtom } from '#lib/store'
-import { cn } from '#lib/utils'
+
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 
 export function PageMentionRender(props: {
   inlineContent: {
@@ -51,40 +52,26 @@ export function PageMentionRender(props: {
     ? `#/doc/${docId}?heading=${headingId}`
     : `#/doc/${docId}`
 
-  return (
-    <span
+  const linkComp = (
+    <a
+      href={hash}
       data-testid={`page-mention-${docId}`}
-      role="link"
-      tabIndex={0}
-      onClick={() => {
-        window.location.hash = hash
-      }}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
-          window.location.hash = hash
-        }
-      }}
-      className={cn(
-        'page-mention-pill bg-muted mx-0.5 inline-flex max-w-fit cursor-pointer items-center rounded-md px-1.5 py-0.5 align-baseline text-sm font-medium transition-colors',
-        'hover:bg-accent hover:text-accent-foreground'
-      )}
+      className="bg-muted hover:bg-accent hover:text-accent-foreground mx-0.5 inline-flex max-w-fit items-center gap-1 rounded-md px-1.5 py-0.5 align-baseline text-sm font-medium no-underline transition-colors"
     >
-      <span className="mr-1 shrink-0">
+      <span className="shrink-0">
         {icon ?? <FileText className="size-3.5" />}
       </span>
       <span className="truncate">{title}</span>
-      {resolvedHeadingText && (
-        <span className="page-mention-suffix">
-          <span
-            className="page-mention-suffix-inner"
-            data-testid="page-mention-heading-suffix"
-          >
-            #{resolvedHeadingText}
-          </span>
-        </span>
-      )}
-    </span>
+    </a>
+  )
+
+  return resolvedHeadingText ? (
+    <Tooltip>
+      <TooltipTrigger render={linkComp} />
+      <TooltipContent>#{resolvedHeadingText}</TooltipContent>
+    </Tooltip>
+  ) : (
+    linkComp
   )
 }
 

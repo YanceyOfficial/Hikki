@@ -56,7 +56,7 @@ test('renders a broken pill with a "Missing page" label for an unknown docId', (
   )
 })
 
-test('renders the document title with the heading snapshot when the heading still exists', () => {
+test('renders just the document title, with an href carrying the heading, when the heading still exists', () => {
   getDefaultStore().set(docMetasAtom, [meta({ id: 'a', title: 'Alpha' })])
   getDefaultStore().set(headingCacheAtom, {
     a: {
@@ -72,23 +72,26 @@ test('renders the document title with the heading snapshot when the heading stil
       }}
     />
   )
-  expect(screen.getByTestId('page-mention-a')).toHaveTextContent(
-    'Alpha#Section Three'
-  )
-  expect(screen.getByTestId('page-mention-heading-suffix')).toHaveTextContent(
-    '#Section Three'
-  )
+  const pill = screen.getByTestId('page-mention-a')
+  // The heading snapshot now only ever surfaces via the hover tooltip (not
+  // rendered into the DOM until actually triggered - Base UI portals it
+  // lazily, confirmed live), so the pill's own text stays just the title;
+  // the href is what actually carries the heading target.
+  expect(pill).toHaveTextContent('Alpha')
+  expect(pill).not.toHaveTextContent('Section Three')
+  expect(pill).toHaveAttribute('href', '#/doc/a?heading=h1')
 })
 
-test('does not render the heading-suffix element for a plain whole-document mention', () => {
+test('links to the plain whole-document hash for a plain whole-document mention', () => {
   getDefaultStore().set(docMetasAtom, [meta({ id: 'a', title: 'Alpha' })])
   render(<PageMentionRender inlineContent={{ props: { docId: 'a' } }} />)
-  expect(
-    screen.queryByTestId('page-mention-heading-suffix')
-  ).not.toBeInTheDocument()
+  expect(screen.getByTestId('page-mention-a')).toHaveAttribute(
+    'href',
+    '#/doc/a'
+  )
 })
 
-test('does not render the heading-suffix element once the heading has degraded away', () => {
+test('links to the plain whole-document hash once the heading has degraded away', () => {
   getDefaultStore().set(docMetasAtom, [meta({ id: 'a', title: 'Alpha' })])
   getDefaultStore().set(headingCacheAtom, {
     a: {
@@ -104,9 +107,10 @@ test('does not render the heading-suffix element once the heading has degraded a
       }}
     />
   )
-  expect(
-    screen.queryByTestId('page-mention-heading-suffix')
-  ).not.toBeInTheDocument()
+  expect(screen.getByTestId('page-mention-a')).toHaveAttribute(
+    'href',
+    '#/doc/a'
+  )
 })
 
 test('degrades to a plain whole-document mention when the heading no longer exists', () => {
@@ -144,10 +148,17 @@ test('renders the plain whole-document mention while the heading cache has not l
   expect(pill).not.toHaveTextContent('Section Three')
 })
 
-test('clicking a resolved mention navigates via the hash router', () => {
+test('a resolved mention is a real link to the hash router route', () => {
   getDefaultStore().set(docMetasAtom, [meta({ id: 'a', title: 'Alpha' })])
   render(<PageMentionRender inlineContent={{ props: { docId: 'a' } }} />)
-  window.location.hash = ''
-  screen.getByTestId('page-mention-a').click()
-  expect(window.location.hash).toBe('#/doc/a')
+  // A real `<a href>` now drives navigation (letting the browser handle it
+  // natively, including middle-click/cmd-click "open in new tab") rather
+  // than a manual `window.location.hash = ...` in an onClick handler -
+  // jsdom doesn't implement real anchor-click navigation, so this checks
+  // the href attribute directly instead of simulating a click.
+  expect(screen.getByTestId('page-mention-a').tagName).toBe('A')
+  expect(screen.getByTestId('page-mention-a')).toHaveAttribute(
+    'href',
+    '#/doc/a'
+  )
 })
