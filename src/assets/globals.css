@@ -740,6 +740,27 @@
    animation itself. Disabled entirely under prefers-reduced-motion. */
 .page-mention-pill {
   position: relative;
+  /* Owns the full transition list (not just border-radius) because a plain
+     CSS rule redeclaring `transition` at equal specificity and later
+     source order fully replaces Tailwind's own `transition-colors` utility
+     class's `transition-property` list, not merges with it - so
+     `background-color`/`color` are re-listed here too, matching that
+     utility's own values, to avoid silently losing their transition. */
+  transition:
+    background-color 150ms,
+    color 150ms,
+    border-top-right-radius 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-bottom-right-radius 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* The suffix overlay's own left edge is square (only its outer/right edge
+   is rounded, to look like one continuous pill). Without this, the pill's
+   still-rounded right corner and the suffix's square left corner form a
+   visible, mismatched seam right where they meet on hover - squaring the
+   pill's own right corners while the suffix is visible closes that gap. */
+.page-mention-pill:hover,
+.page-mention-pill:focus-visible {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
 }
 .page-mention-suffix {
   position: absolute;

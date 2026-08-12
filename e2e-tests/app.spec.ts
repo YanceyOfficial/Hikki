@@ -619,6 +619,12 @@ test.describe('heading-targeted page mentions', () => {
     await page.getByTestId('doc-actions-' + parentAId).click()
     await page.getByTestId('doc-add-child-' + parentAId).click()
     await page.getByTestId('doc-title').fill('笔记')
+    // Same 800ms-debounced-autosave race as the heading-deletion test above
+    // - the title input visibly shows the typed value immediately, but the
+    // save to the backend (what the "@" picker's search actually reads)
+    // lags behind it. Confirmed live: without this wait, the child doc's
+    // title reaches the backend as "" (empty), not "笔记".
+    await page.waitForTimeout(1000)
 
     await page.getByTestId('nav-dashboard').click()
     await page.getByTestId('new-doc').click()
@@ -627,6 +633,7 @@ test.describe('heading-targeted page mentions', () => {
     await page.getByTestId('doc-actions-' + parentBId).click()
     await page.getByTestId('doc-add-child-' + parentBId).click()
     await page.getByTestId('doc-title').fill('笔记')
+    await page.waitForTimeout(1000)
 
     await page.getByTestId('new-doc').click()
     const editable = page
