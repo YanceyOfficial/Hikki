@@ -713,6 +713,42 @@ export function Editor({
     return () => container.removeEventListener('keydown', handleKeyDown)
   }, [editor])
 
+  // Works around a real bug in BlockNote's own suggestion-menu keyboard
+  // handling (`useSuggestionMenuKeyboardHandler`, confirmed by reading its
+  // source in the installed `@blocknote/react` package): it checks
+  // `event.isComposing` before treating Enter as "select the highlighted
+  // item," but never checks it for ArrowUp/ArrowDown/PageUp/PageDown -
+  // those call `event.preventDefault()` unconditionally, even while a CJK
+  // IME's own candidate window is open and using the exact same keys to
+  // move between candidates. That handler attaches its own keydown
+  // listener directly on the ProseMirror contentEditable element in the
+  // capture phase, so a capture-phase listener on this component's own
+  // (ancestor) container fires first and can stop the event from ever
+  // reaching it - letting the IME's own candidate navigation work
+  // unimpeded whenever a composition is actually in progress. Affects both
+  // the "/" and "@" suggestion menus identically, since they share the
+  // same underlying hook.
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const guardComposingArrowKeys = (event: KeyboardEvent) => {
+      if (
+        event.isComposing &&
+        (event.key === 'ArrowUp' ||
+          event.key === 'ArrowDown' ||
+          event.key === 'PageUp' ||
+          event.key === 'PageDown')
+      ) {
+        event.stopPropagation()
+      }
+    }
+
+    container.addEventListener('keydown', guardComposingArrowKeys, true)
+    return () =>
+      container.removeEventListener('keydown', guardComposingArrowKeys, true)
+  }, [])
+
   return (
     // `relative` anchors `CodeBlockCopyOverlay`'s absolutely-positioned
     // overlay layer (a DOM sibling of BlockNoteView, not a descendant of its
