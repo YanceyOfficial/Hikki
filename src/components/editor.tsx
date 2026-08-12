@@ -50,7 +50,7 @@ import { WritingToolsPopover } from '#components/writing-tools-popover'
 import { backend } from '#lib/backend/index'
 import { guessLanguage } from '#lib/guess-language'
 import { loadHeadings } from '#lib/heading-mention-cache'
-import { searchPageMentionCandidates } from '#lib/page-mention'
+import { resolveDocPath, searchPageMentionCandidates } from '#lib/page-mention'
 import { docMetasAtom, refreshDocsAtom } from '#lib/store'
 import type { VaultThreadStore } from '#lib/vault-thread-store'
 
@@ -585,7 +585,7 @@ export function Editor({
         kind: headings.length > 0 ? 'drillable-document' : 'document',
         docId: meta.id,
         docUpdatedAt: meta.updatedAt,
-        title: meta.title || 'Untitled',
+        title: resolveDocPath(meta, pageMentionMetas),
         icon: meta.icon ? (
           <span>{meta.icon}</span>
         ) : (
@@ -631,7 +631,7 @@ export function Editor({
       <div
         data-testid="page-mention-menu"
         role="listbox"
-        className="bg-popover text-popover-foreground ring-foreground/10 flex flex-col gap-0.5 rounded-lg p-1 shadow-md ring-1"
+        className="bg-popover text-popover-foreground ring-foreground/10 flex max-h-80 flex-col gap-0.5 overflow-y-auto rounded-lg p-1 shadow-md ring-1"
       >
         {items.map((item, i) => (
           <button
@@ -640,7 +640,7 @@ export function Editor({
             role="option"
             aria-selected={false}
             data-testid={`page-mention-item-${item.kind}-${i}`}
-            className="hover:bg-accent flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
+            className="hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors outline-none"
             onClick={() => {
               if (item.kind === 'drillable-document' && item.docId) {
                 setDrill({
