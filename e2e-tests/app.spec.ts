@@ -641,7 +641,7 @@ test.describe('heading-targeted page mentions', () => {
     await expect(menu).toContainText('AI Notes / 笔记')
   })
 
-  test("the heading suffix is hidden at rest and reveals on hover, matching a whole-document pill's width", async ({
+  test('the heading suffix reveals as a floating overlay on hover, never resizing the pill itself or shifting text after it', async ({
     page
   }) => {
     await page.goto('/')
@@ -653,27 +653,48 @@ test.describe('heading-targeted page mentions', () => {
       .locator('[contenteditable="true"]')
       .first()
     await editable.click()
-    await page.keyboard.type('@Hover')
+    await page.keyboard.type('See the note @Hover')
     await page.getByTestId('page-mention-item-drillable-document-0').click()
     await page.getByTestId('page-mention-item-heading-1').click()
+    await page.keyboard.type(' for the pattern.')
 
     const mention = page.getByTestId(`page-mention-${targetId}`)
     const suffix = page.getByTestId('page-mention-heading-suffix')
 
-    await expect(suffix).toHaveCSS('opacity', '0')
-    const restWidth = await mention.evaluate(
-      (el) => el.getBoundingClientRect().width
-    )
+    // The pill's own box - and therefore everything after it in the same
+    // paragraph, including the editor's own text-editing caret if it sits
+    // there - must never move when the suffix reveals. An earlier version
+    // grew the pill's own inline width on hover instead of overlaying, and
+    // a live user report confirmed the caret visibly jumped whenever it
+    // happened to sit after the pill.
+    const restRect = await mention.evaluate((el) => {
+      const r = el.getBoundingClientRect()
+      return { width: r.width, right: r.right }
+    })
 
     await mention.hover()
-    await expect(suffix).toHaveCSS('opacity', '1')
-    const hoverWidth = await mention.evaluate(
+    // Give the clip-path transition time to settle before measuring the
+    // suffix's own revealed width.
+    await page.waitForTimeout(350)
+
+    const hoverRect = await mention.evaluate((el) => {
+      const r = el.getBoundingClientRect()
+      return { width: r.width, right: r.right }
+    })
+    expect(hoverRect).toEqual(restRect)
+
+    // Regression guard for a real bug found live: the suffix's reveal
+    // technique (originally a CSS Grid `0fr -> 1fr` track) silently got
+    // stuck at a fixed ~10px instead of sizing to the heading text's real
+    // width once the suffix became an absolutely-positioned overlay - a
+    // `1fr` grid track doesn't reliably resolve against content size in a
+    // shrink-to-fit positioning context. `width: max-content` + `clip-path`
+    // fixed it; this asserts the revealed width is large enough to actually
+    // contain "A Fairly Long Heading Name"-scale text, not a sliver.
+    const suffixWidth = await suffix.evaluate(
       (el) => el.getBoundingClientRect().width
     )
-    expect(hoverWidth).toBeGreaterThan(restWidth)
-
-    await page.mouse.move(0, 0)
-    await expect(suffix).toHaveCSS('opacity', '0')
+    expect(suffixWidth).toBeGreaterThan(50)
   })
 })
 
