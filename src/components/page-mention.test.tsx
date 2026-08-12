@@ -73,8 +73,40 @@ test('renders the document title with the heading snapshot when the heading stil
     />
   )
   expect(screen.getByTestId('page-mention-a')).toHaveTextContent(
-    'Alpha → Section Three'
+    'Alpha#Section Three'
   )
+  expect(screen.getByTestId('page-mention-heading-suffix')).toHaveTextContent(
+    '#Section Three'
+  )
+})
+
+test('does not render the heading-suffix element for a plain whole-document mention', () => {
+  getDefaultStore().set(docMetasAtom, [meta({ id: 'a', title: 'Alpha' })])
+  render(<PageMentionRender inlineContent={{ props: { docId: 'a' } }} />)
+  expect(
+    screen.queryByTestId('page-mention-heading-suffix')
+  ).not.toBeInTheDocument()
+})
+
+test('does not render the heading-suffix element once the heading has degraded away', () => {
+  getDefaultStore().set(docMetasAtom, [meta({ id: 'a', title: 'Alpha' })])
+  getDefaultStore().set(headingCacheAtom, {
+    a: {
+      status: 'loaded',
+      updatedAt: '2026-01-01T00:00:00Z',
+      headings: [{ id: 'h2', text: 'A different section', depth: 1 }]
+    }
+  })
+  render(
+    <PageMentionRender
+      inlineContent={{
+        props: { docId: 'a', headingId: 'h1', headingText: 'Section Three' }
+      }}
+    />
+  )
+  expect(
+    screen.queryByTestId('page-mention-heading-suffix')
+  ).not.toBeInTheDocument()
 })
 
 test('degrades to a plain whole-document mention when the heading no longer exists', () => {

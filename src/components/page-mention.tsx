@@ -36,10 +36,6 @@ export function PageMentionRender(props: {
         )
       : null
 
-  const displayTitle = resolvedHeadingText
-    ? `${title} → ${resolvedHeadingText}`
-    : title
-
   if (isBroken) {
     return (
       <span
@@ -70,14 +66,24 @@ export function PageMentionRender(props: {
         }
       }}
       className={cn(
-        'bg-muted mx-0.5 inline-flex max-w-fit cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 align-baseline text-sm font-medium transition-colors',
+        'page-mention-pill bg-muted mx-0.5 inline-flex max-w-fit cursor-pointer items-center rounded-md px-1.5 py-0.5 align-baseline text-sm font-medium transition-colors',
         'hover:bg-accent hover:text-accent-foreground'
       )}
     >
-      <span className="shrink-0">
+      <span className="mr-1 shrink-0">
         {icon ?? <FileText className="size-3.5" />}
       </span>
-      <span className="truncate">{displayTitle}</span>
+      <span className="truncate">{title}</span>
+      {resolvedHeadingText && (
+        <span className="page-mention-suffix">
+          <span
+            className="page-mention-suffix-inner"
+            data-testid="page-mention-heading-suffix"
+          >
+            #{resolvedHeadingText}
+          </span>
+        </span>
+      )}
     </span>
   )
 }
