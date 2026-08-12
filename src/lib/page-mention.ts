@@ -19,6 +19,18 @@ export function resolvePageMentionDisplay(
   }
 }
 
+export function resolveDocPath(
+  meta: DocumentMeta,
+  allMetas: DocumentMeta[]
+): string {
+  const title = meta.title || 'Untitled'
+  if (!meta.parentId) return title
+  const parent = allMetas.find((m) => m.id === meta.parentId)
+  if (!parent) return title
+  const parentTitle = parent.title || 'Untitled'
+  return `${parentTitle} / ${title}`
+}
+
 export function resolveHeadingMentionText(
   headingId: string,
   headingText: string,

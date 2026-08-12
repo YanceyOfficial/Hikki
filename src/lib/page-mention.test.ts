@@ -1,4 +1,5 @@
 import {
+  resolveDocPath,
   resolveHeadingMentionText,
   resolvePageMentionDisplay,
   searchPageMentionCandidates
@@ -67,6 +68,37 @@ test('resolves to null when the heading id is no longer present', () => {
 
 test('resolves to null for an empty headingId (a plain whole-document mention)', () => {
   expect(resolveHeadingMentionText('', 'Section Three', ['h1'])).toBeNull()
+})
+
+test('returns the plain title for a top-level document with no parent', () => {
+  const metas = [meta({ id: 'a', title: 'Alpha', parentId: null })]
+  expect(resolveDocPath(metas[0], metas)).toBe('Alpha')
+})
+
+test('returns "Parent / Title" for a nested document whose parent is present', () => {
+  const metas = [
+    meta({ id: 'p', title: 'N5 Grammar', parentId: null }),
+    meta({ id: 'a', title: '笔记', parentId: 'p' })
+  ]
+  expect(resolveDocPath(metas[1], metas)).toBe('N5 Grammar / 笔记')
+})
+
+test('falls back to the plain title when the parent id does not resolve to any meta', () => {
+  const metas = [meta({ id: 'a', title: 'Alpha', parentId: 'missing-parent' })]
+  expect(resolveDocPath(metas[0], metas)).toBe('Alpha')
+})
+
+test('falls back to "Untitled" for an empty title with no parent', () => {
+  const metas = [meta({ id: 'a', title: '', parentId: null })]
+  expect(resolveDocPath(metas[0], metas)).toBe('Untitled')
+})
+
+test('uses "Untitled" for either side of the path when a title is empty', () => {
+  const metas = [
+    meta({ id: 'p', title: '', parentId: null }),
+    meta({ id: 'a', title: '笔记', parentId: 'p' })
+  ]
+  expect(resolveDocPath(metas[1], metas)).toBe('Untitled / 笔记')
 })
 
 test('an empty query returns every alive document', () => {
