@@ -490,7 +490,7 @@ test.describe('heading-targeted page mentions', () => {
 
     const mention = page.getByTestId(`page-mention-${targetId}`)
     await expect(mention).toBeVisible()
-    await expect(mention).toHaveText('Target Doc → Section Two')
+    await expect(mention).toHaveText('Target Doc#Section Two')
     await expect(editable).not.toContainText('@Target')
   })
 
@@ -554,7 +554,7 @@ test.describe('heading-targeted page mentions', () => {
     await page.getByTestId('page-mention-item-heading-2').click()
 
     const mention = page.getByTestId(`page-mention-${targetId}`)
-    await expect(mention).toHaveText('Degrade Doc → Section Two')
+    await expect(mention).toHaveText('Degrade Doc#Section Two')
 
     // Delete just the target heading, leaving the document itself intact.
     await page.getByTestId('doc-tree').getByText('Degrade Doc').click()
@@ -606,6 +606,74 @@ test.describe('heading-targeted page mentions', () => {
 
     await page.getByTestId('doc-tree').getByText('Untitled').click()
     await expect(mention).toHaveText('Degrade Doc')
+  })
+
+  test('same-titled documents under different parents show a disambiguating path in the picker', async ({
+    page
+  }) => {
+    await page.goto('/')
+
+    await page.getByTestId('new-doc').click()
+    await page.getByTestId('doc-title').fill('N5 Grammar')
+    const parentAId = new URL(page.url()).hash.replace('#/doc/', '')
+    await page.getByTestId('doc-actions-' + parentAId).click()
+    await page.getByTestId('doc-add-child-' + parentAId).click()
+    await page.getByTestId('doc-title').fill('笔记')
+
+    await page.getByTestId('nav-dashboard').click()
+    await page.getByTestId('new-doc').click()
+    await page.getByTestId('doc-title').fill('AI Notes')
+    const parentBId = new URL(page.url()).hash.replace('#/doc/', '')
+    await page.getByTestId('doc-actions-' + parentBId).click()
+    await page.getByTestId('doc-add-child-' + parentBId).click()
+    await page.getByTestId('doc-title').fill('笔记')
+
+    await page.getByTestId('new-doc').click()
+    const editable = page
+      .getByTestId('editor')
+      .locator('[contenteditable="true"]')
+      .first()
+    await editable.click()
+    await page.keyboard.type('@笔记')
+
+    const menu = page.getByTestId('page-mention-menu')
+    await expect(menu).toContainText('N5 Grammar / 笔记')
+    await expect(menu).toContainText('AI Notes / 笔记')
+  })
+
+  test("the heading suffix is hidden at rest and reveals on hover, matching a whole-document pill's width", async ({
+    page
+  }) => {
+    await page.goto('/')
+    const targetId = await createDocWithHeadings(page, 'Hover Doc')
+
+    await page.getByTestId('new-doc').click()
+    const editable = page
+      .getByTestId('editor')
+      .locator('[contenteditable="true"]')
+      .first()
+    await editable.click()
+    await page.keyboard.type('@Hover')
+    await page.getByTestId('page-mention-item-drillable-document-0').click()
+    await page.getByTestId('page-mention-item-heading-1').click()
+
+    const mention = page.getByTestId(`page-mention-${targetId}`)
+    const suffix = page.getByTestId('page-mention-heading-suffix')
+
+    await expect(suffix).toHaveCSS('opacity', '0')
+    const restWidth = await mention.evaluate(
+      (el) => el.getBoundingClientRect().width
+    )
+
+    await mention.hover()
+    await expect(suffix).toHaveCSS('opacity', '1')
+    const hoverWidth = await mention.evaluate(
+      (el) => el.getBoundingClientRect().width
+    )
+    expect(hoverWidth).toBeGreaterThan(restWidth)
+
+    await page.mouse.move(0, 0)
+    await expect(suffix).toHaveCSS('opacity', '0')
   })
 })
 
