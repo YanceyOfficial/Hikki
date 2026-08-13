@@ -122,3 +122,92 @@ test('appendLog/readLogs/clearLogs round-trip in memory', async () => {
   await backend.clearLogs()
   expect(await backend.readLogs({})).toHaveLength(0)
 })
+
+describe('dashboard stats', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  test('totals reflect alive documents only', async () => {
+    const b = new MemoryBackend()
+    const alive = await b.createDocument(null, 'Alive')
+    await b.saveDocument({
+      ...alive,
+      blocks: [
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: 'one two three' }]
+        }
+      ]
+    })
+    const trashed = await b.createDocument(null, 'Trashed')
+    await b.deleteDocument(trashed.id)
+
+    const stats = await b.getDashboardStats()
+    expect(stats.totalDocuments).toBe(1)
+    expect(stats.totalWords).toBe(3)
+  })
+
+  test('streak counts backward from yesterday when today has no activity yet', async () => {
+    const b = new MemoryBackend()
+    vi.setSystemTime(new Date('2026-01-10T12:00:00Z'))
+    const doc = await b.createDocument(null, 'D')
+    vi.setSystemTime(new Date('2026-01-11T12:00:00Z'))
+    await b.saveDocument({
+      ...doc,
+      blocks: [{ type: 'paragraph', content: [{ type: 'text', text: 'x' }] }]
+    })
+    vi.setSystemTime(new Date('2026-01-12T09:00:00Z')) // "today" - no activity yet
+
+    const stats = await b.getDashboardStats()
+    expect(stats.streakDays).toBe(2)
+  })
+
+  test('streak breaks on a full gap day', async () => {
+    const b = new MemoryBackend()
+    vi.setSystemTime(new Date('2026-01-01T12:00:00Z'))
+    await b.createDocument(null, 'D')
+    vi.setSystemTime(new Date('2026-01-04T12:00:00Z')) // 3 days later, a full gap
+
+    const stats = await b.getDashboardStats()
+    expect(stats.streakDays).toBe(0)
+  })
+
+  test('docsEditedThisWeek counts distinct documents, not distinct saves', async () => {
+    const b = new MemoryBackend()
+    const doc = await b.createDocument(null, 'D')
+    await b.saveDocument({
+      ...doc,
+      blocks: [{ type: 'paragraph', content: [{ type: 'text', text: 'a' }] }]
+    })
+    await b.saveDocument({
+      ...doc,
+      blocks: [{ type: 'paragraph', content: [{ type: 'text', text: 'a b' }] }]
+    })
+
+    const stats = await b.getDashboardStats()
+    expect(stats.docsEditedThisWeek).toBe(1)
+  })
+
+  test('dailyWords has exactly 30 entries and dailyActivity has exactly 35', async () => {
+    const b = new MemoryBackend()
+    const stats = await b.getDashboardStats()
+    expect(stats.dailyWords).toHaveLength(30)
+    expect(stats.dailyActivity).toHaveLength(35)
+  })
+})
+
+describe('getRecentDocuments', () => {
+  test('orders by updatedAt desc, excludes deleted, respects the limit', async () => {
+    const b = new MemoryBackend()
+    const a = await b.createDocument(null, 'A')
+    const bDoc = await b.createDocument(null, 'B')
+    const c = await b.createDocument(null, 'C')
+    await b.saveDocument({ ...a, title: 'A' }) // bumps A's updatedAt to be latest
+    await b.deleteDocument(c.id)
+
+    const recent = await b.getRecentDocuments(1)
+    expect(recent).toHaveLength(1)
+    expect(recent[0].id).toBe(a.id)
+    void bDoc
+  })
+})

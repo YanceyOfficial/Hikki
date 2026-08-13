@@ -4,6 +4,7 @@ import { protocolAssetUrl } from '#lib/asset-url'
 import type { Backend, ImportedAsset } from '#lib/backend/backend'
 import type {
   AiSettings,
+  DashboardStats,
   Doc,
   DocumentMeta,
   LogEntry,
@@ -36,6 +37,14 @@ export class TauriBackend implements Backend {
   }
   rebuildIndex() {
     return invoke<number>('rebuild_index')
+  }
+  getDashboardStats() {
+    return invoke<DashboardStats>('dashboard_stats', {
+      utcOffsetMinutes: new Date().getTimezoneOffset()
+    })
+  }
+  getRecentDocuments(limit: number) {
+    return invoke<DocumentMeta[]>('recent_documents', { limit })
   }
   async importAsset(docId: string, file: File): Promise<ImportedAsset> {
     const bytes = Array.from(new Uint8Array(await file.arrayBuffer()))

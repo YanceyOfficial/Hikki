@@ -1,5 +1,6 @@
 import type {
   AiSettings,
+  DashboardStats,
   Doc,
   DocumentMeta,
   LogEntry,
@@ -22,6 +23,8 @@ export interface Backend {
   deleteDocument(id: string): Promise<string[]>
   search(query: string): Promise<SearchHit[]>
   rebuildIndex(): Promise<number>
+  getDashboardStats(): Promise<DashboardStats>
+  getRecentDocuments(limit: number): Promise<DocumentMeta[]>
   importAsset(docId: string, file: File): Promise<ImportedAsset>
   assetUrl(docId: string, fileName: string): string
   getApiKey(provider: string): Promise<string | null>

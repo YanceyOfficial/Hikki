@@ -1,6 +1,9 @@
+import { differenceInCalendarDays, format, subDays } from 'date-fns'
+
 import type { Backend, ImportedAsset } from '#lib/backend/backend'
 import type {
   AiSettings,
+  DashboardStats,
   Doc,
   DocumentMeta,
   LogEntry,
@@ -8,6 +11,7 @@ import type {
   SearchHit,
   VaultInfo
 } from '#lib/types'
+import { countWords } from '#lib/word-count'
 
 const notFound = (id: string) =>
   Object.assign(new Error(`document not found: ${id}`), { code: 'HK-1003' })
@@ -19,6 +23,12 @@ const toMeta = ({
   ...meta
 }: Doc): DocumentMeta => meta
 
+interface ActivityEntry {
+  docId: string
+  wordDelta: number
+  at: string
+}
+
 export class MemoryBackend implements Backend {
   private docs = new Map<string, Doc>()
   private assets = new Map<string, string>()
@@ -29,6 +39,8 @@ export class MemoryBackend implements Backend {
   }
   private vaultPath = '(in-memory)'
   private logs: LogEntry[] = []
+  private activity: ActivityEntry[] = []
+  private wordCounts = new Map<string, number>()
 
   async getVaultInfo(): Promise<VaultInfo> {
     const alive = [...this.docs.values()].filter((d) => d.deletedAt === null)
@@ -57,6 +69,13 @@ export class MemoryBackend implements Backend {
       deletedAt: null
     }
     this.docs.set(doc.id, doc)
+    const wordCount = countWords(doc.blocks)
+    this.wordCounts.set(doc.id, wordCount)
+    this.activity.push({
+      docId: doc.id,
+      wordDelta: wordCount,
+      at: doc.updatedAt
+    })
     return structuredClone(doc)
   }
 
@@ -76,6 +95,14 @@ export class MemoryBackend implements Backend {
       deletedAt: existing.deletedAt,
       updatedAt: new Date().toISOString()
     }
+    const previousWordCount = this.wordCounts.get(doc.id) ?? 0
+    const newWordCount = countWords(saved.blocks)
+    this.wordCounts.set(saved.id, newWordCount)
+    this.activity.push({
+      docId: saved.id,
+      wordDelta: newWordCount - previousWordCount,
+      at: saved.updatedAt
+    })
     this.docs.set(saved.id, saved)
     return structuredClone(saved)
   }
@@ -117,6 +144,65 @@ export class MemoryBackend implements Backend {
 
   async rebuildIndex(): Promise<number> {
     return [...this.docs.values()].length
+  }
+
+  async getDashboardStats(): Promise<DashboardStats> {
+    const alive = [...this.docs.values()].filter((d) => d.deletedAt === null)
+    const totalWords = alive.reduce(
+      (sum, d) => sum + (this.wordCounts.get(d.id) ?? 0),
+      0
+    )
+
+    const today = new Date()
+    const dayKey = (date: Date) => format(date, 'yyyy-MM-dd')
+    const todayKey = dayKey(today)
+
+    const wordsByDay = new Map<string, number>()
+    const activityByDay = new Map<string, number>()
+    const docsThisWeek = new Set<string>()
+
+    for (const entry of this.activity) {
+      const entryDate = new Date(entry.at)
+      const key = dayKey(entryDate)
+      wordsByDay.set(key, (wordsByDay.get(key) ?? 0) + entry.wordDelta)
+      activityByDay.set(key, (activityByDay.get(key) ?? 0) + 1)
+      const daysAgo = differenceInCalendarDays(today, entryDate)
+      if (daysAgo >= 0 && daysAgo < 7) docsThisWeek.add(entry.docId)
+    }
+
+    const dailyWords = Array.from({ length: 30 }, (_, i) => {
+      const key = dayKey(subDays(today, 29 - i))
+      return { date: key, wordDelta: wordsByDay.get(key) ?? 0 }
+    })
+
+    const dailyActivity = Array.from({ length: 35 }, (_, i) => {
+      const key = dayKey(subDays(today, 34 - i))
+      return { date: key, activityCount: activityByDay.get(key) ?? 0 }
+    })
+
+    let streakDays = 0
+    let cursor = activityByDay.has(todayKey) ? today : subDays(today, 1)
+    while (activityByDay.has(dayKey(cursor))) {
+      streakDays++
+      cursor = subDays(cursor, 1)
+    }
+
+    return {
+      totalDocuments: alive.length,
+      totalWords,
+      streakDays,
+      docsEditedThisWeek: docsThisWeek.size,
+      dailyWords,
+      dailyActivity
+    }
+  }
+
+  async getRecentDocuments(limit: number): Promise<DocumentMeta[]> {
+    return [...this.docs.values()]
+      .filter((d) => d.deletedAt === null)
+      .map(toMeta)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .slice(0, limit)
   }
 
   async importAsset(docId: string, file: File): Promise<ImportedAsset> {

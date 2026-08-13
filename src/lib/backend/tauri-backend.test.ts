@@ -77,3 +77,32 @@ test('importAsset sends bytes and maps the stored name to a URL', async () => {
     url: 'hikki-asset://localhost/doc-1/stored-uuid.png'
   })
 })
+
+test('getDashboardStats invokes dashboard_stats with the local UTC offset', async () => {
+  const calls: Array<[string, unknown]> = []
+  mockIPC((cmd, args) => {
+    calls.push([cmd, args])
+    return {
+      totalDocuments: 0,
+      totalWords: 0,
+      streakDays: 0,
+      docsEditedThisWeek: 0,
+      dailyWords: [],
+      dailyActivity: []
+    }
+  })
+  await new TauriBackend().getDashboardStats()
+  expect(calls).toEqual([
+    ['dashboard_stats', { utcOffsetMinutes: new Date().getTimezoneOffset() }]
+  ])
+})
+
+test('getRecentDocuments invokes recent_documents with the limit', async () => {
+  const calls: Array<[string, unknown]> = []
+  mockIPC((cmd, args) => {
+    calls.push([cmd, args])
+    return []
+  })
+  await new TauriBackend().getRecentDocuments(8)
+  expect(calls).toEqual([['recent_documents', { limit: 8 }]])
+})

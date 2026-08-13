@@ -1,7 +1,7 @@
 import { atom } from 'jotai'
 
 import { backend } from '#lib/backend/index'
-import type { DocumentMeta } from '#lib/types'
+import type { DashboardStats, DocumentMeta } from '#lib/types'
 
 export const docMetasAtom = atom<DocumentMeta[]>([])
 
@@ -21,3 +21,15 @@ export const openSettingsAtom = atom(
     set(settingsDialogOpenAtom, true)
   }
 )
+
+export const dashboardStatsAtom = atom<DashboardStats | null>(null)
+export const recentDocsAtom = atom<DocumentMeta[]>([])
+
+export const refreshDashboardAtom = atom(null, async (_get, set) => {
+  const [stats, recent] = await Promise.all([
+    backend.getDashboardStats(),
+    backend.getRecentDocuments(8)
+  ])
+  set(dashboardStatsAtom, stats)
+  set(recentDocsAtom, recent)
+})
