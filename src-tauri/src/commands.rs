@@ -305,6 +305,10 @@ mod tests {
         let stats = dashboard_stats_impl(&state, 0).unwrap();
         assert_eq!(stats.total_words, edited_word_count);
         assert_eq!(stats.daily_words.last().unwrap().word_delta, created_word_count + edit_delta);
+        // A 0-delta "create" row is indistinguishable from a missing row in
+        // the word_delta sum above; activity_count (row count, not summed
+        // delta) is what actually proves the "create" row was written.
+        assert_eq!(stats.daily_activity.last().unwrap().activity_count, 2);
     }
 
     #[test]
