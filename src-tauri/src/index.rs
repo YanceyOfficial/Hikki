@@ -1,5 +1,7 @@
+use std::collections::{BTreeMap, HashSet};
 use std::path::Path;
 
+use chrono::{DateTime, Duration, NaiveDate, Utc};
 use rusqlite::Connection;
 use serde::Serialize;
 
@@ -16,6 +18,31 @@ pub struct SearchHit {
     pub id: String,
     pub title: String,
     pub snippet: String,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct DailyWordCount {
+    pub date: String,
+    pub word_delta: i64,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct DailyActivity {
+    pub date: String,
+    pub activity_count: i64,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct DashboardStats {
+    pub total_documents: i64,
+    pub total_words: i64,
+    pub streak_days: i64,
+    pub docs_edited_this_week: i64,
+    pub daily_words: Vec<DailyWordCount>,
+    pub daily_activity: Vec<DailyActivity>,
 }
 
 const SCHEMA: &str = "
@@ -144,6 +171,119 @@ impl Index {
             rusqlite::params![doc_id, kind, word_delta, at],
         )?;
         Ok(())
+    }
+
+    /// `utc_offset_minutes` is the caller's local UTC offset (JS's
+    /// `Date.prototype.getTimezoneOffset()` convention: positive means local
+    /// time is *behind* UTC, e.g. 480 for UTC-8). All day-bucketing (streak,
+    /// the rolling week, the 30/35-day series) shifts each row's UTC `at` by
+    /// this offset before taking its calendar date, rather than relying on
+    /// SQLite's own UTC-based `date()` function - done here in Rust (not
+    /// SQL) so the bucketing logic is plain, unit-testable code.
+    pub fn dashboard_stats(&self, utc_offset_minutes: i64) -> Result<DashboardStats> {
+        let total_documents: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM documents WHERE deleted_at IS NULL",
+            [],
+            |r| r.get(0),
+        )?;
+        let total_words: i64 = self.conn.query_row(
+            "SELECT COALESCE(SUM(word_count), 0) FROM documents WHERE deleted_at IS NULL",
+            [],
+            |r| r.get(0),
+        )?;
+
+        let offset = Duration::minutes(utc_offset_minutes);
+        let today = (Utc::now() - offset).date_naive();
+        // 45 days of UTC-timestamped rows safely covers the 35-day local
+        // window at any real-world offset (max ±14h).
+        let cutoff = (Utc::now() - Duration::days(45)).to_rfc3339();
+
+        let mut stmt = self
+            .conn
+            .prepare("SELECT doc_id, word_delta, at FROM activity WHERE at >= ?1 ORDER BY at")?;
+        let rows: Vec<(String, i64, String)> = stmt
+            .query_map([&cutoff], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+
+        let local_day = |at: &str| -> Option<NaiveDate> {
+            DateTime::parse_from_rfc3339(at)
+                .ok()
+                .map(|dt| (dt.with_timezone(&Utc) - offset).date_naive())
+        };
+
+        let mut words_by_day: BTreeMap<NaiveDate, i64> = BTreeMap::new();
+        let mut activity_by_day: BTreeMap<NaiveDate, i64> = BTreeMap::new();
+        let mut docs_this_week: HashSet<String> = HashSet::new();
+        for (doc_id, delta, at) in &rows {
+            let Some(day) = local_day(at) else { continue };
+            *words_by_day.entry(day).or_insert(0) += delta;
+            *activity_by_day.entry(day).or_insert(0) += 1;
+            if day <= today && (today - day) < Duration::days(7) {
+                docs_this_week.insert(doc_id.clone());
+            }
+        }
+
+        let daily_words = (0..30)
+            .rev()
+            .map(|i| {
+                let day = today - Duration::days(i);
+                DailyWordCount {
+                    date: day.to_string(),
+                    word_delta: *words_by_day.get(&day).unwrap_or(&0),
+                }
+            })
+            .collect();
+
+        let daily_activity = (0..35)
+            .rev()
+            .map(|i| {
+                let day = today - Duration::days(i);
+                DailyActivity {
+                    date: day.to_string(),
+                    activity_count: *activity_by_day.get(&day).unwrap_or(&0),
+                }
+            })
+            .collect();
+
+        let mut streak_days = 0i64;
+        let mut cursor = today;
+        if !activity_by_day.contains_key(&cursor) {
+            cursor -= Duration::days(1);
+        }
+        while activity_by_day.get(&cursor).copied().unwrap_or(0) > 0 {
+            streak_days += 1;
+            cursor -= Duration::days(1);
+        }
+
+        Ok(DashboardStats {
+            total_documents,
+            total_words,
+            streak_days,
+            docs_edited_this_week: docs_this_week.len() as i64,
+            daily_words,
+            daily_activity,
+        })
+    }
+
+    pub fn recently_edited(&self, limit: i64) -> Result<Vec<crate::document::DocumentMeta>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, parent_id, title, icon, created_at, updated_at, deleted_at
+             FROM documents WHERE deleted_at IS NULL ORDER BY updated_at DESC LIMIT ?1",
+        )?;
+        let metas = stmt
+            .query_map([limit], |row| {
+                Ok(crate::document::DocumentMeta {
+                    id: row.get(0)?,
+                    parent_id: row.get(1)?,
+                    title: row.get(2)?,
+                    icon: row.get(3)?,
+                    created_at: row.get(4)?,
+                    updated_at: row.get(5)?,
+                    deleted_at: row.get(6)?,
+                })
+            })?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(metas)
     }
 
     pub fn list_metas(&self) -> Result<Vec<crate::document::DocumentMeta>> {
@@ -336,6 +476,79 @@ mod tests {
         idx.upsert(&a).unwrap();
         let metas = idx.list_metas().unwrap();
         assert_eq!(metas.iter().map(|m| m.title.as_str()).collect::<Vec<_>>(), vec!["A", "B"]);
+    }
+
+    #[test]
+    fn dashboard_stats_totals_reflect_alive_documents_only() {
+        let idx = Index::open_in_memory().unwrap();
+        idx.upsert(&doc_with("Alive", sample_blocks())).unwrap();
+        let mut trashed = doc_with("Trashed", sample_blocks());
+        trashed.deleted_at = Some("2026-01-02T00:00:00Z".into());
+        idx.upsert(&trashed).unwrap();
+
+        let stats = idx.dashboard_stats(0).unwrap();
+        assert_eq!(stats.total_documents, 1);
+        assert_eq!(stats.total_words, 6); // "the quick brown fox" + "jumps over"
+    }
+
+    #[test]
+    fn dashboard_stats_buckets_by_local_day_not_utc_day() {
+        let idx = Index::open_in_memory().unwrap();
+        idx.record_activity("d1", "edit", 10, &Utc::now().to_rfc3339()).unwrap();
+        // 23:30 UTC "today" is already tomorrow for a UTC+2 caller, but
+        // still today for a UTC caller.
+        let almost_midnight_utc = Utc::now().date_naive().and_hms_opt(23, 30, 0).unwrap().and_utc();
+        idx.record_activity("d2", "edit", 5, &almost_midnight_utc.to_rfc3339()).unwrap();
+
+        let utc_plus_2 = idx.dashboard_stats(-120).unwrap();
+        assert_eq!(utc_plus_2.daily_words.last().unwrap().word_delta, 10);
+
+        let utc = idx.dashboard_stats(0).unwrap();
+        assert_eq!(utc.daily_words.last().unwrap().word_delta, 15);
+    }
+
+    #[test]
+    fn dashboard_stats_streak_counts_backward_from_yesterday_when_today_is_empty() {
+        let idx = Index::open_in_memory().unwrap();
+        idx.record_activity("d1", "edit", 1, &(Utc::now() - Duration::days(1)).to_rfc3339()).unwrap();
+        idx.record_activity("d1", "edit", 1, &(Utc::now() - Duration::days(2)).to_rfc3339()).unwrap();
+        assert_eq!(idx.dashboard_stats(0).unwrap().streak_days, 2);
+    }
+
+    #[test]
+    fn dashboard_stats_streak_breaks_on_a_full_gap_day() {
+        let idx = Index::open_in_memory().unwrap();
+        idx.record_activity("d1", "edit", 1, &(Utc::now() - Duration::days(3)).to_rfc3339()).unwrap();
+        assert_eq!(idx.dashboard_stats(0).unwrap().streak_days, 0);
+    }
+
+    #[test]
+    fn dashboard_stats_counts_distinct_docs_edited_this_week() {
+        let idx = Index::open_in_memory().unwrap();
+        let today = Utc::now().to_rfc3339();
+        idx.record_activity("d1", "edit", 5, &today).unwrap();
+        idx.record_activity("d1", "edit", 3, &today).unwrap(); // same doc, same day
+        idx.record_activity("d2", "edit", 2, &(Utc::now() - Duration::days(8)).to_rfc3339()).unwrap(); // outside the window
+        assert_eq!(idx.dashboard_stats(0).unwrap().docs_edited_this_week, 1);
+    }
+
+    #[test]
+    fn recently_edited_orders_by_updated_at_desc_excludes_deleted_and_respects_limit() {
+        let idx = Index::open_in_memory().unwrap();
+        let mut a = doc_with("A", sample_blocks());
+        a.updated_at = "2026-01-01T00:00:00Z".into();
+        let mut b = doc_with("B", sample_blocks());
+        b.updated_at = "2026-01-03T00:00:00Z".into();
+        let mut c = doc_with("C", sample_blocks());
+        c.updated_at = "2026-01-02T00:00:00Z".into();
+        c.deleted_at = Some("2026-01-04T00:00:00Z".into());
+        idx.upsert(&a).unwrap();
+        idx.upsert(&b).unwrap();
+        idx.upsert(&c).unwrap();
+
+        let recent = idx.recently_edited(1).unwrap();
+        assert_eq!(recent.len(), 1);
+        assert_eq!(recent[0].title, "B");
     }
 
     #[test]

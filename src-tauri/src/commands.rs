@@ -140,6 +140,24 @@ pub fn rebuild_index(state: State<AppState>) -> Result<usize> {
     rebuild_index_impl(&state)
 }
 
+pub fn dashboard_stats_impl(state: &AppState, utc_offset_minutes: i64) -> Result<crate::index::DashboardStats> {
+    lock(&state.index).dashboard_stats(utc_offset_minutes)
+}
+
+#[tauri::command]
+pub fn dashboard_stats(state: State<AppState>, utc_offset_minutes: i64) -> Result<crate::index::DashboardStats> {
+    dashboard_stats_impl(&state, utc_offset_minutes)
+}
+
+pub fn recent_documents_impl(state: &AppState, limit: i64) -> Result<Vec<DocumentMeta>> {
+    lock(&state.index).recently_edited(limit)
+}
+
+#[tauri::command]
+pub fn recent_documents(state: State<AppState>, limit: i64) -> Result<Vec<DocumentMeta>> {
+    recent_documents_impl(&state, limit)
+}
+
 #[tauri::command]
 pub fn set_vault_path(state: State<AppState>, path: String) -> Result<VaultInfo> {
     set_vault_path_impl(&state, path)
@@ -265,6 +283,28 @@ mod tests {
         let index = lock(&state.index);
         assert_eq!(index.word_count_for(&saved.id).unwrap(), Some(3));
         assert_eq!(index.word_count_for("does-not-exist").unwrap(), None);
+    }
+
+    #[test]
+    fn create_then_edit_activity_is_reflected_in_dashboard_stats() {
+        let (_v, _d, state) = state();
+        let doc = create_document_impl(&state, None, "Note".into()).unwrap();
+        // create_document_impl always starts a doc with empty blocks, so the
+        // "create" activity row's word_delta is 0 here.
+        let created_word_count = crate::index::extract_text(&doc.blocks).split_whitespace().count() as i64;
+        assert_eq!(created_word_count, 0);
+
+        let mut grown = doc.clone();
+        grown.blocks = serde_json::json!([
+            { "id": "b1", "type": "paragraph", "content": [{ "type": "text", "text": "one two three four five", "styles": {} }], "children": [] }
+        ]);
+        save_document_impl(&state, grown).unwrap();
+        let edited_word_count = 5;
+        let edit_delta = edited_word_count - created_word_count;
+
+        let stats = dashboard_stats_impl(&state, 0).unwrap();
+        assert_eq!(stats.total_words, edited_word_count);
+        assert_eq!(stats.daily_words.last().unwrap().word_delta, created_word_count + edit_delta);
     }
 
     #[test]

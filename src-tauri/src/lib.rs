@@ -73,6 +73,8 @@ pub fn run() {
             commands::delete_document,
             commands::search,
             commands::rebuild_index,
+            commands::dashboard_stats,
+            commands::recent_documents,
             commands::set_vault_path,
             commands::import_asset,
             commands::get_api_key,
