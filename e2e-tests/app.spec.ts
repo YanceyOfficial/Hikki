@@ -357,8 +357,8 @@ test('code block: typing Python triggers real shiki syntax highlighting', async 
   await expect(editable.locator('pre code')).toContainText('return a + b')
 })
 
-test.describe('page mentions ("@")', () => {
-  test('typing "@" and selecting an existing document inserts a mention and navigates on click', async ({
+test.describe('page mentions ("/" > Link a doc)', () => {
+  test('typing "/", picking "Link a doc", and selecting an existing document inserts a mention and navigates on click', async ({
     page
   }) => {
     await page.goto('/')
@@ -373,19 +373,21 @@ test.describe('page mentions ("@")', () => {
       .first()
     await editable.click()
     await page.keyboard.type('Hello ')
-    await page.keyboard.type('@Targ')
+    await page.keyboard.type('/')
+    await page.getByRole('option', { name: 'Link a doc' }).click()
+    await page.keyboard.type('Targ')
     await page.getByRole('option', { name: 'Target Document' }).click()
 
     const mention = page.getByTestId(`page-mention-${targetId}`)
     await expect(mention).toBeVisible()
     await expect(mention).toHaveText('Target Document')
-    await expect(editable).not.toContainText('@Targ')
+    await expect(editable).not.toContainText('/Targ')
 
     await mention.click()
     await expect(page).toHaveURL(`#/doc/${targetId}`)
   })
 
-  test('typing "@" with no matches offers "+ Create", which creates and links a new document', async ({
+  test('typing "/", picking "Link a doc", with no matches offers "+ Create", which creates and links a new document', async ({
     page
   }) => {
     await page.goto('/')
@@ -395,7 +397,9 @@ test.describe('page mentions ("@")', () => {
       .locator('[contenteditable="true"]')
       .first()
     await editable.click()
-    await page.keyboard.type('@Brand New Doc')
+    await page.keyboard.type('/')
+    await page.getByRole('option', { name: 'Link a doc' }).click()
+    await page.keyboard.type('Brand New Doc')
 
     const createOption = page.getByRole('option', {
       name: '+ Create "Brand New Doc"'
@@ -424,7 +428,9 @@ test.describe('page mentions ("@")', () => {
       .locator('[contenteditable="true"]')
       .first()
     await editable.click()
-    await page.keyboard.type('@Doomed')
+    await page.keyboard.type('/')
+    await page.getByRole('option', { name: 'Link a doc' }).click()
+    await page.keyboard.type('Doomed')
     await page.getByRole('option', { name: 'Doomed Target' }).click()
     await expect(page.getByTestId(`page-mention-${targetId}`)).toBeVisible()
 
@@ -469,7 +475,9 @@ test.describe('heading-targeted page mentions', () => {
       .locator('[contenteditable="true"]')
       .first()
     await editable.click()
-    await page.keyboard.type('@Target')
+    await page.keyboard.type('/')
+    await page.getByRole('option', { name: 'Link a doc' }).click()
+    await page.keyboard.type('Target')
 
     await page.getByTestId('page-mention-item-drillable-document-0').click()
     await expect(page.getByTestId('page-mention-menu')).toContainText(
@@ -492,7 +500,7 @@ test.describe('heading-targeted page mentions', () => {
     await expect(mention).toBeVisible()
     await expect(mention).toHaveText('Target Doc')
     await expect(mention).toHaveAttribute('href', /\?heading=/)
-    await expect(editable).not.toContainText('@Target')
+    await expect(editable).not.toContainText('/Target')
   })
 
   test('the "whole document" escape hatch inserts a plain mention with no heading', async ({
@@ -507,7 +515,9 @@ test.describe('heading-targeted page mentions', () => {
       .locator('[contenteditable="true"]')
       .first()
     await editable.click()
-    await page.keyboard.type('@Escape')
+    await page.keyboard.type('/')
+    await page.getByRole('option', { name: 'Link a doc' }).click()
+    await page.keyboard.type('Escape')
     await page.getByTestId('page-mention-item-drillable-document-0').click()
     await page.getByTestId('page-mention-item-whole-document-0').click()
 
@@ -527,7 +537,9 @@ test.describe('heading-targeted page mentions', () => {
       .locator('[contenteditable="true"]')
       .first()
     await editable.click()
-    await page.keyboard.type('@Scroll')
+    await page.keyboard.type('/')
+    await page.getByRole('option', { name: 'Link a doc' }).click()
+    await page.keyboard.type('Scroll')
     await page.getByTestId('page-mention-item-drillable-document-0').click()
     await page.getByTestId('page-mention-item-heading-1').click()
 
@@ -550,7 +562,9 @@ test.describe('heading-targeted page mentions', () => {
       .locator('[contenteditable="true"]')
       .first()
     await editable.click()
-    await page.keyboard.type('@Degrade')
+    await page.keyboard.type('/')
+    await page.getByRole('option', { name: 'Link a doc' }).click()
+    await page.keyboard.type('Degrade')
     await page.getByTestId('page-mention-item-drillable-document-0').click()
     await page.getByTestId('page-mention-item-heading-2').click()
 
@@ -623,9 +637,9 @@ test.describe('heading-targeted page mentions', () => {
     await page.getByTestId('doc-title').fill('笔记')
     // Same 800ms-debounced-autosave race as the heading-deletion test above
     // - the title input visibly shows the typed value immediately, but the
-    // save to the backend (what the "@" picker's search actually reads)
-    // lags behind it. Confirmed live: without this wait, the child doc's
-    // title reaches the backend as "" (empty), not "笔记".
+    // save to the backend (what the "Link a doc" picker's search actually
+    // reads) lags behind it. Confirmed live: without this wait, the child
+    // doc's title reaches the backend as "" (empty), not "笔记".
     await page.waitForTimeout(1000)
 
     await page.getByTestId('nav-dashboard').click()
@@ -643,7 +657,9 @@ test.describe('heading-targeted page mentions', () => {
       .locator('[contenteditable="true"]')
       .first()
     await editable.click()
-    await page.keyboard.type('@笔记')
+    await page.keyboard.type('/')
+    await page.getByRole('option', { name: 'Link a doc' }).click()
+    await page.keyboard.type('笔记')
 
     const menu = page.getByTestId('page-mention-menu')
     await expect(menu).toContainText('N5 Grammar / 笔记')
@@ -662,7 +678,9 @@ test.describe('heading-targeted page mentions', () => {
       .locator('[contenteditable="true"]')
       .first()
     await editable.click()
-    await page.keyboard.type('See the note @Hover')
+    await page.keyboard.type('See the note /')
+    await page.getByRole('option', { name: 'Link a doc' }).click()
+    await page.keyboard.type('Hover')
     await page.getByTestId('page-mention-item-drillable-document-0').click()
     await page.getByTestId('page-mention-item-heading-1').click()
     await page.keyboard.type(' for the pattern.')

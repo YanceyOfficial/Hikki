@@ -6,6 +6,7 @@ import {
   type Block
 } from '@blocknote/core'
 import { CommentsExtension } from '@blocknote/core/comments'
+import { filterSuggestionItems } from '@blocknote/core/extensions'
 // `en` (the default English dictionary) is only exported from this
 // `/locales` subpath, not the package root - confirmed via
 // `@blocknote/core`'s own `package.json` `exports` map, whose root `"."`
@@ -14,11 +15,14 @@ import { CommentsExtension } from '@blocknote/core/comments'
 import { en } from '@blocknote/core/locales'
 import {
   type DefaultReactSuggestionItem,
+  type SuggestionMenuProps,
   FormattingToolbar,
   FormattingToolbarController,
+  getDefaultReactSlashMenuItems,
   getFormattingToolbarItems,
   SideMenuController,
   SuggestionMenuController,
+  useComponentsContext,
   useCreateBlockNote
 } from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/shadcn'
@@ -26,7 +30,7 @@ import { offset, shift, size, type Middleware } from '@floating-ui/react'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { FileText } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createHighlighter } from 'shiki'
 
 import { CodeBlockCopyOverlay } from '#components/code-block-copy-overlay'
@@ -477,15 +481,21 @@ export function Editor({
   const pageMentionMetas = useAtomValue(docMetasAtom)
   const refreshDocMetas = useSetAtom(refreshDocsAtom)
 
-  // A `getItems`-returned item can be one of five kinds - the custom
-  // `PageMentionMenu` below (needed because BlockNote's own default menu
-  // component always closes the "@" session on any item click, incompatible
-  // with "drilling into a document's headings without closing the menu" -
-  // confirmed against the compiled `@blocknote/react` source) decides
-  // per-kind whether to handle a click itself (`drillable-document`) or
-  // hand it to the framework's own close+insert flow (every other kind).
-  type PageMentionItem = DefaultReactSuggestionItem & {
+  // The "/" menu has three possible modes, not BlockNote's usual one:
+  // BlockNote's own default block-type items plus a "Link a doc" entry this
+  // app adds ('default'), a flat document-search list once "Link a doc" is
+  // picked ('picking-doc'), and a flat heading list once a document with
+  // headings is picked from that search ('picking-heading') - reusing the
+  // "drill deeper without closing the menu" mechanism the old "@" picker
+  // needed (BlockNote's own menu wrapper always calls closeMenu()/
+  // clearQuery() before any item's onItemClick, confirmed against the
+  // compiled source - a custom `suggestionMenuComponent` is the only way to
+  // intercept a click and choose not to call that framework-provided
+  // handler).
+  type SlashMenuItem = DefaultReactSuggestionItem & {
     kind:
+      | 'default'
+      | 'link-doc'
       | 'document'
       | 'drillable-document'
       | 'heading'
@@ -495,41 +505,52 @@ export function Editor({
     docUpdatedAt?: string
   }
 
-  const [drill, setDrill] = useState<{
-    docId: string
-    docTitle: string
-    docUpdatedAt: string
-    queryPrefixLength: number
-  } | null>(null)
+  type SlashMenuMode =
+    | { kind: 'default' }
+    | { kind: 'picking-doc'; queryPrefixLength: number }
+    | {
+        kind: 'picking-heading'
+        docId: string
+        docTitle: string
+        docUpdatedAt: string
+        queryPrefixLength: number
+      }
+
+  const [slashMode, setSlashMode] = useState<SlashMenuMode>({
+    kind: 'default'
+  })
   // `getItems` always runs (and this ref is set) before any render the user
   // could click a "drill in" item from - `SuggestionMenuProps` doesn't
   // expose the raw query text to the render component directly, so this is
-  // how `PageMentionMenu`'s click handler learns "what's been typed so far"
-  // at the exact moment the user drills in.
-  const latestQueryRef = useRef('')
+  // how the click handlers below learn "what's been typed so far" at the
+  // exact moment the user drills in.
+  const latestSlashQueryRef = useRef('')
 
-  const getPageMentionItems = async (
-    query: string
-  ): Promise<PageMentionItem[]> => {
-    latestQueryRef.current = query
-    // A fresh "@" session's query can only ever grow from the point it was
+  const getSlashMenuItems = async (query: string): Promise<SlashMenuItem[]> => {
+    latestSlashQueryRef.current = query
+    // A drilled-in session's query can only ever grow from the point it was
     // drilled in at - if it's shorter than that, the previous session was
-    // abandoned (Escape, clicked away) without resetting `drill`, and this
-    // is actually a brand new session starting over. `setDrill` doesn't
-    // affect the `drill` binding already captured by this running closure,
-    // so `effectiveDrill` (not `drill`) is what the rest of this call uses.
+    // abandoned (Backspace past it, Escape+retype) without resetting
+    // `slashMode`, and this is actually a brand new session starting over.
+    // `setSlashMode` doesn't affect the `slashMode` binding already
+    // captured by this running closure, so `effectiveMode` (not
+    // `slashMode`) is what the rest of this call uses.
+    const queryPrefixLength =
+      slashMode.kind === 'default' ? 0 : slashMode.queryPrefixLength
     const isFreshSession =
-      drill !== null && query.length < drill.queryPrefixLength
-    if (isFreshSession) setDrill(null)
-    const effectiveDrill = isFreshSession ? null : drill
+      slashMode.kind !== 'default' && query.length < queryPrefixLength
+    if (isFreshSession) setSlashMode({ kind: 'default' })
+    const effectiveMode = isFreshSession
+      ? ({ kind: 'default' } as const)
+      : slashMode
 
-    if (effectiveDrill) {
+    if (effectiveMode.kind === 'picking-heading') {
       const headingQuery = query
-        .slice(effectiveDrill.queryPrefixLength)
+        .slice(effectiveMode.queryPrefixLength)
         .toLowerCase()
       const cached = await loadHeadings(
-        effectiveDrill.docId,
-        effectiveDrill.docUpdatedAt
+        effectiveMode.docId,
+        effectiveMode.docUpdatedAt
       )
       const filtered = cached.filter((h) =>
         h.text.toLowerCase().includes(headingQuery)
@@ -537,15 +558,15 @@ export function Editor({
       return [
         {
           kind: 'whole-document',
-          docId: effectiveDrill.docId,
-          title: `← ${effectiveDrill.docTitle} (whole document)`,
+          docId: effectiveMode.docId,
+          title: `← ${effectiveMode.docTitle} (whole document)`,
           onItemClick: () => {
-            setDrill(null)
+            setSlashMode({ kind: 'default' })
             editor.insertInlineContent([
               {
                 type: 'pageMention',
                 props: {
-                  docId: effectiveDrill.docId,
+                  docId: effectiveMode.docId,
                   headingId: '',
                   headingText: ''
                 }
@@ -557,12 +578,12 @@ export function Editor({
           kind: 'heading' as const,
           title: h.text,
           onItemClick: () => {
-            setDrill(null)
+            setSlashMode({ kind: 'default' })
             editor.insertInlineContent([
               {
                 type: 'pageMention',
                 props: {
-                  docId: effectiveDrill.docId,
+                  docId: effectiveMode.docId,
                   headingId: h.id,
                   headingText: h.text
                 }
@@ -573,60 +594,147 @@ export function Editor({
       ]
     }
 
-    const matches = searchPageMentionCandidates(query, pageMentionMetas)
-    if (matches.length > 0) {
-      const withHeadingInfo = await Promise.all(
-        matches.map(async (meta) => ({
-          meta,
-          headings: await loadHeadings(meta.id, meta.updatedAt)
+    if (effectiveMode.kind === 'picking-doc') {
+      const docQuery = query.slice(effectiveMode.queryPrefixLength)
+      const matches = searchPageMentionCandidates(docQuery, pageMentionMetas)
+      if (matches.length > 0) {
+        const withHeadingInfo = await Promise.all(
+          matches.map(async (meta) => ({
+            meta,
+            headings: await loadHeadings(meta.id, meta.updatedAt)
+          }))
+        )
+        return withHeadingInfo.map(({ meta, headings }) => ({
+          kind: headings.length > 0 ? 'drillable-document' : 'document',
+          docId: meta.id,
+          docUpdatedAt: meta.updatedAt,
+          title: resolveDocPath(meta, pageMentionMetas),
+          icon: meta.icon ? (
+            <span>{meta.icon}</span>
+          ) : (
+            <FileText className="size-4" />
+          ),
+          onItemClick: () => {
+            setSlashMode({ kind: 'default' })
+            editor.insertInlineContent([
+              {
+                type: 'pageMention',
+                props: { docId: meta.id, headingId: '', headingText: '' }
+              }
+            ])
+          }
         }))
-      )
-      return withHeadingInfo.map(({ meta, headings }) => ({
-        kind: headings.length > 0 ? 'drillable-document' : 'document',
-        docId: meta.id,
-        docUpdatedAt: meta.updatedAt,
-        title: resolveDocPath(meta, pageMentionMetas),
-        icon: meta.icon ? (
-          <span>{meta.icon}</span>
-        ) : (
-          <FileText className="size-4" />
-        ),
-        onItemClick: () => {
-          editor.insertInlineContent([
-            {
-              type: 'pageMention',
-              props: { docId: meta.id, headingId: '', headingText: '' }
-            }
-          ])
-        }
-      }))
-    }
-    if (query.trim().length === 0) return []
-    return [
-      {
-        kind: 'create',
-        title: `+ Create "${query}"`,
-        onItemClick: async () => {
-          const doc = await backend.createDocument(null, query)
-          await refreshDocMetas()
-          editor.insertInlineContent([
-            {
-              type: 'pageMention',
-              props: { docId: doc.id, headingId: '', headingText: '' }
-            }
-          ])
-        }
       }
-    ]
+      if (docQuery.trim().length === 0) return []
+      return [
+        {
+          kind: 'create',
+          title: `+ Create "${docQuery}"`,
+          onItemClick: async () => {
+            const doc = await backend.createDocument(null, docQuery)
+            await refreshDocMetas()
+            setSlashMode({ kind: 'default' })
+            editor.insertInlineContent([
+              {
+                type: 'pageMention',
+                props: { docId: doc.id, headingId: '', headingText: '' }
+              }
+            ])
+          }
+        }
+      ]
+    }
+
+    const defaultItems: SlashMenuItem[] = getDefaultReactSlashMenuItems(
+      editor
+    ).map((item) => ({ ...item, kind: 'default' as const }))
+    const linkDocItem: SlashMenuItem = {
+      kind: 'link-doc',
+      title: 'Link a doc',
+      subtext: 'Mention another page, optionally a specific heading',
+      aliases: ['link', 'doc', 'mention', 'page'],
+      group: 'Link',
+      icon: <FileText size={18} />,
+      // Never actually invoked - the default-mode branch of `SlashMenu`
+      // below intercepts a `link-doc` click before calling the
+      // framework-provided handler this would otherwise be.
+      onItemClick: () => {}
+    }
+    return filterSuggestionItems(
+      [...defaultItems, linkDocItem],
+      query
+    ) as SlashMenuItem[]
   }
 
-  function PageMentionMenu({
+  // Renders BlockNote's own default (grouped, icon+subtext) item look in
+  // 'default' mode, reusing its exact shadCN-styled components via
+  // `useComponentsContext()` (the same ones already wired through this
+  // file's `shadCNComponents` prop) - and the same flat, single-column list
+  // style the old "@" picker used for document/heading results once
+  // drilled in, so the two modes read as one coherent menu rather than two
+  // different UIs stitched together.
+  function SlashMenu({
     items,
+    selectedIndex,
     onItemClick
-  }: {
-    items: PageMentionItem[]
-    onItemClick?: (item: PageMentionItem) => void
-  }) {
+  }: SuggestionMenuProps<SlashMenuItem>) {
+    const Components = useComponentsContext()!
+
+    if (slashMode.kind === 'default') {
+      let currentGroup: string | undefined
+      const rendered: ReactNode[] = []
+      items.forEach((item, i) => {
+        if (item.group !== currentGroup) {
+          currentGroup = item.group
+          if (currentGroup) {
+            rendered.push(
+              <Components.SuggestionMenu.Label
+                key={`group-${currentGroup}`}
+                className="bn-suggestion-menu-label"
+              >
+                {currentGroup}
+              </Components.SuggestionMenu.Label>
+            )
+          }
+        }
+        rendered.push(
+          <Components.SuggestionMenu.Item
+            key={item.title}
+            id={`bn-suggestion-menu-item-${i}`}
+            className="bn-suggestion-menu-item"
+            isSelected={i === selectedIndex}
+            item={item}
+            onClick={() => {
+              if (item.kind === 'link-doc') {
+                setSlashMode({
+                  kind: 'picking-doc',
+                  queryPrefixLength: latestSlashQueryRef.current.length
+                })
+                return
+              }
+              onItemClick?.(item)
+            }}
+          />
+        )
+      })
+      return (
+        // The `bn-suggestion-menu` class (not just this same-named id) is
+        // load-bearing: `@blocknote/shadcn`'s own `SuggestionMenu.Item`
+        // scrolls the selected item into view via
+        // `el.closest(".bn-suggestion-menu, #ai-suggestion-menu")` -
+        // without this class present on an ancestor, that lookup returns
+        // `null` and the scroll-into-view effect throws (confirmed by
+        // reading the compiled `@blocknote/shadcn` source after hitting
+        // this crash live).
+        <Components.SuggestionMenu.Root
+          id="bn-suggestion-menu"
+          className="bn-suggestion-menu"
+        >
+          {rendered}
+        </Components.SuggestionMenu.Root>
+      )
+    }
+
     return (
       <div
         data-testid="page-mention-menu"
@@ -643,14 +751,15 @@ export function Editor({
             className="hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors outline-none"
             onClick={() => {
               if (item.kind === 'drillable-document' && item.docId) {
-                setDrill({
+                setSlashMode({
+                  kind: 'picking-heading',
                   docId: item.docId,
                   docTitle: item.title,
                   docUpdatedAt: item.docUpdatedAt ?? '',
                   // The query text at the moment of drilling in (e.g. "N5")
                   // - any further typing after this point narrows the
                   // heading list, not a fresh document search.
-                  queryPrefixLength: latestQueryRef.current.length
+                  queryPrefixLength: latestSlashQueryRef.current.length
                 })
                 return
               }
@@ -816,35 +925,18 @@ export function Editor({
             (`@blocknote/react`) so behavior is unchanged in every other
             respect (including the still-shrink-to-fit behavior on the
             genuinely-chosen side, when even that side is too small for the
-            full menu). */}
+            full menu). `getItems`/`suggestionMenuComponent` (`getSlashMenuItems`/
+            `SlashMenu`, defined above) fold the page-mention picker (formerly
+            its own "@"-triggered controller) into this same menu as a
+            "Link a doc" entry, for one consistent trigger character instead
+            of two. */}
           <SuggestionMenuController
             triggerCharacter="/"
             shouldOpen={(state) =>
               !state.selection.$from.parent.type.isInGroup('tableContent')
             }
-            floatingUIOptions={{
-              useFloatingOptions: {
-                middleware: [
-                  offset(10),
-                  chooseVerticalPlacement,
-                  shift(),
-                  size({
-                    apply({ elements, availableHeight }) {
-                      elements.floating.style.maxHeight = `${Math.max(0, availableHeight)}px`
-                    },
-                    padding: 10
-                  })
-                ]
-              }
-            }}
-          />
-          {/* "@" page-mention picker - reuses `chooseVerticalPlacement` (see
-              its doc comment above) so it flips near the viewport edge the
-              same way the "/" menu does. */}
-          <SuggestionMenuController
-            triggerCharacter="@"
-            getItems={getPageMentionItems}
-            suggestionMenuComponent={PageMentionMenu}
+            getItems={getSlashMenuItems}
+            suggestionMenuComponent={SlashMenu}
             floatingUIOptions={{
               useFloatingOptions: {
                 middleware: [
