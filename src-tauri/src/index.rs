@@ -130,6 +130,22 @@ impl Index {
         Ok(count)
     }
 
+    pub fn word_count_for(&self, id: &str) -> Result<Option<i64>> {
+        use rusqlite::OptionalExtension;
+        Ok(self
+            .conn
+            .query_row("SELECT word_count FROM documents WHERE id = ?1", [id], |r| r.get(0))
+            .optional()?)
+    }
+
+    pub fn record_activity(&self, doc_id: &str, kind: &str, word_delta: i64, at: &str) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO activity (doc_id, kind, word_delta, at) VALUES (?1, ?2, ?3, ?4)",
+            rusqlite::params![doc_id, kind, word_delta, at],
+        )?;
+        Ok(())
+    }
+
     pub fn list_metas(&self) -> Result<Vec<crate::document::DocumentMeta>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, parent_id, title, icon, created_at, updated_at, deleted_at

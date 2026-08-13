@@ -44,7 +44,10 @@ pub fn list_documents_impl(state: &AppState) -> Result<Vec<DocumentMeta>> {
 pub fn create_document_impl(state: &AppState, parent_id: Option<String>, title: String) -> Result<Document> {
     let vault_path = lock(&state.settings).vault_path.clone();
     let doc = document::create_document(&vault_path, parent_id, &title)?;
-    lock(&state.index).upsert(&doc)?;
+    let index = lock(&state.index);
+    index.upsert(&doc)?;
+    let word_count = crate::index::extract_text(&doc.blocks).split_whitespace().count() as i64;
+    index.record_activity(&doc.id, "create", word_count, &doc.updated_at)?;
     Ok(doc)
 }
 
@@ -55,8 +58,12 @@ pub fn load_document_impl(state: &AppState, id: String) -> Result<Document> {
 
 pub fn save_document_impl(state: &AppState, doc: Document) -> Result<Document> {
     let vault_path = lock(&state.settings).vault_path.clone();
+    let index = lock(&state.index);
+    let previous_word_count = index.word_count_for(&doc.id)?.unwrap_or(0);
     let saved = document::save_document(&vault_path, doc)?;
-    lock(&state.index).upsert(&saved)?;
+    index.upsert(&saved)?;
+    let new_word_count = crate::index::extract_text(&saved.blocks).split_whitespace().count() as i64;
+    index.record_activity(&saved.id, "edit", new_word_count - previous_word_count, &saved.updated_at)?;
     Ok(saved)
 }
 
@@ -243,6 +250,21 @@ mod tests {
         assert_eq!(doc.title, "Note");
         assert_eq!(search_impl(&state, "note".into()).unwrap().len(), 1);
         assert_eq!(get_vault_info_impl(&state).unwrap().document_count, 1);
+    }
+
+    #[test]
+    fn create_then_edit_records_word_count_snapshots() {
+        let (_v, _d, state) = state();
+        let doc = create_document_impl(&state, None, "Note".into()).unwrap();
+        let mut grown = doc.clone();
+        grown.blocks = serde_json::json!([
+            { "id": "b1", "type": "paragraph", "content": [{ "type": "text", "text": "one two three", "styles": {} }], "children": [] }
+        ]);
+        let saved = save_document_impl(&state, grown).unwrap();
+
+        let index = lock(&state.index);
+        assert_eq!(index.word_count_for(&saved.id).unwrap(), Some(3));
+        assert_eq!(index.word_count_for("does-not-exist").unwrap(), None);
     }
 
     #[test]
