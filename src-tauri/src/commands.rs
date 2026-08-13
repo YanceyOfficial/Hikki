@@ -58,9 +58,9 @@ pub fn load_document_impl(state: &AppState, id: String) -> Result<Document> {
 
 pub fn save_document_impl(state: &AppState, doc: Document) -> Result<Document> {
     let vault_path = lock(&state.settings).vault_path.clone();
-    let index = lock(&state.index);
-    let previous_word_count = index.word_count_for(&doc.id)?.unwrap_or(0);
+    let previous_word_count = lock(&state.index).word_count_for(&doc.id)?.unwrap_or(0);
     let saved = document::save_document(&vault_path, doc)?;
+    let index = lock(&state.index);
     index.upsert(&saved)?;
     let new_word_count = crate::index::extract_text(&saved.blocks).split_whitespace().count() as i64;
     index.record_activity(&saved.id, "edit", new_word_count - previous_word_count, &saved.updated_at)?;
