@@ -313,6 +313,12 @@ export function Editor({
           })
         }
       }),
+      tables: {
+        splitCells: true,
+        cellBackgroundColor: true,
+        cellTextColor: true,
+        headers: true
+      },
       initialContent:
         initialBlocks.length > 0 ? (initialBlocks as Block[]) : undefined,
       uploadFile: async (file: File) =>
