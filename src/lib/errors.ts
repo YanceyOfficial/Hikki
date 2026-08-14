@@ -20,6 +20,7 @@ export type HkErrorCode =
   | 'HK-3005'
   | 'HK-6001'
   | 'HK-6002'
+  | 'HK-7001'
   | 'HK-9001'
 
 type ErrorSeverity = 'info' | 'warning' | 'error'
@@ -88,6 +89,10 @@ const ERROR_DEFINITIONS: Record<HkErrorCode, ErrorDefinition> = {
     message: 'Could not export the logs.',
     severity: 'error',
     openSettings: 'logs'
+  },
+  'HK-7001': {
+    message: 'Could not load dashboard stats.',
+    severity: 'error'
   },
   'HK-9001': { message: 'Something unexpected went wrong.', severity: 'error' }
 }
