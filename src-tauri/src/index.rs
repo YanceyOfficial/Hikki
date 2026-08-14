@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS activity (
   word_delta INTEGER NOT NULL DEFAULT 0,
   at TEXT NOT NULL
 );
+CREATE INDEX IF NOT EXISTS idx_activity_at ON activity(at);
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 ";
 
@@ -181,6 +182,16 @@ impl Index {
     /// SQLite's own UTC-based `date()` function - done here in Rust (not
     /// SQL) so the bucketing logic is plain, unit-testable code.
     pub fn dashboard_stats(&self, utc_offset_minutes: i64) -> Result<DashboardStats> {
+        self.dashboard_stats_at(utc_offset_minutes, Utc::now())
+    }
+
+    /// `now`-parametrized core of [`Index::dashboard_stats`], so day-bucketing
+    /// tests can pin an exact instant instead of racing the wall clock.
+    fn dashboard_stats_at(
+        &self,
+        utc_offset_minutes: i64,
+        now: DateTime<Utc>,
+    ) -> Result<DashboardStats> {
         let total_documents: i64 = self.conn.query_row(
             "SELECT COUNT(*) FROM documents WHERE deleted_at IS NULL",
             [],
@@ -193,10 +204,10 @@ impl Index {
         )?;
 
         let offset = Duration::minutes(utc_offset_minutes);
-        let today = (Utc::now() - offset).date_naive();
+        let today = (now - offset).date_naive();
         // 45 days of UTC-timestamped rows safely covers the 35-day local
         // window at any real-world offset (max ±14h).
-        let cutoff = (Utc::now() - Duration::days(45)).to_rfc3339();
+        let cutoff = (now - Duration::days(45)).to_rfc3339();
 
         let mut stmt = self
             .conn
@@ -245,12 +256,22 @@ impl Index {
             })
             .collect();
 
+        // Streak: a separate, unbounded query from the 45-day window above - a
+        // real streak can run longer than 45 days without being silently
+        // capped, unlike the fixed-length 30/35-day series which don't need
+        // more than 45 days of history.
+        let mut all_at_stmt = self.conn.prepare("SELECT at FROM activity")?;
+        let all_at: Vec<String> = all_at_stmt
+            .query_map([], |r| r.get(0))?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        let activity_days: HashSet<NaiveDate> = all_at.iter().filter_map(|at| local_day(at)).collect();
+
         let mut streak_days = 0i64;
         let mut cursor = today;
-        if !activity_by_day.contains_key(&cursor) {
+        if !activity_days.contains(&cursor) {
             cursor -= Duration::days(1);
         }
-        while activity_by_day.get(&cursor).copied().unwrap_or(0) > 0 {
+        while activity_days.contains(&cursor) {
             streak_days += 1;
             cursor -= Duration::days(1);
         }
@@ -494,17 +515,38 @@ mod tests {
     #[test]
     fn dashboard_stats_buckets_by_local_day_not_utc_day() {
         let idx = Index::open_in_memory().unwrap();
-        idx.record_activity("d1", "edit", 10, &Utc::now().to_rfc3339()).unwrap();
+        // A fixed reference instant, not Utc::now() - this test's correctness
+        // must not depend on what time of day it happens to run.
+        let base: DateTime<Utc> = "2026-06-15T12:00:00Z".parse().unwrap();
+        idx.record_activity("d1", "edit", 10, &base.to_rfc3339()).unwrap();
         // 23:30 UTC "today" is already tomorrow for a UTC+2 caller, but
         // still today for a UTC caller.
-        let almost_midnight_utc = Utc::now().date_naive().and_hms_opt(23, 30, 0).unwrap().and_utc();
+        let almost_midnight_utc = base.date_naive().and_hms_opt(23, 30, 0).unwrap().and_utc();
         idx.record_activity("d2", "edit", 5, &almost_midnight_utc.to_rfc3339()).unwrap();
 
-        let utc_plus_2 = idx.dashboard_stats(-120).unwrap();
-        assert_eq!(utc_plus_2.daily_words.last().unwrap().word_delta, 10);
+        let utc_plus_2 = idx.dashboard_stats_at(-120, base).unwrap();
+        assert_eq!(
+            utc_plus_2.daily_words.last().unwrap().word_delta,
+            10,
+            "the 23:30 UTC row should already be tomorrow for a UTC+2 caller"
+        );
 
-        let utc = idx.dashboard_stats(0).unwrap();
-        assert_eq!(utc.daily_words.last().unwrap().word_delta, 15);
+        let utc = idx.dashboard_stats_at(0, base).unwrap();
+        assert_eq!(
+            utc.daily_words.last().unwrap().word_delta,
+            15,
+            "both rows fall on today's UTC calendar date for a UTC caller"
+        );
+    }
+
+    #[test]
+    fn dashboard_stats_daily_words_reflects_a_net_negative_delta_from_a_shrink() {
+        let idx = Index::open_in_memory().unwrap();
+        let now = Utc::now();
+        idx.record_activity("d1", "edit", 10, &now.to_rfc3339()).unwrap();
+        idx.record_activity("d1", "edit", -4, &now.to_rfc3339()).unwrap();
+        let stats = idx.dashboard_stats(0).unwrap();
+        assert_eq!(stats.daily_words.last().unwrap().word_delta, 6);
     }
 
     #[test]
@@ -523,6 +565,16 @@ mod tests {
     }
 
     #[test]
+    fn dashboard_stats_streak_is_not_capped_by_the_45_day_series_window() {
+        let idx = Index::open_in_memory().unwrap();
+        for i in 0..50 {
+            idx.record_activity("d1", "edit", 1, &(Utc::now() - Duration::days(i)).to_rfc3339())
+                .unwrap();
+        }
+        assert_eq!(idx.dashboard_stats(0).unwrap().streak_days, 50);
+    }
+
+    #[test]
     fn dashboard_stats_counts_distinct_docs_edited_this_week() {
         let idx = Index::open_in_memory().unwrap();
         let today = Utc::now().to_rfc3339();
@@ -530,6 +582,15 @@ mod tests {
         idx.record_activity("d1", "edit", 3, &today).unwrap(); // same doc, same day
         idx.record_activity("d2", "edit", 2, &(Utc::now() - Duration::days(8)).to_rfc3339()).unwrap(); // outside the window
         assert_eq!(idx.dashboard_stats(0).unwrap().docs_edited_this_week, 1);
+    }
+
+    #[test]
+    fn dashboard_stats_docs_edited_this_week_boundary_is_six_days_ago_inclusive() {
+        let idx = Index::open_in_memory().unwrap();
+        idx.record_activity("d1", "edit", 1, &(Utc::now() - Duration::days(6)).to_rfc3339()).unwrap();
+        idx.record_activity("d2", "edit", 1, &(Utc::now() - Duration::days(7)).to_rfc3339()).unwrap();
+        let stats = idx.dashboard_stats(0).unwrap();
+        assert_eq!(stats.docs_edited_this_week, 1, "6 days ago is in the window, 7 days ago is not");
     }
 
     #[test]
