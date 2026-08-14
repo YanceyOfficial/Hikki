@@ -1419,3 +1419,49 @@ test.describe('Settings dialog', () => {
     await expect(page.getByTestId('log-row')).toHaveCount(0)
   })
 })
+
+test.describe('Dashboard', () => {
+  test('creating and editing a document updates the dashboard stats, chart, heatmap, and recent list', async ({
+    page
+  }) => {
+    await page.goto('/')
+    await expect(page.getByTestId('stat-tile-total-documents')).toContainText(
+      '0'
+    )
+
+    await page.getByTestId('new-doc').click()
+    const editable = page
+      .getByTestId('editor')
+      .locator('[contenteditable="true"]')
+      .first()
+    await editable.click()
+    await page.keyboard.type('one two three four five')
+    // Same 800ms-debounced-autosave wait used elsewhere in this suite -
+    // waits out the pending save rather than racing navigation against it.
+    await page.waitForTimeout(1000)
+
+    await page.getByTestId('nav-dashboard').click()
+    await expect(page.getByTestId('stat-tile-total-documents')).toContainText(
+      '1'
+    )
+    await expect(page.getByTestId('stat-tile-total-words')).toContainText('5')
+    await expect(page.getByTestId('stat-tile-streak-days')).toContainText('1')
+    await expect(
+      page.getByTestId('stat-tile-docs-edited-this-week')
+    ).toContainText('1')
+    await expect(page.getByTestId('dashboard-activity-chart')).toBeVisible()
+    await expect(page.getByTestId('dashboard-heatmap')).toBeVisible()
+    await expect(page.getByTestId('dashboard-recent-list')).toContainText(
+      'Untitled'
+    )
+  })
+
+  test("the dashboard's New document button creates a document and navigates to it", async ({
+    page
+  }) => {
+    await page.goto('/')
+    await page.getByTestId('dashboard-new-doc').click()
+    await expect(page).toHaveURL(/#\/doc\//)
+    await expect(page.getByTestId('doc-title')).toBeVisible()
+  })
+})
