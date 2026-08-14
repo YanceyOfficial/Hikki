@@ -10,8 +10,6 @@ import {
 } from '#lib/page-mention'
 import { docMetasAtom } from '#lib/store'
 
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
-
 export function PageMentionRender(props: {
   inlineContent: {
     props: { docId: string; headingId?: string; headingText?: string }
@@ -52,26 +50,22 @@ export function PageMentionRender(props: {
     ? `#/doc/${docId}?heading=${headingId}`
     : `#/doc/${docId}`
 
-  const linkComp = (
+  return (
     <a
       href={hash}
       data-testid={`page-mention-${docId}`}
-      className="bg-muted hover:bg-accent hover:text-accent-foreground mx-0.5 inline-flex max-w-fit items-center gap-1 rounded-md px-1.5 py-0.5 align-baseline text-sm font-medium no-underline transition-colors"
+      className="no-underline!"
     >
-      <span className="shrink-0">
-        {icon ?? <FileText className="size-3.5" />}
+      <span className="hover:bg-muted inline-flex items-center gap-0.5 rounded-md px-1">
+        <span className="shrink-0">
+          {icon ?? <FileText className="size-3.5" />}
+        </span>
+        <span className="truncate">{title}</span>
+        {resolvedHeadingText && (
+          <span className="truncate"> ({resolvedHeadingText})</span>
+        )}
       </span>
-      <span className="truncate">{title}</span>
     </a>
-  )
-
-  return resolvedHeadingText ? (
-    <Tooltip>
-      <TooltipTrigger render={linkComp} />
-      <TooltipContent>#{resolvedHeadingText}</TooltipContent>
-    </Tooltip>
-  ) : (
-    linkComp
   )
 }
 
