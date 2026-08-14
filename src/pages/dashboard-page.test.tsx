@@ -1,8 +1,11 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { getDefaultStore } from 'jotai'
 import { MemoryRouter } from 'react-router'
 
+vi.mock('#lib/errors', () => ({ reportError: vi.fn() }))
+
 import { backend } from '#lib/backend/index'
+import { reportError } from '#lib/errors'
 import { dashboardStatsAtom, recentDocsAtom } from '#lib/store'
 import type { DashboardStats } from '#lib/types'
 import DashboardPage from '#pages/dashboard-page'
@@ -52,4 +55,7 @@ test('a failed load reports HK-7001 and still renders a zeroed page instead of c
 
   expect(await screen.findByTestId('dashboard-greeting')).toBeInTheDocument()
   expect(screen.getByTestId('dashboard-recent-empty')).toBeInTheDocument()
+  // waitFor because reportError fires from an async .catch() inside a
+  // useEffect, not synchronously with render.
+  await waitFor(() => expect(reportError).toHaveBeenCalledWith('HK-7001'))
 })

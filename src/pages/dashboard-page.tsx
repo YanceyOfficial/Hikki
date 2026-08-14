@@ -12,8 +12,9 @@ import {
   recentDocsAtom,
   refreshDashboardAtom
 } from '#lib/store'
+import type { DashboardStats } from '#lib/types'
 
-const EMPTY_STATS = {
+const EMPTY_STATS: DashboardStats = {
   totalDocuments: 0,
   totalWords: 0,
   streakDays: 0,

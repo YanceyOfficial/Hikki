@@ -1425,8 +1425,12 @@ test.describe('Dashboard', () => {
     page
   }) => {
     await page.goto('/')
-    await expect(page.getByTestId('stat-tile-total-documents')).toContainText(
-      '0'
+    // Exact whole-tile text, not a substring: a bare toContainText('1')
+    // would also pass against '15' or '1,024'. A \b word-boundary regex
+    // can't express this either - a tile's text is its label glued to its
+    // value ('Documents0'), so there's no boundary before the digit.
+    await expect(page.getByTestId('stat-tile-total-documents')).toHaveText(
+      /^Documents0$/
     )
 
     await page.getByTestId('new-doc').click()
@@ -1441,14 +1445,18 @@ test.describe('Dashboard', () => {
     await page.waitForTimeout(1000)
 
     await page.getByTestId('nav-dashboard').click()
-    await expect(page.getByTestId('stat-tile-total-documents')).toContainText(
-      '1'
+    await expect(page.getByTestId('stat-tile-total-documents')).toHaveText(
+      /^Documents1$/
     )
-    await expect(page.getByTestId('stat-tile-total-words')).toContainText('5')
-    await expect(page.getByTestId('stat-tile-streak-days')).toContainText('1')
+    await expect(page.getByTestId('stat-tile-total-words')).toHaveText(
+      /^Words written5$/
+    )
+    await expect(page.getByTestId('stat-tile-streak-days')).toHaveText(
+      /^Day streak1$/
+    )
     await expect(
       page.getByTestId('stat-tile-docs-edited-this-week')
-    ).toContainText('1')
+    ).toHaveText(/^Edited this week1$/)
     await expect(page.getByTestId('dashboard-activity-chart')).toBeVisible()
     await expect(page.getByTestId('dashboard-heatmap')).toBeVisible()
     await expect(page.getByTestId('dashboard-recent-list')).toContainText(
