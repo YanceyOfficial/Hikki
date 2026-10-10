@@ -35,9 +35,14 @@ function catalogFiles() {
   for (const e of entries) {
     const path = join(source, e.weight, e.file)
     if (!existsSync(path)) throw new Error(`unknown Phosphor icon: ${e.weight}/${e.file}`)
+    // Base-weight icons get an outline stroke (strokeBoost) — Phosphor has no weight between regular and bold.
+    const boost =
+      e.weight === base && manifest.strokeBoost
+        ? `stroke="#000000" stroke-width="${manifest.strokeBoost}" stroke-linejoin="round" `
+        : ''
     const svg = readFileSync(path, 'utf8')
       .replace(/fill="currentColor"/gu, 'fill="#000000"')
-      .replace('<svg ', '<svg width="24" height="24" ')
+      .replace('<svg ', `<svg width="24" height="24" ${boost}`)
     const dir = join(catalog, `${e.asset}.imageset`)
     files.set(join(dir, e.file), svg)
     files.set(
