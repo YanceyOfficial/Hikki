@@ -135,13 +135,21 @@ button { font: inherit; color: inherit; }
 
 /* Emoji picker */
 .hk-emoji-popover { width: 400px; }
-.hk-emoji-panel, .hk-emoji-root { display: flex; flex-direction: column; height: 360px; max-height: inherit; }
+.hk-emoji-panel { display: flex; flex-direction: column; height: 380px; max-height: inherit; }
 .hk-emoji-toolbar { display: flex; gap: 4px; padding: 10px 10px 6px; }
-.hk-emoji-viewport { flex: 1; outline: none; padding: 0 6px 6px; }
-.hk-emoji-category { padding: 8px 6px 4px; font-size: 12px; font-weight: 500; color: var(--muted); background: var(--bg-elevated); }
-.hk-emoji { all: unset; display: grid; place-items: center; width: 40px; height: 36px; border-radius: var(--radius); font-size: 24px; cursor: pointer; }
-.hk-emoji[data-active] { background: var(--hover); }
-.hk-emoji-status { display: block; padding: 24px; text-align: center; font-size: 13px; color: var(--muted); }
+.hk-emoji-jump { display: flex; justify-content: space-between; padding: 0 10px 6px; border-bottom: 1px solid var(--border); }
+.hk-emoji-jump button { all: unset; cursor: pointer; width: 28px; height: 26px; display: grid; place-items: center; border-radius: var(--radius);
+  font-size: 15px; filter: grayscale(1); opacity: 0.7; }
+.hk-emoji-jump button:hover { background: var(--hover); filter: none; opacity: 1; }
+.hk-emoji-scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 0 10px 10px; position: relative; }
+.hk-emoji-section { content-visibility: auto; contain-intrinsic-size: auto 400px; }
+.hk-emoji-category { position: sticky; top: 0; z-index: 1; margin: 0; padding: 10px 2px 6px; font-size: 12px; font-weight: 500;
+  color: var(--muted); background: var(--bg-elevated); }
+.hk-emoji-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); }
+.hk-emoji { all: unset; display: grid; place-items: center; aspect-ratio: 1; border-radius: var(--radius); font-size: 22px; line-height: 1;
+  cursor: pointer; font-family: "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+.hk-emoji:hover, .hk-emoji:focus-visible { background: var(--hover); }
+.hk-emoji-status { padding: 28px; text-align: center; font-size: 13px; color: var(--muted); }
 
 /* Cover picker */
 .hk-cover-popover { width: 420px; }

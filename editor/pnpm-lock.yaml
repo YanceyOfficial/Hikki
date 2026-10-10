@@ -38,9 +38,6 @@ importers:
       emojibase-data:
         specifier: ^17.0.0
         version: 17.0.0(emojibase@17.0.0)
-      frimousse:
-        specifier: ^0.4.0
-        version: 0.4.0(react@19.3.0)(typescript@7.0.2)
       react:
         specifier: ^19.3.0
         version: 19.3.0
@@ -643,15 +640,6 @@ packages:
       picomatch: ^3 || ^4
     peerDependenciesMeta:
       picomatch:
-        optional: true
-
-  frimousse@0.4.0:
-    resolution: {integrity: sha512-wA/1Xt9UTk51wYNpy+EvHKPUA4jdm4NuEFzSNNZxqT0Nxrj4RFwYByjRMuaq4qSLOco/ikDCpLKesB8W1w2q+Q==}
-    peerDependencies:
-      react: ^18 || ^19
-      typescript: '>=5.1.0'
-    peerDependenciesMeta:
-      typescript:
         optional: true
 
   fsevents@2.3.3:
@@ -1420,12 +1408,6 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.7):
     optionalDependencies:
       picomatch: 4.0.7
-
-  frimousse@0.4.0(react@19.3.0)(typescript@7.0.2):
-    dependencies:
-      react: 19.3.0
-    optionalDependencies:
-      typescript: 7.0.2
 
   fsevents@2.3.3:
     optional: true
