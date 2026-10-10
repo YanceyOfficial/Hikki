@@ -36,7 +36,7 @@ These rules are mandatory. Automated ones are noted.
 - **Secrets stay server-side.** Third-party API keys (Unsplash) live only in the BFF (`bff/`, Hono on Vercel).
   Unsplash rules: hotlink `urls`, attribute the photographer with utm links, report picks via the download endpoint.
 - **Pre-commit gate.** `.husky/pre-commit` runs lint-staged (oxlint + oxfmt for web files, `swift-format` for
-  Swift), `make lint-design lint-docs`, the web typecheck and unit tests. `make check` adds the Swift tests and both
+  Swift), `make lint-design lint-docs lint-l10n`, the editor + BFF typecheck and web unit tests. `make check` adds the Swift tests and both
   platform builds. Don't `--no-verify`.
 - **Tests with every change.** Web logic: vitest in `editor/test/`. Swift data/logic: Swift Testing in
   `HikkiCore/Tests/`. User-visible flows: XCUITest in `HikkiUITests/` (look elements up by accessibility identifier).

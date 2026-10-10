@@ -18,7 +18,7 @@ describe('app', () => {
 
   it('reads UNSPLASH_ACCESS_KEY from the runtime env and sends it upstream', async () => {
     process.env.UNSPLASH_ACCESS_KEY = 'test-key'
-    let auth: string | null = null
+    let auth = null as string | null
     globalThis.fetch = (async (_url: string | URL | Request, init?: RequestInit) => {
       auth = new Headers(init?.headers).get('Authorization')
       return new Response('[]')
