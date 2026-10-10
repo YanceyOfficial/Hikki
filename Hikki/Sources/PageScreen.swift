@@ -36,7 +36,7 @@ struct PageBar: View {
     let navigator: Navigator
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: Spacing.s1) {
             switch route {
             case .page(let id):
                 Breadcrumbs(model.tree.path(to: id).map { Crumb(id: $0.id, title: $0.title, icon: $0.icon) }) { navigator.open($0) }
@@ -44,11 +44,11 @@ struct PageBar: View {
                 if let page = model.tree.page(id) {
                     TimelineView(.periodic(from: .now, by: 60)) { _ in
                         Text("Edited \(page.updatedAt, format: .relative(presentation: .named))")
-                            .font(.system(size: 13))
-                            .foregroundStyle(Theme.mutedText)
+                            .font(.hk(.md))
+                            .foregroundStyle(Theme.mutedForeground)
                             .lineLimit(1)
                     }
-                    .padding(.trailing, 6)
+                    .padding(.trailing, Spacing.s1_5)
                     FavoriteButton(page: page)
                     PageMoreMenu(page: page, navigator: navigator)
                 }
@@ -60,16 +60,16 @@ struct PageBar: View {
                 Spacer()
             }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, Spacing.s3)
         .frame(height: 44)
         .background(Theme.background)
     }
 
     private func barTitle(_ title: LocalizedStringKey, systemImage: String) -> some View {
         Label(title, systemImage: systemImage)
-            .font(.system(size: 13, weight: .medium))
-            .foregroundStyle(Theme.text)
-            .padding(.horizontal, 6)
+            .font(.hk(.md, .medium))
+            .foregroundStyle(Theme.foreground)
+            .padding(.horizontal, Spacing.s1_5)
     }
 }
 
@@ -98,8 +98,8 @@ struct PageMoreMenu: View {
             Text("Edited \(page.updatedAt, format: .relative(presentation: .named))")
         } label: {
             Image(systemName: "ellipsis")
-                .font(.system(size: 14))
-                .foregroundStyle(Theme.secondaryText)
+                .font(.hk(.base))
+                .foregroundStyle(Theme.subtleForeground)
                 .frame(width: 28, height: 28)
                 .contentShape(.rect)
         }

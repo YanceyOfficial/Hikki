@@ -48,7 +48,7 @@ export const SlashCommand = Extension.create({
 
           return {
             onStart: (props) => {
-              layer = new FloatingLayer('hk-slash-menu')
+              layer = new FloatingLayer('hk-slash-menu w-[300px] max-w-[calc(100vw-16px)]')
               current = props
               selected = 0
               draw()

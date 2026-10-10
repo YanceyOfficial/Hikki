@@ -28,6 +28,7 @@ public struct TabStrip<Leading: View>: View {
     private let onBack: () -> Void
     private let onForward: () -> Void
     private let leading: Leading
+    @Environment(\.chromeMetrics) private var metrics
 
     public init(
         items: [TabStripItem], activeID: UUID, canGoBack: Bool, canGoForward: Bool,
@@ -50,7 +51,7 @@ public struct TabStrip<Leading: View>: View {
     public static var height: CGFloat { 40 }
 
     public var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: Spacing.s1) {
             leading
             SidebarIconButton("Back", systemImage: "chevron.left", action: onBack)
                 .disabled(!canGoBack)
@@ -58,7 +59,7 @@ public struct TabStrip<Leading: View>: View {
             SidebarIconButton("Forward", systemImage: "chevron.right", action: onForward)
                 .disabled(!canGoForward)
                 .opacity(canGoForward ? 1 : 0.4)
-            HStack(spacing: 2) {
+            HStack(spacing: Spacing.s0_5) {
                 ForEach(items) { item in
                     TabButton(item: item, isActive: item.id == activeID, canClose: items.count > 1,
                               onSelect: { onSelect(item.id) }, onClose: { onClose(item.id) })
@@ -67,8 +68,8 @@ public struct TabStrip<Leading: View>: View {
             SidebarIconButton("New Tab", systemImage: "plus", action: onNew)
             Spacer(minLength: 24)
         }
-        .padding(.horizontal, 8)
-        .frame(height: Self.height)
+        .padding(.horizontal, Spacing.s2)
+        .frame(height: metrics.barHeight)
     }
 }
 
@@ -81,22 +82,22 @@ private struct TabButton: View {
     @State private var hovering = false
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: Spacing.s1_5) {
             if let systemImage = item.systemImage {
-                Image(systemName: systemImage).font(.system(size: 12)).foregroundStyle(Theme.secondaryText)
+                Image(systemName: systemImage).font(.hk(.sm)).foregroundStyle(Theme.subtleForeground)
             } else {
                 PageIcon(item.icon, size: 13)
             }
             Text(item.title.isEmpty ? String(localized: "Untitled") : item.title)
-                .font(.system(size: 13, weight: isActive ? .medium : .regular))
-                .foregroundStyle(isActive ? Theme.text : Theme.secondaryText)
+                .font(.hk(.md, isActive ? .medium : .regular))
+                .foregroundStyle(isActive ? Theme.foreground : Theme.subtleForeground)
                 .lineLimit(1)
             Spacer(minLength: 0)
             if canClose && (hovering || isActive) {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(Theme.mutedText)
+                        .font(.hk(.x2s, .bold))
+                        .foregroundStyle(Theme.mutedForeground)
                         .frame(width: 16, height: 16)
                         .contentShape(.rect)
                 }
@@ -104,11 +105,11 @@ private struct TabButton: View {
                 .accessibilityLabel("Close Tab")
             }
         }
-        .padding(.horizontal, 10)
+        .padding(.horizontal, Spacing.s2_5)
         .frame(minWidth: 60, idealWidth: 200, maxWidth: 220, minHeight: 30, maxHeight: 30)
         .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isActive ? Theme.background : hovering ? Theme.hover : .clear)
+            RoundedRectangle(cornerRadius: Radius.lg)
+                .fill(isActive ? Theme.background : hovering ? Theme.accent : .clear)
                 .shadow(color: isActive ? .black.opacity(0.08) : .clear, radius: 1, y: 0.5)
         )
         .contentShape(.rect)

@@ -8,19 +8,19 @@ struct HomeView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 28) {
+            VStack(alignment: .leading, spacing: Spacing.s7) {
                 Text(greeting)
-                    .font(.system(size: 30, weight: .bold))
-                    .foregroundStyle(Theme.text)
+                    .font(.hk(.x3l, .bold))
+                    .foregroundStyle(Theme.foreground)
                     .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.top, 48)
+                    .padding(.top, Spacing.s12)
 
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: Spacing.s2_5) {
                     Label("Recently edited", systemImage: "clock")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Theme.mutedText)
+                        .font(.hk(.sm, .medium))
+                        .foregroundStyle(Theme.mutedForeground)
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
+                        HStack(spacing: Spacing.s3) {
                             ForEach(model.tree.recent(limit: 12)) { page in
                                 Button { navigator.open(page.id) } label: {
                                     PageCard(title: page.title, icon: page.icon,
@@ -29,23 +29,23 @@ struct HomeView: View {
                                 .buttonStyle(.plain)
                             }
                             Button { navigator.newPage() } label: {
-                                VStack(spacing: 8) {
-                                    Image(systemName: "plus").font(.system(size: 18))
-                                    Text("New page").font(.system(size: 13, weight: .medium))
+                                VStack(spacing: Spacing.s2) {
+                                    Image(systemName: "plus").font(.hk(.xl))
+                                    Text("New page").font(.hk(.md, .medium))
                                 }
-                                .foregroundStyle(Theme.mutedText)
+                                .foregroundStyle(Theme.mutedForeground)
                                 .frame(width: 148, height: 132)
-                                .background(Theme.hover, in: .rect(cornerRadius: 12))
+                                .background(Theme.accent, in: .rect(cornerRadius: Radius.xl))
                             }
                             .buttonStyle(.plain)
                             .accessibilityIdentifier("home-new-page")
                         }
-                        .padding(.vertical, 2)
+                        .padding(.vertical, Spacing.s0_5)
                     }
                 }
             }
             .frame(maxWidth: 760)
-            .padding(.horizontal, 24)
+            .padding(.horizontal, Spacing.s6)
             .frame(maxWidth: .infinity)
         }
         .background(Theme.background)

@@ -37,58 +37,63 @@ public struct SidebarRow<Actions: View>: View {
     }
 
     public var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: Spacing.s2_5) {
             leadingGlyph
             Text(title.isEmpty ? String(localized: "Untitled") : title)
-                .font(.system(size: 14, weight: isSelected ? .medium : .regular))
-                .foregroundStyle(isSelected ? Theme.text : title.isEmpty ? Theme.mutedText : Theme.secondaryText)
+                .font(.hk(.base, .medium))
+                .foregroundStyle(isSelected ? Theme.sidebarAccentForeground : title.isEmpty ? Theme.mutedForeground : Theme.sidebarForeground)
                 .lineLimit(1)
             Spacer(minLength: 0)
             if let shortcut {
-                Text(shortcut).font(.system(size: 12)).foregroundStyle(Theme.mutedText.opacity(hovering ? 1 : 0))
+                Text(shortcut).font(.hk(.sm)).foregroundStyle(Theme.mutedForeground.opacity(hovering ? 1 : 0))
             }
             // Inline and only while hovered (like Notion): the title gives up room then, and
             // there is no mask/gradient to clash with the row's hover highlight.
             if hovering {
-                HStack(spacing: 2) { actions }
+                HStack(spacing: Spacing.s0_5) { actions }
             }
         }
         .padding(.leading, CGFloat(depth) * 14)
-        .frame(minHeight: Theme.Metrics.rowHeight)
+        .frame(minHeight: Size.row)
         .contentShape(.rect)
         .onHover { hovering = $0 }
     }
 
     /// Notion-style: the page icon, which turns into the disclosure chevron while hovered.
     /// Without hover (touch), the chevron sits before the icon, and only for pages with children.
+    /// Every row reserves the same fixed glyph slot, so swapping icon ↔ chevron on hover never
+    /// shifts the title (it used to jitter by the 2pt difference between the two frames).
+    private var glyphSlot: CGFloat { Size.sidebarIcon + Spacing.s1 }
+
     @ViewBuilder private var leadingGlyph: some View {
-        if let isExpanded {
-            let chevron = Button {
-                withAnimation(.snappy(duration: 0.2)) { isExpanded.wrappedValue.toggle() }
-            } label: {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .semibold))
-                    .rotationEffect(.degrees(isExpanded.wrappedValue ? 90 : 0))
-                    .foregroundStyle(Theme.mutedText)
-                    .frame(width: 20, height: 20)
-                    .contentShape(.rect)
+        Group {
+            if let isExpanded {
+                let chevron = Button {
+                    withAnimation(.snappy(duration: 0.2)) { isExpanded.wrappedValue.toggle() }
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.hk(.x2s, .semibold))
+                        .rotationEffect(.degrees(isExpanded.wrappedValue ? 90 : 0))
+                        .foregroundStyle(Theme.mutedForeground)
+                        .frame(width: glyphSlot, height: glyphSlot)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(HoverHighlightStyle())
+                .accessibilityLabel(isExpanded.wrappedValue ? "Collapse" : "Expand")
+                #if os(macOS)
+                    if hovering { chevron } else { PageIcon(icon, size: Size.sidebarIcon) }
+                #else
+                    PageIcon(icon, size: Size.sidebarIcon)
+                #endif
+            } else if let systemImage {
+                Image(systemName: systemImage)
+                    .font(.hk(.base))
+                    .foregroundStyle(Theme.subtleForeground)
+            } else {
+                PageIcon(icon, size: Size.sidebarIcon)
             }
-            .buttonStyle(HoverHighlightStyle())
-            .accessibilityLabel(isExpanded.wrappedValue ? "Collapse" : "Expand")
-            #if os(macOS)
-                if hovering { chevron } else { PageIcon(icon) }
-            #else
-                if hasChildren { chevron }
-                PageIcon(icon)
-            #endif
-        } else if let systemImage {
-            Image(systemName: systemImage)
-                .font(.system(size: 14))
-                .foregroundStyle(Theme.secondaryText)
-                .frame(width: 20, height: 20)
-        } else {
-            PageIcon(icon)
         }
+        .frame(width: glyphSlot, height: glyphSlot)
     }
 }
 
@@ -108,8 +113,8 @@ public struct SidebarIconButton: View {
         Button(action: action) {
             Label(title, systemImage: systemImage)
                 .labelStyle(.iconOnly)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Theme.mutedText)
+                .font(.hk(.sm, .semibold))
+                .foregroundStyle(Theme.mutedForeground)
                 .frame(width: 22, height: 22)
                 .contentShape(.rect)
         }
@@ -133,8 +138,8 @@ public struct HoverHighlightStyle: ButtonStyle {
         var body: some View {
             configuration.label
                 .background(
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(configuration.isPressed ? Theme.selected : hovering ? Theme.hover : .clear)
+                    RoundedRectangle(cornerRadius: Radius.sm)
+                        .fill(configuration.isPressed ? Theme.accentStrong : hovering ? Theme.accent : .clear)
                 )
                 .onHover { hovering = $0 }
         }

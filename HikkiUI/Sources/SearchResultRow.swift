@@ -19,34 +19,34 @@ public struct SearchResultRow: View {
     }
 
     public var body: some View {
-        HStack(alignment: snippet.isEmpty ? .center : .top, spacing: 10) {
+        HStack(alignment: snippet.isEmpty ? .center : .top, spacing: Spacing.s2_5) {
             PageIcon(icon, size: 16)
-                .padding(.top, snippet.isEmpty ? 0 : 1)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
+                .padding(.top, snippet.isEmpty ? Spacing.s0 : Spacing.px)
+            VStack(alignment: .leading, spacing: Spacing.s0_5) {
+                HStack(spacing: Spacing.s1_5) {
                     HighlightedText(title.isEmpty ? String(localized: "Untitled") : title, query: query)
-                        .font(.system(size: 14))
-                        .foregroundStyle(Theme.text)
+                        .font(.hk(.base))
+                        .foregroundStyle(Theme.foreground)
                         .lineLimit(1)
                     if !path.isEmpty {
-                        Text("— \(path)").font(.system(size: 12)).foregroundStyle(Theme.mutedText).lineLimit(1)
+                        Text("— \(path)").font(.hk(.sm)).foregroundStyle(Theme.mutedForeground).lineLimit(1)
                     }
                 }
                 if !snippet.isEmpty {
                     HighlightedText(snippet, query: query)
-                        .font(.system(size: 12))
-                        .foregroundStyle(Theme.secondaryText)
+                        .font(.hk(.sm))
+                        .foregroundStyle(Theme.subtleForeground)
                         .lineLimit(2)
                 }
             }
             Spacer(minLength: 0)
             if isSelected {
-                Image(systemName: "return").font(.system(size: 11)).foregroundStyle(Theme.mutedText)
+                Image(systemName: "return").font(.hk(.xs)).foregroundStyle(Theme.mutedForeground)
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .background(isSelected ? Theme.selected : .clear, in: .rect(cornerRadius: Theme.Metrics.cornerRadius))
+        .padding(.horizontal, Spacing.s2_5)
+        .padding(.vertical, Spacing.s2)
+        .background(isSelected ? Theme.accentStrong : .clear, in: .rect(cornerRadius: Radius.md))
         .contentShape(.rect)
     }
 }

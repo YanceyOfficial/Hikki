@@ -13,11 +13,11 @@ public struct PageIcon: View {
     public var body: some View {
         Group {
             if let emoji, !emoji.isEmpty {
-                Text(emoji).font(.system(size: size * 0.92))
+                Text(emoji).font(.system(size: size * 0.92)) // design-lint: allow (scales with the icon size)
             } else {
                 Image(systemName: "doc.text")
-                    .font(.system(size: size * 0.85, weight: .regular))
-                    .foregroundStyle(Theme.mutedText)
+                    .font(.system(size: size * 0.85, weight: .regular)) // design-lint: allow
+                    .foregroundStyle(Theme.mutedForeground)
             }
         }
         .frame(width: size + 4, height: size + 4)

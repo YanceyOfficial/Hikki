@@ -24,7 +24,7 @@ private struct DesktopSidebar: View {
     @Bindable var navigator: Navigator
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: Spacing.s0) {
             WorkspaceHeader()
             SidebarNavBar([
                 .init(id: "home", title: String(localized: "Home"), systemImage: "house", isSelected: navigator.route == .home) { navigator.go(.home) },
@@ -33,10 +33,11 @@ private struct DesktopSidebar: View {
                 BarIconButton("Search (⌘K)", systemImage: "magnifyingglass") { navigator.isSearching = true }
                     .accessibilityIdentifier("sidebar-search")
             }
-            .padding(.horizontal, 8)
-            .padding(.bottom, 4)
+            .padding(.horizontal, Spacing.s2)
+            .padding(.top, Spacing.s3)
+            .padding(.bottom, Spacing.s1)
             ScrollView {
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: Spacing.px) {
                     if !model.tree.favorites.isEmpty {
                         SectionTitle("Favorites")
                         ForEach(model.tree.favorites) { page in
@@ -53,13 +54,13 @@ private struct DesktopSidebar: View {
                     }
                     DesktopTree(nodes: model.tree.roots, depth: 0, navigator: navigator)
                 }
-                .padding(.vertical, 6)
+                .padding(.vertical, Spacing.s1_5)
             }
             .scrollIndicators(.never)
 
             SidebarActionPill("New page", systemImage: "square.and.pencil", shortcut: "⌘N") { navigator.newPage() }
                 .accessibilityIdentifier("new-page")
-                .padding(12)
+                .padding(Spacing.s3)
         }
         .background(Theme.sidebar)
         #if os(macOS)
@@ -76,7 +77,7 @@ private struct DesktopSidebar: View {
                 SidebarRow(String(localized: title), systemImage: systemImage, isSelected: route != nil && navigator.route == route,
                            shortcut: shortcut)
                 if badge > 0 {
-                    Text("\(badge)").font(.system(size: 12)).foregroundStyle(Theme.mutedText)
+                    Text("\(badge)").font(.hk(.sm)).foregroundStyle(Theme.mutedForeground)
                 }
             }
             .contentShape(.rect)
@@ -101,9 +102,9 @@ private struct DesktopTree: View {
             if navigator.expanded.contains(node.id) {
                 if node.children.isEmpty {
                     Text("No pages inside")
-                        .font(.system(size: 13))
-                        .foregroundStyle(Theme.mutedText)
-                        .padding(.leading, CGFloat(depth + 1) * 14 + 42)
+                        .font(.hk(.md))
+                        .foregroundStyle(Theme.mutedForeground)
+                        .padding(.leading, CGFloat(depth + 1) * Spacing.s3_5 + Spacing.s10)
                         .frame(height: 28)
                 } else {
                     DesktopTree(nodes: node.children, depth: depth + 1, navigator: navigator)
@@ -161,11 +162,11 @@ private struct SectionTitle<Trailing: View>: View {
             Spacer()
             trailing.opacity(hovering ? 1 : 0)
         }
-        .padding(.leading, 14)
-        .padding(.trailing, 10)
-        .padding(.top, 14)
+        .padding(.leading, Spacing.s3_5)
+        .padding(.trailing, Spacing.s2_5)
+        .padding(.top, Spacing.s3_5)
         .frame(height: 40, alignment: .bottom)
-        .padding(.bottom, 2)
+        .padding(.bottom, Spacing.s0_5)
         .contentShape(.rect)
         .onHover { hovering = $0 }
     }
@@ -174,31 +175,30 @@ private struct SectionTitle<Trailing: View>: View {
 /// Top of the sidebar on Mac/iPad: workspace menu next to the traffic lights.
 private struct WorkspaceHeader: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.chromeMetrics) private var metrics
 
     var body: some View {
-        HStack(spacing: 2) {
-            #if os(macOS)
-                Color.clear.frame(width: 68) // traffic lights
-            #endif
+        HStack(spacing: Spacing.s0_5) {
+            Color.clear.frame(width: max(0, metrics.leadingInset - Spacing.s2)) // traffic lights
             Menu {
                 ShareLink("Export Logs", items: model.exportableFiles)
             } label: {
-                HStack(spacing: 7) {
+                HStack(spacing: Spacing.s2) {
                     Text("H")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.hk(.xs, .bold))
                         .foregroundStyle(.white)
                         .frame(width: 20, height: 20)
-                        .background(Theme.accent.gradient, in: .rect(cornerRadius: 5))
+                        .background(Theme.primary.gradient, in: .rect(cornerRadius: Radius.sm))
                     Text("Hikki")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Theme.text)
+                        .font(.hk(.base, .semibold))
+                        .foregroundStyle(Theme.foreground)
                         .lineLimit(1)
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(Theme.mutedText)
+                        .font(.hk(.x2s, .semibold))
+                        .foregroundStyle(Theme.mutedForeground)
                 }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 4)
+                .padding(.horizontal, Spacing.s1_5)
+                .padding(.vertical, Spacing.s1)
                 .contentShape(.rect)
             }
             .menuStyle(.button)
@@ -207,8 +207,8 @@ private struct WorkspaceHeader: View {
             .fixedSize()
             Spacer(minLength: 4)
         }
-        .padding(.horizontal, 8)
-        .frame(height: TabStrip<EmptyView>.height)
+        .padding(.horizontal, Spacing.s2)
+        .frame(height: metrics.barHeight)
     }
 }
 
@@ -325,8 +325,8 @@ struct PageRowMenu: View {
             PageActions(page: page, navigator: navigator)
         } label: {
             Image(systemName: "ellipsis")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Theme.mutedText)
+                .font(.hk(.sm, .semibold))
+                .foregroundStyle(Theme.mutedForeground)
                 .frame(width: 22, height: 22)
                 .contentShape(.rect)
         }

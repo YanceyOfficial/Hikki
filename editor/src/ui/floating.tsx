@@ -2,6 +2,7 @@ import { computePosition, flip, offset, shift, size, type VirtualElement } from 
 import type { ReactElement } from 'react'
 import { flushSync } from 'react-dom'
 import { createRoot, type Root } from 'react-dom/client'
+import { cn, ui } from './cn'
 
 /**
  * A React tree rendered into a body-level layer and positioned next to a caret rect.
@@ -13,7 +14,7 @@ export class FloatingLayer {
 
   constructor(className: string) {
     this.element = document.createElement('div')
-    this.element.className = `hk-floating ${className}`
+    this.element.className = cn(ui.floating, className)
     document.body.append(this.element)
     this.root = createRoot(this.element)
   }

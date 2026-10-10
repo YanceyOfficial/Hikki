@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { EditorBridge } from '../bridge'
+import { cn, ui } from '../ui/cn'
 import { EmojiPickerPanel } from '../ui/EmojiPickerPanel'
 import { Popover } from '../ui/Popover'
 import { CoverPicker } from './CoverPicker'
@@ -25,29 +26,29 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
   }
 
   return (
-    <header className={`hk-page-header ${background ? 'has-cover' : ''} ${page.icon ? 'has-icon' : ''}`}>
+    <header className="group/header relative">
       {background && (
-        <div className="hk-cover" style={{ background }} data-testid="cover">
-          <div className="hk-cover-actions">
-            <button type="button" className="hk-chip" ref={setCoverAnchor} onClick={() => setCoverOpen((o) => !o)}>Change cover</button>
-            <button type="button" className="hk-chip" onClick={() => bridge.setCover(null)}>Remove</button>
+        <div className="group/cover relative h-[30vh] max-h-[280px] min-h-[140px]" style={{ background }} data-testid="cover">
+          <div className="absolute bottom-3 right-[max(16px,calc((100%-var(--size-column))/2-64px))] flex gap-1.5 opacity-0 transition-opacity group-hover/cover:opacity-100 group-focus-within/cover:opacity-100 touch:opacity-100">
+            <button type="button" className={ui.chip} ref={setCoverAnchor} onClick={() => setCoverOpen((o) => !o)}>Change cover</button>
+            <button type="button" className={ui.chip} onClick={() => bridge.setCover(null)}>Remove</button>
           </div>
         </div>
       )}
-      <div className="hk-column">
+      <div className={cn(ui.column, background ? 'pt-0' : 'pt-18')}>
         {page.icon && (
-          <button type="button" className="hk-page-icon" ref={setIconAnchor} aria-label="Change icon" onClick={() => setIconOpen((o) => !o)}>
+          <button type="button" className={cn('-ml-0.5 mb-1 block size-[78px] cursor-pointer rounded-lg font-emoji text-[78px] leading-none hover:bg-accent', background && 'relative -mt-[39px]')} ref={setIconAnchor} aria-label="Change icon" onClick={() => setIconOpen((o) => !o)}>
             {page.icon}
           </button>
         )}
-        <div className="hk-header-actions">
+        <div className="-ml-1.5 mb-1 mt-2 flex min-h-7 gap-1 opacity-0 transition-opacity group-hover/header:opacity-100 focus-within:opacity-100 touch:opacity-100">
           {!page.icon && (
-            <button type="button" className="hk-ghost" ref={setIconAnchor} onClick={() => bridge.setIcon(randomIcon())}>
+            <button type="button" className={ui.ghost} ref={setIconAnchor} onClick={() => bridge.setIcon(randomIcon())}>
               <span aria-hidden>☺︎</span> Add icon
             </button>
           )}
           {!background && (
-            <button type="button" className="hk-ghost" onClick={() => bridge.setCover(randomGradient())}>
+            <button type="button" className={ui.ghost} onClick={() => bridge.setCover(randomGradient())}>
               <span aria-hidden>▨</span> Add cover
             </button>
           )}
@@ -55,14 +56,14 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
         <TitleField bridge={bridge} title={page.title} focusRequest={page.focusTitleRequest} docId={page.docId} />
       </div>
 
-      <Popover anchor={iconAnchor} open={iconOpen && !!page.icon} onClose={closeIcon} label="Choose icon" className="hk-emoji-popover">
+      <Popover anchor={iconAnchor} open={iconOpen && !!page.icon} onClose={closeIcon} label="Choose icon" className="w-[400px]">
         <EmojiPickerPanel
           onSelect={(emoji) => { bridge.setIcon(emoji); setIconOpen(false) }}
           onRandom={() => bridge.setIcon(randomIcon())}
           onRemove={() => { bridge.setIcon(null); setIconOpen(false) }}
         />
       </Popover>
-      <Popover anchor={coverAnchor} open={coverOpen && !!background} onClose={closeCover} label="Choose cover" placement="bottom-end" className="hk-cover-popover">
+      <Popover anchor={coverAnchor} open={coverOpen && !!background} onClose={closeCover} label="Choose cover" placement="bottom-end" className="w-[420px]">
         <CoverPicker
           current={page.cover}
           onSelect={(cover) => bridge.setCover(cover)}
@@ -103,7 +104,7 @@ function TitleField({ bridge, title, focusRequest, docId }: { bridge: EditorBrid
   return (
     <textarea
       ref={ref}
-      className="hk-title"
+      className="mb-2 block w-full resize-none overflow-hidden border-0 bg-transparent py-[3px] text-4xl font-bold leading-tight tracking-[-0.01em] text-foreground outline-none placeholder:text-placeholder max-sm:text-3xl"
       rows={1}
       value={title}
       placeholder="Untitled"

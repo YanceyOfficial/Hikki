@@ -5,34 +5,14 @@ import SwiftUI
     import AppKit
 #endif
 
-/// Shared color tokens. Mirrors the CSS variables in editor/src/style.css so native chrome and the
-/// web editor read as one surface. Neutral warm greys (Notion-like) with a single blue accent.
+/// Design tokens live in design/tokens.json; colors are generated into Generated/DesignTokens.swift
+/// (shadcn/ui semantic names: `Theme.background`, `Theme.mutedForeground`, `Theme.sidebarAccent`…).
 ///
 /// `nonisolated`: UIKit/AppKit resolve dynamic colors on SwiftUI's async render thread. With the
 /// module's default MainActor isolation the provider closures trapped there (EXC_BREAKPOINT in
 /// `_swift_task_checkIsolatedSwift`, seen on iPad).
 public nonisolated enum Theme {
-    public static let background = dynamic(light: 0xFFFFFF, dark: 0x191919)
-    public static let sidebar = dynamic(light: 0xF8F8F7, dark: 0x202020)
-    public static let elevated = dynamic(light: 0xFFFFFF, dark: 0x252525)
-    public static let text = dynamic(light: 0x37352F, dark: 0xFFFFFF, darkAlpha: 0.81)
-    public static let secondaryText = dynamic(light: 0x37352F, lightAlpha: 0.65, dark: 0xFFFFFF, darkAlpha: 0.6)
-    public static let mutedText = dynamic(light: 0x37352F, lightAlpha: 0.45, dark: 0xFFFFFF, darkAlpha: 0.443)
-    public static let hover = dynamic(light: 0x37352F, lightAlpha: 0.06, dark: 0xFFFFFF, darkAlpha: 0.055)
-    public static let selected = dynamic(light: 0x37352F, lightAlpha: 0.08, dark: 0xFFFFFF, darkAlpha: 0.08)
-    public static let border = dynamic(light: 0x37352F, lightAlpha: 0.09, dark: 0xFFFFFF, darkAlpha: 0.094)
-    public static let accent = Color(red: 0x23 / 255, green: 0x83 / 255, blue: 0xE2 / 255)
-    public static let danger = dynamic(light: 0xE03E3E, dark: 0xFF7369)
-
-    public enum Metrics {
-        public static let sidebarMinWidth: CGFloat = 240
-        public static let sidebarIdealWidth: CGFloat = 264
-        public static let sidebarMaxWidth: CGFloat = 400
-        public static let rowHeight: CGFloat = 30
-        public static let cornerRadius: CGFloat = 6
-    }
-
-    static func dynamic(light: UInt32, lightAlpha: Double = 1, dark: UInt32, darkAlpha: Double = 1) -> Color {
+    static func dynamic(light: UInt32, lightAlpha: Double, dark: UInt32, darkAlpha: Double) -> Color {
         #if os(iOS)
             Color(UIColor { @Sendable traits in
                 traits.userInterfaceStyle == .dark ? UIColor(hex: dark, alpha: darkAlpha) : UIColor(hex: light, alpha: lightAlpha)
@@ -42,6 +22,13 @@ public nonisolated enum Theme {
                 appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? NSColor(hex: dark, alpha: darkAlpha) : NSColor(hex: light, alpha: lightAlpha)
             })
         #endif
+    }
+}
+
+public extension Font {
+    /// Token-sized system font: `.font(.hk(.sm, .medium))`.
+    static func hk(_ size: TextSize, _ weight: Font.Weight = .regular, design: Font.Design = .default) -> Font {
+        .system(size: size.rawValue, weight: weight, design: design) // design-lint: allow
     }
 }
 

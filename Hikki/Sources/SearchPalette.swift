@@ -14,40 +14,40 @@ struct SearchPalette: View {
     @FocusState private var fieldFocused: Bool
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                Image(systemName: "magnifyingglass").font(.system(size: 16)).foregroundStyle(Theme.mutedText)
+        VStack(spacing: Spacing.s0) {
+            HStack(spacing: Spacing.s2_5) {
+                Image(systemName: "magnifyingglass").font(.hk(.lg)).foregroundStyle(Theme.mutedForeground)
                 TextField("Search pages…", text: $query)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 17))
+                    .font(.hk(.lg))
                     .focused($fieldFocused)
                     .onSubmit(openSelection)
                     .accessibilityIdentifier("search-field")
                 #if os(iOS)
-                    Button("Cancel", action: dismiss).foregroundStyle(Theme.secondaryText)
+                    Button("Cancel", action: dismiss).foregroundStyle(Theme.subtleForeground)
                 #endif
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Spacing.s4)
             .frame(height: 52)
             Theme.border.frame(height: 1)
 
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 1) {
+                    LazyVStack(alignment: .leading, spacing: Spacing.px) {
                         if rows.isEmpty {
                             Text(query.isEmpty ? "No pages yet" : "No results for “\(query)”")
-                                .font(.system(size: 13))
-                                .foregroundStyle(Theme.mutedText)
+                                .font(.hk(.md))
+                                .foregroundStyle(Theme.mutedForeground)
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, 28)
+                                .padding(.vertical, Spacing.s7)
                         }
                         ForEach(sections, id: \.title) { section in
                             Text(section.title)
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(Theme.mutedText)
-                                .padding(.horizontal, 10)
-                                .padding(.top, 10)
-                                .padding(.bottom, 4)
+                                .font(.hk(.sm, .medium))
+                                .foregroundStyle(Theme.mutedForeground)
+                                .padding(.horizontal, Spacing.s2_5)
+                                .padding(.top, Spacing.s2_5)
+                                .padding(.bottom, Spacing.s1)
                             ForEach(section.items, id: \.offset) { index, hit in
                                 SearchResultRow(title: hit.title, icon: hit.icon, snippet: hit.snippet, path: path(of: hit.id),
                                                 query: query, isSelected: index == selection)
@@ -57,7 +57,7 @@ struct SearchPalette: View {
                             }
                         }
                     }
-                    .padding(6)
+                    .padding(Spacing.s1_5)
                 }
                 .scrollIndicators(.automatic)
                 .frame(maxHeight: 420)
@@ -67,17 +67,17 @@ struct SearchPalette: View {
 
             #if os(macOS)
                 Theme.border.frame(height: 1)
-                HStack(spacing: 14) {
+                HStack(spacing: Spacing.s3_5) {
                     hint("↑↓", "Select")
                     hint("↵", "Open")
                     hint("esc", "Close")
                     Spacer()
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Spacing.s4)
                 .frame(height: 34)
             #endif
         }
-        .background(Theme.elevated)
+        .background(Theme.popover)
         .onAppear { fieldFocused = true }
         .onChange(of: query) { _, q in
             results = model.search(q)
@@ -114,15 +114,15 @@ struct SearchPalette: View {
     }
 
     private func hint(_ key: String, _ label: LocalizedStringKey) -> some View {
-        HStack(spacing: 5) {
+        HStack(spacing: Spacing.s1) {
             Text(key)
-                .font(.system(size: 11, weight: .medium))
-                .padding(.horizontal, 5)
-                .padding(.vertical, 1)
-                .background(Theme.hover, in: .rect(cornerRadius: 4))
-            Text(label).font(.system(size: 12))
+                .font(.hk(.xs, .medium))
+                .padding(.horizontal, Spacing.s1)
+                .padding(.vertical, Spacing.px)
+                .background(Theme.accent, in: .rect(cornerRadius: Radius.sm))
+            Text(label).font(.hk(.sm))
         }
-        .foregroundStyle(Theme.mutedText)
+        .foregroundStyle(Theme.mutedForeground)
     }
 
     private func path(of id: String) -> String {
@@ -157,11 +157,11 @@ struct SearchOverlay: View {
                 .onTapGesture { navigator.isSearching = false }
             SearchPalette(navigator: navigator) { navigator.isSearching = false }
                 .frame(maxWidth: 640)
-                .clipShape(.rect(cornerRadius: 12))
-                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.border))
+                .clipShape(.rect(cornerRadius: Radius.xl))
+                .overlay(RoundedRectangle(cornerRadius: Radius.xl).strokeBorder(Theme.border))
                 .shadow(color: .black.opacity(0.35), radius: 30, y: 12)
-                .padding(.horizontal, 24)
-                .padding(.top, 90)
+                .padding(.horizontal, Spacing.s6)
+                .padding(.top, Spacing.s24)
         }
         .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
     }

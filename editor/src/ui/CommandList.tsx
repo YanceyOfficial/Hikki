@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { cn } from './cn'
 
 export type CommandListItem = {
   id: string
@@ -29,9 +30,9 @@ export function CommandList({ items, selectedIndex, emptyText = 'No results', on
   }, [selectedIndex, items])
 
   return (
-    <div className="hk-command-list" role="listbox" ref={listRef}>
+    <div className="hk-command-list flex flex-col gap-px p-1.5" role="listbox" ref={listRef}>
       {items.length === 0 ? (
-        <div className="hk-command-empty">{emptyText}</div>
+        <div className="hk-command-empty p-2 text-md text-muted-foreground">{emptyText}</div>
       ) : (
         items.map((item, index) => (
           <button
@@ -41,16 +42,23 @@ export function CommandList({ items, selectedIndex, emptyText = 'No results', on
             aria-selected={index === selectedIndex}
             aria-label={item.title}
             data-index={index}
-            className="hk-command-item"
+            className={cn(
+              'hk-command-item flex min-h-10 cursor-pointer select-none items-center gap-2.5 rounded-md px-2 py-1 text-left coarse:min-h-12',
+              index === selectedIndex && 'bg-accent',
+            )}
             // Keep editor focus (and the iOS keyboard) when tapping an item.
             onMouseDown={(e) => e.preventDefault()}
             onMouseEnter={() => onHover?.(index)}
             onClick={() => onSelect(index)}
           >
-            {item.icon && <span className="hk-command-icon" aria-hidden>{item.icon}</span>}
-            <span className="hk-command-text">
-              <span className="hk-command-title">{item.title}</span>
-              {item.hint && <span className="hk-command-hint">{item.hint}</span>}
+            {item.icon && (
+              <span className="grid size-10 flex-none place-items-center rounded-md border border-border bg-background text-md font-semibold text-subtle-foreground" aria-hidden>
+                {item.icon}
+              </span>
+            )}
+            <span className="flex min-w-0 flex-col">
+              <span className="hk-command-title text-base text-foreground">{item.title}</span>
+              {item.hint && <span className="truncate text-sm text-muted-foreground">{item.hint}</span>}
             </span>
           </button>
         ))

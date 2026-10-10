@@ -1,10 +1,11 @@
+import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   // Relative URLs: the bundle is served from the app's custom scheme (hikki-editor://app/).
   base: './',
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   build: {
     outDir: '../Hikki/Resources/Editor',
     emptyOutDir: true,

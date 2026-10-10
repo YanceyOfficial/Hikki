@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { cn, ui } from './cn'
 import { loadEmojiCategories, recentEmoji, rememberEmoji, searchEmoji, type EmojiCategory } from './emoji-data'
 
 type Props = {
@@ -48,10 +49,10 @@ export function EmojiPickerPanel({ onSelect, onRemove, onRandom, locale = prefer
   }
 
   return (
-    <div className="hk-emoji-panel">
-      <div className="hk-emoji-toolbar">
+    <div className="flex h-[380px] max-h-[inherit] flex-col">
+      <div className="flex gap-1 px-2.5 pb-1.5 pt-2.5">
         <input
-          className="hk-input"
+          className={ui.input}
           type="search"
           placeholder={t.search}
           value={query}
@@ -62,35 +63,35 @@ export function EmojiPickerPanel({ onSelect, onRemove, onRandom, locale = prefer
           }}
           aria-label={t.search}
         />
-        {onRandom && <button type="button" className="hk-button" onClick={onRandom} title={t.random} aria-label={t.random}>🎲</button>}
-        {onRemove && <button type="button" className="hk-button" onClick={onRemove}>{t.remove}</button>}
+        {onRandom && <button type="button" className={ui.button} onClick={onRandom} title={t.random} aria-label={t.random}>🎲</button>}
+        {onRemove && <button type="button" className={ui.button} onClick={onRemove}>{t.remove}</button>}
       </div>
 
       {categories && !query && (
-        <div className="hk-emoji-jump" role="tablist">
+        <div className="flex justify-between border-b border-border px-2.5 pb-1.5" role="tablist">
           {categories.map((c) => (
-            <button key={c.key} type="button" role="tab" title={c.label} aria-label={c.label} onClick={() => jump(c.key)}>
+            <button key={c.key} type="button" role="tab" className="grid h-6.5 w-7 cursor-pointer place-items-center rounded-md font-emoji text-base opacity-70 grayscale hover:bg-accent hover:opacity-100 hover:grayscale-0" title={c.label} aria-label={c.label} onClick={() => jump(c.key)}>
               {c.emojis[0]?.emoji}
             </button>
           ))}
         </div>
       )}
 
-      <div className="hk-emoji-scroll" ref={scroller}>
-        {failed && <div className="hk-emoji-status">{t.failed}</div>}
-        {!categories && !failed && <div className="hk-emoji-status">{t.loading}</div>}
-        {results && (results.length ? <EmojiGrid emojis={results} onPick={choose} /> : <div className="hk-emoji-status">{t.empty}</div>)}
+      <div className="relative flex-1 overflow-y-auto overscroll-contain px-2.5 pb-2.5" ref={scroller}>
+        {failed && <Status>{t.failed}</Status>}
+        {!categories && !failed && <Status>{t.loading}</Status>}
+        {results && (results.length ? <EmojiGrid emojis={results} onPick={choose} /> : <Status>{t.empty}</Status>)}
         {categories && !query && (
           <>
             {recent.length > 0 && (
               <section>
-                <h3 className="hk-emoji-category">{t.recent}</h3>
+                <CategoryTitle>{t.recent}</CategoryTitle>
                 <EmojiGrid emojis={recent.map((emoji) => ({ emoji, label: emoji }))} onPick={choose} />
               </section>
             )}
             {categories.map((c) => (
-              <section key={c.key} className="hk-emoji-section">
-                <h3 className="hk-emoji-category" data-category={c.key}>{c.label}</h3>
+              <section key={c.key} className="[contain-intrinsic-size:auto_400px] [content-visibility:auto]">
+                <CategoryTitle category={c.key}>{c.label}</CategoryTitle>
                 <EmojiGrid emojis={c.emojis} onPick={choose} />
               </section>
             ))}
@@ -103,14 +104,26 @@ export function EmojiPickerPanel({ onSelect, onRemove, onRandom, locale = prefer
 
 function EmojiGrid({ emojis, onPick }: { emojis: { emoji: string; label: string }[]; onPick: (emoji: string) => void }) {
   return (
-    <div className="hk-emoji-grid">
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(34px,1fr))]">
       {emojis.map((e) => (
-        <button key={e.emoji} type="button" className="hk-emoji" title={e.label} aria-label={e.label} onClick={() => onPick(e.emoji)}>
+        <button key={e.emoji} type="button" className="hk-emoji grid aspect-square cursor-pointer place-items-center rounded-md font-emoji text-2xl leading-none hover:bg-accent focus-visible:bg-accent focus-visible:outline-none" title={e.label} aria-label={e.label} onClick={() => onPick(e.emoji)}>
           {e.emoji}
         </button>
       ))}
     </div>
   )
+}
+
+function CategoryTitle({ category, children }: { category?: string; children: string }) {
+  return (
+    <h3 className={cn('sticky top-0 z-10 m-0 bg-popover px-0.5 pb-1.5 pt-2.5 text-sm font-medium text-muted-foreground')} data-category={category}>
+      {children}
+    </h3>
+  )
+}
+
+function Status({ children }: { children: string }) {
+  return <div className="p-7 text-center text-md text-muted-foreground">{children}</div>
 }
 
 function preferredLocale(): 'en' | 'zh' {

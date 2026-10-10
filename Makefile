@@ -3,11 +3,20 @@ export PATH := $(shell echo "$$PATH" | tr ':' '\n' | grep -v swiftly | paste -sd
 
 IOS_SIM ?= generic/platform=iOS Simulator
 
-.PHONY: bootstrap editor generate test test-web test-core test-core-ios build-mac build-ios check
+.PHONY: bootstrap tokens lint-design editor generate test test-web test-core test-core-ios build-mac build-ios check
 
 bootstrap:
 	cd editor && pnpm install
 	tuist install
+
+# Design tokens: edit design/tokens.json, then regenerate Swift + the Tailwind theme.
+tokens:
+	node scripts/gen-tokens.mjs
+
+# Fails on stale generated tokens or on literal colors/fonts/spacing in view code.
+lint-design:
+	node scripts/gen-tokens.mjs --check
+	scripts/lint-design.sh
 
 editor:
 	cd editor && pnpm build
@@ -27,7 +36,7 @@ test-core:
 test-core-ios:
 	tuist test HikkiCore --platform ios
 
-test: test-web test-core
+test: lint-design test-web test-core
 
 build-mac: generate
 	xcodebuild -workspace Hikki.xcworkspace -scheme Hikki -destination 'platform=macOS' build -quiet

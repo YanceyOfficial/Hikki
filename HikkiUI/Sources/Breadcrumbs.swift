@@ -23,25 +23,25 @@ public struct Breadcrumbs: View {
     }
 
     public var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: Spacing.s0) {
             ForEach(Array(visible.enumerated()), id: \.offset) { index, entry in
                 if index > 0 {
-                    Text("/").font(.system(size: 13)).foregroundStyle(Theme.mutedText).padding(.horizontal, 2)
+                    Text("/").font(.hk(.md)).foregroundStyle(Theme.mutedForeground).padding(.horizontal, Spacing.s0_5)
                 }
                 switch entry {
                 case .ellipsis:
-                    Text("…").font(.system(size: 13)).foregroundStyle(Theme.mutedText).padding(.horizontal, 4)
+                    Text("…").font(.hk(.md)).foregroundStyle(Theme.mutedForeground).padding(.horizontal, Spacing.s1)
                 case .crumb(let crumb, let isLast):
                     Button { if !isLast { onSelect(crumb.id) } } label: {
-                        HStack(spacing: 5) {
+                        HStack(spacing: Spacing.s1) {
                             if crumb.icon != nil { PageIcon(crumb.icon, size: 13) }
                             Text(crumb.title.isEmpty ? String(localized: "Untitled") : crumb.title)
-                                .font(.system(size: 13, weight: isLast ? .medium : .regular))
-                                .foregroundStyle(isLast ? Theme.text : Theme.secondaryText)
+                                .font(.hk(.md, isLast ? .medium : .regular))
+                                .foregroundStyle(isLast ? Theme.foreground : Theme.subtleForeground)
                                 .lineLimit(1)
                         }
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
+                        .padding(.horizontal, Spacing.s1_5)
+                        .padding(.vertical, Spacing.s1)
                         .contentShape(.rect)
                     }
                     .buttonStyle(HoverHighlightStyle())
@@ -83,8 +83,8 @@ public struct BarIconButton: View {
         Button(action: action) {
             Label(title, systemImage: systemImage)
                 .labelStyle(.iconOnly)
-                .font(.system(size: 14))
-                .foregroundStyle(tint ?? Theme.secondaryText)
+                .font(.hk(.base))
+                .foregroundStyle(tint ?? Theme.subtleForeground)
                 .frame(width: 28, height: 28)
                 .contentShape(.rect)
         }

@@ -14,17 +14,17 @@ public struct KeyboardAccessoryBar<Tools: View>: View {
     }
 
     public var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: Spacing.s0) {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 2) { tools }
-                    .padding(.horizontal, 8)
+                HStack(spacing: Spacing.s0_5) { tools }
+                    .padding(.horizontal, Spacing.s2)
             }
             // Fades tools out under the pinned button instead of cutting them off.
             .mask(
                 LinearGradient(stops: [.init(color: .black, location: 0.9), .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing)
             )
             KeyboardDismissButton(action: onDismiss)
-                .padding(.trailing, 8)
+                .padding(.trailing, Spacing.s2)
         }
         .frame(height: Self.height)
         .background(.bar)

@@ -1,6 +1,7 @@
 import { autoUpdate, computePosition, flip, offset, shift, size, type Placement } from '@floating-ui/dom'
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { cn, ui } from './cn'
 
 type Props = {
   anchor: HTMLElement | null
@@ -67,7 +68,7 @@ export function Popover({ anchor, open, onClose, placement = 'bottom-start', cla
 
   if (!open) return null
   return createPortal(
-    <div ref={ref} role="dialog" aria-label={label} className={`hk-floating hk-popover ${className}`}>
+    <div ref={ref} role="dialog" aria-label={label} className={cn(ui.floating, 'max-w-[calc(100vw-16px)]', className)}>
       {children}
     </div>,
     document.body,

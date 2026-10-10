@@ -12,6 +12,7 @@ let baseSettings: SettingsDictionary = [
 
 let project = Project(
     name: "Hikki",
+    organizationName: "Yancey Inc.",
     settings: .settings(base: baseSettings),
     targets: [
         .target(
@@ -22,6 +23,7 @@ let project = Project(
             deploymentTargets: deploymentTargets,
             infoPlist: .extendingDefault(with: [
                 "CFBundleDisplayName": "Hikki",
+                "NSHumanReadableCopyright": "Copyright © 2026 Yancey Inc. All rights reserved.",
                 "UILaunchScreen": [:],
                 "UIApplicationSceneManifest": ["UIApplicationSupportsMultipleScenes": true],
             ]),

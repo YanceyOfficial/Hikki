@@ -16,16 +16,16 @@ struct TrashView: View {
                     .listRowBackground(Color.clear)
             }
             ForEach(filtered) { page in
-                HStack(spacing: 8) {
+                HStack(spacing: Spacing.s2) {
                     PageIcon(page.icon)
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: Spacing.s0_5) {
                         Text(page.title.isEmpty ? String(localized: "Untitled") : page.title)
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(Theme.text)
+                            .font(.hk(.base, .medium))
+                            .foregroundStyle(Theme.foreground)
                         if let deletedAt = page.deletedAt {
                             Text("Deleted \(deletedAt, format: .relative(presentation: .named))")
-                                .font(.system(size: 12))
-                                .foregroundStyle(Theme.mutedText)
+                                .font(.hk(.sm))
+                                .foregroundStyle(Theme.mutedForeground)
                         }
                     }
                     Spacer()
@@ -38,10 +38,10 @@ struct TrashView: View {
                         .buttonStyle(.borderless)
                         .help("Delete permanently")
                 }
-                .padding(.vertical, 2)
+                .padding(.vertical, Spacing.s0_5)
                 .swipeActions(edge: .trailing) {
                     Button("Delete", role: .destructive) { pendingDelete = page }
-                    Button("Restore") { model.restore(id: page.id) }.tint(Theme.accent)
+                    Button("Restore") { model.restore(id: page.id) }.tint(Theme.primary)
                 }
             }
         }

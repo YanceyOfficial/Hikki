@@ -21,7 +21,7 @@ public struct ToolbarIconButton: View {
                 .labelStyle(.iconOnly)
                 .frame(width: 40, height: 36)
                 .foregroundStyle(isActive ? Color.accentColor : .primary)
-                .background(isActive ? Color.accentColor.opacity(0.12) : .clear, in: .rect(cornerRadius: 8))
+                .background(isActive ? Color.accentColor.opacity(0.12) : .clear, in: .rect(cornerRadius: Radius.lg))
                 .contentShape(.rect)
         }
         .buttonStyle(.plain)

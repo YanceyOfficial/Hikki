@@ -28,20 +28,20 @@ public struct SidebarNavBar<Trailing: View>: View {
     }
 
     public var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: Spacing.s1) {
             ForEach(items) { item in
                 Button(action: item.action) {
-                    HStack(spacing: 6) {
+                    HStack(spacing: Spacing.s1_5) {
                         Image(systemName: item.systemImage)
-                            .font(.system(size: 15, weight: item.isSelected ? .semibold : .regular))
+                            .font(.hk(.base, item.isSelected ? .semibold : .regular))
                         if item.isSelected {
-                            Text(item.title).font(.system(size: 14, weight: .semibold)).lineLimit(1)
+                            Text(item.title).font(.hk(.base, .semibold)).lineLimit(1)
                         }
                     }
-                    .foregroundStyle(item.isSelected ? Theme.text : Theme.secondaryText)
-                    .padding(.horizontal, item.isSelected ? 12 : 8)
+                    .foregroundStyle(item.isSelected ? Theme.foreground : Theme.subtleForeground)
+                    .padding(.horizontal, item.isSelected ? Spacing.s3 : Spacing.s2)
                     .frame(height: 32)
-                    .background(item.isSelected ? Theme.selected : .clear, in: .capsule)
+                    .background(item.isSelected ? Theme.accentStrong : .clear, in: .capsule)
                     .contentShape(.capsule)
                 }
                 .buttonStyle(HoverCapsuleStyle())
@@ -70,7 +70,7 @@ public struct HoverCapsuleStyle: ButtonStyle {
 
         var body: some View {
             configuration.label
-                .background(Capsule().fill(configuration.isPressed ? Theme.selected : hovering ? Theme.hover : .clear))
+                .background(Capsule().fill(configuration.isPressed ? Theme.accentStrong : hovering ? Theme.accent : .clear))
                 .onHover { hovering = $0 }
         }
     }
@@ -92,22 +92,22 @@ public struct SidebarActionPill: View {
 
     public var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: systemImage).font(.system(size: 14))
-                Text(title).font(.system(size: 14, weight: .medium))
+            HStack(spacing: Spacing.s2) {
+                Image(systemName: systemImage).font(.hk(.base))
+                Text(title).font(.hk(.base, .medium))
                 if let shortcut {
                     Text(shortcut)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(Theme.mutedText)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(Theme.hover, in: .rect(cornerRadius: 4))
+                        .font(.hk(.xs, .medium))
+                        .foregroundStyle(Theme.mutedForeground)
+                        .padding(.horizontal, Spacing.s1)
+                        .padding(.vertical, Spacing.s0_5)
+                        .background(Theme.accent, in: .rect(cornerRadius: Radius.sm))
                 }
             }
-            .foregroundStyle(Theme.text)
+            .foregroundStyle(Theme.foreground)
             .frame(maxWidth: .infinity)
             .frame(height: 40)
-            .background(Theme.elevated, in: .capsule)
+            .background(Theme.popover, in: .capsule)
             .overlay(Capsule().strokeBorder(Theme.border))
             .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
             .contentShape(.capsule)

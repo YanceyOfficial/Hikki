@@ -12,6 +12,7 @@ struct ContentView: View {
     @State private var editor = EditorController()
     @State private var navigator = Navigator()
     @State private var columns: NavigationSplitViewVisibility = .all
+    @State private var chrome = ChromeMetrics()
     @SceneStorage("tabs") private var storedTabs: Data?
 
     var body: some View {
@@ -19,7 +20,7 @@ struct ContentView: View {
         NavigationSplitView(columnVisibility: $columns) {
             SidebarView(navigator: navigator, customChrome: customChrome)
                 .navigationSplitViewColumnWidth(
-                    min: Theme.Metrics.sidebarMinWidth, ideal: Theme.Metrics.sidebarIdealWidth, max: Theme.Metrics.sidebarMaxWidth
+                    min: Size.sidebarMin, ideal: Size.sidebarIdeal, max: Size.sidebarMax
                 )
         } detail: {
             DetailView(navigator: navigator, editor: editor, customChrome: customChrome,
@@ -29,7 +30,7 @@ struct ContentView: View {
         #if os(macOS)
         .toolbar(removing: .sidebarToggle)
         // Our tab bar / sidebar header replace the window toolbar (see WindowChrome).
-        .background(WindowChrome())
+        .background(WindowChrome { chrome = $0 })
         #endif
         .sheet(isPresented: customChrome ? .constant(false) : $navigator.isSearching) {
             SearchPalette(navigator: navigator) { navigator.isSearching = false }
@@ -74,9 +75,10 @@ struct ContentView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase != .active { Task { await editor.flush(reason: "scenePhase-\(phase)") } }
         }
+        .environment(\.chromeMetrics, chrome)
         .focusedSceneValue(\.editor, editor)
         .focusedSceneValue(\.navigator, navigator)
-        .tint(Theme.accent)
+        .tint(Theme.primary)
     }
 
     /// Notion-style tab bar + page bar instead of the system toolbar (Mac and iPad); iPhone keeps the nav bar.
@@ -97,9 +99,10 @@ private struct DetailView: View {
     let customChrome: Bool
     let sidebarHidden: Bool
     let toggleSidebar: () -> Void
+    @Environment(\.chromeMetrics) private var chromeMetrics
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: Spacing.s0) {
             if customChrome {
                 tabBar
                 PageBar(route: navigator.route, navigator: navigator)
@@ -139,7 +142,7 @@ private struct DetailView: View {
             onForward: navigator.goForward
         ) {
             #if os(macOS)
-                if sidebarHidden { Color.clear.frame(width: 64) } // traffic lights
+                if sidebarHidden { Color.clear.frame(width: max(0, chromeMetrics.leadingInset - Spacing.s2)) } // traffic lights
             #endif
             SidebarIconButton(sidebarHidden ? "Show Sidebar" : "Hide Sidebar", systemImage: "sidebar.left", action: toggleSidebar)
         }

@@ -7,12 +7,12 @@ struct SidebarItemBackground: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .padding(.horizontal, 8)
+            .padding(.horizontal, Spacing.s2)
             .background(
-                RoundedRectangle(cornerRadius: Theme.Metrics.cornerRadius)
-                    .fill(isSelected ? Theme.selected : hovering ? Theme.hover : .clear)
+                RoundedRectangle(cornerRadius: Radius.md)
+                    .fill(isSelected ? Theme.accentStrong : hovering ? Theme.accent : .clear)
             )
-            .padding(.horizontal, 6)
+            .padding(.horizontal, Spacing.s1_5)
             .onHover { hovering = $0 }
     }
 }

@@ -1,5 +1,6 @@
 import { useState, useSyncExternalStore } from 'react'
 import type { EditorBridge } from '../bridge'
+import { cn } from '../ui/cn'
 
 /**
  * Notion-style outline on the right edge: a stack of short bars (one per heading, indented by level)
@@ -13,22 +14,22 @@ export function Outline({ bridge }: { bridge: EditorBridge }) {
 
   return (
     <nav
-      className={`hk-outline ${open ? 'is-open' : ''}`}
+      className="fixed right-4 top-1/2 z-20 flex -translate-y-1/2 justify-end max-[1000px]:hidden"
       aria-label="Outline"
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
       onFocus={() => setOpen(true)}
       onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false) }}
     >
-      <div className="hk-outline-bars" aria-hidden>
+      <div className={cn('flex flex-col items-end gap-2.5 px-1 py-2', open && 'hidden')} aria-hidden>
         {headings.map((h) => (
-          <span key={h.pos} className="hk-outline-bar" style={{ width: `${16 - (h.level - minLevel) * 4}px` }} />
+          <span key={h.pos} className="h-0.5 rounded-full bg-placeholder" style={{ width: `${16 - (h.level - minLevel) * 4}px` }} />
         ))}
       </div>
-      <ol className="hk-outline-panel">
+      <ol className={cn('m-0 max-h-[60vh] w-60 list-none overflow-y-auto rounded-xl bg-popover p-2 shadow-popover', !open && 'hidden')}>
         {headings.map((h) => (
           <li key={h.pos} style={{ paddingLeft: `${(h.level - minLevel) * 12}px` }}>
-            <button type="button" onClick={() => bridge.scrollToHeading(h.pos)}>{h.text}</button>
+            <button type="button" className="block w-full cursor-pointer truncate rounded-md px-2 py-1 text-left text-md text-subtle-foreground hover:bg-accent hover:text-foreground" onClick={() => bridge.scrollToHeading(h.pos)}>{h.text}</button>
           </li>
         ))}
       </ol>

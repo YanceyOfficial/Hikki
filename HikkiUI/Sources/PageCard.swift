@@ -13,27 +13,27 @@ public struct PageCard: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Theme.hover.frame(height: 36)
-            VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: Spacing.s0) {
+            Theme.accent.frame(height: 36)
+            VStack(alignment: .leading, spacing: Spacing.s1_5) {
                 PageIcon(icon, size: 20)
-                    .offset(y: -18)
-                    .padding(.bottom, -18)
+                    .offset(y: -Spacing.s4)
+                    .padding(.bottom, -Spacing.s4)
                 Text(title.isEmpty ? String(localized: "Untitled") : title)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Theme.text)
+                    .font(.hk(.base, .semibold))
+                    .foregroundStyle(Theme.foreground)
                     .lineLimit(2, reservesSpace: true)
                 Text(subtitle)
-                    .font(.system(size: 12))
-                    .foregroundStyle(Theme.mutedText)
+                    .font(.hk(.sm))
+                    .foregroundStyle(Theme.mutedForeground)
             }
-            .padding(12)
+            .padding(Spacing.s3)
         }
         .frame(width: 148, alignment: .leading)
-        .background(Theme.elevated, in: .rect(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.border))
-        .clipShape(.rect(cornerRadius: 12))
-        .contentShape(.rect(cornerRadius: 12))
+        .background(Theme.popover, in: .rect(cornerRadius: Radius.xl))
+        .overlay(RoundedRectangle(cornerRadius: Radius.xl).strokeBorder(Theme.border))
+        .clipShape(.rect(cornerRadius: Radius.xl))
+        .contentShape(.rect(cornerRadius: Radius.xl))
     }
 }
 

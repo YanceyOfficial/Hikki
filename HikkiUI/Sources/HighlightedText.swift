@@ -23,7 +23,7 @@ public struct HighlightedText: View {
             if let lower = AttributedString.Index(range.lowerBound, within: result),
                let upper = AttributedString.Index(range.upperBound, within: result) {
                 result[lower..<upper].inlinePresentationIntent = .stronglyEmphasized
-                result[lower..<upper].foregroundColor = Theme.text
+                result[lower..<upper].foregroundColor = Theme.foreground
             }
             searchRange = range.upperBound..<text.endIndex
         }
