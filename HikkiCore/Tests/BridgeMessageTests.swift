@@ -1,0 +1,47 @@
+import Foundation
+@testable import HikkiCore
+import Testing
+
+struct BridgeMessageTests {
+    /// Shapes exactly as WebKit bridges a JS object literal (NSDictionary / NSNumber).
+    @Test func decodesReady() throws {
+        let body: NSDictionary = ["type": "ready", "protocolVersion": NSNumber(value: 1)]
+        #expect(try BridgeMessage.decode(scriptMessageBody: body) == .ready(protocolVersion: BridgeProtocol.version))
+    }
+
+    @Test func decodesChangedWithOpaqueContent() throws {
+        let content: NSDictionary = ["type": "doc", "content": [["type": "paragraph", "attrs": ["level": 1, "checked": true]]]]
+        let body: NSDictionary = [
+            "type": "changed",
+            "snapshot": ["docId": "a", "content": content, "title": "会议", "text": "会议", "wordCount": 2],
+        ]
+        guard case .changed(let snapshot) = try BridgeMessage.decode(scriptMessageBody: body) else {
+            Issue.record("expected .changed")
+            return
+        }
+        #expect(snapshot.docId == "a")
+        #expect(snapshot.title == "会议")
+        #expect(snapshot.content == .object([
+            "type": .string("doc"),
+            "content": .array([.object(["type": .string("paragraph"), "attrs": .object(["level": .number(1), "checked": .bool(true)])])]),
+        ]))
+    }
+
+    @Test func decodesLogAndActiveFormats() throws {
+        #expect(try BridgeMessage.decode(scriptMessageBody: ["type": "log", "level": "warn", "message": "m"] as NSDictionary)
+            == .log(level: .warn, message: "m", context: nil))
+        #expect(try BridgeMessage.decode(scriptMessageBody: ["type": "activeFormats", "active": ["bold"]] as NSDictionary)
+            == .activeFormats(["bold"]))
+    }
+
+    @Test func rejectsUnknownTypesAndNonJSON() {
+        #expect(throws: BridgeError.unknownType("nope")) { try BridgeMessage.decode(scriptMessageBody: ["type": "nope"] as NSDictionary) }
+        #expect(throws: BridgeError.notJSON) { try BridgeMessage.decode(scriptMessageBody: "just a string") }
+    }
+
+    @Test func jsonValueRoundTripsIntegersWithoutTurningThemIntoFloats() throws {
+        let original = Data(#"{"a":[1,2.5,true,null,"x"]}"#.utf8)
+        let value = try JSONValue(jsonData: original)
+        #expect(String(decoding: try value.jsonData(), as: UTF8.self) == #"{"a":[1,2.5,true,null,"x"]}"#)
+    }
+}

@@ -1,0 +1,14 @@
+# Tuist / Xcode
+*.xcodeproj
+*.xcworkspace
+Derived/
+.build/
+Tuist/.build/
+xcuserdata/
+# Web editor
+editor/node_modules/
+editor/test-results/
+# Generated editor bundle (built by `make editor`)
+Hikki/Resources/Editor/*
+!Hikki/Resources/Editor/.gitkeep
+.DS_Store
