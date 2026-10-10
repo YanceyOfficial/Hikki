@@ -26,6 +26,9 @@ final class Navigator {
     }
     var isSearching = false
     var expanded: Set<String> = []
+    /// Sidebar drag state: the page being dragged and where it would land (for the drop indicator).
+    var draggingPageID: String?
+    var dropIndicator: (pageID: String, zone: DropZone)?
     @ObservationIgnored private(set) weak var model: AppModel?
 
     var route: Route { tabs.route }

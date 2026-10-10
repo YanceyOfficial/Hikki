@@ -10,7 +10,7 @@ public struct SidebarSectionHeader: View {
 
     public var body: some View {
         Text(title)
-            .font(.hk(.sm, .medium))
+            .font(.hk(.xs, .medium))
             .foregroundStyle(Theme.mutedForeground)
             .textCase(nil)
     }

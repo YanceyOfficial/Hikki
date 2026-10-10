@@ -7,6 +7,10 @@ import {
   useSyncExternalStore
 } from 'react'
 
+import { Button } from '@/components/ui/button'
+import { ButtonGroup } from '@/components/ui/button-group'
+import { Popover as CoverPopover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+
 import type { EditorBridge } from '../bridge'
 import { cn, ui } from '../ui/cn'
 import { EmojiPickerPanel } from '../ui/EmojiPickerPanel'
@@ -18,19 +22,15 @@ import { coverBackground, randomGradient, randomIcon } from './covers'
 export function PageHeader({ bridge }: { bridge: EditorBridge }) {
   const page = useSyncExternalStore(bridge.page.subscribe, bridge.page.get)
   const [iconAnchor, setIconAnchor] = useState<HTMLElement | null>(null)
-  const [coverAnchor, setCoverAnchor] = useState<HTMLElement | null>(null)
   const [iconOpen, setIconOpen] = useState(false)
-  const [coverOpen, setCoverOpen] = useState(false)
   const background = coverBackground(page.cover)
   const closeIcon = useCallback(() => setIconOpen(false), [])
-  const closeCover = useCallback(() => setCoverOpen(false), [])
 
   if (!page.docId) return null
 
   const uploadCover = async (file: File) => {
     const ext = file.name.split('.').pop()?.toLowerCase() || file.type.split('/')[1] || 'png'
     bridge.setCover(await bridge.saveAsset(file, ext))
-    setCoverOpen(false)
   }
 
   return (
@@ -41,19 +41,38 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
           style={{ background }}
           data-testid="cover"
         >
-          <div className="absolute right-[max(16px,calc((100%-var(--size-column))/2-64px))] bottom-3 flex gap-1.5 opacity-0 transition-opacity group-focus-within/cover:opacity-100 group-hover/cover:opacity-100 touch:opacity-100">
-            <button
-              type="button"
-              className={ui.chip}
-              ref={setCoverAnchor}
-              onClick={() => setCoverOpen((o) => !o)}
+          {/* Notion-style button group, top right; visible on hover (always on touch / while open). */}
+          <ButtonGroup className="absolute top-3 right-3 opacity-0 transition-opacity group-focus-within/cover:opacity-100 group-hover/cover:opacity-100 has-aria-expanded:opacity-100 touch:opacity-100">
+            <CoverPopover>
+              <PopoverTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-popover text-popover-foreground shadow-sm dark:bg-popover"
+                  />
+                }
+              >
+                Change cover
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-[440px] max-w-[calc(100vw-16px)] gap-0 p-0">
+                <CoverPicker
+                  current={page.cover}
+                  onSelect={(cover) => bridge.setCover(cover)}
+                  onRemove={() => bridge.setCover(null)}
+                  onUpload={uploadCover}
+                />
+              </PopoverContent>
+            </CoverPopover>
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-popover text-popover-foreground shadow-sm dark:bg-popover"
+              onClick={() => bridge.setCover(null)}
             >
-              Change cover
-            </button>
-            <button type="button" className={ui.chip} onClick={() => bridge.setCover(null)}>
               Remove
-            </button>
-          </div>
+            </Button>
+          </ButtonGroup>
         </div>
       )}
       <div className={cn(ui.column, background ? 'pt-0' : 'pt-18')}>
@@ -117,24 +136,6 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
             bridge.setIcon(null)
             setIconOpen(false)
           }}
-        />
-      </Popover>
-      <Popover
-        anchor={coverAnchor}
-        open={coverOpen && !!background}
-        onClose={closeCover}
-        label="Choose cover"
-        placement="bottom-end"
-        className="w-[420px]"
-      >
-        <CoverPicker
-          current={page.cover}
-          onSelect={(cover) => bridge.setCover(cover)}
-          onRemove={() => {
-            bridge.setCover(null)
-            setCoverOpen(false)
-          }}
-          onUpload={uploadCover}
         />
       </Popover>
     </header>

@@ -20,11 +20,11 @@ public struct PageCard: View {
                     .offset(y: -Spacing.s4)
                     .padding(.bottom, -Spacing.s4)
                 Text(title.isEmpty ? String(localized: "Untitled") : title)
-                    .font(.hk(.base, .semibold))
+                    .font(.hk(.sm, .semibold))
                     .foregroundStyle(Theme.foreground)
                     .lineLimit(2, reservesSpace: true)
                 Text(subtitle)
-                    .font(.hk(.sm))
+                    .font(.hk(.xs))
                     .foregroundStyle(Theme.mutedForeground)
             }
             .padding(Spacing.s3)

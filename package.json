@@ -2,7 +2,8 @@
   "name": "hikki",
   "private": true,
   "workspaces": [
-    "editor"
+    "editor",
+    "bff"
   ],
   "scripts": {
     "prepare": "husky",

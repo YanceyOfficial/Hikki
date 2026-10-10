@@ -100,7 +100,7 @@ struct PageMoreMenu: View {
             Text("Edited \(page.updatedAt, format: .relative(presentation: .named))")
         } label: {
             Image(systemName: "ellipsis")
-                .font(.hk(.base))
+                .font(.hk(.sm))
                 .foregroundStyle(Theme.subtleForeground)
                 .frame(width: 28, height: 28)
                 .contentShape(.rect)

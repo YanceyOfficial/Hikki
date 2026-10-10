@@ -22,11 +22,11 @@ struct TrashView: View {
                     PageIcon(page.icon)
                     VStack(alignment: .leading, spacing: Spacing.s0_5) {
                         Text(page.title.isEmpty ? String(localized: "Untitled") : page.title)
-                            .font(.hk(.base, .medium))
+                            .font(.hk(.sm, .medium))
                             .foregroundStyle(Theme.foreground)
                         if let deletedAt = page.deletedAt {
                             Text("Deleted \(deletedAt, format: .relative(presentation: .named))")
-                                .font(.hk(.sm))
+                                .font(.hk(.xs))
                                 .foregroundStyle(Theme.mutedForeground)
                         }
                     }

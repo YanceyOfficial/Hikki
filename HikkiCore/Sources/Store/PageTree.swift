@@ -54,3 +54,55 @@ public struct PageTree: Equatable, Sendable {
         Array(byId.values.sorted { $0.updatedAt > $1.updatedAt }.prefix(limit))
     }
 }
+
+/// Where a dragged sidebar row lands relative to the row under the pointer.
+public enum DropZone: Equatable, Sendable {
+    case before, inside, after
+
+    /// Top quarter → before, bottom quarter → after, the middle → nest inside.
+    public init(y: Double, height: Double) {
+        if y < height * 0.25 {
+            self = .before
+        } else if y > height * 0.75 {
+            self = .after
+        } else {
+            self = .inside
+        }
+    }
+}
+
+extension PageTree {
+    public struct MoveDestination: Equatable, Sendable {
+        public var parentId: String?
+        public var index: Int
+    }
+
+    /// The `DocumentStore.move` arguments for dropping `dragged` onto `target`, or nil when the drop
+    /// is invalid (onto itself or into its own subtree).
+    public func destination(dropping dragged: String, onto target: String, zone: DropZone) -> MoveDestination? {
+        guard dragged != target, page(dragged) != nil, let targetPage = page(target) else { return nil }
+        // The target (or the parent it would land under) must not be inside the dragged subtree.
+        if path(to: target).contains(where: { $0.id == dragged }) { return nil }
+        switch zone {
+        case .inside:
+            return MoveDestination(parentId: target, index: Int.max)
+        case .before, .after:
+            let siblings = children(of: targetPage.parentId).filter { $0 != dragged }
+            guard let position = siblings.firstIndex(of: target) else { return nil }
+            return MoveDestination(parentId: targetPage.parentId, index: zone == .before ? position : position + 1)
+        }
+    }
+
+    /// Child ids of `parentId` (nil = top level) in sidebar order.
+    public func children(of parentId: String?) -> [String] {
+        func find(_ nodes: [PageNode]) -> [PageNode]? {
+            for node in nodes {
+                if node.id == parentId { return node.children }
+                if let found = find(node.children) { return found }
+            }
+            return nil
+        }
+        let nodes = parentId == nil ? roots : (find(roots) ?? [])
+        return nodes.map(\.id)
+    }
+}

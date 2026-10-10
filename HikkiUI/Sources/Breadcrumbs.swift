@@ -85,7 +85,7 @@ public struct BarIconButton: View {
         Button(action: action) {
             Label(title, systemImage: systemImage)
                 .labelStyle(.iconOnly)
-                .font(.hk(.base))
+                .font(.hk(.sm))
                 .foregroundStyle(tint ?? Theme.subtleForeground)
                 .frame(width: 28, height: 28)
                 .contentShape(.rect)

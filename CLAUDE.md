@@ -19,8 +19,14 @@ These rules are mandatory. Automated ones are noted.
   `rounded-md`, `p-2.5`). _Enforced by `make lint-design` (`scripts/lint-design.sh`)._ A justified exception carries
   a `design-lint: allow` comment on the same line.
 - **Reusable UI lives in `HikkiUI`** (no app state: plain values + closures, a `#Preview` each, listed in the DEBUG
-  gallery `Hikki/Sources/ComponentGallery.swift`, launch argument `-HikkiGallery`). Shared web UI lives in
-  `editor/src/ui/`.
+  gallery `Hikki/Sources/ComponentGallery.swift`, launch argument `-HikkiGallery`). Native components follow the same
+  look as the web's shadcn style (`base-vega`: `Radius.md` controls, `Theme.*` colors).
+- **Web UI primitives are shadcn** (style `base-vega`, Base UI primitives, hugeicons; config in `editor/components.json`,
+  components in `editor/src/components/ui/`). Add components only with `cd editor && bun run ui:add <name>` — the
+  wrapper fixes the CLI's wrong `cn` import under TypeScript 7. Prefer a shadcn component over a hand-rolled one;
+  editor-specific pieces live in `editor/src/ui/`.
+- **Secrets stay server-side.** Third-party API keys (Unsplash) live only in the BFF (`bff/`, Hono on Vercel).
+  Unsplash rules: hotlink `urls`, attribute the photographer with utm links, report picks via the download endpoint.
 - **Pre-commit gate.** `.husky/pre-commit` runs lint-staged (oxlint + oxfmt for web files, `swift-format` for
   Swift), `make lint-design lint-docs`, the web typecheck and unit tests. `make check` adds the Swift tests and both
   platform builds. Don't `--no-verify`.
@@ -47,11 +53,12 @@ make generate       # build the editor bundle and generate Hikki.xcworkspace
 make tokens         # regenerate design tokens after editing design/tokens.json
 make lint           # oxlint + swift-format lint --strict
 make fmt            # oxfmt + swift-format format
-make test           # lint, format check, design + docs lint, web typecheck/tests, HikkiCore tests (macOS)
+make test           # lint, format check, design + docs lint, web + BFF typecheck/tests, HikkiCore tests (macOS)
 make test-ui-ios    # XCUITest on the iOS simulator
 make test-ui-mac    # XCUITest on macOS — takes over the screen; don't run while someone is using the Mac
 make check          # test + macOS and iOS builds
 cd editor && bun run dev   # the editor alone in a browser (console-logging bridge)
+cd bff && bun run dev      # the BFF locally (needs UNSPLASH_ACCESS_KEY); the editor reads VITE_HIKKI_BFF_URL
 ```
 
 ## Code Structure
@@ -67,7 +74,9 @@ HikkiCore/Sources/            framework: Store (GRDB/SQLite, page tree, assets, 
                               Bridge (protocol, JSONValue), Logging (file log, MetricKit crash collection)
 HikkiUI/Sources/              framework: reusable SwiftUI components + Theme
 editor/src/                   web editor: bridge, Tiptap extensions, page header, ui primitives
+editor/src/components/ui/     shadcn components (generated via `bun run ui:add`)
 editor/test/                  vitest
+bff/                          backend-for-frontend (Hono, Vercel): Unsplash proxy; tests with `bun test`
 HikkiUITests/                 XCUITest flows
 ```
 

@@ -124,7 +124,7 @@ export function EmojiPickerPanel({
               key={c.key}
               type="button"
               role="tab"
-              className="grid h-6.5 w-7 cursor-pointer place-items-center rounded-md font-emoji text-base opacity-70 grayscale hover:bg-accent hover:opacity-100 hover:grayscale-0"
+              className="grid h-6.5 w-7 cursor-pointer place-items-center rounded-md font-emoji text-sm opacity-70 grayscale hover:bg-accent hover:opacity-100 hover:grayscale-0"
               title={c.label}
               aria-label={c.label}
               onClick={() => jump(c.key)}
@@ -203,7 +203,7 @@ function CategoryTitle({ category, children }: { category?: string; children: st
   return (
     <h3
       className={cn(
-        'sticky top-0 z-10 m-0 bg-popover px-0.5 pb-1.5 pt-2.5 text-sm font-medium text-muted-foreground'
+        'sticky top-0 z-10 m-0 bg-popover px-0.5 pb-1.5 pt-2.5 text-xs font-medium text-muted-foreground'
       )}
       data-category={category}
     >

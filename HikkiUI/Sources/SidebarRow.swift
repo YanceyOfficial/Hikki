@@ -40,14 +40,14 @@ public struct SidebarRow<Actions: View>: View {
         HStack(spacing: Spacing.s2_5) {
             leadingGlyph
             Text(title.isEmpty ? String(localized: "Untitled") : title)
-                .font(.hk(.base, .medium))
+                .font(.hk(.sm, .medium))
                 .foregroundStyle(
                     isSelected ? Theme.sidebarAccentForeground : title.isEmpty ? Theme.mutedForeground : Theme.sidebarForeground
                 )
                 .lineLimit(1)
             Spacer(minLength: 0)
             if let shortcut {
-                Text(shortcut).font(.hk(.sm)).foregroundStyle(Theme.mutedForeground.opacity(hovering ? 1 : 0))
+                Text(shortcut).font(.hk(.xs)).foregroundStyle(Theme.mutedForeground.opacity(hovering ? 1 : 0))
             }
             // Inline and only while hovered (like Notion): the title gives up room then, and
             // there is no mask/gradient to clash with the row's hover highlight.
@@ -89,7 +89,7 @@ public struct SidebarRow<Actions: View>: View {
                 #endif
             } else if let systemImage {
                 Image(systemName: systemImage)
-                    .font(.hk(.base))
+                    .font(.hk(.sm))
                     .foregroundStyle(Theme.subtleForeground)
             } else {
                 PageIcon(icon, size: Size.sidebarIcon)
@@ -115,7 +115,7 @@ public struct SidebarIconButton: View {
         Button(action: action) {
             Label(title, systemImage: systemImage)
                 .labelStyle(.iconOnly)
-                .font(.hk(.sm, .semibold))
+                .font(.hk(.xs, .semibold))
                 .foregroundStyle(Theme.mutedForeground)
                 .frame(width: 22, height: 22)
                 .contentShape(.rect)

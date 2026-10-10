@@ -1,5 +1,6 @@
 import HikkiCore
 import Observation
+import UniformTypeIdentifiers
 import WebKit
 
 /// Owns one long-lived WKWebView running the Tiptap bundle and mediates every bridge call.
@@ -158,6 +159,7 @@ final class EditorController {
         )
         let webView = HikkiWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = navigationDelegate
+        webView.uiDelegate = uiDelegate
         navigationDelegate.owner = self
         #if DEBUG
             webView.isInspectable = true
@@ -179,6 +181,7 @@ final class EditorController {
     }
 
     @ObservationIgnored private let navigationDelegate = NavigationDelegate()
+    @ObservationIgnored private let uiDelegate = EditorUIDelegate()
 }
 
 /// WKUserContentController retains its handlers; this proxy keeps the controller weakly referenced.
@@ -200,6 +203,28 @@ private final class ScriptMessageProxy: NSObject, WKScriptMessageHandlerWithRepl
             return (nil, "\(error)")
         }
     }
+}
+
+/// `<input type="file">` (cover upload): iOS presents the system picker itself, but a macOS WKWebView
+/// does nothing unless the UI delegate shows an open panel.
+private final class EditorUIDelegate: NSObject, WKUIDelegate {
+    #if os(macOS)
+        func webView(
+            _ webView: WKWebView, runOpenPanelWith parameters: WKOpenPanelParameters, initiatedByFrame frame: WKFrameInfo
+        ) async -> [URL]? {
+            let panel = NSOpenPanel()
+            panel.allowsMultipleSelection = parameters.allowsMultipleSelection
+            panel.canChooseDirectories = false
+            panel.allowedContentTypes = [.image]
+            let response: NSApplication.ModalResponse
+            if let window = webView.window {
+                response = await panel.beginSheetModal(for: window)
+            } else {
+                response = panel.runModal()
+            }
+            return response == .OK ? panel.urls : nil
+        }
+    #endif
 }
 
 private final class NavigationDelegate: NSObject, WKNavigationDelegate {

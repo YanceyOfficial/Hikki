@@ -17,8 +17,10 @@ for (const [, path] of text.matchAll(
 const looksLikePath = (s) =>
   /^[\w.-]+(\/[\w.-]+)+\/?$/u.test(s) ||
   /^[\w-]+\.(swift|json|mjs|sh|md|ts|tsx|css|xcconfig)$/u.test(s)
+// Swift design-token references (`Radius.md`, `Theme.background`) are code, not files.
+const isTokenRef = (s) => /^(Theme|Spacing|Radius|Size|TextSize)\./u.test(s)
 const missing = [...candidates].filter(
-  (p) => looksLikePath(p) && !p.startsWith('http') && !existsSync(join(root, p))
+  (p) => looksLikePath(p) && !isTokenRef(p) && !p.startsWith('http') && !existsSync(join(root, p))
 )
 if (missing.length > 0) {
   console.error(`CLAUDE.md references missing paths:\n${missing.map((p) => `  - ${p}`).join('\n')}`)

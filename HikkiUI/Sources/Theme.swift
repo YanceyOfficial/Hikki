@@ -30,7 +30,7 @@ public nonisolated enum Theme {
 }
 
 extension Font {
-    /// Token-sized system font: `.font(.hk(.sm, .medium))`.
+    /// Token-sized system font: `.font(.hk(.xs, .medium))`.
     public static func hk(_ size: TextSize, _ weight: Font.Weight = .regular, design: Font.Design = .default) -> Font {
         .system(size: size.rawValue, weight: weight, design: design)  // design-lint: allow
     }

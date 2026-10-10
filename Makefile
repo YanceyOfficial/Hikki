@@ -3,7 +3,7 @@ export PATH := $(shell echo "$$PATH" | tr ':' '\n' | grep -v swiftly | paste -sd
 
 IOS_SIM ?= generic/platform=iOS Simulator
 
-.PHONY: bootstrap tokens lint lint-design lint-docs fmt fmt-check editor generate test test-web test-core test-core-ios build-mac build-ios check
+.PHONY: bootstrap test-bff tokens lint lint-design lint-docs fmt fmt-check editor generate test test-web test-core test-core-ios build-mac build-ios check
 
 bootstrap:
 	bun install
@@ -45,6 +45,9 @@ generate: editor
 test-web:
 	cd editor && bun run typecheck && bun run test
 
+test-bff:
+	cd bff && bun run typecheck && bun run test
+
 # `tuist test` regenerates a test-focused workspace; regenerate the full one afterwards so the
 # Hikki scheme exists again for builds and UI tests.
 test-core:
@@ -54,7 +57,7 @@ test-core:
 test-core-ios:
 	tuist test HikkiCore --platform ios
 
-test: lint fmt-check lint-design lint-docs test-web test-core
+test: lint fmt-check lint-design lint-docs test-web test-bff test-core
 
 build-mac: generate
 	xcodebuild -workspace Hikki.xcworkspace -scheme Hikki -destination 'platform=macOS' build -quiet

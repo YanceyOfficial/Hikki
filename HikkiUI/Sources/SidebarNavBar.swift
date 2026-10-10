@@ -33,9 +33,9 @@ public struct SidebarNavBar<Trailing: View>: View {
                 Button(action: item.action) {
                     HStack(spacing: Spacing.s1_5) {
                         Image(systemName: item.systemImage)
-                            .font(.hk(.base, item.isSelected ? .semibold : .regular))
+                            .font(.hk(.sm, item.isSelected ? .semibold : .regular))
                         if item.isSelected {
-                            Text(item.title).font(.hk(.base, .semibold)).lineLimit(1)
+                            Text(item.title).font(.hk(.sm, .semibold)).lineLimit(1)
                         }
                     }
                     .foregroundStyle(item.isSelected ? Theme.foreground : Theme.subtleForeground)
@@ -93,11 +93,11 @@ public struct SidebarActionPill: View {
     public var body: some View {
         Button(action: action) {
             HStack(spacing: Spacing.s2) {
-                Image(systemName: systemImage).font(.hk(.base))
-                Text(title).font(.hk(.base, .medium))
+                Image(systemName: systemImage).font(.hk(.sm))
+                Text(title).font(.hk(.sm, .medium))
                 if let shortcut {
                     Text(shortcut)
-                        .font(.hk(.xs, .medium))
+                        .font(.hk(.x2s, .medium))
                         .foregroundStyle(Theme.mutedForeground)
                         .padding(.horizontal, Spacing.s1)
                         .padding(.vertical, Spacing.s0_5)

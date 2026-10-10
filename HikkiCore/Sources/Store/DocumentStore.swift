@@ -236,6 +236,43 @@ public final class DocumentStore: Sendable {
         }
     }
 
+    // MARK: - Moving (sidebar drag and drop)
+
+    public enum MoveError: Error, Equatable {
+        case notFound(String)
+        /// Moving a page into itself or one of its descendants would detach the subtree from the tree.
+        case wouldCreateCycle
+    }
+
+    /// Moves a page under `parentId` (nil = top level) at `index` among its new siblings (clamped).
+    /// Siblings are renumbered 0…n, so order stays exact without fractional keys drifting.
+    /// Moving isn't an edit: `updatedAt` is left alone.
+    public func move(id: String, toParent parentId: String?, at index: Int) throws {
+        try writer.write { db in
+            guard try DocumentRecord.exists(db, key: id) else { throw MoveError.notFound(id) }
+            if let parentId {
+                guard try DocumentRecord.exists(db, key: parentId) else { throw MoveError.notFound(parentId) }
+                let isInsideItself =
+                    try Bool.fetchOne(
+                        db,
+                        sql: """
+                            \(Self.subtreeCTE) SELECT EXISTS (SELECT 1 FROM sub WHERE id = ?)
+                            """, arguments: [id, parentId]) ?? false
+                if isInsideItself { throw MoveError.wouldCreateCycle }
+            }
+            var siblings = try String.fetchAll(
+                db,
+                sql: """
+                    SELECT id FROM document WHERE parentId IS ? AND deletedAt IS NULL AND id != ? ORDER BY sortKey, createdAt, id
+                    """, arguments: [parentId, id])
+            siblings.insert(id, at: min(max(index, 0), siblings.count))
+            try db.execute(sql: "UPDATE document SET parentId = ? WHERE id = ?", arguments: [parentId, id])
+            for (position, sibling) in siblings.enumerated() {
+                try db.execute(sql: "UPDATE document SET sortKey = ? WHERE id = ?", arguments: [Double(position), sibling])
+            }
+        }
+    }
+
     // MARK: - Trash
 
     /// Soft-deletes the page and its whole subtree with one shared timestamp.

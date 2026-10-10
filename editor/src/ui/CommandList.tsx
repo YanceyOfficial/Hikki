@@ -69,9 +69,9 @@ export function CommandList({
               </span>
             )}
             <span className="flex min-w-0 flex-col">
-              <span className="hk-command-title text-base text-foreground">{item.title}</span>
+              <span className="hk-command-title text-sm text-foreground">{item.title}</span>
               {item.hint && (
-                <span className="truncate text-sm text-muted-foreground">{item.hint}</span>
+                <span className="truncate text-xs text-muted-foreground">{item.hint}</span>
               )}
             </span>
           </button>

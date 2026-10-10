@@ -22,6 +22,7 @@ struct SidebarView: View {
 private struct DesktopSidebar: View {
     @Environment(AppModel.self) private var model
     @Bindable var navigator: Navigator
+    @State private var privateTargeted = false
 
     var body: some View {
         VStack(spacing: Spacing.s0) {
@@ -53,6 +54,9 @@ private struct DesktopSidebar: View {
                         SidebarIconButton("New Page", systemImage: "plus") { navigator.newPage() }
                             .accessibilityIdentifier("new-page-section")
                     }
+                    .background(privateTargeted ? Theme.selection : .clear, in: .rect(cornerRadius: Radius.md))
+                    .onDrop(
+                        of: [.plainText], delegate: SectionDropDelegate(navigator: navigator, model: model, isTargeted: $privateTargeted))
                     if model.tree.roots.isEmpty {
                         item(Route?.none, "Add a page", systemImage: "plus") { navigator.newPage() }
                     }
@@ -84,7 +88,7 @@ private struct DesktopSidebar: View {
                     String(localized: title), systemImage: systemImage, isSelected: route != nil && navigator.route == route,
                     shortcut: shortcut)
                 if badge > 0 {
-                    Text("\(badge)").font(.hk(.sm)).foregroundStyle(Theme.mutedForeground)
+                    Text("\(badge)").font(.hk(.xs)).foregroundStyle(Theme.mutedForeground)
                 }
             }
             .contentShape(.rect)
@@ -122,6 +126,7 @@ private struct DesktopTree: View {
 }
 
 private struct DesktopPageRow: View {
+    @Environment(AppModel.self) private var model
     let page: PageSummary
     let depth: Int
     let hasChildren: Bool
@@ -139,11 +144,28 @@ private struct DesktopPageRow: View {
         }
         .contentShape(.rect)
         .onTapGesture { navigator.open(page.id) }
-        .sidebarItemBackground(isSelected: selected)
+        .sidebarItemBackground(isSelected: selected || indicator == .inside, highlight: indicator == .inside ? Theme.selection : nil)
+        .overlay(alignment: indicator == .before ? .top : .bottom) {
+            if indicator == .before || indicator == .after {
+                Theme.primary.frame(height: 2).clipShape(.capsule).padding(.leading, CGFloat(depth) * Spacing.s3_5 + Spacing.s2)
+                    .padding(.trailing, Spacing.s2)
+            }
+        }
+        .onDrag {
+            navigator.draggingPageID = page.id
+            return NSItemProvider(object: page.id as NSString)
+        }
+        .onDrop(of: [.plainText], delegate: PageRowDropDelegate(target: page.id, navigator: navigator, model: model))
         .contextMenu { PageActions(page: page, navigator: navigator) }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("page-row-\(page.title)")
+        // Outline level for VoiceOver (and UI tests): "level 1" at the top, +1 per nesting.
+        .accessibilityValue(expandable ? "level \(depth + 1)" : "")
+    }
+
+    private var indicator: DropZone? {
+        navigator.dropIndicator?.pageID == page.id ? navigator.dropIndicator?.zone : nil
     }
 
     private var expansion: Binding<Bool> {
@@ -151,6 +173,67 @@ private struct DesktopPageRow: View {
             get: { navigator.expanded.contains(page.id) },
             set: { open in if open { navigator.expanded.insert(page.id) } else { navigator.expanded.remove(page.id) } }
         )
+    }
+}
+
+/// Drop handling for one sidebar row: tracks the pointer to show before / inside / after, and
+/// moves the dragged page on drop (validity comes from `PageTree.destination`).
+private struct PageRowDropDelegate: DropDelegate {
+    let target: String
+    let navigator: Navigator
+    let model: AppModel
+
+    private func zone(_ info: DropInfo) -> DropZone? {
+        guard let dragged = navigator.draggingPageID else { return nil }
+        let zone = DropZone(y: info.location.y, height: Size.row)
+        return model.tree.destination(dropping: dragged, onto: target, zone: zone) == nil ? nil : zone
+    }
+
+    func validateDrop(info: DropInfo) -> Bool { zone(info) != nil }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        if let zone = zone(info) {
+            navigator.dropIndicator = (target, zone)
+            return DropProposal(operation: .move)
+        }
+        navigator.dropIndicator = nil
+        return DropProposal(operation: .forbidden)
+    }
+
+    func dropExited(info: DropInfo) {
+        if navigator.dropIndicator?.pageID == target { navigator.dropIndicator = nil }
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        defer {
+            navigator.dropIndicator = nil
+            navigator.draggingPageID = nil
+        }
+        guard let dragged = navigator.draggingPageID, let zone = zone(info) else { return false }
+        let moved = model.movePage(dragged, onto: target, zone: zone)
+        if moved, zone == .inside { navigator.expanded.insert(target) }
+        return moved
+    }
+}
+
+/// Drop onto the "Private" header: move the dragged page to the end of the top level.
+private struct SectionDropDelegate: DropDelegate {
+    let navigator: Navigator
+    let model: AppModel
+    @Binding var isTargeted: Bool
+
+    func validateDrop(info: DropInfo) -> Bool { navigator.draggingPageID != nil }
+    func dropEntered(info: DropInfo) { isTargeted = true }
+    func dropExited(info: DropInfo) { isTargeted = false }
+
+    func performDrop(info: DropInfo) -> Bool {
+        defer {
+            isTargeted = false
+            navigator.draggingPageID = nil
+            navigator.dropIndicator = nil
+        }
+        guard let dragged = navigator.draggingPageID else { return false }
+        return model.movePageToTopLevel(dragged)
     }
 }
 
@@ -194,12 +277,12 @@ private struct WorkspaceHeader: View {
             } label: {
                 HStack(spacing: Spacing.s2) {
                     Text("H")
-                        .font(.hk(.xs, .bold))
+                        .font(.hk(.x2s, .bold))
                         .foregroundStyle(.white)
                         .frame(width: 20, height: 20)
                         .background(Theme.primary.gradient, in: .rect(cornerRadius: Radius.sm))
                     Text("Hikki")
-                        .font(.hk(.base, .semibold))
+                        .font(.hk(.sm, .semibold))
                         .foregroundStyle(Theme.foreground)
                         .lineLimit(1)
                     Image(systemName: "chevron.down")
@@ -339,7 +422,7 @@ struct PageRowMenu: View {
             PageActions(page: page, navigator: navigator)
         } label: {
             Image(systemName: "ellipsis")
-                .font(.hk(.sm, .semibold))
+                .font(.hk(.xs, .semibold))
                 .foregroundStyle(Theme.mutedForeground)
                 .frame(width: 22, height: 22)
                 .contentShape(.rect)

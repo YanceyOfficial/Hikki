@@ -25,23 +25,23 @@ public struct SearchResultRow: View {
             VStack(alignment: .leading, spacing: Spacing.s0_5) {
                 HStack(spacing: Spacing.s1_5) {
                     HighlightedText(title.isEmpty ? String(localized: "Untitled") : title, query: query)
-                        .font(.hk(.base))
+                        .font(.hk(.sm))
                         .foregroundStyle(Theme.foreground)
                         .lineLimit(1)
                     if !path.isEmpty {
-                        Text("— \(path)").font(.hk(.sm)).foregroundStyle(Theme.mutedForeground).lineLimit(1)
+                        Text("— \(path)").font(.hk(.xs)).foregroundStyle(Theme.mutedForeground).lineLimit(1)
                     }
                 }
                 if !snippet.isEmpty {
                     HighlightedText(snippet, query: query)
-                        .font(.hk(.sm))
+                        .font(.hk(.xs))
                         .foregroundStyle(Theme.subtleForeground)
                         .lineLimit(2)
                 }
             }
             Spacer(minLength: 0)
             if isSelected {
-                Image(systemName: "return").font(.hk(.xs)).foregroundStyle(Theme.mutedForeground)
+                Image(systemName: "return").font(.hk(.x2s)).foregroundStyle(Theme.mutedForeground)
             }
         }
         .padding(.horizontal, Spacing.s2_5)

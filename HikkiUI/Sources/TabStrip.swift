@@ -85,7 +85,7 @@ private struct TabButton: View {
     var body: some View {
         HStack(spacing: Spacing.s1_5) {
             if let systemImage = item.systemImage {
-                Image(systemName: systemImage).font(.hk(.sm)).foregroundStyle(Theme.subtleForeground)
+                Image(systemName: systemImage).font(.hk(.xs)).foregroundStyle(Theme.subtleForeground)
             } else {
                 PageIcon(item.icon, size: 13)
             }

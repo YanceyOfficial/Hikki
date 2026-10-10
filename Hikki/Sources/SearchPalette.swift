@@ -16,10 +16,10 @@ struct SearchPalette: View {
     var body: some View {
         VStack(spacing: Spacing.s0) {
             HStack(spacing: Spacing.s2_5) {
-                Image(systemName: "magnifyingglass").font(.hk(.lg)).foregroundStyle(Theme.mutedForeground)
+                Image(systemName: "magnifyingglass").font(.hk(.base)).foregroundStyle(Theme.mutedForeground)
                 TextField("Search pages…", text: $query)
                     .textFieldStyle(.plain)
-                    .font(.hk(.lg))
+                    .font(.hk(.base))
                     .focused($fieldFocused)
                     .onSubmit(openSelection)
                     .accessibilityIdentifier("search-field")
@@ -43,7 +43,7 @@ struct SearchPalette: View {
                         }
                         ForEach(sections, id: \.title) { section in
                             Text(section.title)
-                                .font(.hk(.sm, .medium))
+                                .font(.hk(.xs, .medium))
                                 .foregroundStyle(Theme.mutedForeground)
                                 .padding(.horizontal, Spacing.s2_5)
                                 .padding(.top, Spacing.s2_5)
@@ -121,11 +121,11 @@ struct SearchPalette: View {
     private func hint(_ key: String, _ label: LocalizedStringKey) -> some View {
         HStack(spacing: Spacing.s1) {
             Text(key)
-                .font(.hk(.xs, .medium))
+                .font(.hk(.x2s, .medium))
                 .padding(.horizontal, Spacing.s1)
                 .padding(.vertical, Spacing.px)
                 .background(Theme.accent, in: .rect(cornerRadius: Radius.sm))
-            Text(label).font(.hk(.sm))
+            Text(label).font(.hk(.xs))
         }
         .foregroundStyle(Theme.mutedForeground)
     }

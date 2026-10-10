@@ -78,13 +78,13 @@ public nonisolated enum Radius {
 
 /// Text sizes (Tailwind names; values tuned for UI density). Use with `Font.hk(_:weight:)`.
 public nonisolated enum TextSize: CGFloat, Sendable {
-    case x2s = 10
-    case xs = 11
-    case sm = 12
+    case x2s = 11
+    case xs = 12
     case md = 13
-    case base = 14
-    case lg = 16
-    case xl = 18
+    case sm = 14
+    case base = 16
+    case lg = 18
+    case xl = 20
     case x2l = 24
     case x3l = 30
     case x4l = 40

@@ -10,7 +10,10 @@
     "noUnusedParameters": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": ["src", "test", "vite.config.ts"]
 }

@@ -59,6 +59,19 @@ final class AppModel {
         perform("restore", id) { try store.restore(id: id) }
     }
 
+    /// Sidebar drag and drop. Returns false when the drop is invalid (onto itself / its own subtree).
+    @discardableResult
+    func movePage(_ dragged: String, onto target: String, zone: DropZone) -> Bool {
+        guard let destination = tree.destination(dropping: dragged, onto: target, zone: zone) else { return false }
+        return perform("move page", dragged) { try store.move(id: dragged, toParent: destination.parentId, at: destination.index) } != nil
+    }
+
+    /// Drop onto a section header: to the end of the top level.
+    @discardableResult
+    func movePageToTopLevel(_ dragged: String) -> Bool {
+        perform("move page", dragged) { try store.move(id: dragged, toParent: nil, at: .max) } != nil
+    }
+
     func deletePermanently(id: String) {
         perform("delete permanently", id) { try store.deletePermanently(id: id) }
     }

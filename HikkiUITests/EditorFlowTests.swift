@@ -130,6 +130,38 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(waitOrDumpTree(app.buttons["favorite-toggle"].firstMatch, in: app), "page did not open from search")
     }
 
+    /// iPad (custom sidebar): drag a page onto another to nest it, then onto the top edge to move it back
+    /// out in front. Nesting is read from each row's accessibility value ("level N").
+    func testSidebarDragNestsAndReorders() throws {
+        continueAfterFailure = false
+        let app = launch()
+        guard app.buttons["nav-home"].waitForExistence(timeout: 10) else {
+            throw XCTSkip("needs the custom (regular-width) sidebar — run on iPad or Mac")
+        }
+        createPage(app, title: "Alpha")
+        createPage(app, title: "Beta")
+        let alpha = app.descendants(matching: .any)["page-row-Alpha"].firstMatch
+        let beta = app.descendants(matching: .any)["page-row-Beta"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(beta, in: app))
+        XCTAssertEqual(beta.value as? String, "level 1")
+
+        // Middle of Alpha → Beta becomes its child (indented, listed after Alpha).
+        // Lift, then move slowly and hold over the target — like a person; a fast move after a long
+        // press just leaves the context menu open on touch devices.
+        beta.press(forDuration: 0.6, thenDragTo: alpha, withVelocity: .slow, thenHoldForDuration: 0.6)
+        let nested = NSPredicate { _, _ in (beta.value as? String) == "level 2" && beta.frame.minY > alpha.frame.minY }
+        wait(for: [expectation(for: nested, evaluatedWith: nil)], timeout: 5)
+        attachScreenshot(app, "drag-nested")
+
+        // Top edge of Alpha → Beta goes before Alpha at the top level.
+        let topEdge = alpha.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08))
+        beta.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.6, thenDragTo: topEdge, withVelocity: .slow, thenHoldForDuration: 0.6)
+        let reordered = NSPredicate { _, _ in (beta.value as? String) == "level 1" && beta.frame.minY < alpha.frame.minY }
+        wait(for: [expectation(for: reordered, evaluatedWith: nil)], timeout: 5)
+        attachScreenshot(app, "drag-reordered")
+    }
+
     /// Visual record of the main screens (run on an iPad destination for the regular-width layout).
     func testCaptureScreens() throws {
         let app = launch()
