@@ -28,8 +28,7 @@ struct ContentView: View {
         }
         #if os(macOS)
         .toolbar(removing: .sidebarToggle)
-        // Our tab bar / sidebar header replace the window toolbar entirely.
-        .toolbarVisibility(.hidden, for: .windowToolbar)
+        // Our tab bar / sidebar header replace the window toolbar (see WindowChrome).
         .background(WindowChrome())
         #endif
         .sheet(isPresented: customChrome ? .constant(false) : $navigator.isSearching) {
@@ -48,6 +47,15 @@ struct ContentView: View {
             #if DEBUG
                 // Screenshot/test hooks: HIKKI_OPEN_TABS=pageA,pageB opens those pages as tabs; HIKKI_OPEN_SEARCH opens ⌘K.
                 if ProcessInfo.processInfo.environment["HIKKI_OPEN_SEARCH"] != nil { navigator.isSearching = true }
+                // HIKKI_DEBUG_NAV=a,b,c visits those pages one per second (reproduces page-switch bugs).
+                if let ids = ProcessInfo.processInfo.environment["HIKKI_DEBUG_NAV"]?.split(separator: ",") {
+                    Task {
+                        for id in ids {
+                            try? await Task.sleep(for: .seconds(1))
+                            navigator.open(String(id))
+                        }
+                    }
+                }
                 if let ids = ProcessInfo.processInfo.environment["HIKKI_OPEN_TABS"]?.split(separator: ",") {
                     for (index, id) in ids.enumerated() {
                         if index == 0 { navigator.open(String(id)) } else { navigator.openInNewTab(.page(String(id))) }
