@@ -212,7 +212,7 @@ function UnsplashPane({ onSelect }: { onSelect: Props['onSelect'] }) {
 /** Unsplash guideline: "Photo by <photographer> on <Unsplash>", both linked (utm-tagged). */
 export function PhotoCredit({ photo }: { photo: UnsplashPhoto }) {
   return (
-    <figcaption className="truncate text-xs text-muted-foreground">
+    <figcaption className="line-clamp-2 text-xs leading-snug break-words text-muted-foreground">
       <Trans
         i18nKey="cover.credit"
         values={{ name: photo.author }}
