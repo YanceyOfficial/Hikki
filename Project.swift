@@ -7,7 +7,7 @@ let baseSettings: SettingsDictionary = [
     "SWIFT_VERSION": "6.0",
     "SWIFT_APPROACHABLE_CONCURRENCY": "YES",
     "ENABLE_USER_SCRIPT_SANDBOXING": "YES",
-    "DEVELOPMENT_TEAM": "",
+    "DEVELOPMENT_TEAM": "YLF27G9ZMT",
 ]
 
 let project = Project(
@@ -18,7 +18,7 @@ let project = Project(
             name: "Hikki",
             destinations: destinations,
             product: .app,
-            bundleId: "app.hikki.Hikki",
+            bundleId: "app.yancey.hikki",
             deploymentTargets: deploymentTargets,
             infoPlist: .extendingDefault(with: [
                 "CFBundleDisplayName": "Hikki",
@@ -35,7 +35,7 @@ let project = Project(
             name: "HikkiCore",
             destinations: destinations,
             product: .framework,
-            bundleId: "app.hikki.HikkiCore",
+            bundleId: "app.yancey.hikki.core",
             deploymentTargets: deploymentTargets,
             sources: ["HikkiCore/Sources/**"],
             dependencies: [.external(name: "GRDB")]
@@ -44,10 +44,19 @@ let project = Project(
             name: "HikkiCoreTests",
             destinations: destinations,
             product: .unitTests,
-            bundleId: "app.hikki.HikkiCoreTests",
+            bundleId: "app.yancey.hikki.core.tests",
             deploymentTargets: deploymentTargets,
             sources: ["HikkiCore/Tests/**"],
             dependencies: [.target(name: "HikkiCore")]
+        ),
+        .target(
+            name: "HikkiUITests",
+            destinations: destinations,
+            product: .uiTests,
+            bundleId: "app.yancey.hikki.uitests",
+            deploymentTargets: deploymentTargets,
+            sources: ["HikkiUITests/**"],
+            dependencies: [.target(name: "Hikki")]
         ),
     ]
 )

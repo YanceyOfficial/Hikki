@@ -8,7 +8,11 @@ public struct AppPaths: Sendable {
         self.root = root
     }
 
-    public static func standard() throws -> AppPaths {
+    /// `HIKKI_DATA_DIR` overrides the location (UI tests use a fresh directory per run).
+    public static func standard(environment: [String: String] = ProcessInfo.processInfo.environment) throws -> AppPaths {
+        if let override = environment["HIKKI_DATA_DIR"], !override.isEmpty {
+            return AppPaths(root: URL(filePath: override, directoryHint: .isDirectory))
+        }
         let support = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
         return AppPaths(root: support.appending(path: "Hikki", directoryHint: .isDirectory))
     }

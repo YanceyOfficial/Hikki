@@ -11,6 +11,7 @@ struct ContentView: View {
     var body: some View {
         NavigationSplitView {
             SidebarView(selection: $selection)
+                .navigationSplitViewColumnWidth(min: 200, ideal: 240, max: 360)
         } detail: {
             if selection != nil {
                 EditorView(controller: editor)
@@ -53,6 +54,7 @@ struct SidebarView: View {
                     if let id = model.createDocument() { selection = id }
                 }
                 .keyboardShortcut("n")
+                .accessibilityIdentifier("new-page")
             }
             ToolbarItem {
                 Menu("More", systemImage: "ellipsis.circle") {

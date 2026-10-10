@@ -28,7 +28,7 @@ public final class FileLogSink: Sendable {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let current = directory.appending(path: "hikki.log")
         let size = (try? FileManager.default.attributesOfItem(atPath: current.path)[.size] as? UInt64) ?? 0
-        state = Mutex(State(handle: nil, size: size ?? 0))
+        state = Mutex(State(handle: nil, size: size))
     }
 
     public var currentFile: URL { file(at: 0) }

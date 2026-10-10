@@ -33,6 +33,7 @@ struct HikkiApp: App {
             ContentView()
                 .environment(model)
         }
+        .defaultSize(width: 1100, height: 760)
         .commands { FormatCommands() }
     }
 }

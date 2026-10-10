@@ -31,9 +31,9 @@ struct FileLogSinkTests {
     }
 
     @Test func rotatesAndKeepsAtMostMaxFiles() throws {
-        let one = try JSONEncoder.iso.encode(entry("x")).count + 1
+        let one = try JSONEncoder.iso.encode(entry("x0")).count + 1
         let sink = try FileLogSink(directory: try makeTempDirectory(), maxBytes: UInt64(one * 2), maxFiles: 3)
-        for i in 0..<10 { sink.write(entry("x\(i)".prefix(2).description)) }
+        for i in 0..<10 { sink.write(entry("x\(i)")) }
         let files = sink.files
         #expect(files.map(\.lastPathComponent) == ["hikki.log", "hikki.1.log", "hikki.2.log"])
         #expect(try lines(files[0]).map(\.message) == ["x8", "x9"])

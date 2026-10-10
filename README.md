@@ -1,0 +1,40 @@
+# Hikki
+
+Notion-like editor for macOS, iPhone and iPad: SwiftUI shell + Tiptap editor in a WKWebView.
+
+```
+Hikki/            SwiftUI app (shell, WKWebView host, keyboard toolbar, menus)
+HikkiCore/        Framework: SQLite store (GRDB), bridge protocol, logging, crash collection
+HikkiUITests/     XCUITest end-to-end flows
+editor/           Tiptap 3 web editor (vite → Hikki/Resources/Editor)
+```
+
+## Commands
+
+| | |
+|---|---|
+| `make bootstrap` | install web deps + Swift packages |
+| `make generate` | build the editor bundle and generate the Xcode workspace |
+| `make test` | web unit tests (vitest) + HikkiCore tests (Swift Testing, macOS) |
+| `make test-ui-ios` | end-to-end UI test on the iOS simulator |
+| `make test-ui-mac` | end-to-end UI test on macOS (takes over the screen — don't use the Mac while it runs) |
+| `make check` | tests + macOS and iOS builds |
+
+`cd editor && pnpm dev` runs the editor alone in a browser with a console-logging bridge.
+
+## Observability
+
+- Logs: `Log.info/warn/error` → unified logging (`log stream --predicate 'subsystem == "app.hikki"'`) and
+  rotating JSONL at `Application Support/Hikki/logs/`. Web console warnings/errors and uncaught JS errors are
+  forwarded over the bridge into the same log (category `web`).
+- Crashes: MetricKit diagnostic payloads persisted to `Application Support/Hikki/diagnostics/`; uncaught
+  ObjC exceptions logged synchronously. WebContent process crashes are logged and the editor reloads itself.
+- Sidebar ⋯ → Export Logs shares logs + diagnostics.
+- Debug builds: the editor web view is inspectable from Safari's Develop menu.
+
+## Notes
+
+- Tuist must use Xcode's Swift, not swiftly's; the Makefile strips swiftly from `PATH`.
+- `HIKKI_DATA_DIR` overrides the data directory (UI tests use a fresh one per run).
+- Bridge protocol lives in `editor/src/protocol.ts` and `HikkiCore/Sources/Bridge/BridgeMessage.swift`;
+  bump `PROTOCOL_VERSION` on both sides together.

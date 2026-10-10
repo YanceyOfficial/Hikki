@@ -1,7 +1,7 @@
 # swiftly's toolchain shadows Xcode's and breaks SwiftPM manifest compilation under Tuist.
 export PATH := $(shell echo "$$PATH" | tr ':' '\n' | grep -v swiftly | paste -sd: -)
 
-IOS_SIM ?= platform=iOS Simulator,name=iPhone 17 Pro
+IOS_SIM ?= generic/platform=iOS Simulator
 
 .PHONY: bootstrap editor generate test test-web test-core test-core-ios build-mac build-ios check
 
@@ -19,10 +19,10 @@ test-web:
 	cd editor && pnpm typecheck && pnpm test
 
 test-core:
-	tuist test HikkiCoreTests --platform macos
+	tuist test HikkiCore --platform macos
 
 test-core-ios:
-	tuist test HikkiCoreTests --platform ios
+	tuist test HikkiCore --platform ios
 
 test: test-web test-core
 
@@ -33,3 +33,11 @@ build-ios: generate
 	xcodebuild -workspace Hikki.xcworkspace -scheme Hikki -destination '$(IOS_SIM)' build -quiet
 
 check: test build-mac build-ios
+
+UI_SIM ?= platform=iOS Simulator,OS=26.5,name=iPhone 17 Pro
+
+test-ui-ios: generate
+	xcodebuild -workspace Hikki.xcworkspace -scheme Hikki -destination '$(UI_SIM)' -only-testing:HikkiUITests test -quiet
+
+test-ui-mac: generate
+	xcodebuild -workspace Hikki.xcworkspace -scheme Hikki -destination 'platform=macOS' -only-testing:HikkiUITests test -quiet

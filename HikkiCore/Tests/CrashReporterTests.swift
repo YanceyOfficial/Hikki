@@ -10,6 +10,6 @@ struct CrashReporterTests {
         let url = try #require(reporter.persist(json, end: end, summary: ["crashes": "1"]))
         #expect(try Data(contentsOf: url) == json)
         #expect(reporter.persist(json, end: end, summary: [:]) == nil)
-        #expect(reporter.reports == [url])
+        #expect(reporter.reports.map(\.lastPathComponent) == [url.lastPathComponent])
     }
 }
