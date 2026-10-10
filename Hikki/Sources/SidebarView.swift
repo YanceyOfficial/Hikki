@@ -26,7 +26,7 @@ private struct DesktopSidebar: View {
 
     var body: some View {
         VStack(spacing: Spacing.s0) {
-            WorkspaceHeader()
+            WorkspaceHeader(navigator: navigator)
             SidebarNavBar([
                 .init(id: "home", title: String(localized: "app:nav.home"), symbol: .house, isSelected: navigator.route == .home) {
                     navigator.go(.home)
@@ -268,6 +268,7 @@ private struct SectionTitle<Trailing: View>: View {
 
 /// Top of the sidebar on Mac/iPad: workspace menu next to the traffic lights.
 private struct WorkspaceHeader: View {
+    let navigator: Navigator
     @Environment(AppModel.self) private var model
     @Environment(\.chromeMetrics) private var metrics
     @State private var renaming = false
@@ -276,6 +277,12 @@ private struct WorkspaceHeader: View {
         HStack(spacing: Spacing.s0_5) {
             Color.clear.frame(width: max(0, metrics.leadingInset - Spacing.s2))  // traffic lights
             Menu {
+                Button {
+                    navigator.isShowingSettings = true
+                } label: {
+                    IconLabel("app:settings.open", icon: .gearSix)
+                }
+                .accessibilityIdentifier("settings-open")
                 Button("app:workspace.rename") { renaming = true }
                     .accessibilityIdentifier("workspace-rename")
                 ShareLink("app:workspace.exportLogs", items: model.exportableFiles)
@@ -384,6 +391,12 @@ private struct PhoneSidebar: View {
                 .accessibilityIdentifier("new-page")
                 // The workspace menu (iPhone has no sidebar header).
                 Menu {
+                    Button {
+                        navigator.isShowingSettings = true
+                    } label: {
+                        IconLabel("app:settings.open", icon: .gearSix)
+                    }
+                    .accessibilityIdentifier("settings-open")
                     Button("app:workspace.rename") { renaming = true }
                         .accessibilityIdentifier("workspace-rename")
                     ShareLink("app:workspace.exportLogs", items: model.exportableFiles)

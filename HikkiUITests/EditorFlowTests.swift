@@ -113,6 +113,39 @@ final class EditorFlowTests: XCTestCase {
         }
     #endif
 
+    /// Workspace menu → Settings → General: renaming there updates the sidebar. Screenshots each pane.
+    func testSettingsRenamesWorkspace() throws {
+        continueAfterFailure = false
+        let app = launch(workspace: "Old Name")
+        let header = app.buttons["workspace-menu"].firstMatch
+        let more = app.buttons["workspace-more"].firstMatch
+        let menu = header.waitForExistence(timeout: 5) ? header : more
+        XCTAssertTrue(waitOrDumpTree(menu, in: app))
+        menu.tap()
+        let open = app.buttons["settings-open"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(open, in: app))
+        open.tap()
+
+        let preferences = app.buttons["settings-pane-preferences"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(preferences, in: app))
+        if app.buttons["settings-theme"].waitForExistence(timeout: 2) { attachScreenshot(app, "settings-preferences") }
+        let general = app.buttons["settings-pane-general"].firstMatch
+        general.tap()
+        let name = app.textFields["settings-name"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(name, in: app))
+        attachScreenshot(app, "settings-general")
+        name.tap()
+        name.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 10) + "Atlas\n")
+        let about = app.buttons["settings-pane-about"].firstMatch
+        if !about.waitForExistence(timeout: 1) { app.navigationBars.buttons.element(boundBy: 0).tap() }  // iPhone: back to the list
+        XCTAssertTrue(waitOrDumpTree(about, in: app))
+        about.tap()
+        attachScreenshot(app, "settings-about")
+        if !app.buttons["settings-close"].isHittable { app.navigationBars.buttons.element(boundBy: 0).tap() }
+        app.buttons["settings-close"].firstMatch.tap()
+        XCTAssertTrue(waitOrDumpTree(app.staticTexts["Atlas"].firstMatch, in: app), "renamed workspace not shown")
+    }
+
     /// Simplified Chinese end to end: native chrome from the String Catalog, the web editor via setLocale.
     func testSimplifiedChineseUI() throws {
         continueAfterFailure = false

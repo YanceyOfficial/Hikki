@@ -3,6 +3,10 @@
   "baseWeight": "regular",
   "strokeBoost": 4,
   "icons": {
+    "sliders-horizontal": {},
+    "info": {},
+    "gear-six": {},
+    "buildings": {},
     "link": {},
     "pencil-simple": {},
     "arrow-bend-up-right": {},

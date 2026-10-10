@@ -30,6 +30,7 @@ final class Navigator {
         }
     }
     var isSearching = false
+    var isShowingSettings = false
     /// Bumped by "Rename": the editor selects that page's title once it has loaded it.
     private(set) var titleFocusRequest: TitleFocusRequest?
     var expanded: Set<String> = []

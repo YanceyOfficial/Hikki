@@ -26,6 +26,14 @@
                             }
                         }
                     }
+                    Section("Settings rows") {
+                        SettingsSection("Appearance") {
+                            SettingsRow("Theme", detail: "Choose a theme for this device") {
+                                Text(verbatim: "System").foregroundStyle(Theme.mutedForeground)
+                            }
+                        }
+                        SettingsNavItem("Preferences", icon: .slidersHorizontal, isSelected: true) {}
+                    }
                     Section("KeyboardDismissButton") {
                         KeyboardDismissButton {}
                     }

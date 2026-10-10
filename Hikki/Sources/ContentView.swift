@@ -35,6 +35,12 @@ struct ContentView: View {
             // Our tab bar / sidebar header replace the window toolbar (see WindowChrome).
             .background(WindowChrome { chrome = $0 })
         #endif
+        .sheet(isPresented: $navigator.isShowingSettings) {
+            SettingsView()
+                #if os(iOS)
+                    .presentationSizing(.page)
+                #endif
+        }
         .sheet(isPresented: customChrome ? .constant(false) : $navigator.isSearching) {
             SearchPalette(navigator: navigator) { navigator.isSearching = false }
         }

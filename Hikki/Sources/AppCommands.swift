@@ -7,6 +7,11 @@ struct AppCommands: Commands {
     @FocusedValue(\.navigator) private var navigator
 
     var body: some Commands {
+        // Our in-window settings (Notion-style) instead of a separate Settings scene.
+        CommandGroup(replacing: .appSettings) {
+            Button("app:settings.open") { navigator?.isShowingSettings = true }
+                .keyboardShortcut(",")
+        }
         CommandGroup(replacing: .newItem) {
             Button("app:page.new") { navigator?.newPage() }
                 .keyboardShortcut("n")
