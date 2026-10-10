@@ -1,5 +1,6 @@
 import type { Editor } from '@tiptap/core'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
 import { createEditor } from '../src/editor'
 import { settle } from './helpers'
 
@@ -8,7 +9,8 @@ const key = (editor: Editor, k: string) => {
   editor.view.someProp('handleKeyDown', (f) => f(editor.view, event))
 }
 const menu = () => document.querySelector('.hk-slash-menu')
-const menuTitles = () => [...document.querySelectorAll('.hk-slash-menu .hk-command-title')].map((e) => e.textContent)
+const menuTitles = () =>
+  [...document.querySelectorAll('.hk-slash-menu .hk-command-title')].map((e) => e.textContent)
 
 describe('slash menu', () => {
   let host: HTMLElement
@@ -76,7 +78,9 @@ describe('slash menu', () => {
   it('shows the body hint only on the caret line', () => {
     editor.commands.insertContentAt(editor.state.doc.content.size, { type: 'paragraph' })
     editor.commands.setTextSelection(1)
-    const hints = [...host.querySelectorAll('p.is-empty')].map((e) => e.getAttribute('data-placeholder'))
+    const hints = [...host.querySelectorAll('p.is-empty')].map((e) =>
+      e.getAttribute('data-placeholder')
+    )
     expect(hints).toEqual(["Type '/' for commands"])
   })
 })

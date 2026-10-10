@@ -28,7 +28,7 @@ export const EdgeNavigation = Extension.create<{ onExitTop: () => void }>({
         if ($from.index(0) !== 0) return false
         return exit()
       },
-      Backspace: () => (atDocStart() ? exit() : false),
+      Backspace: () => (atDocStart() ? exit() : false)
     }
-  },
+  }
 })

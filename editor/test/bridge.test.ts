@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
 import { EditorBridge, type Transport } from '../src/bridge'
 import type { ToNativeMessage } from '../src/protocol'
 import { doc, page } from './helpers'
@@ -11,7 +12,12 @@ describe('EditorBridge', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     sent = []
-    const transport: Transport = { post: async (m) => { sent.push(m); return m.type === 'saveAsset' ? 'hikki-editor://assets/x.png' : null } }
+    const transport: Transport = {
+      post: async (m) => {
+        sent.push(m)
+        return m.type === 'saveAsset' ? 'hikki-editor://assets/x.png' : null
+      }
+    }
     host = document.createElement('div')
     document.body.append(host)
     bridge = new EditorBridge(host, transport, { debounceMs: 400 })
@@ -25,10 +31,17 @@ describe('EditorBridge', () => {
   const editor = () => (bridge as any).editor
 
   it('loading a page does not emit a change and exposes header state', () => {
-    bridge.loadDocument(page('a', { title: 'Plan', icon: '🌊', cover: 'gradient:ocean', content: doc('hi') }))
+    bridge.loadDocument(
+      page('a', { title: 'Plan', icon: '🌊', cover: 'gradient:ocean', content: doc('hi') })
+    )
     vi.advanceTimersByTime(1000)
     expect(changed()).toHaveLength(0)
-    expect(bridge.page.get()).toMatchObject({ docId: 'a', title: 'Plan', icon: '🌊', cover: 'gradient:ocean' })
+    expect(bridge.page.get()).toMatchObject({
+      docId: 'a',
+      title: 'Plan',
+      icon: '🌊',
+      cover: 'gradient:ocean'
+    })
     expect(bridge.snapshot()).toMatchObject({ docId: 'a', title: 'Plan', text: 'hi', wordCount: 2 })
   })
 
@@ -56,7 +69,7 @@ describe('EditorBridge', () => {
     bridge.setCover('gradient:dusk')
     expect(sent.filter((m) => m.type === 'setIcon' || m.type === 'setCover')).toEqual([
       { type: 'setIcon', docId: 'a', icon: '👋' },
-      { type: 'setCover', docId: 'a', cover: 'gradient:dusk' },
+      { type: 'setCover', docId: 'a', cover: 'gradient:dusk' }
     ])
     expect(changed()).toHaveLength(0)
   })
@@ -64,9 +77,16 @@ describe('EditorBridge', () => {
   it('saveAsset base64-encodes the file and resolves to the URL the native side returns', async () => {
     vi.useRealTimers()
     bridge.loadDocument(page('a'))
-    const url = await bridge.saveAsset(new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }), 'png')
+    const url = await bridge.saveAsset(
+      new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+      'png'
+    )
     expect(url).toBe('hikki-editor://assets/x.png')
-    expect(sent.find((m) => m.type === 'saveAsset')).toEqual({ type: 'saveAsset', fileExtension: 'png', dataBase64: 'AQID' })
+    expect(sent.find((m) => m.type === 'saveAsset')).toEqual({
+      type: 'saveAsset',
+      fileExtension: 'png',
+      dataBase64: 'AQID'
+    })
   })
 
   it('flushes a pending edit of the previous page before loading the next', () => {
@@ -103,20 +123,38 @@ describe('EditorBridge', () => {
   })
 
   it('collects headings for the outline and keeps them current', () => {
-    bridge.loadDocument(page('a', { content: { type: 'doc', content: [
-      { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Goals' }] },
-      { type: 'paragraph' },
-    ] } }))
+    bridge.loadDocument(
+      page('a', {
+        content: {
+          type: 'doc',
+          content: [
+            { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Goals' }] },
+            { type: 'paragraph' }
+          ]
+        }
+      })
+    )
     expect(bridge.page.get().headings.map((h) => h.text)).toEqual(['Goals'])
-    editor().commands.insertContentAt(editor().state.doc.content.size, { type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: 'Risks' }] })
-    expect(bridge.page.get().headings.map((h) => [h.level, h.text])).toEqual([[2, 'Goals'], [3, 'Risks']])
+    editor().commands.insertContentAt(editor().state.doc.content.size, {
+      type: 'heading',
+      attrs: { level: 3 },
+      content: [{ type: 'text', text: 'Risks' }]
+    })
+    expect(bridge.page.get().headings.map((h) => [h.level, h.text])).toEqual([
+      [2, 'Goals'],
+      [3, 'Risks']
+    ])
   })
 
   it('Backspace at the start of the body asks the header to focus the title', () => {
     bridge.loadDocument(page('a'))
     editor().commands.setTextSelection(1)
     const before = bridge.page.get().focusTitleRequest
-    const event = new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true })
+    const event = new KeyboardEvent('keydown', {
+      key: 'Backspace',
+      bubbles: true,
+      cancelable: true
+    })
     editor().view.someProp('handleKeyDown', (f: any) => f(editor().view, event))
     expect(bridge.page.get().focusTitleRequest).toBe(before + 1)
   })
@@ -138,7 +176,10 @@ describe('EditorBridge', () => {
     // Focus must already be in the editor — no frame delay for keystrokes to slip into the title.
     expect(editor().view.hasFocus()).toBe(true)
     expect(editor().state.selection.from).toBe(1)
-    expect(editor().getJSON().content).toEqual([{ type: 'paragraph' }, { type: 'paragraph', content: [{ type: 'text', text: 'existing' }] }])
+    expect(editor().getJSON().content).toEqual([
+      { type: 'paragraph' },
+      { type: 'paragraph', content: [{ type: 'text', text: 'existing' }] }
+    ])
   })
 
   it('enterFromTitle reuses an empty first line instead of stacking blanks', () => {

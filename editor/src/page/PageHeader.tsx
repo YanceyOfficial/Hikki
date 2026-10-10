@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore
+} from 'react'
+
 import type { EditorBridge } from '../bridge'
 import { cn, ui } from '../ui/cn'
 import { EmojiPickerPanel } from '../ui/EmojiPickerPanel'
@@ -28,46 +36,104 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
   return (
     <header className="group/header relative">
       {background && (
-        <div className="group/cover relative h-[30vh] max-h-[280px] min-h-[140px]" style={{ background }} data-testid="cover">
-          <div className="absolute bottom-3 right-[max(16px,calc((100%-var(--size-column))/2-64px))] flex gap-1.5 opacity-0 transition-opacity group-hover/cover:opacity-100 group-focus-within/cover:opacity-100 touch:opacity-100">
-            <button type="button" className={ui.chip} ref={setCoverAnchor} onClick={() => setCoverOpen((o) => !o)}>Change cover</button>
-            <button type="button" className={ui.chip} onClick={() => bridge.setCover(null)}>Remove</button>
+        <div
+          className="group/cover relative h-[30vh] max-h-[280px] min-h-[140px]"
+          style={{ background }}
+          data-testid="cover"
+        >
+          <div className="absolute right-[max(16px,calc((100%-var(--size-column))/2-64px))] bottom-3 flex gap-1.5 opacity-0 transition-opacity group-focus-within/cover:opacity-100 group-hover/cover:opacity-100 touch:opacity-100">
+            <button
+              type="button"
+              className={ui.chip}
+              ref={setCoverAnchor}
+              onClick={() => setCoverOpen((o) => !o)}
+            >
+              Change cover
+            </button>
+            <button type="button" className={ui.chip} onClick={() => bridge.setCover(null)}>
+              Remove
+            </button>
           </div>
         </div>
       )}
       <div className={cn(ui.column, background ? 'pt-0' : 'pt-18')}>
         {page.icon && (
-          <button type="button" className={cn('-ml-0.5 mb-1 block size-[78px] cursor-pointer rounded-lg font-emoji text-[78px] leading-none hover:bg-accent', background && 'relative -mt-[39px]')} ref={setIconAnchor} aria-label="Change icon" onClick={() => setIconOpen((o) => !o)}>
+          <button
+            type="button"
+            className={cn(
+              '-ml-0.5 mb-1 block size-[78px] cursor-pointer rounded-lg font-emoji text-[78px] leading-none hover:bg-accent',
+              background && 'relative -mt-[39px]'
+            )}
+            ref={setIconAnchor}
+            aria-label="Change icon"
+            onClick={() => setIconOpen((o) => !o)}
+          >
             {page.icon}
           </button>
         )}
-        <div className="-ml-1.5 mb-1 mt-2 flex min-h-7 gap-1 opacity-0 transition-opacity group-hover/header:opacity-100 focus-within:opacity-100 touch:opacity-100">
+        <div className="mt-2 mb-1 -ml-1.5 flex min-h-7 gap-1 opacity-0 transition-opacity group-hover/header:opacity-100 focus-within:opacity-100 touch:opacity-100">
           {!page.icon && (
-            <button type="button" className={ui.ghost} ref={setIconAnchor} onClick={() => bridge.setIcon(randomIcon())}>
+            <button
+              type="button"
+              className={ui.ghost}
+              ref={setIconAnchor}
+              onClick={() => bridge.setIcon(randomIcon())}
+            >
               <span aria-hidden>☺︎</span> Add icon
             </button>
           )}
           {!background && (
-            <button type="button" className={ui.ghost} onClick={() => bridge.setCover(randomGradient())}>
+            <button
+              type="button"
+              className={ui.ghost}
+              onClick={() => bridge.setCover(randomGradient())}
+            >
               <span aria-hidden>▨</span> Add cover
             </button>
           )}
         </div>
-        <TitleField bridge={bridge} title={page.title} focusRequest={page.focusTitleRequest} docId={page.docId} />
+        <TitleField
+          bridge={bridge}
+          title={page.title}
+          focusRequest={page.focusTitleRequest}
+          docId={page.docId}
+        />
       </div>
 
-      <Popover anchor={iconAnchor} open={iconOpen && !!page.icon} onClose={closeIcon} label="Choose icon" className="w-[400px]">
+      <Popover
+        anchor={iconAnchor}
+        open={iconOpen && !!page.icon}
+        onClose={closeIcon}
+        label="Choose icon"
+        className="w-[400px]"
+      >
         <EmojiPickerPanel
-          onSelect={(emoji) => { bridge.setIcon(emoji); setIconOpen(false) }}
+          onSelect={(emoji) => {
+            bridge.setIcon(emoji)
+            setIconOpen(false)
+          }}
           onRandom={() => bridge.setIcon(randomIcon())}
-          onRemove={() => { bridge.setIcon(null); setIconOpen(false) }}
+          onRemove={() => {
+            bridge.setIcon(null)
+            setIconOpen(false)
+          }}
         />
       </Popover>
-      <Popover anchor={coverAnchor} open={coverOpen && !!background} onClose={closeCover} label="Choose cover" placement="bottom-end" className="w-[420px]">
+      <Popover
+        anchor={coverAnchor}
+        open={coverOpen && !!background}
+        onClose={closeCover}
+        label="Choose cover"
+        placement="bottom-end"
+        className="w-[420px]"
+      >
         <CoverPicker
           current={page.cover}
           onSelect={(cover) => bridge.setCover(cover)}
-          onRemove={() => { bridge.setCover(null); setCoverOpen(false) }}
+          onRemove={() => {
+            bridge.setCover(null)
+            setCoverOpen(false)
+          }}
           onUpload={uploadCover}
         />
       </Popover>
@@ -75,7 +141,17 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
   )
 }
 
-function TitleField({ bridge, title, focusRequest, docId }: { bridge: EditorBridge; title: string; focusRequest: number; docId: string }) {
+function TitleField({
+  bridge,
+  title,
+  focusRequest,
+  docId
+}: {
+  bridge: EditorBridge
+  title: string
+  focusRequest: number
+  docId: string
+}) {
   const ref = useRef<HTMLTextAreaElement>(null)
   const composing = useRef(false)
 
@@ -104,15 +180,19 @@ function TitleField({ bridge, title, focusRequest, docId }: { bridge: EditorBrid
   return (
     <textarea
       ref={ref}
-      className="mb-2 block w-full resize-none overflow-hidden border-0 bg-transparent py-[3px] text-4xl font-bold leading-tight tracking-[-0.01em] text-foreground outline-none placeholder:text-placeholder max-sm:text-3xl"
+      className="mb-2 block w-full resize-none overflow-hidden border-0 bg-transparent py-[3px] text-4xl leading-tight font-bold tracking-[-0.01em] text-foreground outline-none placeholder:text-placeholder max-sm:text-3xl"
       rows={1}
       value={title}
       placeholder="Untitled"
       aria-label="Page title"
       spellCheck={false}
       onChange={(e) => bridge.setTitle(e.target.value)}
-      onCompositionStart={() => { composing.current = true }}
-      onCompositionEnd={() => { composing.current = false }}
+      onCompositionStart={() => {
+        composing.current = true
+      }}
+      onCompositionEnd={() => {
+        composing.current = false
+      }}
       onKeyDown={(e) => {
         // Never act on Enter while an IME (pinyin) is composing — that Enter commits the candidate.
         if (composing.current || e.nativeEvent.isComposing) return

@@ -3,10 +3,10 @@ export PATH := $(shell echo "$$PATH" | tr ':' '\n' | grep -v swiftly | paste -sd
 
 IOS_SIM ?= generic/platform=iOS Simulator
 
-.PHONY: bootstrap tokens lint-design editor generate test test-web test-core test-core-ios build-mac build-ios check
+.PHONY: bootstrap tokens lint lint-design lint-docs fmt fmt-check editor generate test test-web test-core test-core-ios build-mac build-ios check
 
 bootstrap:
-	cd editor && pnpm install
+	bun install
 	tuist install
 
 # Design tokens: edit design/tokens.json, then regenerate Swift + the Tailwind theme.
@@ -18,14 +18,32 @@ lint-design:
 	node scripts/gen-tokens.mjs --check
 	scripts/lint-design.sh
 
+SWIFT_DIRS := Hikki HikkiCore HikkiUI HikkiUITests Project.swift Tuist.swift
+
+lint:
+	bunx oxlint
+	xcrun swift-format lint --strict -r -p $(SWIFT_DIRS)
+
+fmt:
+	bunx oxfmt
+	xcrun swift-format format -i -r -p $(SWIFT_DIRS)
+
+fmt-check:
+	bunx oxfmt --check
+	xcrun swift-format lint --strict -r -p $(SWIFT_DIRS)
+
+# CLAUDE.md must only reference paths that exist.
+lint-docs:
+	bun scripts/check-claude-md.mjs
+
 editor:
-	cd editor && pnpm build
+	cd editor && bun run build
 
 generate: editor
 	tuist generate --no-open
 
 test-web:
-	cd editor && pnpm typecheck && pnpm test
+	cd editor && bun run typecheck && bun run test
 
 # `tuist test` regenerates a test-focused workspace; regenerate the full one afterwards so the
 # Hikki scheme exists again for builds and UI tests.
@@ -36,7 +54,7 @@ test-core:
 test-core-ios:
 	tuist test HikkiCore --platform ios
 
-test: lint-design test-web test-core
+test: lint fmt-check lint-design lint-docs test-web test-core
 
 build-mac: generate
 	xcodebuild -workspace Hikki.xcworkspace -scheme Hikki -destination 'platform=macOS' build -quiet

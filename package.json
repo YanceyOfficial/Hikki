@@ -1,0 +1,22 @@
+{
+  "name": "hikki",
+  "private": true,
+  "workspaces": [
+    "editor"
+  ],
+  "scripts": {
+    "prepare": "husky",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
+    "typecheck": "bun run --cwd editor typecheck",
+    "test": "bun run --cwd editor test"
+  },
+  "devDependencies": {
+    "husky": "9.1.7",
+    "lint-staged": "17.6.0",
+    "oxfmt": "0.72.0",
+    "oxlint": "1.87.0"
+  }
+}

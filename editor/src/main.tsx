@@ -1,5 +1,6 @@
 import './style.css'
 import { createRoot } from 'react-dom/client'
+
 import { EditorBridge } from './bridge'
 import { installErrorForwarding } from './errors'
 import { Outline } from './page/Outline'
@@ -17,14 +18,18 @@ createRoot(document.getElementById('header')!).render(<PageHeader bridge={bridge
 createRoot(document.getElementById('outline')!).render(<Outline bridge={bridge} />)
 
 // The native shell drives everything through this object (callAsyncJavaScript).
-declare global { interface Window { hikki: unknown } }
+declare global {
+  interface Window {
+    hikki: unknown
+  }
+}
 window.hikki = {
   protocolVersion: PROTOCOL_VERSION,
   loadDocument: (page: PagePayload) => bridge.loadDocument(page),
   exec: (command: string) => bridge.exec(command),
   flush: () => bridge.flush(),
   focus: () => bridge.focus(),
-  blur: () => bridge.blur(),
+  blur: () => bridge.blur()
 }
 
 if (!native) bridge.loadDocument({ id: 'dev', title: '', icon: null, cover: null, content: null })

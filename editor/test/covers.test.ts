@@ -1,10 +1,19 @@
 import { describe, expect, it } from 'vitest'
-import { GRADIENTS, coverBackground, randomGradient, randomIcon, STARTER_ICONS } from '../src/page/covers'
+
+import {
+  GRADIENTS,
+  coverBackground,
+  randomGradient,
+  randomIcon,
+  STARTER_ICONS
+} from '../src/page/covers'
 
 describe('covers', () => {
   it('resolves gradients and image URLs, rejects junk', () => {
     expect(coverBackground('gradient:ocean')).toBe(GRADIENTS.find((g) => g.id === 'ocean')!.css)
-    expect(coverBackground('hikki-editor://assets/a.png')).toContain('url("hikki-editor://assets/a.png")')
+    expect(coverBackground('hikki-editor://assets/a.png')).toContain(
+      'url("hikki-editor://assets/a.png")'
+    )
     expect(coverBackground('gradient:nope')).toBeNull()
     expect(coverBackground('javascript:alert(1)')).toBeNull()
     expect(coverBackground(null)).toBeNull()

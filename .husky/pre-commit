@@ -1,0 +1,3 @@
+# Fast gate (seconds): staged-file lint + format, design tokens, docs, web typecheck + unit tests.
+# The slow Swift/UI suites run via `make check` and CI.
+bunx lint-staged && make lint-design lint-docs && bun run typecheck && bun run test

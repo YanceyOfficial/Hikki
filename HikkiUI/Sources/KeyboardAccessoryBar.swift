@@ -21,7 +21,9 @@ public struct KeyboardAccessoryBar<Tools: View>: View {
             }
             // Fades tools out under the pinned button instead of cutting them off.
             .mask(
-                LinearGradient(stops: [.init(color: .black, location: 0.9), .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing)
+                LinearGradient(
+                    stops: [.init(color: .black, location: 0.9), .init(color: .clear, location: 1)], startPoint: .leading,
+                    endPoint: .trailing)
             )
             KeyboardDismissButton(action: onDismiss)
                 .padding(.trailing, Spacing.s2)
@@ -35,7 +37,9 @@ public struct KeyboardAccessoryBar<Tools: View>: View {
     VStack {
         Spacer()
         KeyboardAccessoryBar(onDismiss: {}) {
-            ForEach(["bold", "italic", "strikethrough", "list.bullet", "list.number", "checklist", "text.quote", "curlybraces"], id: \.self) { icon in
+            ForEach(
+                ["bold", "italic", "strikethrough", "list.bullet", "list.number", "checklist", "text.quote", "curlybraces"], id: \.self
+            ) { icon in
                 ToolbarIconButton(LocalizedStringKey(icon), systemImage: icon, isActive: icon == "bold") {}
             }
         }

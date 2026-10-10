@@ -1,7 +1,8 @@
 import Foundation
 import GRDB
-@testable import HikkiCore
 import Testing
+
+@testable import HikkiCore
 
 struct DocumentStoreTests {
     private let t0 = Date(timeIntervalSince1970: 1_700_000_000)
@@ -195,8 +196,13 @@ struct DocumentStoreTests {
             }
             try v1.migrate(queue)
             try queue.write { db in
-                try db.execute(sql: "INSERT INTO document (id, title, plainText, createdAt, updatedAt) VALUES ('old', 'Older', 'legacy body text', ?, ?)", arguments: [t0, t0])
-                try db.execute(sql: "INSERT INTO document (id, title, plainText, createdAt, updatedAt) VALUES ('new', 'Newer', '', ?, ?)", arguments: [t0, t0.addingTimeInterval(9)])
+                try db.execute(
+                    sql:
+                        "INSERT INTO document (id, title, plainText, createdAt, updatedAt) VALUES ('old', 'Older', 'legacy body text', ?, ?)",
+                    arguments: [t0, t0])
+                try db.execute(
+                    sql: "INSERT INTO document (id, title, plainText, createdAt, updatedAt) VALUES ('new', 'Newer', '', ?, ?)",
+                    arguments: [t0, t0.addingTimeInterval(9)])
             }
         }
         let store = try DocumentStore.onDisk(at: url)

@@ -1,10 +1,17 @@
 import type { Editor } from '@tiptap/core'
+
 import { activeCommands, createEditor, runCommand } from './editor'
 import { plainText, wordCount } from './extract'
 import { normalizeBody } from './normalize'
 import { collectHeadings, type HeadingItem } from './page/headings'
 import { Store } from './page/store'
-import { COMMANDS, type Command, type PagePayload, type Snapshot, type ToNativeMessage } from './protocol'
+import {
+  COMMANDS,
+  type Command,
+  type PagePayload,
+  type Snapshot,
+  type ToNativeMessage
+} from './protocol'
 
 export interface Transport {
   post(message: ToNativeMessage): Promise<unknown>
@@ -30,7 +37,14 @@ const MAX_TITLE_LENGTH = 500
  * history never leaks between pages.
  */
 export class EditorBridge {
-  readonly page = new Store<PageState>({ docId: null, title: '', icon: null, cover: null, headings: [], focusTitleRequest: 0 })
+  readonly page = new Store<PageState>({
+    docId: null,
+    title: '',
+    icon: null,
+    cover: null,
+    headings: [],
+    focusTitleRequest: 0
+  })
   private editor: Editor | null = null
   private timer: ReturnType<typeof setTimeout> | null = null
   /** True between a user edit and the snapshot that reports it. Viewing a page must never save it. */
@@ -40,7 +54,7 @@ export class EditorBridge {
   constructor(
     private readonly host: HTMLElement,
     private readonly transport: Transport,
-    private readonly options: Options = { debounceMs: 400 },
+    private readonly options: Options = { debounceMs: 400 }
   ) {}
 
   loadDocument(payload: PagePayload): void {
@@ -59,7 +73,13 @@ export class EditorBridge {
     editor.on('selectionUpdate', () => this.reportActive())
     editor.on('transaction', () => this.reportActive())
     this.editor = editor
-    this.page.set({ docId: payload.id, title, icon: payload.icon, cover: payload.cover, headings: collectHeadings(editor) })
+    this.page.set({
+      docId: payload.id,
+      title,
+      icon: payload.icon,
+      cover: payload.cover,
+      headings: collectHeadings(editor)
+    })
   }
 
   // MARK: header
@@ -201,8 +221,10 @@ export class EditorBridge {
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result).replace(/^data:[^,]*,/, ''))
-    reader.onerror = () => reject(reader.error)
+    reader.addEventListener('load', () =>
+      resolve(String(reader.result).replace(/^data:[^,]*,/u, ''))
+    )
+    reader.addEventListener('error', () => reject(reader.error))
     reader.readAsDataURL(blob)
   })
 }

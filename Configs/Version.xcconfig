@@ -1,0 +1,6 @@
+// The app's version, shared by every target, so it lives here once.
+//
+//   MARKETING_VERSION        what people see (semver), set by hand per release
+//   CURRENT_PROJECT_VERSION  the build number; only ever grows (TestFlight's one rule)
+MARKETING_VERSION = 0.1.0
+CURRENT_PROJECT_VERSION = 1

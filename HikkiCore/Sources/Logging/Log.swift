@@ -1,6 +1,6 @@
 import Foundation
-import os
 import Synchronization
+import os
 
 public enum LogLevel: String, Codable, Sendable, CaseIterable {
     case debug, info, warn, error

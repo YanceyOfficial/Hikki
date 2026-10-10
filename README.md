@@ -12,14 +12,14 @@ editor/           Tiptap 3 web editor (vite → Hikki/Resources/Editor)
 
 ## Commands
 
-| | |
-|---|---|
-| `make bootstrap` | install web deps + Swift packages |
-| `make generate` | build the editor bundle and generate the Xcode workspace |
-| `make test` | web unit tests (vitest) + HikkiCore tests (Swift Testing, macOS) |
-| `make test-ui-ios` | end-to-end UI test on the iOS simulator |
+|                    |                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------- |
+| `make bootstrap`   | install web deps + Swift packages                                                     |
+| `make generate`    | build the editor bundle and generate the Xcode workspace                              |
+| `make test`        | web unit tests (vitest) + HikkiCore tests (Swift Testing, macOS)                      |
+| `make test-ui-ios` | end-to-end UI test on the iOS simulator                                               |
 | `make test-ui-mac` | end-to-end UI test on macOS (takes over the screen — don't use the Mac while it runs) |
-| `make check` | tests + macOS and iOS builds |
+| `make check`       | tests + macOS and iOS builds                                                          |
 
 `cd editor && pnpm dev` runs the editor alone in a browser with a console-logging bridge.
 

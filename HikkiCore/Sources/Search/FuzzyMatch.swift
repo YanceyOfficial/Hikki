@@ -13,8 +13,8 @@ public enum FuzzyMatch {
         var previousMatch: Int?
         for (ci, char) in c.enumerated() where qi < q.count && char == q[qi] {
             score += 1
-            if let previous = previousMatch, previous == ci - 1 { score += 5 } // consecutive run
-            if ci == 0 || !c[ci - 1].isLetter && !c[ci - 1].isNumber { score += 3 } // word start
+            if let previous = previousMatch, previous == ci - 1 { score += 5 }  // consecutive run
+            if ci == 0 || !c[ci - 1].isLetter && !c[ci - 1].isNumber { score += 3 }  // word start
             if ci == 0 { score += 2 }
             previousMatch = ci
             qi += 1

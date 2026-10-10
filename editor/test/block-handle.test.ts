@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+
 import { createEditor } from '../src/editor'
 import { blockHandleExtensions, isDraggableBlock } from '../src/extensions/block-handle'
 

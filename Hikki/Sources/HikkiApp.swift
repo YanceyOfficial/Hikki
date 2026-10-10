@@ -15,10 +15,12 @@ struct HikkiApp: App {
         }
         let crashReporter = CrashReporter(directory: paths.diagnostics)
         crashReporter.start()
-        Log.info("launch", context: [
-            "version": Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?",
-            "build": Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?",
-        ])
+        Log.info(
+            "launch",
+            context: [
+                "version": Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?",
+                "build": Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?",
+            ])
         do {
             let store = try DocumentStore.onDisk(at: paths.database)
             _model = State(initialValue: AppModel(store: store, assets: AssetStore(directory: paths.assets), crashReporter: crashReporter))
@@ -42,9 +44,9 @@ struct HikkiApp: App {
         }
         .defaultSize(width: 1180, height: 780)
         #if os(macOS)
-        // The tab bar and sidebar header draw their own title bar (Notion-style); see WindowChrome.
-        .windowStyle(.hiddenTitleBar)
-        .windowToolbarStyle(.unifiedCompact(showsTitle: false))
+            // The tab bar and sidebar header draw their own title bar (Notion-style); see WindowChrome.
+            .windowStyle(.hiddenTitleBar)
+            .windowToolbarStyle(.unifiedCompact(showsTitle: false))
         #endif
         .commands { AppCommands() }
     }

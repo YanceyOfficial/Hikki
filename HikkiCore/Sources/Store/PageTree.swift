@@ -22,7 +22,7 @@ public struct PageTree: Equatable, Sendable {
         }
         func build(_ parent: String?, _ visited: Set<String>) -> [PageNode] {
             (children[parent] ?? []).compactMap { page in
-                guard !visited.contains(page.id) else { return nil } // cycle guard
+                guard !visited.contains(page.id) else { return nil }  // cycle guard
                 return PageNode(page: page, children: build(page.id, visited.union([page.id])))
             }
         }

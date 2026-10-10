@@ -16,7 +16,8 @@ export function blockTexts(doc: JSONContent): string[] {
   const out: string[] = []
   const walk = (node: JSONContent) => {
     const children = node.content ?? []
-    const isTextblock = children.length > 0 && children.every((c) => c.type === 'text' || c.type === 'hardBreak')
+    const isTextblock =
+      children.length > 0 && children.every((c) => c.type === 'text' || c.type === 'hardBreak')
     if (isTextblock || node.type === 'codeBlock') {
       out.push(textOf(node))
       return
@@ -32,7 +33,10 @@ export function plainText(doc: JSONContent): string {
 }
 
 export function deriveTitle(doc: JSONContent): string {
-  const first = blockTexts(doc).map((t) => t.trim()).find((t) => t.length > 0) ?? ''
+  const first =
+    blockTexts(doc)
+      .map((t) => t.trim())
+      .find((t) => t.length > 0) ?? ''
   return first.length > MAX_TITLE_LENGTH ? first.slice(0, MAX_TITLE_LENGTH) : first
 }
 

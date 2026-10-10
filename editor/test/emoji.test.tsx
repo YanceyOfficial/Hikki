@@ -1,20 +1,53 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { buildCategories, rememberEmoji, recentEmoji, searchEmoji, type RawEmoji } from '../src/ui/emoji-data'
+
+import {
+  buildCategories,
+  rememberEmoji,
+  recentEmoji,
+  searchEmoji,
+  type RawEmoji
+} from '../src/ui/emoji-data'
 import { EmojiPickerPanel } from '../src/ui/EmojiPickerPanel'
 
-const messages = { groups: [
-  { key: 'smileys-emotion', message: 'smileys & emotion', order: 0 },
-  { key: 'component', message: 'component', order: 2 },
-  { key: 'animals-nature', message: 'animals & nature', order: 3 },
-] }
+const messages = {
+  groups: [
+    { key: 'smileys-emotion', message: 'smileys & emotion', order: 0 },
+    { key: 'component', message: 'component', order: 2 },
+    { key: 'animals-nature', message: 'animals & nature', order: 3 }
+  ]
+}
 const data: RawEmoji[] = [
-  { emoji: '🙂', hexcode: '1F642', label: 'slightly smiling face', tags: ['face', 'smile'], group: 0, order: 2, version: 1 },
-  { emoji: '😀', hexcode: '1F600', label: 'grinning face', tags: ['smile', 'happy'], group: 0, order: 1, version: 1 },
+  {
+    emoji: '🙂',
+    hexcode: '1F642',
+    label: 'slightly smiling face',
+    tags: ['face', 'smile'],
+    group: 0,
+    order: 2,
+    version: 1
+  },
+  {
+    emoji: '😀',
+    hexcode: '1F600',
+    label: 'grinning face',
+    tags: ['smile', 'happy'],
+    group: 0,
+    order: 1,
+    version: 1
+  },
   { emoji: '🏻', hexcode: '1F3FB', label: 'light skin tone', group: 2, order: 5, version: 1 },
-  { emoji: '🐶', hexcode: '1F436', label: 'dog face', tags: ['pet'], group: 3, order: 9, version: 1 },
+  {
+    emoji: '🐶',
+    hexcode: '1F436',
+    label: 'dog face',
+    tags: ['pet'],
+    group: 3,
+    order: 9,
+    version: 1
+  },
   { emoji: '🫎', hexcode: '1FACE', label: 'moose', group: 3, order: 10, version: 99 },
-  { emoji: '🇦', hexcode: '1F1E6', label: 'regional indicator A', version: 0 },
+  { emoji: '🇦', hexcode: '1F1E6', label: 'regional indicator A', version: 0 }
 ]
 
 describe('emoji data', () => {
@@ -46,11 +79,14 @@ describe('emoji data', () => {
 describe('EmojiPickerPanel', () => {
   beforeEach(() => {
     localStorage.clear()
-    vi.stubGlobal('fetch', vi.fn(async (url: URL) => {
-      const path = String(url)
-      const body = path.endsWith('messages.json') ? messages : data
-      return new Response(JSON.stringify(body), { status: 200 })
-    }))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: URL) => {
+        const path = String(url)
+        const body = path.endsWith('messages.json') ? messages : data
+        return new Response(JSON.stringify(body), { status: 200 })
+      })
+    )
   })
   afterEach(() => {
     cleanup()

@@ -41,8 +41,10 @@
                     self.window = window
                     // KVO callbacks are nonisolated; hop to the main actor before touching the window.
                     let reapply: @Sendable () -> Void = { [weak self] in Task { @MainActor in self?.reapply() } }
-                    resizeObservers = [NSWindow.didResizeNotification, NSWindow.didEndLiveResizeNotification,
-                                       NSWindow.didExitFullScreenNotification, NSWindow.didBecomeKeyNotification].map { name in
+                    resizeObservers = [
+                        NSWindow.didResizeNotification, NSWindow.didEndLiveResizeNotification,
+                        NSWindow.didExitFullScreenNotification, NSWindow.didBecomeKeyNotification,
+                    ].map { name in
                         NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { _ in reapply() }
                     }
                     observations = [
@@ -65,8 +67,9 @@
             /// Title-bar row height = 2 × the traffic lights' center from the top; inset = past the zoom button.
             private func measure(_ window: NSWindow) {
                 guard let close = window.standardWindowButton(.closeButton),
-                      let zoom = window.standardWindowButton(.zoomButton),
-                      let content = window.contentView else { return }
+                    let zoom = window.standardWindowButton(.zoomButton),
+                    let content = window.contentView
+                else { return }
                 let closeFrame = close.convert(close.bounds, to: content)
                 let zoomFrame = zoom.convert(zoom.bounds, to: content)
                 let centerFromTop = content.isFlipped ? closeFrame.midY : content.bounds.height - closeFrame.midY
@@ -88,15 +91,18 @@
                 if window.titleVisibility != .hidden { window.titleVisibility = .hidden }
                 if !window.styleMask.contains(.fullSizeContentView) { window.styleMask.insert(.fullSizeContentView) }
                 if window.toolbar != nil { window.toolbar = nil }
-                window.tabbingMode = .disallowed // we have our own tabs
-                let buttons = [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].compactMap { window.standardWindowButton($0) }
+                window.tabbingMode = .disallowed  // we have our own tabs
+                let buttons = [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].compactMap {
+                    window.standardWindowButton($0)
+                }
                 buttons.forEach { $0.isHidden = false }
                 positionTrafficLights(buttons, in: window)
             }
 
             private static func positionTrafficLights(_ buttons: [NSButton], in window: NSWindow) {
                 guard !window.styleMask.contains(.fullScreen), let titlebar = buttons.first?.superview,
-                      let container = titlebar.superview else { return }
+                    let container = titlebar.superview
+                else { return }
                 var frame = container.frame
                 if abs(frame.height - barHeight) > 0.5 {
                     frame.origin.y += frame.height - barHeight

@@ -1,6 +1,7 @@
 import { Extension } from '@tiptap/core'
 import { PluginKey } from '@tiptap/pm/state'
 import Suggestion, { type SuggestionProps } from '@tiptap/suggestion'
+
 import { filterBlockTypes, type BlockType } from '../blocks'
 import { CommandList, handleListKey } from '../ui/CommandList'
 import { FloatingLayer } from '../ui/floating'
@@ -39,10 +40,13 @@ export const SlashCommand = Extension.create({
               <CommandList
                 items={props.items}
                 selectedIndex={selected}
-                onHover={(i) => { selected = i; draw() }}
+                onHover={(i) => {
+                  selected = i
+                  draw()
+                }}
                 onSelect={(i) => props.items[i] && props.command(props.items[i])}
               />,
-              props.clientRect,
+              props.clientRect
             )
           }
 
@@ -66,16 +70,25 @@ export const SlashCommand = Extension.create({
                 return true
               }
               const items = current.items
-              return handleListKey(event.key, items.length, selected, (i) => { selected = i; draw() }, (i) => current!.command(items[i]))
+              return handleListKey(
+                event.key,
+                items.length,
+                selected,
+                (i) => {
+                  selected = i
+                  draw()
+                },
+                (i) => current!.command(items[i])
+              )
             },
             onExit: () => {
               layer?.destroy()
               layer = null
               current = null
-            },
+            }
           }
-        },
-      }),
+        }
+      })
     ]
-  },
+  }
 })

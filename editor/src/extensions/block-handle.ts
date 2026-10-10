@@ -1,5 +1,5 @@
-import type { Node as PMNode } from '@tiptap/pm/model'
 import DragHandle from '@tiptap/extension-drag-handle'
+import type { Node as PMNode } from '@tiptap/pm/model'
 
 /** Every body block is draggable (the page title lives outside the editor). */
 export function isDraggableBlock(node: PMNode | null): boolean {
@@ -11,7 +11,9 @@ export function isDraggableBlock(node: PMNode | null): boolean {
  * Only for fine pointers (mouse/trackpad, incl. iPad with a trackpad): on touch the grip would fight the
  * system text-selection handles, so touch reordering needs its own design later.
  */
-export function blockHandleExtensions(finePointer: boolean = matchMedia?.('(pointer: fine)').matches ?? false) {
+export function blockHandleExtensions(
+  finePointer: boolean = matchMedia?.('(pointer: fine)').matches ?? false
+) {
   if (!finePointer) return []
   let grip: HTMLElement | null = null
   return [
@@ -29,7 +31,7 @@ export function blockHandleExtensions(finePointer: boolean = matchMedia?.('(poin
       },
       onNodeChange: ({ node }) => {
         grip?.classList.toggle('hk-hidden', !isDraggableBlock(node))
-      },
-    }),
+      }
+    })
   ]
 }

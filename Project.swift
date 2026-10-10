@@ -13,7 +13,14 @@ let baseSettings: SettingsDictionary = [
 let project = Project(
     name: "Hikki",
     organizationName: "Yancey Inc.",
-    settings: .settings(base: baseSettings),
+    // Version (marketing + build number) comes from one xcconfig — see Configs/Version.xcconfig.
+    settings: .settings(
+        base: baseSettings,
+        configurations: [
+            .debug(name: .debug, xcconfig: "Configs/Version.xcconfig"),
+            .release(name: .release, xcconfig: "Configs/Version.xcconfig"),
+        ]
+    ),
     targets: [
         .target(
             name: "Hikki",
@@ -24,6 +31,8 @@ let project = Project(
             infoPlist: .extendingDefault(with: [
                 "CFBundleDisplayName": "Hikki",
                 "NSHumanReadableCopyright": "Copyright © 2026 Yancey Inc. All rights reserved.",
+                "CFBundleShortVersionString": "$(MARKETING_VERSION)",
+                "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
                 "UILaunchScreen": [:],
                 "UIApplicationSceneManifest": ["UIApplicationSupportsMultipleScenes": true],
             ]),

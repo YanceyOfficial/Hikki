@@ -24,10 +24,21 @@ export type Snapshot = {
 }
 
 export const COMMANDS = [
-  'bold', 'italic', 'strike', 'code',
-  'heading1', 'heading2', 'heading3', 'paragraph',
-  'bulletList', 'orderedList', 'taskList', 'blockquote', 'codeBlock',
-  'undo', 'redo',
+  'bold',
+  'italic',
+  'strike',
+  'code',
+  'heading1',
+  'heading2',
+  'heading3',
+  'paragraph',
+  'bulletList',
+  'orderedList',
+  'taskList',
+  'blockquote',
+  'codeBlock',
+  'undo',
+  'redo'
 ] as const
 export type Command = (typeof COMMANDS)[number]
 

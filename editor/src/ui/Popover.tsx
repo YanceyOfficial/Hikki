@@ -1,6 +1,15 @@
-import { autoUpdate, computePosition, flip, offset, shift, size, type Placement } from '@floating-ui/dom'
+import {
+  autoUpdate,
+  computePosition,
+  flip,
+  offset,
+  shift,
+  size,
+  type Placement
+} from '@floating-ui/dom'
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+
 import { cn, ui } from './cn'
 
 type Props = {
@@ -17,7 +26,15 @@ type Props = {
  * Anchored popover for React-owned UI (pickers, menus). Closes on outside press and Escape,
  * repositions on scroll/resize, and stays inside the visual viewport (iOS keyboard).
  */
-export function Popover({ anchor, open, onClose, placement = 'bottom-start', className = '', label, children }: Props) {
+export function Popover({
+  anchor,
+  open,
+  onClose,
+  placement = 'bottom-start',
+  className = '',
+  label,
+  children
+}: Props) {
   const ref = useRef<HTMLDivElement>(null)
 
   useLayoutEffect(() => {
@@ -25,7 +42,9 @@ export function Popover({ anchor, open, onClose, placement = 'bottom-start', cla
     if (!open || !anchor || !floating) return
     return autoUpdate(anchor, floating, () => {
       const vv = window.visualViewport
-      const rootBoundary = vv ? { x: vv.offsetLeft, y: vv.offsetTop, width: vv.width, height: vv.height } : undefined
+      const rootBoundary = vv
+        ? { x: vv.offsetLeft, y: vv.offsetTop, width: vv.width, height: vv.height }
+        : undefined
       void computePosition(anchor, floating, {
         placement,
         strategy: 'fixed',
@@ -38,9 +57,9 @@ export function Popover({ anchor, open, onClose, placement = 'bottom-start', cla
             padding: 8,
             apply: ({ availableHeight, elements }) => {
               elements.floating.style.maxHeight = `${Math.max(160, availableHeight)}px`
-            },
-          }),
-        ],
+            }
+          })
+        ]
       }).then(({ x, y }) => Object.assign(floating.style, { left: `${x}px`, top: `${y}px` }))
     })
   }, [open, anchor, placement])
@@ -68,9 +87,14 @@ export function Popover({ anchor, open, onClose, placement = 'bottom-start', cla
 
   if (!open) return null
   return createPortal(
-    <div ref={ref} role="dialog" aria-label={label} className={cn(ui.floating, 'max-w-[calc(100vw-16px)]', className)}>
+    <div
+      ref={ref}
+      role="dialog"
+      aria-label={label}
+      className={cn(ui.floating, 'max-w-[calc(100vw-16px)]', className)}
+    >
       {children}
     </div>,
-    document.body,
+    document.body
   )
 }

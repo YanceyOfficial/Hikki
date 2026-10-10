@@ -1,20 +1,28 @@
-@import "tailwindcss";
-@import "./theme.css";
+@import 'tailwindcss';
+@import './theme.css';
 
 /* Interaction variants: devices without hover (touch) and with coarse pointers. */
 @custom-variant touch (@media (hover: none));
 @custom-variant coarse (@media (pointer: coarse));
 
 @layer base {
-  :root { color-scheme: light dark; }
-  html, body {
+  :root {
+    color-scheme: light dark;
+  }
+  html,
+  body {
     @apply m-0 bg-background font-sans text-lg text-foreground antialiased;
     line-height: 1.5;
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
   }
-  ::selection { background: var(--color-selection); }
-  button { font: inherit; color: inherit; }
+  ::selection {
+    background: var(--color-selection);
+  }
+  button {
+    font: inherit;
+    color: inherit;
+  }
 }
 
 /*
@@ -22,32 +30,93 @@
  * utility classes in markup. React-owned UI uses Tailwind utilities directly.
  */
 @layer components {
-  .tiptap { @apply outline-none; caret-color: var(--color-foreground); }
-  .tiptap > * + * { @apply mt-0.5; }
-  .tiptap p { @apply m-0 py-[3px]; }
-  .tiptap h1 { @apply mt-[1.4em] mb-[0.2em] font-semibold leading-tight; font-size: 1.875em; }
-  .tiptap h2 { @apply mt-[1.2em] mb-[0.2em] font-semibold leading-tight; font-size: 1.5em; }
-  .tiptap h3 { @apply mt-[1em] mb-[0.1em] font-semibold leading-tight; font-size: 1.25em; }
-  .tiptap a { @apply underline decoration-muted-foreground underline-offset-2; color: inherit; }
-  .tiptap code { @apply rounded-sm bg-code px-1.5 py-0.5 font-mono text-code-foreground; font-size: 85%; }
-  .tiptap pre { @apply my-1 overflow-x-auto rounded-sm bg-code/50 px-6 py-7; }
-  .tiptap pre code { @apply bg-transparent p-0 text-foreground; line-height: 1.6; }
-  .tiptap blockquote { @apply my-1 border-l-[3px] border-current px-3.5; }
-  .tiptap ul, .tiptap ol { @apply m-0 pl-[1.6em]; }
-  .tiptap ul { @apply list-disc; }
-  .tiptap ol { @apply list-decimal; }
-  .tiptap li > p { @apply py-0.5; }
-  .tiptap ul[data-type="taskList"] { @apply list-none pl-0.5; }
-  .tiptap ul[data-type="taskList"] li { @apply flex items-start gap-2; }
-  .tiptap ul[data-type="taskList"] li > label { margin-top: 0.38em; }
-  .tiptap ul[data-type="taskList"] input[type="checkbox"] { @apply m-0 size-4 accent-primary; }
-  .tiptap ul[data-type="taskList"] li > div { @apply flex-1; }
-  .tiptap li[data-checked="true"] > div { @apply text-muted-foreground line-through; }
-  .tiptap hr { @apply my-3 border-0 border-t border-border; }
-  .tiptap .is-empty::before { @apply pointer-events-none float-left h-0 text-placeholder; content: attr(data-placeholder); }
-  .ProseMirror-selectednode { @apply rounded-sm outline-2 outline-selection; }
+  .tiptap {
+    @apply outline-none;
+    caret-color: var(--color-foreground);
+  }
+  .tiptap > * + * {
+    @apply mt-0.5;
+  }
+  .tiptap p {
+    @apply m-0 py-[3px];
+  }
+  .tiptap h1 {
+    @apply mt-[1.4em] mb-[0.2em] leading-tight font-semibold;
+    font-size: 1.875em;
+  }
+  .tiptap h2 {
+    @apply mt-[1.2em] mb-[0.2em] leading-tight font-semibold;
+    font-size: 1.5em;
+  }
+  .tiptap h3 {
+    @apply mt-[1em] mb-[0.1em] leading-tight font-semibold;
+    font-size: 1.25em;
+  }
+  .tiptap a {
+    @apply underline decoration-muted-foreground underline-offset-2;
+    color: inherit;
+  }
+  .tiptap code {
+    @apply rounded-sm bg-code px-1.5 py-0.5 font-mono text-code-foreground;
+    font-size: 85%;
+  }
+  .tiptap pre {
+    @apply my-1 overflow-x-auto rounded-sm bg-code/50 px-6 py-7;
+  }
+  .tiptap pre code {
+    @apply bg-transparent p-0 text-foreground;
+    line-height: 1.6;
+  }
+  .tiptap blockquote {
+    @apply my-1 border-l-[3px] border-current px-3.5;
+  }
+  .tiptap ul,
+  .tiptap ol {
+    @apply m-0 pl-[1.6em];
+  }
+  .tiptap ul {
+    @apply list-disc;
+  }
+  .tiptap ol {
+    @apply list-decimal;
+  }
+  .tiptap li > p {
+    @apply py-0.5;
+  }
+  .tiptap ul[data-type='taskList'] {
+    @apply list-none pl-0.5;
+  }
+  .tiptap ul[data-type='taskList'] li {
+    @apply flex items-start gap-2;
+  }
+  .tiptap ul[data-type='taskList'] li > label {
+    margin-top: 0.38em;
+  }
+  .tiptap ul[data-type='taskList'] input[type='checkbox'] {
+    @apply m-0 size-4 accent-primary;
+  }
+  .tiptap ul[data-type='taskList'] li > div {
+    @apply flex-1;
+  }
+  .tiptap li[data-checked='true'] > div {
+    @apply text-muted-foreground line-through;
+  }
+  .tiptap hr {
+    @apply my-3 border-0 border-t border-border;
+  }
+  .tiptap .is-empty::before {
+    @apply pointer-events-none float-left h-0 text-placeholder;
+    content: attr(data-placeholder);
+  }
+  .ProseMirror-selectednode {
+    @apply rounded-sm outline-2 outline-selection;
+  }
 
   /* Drag handle (created by the Tiptap extension, not React). */
-  .hk-drag-handle { @apply mr-1 grid h-6 w-5 cursor-grab place-items-center rounded-sm text-placeholder hover:bg-accent hover:text-muted-foreground; }
-  .hk-drag-handle.hk-hidden { @apply invisible pointer-events-none; }
+  .hk-drag-handle {
+    @apply mr-1 grid h-6 w-5 cursor-grab place-items-center rounded-sm text-placeholder hover:bg-accent hover:text-muted-foreground;
+  }
+  .hk-drag-handle.hk-hidden {
+    @apply pointer-events-none invisible;
+  }
 }

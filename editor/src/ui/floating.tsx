@@ -2,6 +2,7 @@ import { computePosition, flip, offset, shift, size, type VirtualElement } from 
 import type { ReactElement } from 'react'
 import { flushSync } from 'react-dom'
 import { createRoot, type Root } from 'react-dom/client'
+
 import { cn, ui } from './cn'
 
 /**
@@ -35,7 +36,9 @@ export class FloatingLayer {
     const reference: VirtualElement = { getBoundingClientRect: () => rect }
     // On iOS the software keyboard shrinks only the *visual* viewport; keep the popup inside it.
     const vv = window.visualViewport
-    const rootBoundary = vv ? { x: vv.offsetLeft, y: vv.offsetTop, width: vv.width, height: vv.height } : undefined
+    const rootBoundary = vv
+      ? { x: vv.offsetLeft, y: vv.offsetTop, width: vv.width, height: vv.height }
+      : undefined
     const { x, y } = await computePosition(reference, this.element, {
       placement: 'bottom-start',
       strategy: 'fixed',
@@ -48,9 +51,9 @@ export class FloatingLayer {
           padding: 8,
           apply: ({ availableHeight, elements }) => {
             elements.floating.style.maxHeight = `${Math.max(120, Math.min(360, availableHeight))}px`
-          },
-        }),
-      ],
+          }
+        })
+      ]
     })
     Object.assign(this.element.style, { left: `${x}px`, top: `${y}px` })
   }

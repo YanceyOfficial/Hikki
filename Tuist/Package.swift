@@ -10,6 +10,6 @@ import PackageDescription
 let package = Package(
     name: "HikkiDependencies",
     dependencies: [
-        .package(url: "https://github.com/groue/GRDB.swift", from: "7.11.1"),
+        .package(url: "https://github.com/groue/GRDB.swift", from: "7.11.1")
     ]
 )

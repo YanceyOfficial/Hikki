@@ -6,9 +6,10 @@ public enum Pinyin {
     /// (plain Latin titles are already matched directly).
     public static func searchKey(for text: String) -> String {
         guard text.unicodeScalars.contains(where: { $0.properties.isIdeographic }) else { return "" }
-        guard let latin = text.applyingTransform(.mandarinToLatin, reverse: false)?
-            .applyingTransform(.stripDiacritics, reverse: false)?
-            .lowercased()
+        guard
+            let latin = text.applyingTransform(.mandarinToLatin, reverse: false)?
+                .applyingTransform(.stripDiacritics, reverse: false)?
+                .lowercased()
         else { return "" }
         let syllables = latin.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init)
         let full = syllables.joined()

@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "node scripts/copy-emoji-data.mjs",
+    "predev": "bun scripts/copy-emoji-data.mjs",
     "dev": "vite",
-    "prebuild": "node scripts/copy-emoji-data.mjs",
+    "prebuild": "bun scripts/copy-emoji-data.mjs",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

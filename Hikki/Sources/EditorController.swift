@@ -32,7 +32,8 @@ final class EditorController {
         guard isReady else { return }
         Task {
             do {
-                _ = try await webView.callAsyncJavaScript("return window.hikki.exec(command)", arguments: ["command": command.rawValue], contentWorld: .page)
+                _ = try await webView.callAsyncJavaScript(
+                    "return window.hikki.exec(command)", arguments: ["command": command.rawValue], contentWorld: .page)
             } catch {
                 Log.error("exec failed: \(error)", category: "bridge", context: ["command": command.rawValue])
             }
@@ -59,7 +60,7 @@ final class EditorController {
         guard isReady, currentDocumentID != nil else { return }
         do {
             guard let result = try await webView.callAsyncJavaScript("return window.hikki.flush()", contentWorld: .page),
-                  !(result is NSNull)
+                !(result is NSNull)
             else { return }
             save(try Snapshot.decode(scriptResult: result))
         } catch {
@@ -99,7 +100,8 @@ final class EditorController {
         switch message {
         case .ready(let version):
             guard version == BridgeProtocol.version else {
-                Log.error("bridge protocol mismatch", category: "bridge", context: ["web": "\(version)", "native": "\(BridgeProtocol.version)"])
+                Log.error(
+                    "bridge protocol mismatch", category: "bridge", context: ["web": "\(version)", "native": "\(BridgeProtocol.version)"])
                 return nil
             }
             isReady = true
@@ -187,7 +189,9 @@ private final class ScriptMessageProxy: NSObject, WKScriptMessageHandlerWithRepl
         self.owner = owner
     }
 
-    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) async -> (Any?, String?) {
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) async -> (
+        Any?, String?
+    ) {
         do {
             let reply = try owner?.handle(try BridgeMessage.decode(scriptMessageBody: message.body))
             return (reply, nil)

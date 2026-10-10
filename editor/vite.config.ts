@@ -10,7 +10,7 @@ export default defineConfig({
     outDir: '../Hikki/Resources/Editor',
     emptyOutDir: true,
     target: 'safari18',
-    sourcemap: true,
+    sourcemap: true
   },
-  test: { environment: 'happy-dom' },
+  test: { environment: 'happy-dom' }
 })

@@ -22,13 +22,18 @@ struct HomeView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: Spacing.s3) {
                             ForEach(model.tree.recent(limit: 12)) { page in
-                                Button { navigator.open(page.id) } label: {
-                                    PageCard(title: page.title, icon: page.icon,
-                                             subtitle: page.updatedAt.formatted(.relative(presentation: .named)))
+                                Button {
+                                    navigator.open(page.id)
+                                } label: {
+                                    PageCard(
+                                        title: page.title, icon: page.icon,
+                                        subtitle: page.updatedAt.formatted(.relative(presentation: .named)))
                                 }
                                 .buttonStyle(.plain)
                             }
-                            Button { navigator.newPage() } label: {
+                            Button {
+                                navigator.newPage()
+                            } label: {
                                 VStack(spacing: Spacing.s2) {
                                     Image(systemName: "plus").font(.hk(.xl))
                                     Text("New page").font(.hk(.md, .medium))
@@ -51,7 +56,7 @@ struct HomeView: View {
         .background(Theme.background)
         .navigationTitle("Home")
         #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.inline)
         #endif
     }
 

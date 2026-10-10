@@ -49,11 +49,13 @@ struct SearchPalette: View {
                                 .padding(.top, Spacing.s2_5)
                                 .padding(.bottom, Spacing.s1)
                             ForEach(section.items, id: \.offset) { index, hit in
-                                SearchResultRow(title: hit.title, icon: hit.icon, snippet: hit.snippet, path: path(of: hit.id),
-                                                query: query, isSelected: index == selection)
-                                    .id(index)
-                                    .onTapGesture { open(hit.id) }
-                                    .onHover { if $0 { selection = index } }
+                                SearchResultRow(
+                                    title: hit.title, icon: hit.icon, snippet: hit.snippet, path: path(of: hit.id),
+                                    query: query, isSelected: index == selection
+                                )
+                                .id(index)
+                                .onTapGesture { open(hit.id) }
+                                .onHover { if $0 { selection = index } }
                             }
                         }
                     }
@@ -85,7 +87,10 @@ struct SearchPalette: View {
         }
         .onKeyPress(.downArrow) { move(1) }
         .onKeyPress(.upArrow) { move(-1) }
-        .onKeyPress(.escape) { dismiss(); return .handled }
+        .onKeyPress(.escape) {
+            dismiss()
+            return .handled
+        }
     }
 
     private struct Section {

@@ -17,7 +17,10 @@
                     Section("ToolbarIconButton") {
                         HStack {
                             ForEach(EditorCommand.allCases.prefix(6)) { command in
-                                ToolbarIconButton(LocalizedStringKey(command.title), systemImage: command.systemImage, isActive: active.contains(command.rawValue)) {
+                                ToolbarIconButton(
+                                    LocalizedStringKey(command.title), systemImage: command.systemImage,
+                                    isActive: active.contains(command.rawValue)
+                                ) {
                                     active.formSymmetricDifference([command.rawValue])
                                 }
                             }
@@ -29,7 +32,10 @@
                     Section("KeyboardAccessoryBar") {
                         KeyboardAccessoryBar(onDismiss: {}) {
                             ForEach(EditorCommand.allCases) { command in
-                                ToolbarIconButton(LocalizedStringKey(command.title), systemImage: command.systemImage, isActive: active.contains(command.rawValue)) {
+                                ToolbarIconButton(
+                                    LocalizedStringKey(command.title), systemImage: command.systemImage,
+                                    isActive: active.contains(command.rawValue)
+                                ) {
                                     active.formSymmetricDifference([command.rawValue])
                                 }
                             }

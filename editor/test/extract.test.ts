@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+
 import { blockTexts, deriveTitle, plainText, wordCount } from '../src/extract'
 
 const doc = {
@@ -6,13 +7,24 @@ const doc = {
   content: [
     { type: 'heading', attrs: { level: 1 } },
     { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: '  会议纪要 ' }] },
-    { type: 'paragraph', content: [{ type: 'text', text: 'Hello ' }, { type: 'text', marks: [{ type: 'bold' }], text: 'world' }] },
+    {
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: 'Hello ' },
+        { type: 'text', marks: [{ type: 'bold' }], text: 'world' }
+      ]
+    },
     {
       type: 'bulletList',
-      content: [{ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'item' }] }] }],
+      content: [
+        {
+          type: 'listItem',
+          content: [{ type: 'paragraph', content: [{ type: 'text', text: 'item' }] }]
+        }
+      ]
     },
-    { type: 'codeBlock', content: [{ type: 'text', text: 'let x = 1' }] },
-  ],
+    { type: 'codeBlock', content: [{ type: 'text', text: 'let x = 1' }] }
+  ]
 }
 
 describe('extract', () => {
@@ -24,7 +36,12 @@ describe('extract', () => {
   it('derives the title from the first non-empty block', () => {
     expect(deriveTitle(doc)).toBe('会议纪要')
     expect(deriveTitle({ type: 'doc', content: [{ type: 'paragraph' }] })).toBe('')
-    expect(deriveTitle({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'x'.repeat(200) }] }] })).toHaveLength(120)
+    expect(
+      deriveTitle({
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'x'.repeat(200) }] }]
+      })
+    ).toHaveLength(120)
   })
 
   it('counts CJK per character and other scripts per word', () => {

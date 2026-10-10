@@ -11,9 +11,11 @@ struct TrashView: View {
     var body: some View {
         List {
             if filtered.isEmpty {
-                ContentUnavailableView(filter.isEmpty ? "Trash is empty" : "No matches", systemImage: "trash",
-                                       description: Text("Pages you delete show up here."))
-                    .listRowBackground(Color.clear)
+                ContentUnavailableView(
+                    filter.isEmpty ? "Trash is empty" : "No matches", systemImage: "trash",
+                    description: Text("Pages you delete show up here.")
+                )
+                .listRowBackground(Color.clear)
             }
             ForEach(filtered) { page in
                 HStack(spacing: Spacing.s2) {

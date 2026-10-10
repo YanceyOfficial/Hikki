@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 100,
+  "tabWidth": 2,
+  "useTabs": false,
+  "semi": false,
+  "singleQuote": true,
+  "trailingComma": "none",
+  "ignorePatterns": [
+    "bun.lock",
+    "node_modules/",
+    "Hikki/Resources/",
+    "Derived/",
+    "Tuist/.build/",
+    "editor/public/",
+    "editor/src/theme.css",
+    "HikkiUI/Sources/Generated/",
+    "*.xcodeproj/",
+    "*.xcworkspace/"
+  ],
+  "sortImports": { "enabled": true },
+  "sortTailwindcss": { "enabled": true, "stylesheet": "./editor/src/style.css" },
+  "sortPackageJson": { "enabled": true }
+}

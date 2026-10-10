@@ -27,8 +27,12 @@ private struct DesktopSidebar: View {
         VStack(spacing: Spacing.s0) {
             WorkspaceHeader()
             SidebarNavBar([
-                .init(id: "home", title: String(localized: "Home"), systemImage: "house", isSelected: navigator.route == .home) { navigator.go(.home) },
-                .init(id: "trash", title: String(localized: "Trash"), systemImage: "trash", isSelected: navigator.route == .trash) { navigator.go(.trash) },
+                .init(id: "home", title: String(localized: "Home"), systemImage: "house", isSelected: navigator.route == .home) {
+                    navigator.go(.home)
+                },
+                .init(id: "trash", title: String(localized: "Trash"), systemImage: "trash", isSelected: navigator.route == .trash) {
+                    navigator.go(.trash)
+                },
             ]) {
                 BarIconButton("Search (⌘K)", systemImage: "magnifyingglass") { navigator.isSearching = true }
                     .accessibilityIdentifier("sidebar-search")
@@ -64,18 +68,21 @@ private struct DesktopSidebar: View {
         }
         .background(Theme.sidebar)
         #if os(macOS)
-        .ignoresSafeArea(.container, edges: .top)
+            .ignoresSafeArea(.container, edges: .top)
         #else
-        .toolbar(.hidden, for: .navigationBar)
+            .toolbar(.hidden, for: .navigationBar)
         #endif
     }
 
-    private func item(_ route: Route?, _ title: String.LocalizationValue, systemImage: String, shortcut: String? = nil, badge: Int = 0,
-                      action: @escaping () -> Void) -> some View {
+    private func item(
+        _ route: Route?, _ title: String.LocalizationValue, systemImage: String, shortcut: String? = nil, badge: Int = 0,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
             HStack {
-                SidebarRow(String(localized: title), systemImage: systemImage, isSelected: route != nil && navigator.route == route,
-                           shortcut: shortcut)
+                SidebarRow(
+                    String(localized: title), systemImage: systemImage, isSelected: route != nil && navigator.route == route,
+                    shortcut: shortcut)
                 if badge > 0 {
                     Text("\(badge)").font(.hk(.sm)).foregroundStyle(Theme.mutedForeground)
                 }
@@ -123,8 +130,10 @@ private struct DesktopPageRow: View {
 
     var body: some View {
         let selected = navigator.route == .page(page.id)
-        SidebarRow(page.title, icon: page.icon, depth: depth, hasChildren: hasChildren,
-                   isExpanded: expandable ? expansion : nil, isSelected: selected) {
+        SidebarRow(
+            page.title, icon: page.icon, depth: depth, hasChildren: hasChildren,
+            isExpanded: expandable ? expansion : nil, isSelected: selected
+        ) {
             PageRowMenu(page: page, navigator: navigator)
             SidebarIconButton("Add a page inside", systemImage: "plus") { navigator.newPage(parentId: page.id) }
         }
@@ -179,7 +188,7 @@ private struct WorkspaceHeader: View {
 
     var body: some View {
         HStack(spacing: Spacing.s0_5) {
-            Color.clear.frame(width: max(0, metrics.leadingInset - Spacing.s2)) // traffic lights
+            Color.clear.frame(width: max(0, metrics.leadingInset - Spacing.s2))  // traffic lights
             Menu {
                 ShareLink("Export Logs", items: model.exportableFiles)
             } label: {
@@ -221,7 +230,9 @@ private struct PhoneSidebar: View {
     var body: some View {
         List(selection: $navigator.sidebarSelection) {
             Section {
-                Button { navigator.isSearching = true } label: {
+                Button {
+                    navigator.isSearching = true
+                } label: {
                     SidebarRow(String(localized: "Search"), systemImage: "magnifyingglass")
                 }
                 .buttonStyle(.plain)
@@ -246,7 +257,9 @@ private struct PhoneSidebar: View {
 
             Section {
                 if model.tree.roots.isEmpty {
-                    Button { navigator.newPage() } label: {
+                    Button {
+                        navigator.newPage()
+                    } label: {
                         SidebarRow(String(localized: "Add a page"), systemImage: "plus")
                     }
                     .buttonStyle(.plain)
@@ -294,8 +307,9 @@ private struct PhoneTree: View {
     var body: some View {
         ForEach(nodes) { node in
             NavigationLink(value: Route.page(node.id)) {
-                SidebarRow(node.page.title, icon: node.page.icon, depth: depth, hasChildren: !node.children.isEmpty,
-                           isExpanded: expansion(node.id))
+                SidebarRow(
+                    node.page.title, icon: node.page.icon, depth: depth, hasChildren: !node.children.isEmpty,
+                    isExpanded: expansion(node.id))
             }
             .contextMenu { PageActions(page: node.page, navigator: navigator) }
             .accessibilityIdentifier("page-row-\(node.page.title)")

@@ -1,6 +1,7 @@
 import Foundation
-@testable import HikkiCore
 import Testing
+
+@testable import HikkiCore
 
 struct PinyinTests {
     @Test func buildsFullAndInitialKeys() {

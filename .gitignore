@@ -5,7 +5,8 @@ Derived/
 .build/
 Tuist/.build/
 xcuserdata/
-# Web editor
+# Web (bun workspace)
+node_modules/
 editor/node_modules/
 editor/test-results/
 # Generated editor bundle (built by `make editor`)

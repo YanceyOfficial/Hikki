@@ -21,7 +21,8 @@ public struct HighlightedText: View {
         var searchRange = text.startIndex..<text.endIndex
         while let range = text.range(of: q, options: [.caseInsensitive, .diacriticInsensitive], range: searchRange) {
             if let lower = AttributedString.Index(range.lowerBound, within: result),
-               let upper = AttributedString.Index(range.upperBound, within: result) {
+                let upper = AttributedString.Index(range.upperBound, within: result)
+            {
                 result[lower..<upper].inlinePresentationIntent = .stronglyEmphasized
                 result[lower..<upper].foregroundColor = Theme.foreground
             }

@@ -14,7 +14,7 @@ export const GRADIENTS: GradientCover[] = [
   { id: 'night', label: 'Night', css: 'linear-gradient(135deg, #2b5876 0%, #4e4376 100%)' }, // design-lint: allow (cover artwork, not UI chrome)
   { id: 'ember', label: 'Ember', css: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }, // design-lint: allow (cover artwork, not UI chrome)
   { id: 'forest', label: 'Forest', css: 'linear-gradient(135deg, #134e5e 0%, #71b280 100%)' }, // design-lint: allow (cover artwork, not UI chrome)
-  { id: 'slate', label: 'Slate', css: 'linear-gradient(135deg, #485563 0%, #29323c 100%)' }, // design-lint: allow (cover artwork, not UI chrome)
+  { id: 'slate', label: 'Slate', css: 'linear-gradient(135deg, #485563 0%, #29323c 100%)' } // design-lint: allow (cover artwork, not UI chrome)
 ]
 
 export const gradientCover = (id: string) => `gradient:${id}`
@@ -25,7 +25,8 @@ export function coverBackground(cover: string | null): string | null {
   if (cover.startsWith('gradient:')) {
     return GRADIENTS.find((g) => `gradient:${g.id}` === cover)?.css ?? null
   }
-  if (/^(hikki-editor|https?|blob|data):/.test(cover)) return `center / cover no-repeat url("${cover.replace(/"/g, '%22')}")`
+  if (/^(hikki-editor|https?|blob|data):/.test(cover))
+    return `center / cover no-repeat url("${cover.replace(/"/g, '%22')}")`
   return null
 }
 
@@ -34,7 +35,24 @@ export function randomGradient(random: () => number = Math.random): string {
 }
 
 /** A friendly starter set for "Add icon", like Notion's random pick. */
-export const STARTER_ICONS = ['📝', '📌', '💡', '🚀', '🌱', '📚', '🎯', '🧭', '🗂️', '✨', '🌊', '🍀', '🔖', '🧠', '☕️', '🎨']
+export const STARTER_ICONS = [
+  '📝',
+  '📌',
+  '💡',
+  '🚀',
+  '🌱',
+  '📚',
+  '🎯',
+  '🧭',
+  '🗂️',
+  '✨',
+  '🌊',
+  '🍀',
+  '🔖',
+  '🧠',
+  '☕️',
+  '🎨'
+]
 
 export function randomIcon(random: () => number = Math.random): string {
   return STARTER_ICONS[Math.floor(random() * STARTER_ICONS.length)]

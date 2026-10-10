@@ -1,0 +1,5 @@
+{
+  "*.{js,jsx,ts,tsx,mjs}": ["oxlint", "oxfmt"],
+  "*.{json,md,css,html,yaml,yml}": ["oxfmt"],
+  "*.swift": ["xcrun swift-format format -i", "xcrun swift-format lint --strict"]
+}

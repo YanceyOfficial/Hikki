@@ -32,7 +32,9 @@ public struct Breadcrumbs: View {
                 case .ellipsis:
                     Text("…").font(.hk(.md)).foregroundStyle(Theme.mutedForeground).padding(.horizontal, Spacing.s1)
                 case .crumb(let crumb, let isLast):
-                    Button { if !isLast { onSelect(crumb.id) } } label: {
+                    Button {
+                        if !isLast { onSelect(crumb.id) }
+                    } label: {
                         HStack(spacing: Spacing.s1) {
                             if crumb.icon != nil { PageIcon(crumb.icon, size: 13) }
                             Text(crumb.title.isEmpty ? String(localized: "Untitled") : crumb.title)

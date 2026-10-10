@@ -61,8 +61,9 @@ public struct TabStrip<Leading: View>: View {
                 .opacity(canGoForward ? 1 : 0.4)
             HStack(spacing: Spacing.s0_5) {
                 ForEach(items) { item in
-                    TabButton(item: item, isActive: item.id == activeID, canClose: items.count > 1,
-                              onSelect: { onSelect(item.id) }, onClose: { onClose(item.id) })
+                    TabButton(
+                        item: item, isActive: item.id == activeID, canClose: items.count > 1,
+                        onSelect: { onSelect(item.id) }, onClose: { onClose(item.id) })
                 }
             }
             SidebarIconButton("New Tab", systemImage: "plus", action: onNew)
@@ -122,7 +123,8 @@ private struct TabButton: View {
 }
 
 #Preview {
-    let a = UUID(), b = UUID()
+    let a = UUID()
+    let b = UUID()
     TabStrip(
         items: [TabStripItem(id: a, title: "Welcome to Hikki", icon: "👋"), TabStripItem(id: b, title: "", systemImage: "house")],
         activeID: a, canGoBack: true, canGoForward: false,

@@ -1,11 +1,13 @@
 import Foundation
-@testable import HikkiCore
 import Testing
+
+@testable import HikkiCore
 
 struct PageTreeTests {
     private func page(_ id: String, parent: String? = nil, updated: TimeInterval = 0, favorited: TimeInterval? = nil) -> PageSummary {
-        PageSummary(id: id, parentId: parent, title: id.uppercased(), icon: nil, updatedAt: Date(timeIntervalSince1970: updated),
-                    favoritedAt: favorited.map { Date(timeIntervalSince1970: $0) }, deletedAt: nil, sortKey: 0)
+        PageSummary(
+            id: id, parentId: parent, title: id.uppercased(), icon: nil, updatedAt: Date(timeIntervalSince1970: updated),
+            favoritedAt: favorited.map { Date(timeIntervalSince1970: $0) }, deletedAt: nil, sortKey: 0)
     }
 
     @Test func buildsNestedTreeInGivenOrder() {
@@ -29,7 +31,7 @@ struct PageTreeTests {
     @Test func survivesParentCycles() {
         let tree = PageTree([page("a", parent: "b"), page("b", parent: "a")])
         #expect(tree.path(to: "a").count <= 2)
-        _ = tree.roots // must terminate
+        _ = tree.roots  // must terminate
     }
 
     @Test func favoritesAndRecentAreOrdered() {

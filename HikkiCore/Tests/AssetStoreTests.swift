@@ -1,6 +1,7 @@
 import Foundation
-@testable import HikkiCore
 import Testing
+
+@testable import HikkiCore
 
 struct AssetStoreTests {
     @Test func savesAndResolvesAssets() throws {

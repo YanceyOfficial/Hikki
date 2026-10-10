@@ -23,14 +23,15 @@ struct ContentView: View {
                     min: Size.sidebarMin, ideal: Size.sidebarIdeal, max: Size.sidebarMax
                 )
         } detail: {
-            DetailView(navigator: navigator, editor: editor, customChrome: customChrome,
-                       sidebarHidden: columns == .detailOnly,
-                       toggleSidebar: { withAnimation { columns = columns == .detailOnly ? .all : .detailOnly } })
+            DetailView(
+                navigator: navigator, editor: editor, customChrome: customChrome,
+                sidebarHidden: columns == .detailOnly,
+                toggleSidebar: { withAnimation { columns = columns == .detailOnly ? .all : .detailOnly } })
         }
         #if os(macOS)
-        .toolbar(removing: .sidebarToggle)
-        // Our tab bar / sidebar header replace the window toolbar (see WindowChrome).
-        .background(WindowChrome { chrome = $0 })
+            .toolbar(removing: .sidebarToggle)
+            // Our tab bar / sidebar header replace the window toolbar (see WindowChrome).
+            .background(WindowChrome { chrome = $0 })
         #endif
         .sheet(isPresented: customChrome ? .constant(false) : $navigator.isSearching) {
             SearchPalette(navigator: navigator) { navigator.isSearching = false }
@@ -112,9 +113,9 @@ private struct DetailView: View {
         }
         .background(Theme.background)
         #if os(macOS)
-        .ignoresSafeArea(.container, edges: .top)
+            .ignoresSafeArea(.container, edges: .top)
         #else
-        .toolbar(customChrome ? .hidden : .automatic, for: .navigationBar)
+            .toolbar(customChrome ? .hidden : .automatic, for: .navigationBar)
         #endif
     }
 
@@ -142,13 +143,13 @@ private struct DetailView: View {
             onForward: navigator.goForward
         ) {
             #if os(macOS)
-                if sidebarHidden { Color.clear.frame(width: max(0, chromeMetrics.leadingInset - Spacing.s2)) } // traffic lights
+                if sidebarHidden { Color.clear.frame(width: max(0, chromeMetrics.leadingInset - Spacing.s2)) }  // traffic lights
             #endif
             SidebarIconButton(sidebarHidden ? "Show Sidebar" : "Hide Sidebar", systemImage: "sidebar.left", action: toggleSidebar)
         }
         .background(Theme.sidebar)
         #if os(macOS)
-        .background(WindowDragArea())
+            .background(WindowDragArea())
         #endif
     }
 

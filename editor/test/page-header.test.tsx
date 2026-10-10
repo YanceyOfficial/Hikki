@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
 import { EditorBridge } from '../src/bridge'
 import { Outline } from '../src/page/Outline'
 import { PageHeader } from '../src/page/PageHeader'
@@ -15,7 +16,16 @@ describe('PageHeader', () => {
     sent = []
     host = document.createElement('div')
     document.body.append(host)
-    bridge = new EditorBridge(host, { post: async (m) => { sent.push(m); return null } }, { debounceMs: 0 })
+    bridge = new EditorBridge(
+      host,
+      {
+        post: async (m) => {
+          sent.push(m)
+          return null
+        }
+      },
+      { debounceMs: 0 }
+    )
   })
   afterEach(() => {
     cleanup()
@@ -40,7 +50,9 @@ describe('PageHeader', () => {
     load()
     const title = screen.getByLabelText('Page title')
     let moved = 0
-    bridge.enterFromTitle = () => { moved++ }
+    bridge.enterFromTitle = () => {
+      moved++
+    }
     fireEvent.compositionStart(title)
     fireEvent.keyDown(title, { key: 'Enter' })
     expect(moved).toBe(0)
@@ -54,8 +66,14 @@ describe('PageHeader', () => {
     load()
     fireEvent.click(screen.getByText('Add icon'))
     fireEvent.click(screen.getByText('Add cover'))
-    expect(sent.find((m) => m.type === 'setIcon')).toMatchObject({ docId: 'a', icon: expect.any(String) })
-    expect(sent.find((m) => m.type === 'setCover')).toMatchObject({ docId: 'a', cover: expect.stringMatching(/^gradient:/) })
+    expect(sent.find((m) => m.type === 'setIcon')).toMatchObject({
+      docId: 'a',
+      icon: expect.any(String)
+    })
+    expect(sent.find((m) => m.type === 'setCover')).toMatchObject({
+      docId: 'a',
+      cover: expect.stringMatching(/^gradient:/)
+    })
     expect(screen.queryByText('Add icon')).toBeNull()
     expect(screen.queryByText('Add cover')).toBeNull()
     expect(screen.getByTestId('cover')).toBeTruthy()
@@ -99,13 +117,31 @@ describe('Outline', () => {
     document.body.append(host)
     const bridge = new EditorBridge(host, { post: async () => null })
     render(<Outline bridge={bridge} />)
-    act(() => bridge.loadDocument(page('a', { content: { type: 'doc', content: [
-      { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Goals' }] },
-    ] } })))
+    act(() =>
+      bridge.loadDocument(
+        page('a', {
+          content: {
+            type: 'doc',
+            content: [
+              { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Goals' }] }
+            ]
+          }
+        })
+      )
+    )
     expect(screen.queryByRole('navigation', { name: 'Outline' })).toBeNull()
-    act(() => bridge.page.set({ headings: [{ pos: 0, level: 2, text: 'Goals' }, { pos: 7, level: 3, text: 'Risks' }] }))
+    act(() =>
+      bridge.page.set({
+        headings: [
+          { pos: 0, level: 2, text: 'Goals' },
+          { pos: 7, level: 3, text: 'Risks' }
+        ]
+      })
+    )
     let scrolled = -1
-    bridge.scrollToHeading = (pos) => { scrolled = pos }
+    bridge.scrollToHeading = (pos) => {
+      scrolled = pos
+    }
     fireEvent.click(screen.getByRole('button', { name: 'Risks' }))
     expect(scrolled).toBe(7)
     host.remove()

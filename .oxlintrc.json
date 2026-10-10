@@ -1,0 +1,37 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "react"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "pedantic": "warn"
+  },
+  "rules": {
+    "max-lines-per-function": [
+      "warn",
+      {
+        "max": 120
+      }
+    ],
+    "react/react-in-jsx-scope": "off"
+  },
+  "ignorePatterns": [
+    "editor/src/theme.css",
+    "Hikki/Resources/**",
+    "**/node_modules/**",
+    "**/dist/**"
+  ],
+  "overrides": [
+    {
+      "files": ["editor/test/**"],
+      "rules": {
+        "max-lines-per-function": "off",
+        "typescript/no-explicit-any": "off"
+      }
+    }
+  ],
+  "env": {
+    "builtin": true,
+    "browser": true
+  }
+}

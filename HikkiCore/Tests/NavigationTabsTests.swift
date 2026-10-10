@@ -1,6 +1,7 @@
 import Foundation
-@testable import HikkiCore
 import Testing
+
+@testable import HikkiCore
 
 struct NavigationTabsTests {
     typealias Tabs = NavigationTabs<String>
@@ -77,7 +78,7 @@ struct NavigationTabsTests {
         #expect(closedThree)
         #expect(tabs.route == "1")
         let closedLast = tabs.close(tabs.activeID)
-        #expect(closedLast == false) // last tab stays
+        #expect(closedLast == false)  // last tab stays
     }
 
     @Test func selectNeighborWraps() {
@@ -97,7 +98,7 @@ struct NavigationTabsTests {
         let first = tabs.activeID
         tabs.openTab("x")
         tabs.prune(fallback: "home") { $0 == "x" }
-        #expect(tabs.route == "home")           // the tab that only had "x"
+        #expect(tabs.route == "home")  // the tab that only had "x"
         tabs.select(first)
         #expect(tabs.active.history == ["home", "a", "home"])
         #expect(tabs.route == "home")

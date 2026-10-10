@@ -15,9 +15,11 @@ public final class CrashReporter: NSObject, MXMetricManagerSubscriber, Sendable 
     public func start() {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         NSSetUncaughtExceptionHandler { exception in
-            Log.error("uncaught exception: \(exception.name.rawValue): \(exception.reason ?? "")", category: "crash", context: [
-                "stack": exception.callStackSymbols.prefix(40).joined(separator: "\n"),
-            ])
+            Log.error(
+                "uncaught exception: \(exception.name.rawValue): \(exception.reason ?? "")", category: "crash",
+                context: [
+                    "stack": exception.callStackSymbols.prefix(40).joined(separator: "\n")
+                ])
         }
         MXMetricManager.shared.add(self)
         // Payloads delivered while we weren't subscribed yet (e.g. the crash right before this launch).

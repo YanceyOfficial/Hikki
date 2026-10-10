@@ -16,15 +16,15 @@ struct PageScreen: View {
             .ignoresSafeArea(.container, edges: .bottom)
             .navigationTitle(page.map { $0.title.isEmpty ? String(localized: "Untitled") : $0.title } ?? "")
             #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                if phoneToolbar, let page {
-                    ToolbarItemGroup(placement: .primaryAction) {
-                        FavoriteButton(page: page)
-                        PageMoreMenu(page: page, navigator: navigator)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    if phoneToolbar, let page {
+                        ToolbarItemGroup(placement: .primaryAction) {
+                            FavoriteButton(page: page)
+                            PageMoreMenu(page: page, navigator: navigator)
+                        }
                     }
                 }
-            }
             #endif
     }
 }
@@ -78,9 +78,11 @@ struct FavoriteButton: View {
     let page: PageSummary
 
     var body: some View {
-        BarIconButton(page.isFavorite ? "Remove from Favorites" : "Add to Favorites",
-                      systemImage: page.isFavorite ? "star.fill" : "star",
-                      tint: page.isFavorite ? .yellow : nil) {
+        BarIconButton(
+            page.isFavorite ? "Remove from Favorites" : "Add to Favorites",
+            systemImage: page.isFavorite ? "star.fill" : "star",
+            tint: page.isFavorite ? .yellow : nil
+        ) {
             model.setFavorite(!page.isFavorite, id: page.id)
         }
         .accessibilityIdentifier("favorite-toggle")

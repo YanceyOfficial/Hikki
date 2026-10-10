@@ -45,7 +45,8 @@ final class EditorFlowTests: XCTestCase {
                 app.navigationBars.buttons.firstMatch.tap()
             }
         #endif
-        XCTAssertTrue(app.staticTexts["Hello Hikki"].firstMatch.waitForExistence(timeout: 10), "saved title missing from sidebar after relaunch")
+        XCTAssertTrue(
+            app.staticTexts["Hello Hikki"].firstMatch.waitForExistence(timeout: 10), "saved title missing from sidebar after relaunch")
     }
 
     func testSlashMenuInsertsTodoList() throws {
@@ -162,7 +163,7 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(waitOrDumpTree(field, in: app), "editor never became editable")
         field.tap()
         field.typeText(title)
-        sleep(1) // past the save debounce
+        sleep(1)  // past the save debounce
     }
 
     /// On iPhone the sidebar is a separate screen behind the page.

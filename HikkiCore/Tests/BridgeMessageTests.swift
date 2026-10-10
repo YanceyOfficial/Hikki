@@ -1,6 +1,7 @@
 import Foundation
-@testable import HikkiCore
 import Testing
+
+@testable import HikkiCore
 
 struct BridgeMessageTests {
     /// Shapes exactly as WebKit bridges a JS object literal (NSDictionary / NSNumber).
@@ -21,37 +22,49 @@ struct BridgeMessageTests {
         }
         #expect(snapshot.docId == "a")
         #expect(snapshot.title == "会议")
-        #expect(snapshot.content == .object([
-            "type": .string("doc"),
-            "content": .array([.object(["type": .string("paragraph"), "attrs": .object(["level": .number(1), "checked": .bool(true)])])]),
-        ]))
+        #expect(
+            snapshot.content
+                == .object([
+                    "type": .string("doc"),
+                    "content": .array([
+                        .object(["type": .string("paragraph"), "attrs": .object(["level": .number(1), "checked": .bool(true)])])
+                    ]),
+                ]))
     }
 
     @Test func decodesLogAndActiveFormats() throws {
-        #expect(try BridgeMessage.decode(scriptMessageBody: ["type": "log", "level": "warn", "message": "m"] as NSDictionary)
-            == .log(level: .warn, message: "m", context: nil))
-        #expect(try BridgeMessage.decode(scriptMessageBody: ["type": "activeFormats", "active": ["bold"]] as NSDictionary)
-            == .activeFormats(["bold"]))
+        #expect(
+            try BridgeMessage.decode(scriptMessageBody: ["type": "log", "level": "warn", "message": "m"] as NSDictionary)
+                == .log(level: .warn, message: "m", context: nil))
+        #expect(
+            try BridgeMessage.decode(scriptMessageBody: ["type": "activeFormats", "active": ["bold"]] as NSDictionary)
+                == .activeFormats(["bold"]))
     }
 
     @Test func decodesMetadataMessages() throws {
-        #expect(try BridgeMessage.decode(scriptMessageBody: ["type": "setIcon", "docId": "a", "icon": "👋"] as NSDictionary)
-            == .setIcon(docId: "a", icon: "👋"))
-        #expect(try BridgeMessage.decode(scriptMessageBody: ["type": "setIcon", "docId": "a", "icon": NSNull()] as NSDictionary)
-            == .setIcon(docId: "a", icon: nil))
-        #expect(try BridgeMessage.decode(scriptMessageBody: ["type": "setCover", "docId": "a", "cover": "gradient:ocean"] as NSDictionary)
-            == .setCover(docId: "a", cover: "gradient:ocean"))
-        #expect(try BridgeMessage.decode(scriptMessageBody: ["type": "saveAsset", "fileExtension": "png", "dataBase64": "AQID"] as NSDictionary)
-            == .saveAsset(fileExtension: "png", data: Data([1, 2, 3])))
+        #expect(
+            try BridgeMessage.decode(scriptMessageBody: ["type": "setIcon", "docId": "a", "icon": "👋"] as NSDictionary)
+                == .setIcon(docId: "a", icon: "👋"))
+        #expect(
+            try BridgeMessage.decode(scriptMessageBody: ["type": "setIcon", "docId": "a", "icon": NSNull()] as NSDictionary)
+                == .setIcon(docId: "a", icon: nil))
+        #expect(
+            try BridgeMessage.decode(scriptMessageBody: ["type": "setCover", "docId": "a", "cover": "gradient:ocean"] as NSDictionary)
+                == .setCover(docId: "a", cover: "gradient:ocean"))
+        #expect(
+            try BridgeMessage.decode(
+                scriptMessageBody: ["type": "saveAsset", "fileExtension": "png", "dataBase64": "AQID"] as NSDictionary)
+                == .saveAsset(fileExtension: "png", data: Data([1, 2, 3])))
         #expect(throws: BridgeError.invalidPayload("saveAsset: dataBase64 is not base64")) {
             try BridgeMessage.decode(scriptMessageBody: ["type": "saveAsset", "fileExtension": "png", "dataBase64": "%%%"] as NSDictionary)
         }
     }
 
     @Test func pagePayloadCarriesTitleAndMetadataSeparatelyFromContent() throws {
-        let record = DocumentRecord(id: "a", title: "Plan", content: #"{"type":"doc","content":[]}"#, plainText: "", wordCount: 0,
-                                    createdAt: .now, updatedAt: .now, parentId: nil, icon: "🌊", cover: nil, favoritedAt: nil,
-                                    deletedAt: nil, sortKey: 0)
+        let record = DocumentRecord(
+            id: "a", title: "Plan", content: #"{"type":"doc","content":[]}"#, plainText: "", wordCount: 0,
+            createdAt: .now, updatedAt: .now, parentId: nil, icon: "🌊", cover: nil, favoritedAt: nil,
+            deletedAt: nil, sortKey: 0)
         let payload = try PagePayload.make(from: record)
         #expect(payload["title"] as? String == "Plan")
         #expect(payload["icon"] as? String == "🌊")

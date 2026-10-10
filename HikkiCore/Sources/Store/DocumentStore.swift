@@ -111,9 +111,10 @@ public final class DocumentStore: Sendable {
             }
             try db.create(index: "document_parentId", on: "document", columns: ["parentId"])
             // Existing pages keep their old (newest-first) order as top-level siblings.
-            try db.execute(sql: """
-                UPDATE document SET sortKey = (SELECT COUNT(*) FROM document d2 WHERE d2.updatedAt > document.updatedAt)
-                """)
+            try db.execute(
+                sql: """
+                    UPDATE document SET sortKey = (SELECT COUNT(*) FROM document d2 WHERE d2.updatedAt > document.updatedAt)
+                    """)
             // Trigram handles CJK, which has no spaces for a word tokenizer to split on.
             try db.create(virtualTable: "documentFts", using: FTS5()) { t in
                 t.synchronize(withTable: "document")
@@ -128,7 +129,8 @@ public final class DocumentStore: Sendable {
             }
             for row in try Row.fetchAll(db, sql: "SELECT id, title FROM document") {
                 let title: String = row["title"]
-                try db.execute(sql: "UPDATE document SET titlePinyin = ? WHERE id = ?", arguments: [Pinyin.searchKey(for: title), row["id"] as String])
+                try db.execute(
+                    sql: "UPDATE document SET titlePinyin = ? WHERE id = ?", arguments: [Pinyin.searchKey(for: title), row["id"] as String])
             }
         }
         return migrator
@@ -178,14 +180,16 @@ public final class DocumentStore: Sendable {
     /// Ancestors from the root down to (not including) the page.
     public func ancestors(of id: String) throws -> [PageSummary] {
         try writer.read { db in
-            try PageSummary.fetchAll(db, sql: """
-                WITH RECURSIVE up(id, depth) AS (
-                    SELECT parentId, 1 FROM document WHERE id = ?
-                    UNION ALL
-                    SELECT d.parentId, up.depth + 1 FROM document d JOIN up ON d.id = up.id WHERE d.parentId IS NOT NULL
-                )
-                SELECT \(Self.summaryColumns) FROM document JOIN up ON document.id = up.id ORDER BY up.depth DESC
-                """, arguments: [id])
+            try PageSummary.fetchAll(
+                db,
+                sql: """
+                    WITH RECURSIVE up(id, depth) AS (
+                        SELECT parentId, 1 FROM document WHERE id = ?
+                        UNION ALL
+                        SELECT d.parentId, up.depth + 1 FROM document d JOIN up ON d.id = up.id WHERE d.parentId IS NOT NULL
+                    )
+                    SELECT \(Self.summaryColumns) FROM document JOIN up ON document.id = up.id ORDER BY up.depth DESC
+                    """, arguments: [id])
         }
     }
 
@@ -198,11 +202,13 @@ public final class DocumentStore: Sendable {
         return try writer.write { db in
             try db.execute(
                 sql: """
-                UPDATE document SET title = ?, titlePinyin = ?, content = ?, plainText = ?, wordCount = ?, updatedAt = ?
-                WHERE id = ? AND (content IS NOT ? OR title IS NOT ?)
-                """,
-                arguments: [snapshot.title, Pinyin.searchKey(for: snapshot.title), json, snapshot.text, snapshot.wordCount, now,
-                            snapshot.docId, json, snapshot.title]
+                    UPDATE document SET title = ?, titlePinyin = ?, content = ?, plainText = ?, wordCount = ?, updatedAt = ?
+                    WHERE id = ? AND (content IS NOT ? OR title IS NOT ?)
+                    """,
+                arguments: [
+                    snapshot.title, Pinyin.searchKey(for: snapshot.title), json, snapshot.text, snapshot.wordCount, now,
+                    snapshot.docId, json, snapshot.title,
+                ]
             )
             if db.changesCount > 0 { return true }
             return try DocumentRecord.exists(db, key: snapshot.docId)
@@ -235,8 +241,9 @@ public final class DocumentStore: Sendable {
     /// Soft-deletes the page and its whole subtree with one shared timestamp.
     public func moveToTrash(id: String, now: Date = .now) throws {
         try writer.write { db in
-            try db.execute(sql: "\(Self.subtreeCTE) UPDATE document SET deletedAt = ? WHERE id IN (SELECT id FROM sub) AND deletedAt IS NULL",
-                           arguments: [id, now])
+            try db.execute(
+                sql: "\(Self.subtreeCTE) UPDATE document SET deletedAt = ? WHERE id IN (SELECT id FROM sub) AND deletedAt IS NULL",
+                arguments: [id, now])
         }
     }
 
@@ -245,10 +252,12 @@ public final class DocumentStore: Sendable {
     public func restore(id: String) throws {
         try writer.write { db in
             guard let record = try DocumentRecord.fetchOne(db, key: id), let deletedAt = record.deletedAt else { return }
-            try db.execute(sql: "\(Self.subtreeCTE) UPDATE document SET deletedAt = NULL WHERE id IN (SELECT id FROM sub) AND deletedAt = ?",
-                           arguments: [id, deletedAt])
+            try db.execute(
+                sql: "\(Self.subtreeCTE) UPDATE document SET deletedAt = NULL WHERE id IN (SELECT id FROM sub) AND deletedAt = ?",
+                arguments: [id, deletedAt])
             if let parentId = record.parentId,
-               try Bool.fetchOne(db, sql: "SELECT deletedAt IS NOT NULL FROM document WHERE id = ?", arguments: [parentId]) == true {
+                try Bool.fetchOne(db, sql: "SELECT deletedAt IS NOT NULL FROM document WHERE id = ?", arguments: [parentId]) == true
+            {
                 let last = try Double.fetchOne(db, sql: "SELECT MAX(sortKey) FROM document WHERE parentId IS NULL") ?? -1
                 try db.execute(sql: "UPDATE document SET parentId = NULL, sortKey = ? WHERE id = ?", arguments: [last + 1, id])
             }
@@ -286,7 +295,8 @@ public final class DocumentStore: Sendable {
     private static func titleMatches(_ db: Database, _ q: String) throws -> [SearchHit] {
         let rows = try Row.fetchAll(db, sql: "SELECT id, title, icon, titlePinyin, updatedAt FROM document WHERE deletedAt IS NULL")
         let asciiQuery = q.allSatisfy { $0.isASCII }
-        return rows
+        return
+            rows
             .compactMap { row -> (SearchHit, Int, Date)? in
                 let title: String = row["title"]
                 var best = FuzzyMatch.score(q, in: title)
@@ -303,23 +313,29 @@ public final class DocumentStore: Sendable {
     private static func textMatches(_ db: Database, _ q: String, limit: Int) throws -> [SearchHit] {
         if q.count >= 3 {
             let phrase = "\"" + q.replacingOccurrences(of: "\"", with: "\"\"") + "\""
-            let rows = try Row.fetchAll(db, sql: """
-                SELECT d.id, d.title, d.icon, snippet(documentFts, 1, '', '', '…', 16) AS snippet
-                FROM documentFts JOIN document d ON d.rowid = documentFts.rowid
-                WHERE documentFts MATCH ? AND d.deletedAt IS NULL
-                ORDER BY rank LIMIT ?
-                """, arguments: [phrase, limit])
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT d.id, d.title, d.icon, snippet(documentFts, 1, '', '', '…', 16) AS snippet
+                    FROM documentFts JOIN document d ON d.rowid = documentFts.rowid
+                    WHERE documentFts MATCH ? AND d.deletedAt IS NULL
+                    ORDER BY rank LIMIT ?
+                    """, arguments: [phrase, limit])
             return rows.map { row in
                 let snippet: String = row["snippet"] ?? ""
-                return SearchHit(id: row["id"], title: row["title"], icon: row["icon"], snippet: snippet.localizedCaseInsensitiveContains(q) ? snippet : "")
+                return SearchHit(
+                    id: row["id"], title: row["title"], icon: row["icon"],
+                    snippet: snippet.localizedCaseInsensitiveContains(q) ? snippet : "")
             }
         }
         let pattern = likePattern(q)
-        let rows = try Row.fetchAll(db, sql: """
-            SELECT id, title, icon, plainText FROM document
-            WHERE deletedAt IS NULL AND (title LIKE ? ESCAPE '\\' OR plainText LIKE ? ESCAPE '\\')
-            ORDER BY updatedAt DESC LIMIT ?
-            """, arguments: [pattern, pattern, limit])
+        let rows = try Row.fetchAll(
+            db,
+            sql: """
+                SELECT id, title, icon, plainText FROM document
+                WHERE deletedAt IS NULL AND (title LIKE ? ESCAPE '\\' OR plainText LIKE ? ESCAPE '\\')
+                ORDER BY updatedAt DESC LIMIT ?
+                """, arguments: [pattern, pattern, limit])
         return rows.map { row in
             SearchHit(id: row["id"], title: row["title"], icon: row["icon"], snippet: excerpt(of: row["plainText"], around: q))
         }
@@ -327,26 +343,30 @@ public final class DocumentStore: Sendable {
 
     // MARK: - Helpers
 
-    private static let summaryColumns = "document.id, document.parentId, document.title, document.icon, document.updatedAt, document.favoritedAt, document.deletedAt, document.sortKey"
+    private static let summaryColumns =
+        "document.id, document.parentId, document.title, document.icon, document.updatedAt, document.favoritedAt, document.deletedAt, document.sortKey"
 
     private static let pagesRequest = SQLRequest<PageSummary>(
         sql: "SELECT \(summaryColumns) FROM document WHERE deletedAt IS NULL ORDER BY sortKey, createdAt, id"
     )
 
-    private static let trashRequest = SQLRequest<PageSummary>(sql: """
-        SELECT \(summaryColumns) FROM document
-        LEFT JOIN document parent ON parent.id = document.parentId
-        WHERE document.deletedAt IS NOT NULL
-          AND (parent.id IS NULL OR parent.deletedAt IS NULL OR parent.deletedAt != document.deletedAt)
-        ORDER BY document.deletedAt DESC, document.id
-        """)
+    private static let trashRequest = SQLRequest<PageSummary>(
+        sql: """
+            SELECT \(summaryColumns) FROM document
+            LEFT JOIN document parent ON parent.id = document.parentId
+            WHERE document.deletedAt IS NOT NULL
+              AND (parent.id IS NULL OR parent.deletedAt IS NULL OR parent.deletedAt != document.deletedAt)
+            ORDER BY document.deletedAt DESC, document.id
+            """)
 
     private static let subtreeCTE = """
         WITH RECURSIVE sub(id) AS (SELECT ? UNION ALL SELECT d.id FROM document d JOIN sub ON d.parentId = sub.id)
         """
 
     private static func likePattern(_ q: String) -> String {
-        "%" + q.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "%", with: "\\%").replacingOccurrences(of: "_", with: "\\_") + "%"
+        "%"
+            + q.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "%", with: "\\%").replacingOccurrences(
+                of: "_", with: "\\_") + "%"
     }
 
     static func excerpt(of text: String, around query: String, radius: Int = 24) -> String {

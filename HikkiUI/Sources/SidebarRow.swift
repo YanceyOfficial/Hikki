@@ -41,7 +41,9 @@ public struct SidebarRow<Actions: View>: View {
             leadingGlyph
             Text(title.isEmpty ? String(localized: "Untitled") : title)
                 .font(.hk(.base, .medium))
-                .foregroundStyle(isSelected ? Theme.sidebarAccentForeground : title.isEmpty ? Theme.mutedForeground : Theme.sidebarForeground)
+                .foregroundStyle(
+                    isSelected ? Theme.sidebarAccentForeground : title.isEmpty ? Theme.mutedForeground : Theme.sidebarForeground
+                )
                 .lineLimit(1)
             Spacer(minLength: 0)
             if let shortcut {

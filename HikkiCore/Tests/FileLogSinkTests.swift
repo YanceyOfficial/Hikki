@@ -1,6 +1,7 @@
 import Foundation
-@testable import HikkiCore
 import Testing
+
+@testable import HikkiCore
 
 struct FileLogSinkTests {
     private func lines(_ url: URL) throws -> [LogEntry] {
@@ -12,7 +13,8 @@ struct FileLogSinkTests {
     }
 
     private func entry(_ message: String) -> LogEntry {
-        LogEntry(timestamp: Date(timeIntervalSince1970: 1_700_000_000), level: .info, category: "test", message: message, context: ["k": "v"])
+        LogEntry(
+            timestamp: Date(timeIntervalSince1970: 1_700_000_000), level: .info, category: "test", message: message, context: ["k": "v"])
     }
 
     @Test func writesJSONLines() throws {

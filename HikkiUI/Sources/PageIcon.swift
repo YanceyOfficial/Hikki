@@ -13,10 +13,10 @@ public struct PageIcon: View {
     public var body: some View {
         Group {
             if let emoji, !emoji.isEmpty {
-                Text(emoji).font(.system(size: size * 0.92)) // design-lint: allow (scales with the icon size)
+                Text(emoji).font(.system(size: size * 0.92))  // design-lint: allow (scales with the icon size)
             } else {
                 Image(systemName: "doc.text")
-                    .font(.system(size: size * 0.85, weight: .regular)) // design-lint: allow
+                    .font(.system(size: size * 0.85, weight: .regular))  // design-lint: allow
                     .foregroundStyle(Theme.mutedForeground)
             }
         }
@@ -26,5 +26,9 @@ public struct PageIcon: View {
 }
 
 #Preview {
-    HStack { PageIcon("👋"); PageIcon(nil); PageIcon("🌊", size: 40) }.padding()
+    HStack {
+        PageIcon("👋")
+        PageIcon(nil)
+        PageIcon("🌊", size: 40)
+    }.padding()
 }
