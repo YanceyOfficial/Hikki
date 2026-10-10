@@ -24,10 +24,12 @@ final class EditorFlowTests: XCTestCase {
         start.tap()
         let name = app.textFields["onboarding-name"].firstMatch
         XCTAssertTrue(waitOrDumpTree(name, in: app))
-        name.tap()
-        let prefilled = (name.value as? String) ?? ""
-        name.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: prefilled.count + 2))
+        XCTAssertFalse((name.value as? String ?? "").isEmpty, "no suggested name")
+        attachScreenshot(app, "onboarding-name")
+        // The suggestion arrives focused and selected, so typing replaces it.
+        sleep(1)
         name.typeText("Field Notes")
+        XCTAssertEqual(name.value as? String, "Field Notes")
         app.buttons["onboarding-continue"].firstMatch.tap()
         let device = app.buttons["onboarding-device"].firstMatch
         XCTAssertTrue(waitOrDumpTree(device, in: app))
@@ -39,6 +41,47 @@ final class EditorFlowTests: XCTestCase {
         app = launch(workspace: nil)
         XCTAssertTrue(waitOrDumpTree(app.staticTexts["Field Notes"].firstMatch, in: app), "workspace not persisted")
         XCTAssertFalse(app.buttons["onboarding-start"].exists)
+    }
+
+    #if os(macOS)
+        /// Toggling the sidebar re-lays out the title bar; the traffic lights must stay centred in our 46pt bar.
+        func testTrafficLightsStayCenteredWhenSidebarToggles() throws {
+            continueAfterFailure = false
+            let app = launch()
+            let close = app.buttons["_XCUI:CloseWindow"].firstMatch
+            let toggle = app.buttons["Hide Sidebar"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(toggle, in: app))
+            sleep(1)
+            let expected = close.frame.midY - app.windows.firstMatch.frame.minY
+            toggle.click()
+            sleep(1)
+            XCTAssertEqual(close.frame.midY - app.windows.firstMatch.frame.minY, expected, accuracy: 0.5, "moved after hiding the sidebar")
+            app.buttons["Show Sidebar"].firstMatch.click()
+            sleep(1)
+            XCTAssertEqual(close.frame.midY - app.windows.firstMatch.frame.minY, expected, accuracy: 0.5, "moved after showing the sidebar")
+        }
+    #endif
+
+    /// Workspace menu → Rename: the new name shows in the chrome (iPhone: the nav title is the menu).
+    func testRenameWorkspace() throws {
+        continueAfterFailure = false
+        let app = launch(workspace: "Old Name")
+        // Mac/iPad: the sidebar header menu. iPhone: the nav bar's More menu (may collapse into the overflow button).
+        let header = app.buttons["workspace-menu"].firstMatch
+        let more = app.buttons["workspace-more"].firstMatch
+        let menu = header.waitForExistence(timeout: 5) ? header : (more.exists ? more : app.navigationBars.buttons["More"].firstMatch)
+        XCTAssertTrue(waitOrDumpTree(menu, in: app))
+        menu.tap()
+        let rename = app.buttons["workspace-rename"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(rename, in: app))
+        rename.tap()
+        // System alerts drop custom identifiers on their text fields.
+        let field = app.alerts.textFields.firstMatch
+        XCTAssertTrue(waitOrDumpTree(field, in: app))
+        field.tap()
+        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 10) + "Atlas")
+        app.buttons["workspace-rename-save"].firstMatch.tap()
+        XCTAssertTrue(waitOrDumpTree(app.staticTexts["Atlas"].firstMatch, in: app), "renamed workspace not shown")
     }
 
     /// Simplified Chinese end to end: native chrome from the String Catalog, the web editor via setLocale.

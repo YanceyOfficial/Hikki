@@ -151,6 +151,30 @@ public final class DocumentStore: Sendable {
         }
     }
 
+    /// Copies a live page (title, icon, cover, body — not its subpages, favorite or trash state) and places
+    /// the copy right after it among its siblings. Returns the copy, or nil when the page doesn't exist.
+    @discardableResult
+    public func duplicate(id: String, newId: String = UUID().uuidString, now: Date = .now) throws -> DocumentRecord? {
+        try writer.write { db in
+            guard var copy = try DocumentRecord.fetchOne(db, key: id), copy.deletedAt == nil else { return nil }
+            var siblings = try String.fetchAll(
+                db,
+                sql: "SELECT id FROM document WHERE parentId IS ? AND deletedAt IS NULL ORDER BY sortKey, createdAt, id",
+                arguments: [copy.parentId])
+            siblings.insert(newId, at: (siblings.firstIndex(of: id) ?? siblings.count - 1) + 1)
+            copy.id = newId
+            copy.createdAt = now
+            copy.updatedAt = now
+            copy.favoritedAt = nil
+            try copy.insert(db)
+            for (position, sibling) in siblings.enumerated() {
+                try db.execute(sql: "UPDATE document SET sortKey = ? WHERE id = ?", arguments: [Double(position), sibling])
+            }
+            copy.sortKey = Double(siblings.firstIndex(of: newId) ?? 0)
+            return copy
+        }
+    }
+
     public func document(id: String) throws -> DocumentRecord? {
         try writer.read { try DocumentRecord.fetchOne($0, key: id) }
     }

@@ -34,6 +34,8 @@
             private var lastMetrics: ChromeMetrics?
             private var observations: [NSKeyValueObservation] = []
             private var resizeObservers: [NSObjectProtocol] = []
+            private var frameObservers: [NSObjectProtocol] = []
+            private weak var observedTitlebar: NSView?
 
             func attach(to window: NSWindow?) {
                 guard let window else { return }
@@ -54,13 +56,45 @@
                     ]
                 }
                 Self.configure(window)
+                observeTitlebarFrames(window)
                 measure(window)
             }
 
             private func reapply() {
                 if let window {
                     Self.configure(window)
+                    observeTitlebarFrames(window)
                     measure(window)
+                }
+            }
+
+            /// AppKit re-lays out the title bar on its own — e.g. when the split view's sidebar collapses or
+            /// expands — without any window notification, putting the traffic lights back at the default
+            /// height. Watching the title-bar views' frames catches those. Our own re-centring is a no-op the
+            /// second time round (frames already match), so this can't loop.
+            private func observeTitlebarFrames(_ window: NSWindow) {
+                guard let close = window.standardWindowButton(.closeButton), let titlebar = close.superview,
+                    titlebar !== observedTitlebar
+                else { return }
+                observedTitlebar = titlebar
+                let views =
+                    [titlebar.superview, titlebar].compactMap { $0 }
+                    + [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].compactMap { window.standardWindowButton($0) }
+                frameObservers.forEach(NotificationCenter.default.removeObserver)
+                frameObservers = views.map { view in
+                    view.postsFrameChangedNotifications = true
+                    // queue: nil runs the block synchronously inside the layout pass that moved the views (AppKit
+                    // posts these on the main thread), so the default position is never drawn — an async hop
+                    // showed the lights jump up and get pulled back.
+                    return NotificationCenter.default.addObserver(forName: NSView.frameDidChangeNotification, object: view, queue: nil) {
+                        [weak self] _ in
+                        MainActor.assumeIsolated {
+                            self?.reapply()
+                            // AppKit can still move a button later in the same pass (seen: the zoom button
+                            // ending up high after a sidebar toggle); one more pass on the next turn settles it.
+                            Task { @MainActor in self?.reapply() }
+                        }
+                    }
                 }
             }
 

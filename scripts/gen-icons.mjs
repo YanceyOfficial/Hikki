@@ -13,15 +13,21 @@ const swiftOut = join(root, 'HikkiUI/Sources/Generated/Icons.swift')
 const check = process.argv.includes('--check')
 
 const camel = (s) => s.replace(/-([a-z0-9])/gu, (_, c) => c.toUpperCase())
+const base = manifest.baseWeight
 const entries = Object.entries(manifest.icons).flatMap(([name, opts]) =>
-  (opts.weights ?? manifest.weightsDefault).map((weight) => {
+  (opts.weights ?? [base]).map((weight) => {
+    // Phosphor's own file naming; our asset/case names are unsuffixed for the base weight.
     const file = weight === 'regular' ? `${name}.svg` : `${name}-${weight}.svg`
-    const asset = weight === 'regular' ? name : `${name}-${weight}`
+    const asset = weight === base ? name : `${name}-${weight}`
     return { name, weight, file, asset, swift: camel(asset) }
   })
 )
 
-/** Asset catalog entries: SVG with a concrete fill (Xcode's renderer ignores currentColor), template rendering. */
+/**
+ * Asset catalog entries: SVG with a concrete fill (Xcode's renderer ignores currentColor), template rendering,
+ * and an intrinsic 24pt size — Phosphor ships viewBox-only SVGs, which Xcode sizes at 256pt, and places that
+ * ignore `.frame` (toolbar labels) then showed giant icons.
+ */
 function catalogFiles() {
   const files = new Map([
     [join(catalog, 'Contents.json'), '{"info":{"author":"xcode","version":1}}\n']
@@ -29,7 +35,9 @@ function catalogFiles() {
   for (const e of entries) {
     const path = join(source, e.weight, e.file)
     if (!existsSync(path)) throw new Error(`unknown Phosphor icon: ${e.weight}/${e.file}`)
-    const svg = readFileSync(path, 'utf8').replace(/fill="currentColor"/gu, 'fill="#000000"')
+    const svg = readFileSync(path, 'utf8')
+      .replace(/fill="currentColor"/gu, 'fill="#000000"')
+      .replace('<svg ', '<svg width="24" height="24" ')
     const dir = join(catalog, `${e.asset}.imageset`)
     files.set(join(dir, e.file), svg)
     files.set(
@@ -88,6 +96,17 @@ if (existsSync(catalog)) {
       console.error(`stale: ${dir} is not in design/icons.json`)
       stale = true
     } else rmSync(join(catalog, dir), { recursive: true })
+  }
+}
+// Files left inside kept imagesets (e.g. the old SVG after a weight change).
+for (const e of entries) {
+  const dir = join(catalog, `${e.asset}.imageset`)
+  if (!existsSync(dir)) continue
+  for (const file of readdirSync(dir).filter((name) => !outputs.has(join(dir, name)))) {
+    if (check) {
+      console.error(`stale: ${e.asset}.imageset/${file}`)
+      stale = true
+    } else rmSync(join(dir, file))
   }
 }
 if (stale) process.exit(1)

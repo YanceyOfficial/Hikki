@@ -1,7 +1,8 @@
 {
-  "$comment": "Phosphor icons used by the native app (web uses @phosphor-icons/react with the same names). Run `make icons` after editing; generated: HikkiUI/Resources/Icons.xcassets and HikkiUI/Sources/Generated/Icons.swift. Map: Swift case = camelCase name (+ weight suffix when not regular).",
-  "weightsDefault": ["regular"],
+  "$comment": "Phosphor icons used by the native app (web uses @phosphor-icons/react with the same names). Run `make icons` after editing; generated: HikkiUI/Resources/Icons.xcassets and HikkiUI/Sources/Generated/Icons.swift. Map: Swift case = camelCase name (+ weight suffix when not baseWeight). baseWeight is mirrored by ICON_WEIGHT in editor/src/ui/icons.tsx (checked by a test).",
+  "baseWeight": "bold",
   "icons": {
+    "copy": {},
     "house": {},
     "trash": {},
     "magnifying-glass": {},
@@ -23,7 +24,7 @@
     "dots-six-vertical": {},
     "export": {},
     "star": {
-      "weights": ["regular", "fill"]
+      "weights": ["bold", "fill"]
     },
     "text-b": {},
     "text-italic": {},

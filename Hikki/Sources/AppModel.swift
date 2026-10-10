@@ -38,6 +38,19 @@ final class AppModel {
         }
     }
 
+    /// Renames the workspace; blank names are ignored. The location binding is untouched.
+    func renameWorkspace(_ raw: String) {
+        guard var workspace, let name = Workspace.normalizedName(raw), name != workspace.name else { return }
+        workspace.name = name
+        do {
+            try workspaceStore.save(workspace)
+            self.workspace = workspace
+            Log.info("workspace renamed", category: "workspace")
+        } catch {
+            Log.error("workspace save failed: \(error)", category: "workspace")
+        }
+    }
+
     /// Keeps `tree` and `trash` in sync with the database for the lifetime of the calling task.
     func observe() async {
         await withDiscardingTaskGroup { group in
@@ -70,6 +83,10 @@ final class AppModel {
 
     func setFavorite(_ favorite: Bool, id: String) {
         perform("set favorite", id) { try store.setFavorite(favorite, for: id) }
+    }
+
+    func duplicate(id: String) {
+        perform("duplicate", id) { try store.duplicate(id: id) }
     }
 
     func moveToTrash(id: String) {

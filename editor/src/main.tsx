@@ -8,6 +8,7 @@ import { Outline } from './page/Outline'
 import { PageHeader } from './page/PageHeader'
 import { PROTOCOL_VERSION, type PagePayload } from './protocol'
 import { devTransport, webkitTransport } from './transport'
+import { IconProvider } from './ui/icons'
 
 const native = webkitTransport()
 const transport = native ?? devTransport()
@@ -15,8 +16,16 @@ const transport = native ?? devTransport()
 if (native) installErrorForwarding(native)
 
 const bridge = new EditorBridge(document.getElementById('editor')!, transport)
-createRoot(document.getElementById('header')!).render(<PageHeader bridge={bridge} />)
-createRoot(document.getElementById('outline')!).render(<Outline bridge={bridge} />)
+createRoot(document.getElementById('header')!).render(
+  <IconProvider>
+    <PageHeader bridge={bridge} />
+  </IconProvider>
+)
+createRoot(document.getElementById('outline')!).render(
+  <IconProvider>
+    <Outline bridge={bridge} />
+  </IconProvider>
+)
 
 // The native shell drives everything through this object (callAsyncJavaScript).
 declare global {

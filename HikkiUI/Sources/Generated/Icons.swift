@@ -5,6 +5,7 @@ import SwiftUI
 
 /// Phosphor icons bundled with HikkiUI (the web editor uses the same names via @phosphor-icons/react).
 public nonisolated enum Icon: String, CaseIterable, Sendable {
+    case copy = "copy"
     case house = "house"
     case trash = "trash"
     case magnifyingGlass = "magnifying-glass"

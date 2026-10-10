@@ -9,6 +9,9 @@ struct OnboardingView: View {
     @Environment(AppModel.self) private var model
     @State private var step: Step = .welcome
     @State private var name = OnboardingView.defaultName
+    @State private var nameSelection: TextSelection?
+    @FocusState private var nameFocused: Bool
+    @State private var selectedSuggestion = false
     @State private var choice: Choice = .iCloud
     @State private var folder: (bookmark: Data, displayName: String)?
     @State private var importing = false
@@ -64,14 +67,34 @@ struct OnboardingView: View {
             header("app:onboarding.name.title", subtitle: "app:onboarding.name.subtitle")
             HStack(spacing: Spacing.s3) {
                 WorkspaceBadge(initial: Workspace(name: name, location: .device).initial, size: Size.iconButton + Spacing.s3)
-                TextField("app:onboarding.name.placeholder", text: $name)
+                TextField("app:onboarding.name.placeholder", text: $name, selection: $nameSelection)
                     .textFieldStyle(.plain)
                     .font(.hk(.lg, .medium))
+                    .focused($nameFocused)
                     .onSubmit(continueFromName)
                     .accessibilityIdentifier("onboarding-name")
+                if !name.isEmpty {
+                    Button {
+                        name = ""
+                        nameFocused = true
+                    } label: {
+                        IconView(.x, size: TextSize.base.rawValue).foregroundStyle(Theme.mutedForeground)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text("app:onboarding.name.clear"))
+                    .accessibilityIdentifier("onboarding-name-clear")
+                }
             }
             .padding(Spacing.s3)
-            .overlay(RoundedRectangle(cornerRadius: Radius.lg).strokeBorder(Theme.border))
+            .overlay(RoundedRectangle(cornerRadius: Radius.lg).strokeBorder(nameFocused ? Theme.ring : Theme.border))
+            // The suggested name arrives focused and selected: typing replaces it, Return keeps it.
+            .onAppear { nameFocused = true }
+            .onChange(of: nameFocused) { _, focused in
+                // Select once focus has landed — a selection set before that is dropped.
+                guard focused, !selectedSuggestion else { return }
+                selectedSuggestion = true
+                nameSelection = TextSelection(range: name.startIndex..<name.endIndex)
+            }
             navigation(
                 next: "app:onboarding.continue", id: "onboarding-continue", enabled: Workspace.normalizedName(name) != nil,
                 action: continueFromName

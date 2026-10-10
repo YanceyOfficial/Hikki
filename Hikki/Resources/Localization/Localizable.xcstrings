@@ -120,6 +120,23 @@
         }
       }
     },
+    "app:common.save": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存"
+          }
+        }
+      }
+    },
     "app:format.bold": {
       "extractionState": "manual",
       "localizations": {
@@ -800,6 +817,23 @@
         }
       }
     },
+    "app:onboarding.name.clear": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear name"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清除名称"
+          }
+        }
+      }
+    },
     "app:onboarding.name.default %@": {
       "extractionState": "manual",
       "localizations": {
@@ -953,6 +987,23 @@
         }
       }
     },
+    "app:page.duplicate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duplicate"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "创建副本"
+          }
+        }
+      }
+    },
     "app:page.edited %@": {
       "extractionState": "manual",
       "localizations": {
@@ -983,6 +1034,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "添加到收藏"
+          }
+        }
+      }
+    },
+    "app:page.lastEdited %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last edited %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最后编辑于 %@"
+          }
+        }
+      }
+    },
+    "app:page.menuTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Page"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "页面"
           }
         }
       }
@@ -1629,6 +1714,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "导出日志"
+          }
+        }
+      }
+    },
+    "app:workspace.rename": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename workspace…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重命名工作区…"
+          }
+        }
+      }
+    },
+    "app:workspace.renameTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename workspace"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重命名工作区"
           }
         }
       }

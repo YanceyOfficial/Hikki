@@ -120,7 +120,9 @@ final class EditorController {
                 return nil
             }
             isReady = true
-            Log.info("editor ready", category: "bridge")
+            // Cold start of the bundle (web content process + parse + first render); IDs/timings only.
+            let elapsed = loadStartedAt.map { Int(Date.now.timeIntervalSince($0) * 1000) } ?? -1
+            Log.info("editor ready", category: "bridge", context: ["ms": "\(elapsed)"])
             let pending = pendingDocumentID ?? currentDocumentID
             pendingDocumentID = nil
             currentDocumentID = nil
@@ -161,6 +163,7 @@ final class EditorController {
         Log.error("web content process terminated; reloading editor", category: "bridge", context: ["docId": currentDocumentID ?? "-"])
         isReady = false
         pendingDocumentID = .some(currentDocumentID)
+        loadStartedAt = .now
         webView.load(URLRequest(url: EditorSchemeHandler.entryURL))
     }
 
@@ -193,12 +196,14 @@ final class EditorController {
         #if os(iOS)
             webView.installKeyboardToolbar(controller: self)
         #endif
+        loadStartedAt = .now
         webView.load(URLRequest(url: EditorSchemeHandler.entryURL))
         return webView
     }
 
     @ObservationIgnored private let navigationDelegate = NavigationDelegate()
     @ObservationIgnored private let uiDelegate = EditorUIDelegate()
+    @ObservationIgnored private var loadStartedAt: Date?
 }
 
 /// WKUserContentController retains its handlers; this proxy keeps the controller weakly referenced.

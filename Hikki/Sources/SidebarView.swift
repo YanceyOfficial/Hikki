@@ -90,7 +90,7 @@ private struct DesktopSidebar: View {
                     String(localized: title), symbol: symbol, isSelected: route != nil && navigator.route == route,
                     shortcut: shortcut)
                 if badge > 0 {
-                    Text("\(badge)").font(.hk(.xs)).foregroundStyle(Theme.mutedForeground)
+                    Text(verbatim: "\(badge)").font(.hk(.xs)).foregroundStyle(Theme.mutedForeground)
                 }
             }
             .contentShape(.rect)
@@ -270,11 +270,14 @@ private struct SectionTitle<Trailing: View>: View {
 private struct WorkspaceHeader: View {
     @Environment(AppModel.self) private var model
     @Environment(\.chromeMetrics) private var metrics
+    @State private var renaming = false
 
     var body: some View {
         HStack(spacing: Spacing.s0_5) {
             Color.clear.frame(width: max(0, metrics.leadingInset - Spacing.s2))  // traffic lights
             Menu {
+                Button("app:workspace.rename") { renaming = true }
+                    .accessibilityIdentifier("workspace-rename")
                 ShareLink("app:workspace.exportLogs", items: model.exportableFiles)
             } label: {
                 HStack(spacing: Spacing.s2) {
@@ -299,6 +302,7 @@ private struct WorkspaceHeader: View {
         }
         .padding(.horizontal, Spacing.s2)
         .frame(height: metrics.barHeight)
+        .renameWorkspaceAlert(isPresented: $renaming)
     }
 }
 
@@ -307,6 +311,7 @@ private struct WorkspaceHeader: View {
 private struct PhoneSidebar: View {
     @Environment(AppModel.self) private var model
     @Bindable var navigator: Navigator
+    @State private var renaming = false
 
     var body: some View {
         List(selection: $navigator.sidebarSelection) {
@@ -366,21 +371,26 @@ private struct PhoneSidebar: View {
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
         .navigationTitle(model.workspace?.name ?? "Hikki")  // l10n: allow (the user's workspace name)
+        .renameWorkspaceAlert(isPresented: $renaming)
         .toolbar {
-            ToolbarItem {
+            // Both trailing, side by side; with default placement the first item stretched and pushed the
+            // menu into the overflow button.
+            ToolbarItemGroup(placement: .primaryAction) {
                 Button {
                     navigator.newPage()
                 } label: {
-                    IconLabel("app:page.new", icon: .notePencil)
+                    IconLabel("app:page.new", icon: .notePencil).labelStyle(.iconOnly)
                 }
                 .accessibilityIdentifier("new-page")
-            }
-            ToolbarItem {
+                // The workspace menu (iPhone has no sidebar header).
                 Menu {
+                    Button("app:workspace.rename") { renaming = true }
+                        .accessibilityIdentifier("workspace-rename")
                     ShareLink("app:workspace.exportLogs", items: model.exportableFiles)
                 } label: {
-                    IconLabel("app:common.more", icon: .dotsThreeCircle)
+                    IconLabel("app:common.more", icon: .dotsThreeCircle).labelStyle(.iconOnly)
                 }
+                .accessibilityIdentifier("workspace-more")
             }
         }
     }
@@ -445,26 +455,68 @@ struct PageActions: View {
     let navigator: Navigator
 
     var body: some View {
-        Button {
-            model.setFavorite(!page.isFavorite, id: page.id)
-        } label: {
-            IconLabel(page.isFavorite ? "app:page.unfavorite" : "app:page.favorite", icon: page.isFavorite ? .starFill : .star)
+        // Notion-style: a titled section, grouped actions, and when it was last edited at the bottom.
+        Section("app:page.menuTitle") {
+            Button {
+                model.setFavorite(!page.isFavorite, id: page.id)
+            } label: {
+                IconLabel(page.isFavorite ? "app:page.unfavorite" : "app:page.favorite", icon: page.isFavorite ? .starFill : .star)
+            }
         }
-        Button {
-            navigator.openInNewTab(.page(page.id))
-        } label: {
-            IconLabel("app:page.openInNewTab", icon: .browsers)
+        Section {
+            Button {
+                model.duplicate(id: page.id)
+            } label: {
+                IconLabel("app:page.duplicate", icon: .copy)
+            }
+            Button {
+                navigator.newPage(parentId: page.id)
+            } label: {
+                IconLabel("app:page.addInside", icon: .plus)
+            }
+            Button(role: .destructive) {
+                model.moveToTrash(id: page.id)
+            } label: {
+                IconLabel("app:page.moveToTrash", icon: .trash)
+            }
         }
-        Button {
-            navigator.newPage(parentId: page.id)
-        } label: {
-            IconLabel("app:page.addInside", icon: .plus)
+        Section {
+            Button {
+                navigator.openInNewTab(.page(page.id))
+            } label: {
+                IconLabel("app:page.openInNewTab", icon: .browsers)
+            }
         }
-        Divider()
-        Button(role: .destructive) {
-            model.moveToTrash(id: page.id)
-        } label: {
-            IconLabel("app:page.moveToTrash", icon: .trash)
+        Section {
+            Text("app:page.lastEdited \(page.updatedAt, format: .dateTime.month().day().hour().minute())")
         }
+    }
+}
+
+// MARK: - Rename workspace
+
+private struct RenameWorkspaceAlert: ViewModifier {
+    @Environment(AppModel.self) private var model
+    @Binding var isPresented: Bool
+    @State private var draft = ""
+
+    func body(content: Content) -> some View {
+        content
+            .alert("app:workspace.renameTitle", isPresented: $isPresented) {
+                TextField("app:onboarding.name.placeholder", text: $draft)
+                Button("app:common.cancel", role: .cancel) {}
+                Button("app:common.save") { model.renameWorkspace(draft) }
+                    .disabled(Workspace.normalizedName(draft) == nil)
+                    .accessibilityIdentifier("workspace-rename-save")
+            }
+            .onChange(of: isPresented) { _, presented in
+                if presented { draft = model.workspace?.name ?? "" }
+            }
+    }
+}
+
+extension View {
+    fileprivate func renameWorkspaceAlert(isPresented: Binding<Bool>) -> some View {
+        modifier(RenameWorkspaceAlert(isPresented: isPresented))
     }
 }

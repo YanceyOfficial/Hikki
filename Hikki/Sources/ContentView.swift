@@ -58,6 +58,18 @@ struct ContentView: View {
                         }
                     }
                 }
+                // HIKKI_DEBUG_SIDEBAR: hides the sidebar after 2s and shows it again after 4s (title-bar layout bugs).
+                if ProcessInfo.processInfo.environment["HIKKI_DEBUG_SIDEBAR"] != nil {
+                    Task {
+                        #if os(macOS)
+                            NSApp.activate()  // the bug shows on a key window
+                        #endif
+                        try? await Task.sleep(for: .seconds(2))
+                        withAnimation { columns = .detailOnly }  // same path as the toolbar button
+                        try? await Task.sleep(for: .seconds(2))
+                        withAnimation { columns = .all }
+                    }
+                }
                 if let ids = ProcessInfo.processInfo.environment["HIKKI_OPEN_TABS"]?.split(separator: ",") {
                     for (index, id) in ids.enumerated() {
                         if index == 0 { navigator.open(String(id)) } else { navigator.openInNewTab(.page(String(id))) }

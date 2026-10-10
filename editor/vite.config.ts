@@ -13,7 +13,10 @@ export default defineConfig({
     outDir: '../Hikki/Resources/Editor',
     emptyOutDir: true,
     target: 'safari18',
-    sourcemap: true
+    sourcemap: true,
+    // One bundle on purpose: it loads from the app bundle (custom scheme, no network) once per window, and
+    // measured cold start is ~310ms WebView-to-ready of which ~95ms is our JS. Splitting Tiptap/React buys little.
+    chunkSizeWarningLimit: 1500
   },
   test: { environment: 'happy-dom', setupFiles: ['./test/setup.ts'] }
 })
