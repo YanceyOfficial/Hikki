@@ -25,6 +25,9 @@ These rules are mandatory. Automated ones are noted.
   components in `editor/src/components/ui/`). Add components only with `cd editor && bun run ui:add <name>` — the
   wrapper fixes the CLI's wrong `cn` import under TypeScript 7. Prefer a shadcn component over a hand-rolled one;
   editor-specific pieces live in `editor/src/ui/`.
+- **One icon set: Phosphor.** Web uses `@phosphor-icons/react`; native uses the generated `Icon` enum (list icons in
+  `design/icons.json`, run `make icons`; `IconView` / `IconLabel` in HikkiUI). No SF Symbols — _enforced by
+  `make lint-design`_.
 - **Secrets stay server-side.** Third-party API keys (Unsplash) live only in the BFF (`bff/`, Hono on Vercel).
   Unsplash rules: hotlink `urls`, attribute the photographer with utm links, report picks via the download endpoint.
 - **Pre-commit gate.** `.husky/pre-commit` runs lint-staged (oxlint + oxfmt for web files, `swift-format` for
