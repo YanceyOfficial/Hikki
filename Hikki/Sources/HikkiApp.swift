@@ -23,11 +23,25 @@ struct HikkiApp: App {
             ])
         do {
             let store = try DocumentStore.onDisk(at: paths.database)
-            _model = State(initialValue: AppModel(store: store, assets: AssetStore(directory: paths.assets), crashReporter: crashReporter))
+            _model = State(
+                initialValue: AppModel(
+                    store: store, assets: AssetStore(directory: paths.assets), crashReporter: crashReporter,
+                    workspaceStore: HikkiApp.workspaceStore(paths)))
         } catch {
             Log.error("cannot open database: \(error)", category: "store")
             fatalError("Cannot open database: \(error)")
         }
+    }
+
+    /// DEBUG/test hook: HIKKI_WORKSPACE=<name> creates a device workspace up front (skips onboarding).
+    private static func workspaceStore(_ paths: AppPaths) -> WorkspaceStore {
+        let store = WorkspaceStore(url: paths.workspace)
+        #if DEBUG
+            if let name = ProcessInfo.processInfo.environment["HIKKI_WORKSPACE"], (try? store.load()) == nil {
+                try? store.save(Workspace(name: name, location: .device))
+            }
+        #endif
+        return store
     }
 
     var body: some Scene {
@@ -36,10 +50,10 @@ struct HikkiApp: App {
                 if ComponentGalleryLaunch.isEnabled {
                     ComponentGalleryView()
                 } else {
-                    ContentView().environment(model)
+                    RootView().environment(model)
                 }
             #else
-                ContentView().environment(model)
+                RootView().environment(model)
             #endif
         }
         .defaultSize(width: 1180, height: 780)

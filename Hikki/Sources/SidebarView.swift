@@ -71,6 +71,8 @@ private struct DesktopSidebar: View {
                 .padding(Spacing.s3)
         }
         .background(Theme.sidebar)
+        // Hairline between the sidebar and the page, full height (title bar included).
+        .overlay(alignment: .trailing) { Theme.sidebarBorder.frame(width: 1).ignoresSafeArea() }
         #if os(macOS)
             .ignoresSafeArea(.container, edges: .top)
         #else
@@ -276,12 +278,8 @@ private struct WorkspaceHeader: View {
                 ShareLink("app:workspace.exportLogs", items: model.exportableFiles)
             } label: {
                 HStack(spacing: Spacing.s2) {
-                    Text("H")  // l10n: allow (workspace badge; user-named workspaces will replace it)
-                        .font(.hk(.x2s, .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 20, height: 20)
-                        .background(Theme.primary.gradient, in: .rect(cornerRadius: Radius.sm))
-                    Text("Hikki")  // l10n: allow (brand; becomes the workspace name)
+                    WorkspaceBadge(initial: model.workspace?.initial ?? "H", size: Size.iconButtonSm - Spacing.s0_5)
+                    Text(model.workspace?.name ?? "Hikki")  // l10n: allow (the user's workspace name)
                         .font(.hk(.sm, .semibold))
                         .foregroundStyle(Theme.foreground)
                         .lineLimit(1)
@@ -296,6 +294,7 @@ private struct WorkspaceHeader: View {
             .buttonStyle(HoverHighlightStyle())
             .menuIndicator(.hidden)
             .fixedSize()
+            .accessibilityIdentifier("workspace-menu")
             Spacer(minLength: 4)
         }
         .padding(.horizontal, Spacing.s2)
@@ -366,7 +365,7 @@ private struct PhoneSidebar: View {
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Hikki")  // l10n: allow (brand)
+        .navigationTitle(model.workspace?.name ?? "Hikki")  // l10n: allow (the user's workspace name)
         .toolbar {
             ToolbarItem {
                 Button {

@@ -8,13 +8,34 @@ final class AppModel {
     let store: DocumentStore
     let assets: AssetStore
     let crashReporter: CrashReporter
+    let workspaceStore: WorkspaceStore
+    /// nil until onboarding creates one (first launch).
+    private(set) var workspace: Workspace?
     private(set) var tree = PageTree([])
     private(set) var trash: [PageSummary] = []
 
-    init(store: DocumentStore, assets: AssetStore, crashReporter: CrashReporter) {
+    init(store: DocumentStore, assets: AssetStore, crashReporter: CrashReporter, workspaceStore: WorkspaceStore) {
         self.store = store
         self.assets = assets
         self.crashReporter = crashReporter
+        self.workspaceStore = workspaceStore
+        do {
+            workspace = try workspaceStore.load()
+        } catch {
+            Log.error("workspace load failed: \(error)", category: "workspace")
+        }
+    }
+
+    func createWorkspace(name: String, location: Workspace.Location) {
+        let workspace = Workspace(name: name, location: location)
+        do {
+            try workspaceStore.save(workspace)
+            self.workspace = workspace
+            let kind = if case .folder = location { "folder" } else { "device" }
+            Log.info("workspace created", category: "workspace", context: ["location": kind])
+        } catch {
+            Log.error("workspace save failed: \(error)", category: "workspace")
+        }
     }
 
     /// Keeps `tree` and `trash` in sync with the database for the lifetime of the calling task.

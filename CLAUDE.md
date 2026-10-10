@@ -96,7 +96,12 @@ HikkiUITests/                 XCUITest flows
   removes it via KVO and re-centres the traffic lights in a 46pt bar. Keeping SwiftUI's toolbar covered the tab
   strip; swapping in an own `NSToolbar` crashed; a titlebar accessory covered the tab strip. Don't reintroduce those.
 - **Data directory**: `HIKKI_DATA_DIR` overrides it (UI tests, demos). DEBUG hooks: `HIKKI_OPEN_TABS=a,b`,
-  `HIKKI_OPEN_SEARCH`, `HIKKI_DEBUG_NAV=a,b,c`.
-- **Demos and screenshots** on the Mac: launch the built binary with `HIKKI_DATA_DIR`, capture by window id. Never
+  `HIKKI_OPEN_SEARCH`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
+  UI tests set it by default — pass `workspace: nil` to `launch()` to test onboarding).
+- **Workspace**: first launch shows `Hikki/Sources/OnboardingView.swift` until the workspace file (`AppPaths.workspace`) exists
+  (`HikkiCore/Sources/Store/Workspace.swift`). A folder location stores a security-scoped bookmark
+  (`HikkiCore/Sources/Store/FolderBookmark.swift`); page data does not live in that folder yet.
+- **Demos and screenshots** on the Mac: launch the built binary with `HIKKI_DATA_DIR` and
+  `-ApplePersistenceIgnoreState YES` (otherwise saved-state restoration can leave no window), capture by window id. Never
   `pkill -f Hikki` — the developer runs their own instance of the same binary (shared DerivedData).
 - Simulators sometimes fail with "Busy (Application failed preflight checks)": `xcrun simctl shutdown all`, boot again.

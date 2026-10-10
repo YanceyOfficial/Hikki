@@ -42,6 +42,12 @@ public nonisolated enum Icon: String, CaseIterable, Sendable {
     case codeBlock = "code-block"
     case arrowUUpLeft = "arrow-u-up-left"
     case arrowUUpRight = "arrow-u-up-right"
+    case cloud = "cloud"
+    case laptop = "laptop"
+    case folderSimple = "folder-simple"
+    case check = "check"
+    case arrowRight = "arrow-right"
+    case checkCircleFill = "check-circle-fill"
 
     /// Template image: tint with `.foregroundStyle`, size with `.frame` (it is resizable).
     public var image: Image {

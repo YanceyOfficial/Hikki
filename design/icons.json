@@ -22,7 +22,9 @@
     "arrow-counter-clockwise": {},
     "dots-six-vertical": {},
     "export": {},
-    "star": { "weights": ["regular", "fill"] },
+    "star": {
+      "weights": ["regular", "fill"]
+    },
     "text-b": {},
     "text-italic": {},
     "text-strikethrough": {},
@@ -37,6 +39,14 @@
     "quotes": {},
     "code-block": {},
     "arrow-u-up-left": {},
-    "arrow-u-up-right": {}
+    "arrow-u-up-right": {},
+    "cloud": {},
+    "laptop": {},
+    "folder-simple": {},
+    "check": {},
+    "arrow-right": {},
+    "check-circle": {
+      "weights": ["fill"]
+    }
   }
 }

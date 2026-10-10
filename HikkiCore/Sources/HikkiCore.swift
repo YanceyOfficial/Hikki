@@ -21,4 +21,5 @@ public struct AppPaths: Sendable {
     public var logs: URL { root.appending(path: "logs", directoryHint: .isDirectory) }
     public var diagnostics: URL { root.appending(path: "diagnostics", directoryHint: .isDirectory) }
     public var assets: URL { root.appending(path: "assets", directoryHint: .isDirectory) }
+    public var workspace: URL { root.appending(path: "workspace.json") }
 }

@@ -5,12 +5,40 @@ import XCTest
 final class EditorFlowTests: XCTestCase {
     private let dataDir = NSTemporaryDirectory() + "hikki-uitest-\(UUID().uuidString)"
 
-    private func launch(language: String? = nil) -> XCUIApplication {
+    /// `workspace: nil` starts from a fresh install (onboarding); otherwise a device workspace is seeded.
+    private func launch(language: String? = nil, workspace: String? = "Test") -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["HIKKI_DATA_DIR"] = dataDir
+        if let workspace { app.launchEnvironment["HIKKI_WORKSPACE"] = workspace }
         if let language { app.launchArguments += ["-AppleLanguages", "(\(language))", "-AppleLocale", language] }
         app.launch()
         return app
+    }
+
+    /// First launch: welcome → name → "this device only" → the named workspace opens, and stays bound on relaunch.
+    func testOnboardingCreatesNamedWorkspace() throws {
+        continueAfterFailure = false
+        var app = launch(workspace: nil)
+        let start = app.buttons["onboarding-start"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(start, in: app))
+        start.tap()
+        let name = app.textFields["onboarding-name"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(name, in: app))
+        name.tap()
+        let prefilled = (name.value as? String) ?? ""
+        name.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: prefilled.count + 2))
+        name.typeText("Field Notes")
+        app.buttons["onboarding-continue"].firstMatch.tap()
+        let device = app.buttons["onboarding-device"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(device, in: app))
+        device.tap()
+        app.buttons["onboarding-create"].firstMatch.tap()
+        XCTAssertTrue(waitOrDumpTree(app.staticTexts["Field Notes"].firstMatch, in: app), "workspace name not shown")
+
+        app.terminate()
+        app = launch(workspace: nil)
+        XCTAssertTrue(waitOrDumpTree(app.staticTexts["Field Notes"].firstMatch, in: app), "workspace not persisted")
+        XCTAssertFalse(app.buttons["onboarding-start"].exists)
     }
 
     /// Simplified Chinese end to end: native chrome from the String Catalog, the web editor via setLocale.
