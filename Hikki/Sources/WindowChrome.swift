@@ -1,5 +1,6 @@
 #if os(macOS)
     import AppKit
+    import ObjectiveC
     import HikkiUI
     import SwiftUI
 
@@ -34,8 +35,6 @@
             private var lastMetrics: ChromeMetrics?
             private var observations: [NSKeyValueObservation] = []
             private var resizeObservers: [NSObjectProtocol] = []
-            private var frameObservers: [NSObjectProtocol] = []
-            private weak var observedTitlebar: NSView?
 
             func attach(to window: NSWindow?) {
                 guard let window else { return }
@@ -56,46 +55,26 @@
                     ]
                 }
                 Self.configure(window)
-                observeTitlebarFrames(window)
+                installLayoutHook(window)
                 measure(window)
             }
 
             private func reapply() {
                 if let window {
                     Self.configure(window)
-                    observeTitlebarFrames(window)
+                    installLayoutHook(window)
                     measure(window)
                 }
             }
 
             /// AppKit re-lays out the title bar on its own — e.g. when the split view's sidebar collapses or
-            /// expands — without any window notification, putting the traffic lights back at the default
-            /// height. Watching the title-bar views' frames catches those. Our own re-centring is a no-op the
-            /// second time round (frames already match), so this can't loop.
-            private func observeTitlebarFrames(_ window: NSWindow) {
-                guard let close = window.standardWindowButton(.closeButton), let titlebar = close.superview,
-                    titlebar !== observedTitlebar
-                else { return }
-                observedTitlebar = titlebar
-                let views =
-                    [titlebar.superview, titlebar].compactMap { $0 }
-                    + [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].compactMap { window.standardWindowButton($0) }
-                frameObservers.forEach(NotificationCenter.default.removeObserver)
-                frameObservers = views.map { view in
-                    view.postsFrameChangedNotifications = true
-                    // queue: nil runs the block synchronously inside the layout pass that moved the views (AppKit
-                    // posts these on the main thread), so the default position is never drawn — an async hop
-                    // showed the lights jump up and get pulled back.
-                    return NotificationCenter.default.addObserver(forName: NSView.frameDidChangeNotification, object: view, queue: nil) {
-                        [weak self] _ in
-                        MainActor.assumeIsolated {
-                            self?.reapply()
-                            // AppKit can still move a button later in the same pass (seen: the zoom button
-                            // ending up high after a sidebar toggle); one more pass on the next turn settles it.
-                            Task { @MainActor in self?.reapply() }
-                        }
-                    }
-                }
+            /// expands — without any window notification, putting the traffic lights back at its default height.
+            /// Notification-driven fixes either showed that for a frame (async) or fought AppKit's layout
+            /// (sync: the zoom button bounced ~100×/s). So the buttons' title-bar view gets a layout hook that
+            /// re-centres them right after AppKit's own layout, in the same pass.
+            private func installLayoutHook(_ window: NSWindow) {
+                guard let titlebar = window.standardWindowButton(.closeButton)?.superview else { return }
+                TitlebarLayoutHook.install(on: titlebar)
             }
 
             /// Title-bar row height = 2 × the traffic lights' center from the top; inset = past the zoom button.
@@ -133,7 +112,7 @@
                 positionTrafficLights(buttons, in: window)
             }
 
-            private static func positionTrafficLights(_ buttons: [NSButton], in window: NSWindow) {
+            fileprivate static func positionTrafficLights(_ buttons: [NSButton], in window: NSWindow) {
                 guard !window.styleMask.contains(.fullScreen), let titlebar = buttons.first?.superview,
                     let container = titlebar.superview
                 else { return }
@@ -148,6 +127,43 @@
                     if abs(button.frame.origin.y - y) > 0.5 { button.setFrameOrigin(NSPoint(x: button.frame.origin.x, y: y)) }
                 }
             }
+        }
+    }
+
+    /// Gives one AppKit title-bar view a `layout()` override (an isa-swizzled subclass, like KVO does) that
+    /// calls AppKit's layout and then re-centres the traffic lights. The subclass is created once per
+    /// original class; installing twice is a no-op.
+    private enum TitlebarLayoutHook {
+        private static let suffix = "_HikkiTrafficLights"
+
+        static func install(on view: NSView) {
+            let original: AnyClass = type(of: view)
+            let name = NSStringFromClass(original)
+            guard !name.hasSuffix(suffix) else { return }
+            let subclass: AnyClass
+            if let existing = NSClassFromString(name + suffix) {
+                subclass = existing
+            } else {
+                guard let created = objc_allocateClassPair(original, name + suffix, 0),
+                    let method = class_getInstanceMethod(original, #selector(NSView.layout))
+                else { return }
+                typealias Layout = @convention(c) (NSView, Selector) -> Void
+                let superLayout = unsafeBitCast(method_getImplementation(method), to: Layout.self)
+                let layout: @convention(block) (NSView) -> Void = { view in
+                    superLayout(view, #selector(NSView.layout))
+                    MainActor.assumeIsolated {
+                        guard let window = view.window else { return }
+                        let buttons = [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].compactMap {
+                            window.standardWindowButton($0)
+                        }
+                        WindowChrome.Coordinator.positionTrafficLights(buttons, in: window)
+                    }
+                }
+                class_addMethod(created, #selector(NSView.layout), imp_implementationWithBlock(layout), method_getTypeEncoding(method))
+                objc_registerClassPair(created)
+                subclass = created
+            }
+            object_setClass(view, subclass)
         }
     }
 #endif
