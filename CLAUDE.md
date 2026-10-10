@@ -107,4 +107,7 @@ HikkiUITests/                 XCUITest flows
 - **BFF on Vercel** (project root `bff/`) compiles `src/` per file and runs it as Node ESM: relative imports need
   `.js` extensions (enforced by `NodeNext` in `bff/tsconfig.json`), and `src/` must not rely on Bun/Node ambient
   types (read env through Hono's `env(c)` adapter); tests get Bun types from `bff/tsconfig.test.json`.
+- **Demo recordings** (macOS): `HikkiUITests/UnsplashDemoRecording.swift` drives a flow at a watchable pace when run
+  with `TEST_RUNNER_HIKKI_RECORD=1`; record with `screencapture -v -V <s>` meanwhile. UI tests paste text rather than
+  type it on macOS when spaces matter — synthesized keys go through the active input method (a Chinese IME eats them).
 - Simulators sometimes fail with "Busy (Application failed preflight checks)": `xcrun simctl shutdown all`, boot again.
