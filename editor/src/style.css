@@ -24,3 +24,34 @@ html, body { margin: 0; background: var(--bg); color: var(--fg);
 .tiptap ul[data-type="taskList"] li > div { flex: 1; }
 .tiptap li[data-checked="true"] > div { color: var(--muted); text-decoration: line-through; }
 .tiptap .is-empty::before { content: attr(data-placeholder); color: var(--muted); float: left; height: 0; pointer-events: none; }
+
+/* Title */
+.tiptap h1.hikki-title { font-size: 2.5em; line-height: 1.2; font-weight: 700; margin: 0 0 .4em; }
+
+/* Floating popups (shared) */
+:root { --surface: #ffffff; --border: rgba(55,53,47,.12); --hover: rgba(55,53,47,.06); --shadow: 0 8px 28px rgba(15,15,15,.14), 0 0 0 1px var(--border); }
+@media (prefers-color-scheme: dark) { :root { --surface: #252525; --border: rgba(255,255,255,.1); --hover: rgba(255,255,255,.06); --shadow: 0 8px 28px rgba(0,0,0,.5), 0 0 0 1px var(--border); } }
+.hk-floating { position: fixed; top: 0; left: 0; z-index: 50; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--surface); border-radius: 10px; box-shadow: var(--shadow); }
+.hk-slash-menu { width: 280px; max-width: calc(100vw - 16px); }
+
+/* CommandList */
+.hk-command-list { padding: 6px; display: flex; flex-direction: column; gap: 1px; }
+.hk-command-item { all: unset; display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 6px;
+  cursor: pointer; -webkit-user-select: none; user-select: none; min-height: 36px; box-sizing: border-box; }
+.hk-command-item[aria-selected="true"] { background: var(--hover); }
+.hk-command-icon { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--bg); font-size: 13px; font-weight: 600; color: var(--fg); }
+.hk-command-text { display: flex; flex-direction: column; min-width: 0; }
+.hk-command-title { font-size: 14px; color: var(--fg); }
+.hk-command-hint { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hk-command-empty { padding: 8px; font-size: 13px; color: var(--muted); }
+@media (pointer: coarse) { .hk-command-item { min-height: 44px; } }
+
+/* Block drag handle */
+.hk-drag-handle { display: grid; place-items: center; width: 20px; height: 24px; margin-right: 4px; border-radius: 4px;
+  color: var(--muted); cursor: grab; }
+.hk-drag-handle:hover { background: var(--hover); }
+.ProseMirror-selectednode { outline: 2px solid color-mix(in srgb, var(--accent) 40%, transparent); border-radius: 4px; }
+.tiptap hr { border: none; border-top: 1px solid var(--border); margin: 1em 0; }
+.hk-drag-handle.hk-hidden { visibility: hidden; pointer-events: none; }

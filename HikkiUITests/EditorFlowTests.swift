@@ -48,6 +48,30 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Hello Hikki"].firstMatch.waitForExistence(timeout: 10), "saved title missing from sidebar after relaunch")
     }
 
+    func testSlashMenuInsertsTodoList() throws {
+        continueAfterFailure = false
+        let app = launch()
+        let newPage = app.buttons["new-page"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+        newPage.tap()
+
+        let editor = app.webViews.textViews.firstMatch
+        XCTAssertTrue(waitOrDumpTree(editor, in: app), "editor never became editable")
+        editor.tap()
+        editor.typeText("Plan\n/todo")
+
+        let item = app.webViews.descendants(matching: .any)["To-do list"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(item, in: app), "slash menu did not show the To-do item")
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "slash-menu"
+        shot.lifetime = .keepAlways
+        add(shot)
+        item.tap()
+
+        XCTAssertTrue(waitOrDumpTree(app.webViews.switches.firstMatch, in: app), "to-do checkbox not inserted")
+        XCTAssertFalse(app.webViews.descendants(matching: .any)["To-do list"].exists, "menu should close after choosing")
+    }
+
     /// On failure, attaches the accessibility tree to the result bundle — the fastest way to see why a query missed.
     private func waitOrDumpTree(_ element: XCUIElement, in app: XCUIApplication, timeout: TimeInterval = 10) -> Bool {
         if element.waitForExistence(timeout: timeout) { return true }

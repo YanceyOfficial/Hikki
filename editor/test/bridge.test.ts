@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { EditorBridge, type Transport } from '../src/bridge'
 import type { ToNativeMessage } from '../src/protocol'
 
-const para = (text: string) => ({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] })
+const para = (text: string) => ({
+  type: 'doc',
+  content: [{ type: 'title', content: [{ type: 'text', text }] }, { type: 'paragraph' }],
+})
 
 describe('EditorBridge', () => {
   let sent: ToNativeMessage[]

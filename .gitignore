@@ -12,3 +12,4 @@ editor/test-results/
 Hikki/Resources/Editor/*
 !Hikki/Resources/Editor/.gitkeep
 .DS_Store
+.playwright-mcp/

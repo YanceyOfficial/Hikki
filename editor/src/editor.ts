@@ -2,19 +2,33 @@ import { Editor, type JSONContent } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
 import { Placeholder } from '@tiptap/extensions'
+import { blockHandleExtensions } from './extensions/block-handle'
+import { SlashCommand } from './extensions/slash-command'
+import { Title, TitledDocument } from './extensions/title'
+import { normalizeDocument } from './normalize'
 import type { Command } from './protocol'
 
 export function createEditor(element: HTMLElement, content: JSONContent | null): Editor {
   return new Editor({
     element,
-    content: content ?? { type: 'doc', content: [{ type: 'heading', attrs: { level: 1 } }] },
+    content: normalizeDocument(content),
     extensions: [
-      StarterKit.configure({ link: { openOnClick: false } }),
+      StarterKit.configure({ document: false, link: { openOnClick: false } }),
+      TitledDocument,
+      Title,
       TaskList,
       TaskItem.configure({ nested: true }),
       Placeholder.configure({
-        placeholder: ({ node, pos }) => (pos === 0 && node.type.name === 'heading' ? 'Untitled' : "Type '/' for commands"),
+        includeChildren: false,
+        // The title hint is always visible (like Notion); the body hint only on the line being edited.
+        showOnlyCurrent: false,
+        placeholder: ({ node, hasAnchor }) => {
+          if (node.type.name === 'title') return 'Untitled'
+          return hasAnchor && node.type.name === 'paragraph' ? "Type '/' for commands" : ''
+        },
       }),
+      SlashCommand,
+      ...blockHandleExtensions(),
     ],
   })
 }

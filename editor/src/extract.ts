@@ -32,6 +32,11 @@ export function plainText(doc: JSONContent): string {
 }
 
 export function deriveTitle(doc: JSONContent): string {
+  const titleNode = doc.content?.[0]
+  if (titleNode?.type === 'title') {
+    const title = textOf(titleNode).trim()
+    return title.length > MAX_TITLE_LENGTH ? title.slice(0, MAX_TITLE_LENGTH) : title
+  }
   const first = blockTexts(doc).map((t) => t.trim()).find((t) => t.length > 0) ?? ''
   return first.length > MAX_TITLE_LENGTH ? first.slice(0, MAX_TITLE_LENGTH) : first
 }

@@ -28,6 +28,10 @@ editor/           Tiptap 3 web editor (vite → Hikki/Resources/Editor)
 Reusable UI goes in `HikkiUI` rather than the app target: one component per file, a `#Preview` in each, and an
 entry in the DEBUG gallery (`Hikki/Sources/ComponentGallery.swift`, launch with `-HikkiGallery`).
 
+Web editor UI (`editor/src`) follows the same idea: `ui/` holds generic React pieces (`CommandList`,
+`FloatingLayer`) reused by every popup; `blocks.ts` is the single block-type catalog (slash menu today,
+"turn into"/"+" later); `extensions/` holds Tiptap extensions (title, slash command, block handle).
+
 ## Observability
 
 - Logs: `Log.info/warn/error` → unified logging (`log stream --predicate 'subsystem == "app.hikki"'`) and
