@@ -1,10 +1,11 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { CoverPicker } from '../src/page/CoverPicker'
+import { CoverPicker, PhotoCredit } from '../src/page/CoverPicker'
 import {
   searchUnsplash,
   trackUnsplashDownload,
+  UNSPLASH_HOME,
   UnsplashError,
   type UnsplashPhoto
 } from '../src/page/unsplash'
@@ -88,5 +89,19 @@ describe('CoverPicker tabs', () => {
     renderPicker()
     fireEvent.click(screen.getByRole('tab', { name: 'Unsplash' }))
     expect(screen.getByText("Unsplash isn't configured for this build.")).toBeTruthy()
+  })
+})
+
+describe('PhotoCredit', () => {
+  afterEach(cleanup)
+
+  it('credits the photographer and Unsplash, both linked with utm params', () => {
+    render(<PhotoCredit photo={photo} />)
+    const author = screen.getByRole('link', { name: 'Jeremy Bishop' })
+    const unsplash = screen.getByRole('link', { name: 'Unsplash' })
+    expect(author.getAttribute('href')).toBe(photo.authorUrl)
+    expect(unsplash.getAttribute('href')).toBe(UNSPLASH_HOME)
+    expect(UNSPLASH_HOME).toContain('utm_source=hikki&utm_medium=referral')
+    expect(author.parentElement?.textContent).toBe('Photo by Jeremy Bishop on Unsplash')
   })
 })

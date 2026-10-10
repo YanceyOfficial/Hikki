@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,7 +7,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 
 import { GRADIENTS, gradientCover } from './covers'
-import { bffURL, searchUnsplash, trackUnsplashDownload, type UnsplashPhoto } from './unsplash'
+import {
+  bffURL,
+  searchUnsplash,
+  trackUnsplashDownload,
+  UNSPLASH_HOME,
+  type UnsplashPhoto
+} from './unsplash'
 
 type Props = {
   current: string | null
@@ -195,15 +201,30 @@ function UnsplashPane({ onSelect }: { onSelect: Props['onSelect'] }) {
             >
               <img src={photo.thumb} alt="" loading="lazy" className="size-full object-cover" />
             </button>
-            <figcaption className="truncate text-xs text-muted-foreground">
-              {t('cover.by')}{' '}
-              <a href={photo.authorUrl} target="_blank" rel="noreferrer" className="underline">
-                {photo.author}
-              </a>
-            </figcaption>
+            <PhotoCredit photo={photo} />
           </figure>
         ))}
       </div>
     </div>
+  )
+}
+
+/** Unsplash guideline: "Photo by <photographer> on <Unsplash>", both linked (utm-tagged). */
+export function PhotoCredit({ photo }: { photo: UnsplashPhoto }) {
+  return (
+    <figcaption className="truncate text-xs text-muted-foreground">
+      <Trans
+        i18nKey="cover.credit"
+        values={{ name: photo.author }}
+        components={{
+          author: (
+            <a href={photo.authorUrl} target="_blank" rel="noreferrer" className="underline" />
+          ),
+          unsplash: (
+            <a href={UNSPLASH_HOME} target="_blank" rel="noreferrer" className="underline" />
+          )
+        }}
+      />
+    </figcaption>
   )
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // Localization gate (en is the source language; zh-Hans must be complete).
 // Native: keys are symbolic (`app:<area>.<element>`), in Hikki/Resources/Localization/Localizable.xcstrings.
-// Web:    keys used via t('…') in editor/src, catalogs in editor/src/locales/<lang>.json.
+// Web:    keys used via t('…') or <Trans i18nKey='…'> in editor/src, catalogs in editor/src/locales/<lang>.json.
 import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -131,7 +131,9 @@ const webCatalogs = Object.fromEntries(
 )
 const usedWeb = new Set()
 for (const file of walk(join(root, 'editor/src'), /\.(ts|tsx)$/u, (p) => p.includes('/locales'))) {
-  for (const [, key] of readFileSync(file, 'utf8').matchAll(/\bt\(\s*'([a-zA-Z0-9_.]+)'/gu))
+  for (const [, key] of readFileSync(file, 'utf8').matchAll(
+    /(?:\bt\(\s*|\bi18nKey=)['"]([a-zA-Z0-9_.]+)['"]/gu
+  ))
     usedWeb.add(key)
 }
 for (const key of usedWeb)

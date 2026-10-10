@@ -42,7 +42,7 @@
     "unsplashBusy": "Unsplash 繁忙，请稍后再试。",
     "unsplashFailed": "无法加载 Unsplash。",
     "photoBy": "{{name}} 拍摄",
-    "by": "摄影：",
+    "credit": "<author>{{name}}</author> 摄于 <unsplash>Unsplash</unsplash>",
     "gradients": {
       "dusk": "黄昏",
       "ocean": "海洋",

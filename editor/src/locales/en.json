@@ -42,7 +42,7 @@
     "unsplashBusy": "Unsplash is busy — try again later.",
     "unsplashFailed": "Could not load Unsplash.",
     "photoBy": "Photo by {{name}}",
-    "by": "by",
+    "credit": "Photo by <author>{{name}}</author> on <unsplash>Unsplash</unsplash>",
     "gradients": {
       "dusk": "Dusk",
       "ocean": "Ocean",

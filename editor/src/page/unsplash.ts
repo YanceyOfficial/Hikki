@@ -2,6 +2,9 @@
  * Unsplash client. Calls go through Hikki's BFF (bff/), which keeps the Access Key server-side.
  * The BFF base URL comes from VITE_HIKKI_BFF_URL at build time; without it Unsplash is unavailable.
  */
+/** Unsplash home with the referral utm params the attribution guideline asks for. */
+export const UNSPLASH_HOME = 'https://unsplash.com/?utm_source=hikki&utm_medium=referral'
+
 export type UnsplashPhoto = {
   id: string
   thumb: string
