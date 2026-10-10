@@ -19,10 +19,10 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(waitOrDumpTree(newPage, in: app))
         newPage.tap()
 
-        let editor = app.webViews.textViews.firstMatch
-        XCTAssertTrue(waitOrDumpTree(editor, in: app), "editor never became editable")
-        editor.tap()
-        editor.typeText("Hello Hikki")
+        let title = app.webViews.textViews["Page title"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+        title.tap()
+        title.typeText("Hello Hikki")
         // Past the 400 ms debounce so the change reaches SQLite.
         sleep(2)
         let shot = XCTAttachment(screenshot: app.screenshot())
@@ -55,10 +55,10 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(waitOrDumpTree(newPage, in: app))
         newPage.tap()
 
-        let editor = app.webViews.textViews.firstMatch
-        XCTAssertTrue(waitOrDumpTree(editor, in: app), "editor never became editable")
-        editor.tap()
-        editor.typeText("Plan\n/todo")
+        let title = app.webViews.textViews["Page title"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+        title.tap()
+        title.typeText("Plan\n/todo")
 
         let item = app.webViews.descendants(matching: .any)["To-do list"].firstMatch
         XCTAssertTrue(waitOrDumpTree(item, in: app), "slash menu did not show the To-do item")
@@ -70,6 +70,120 @@ final class EditorFlowTests: XCTestCase {
 
         XCTAssertTrue(waitOrDumpTree(app.webViews.switches.firstMatch, in: app), "to-do checkbox not inserted")
         XCTAssertFalse(app.webViews.descendants(matching: .any)["To-do list"].exists, "menu should close after choosing")
+    }
+
+    /// Regression: on iPhone, tag-based List selection didn't navigate; rows must be NavigationLinks.
+    func testSidebarRowsNavigate() throws {
+        continueAfterFailure = false
+        let app = launch()
+        let trashRow = app.staticTexts["Trash"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(trashRow, in: app))
+        tapWhenSettled(trashRow)
+        XCTAssertTrue(waitOrDumpTree(app.staticTexts["Trash is empty"].firstMatch, in: app), "Trash row did not navigate")
+        backToSidebarIfNeeded(app)
+        tapWhenSettled(app.staticTexts["Home"].firstMatch)
+        XCTAssertTrue(waitOrDumpTree(app.buttons["home-new-page"].firstMatch, in: app), "Home row did not navigate")
+    }
+
+    func testFavoriteTrashAndRestore() throws {
+        continueAfterFailure = false
+        let app = launch()
+        createPage(app, title: "Trash me")
+
+        let favorite = app.buttons["favorite-toggle"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(favorite, in: app))
+        favorite.tap()
+
+        app.buttons["page-more"].firstMatch.tap()
+        let trash = app.buttons["Move to Trash"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(trash, in: app), "Move to Trash missing from the page menu")
+        trash.tap()
+
+        // The page leaves the tree (and favorites) and shows up in Trash.
+        backToSidebarIfNeeded(app)
+        let trashRow = app.staticTexts["Trash"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(trashRow, in: app))
+        tapWhenSettled(trashRow)
+        XCTAssertTrue(waitOrDumpTree(app.staticTexts["Trash me"].firstMatch, in: app), "trashed page not listed in Trash")
+        attachScreenshot(app, "trash")
+        app.buttons["Restore"].firstMatch.tap()
+        XCTAssertTrue(waitOrDumpTree(app.staticTexts["Trash is empty"].firstMatch, in: app))
+    }
+
+    func testSearchFindsChineseTitleByPinyinInitials() throws {
+        continueAfterFailure = false
+        let app = launch()
+        createPage(app, title: "产品路线图")
+        backToSidebarIfNeeded(app)
+
+        let search = app.buttons["sidebar-search"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(search, in: app))
+        search.tap()
+        let field = app.textFields["search-field"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(field, in: app))
+        field.typeText("cplxt")
+        let hit = app.staticTexts["产品路线图"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(hit, in: app), "pinyin-initials search did not find the page")
+        attachScreenshot(app, "search")
+        hit.tap()
+        XCTAssertTrue(waitOrDumpTree(app.buttons["favorite-toggle"].firstMatch, in: app), "page did not open from search")
+    }
+
+    /// Visual record of the main screens (run on an iPad destination for the regular-width layout).
+    func testCaptureScreens() throws {
+        let app = launch()
+        createPage(app, title: "Welcome to Hikki")
+        let addIcon = app.webViews.buttons["Add icon"].firstMatch
+        if addIcon.waitForExistence(timeout: 5) { addIcon.tap() }
+        let addCover = app.webViews.buttons["Add cover"].firstMatch
+        if addCover.waitForExistence(timeout: 5) { addCover.tap() }
+        let title = app.webViews.textViews["Page title"].firstMatch
+        title.tap()
+        title.typeText("\nA local-first notebook.")
+        sleep(1)
+        attachScreenshot(app, "page")
+        backToSidebarIfNeeded(app)
+        app.staticTexts["Home"].firstMatch.tap()
+        sleep(1)
+        attachScreenshot(app, "home")
+    }
+
+    // MARK: - Helpers
+
+    private func createPage(_ app: XCUIApplication, title: String) {
+        let newPage = app.buttons["new-page"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+        newPage.tap()
+        let field = app.webViews.textViews["Page title"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(field, in: app), "editor never became editable")
+        field.tap()
+        field.typeText(title)
+        sleep(1) // past the save debounce
+    }
+
+    /// On iPhone the sidebar is a separate screen behind the page.
+    private func backToSidebarIfNeeded(_ app: XCUIApplication) {
+        #if os(iOS)
+            let back = app.navigationBars.buttons["BackButton"]
+            if back.exists {
+                back.tap()
+                // Wait for the pop to finish; taps during the transition are dropped.
+                _ = app.buttons["sidebar-search"].waitForExistence(timeout: 5)
+            }
+        #endif
+    }
+
+    private func tapWhenSettled(_ element: XCUIElement) {
+        let hittable = expectation(for: NSPredicate(format: "isHittable == true"), evaluatedWith: element)
+        wait(for: [hittable], timeout: 5)
+        element.tap()
+    }
+
+    private func attachScreenshot(_ app: XCUIApplication, _ name: String) {
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = name
+        shot.lifetime = .keepAlways
+        add(shot)
     }
 
     /// On failure, attaches the accessibility tree to the result bundle — the fastest way to see why a query missed.

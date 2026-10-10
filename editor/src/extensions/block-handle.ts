@@ -1,9 +1,9 @@
 import type { Node as PMNode } from '@tiptap/pm/model'
 import DragHandle from '@tiptap/extension-drag-handle'
 
-/** The title is pinned as the first node; only body blocks may be dragged. */
+/** Every body block is draggable (the page title lives outside the editor). */
 export function isDraggableBlock(node: PMNode | null): boolean {
-  return node !== null && node.type.name !== 'title'
+  return node !== null
 }
 
 /**

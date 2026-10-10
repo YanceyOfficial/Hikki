@@ -19,7 +19,7 @@ export const SlashCommand = Extension.create({
         char: '/',
         allow: ({ state, range }) => {
           const $from = state.doc.resolve(range.from)
-          return $from.parent.type.name !== 'title' && $from.parent.type.name !== 'codeBlock'
+          return $from.parent.type.name !== 'codeBlock'
         },
         items: ({ query }) => filterBlockTypes(query),
         command: ({ editor, range, props }) => {

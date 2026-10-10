@@ -14,12 +14,14 @@ export function webkitTransport(): Transport | null {
   return handler ? { post: (m: ToNativeMessage) => handler.postMessage(m) } : null
 }
 
-/** Browser dev transport: logs to the console so the editor runs under `vite dev` without the app. */
-export function consoleTransport(): Transport {
+/** Browser dev transport: logs to the console and keeps uploaded assets as data URLs. */
+export function devTransport(): Transport {
   return {
     post: async (m: ToNativeMessage) => {
+      if (m.type === 'saveAsset') return `data:image/${m.fileExtension};base64,${m.dataBase64}`
       if (m.type === 'log') console[m.level === 'debug' ? 'log' : m.level]('[native]', m.message, m.context ?? '')
       else console.debug('[native]', m.type, m)
+      return null
     },
   }
 }

@@ -2,11 +2,12 @@ import Foundation
 
 /// Mirror of editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 1
+    public static let version = 2
 }
 
 public struct Snapshot: Codable, Sendable, Equatable {
     public var docId: String
+    /// Body only — the title is a page property.
     public var content: JSONValue
     public var title: String
     public var text: String
@@ -27,16 +28,34 @@ public enum BridgeMessage: Sendable, Equatable {
     case changed(Snapshot)
     case activeFormats([String])
     case log(level: LogLevel, message: String, context: [String: String]?)
+    case setIcon(docId: String, icon: String?)
+    case setCover(docId: String, cover: String?)
+    /// Expects the asset URL as the reply.
+    case saveAsset(fileExtension: String, data: Data)
 }
 
 public enum BridgeError: Error, Equatable {
     case notJSON
     case unknownType(String)
+    case invalidPayload(String)
+}
+
+/// What `window.hikki.loadDocument(page)` receives (mirror of `PagePayload` in protocol.ts).
+public enum PagePayload {
+    public static func make(from record: DocumentRecord) throws -> [String: Any] {
+        [
+            "id": record.id,
+            "title": record.title,
+            "icon": record.icon ?? NSNull(),
+            "cover": record.cover ?? NSNull(),
+            "content": try record.contentValue()?.foundationObject() ?? NSNull(),
+        ]
+    }
 }
 
 extension BridgeMessage: Decodable {
     private enum CodingKeys: String, CodingKey {
-        case type, protocolVersion, snapshot, active, level, message, context
+        case type, protocolVersion, snapshot, active, level, message, context, docId, icon, cover, fileExtension, dataBase64
     }
 
     public init(from decoder: Decoder) throws {
@@ -52,6 +71,15 @@ extension BridgeMessage: Decodable {
                 message: try c.decode(String.self, forKey: .message),
                 context: try c.decodeIfPresent([String: String].self, forKey: .context)
             )
+        case "setIcon":
+            self = .setIcon(docId: try c.decode(String.self, forKey: .docId), icon: try c.decodeIfPresent(String.self, forKey: .icon))
+        case "setCover":
+            self = .setCover(docId: try c.decode(String.self, forKey: .docId), cover: try c.decodeIfPresent(String.self, forKey: .cover))
+        case "saveAsset":
+            guard let data = Data(base64Encoded: try c.decode(String.self, forKey: .dataBase64)) else {
+                throw BridgeError.invalidPayload("saveAsset: dataBase64 is not base64")
+            }
+            self = .saveAsset(fileExtension: try c.decode(String.self, forKey: .fileExtension), data: data)
         default: throw BridgeError.unknownType(type)
         }
     }

@@ -21,7 +21,7 @@ struct HikkiApp: App {
         ])
         do {
             let store = try DocumentStore.onDisk(at: paths.database)
-            _model = State(initialValue: AppModel(store: store, crashReporter: crashReporter))
+            _model = State(initialValue: AppModel(store: store, assets: AssetStore(directory: paths.assets), crashReporter: crashReporter))
         } catch {
             Log.error("cannot open database: \(error)", category: "store")
             fatalError("Cannot open database: \(error)")
@@ -41,6 +41,6 @@ struct HikkiApp: App {
             #endif
         }
         .defaultSize(width: 1100, height: 760)
-        .commands { FormatCommands() }
+        .commands { AppCommands() }
     }
 }

@@ -1,32 +1,29 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeDocument } from '../src/normalize'
+import { normalizeBody } from '../src/normalize'
 
-describe('normalizeDocument', () => {
-  it('creates a title and an empty paragraph for new documents', () => {
-    expect(normalizeDocument(null)).toEqual({ type: 'doc', content: [{ type: 'title' }, { type: 'paragraph' }] })
+const p = (text: string) => ({ type: 'paragraph', content: [{ type: 'text', text }] })
+
+describe('normalizeBody', () => {
+  it('gives new pages one empty paragraph', () => {
+    expect(normalizeBody(null, '')).toEqual({ body: { type: 'doc', content: [{ type: 'paragraph' }] }, title: '' })
   })
 
-  it('migrates a leading level-1 heading (pre-title documents) into the title, dropping marks', () => {
-    const old = {
-      type: 'doc',
-      content: [
-        { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Hello ' }, { type: 'text', marks: [{ type: 'bold' }], text: 'Hikki' }] },
-        { type: 'paragraph', content: [{ type: 'text', text: 'body' }] },
-      ],
-    }
-    expect(normalizeDocument(old)).toEqual({
-      type: 'doc',
-      content: [{ type: 'title', content: [{ type: 'text', text: 'Hello Hikki' }] }, { type: 'paragraph', content: [{ type: 'text', text: 'body' }] }],
-    })
+  it('drops a leading title node (previous build) and recovers its text when the stored title is empty', () => {
+    const content = { type: 'doc', content: [{ type: 'title', content: [{ type: 'text', text: 'Old title' }] }, p('body')] }
+    expect(normalizeBody(content, '')).toEqual({ body: { type: 'doc', content: [p('body')] }, title: 'Old title' })
+    expect(normalizeBody(content, 'Stored').title).toBe('Stored')
   })
 
-  it('keeps other first blocks as body content under an empty title', () => {
-    const doc = { type: 'doc', content: [{ type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'h2' }] }] }
-    expect(normalizeDocument(doc).content).toEqual([{ type: 'title' }, doc.content[0]])
+  it('drops a leading H1 only when it duplicates the stored title (first build)', () => {
+    const h1 = { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Plan' }] }
+    expect(normalizeBody({ type: 'doc', content: [h1, p('x')] }, 'Plan').body.content).toEqual([p('x')])
+    // A real H1 that isn't the title stays.
+    expect(normalizeBody({ type: 'doc', content: [h1, p('x')] }, 'Other').body.content).toEqual([h1, p('x')])
+    expect(normalizeBody({ type: 'doc', content: [h1] }, '').body.content).toEqual([h1])
   })
 
   it('is idempotent', () => {
-    const once = normalizeDocument({ type: 'doc', content: [{ type: 'heading', attrs: { level: 1 } }] })
-    expect(normalizeDocument(once)).toEqual(once)
+    const once = normalizeBody({ type: 'doc', content: [{ type: 'title' }, p('a')] }, 'T')
+    expect(normalizeBody(once.body, once.title)).toEqual(once)
   })
 })

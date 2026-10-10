@@ -3,14 +3,22 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 1
+export const PROTOCOL_VERSION = 2
 
-export type DocPayload = { id: string; content: JSONContent | null }
+/** What the native side sends to open a page. The title is a page property, not part of `content`. */
+export type PagePayload = {
+  id: string
+  title: string
+  icon: string | null
+  cover: string | null
+  content: JSONContent | null
+}
 
+/** Editor-owned state, saved (debounced) by the native side. */
 export type Snapshot = {
   docId: string
-  content: JSONContent
   title: string
+  content: JSONContent
   text: string
   wordCount: number
 }
@@ -30,3 +38,8 @@ export type ToNativeMessage =
   | { type: 'changed'; snapshot: Snapshot }
   | { type: 'activeFormats'; active: Command[] }
   | { type: 'log'; level: LogLevel; message: string; context?: Record<string, string> }
+  /** Saved immediately (not debounced) — metadata has its own write path. */
+  | { type: 'setIcon'; docId: string; icon: string | null }
+  | { type: 'setCover'; docId: string; cover: string | null }
+  /** Replies with the asset URL to use (e.g. `hikki-editor://assets/<name>`). */
+  | { type: 'saveAsset'; fileExtension: string; dataBase64: string }

@@ -3,30 +3,26 @@ import StarterKit from '@tiptap/starter-kit'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
 import { Placeholder } from '@tiptap/extensions'
 import { blockHandleExtensions } from './extensions/block-handle'
+import { EdgeNavigation } from './extensions/edge-navigation'
 import { SlashCommand } from './extensions/slash-command'
-import { Title, TitledDocument } from './extensions/title'
-import { normalizeDocument } from './normalize'
 import type { Command } from './protocol'
 
-export function createEditor(element: HTMLElement, content: JSONContent | null): Editor {
+type EditorOptions = { onExitTop?: () => void }
+
+/** The page body editor. `content` must already be normalized (see normalizeBody). */
+export function createEditor(element: HTMLElement, content: JSONContent | null, options: EditorOptions = {}): Editor {
   return new Editor({
     element,
-    content: normalizeDocument(content),
+    content: content ?? { type: 'doc', content: [{ type: 'paragraph' }] },
     extensions: [
-      StarterKit.configure({ document: false, link: { openOnClick: false } }),
-      TitledDocument,
-      Title,
+      StarterKit.configure({ link: { openOnClick: false } }),
       TaskList,
       TaskItem.configure({ nested: true }),
       Placeholder.configure({
         includeChildren: false,
-        // The title hint is always visible (like Notion); the body hint only on the line being edited.
-        showOnlyCurrent: false,
-        placeholder: ({ node, hasAnchor }) => {
-          if (node.type.name === 'title') return 'Untitled'
-          return hasAnchor && node.type.name === 'paragraph' ? "Type '/' for commands" : ''
-        },
+        placeholder: ({ node }) => (node.type.name === 'paragraph' ? "Type '/' for commands" : ''),
       }),
+      EdgeNavigation.configure({ onExitTop: options.onExitTop ?? (() => {}) }),
       SlashCommand,
       ...blockHandleExtensions(),
     ],

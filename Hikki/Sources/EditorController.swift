@@ -10,6 +10,7 @@ final class EditorController {
     private(set) var activeFormats: Set<String> = []
     @ObservationIgnored private(set) var webView: HikkiWebView!
     @ObservationIgnored private var store: DocumentStore?
+    @ObservationIgnored private var assets: AssetStore?
     @ObservationIgnored private var currentDocumentID: String?
     @ObservationIgnored private var pendingDocumentID: String??
 
@@ -17,8 +18,10 @@ final class EditorController {
         webView = makeWebView()
     }
 
-    func attach(store: DocumentStore) {
+    func attach(store: DocumentStore, assets: AssetStore) {
         self.store = store
+        self.assets = assets
+        schemeHandler.assets = assets
     }
 
     func open(documentID: String?) {
@@ -79,10 +82,9 @@ final class EditorController {
                 Log.warn("open: document missing", category: "store", context: ["docId": id])
                 return
             }
-            let content: Any = try record.contentValue()?.foundationObject() ?? NSNull()
             _ = try await webView.callAsyncJavaScript(
-                "window.hikki.loadDocument(doc); window.hikki.focus()",
-                arguments: ["doc": ["id": id, "content": content]],
+                "window.hikki.loadDocument(page)",
+                arguments: ["page": try PagePayload.make(from: record)],
                 contentWorld: .page
             )
         } catch {
@@ -92,12 +94,13 @@ final class EditorController {
 
     // MARK: - Bridge
 
-    func handle(_ message: BridgeMessage) {
+    /// Returns the reply for messages that expect one (WKScriptMessageHandlerWithReply).
+    func handle(_ message: BridgeMessage) throws -> Any? {
         switch message {
         case .ready(let version):
             guard version == BridgeProtocol.version else {
                 Log.error("bridge protocol mismatch", category: "bridge", context: ["web": "\(version)", "native": "\(BridgeProtocol.version)"])
-                return
+                return nil
             }
             isReady = true
             Log.info("editor ready", category: "bridge")
@@ -111,7 +114,17 @@ final class EditorController {
             activeFormats = Set(active)
         case .log(let level, let message, let context):
             Log.write(level, message, category: "web", context: context)
+        case .setIcon(let docId, let icon):
+            try store?.setIcon(icon, for: docId)
+        case .setCover(let docId, let cover):
+            try store?.setCover(cover, for: docId)
+        case .saveAsset(let fileExtension, let data):
+            guard let assets else { throw BridgeError.invalidPayload("asset store not attached") }
+            let url = try assets.save(data, fileExtension: fileExtension)
+            Log.info("asset saved", category: "store", context: ["bytes": "\(data.count)", "ext": fileExtension])
+            return url
         }
+        return nil
     }
 
     private func save(_ snapshot: Snapshot) {
@@ -133,9 +146,11 @@ final class EditorController {
 
     // MARK: - Web view setup
 
+    @ObservationIgnored private let schemeHandler = EditorSchemeHandler()
+
     private func makeWebView() -> HikkiWebView {
         let configuration = WKWebViewConfiguration()
-        configuration.setURLSchemeHandler(EditorSchemeHandler(), forURLScheme: EditorSchemeHandler.scheme)
+        configuration.setURLSchemeHandler(schemeHandler, forURLScheme: EditorSchemeHandler.scheme)
         configuration.userContentController.addScriptMessageHandler(
             ScriptMessageProxy(owner: self), contentWorld: .page, name: "hikki"
         )
@@ -144,6 +159,15 @@ final class EditorController {
         navigationDelegate.owner = self
         #if DEBUG
             webView.isInspectable = true
+        #endif
+        // No white flash behind the page in dark mode while the bundle loads.
+        #if os(iOS)
+            webView.isOpaque = false
+            webView.backgroundColor = .clear
+            webView.scrollView.backgroundColor = .clear
+        #else
+            webView.underPageBackgroundColor = .clear
+            webView.setValue(false, forKey: "drawsBackground")
         #endif
         #if os(iOS)
             webView.installKeyboardToolbar(controller: self)
@@ -165,10 +189,10 @@ private final class ScriptMessageProxy: NSObject, WKScriptMessageHandlerWithRepl
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) async -> (Any?, String?) {
         do {
-            owner?.handle(try BridgeMessage.decode(scriptMessageBody: message.body))
-            return (nil, nil)
+            let reply = try owner?.handle(try BridgeMessage.decode(scriptMessageBody: message.body))
+            return (reply, nil)
         } catch {
-            Log.error("undecodable bridge message: \(error)", category: "bridge")
+            Log.error("bridge message failed: \(error)", category: "bridge")
             return (nil, "\(error)")
         }
     }

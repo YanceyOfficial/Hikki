@@ -5,7 +5,7 @@ import Testing
 struct BridgeMessageTests {
     /// Shapes exactly as WebKit bridges a JS object literal (NSDictionary / NSNumber).
     @Test func decodesReady() throws {
-        let body: NSDictionary = ["type": "ready", "protocolVersion": NSNumber(value: 1)]
+        let body: NSDictionary = ["type": "ready", "protocolVersion": NSNumber(value: 2)]
         #expect(try BridgeMessage.decode(scriptMessageBody: body) == .ready(protocolVersion: BridgeProtocol.version))
     }
 
@@ -32,6 +32,32 @@ struct BridgeMessageTests {
             == .log(level: .warn, message: "m", context: nil))
         #expect(try BridgeMessage.decode(scriptMessageBody: ["type": "activeFormats", "active": ["bold"]] as NSDictionary)
             == .activeFormats(["bold"]))
+    }
+
+    @Test func decodesMetadataMessages() throws {
+        #expect(try BridgeMessage.decode(scriptMessageBody: ["type": "setIcon", "docId": "a", "icon": "👋"] as NSDictionary)
+            == .setIcon(docId: "a", icon: "👋"))
+        #expect(try BridgeMessage.decode(scriptMessageBody: ["type": "setIcon", "docId": "a", "icon": NSNull()] as NSDictionary)
+            == .setIcon(docId: "a", icon: nil))
+        #expect(try BridgeMessage.decode(scriptMessageBody: ["type": "setCover", "docId": "a", "cover": "gradient:ocean"] as NSDictionary)
+            == .setCover(docId: "a", cover: "gradient:ocean"))
+        #expect(try BridgeMessage.decode(scriptMessageBody: ["type": "saveAsset", "fileExtension": "png", "dataBase64": "AQID"] as NSDictionary)
+            == .saveAsset(fileExtension: "png", data: Data([1, 2, 3])))
+        #expect(throws: BridgeError.invalidPayload("saveAsset: dataBase64 is not base64")) {
+            try BridgeMessage.decode(scriptMessageBody: ["type": "saveAsset", "fileExtension": "png", "dataBase64": "%%%"] as NSDictionary)
+        }
+    }
+
+    @Test func pagePayloadCarriesTitleAndMetadataSeparatelyFromContent() throws {
+        let record = DocumentRecord(id: "a", title: "Plan", content: #"{"type":"doc","content":[]}"#, plainText: "", wordCount: 0,
+                                    createdAt: .now, updatedAt: .now, parentId: nil, icon: "🌊", cover: nil, favoritedAt: nil,
+                                    deletedAt: nil, sortKey: 0)
+        let payload = try PagePayload.make(from: record)
+        #expect(payload["title"] as? String == "Plan")
+        #expect(payload["icon"] as? String == "🌊")
+        #expect(payload["cover"] is NSNull)
+        #expect((payload["content"] as? [String: Any])?["type"] as? String == "doc")
+        #expect(JSONSerialization.isValidJSONObject(payload))
     }
 
     @Test func rejectsUnknownTypesAndNonJSON() {
