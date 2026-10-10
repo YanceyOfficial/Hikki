@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Small grey section label ("Favorites", "Private").
+/// Small grey section label ("app:sidebar.favorites", "app:sidebar.private").
 public struct SidebarSectionHeader: View {
     private let title: LocalizedStringKey
 

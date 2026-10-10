@@ -7,6 +7,7 @@ import {
   useState,
   useSyncExternalStore
 } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
@@ -21,6 +22,7 @@ import { coverBackground, randomGradient, randomIcon } from './covers'
 
 /** Notion-style page header: cover, icon, hover actions and the page title (a page property, not body content). */
 export function PageHeader({ bridge }: { bridge: EditorBridge }) {
+  const { t } = useTranslation()
   const page = useSyncExternalStore(bridge.page.subscribe, bridge.page.get)
   const [iconAnchor, setIconAnchor] = useState<HTMLElement | null>(null)
   const [iconOpen, setIconOpen] = useState(false)
@@ -54,7 +56,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
                   />
                 }
               >
-                Change cover
+                {t('page.changeCover')}
               </PopoverTrigger>
               <PopoverContent align="end" className="w-[440px] max-w-[calc(100vw-16px)] gap-0 p-0">
                 <CoverPicker
@@ -71,7 +73,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
               className="bg-popover text-popover-foreground shadow-sm dark:bg-popover"
               onClick={() => bridge.setCover(null)}
             >
-              Remove
+              {t('page.remove')}
             </Button>
           </ButtonGroup>
         </div>
@@ -85,7 +87,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
               background && 'relative -mt-[39px]'
             )}
             ref={setIconAnchor}
-            aria-label="Change icon"
+            aria-label={t('page.changeIcon')}
             onClick={() => setIconOpen((o) => !o)}
           >
             {page.icon}
@@ -99,7 +101,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
               ref={setIconAnchor}
               onClick={() => bridge.setIcon(randomIcon())}
             >
-              <Smiley size={16} aria-hidden /> Add icon
+              <Smiley size={16} aria-hidden /> {t('page.addIcon')}
             </button>
           )}
           {!background && (
@@ -108,7 +110,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
               className={ui.ghost}
               onClick={() => bridge.setCover(randomGradient())}
             >
-              <ImageIcon size={16} aria-hidden /> Add cover
+              <ImageIcon size={16} aria-hidden /> {t('page.addCover')}
             </button>
           )}
         </div>
@@ -154,6 +156,7 @@ function TitleField({
   focusRequest: number
   docId: string
 }) {
+  const { t } = useTranslation()
   const ref = useRef<HTMLTextAreaElement>(null)
   const composing = useRef(false)
 
@@ -185,8 +188,8 @@ function TitleField({
       className="mb-2 block w-full resize-none overflow-hidden border-0 bg-transparent py-[3px] text-4xl leading-tight font-bold tracking-[-0.01em] text-foreground outline-none placeholder:text-placeholder max-sm:text-3xl"
       rows={1}
       value={title}
-      placeholder="Untitled"
-      aria-label="Page title"
+      placeholder={t('page.untitled')}
+      aria-label={t('page.titleLabel')}
       spellCheck={false}
       onChange={(e) => bridge.setTitle(e.target.value)}
       onCompositionStart={() => {

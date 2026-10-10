@@ -12,9 +12,9 @@ struct TrashView: View {
         List {
             if filtered.isEmpty {
                 ContentUnavailableView {
-                    IconLabel(filter.isEmpty ? "Trash is empty" : "No matches", icon: .trash)
+                    IconLabel(filter.isEmpty ? "app:trash.isEmpty" : "app:trash.noMatches", icon: .trash)
                 } description: {
-                    Text("Pages you delete show up here.")
+                    Text("app:trash.emptyHint")
                 }
                 .listRowBackground(Color.clear)
             }
@@ -22,11 +22,11 @@ struct TrashView: View {
                 HStack(spacing: Spacing.s2) {
                     PageIcon(page.icon)
                     VStack(alignment: .leading, spacing: Spacing.s0_5) {
-                        Text(page.title.isEmpty ? String(localized: "Untitled") : page.title)
+                        Text(page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
                             .font(.hk(.sm, .medium))
                             .foregroundStyle(Theme.foreground)
                         if let deletedAt = page.deletedAt {
-                            Text("Deleted \(deletedAt, format: .relative(presentation: .named))")
+                            Text("app:trash.deletedAt \(deletedAt, format: .relative(presentation: .named))")
                                 .font(.hk(.xs))
                                 .foregroundStyle(Theme.mutedForeground)
                         }
@@ -35,52 +35,52 @@ struct TrashView: View {
                     Button {
                         model.restore(id: page.id)
                     } label: {
-                        IconLabel("Restore", icon: .arrowCounterClockwise)
+                        IconLabel("app:trash.restore", icon: .arrowCounterClockwise)
                     }
                     .labelStyle(.iconOnly)
                     .buttonStyle(.borderless)
-                    .help("Restore")
+                    .help("app:trash.restore")
                     Button(role: .destructive) {
                         pendingDelete = page
                     } label: {
-                        IconLabel("Delete Permanently", icon: .trash)
+                        IconLabel("app:trash.deletePermanently", icon: .trash)
                     }
                     .labelStyle(.iconOnly)
                     .buttonStyle(.borderless)
-                    .help("Delete permanently")
+                    .help("app:trash.deletePermanently")
                 }
                 .padding(.vertical, Spacing.s0_5)
                 .swipeActions(edge: .trailing) {
-                    Button("Delete", role: .destructive) { pendingDelete = page }
-                    Button("Restore") { model.restore(id: page.id) }.tint(Theme.primary)
+                    Button("app:common.delete", role: .destructive) { pendingDelete = page }
+                    Button("app:trash.restore") { model.restore(id: page.id) }.tint(Theme.primary)
                 }
             }
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
-        .searchable(text: $filter, prompt: "Filter by page title")
-        .navigationTitle("Trash")
+        .searchable(text: $filter, prompt: "app:trash.filterPrompt")
+        .navigationTitle("app:nav.trash")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button("Empty Trash", role: .destructive) { confirmEmpty = true }
+                Button("app:trash.empty", role: .destructive) { confirmEmpty = true }
                     .disabled(model.trash.isEmpty)
             }
         }
-        .confirmationDialog("Permanently delete every page in the trash?", isPresented: $confirmEmpty, titleVisibility: .visible) {
-            Button("Empty Trash", role: .destructive) { model.emptyTrash() }
+        .confirmationDialog("app:trash.confirmEmpty", isPresented: $confirmEmpty, titleVisibility: .visible) {
+            Button("app:trash.empty", role: .destructive) { model.emptyTrash() }
         } message: {
-            Text("This can't be undone.")
+            Text("app:trash.cannotUndo")
         }
         .confirmationDialog(
-            "Permanently delete “\(pendingDelete?.title ?? "")”?",
+            "app:trash.confirmDeleteOne \(pendingDelete?.title ?? "")",
             isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
             titleVisibility: .visible
         ) {
-            Button("Delete Permanently", role: .destructive) {
+            Button("app:trash.deletePermanently", role: .destructive) {
                 if let page = pendingDelete { model.deletePermanently(id: page.id) }
             }
         } message: {
-            Text("The page and the pages inside it will be gone for good.")
+            Text("app:trash.deleteOneHint")
         }
     }
 

@@ -24,7 +24,7 @@ public struct SearchResultRow: View {
                 .padding(.top, snippet.isEmpty ? Spacing.s0 : Spacing.px)
             VStack(alignment: .leading, spacing: Spacing.s0_5) {
                 HStack(spacing: Spacing.s1_5) {
-                    HighlightedText(title.isEmpty ? String(localized: "Untitled") : title, query: query)
+                    HighlightedText(title.isEmpty ? String(localized: "app:page.untitled") : title, query: query)
                         .font(.hk(.sm))
                         .foregroundStyle(Theme.foreground)
                         .lineLimit(1)

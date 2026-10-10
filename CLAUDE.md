@@ -28,6 +28,11 @@ These rules are mandatory. Automated ones are noted.
 - **One icon set: Phosphor.** Web uses `@phosphor-icons/react`; native uses the generated `Icon` enum (list icons in
   `design/icons.json`, run `make icons`; `IconView` / `IconLabel` in HikkiUI). No SF Symbols — _enforced by
   `make lint-design`_.
+- **Copy language.** User-facing strings are keys, never literals: native `app:<area>.<element>` keys in
+  `Hikki/Resources/Localization/Localizable.xcstrings` (interpolations become `%@`, e.g. `app:page.edited %@`); web
+  `t('area.key')` with catalogs in `editor/src/locales/`. English is the source; zh-Hans must be complete. The native
+  side tells the editor its language (`window.hikki.setLocale`). _Enforced by `make lint-l10n`
+  (`scripts/l10n-audit.mjs`): missing / unused keys, untranslated values, placeholder mismatches, literal UI text._
 - **Secrets stay server-side.** Third-party API keys (Unsplash) live only in the BFF (`bff/`, Hono on Vercel).
   Unsplash rules: hotlink `urls`, attribute the photographer with utm links, report picks via the download endpoint.
 - **Pre-commit gate.** `.husky/pre-commit` runs lint-staged (oxlint + oxfmt for web files, `swift-format` for

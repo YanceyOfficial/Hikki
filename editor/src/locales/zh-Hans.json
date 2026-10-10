@@ -1,0 +1,68 @@
+{
+  "editor": {
+    "bodyPlaceholder": "输入“/”唤起命令",
+    "dragBlock": "拖动以移动块",
+    "noResults": "没有结果"
+  },
+  "page": {
+    "untitled": "无标题",
+    "titleLabel": "页面标题",
+    "addIcon": "添加图标",
+    "addCover": "添加封面",
+    "changeIcon": "更换图标",
+    "changeCover": "更换封面",
+    "remove": "移除",
+    "outline": "目录"
+  },
+  "blocks": {
+    "paragraph": { "title": "正文", "hint": "普通文本" },
+    "heading1": { "title": "标题 1", "hint": "大号章节标题" },
+    "heading2": { "title": "标题 2", "hint": "中号章节标题" },
+    "heading3": { "title": "标题 3", "hint": "小号章节标题" },
+    "bulletList": { "title": "无序列表", "hint": "简单的项目符号列表" },
+    "orderedList": { "title": "有序列表", "hint": "带编号的列表" },
+    "taskList": { "title": "待办列表", "hint": "用复选框追踪任务" },
+    "blockquote": { "title": "引用", "hint": "摘录一段引文" },
+    "codeBlock": { "title": "代码", "hint": "代码块" },
+    "divider": { "title": "分割线", "hint": "视觉分隔" }
+  },
+  "cover": {
+    "tabs": { "gallery": "图库", "upload": "上传", "link": "链接", "unsplash": "Unsplash" },
+    "remove": "移除",
+    "uploadFile": "上传文件",
+    "uploading": "上传中…",
+    "uploadHint": "宽度超过 1500 像素的图片效果最好。",
+    "linkPlaceholder": "粘贴图片链接…",
+    "linkLabel": "图片链接",
+    "linkSubmit": "确定",
+    "linkHint": "支持网络上任意 https 图片。",
+    "unsplashSearch": "搜索图片…",
+    "unsplashLabel": "搜索 Unsplash",
+    "unsplashNotConfigured": "当前版本未配置 Unsplash。",
+    "unsplashBusy": "Unsplash 繁忙，请稍后再试。",
+    "unsplashFailed": "无法加载 Unsplash。",
+    "photoBy": "{{name}} 拍摄",
+    "by": "摄影：",
+    "gradients": {
+      "dusk": "黄昏",
+      "ocean": "海洋",
+      "meadow": "草地",
+      "peach": "蜜桃",
+      "lavender": "薰衣草",
+      "sand": "沙滩",
+      "night": "夜色",
+      "ember": "余烬",
+      "forest": "森林",
+      "slate": "石板"
+    }
+  },
+  "emoji": {
+    "search": "搜索表情…",
+    "remove": "移除",
+    "random": "随机",
+    "recent": "最近使用",
+    "empty": "没有找到",
+    "loading": "加载中…",
+    "failed": "表情加载失败"
+  }
+}

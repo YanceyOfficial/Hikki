@@ -39,7 +39,7 @@ public struct SidebarRow<Actions: View>: View {
     public var body: some View {
         HStack(spacing: Spacing.s2_5) {
             leadingGlyph
-            Text(title.isEmpty ? String(localized: "Untitled") : title)
+            Text(title.isEmpty ? String(localized: "app:page.untitled") : title)
                 .font(.hk(.sm, .medium))
                 .foregroundStyle(
                     isSelected ? Theme.sidebarAccentForeground : title.isEmpty ? Theme.mutedForeground : Theme.sidebarForeground
@@ -80,7 +80,7 @@ public struct SidebarRow<Actions: View>: View {
                         .contentShape(.rect)
                 }
                 .buttonStyle(HoverHighlightStyle())
-                .accessibilityLabel(isExpanded.wrappedValue ? "Collapse" : "Expand")
+                .accessibilityLabel(isExpanded.wrappedValue ? "app:sidebar.collapse" : "app:sidebar.expand")
                 #if os(macOS)
                     if hovering { chevron } else { PageIcon(icon, size: Size.sidebarIcon) }
                 #else

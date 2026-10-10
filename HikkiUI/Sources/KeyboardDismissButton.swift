@@ -11,7 +11,7 @@ public struct KeyboardDismissButton: View {
 
     public var body: some View {
         Button(action: action) {
-            IconLabel("Hide Keyboard", icon: .keyboard, size: TextSize.base.rawValue)
+            IconLabel("app:keyboard.hide", icon: .keyboard, size: TextSize.base.rawValue)
                 .labelStyle(.iconOnly)
                 // The keyboard glyph is wider than the formatting icons; at full scale its circle would dominate the bar.
                 .imageScale(.small)

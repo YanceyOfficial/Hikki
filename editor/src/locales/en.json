@@ -1,0 +1,68 @@
+{
+  "editor": {
+    "bodyPlaceholder": "Type '/' for commands",
+    "dragBlock": "Drag to move block",
+    "noResults": "No results"
+  },
+  "page": {
+    "untitled": "Untitled",
+    "titleLabel": "Page title",
+    "addIcon": "Add icon",
+    "addCover": "Add cover",
+    "changeIcon": "Change icon",
+    "changeCover": "Change cover",
+    "remove": "Remove",
+    "outline": "Outline"
+  },
+  "blocks": {
+    "paragraph": { "title": "Text", "hint": "Plain text" },
+    "heading1": { "title": "Heading 1", "hint": "Big section heading" },
+    "heading2": { "title": "Heading 2", "hint": "Medium section heading" },
+    "heading3": { "title": "Heading 3", "hint": "Small section heading" },
+    "bulletList": { "title": "Bulleted list", "hint": "Simple bulleted list" },
+    "orderedList": { "title": "Numbered list", "hint": "List with numbering" },
+    "taskList": { "title": "To-do list", "hint": "Track tasks with checkboxes" },
+    "blockquote": { "title": "Quote", "hint": "Capture a quote" },
+    "codeBlock": { "title": "Code", "hint": "Code block" },
+    "divider": { "title": "Divider", "hint": "Visual separator" }
+  },
+  "cover": {
+    "tabs": { "gallery": "Gallery", "upload": "Upload", "link": "Link", "unsplash": "Unsplash" },
+    "remove": "Remove",
+    "uploadFile": "Upload file",
+    "uploading": "Uploading…",
+    "uploadHint": "Images wider than 1500 pixels work best.",
+    "linkPlaceholder": "Paste an image link…",
+    "linkLabel": "Image link",
+    "linkSubmit": "Submit",
+    "linkHint": "Works with any https image on the web.",
+    "unsplashSearch": "Search for an image…",
+    "unsplashLabel": "Search Unsplash",
+    "unsplashNotConfigured": "Unsplash isn't configured for this build.",
+    "unsplashBusy": "Unsplash is busy — try again later.",
+    "unsplashFailed": "Could not load Unsplash.",
+    "photoBy": "Photo by {{name}}",
+    "by": "by",
+    "gradients": {
+      "dusk": "Dusk",
+      "ocean": "Ocean",
+      "meadow": "Meadow",
+      "peach": "Peach",
+      "lavender": "Lavender",
+      "sand": "Sand",
+      "night": "Night",
+      "ember": "Ember",
+      "forest": "Forest",
+      "slate": "Slate"
+    }
+  },
+  "emoji": {
+    "search": "Search emoji…",
+    "remove": "Remove",
+    "random": "Random",
+    "recent": "Recent",
+    "empty": "No emoji found",
+    "loading": "Loading…",
+    "failed": "Could not load emoji"
+  }
+}

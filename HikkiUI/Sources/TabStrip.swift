@@ -53,10 +53,10 @@ public struct TabStrip<Leading: View>: View {
     public var body: some View {
         HStack(spacing: Spacing.s1) {
             leading
-            SidebarIconButton("Back", symbol: .caretLeft, action: onBack)
+            SidebarIconButton("app:chrome.back", symbol: .caretLeft, action: onBack)
                 .disabled(!canGoBack)
                 .opacity(canGoBack ? 1 : 0.4)
-            SidebarIconButton("Forward", symbol: .caretRight, action: onForward)
+            SidebarIconButton("app:chrome.forward", symbol: .caretRight, action: onForward)
                 .disabled(!canGoForward)
                 .opacity(canGoForward ? 1 : 0.4)
             HStack(spacing: Spacing.s0_5) {
@@ -66,7 +66,7 @@ public struct TabStrip<Leading: View>: View {
                         onSelect: { onSelect(item.id) }, onClose: { onClose(item.id) })
                 }
             }
-            SidebarIconButton("New Tab", symbol: .plus, action: onNew)
+            SidebarIconButton("app:tabs.new", symbol: .plus, action: onNew)
             Spacer(minLength: 24)
         }
         .padding(.horizontal, Spacing.s2)
@@ -89,7 +89,7 @@ private struct TabButton: View {
             } else {
                 PageIcon(item.icon, size: 13)
             }
-            Text(item.title.isEmpty ? String(localized: "Untitled") : item.title)
+            Text(item.title.isEmpty ? String(localized: "app:page.untitled") : item.title)
                 .font(.hk(.md, isActive ? .medium : .regular))
                 .foregroundStyle(isActive ? Theme.foreground : Theme.subtleForeground)
                 .lineLimit(1)
@@ -102,7 +102,7 @@ private struct TabButton: View {
                         .contentShape(.rect)
                 }
                 .buttonStyle(HoverHighlightStyle())
-                .accessibilityLabel("Close Tab")
+                .accessibilityLabel("app:tabs.close")
             }
         }
         .padding(.horizontal, Spacing.s2_5)
@@ -117,7 +117,7 @@ private struct TabButton: View {
         .onHover { hovering = $0 }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isActive ? [.isButton, .isSelected] : .isButton)
-        .accessibilityAction(named: "Close Tab", onClose)
+        .accessibilityAction(named: "app:tabs.close", onClose)
     }
 }
 

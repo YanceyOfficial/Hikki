@@ -3,7 +3,7 @@ export PATH := $(shell echo "$$PATH" | tr ':' '\n' | grep -v swiftly | paste -sd
 
 IOS_SIM ?= generic/platform=iOS Simulator
 
-.PHONY: bootstrap test-bff tokens icons lint lint-design lint-docs fmt fmt-check editor generate test test-web test-core test-core-ios build-mac build-ios check
+.PHONY: bootstrap test-bff tokens icons lint lint-design lint-docs lint-l10n fmt fmt-check editor generate test test-web test-core test-core-ios build-mac build-ios check
 
 bootstrap:
 	bun install
@@ -37,6 +37,10 @@ fmt-check:
 	bunx oxfmt --check
 	xcrun swift-format lint --strict -r -p $(SWIFT_DIRS)
 
+# Every UI string is a key with en + zh-Hans translations (native String Catalog, web locales).
+lint-l10n:
+	bun scripts/l10n-audit.mjs
+
 # CLAUDE.md must only reference paths that exist.
 lint-docs:
 	bun scripts/check-claude-md.mjs
@@ -62,7 +66,7 @@ test-core:
 test-core-ios:
 	tuist test HikkiCore --platform ios
 
-test: lint fmt-check lint-design lint-docs test-web test-bff test-core
+test: lint fmt-check lint-design lint-docs lint-l10n test-web test-bff test-core
 
 build-mac: generate
 	xcodebuild -workspace Hikki.xcworkspace -scheme Hikki -destination 'platform=macOS' build -quiet

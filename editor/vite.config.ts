@@ -15,5 +15,5 @@ export default defineConfig({
     target: 'safari18',
     sourcemap: true
   },
-  test: { environment: 'happy-dom' }
+  test: { environment: 'happy-dom', setupFiles: ['./test/setup.ts'] }
 })

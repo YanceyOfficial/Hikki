@@ -1,5 +1,6 @@
 import { Shuffle } from '@phosphor-icons/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { cn, ui } from './cn'
 import {
@@ -17,39 +18,24 @@ type Props = {
   locale?: 'en' | 'zh'
 }
 
-const text = {
-  en: {
-    search: 'Search emoji…',
-    remove: 'Remove',
-    random: 'Random',
-    recent: 'Recent',
-    empty: 'No emoji found',
-    loading: 'Loading…',
-    failed: 'Could not load emoji'
-  },
-  zh: {
-    search: '搜索表情…',
-    remove: '移除',
-    random: '随机',
-    recent: '最近使用',
-    empty: '没有找到',
-    loading: '加载中…',
-    failed: '表情加载失败'
-  }
-}
-
 /**
  * Offline emoji picker. A plain CSS grid that always fills the panel width (no virtualized rows to
  * drift out of sync with the layout), sticky category headers and a category jump bar.
  * Reusable for page icons, callouts and reactions.
  */
-export function EmojiPickerPanel({
-  onSelect,
-  onRemove,
-  onRandom,
-  locale = preferredLocale()
-}: Props) {
-  const t = text[locale]
+export function EmojiPickerPanel({ onSelect, onRemove, onRandom, locale: localeProp }: Props) {
+  const { t, i18n } = useTranslation()
+  // Emoji names/keywords follow the UI language.
+  const locale = localeProp ?? (i18n.language.startsWith('zh') ? 'zh' : 'en')
+  const text = {
+    search: t('emoji.search'),
+    remove: t('emoji.remove'),
+    random: t('emoji.random'),
+    recent: t('emoji.recent'),
+    empty: t('emoji.empty'),
+    loading: t('emoji.loading'),
+    failed: t('emoji.failed')
+  }
   const [categories, setCategories] = useState<EmojiCategory[] | null>(null)
   const [failed, setFailed] = useState(false)
   const [query, setQuery] = useState('')
@@ -91,29 +77,29 @@ export function EmojiPickerPanel({
         <input
           className={ui.input}
           type="search"
-          placeholder={t.search}
+          placeholder={text.search}
           value={query}
           autoFocus={!isTouch()}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && results?.[0]) choose(results[0].emoji)
           }}
-          aria-label={t.search}
+          aria-label={text.search}
         />
         {onRandom && (
           <button
             type="button"
             className={ui.button}
             onClick={onRandom}
-            title={t.random}
-            aria-label={t.random}
+            title={text.random}
+            aria-label={text.random}
           >
             <Shuffle size={16} aria-hidden />
           </button>
         )}
         {onRemove && (
           <button type="button" className={ui.button} onClick={onRemove}>
-            {t.remove}
+            {text.remove}
           </button>
         )}
       </div>
@@ -140,19 +126,19 @@ export function EmojiPickerPanel({
         className="relative flex-1 overflow-y-auto overscroll-contain px-2.5 pb-2.5"
         ref={scroller}
       >
-        {failed && <Status>{t.failed}</Status>}
-        {!categories && !failed && <Status>{t.loading}</Status>}
+        {failed && <Status>{text.failed}</Status>}
+        {!categories && !failed && <Status>{text.loading}</Status>}
         {results &&
           (results.length ? (
             <EmojiGrid emojis={results} onPick={choose} />
           ) : (
-            <Status>{t.empty}</Status>
+            <Status>{text.empty}</Status>
           ))}
         {categories && !query && (
           <>
             {recent.length > 0 && (
               <section>
-                <CategoryTitle>{t.recent}</CategoryTitle>
+                <CategoryTitle>{text.recent}</CategoryTitle>
                 <EmojiGrid
                   emojis={recent.map((emoji) => ({ emoji, label: emoji }))}
                   onPick={choose}
@@ -215,10 +201,6 @@ function CategoryTitle({ category, children }: { category?: string; children: st
 
 function Status({ children }: { children: string }) {
   return <div className="p-7 text-center text-md text-muted-foreground">{children}</div>
-}
-
-function preferredLocale(): 'en' | 'zh' {
-  return navigator.language.toLowerCase().startsWith('zh') ? 'zh' : 'en'
 }
 
 function isTouch(): boolean {

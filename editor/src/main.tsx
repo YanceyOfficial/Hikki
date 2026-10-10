@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 
 import { EditorBridge } from './bridge'
 import { installErrorForwarding } from './errors'
+import { setLocale } from './i18n'
 import { Outline } from './page/Outline'
 import { PageHeader } from './page/PageHeader'
 import { PROTOCOL_VERSION, type PagePayload } from './protocol'
@@ -29,7 +30,8 @@ window.hikki = {
   exec: (command: string) => bridge.exec(command),
   flush: () => bridge.flush(),
   focus: () => bridge.focus(),
-  blur: () => bridge.blur()
+  blur: () => bridge.blur(),
+  setLocale: (tag: string) => setLocale(tag)
 }
 
 if (!native) bridge.loadDocument({ id: 'dev', title: '', icon: null, cover: null, content: null })

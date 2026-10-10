@@ -5,11 +5,25 @@ import XCTest
 final class EditorFlowTests: XCTestCase {
     private let dataDir = NSTemporaryDirectory() + "hikki-uitest-\(UUID().uuidString)"
 
-    private func launch() -> XCUIApplication {
+    private func launch(language: String? = nil) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["HIKKI_DATA_DIR"] = dataDir
+        if let language { app.launchArguments += ["-AppleLanguages", "(\(language))", "-AppleLocale", language] }
         app.launch()
         return app
+    }
+
+    /// Simplified Chinese end to end: native chrome from the String Catalog, the web editor via setLocale.
+    func testSimplifiedChineseUI() throws {
+        continueAfterFailure = false
+        let app = launch(language: "zh-Hans")
+        XCTAssertTrue(waitOrDumpTree(app.staticTexts["回收站"].firstMatch, in: app), "native chrome not localized")
+        let newPage = app.buttons["new-page"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+        newPage.tap()
+        let title = app.webViews.textViews["页面标题"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(title, in: app, timeout: 15), "editor not localized (title field label)")
+        XCTAssertEqual(title.placeholderValue, "无标题")
     }
 
     func testTypedTitleIsSavedAndSurvivesRelaunch() throws {

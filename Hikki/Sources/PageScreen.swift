@@ -14,7 +14,7 @@ struct PageScreen: View {
         let page = model.tree.page(pageID)
         EditorView(controller: editor)
             .ignoresSafeArea(.container, edges: .bottom)
-            .navigationTitle(page.map { $0.title.isEmpty ? String(localized: "Untitled") : $0.title } ?? "")
+            .navigationTitle(page.map { $0.title.isEmpty ? String(localized: "app:page.untitled") : $0.title } ?? "")
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -43,7 +43,7 @@ struct PageBar: View {
                 Spacer(minLength: 8)
                 if let page = model.tree.page(id) {
                     TimelineView(.periodic(from: .now, by: 60)) { _ in
-                        Text("Edited \(page.updatedAt, format: .relative(presentation: .named))")
+                        Text("app:page.edited \(page.updatedAt, format: .relative(presentation: .named))")
                             .font(.hk(.md))
                             .foregroundStyle(Theme.mutedForeground)
                             .lineLimit(1)
@@ -53,10 +53,10 @@ struct PageBar: View {
                     PageMoreMenu(page: page, navigator: navigator)
                 }
             case .home:
-                barTitle("Home", symbol: .house)
+                barTitle("app:nav.home", symbol: .house)
                 Spacer()
             case .trash:
-                barTitle("Trash", symbol: .trash)
+                barTitle("app:nav.trash", symbol: .trash)
                 Spacer()
             }
         }
@@ -79,7 +79,7 @@ struct FavoriteButton: View {
 
     var body: some View {
         BarIconButton(
-            page.isFavorite ? "Remove from Favorites" : "Add to Favorites",
+            page.isFavorite ? "app:page.unfavorite" : "app:page.favorite",
             symbol: page.isFavorite ? .starFill : .star,
             tint: page.isFavorite ? .yellow : nil
         ) {
@@ -97,7 +97,7 @@ struct PageMoreMenu: View {
         Menu {
             PageActions(page: page, navigator: navigator)
             Divider()
-            Text("Edited \(page.updatedAt, format: .relative(presentation: .named))")
+            Text("app:page.edited \(page.updatedAt, format: .relative(presentation: .named))")
         } label: {
             IconView(.dotsThree, size: TextSize.sm.rawValue)
                 .foregroundStyle(Theme.subtleForeground)
@@ -108,7 +108,7 @@ struct PageMoreMenu: View {
         .buttonStyle(HoverHighlightStyle())
         .menuIndicator(.hidden)
         .fixedSize()
-        .accessibilityLabel("More")
+        .accessibilityLabel("app:common.more")
         .accessibilityIdentifier("page-more")
     }
 }

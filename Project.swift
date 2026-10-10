@@ -13,6 +13,7 @@ let baseSettings: SettingsDictionary = [
 let project = Project(
     name: "Hikki",
     organizationName: "Yancey Inc.",
+    options: .options(defaultKnownRegions: ["en", "zh-Hans"], developmentRegion: "en"),
     // Version (marketing + build number) comes from one xcconfig — see Configs/Version.xcconfig.
     settings: .settings(
         base: baseSettings,
@@ -38,7 +39,10 @@ let project = Project(
             ]),
             sources: ["Hikki/Sources/**"],
             // Built by `make editor` (vite). A folder reference keeps the bundle's relative layout intact.
-            resources: [.folderReference(path: "Hikki/Resources/Editor")],
+            resources: [
+                .folderReference(path: "Hikki/Resources/Editor"),
+                "Hikki/Resources/Localization/**",
+            ],
             dependencies: [.target(name: "HikkiCore"), .target(name: "HikkiUI")],
             settings: .settings(base: ["SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor"])
         ),

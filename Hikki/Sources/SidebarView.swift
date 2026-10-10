@@ -28,14 +28,14 @@ private struct DesktopSidebar: View {
         VStack(spacing: Spacing.s0) {
             WorkspaceHeader()
             SidebarNavBar([
-                .init(id: "home", title: String(localized: "Home"), symbol: .house, isSelected: navigator.route == .home) {
+                .init(id: "home", title: String(localized: "app:nav.home"), symbol: .house, isSelected: navigator.route == .home) {
                     navigator.go(.home)
                 },
-                .init(id: "trash", title: String(localized: "Trash"), symbol: .trash, isSelected: navigator.route == .trash) {
+                .init(id: "trash", title: String(localized: "app:nav.trash"), symbol: .trash, isSelected: navigator.route == .trash) {
                     navigator.go(.trash)
                 },
             ]) {
-                BarIconButton("Search (⌘K)", symbol: .magnifyingGlass) { navigator.isSearching = true }
+                BarIconButton("app:nav.searchShortcut", symbol: .magnifyingGlass) { navigator.isSearching = true }
                     .accessibilityIdentifier("sidebar-search")
             }
             .padding(.horizontal, Spacing.s2)
@@ -44,21 +44,21 @@ private struct DesktopSidebar: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Spacing.px) {
                     if !model.tree.favorites.isEmpty {
-                        SectionTitle("Favorites")
+                        SectionTitle("app:sidebar.favorites")
                         ForEach(model.tree.favorites) { page in
                             pageRow(page, depth: 0, children: [])
                         }
                     }
 
-                    SectionTitle("Private") {
-                        SidebarIconButton("New Page", symbol: .plus) { navigator.newPage() }
+                    SectionTitle("app:sidebar.private") {
+                        SidebarIconButton("app:page.new", symbol: .plus) { navigator.newPage() }
                             .accessibilityIdentifier("new-page-section")
                     }
                     .background(privateTargeted ? Theme.selection : .clear, in: .rect(cornerRadius: Radius.md))
                     .onDrop(
                         of: [.plainText], delegate: SectionDropDelegate(navigator: navigator, model: model, isTargeted: $privateTargeted))
                     if model.tree.roots.isEmpty {
-                        item(Route?.none, "Add a page", symbol: .plus) { navigator.newPage() }
+                        item(Route?.none, "app:sidebar.addPage", symbol: .plus) { navigator.newPage() }
                     }
                     DesktopTree(nodes: model.tree.roots, depth: 0, navigator: navigator)
                 }
@@ -66,7 +66,7 @@ private struct DesktopSidebar: View {
             }
             .scrollIndicators(.never)
 
-            SidebarActionPill("New page", symbol: .notePencil, shortcut: "⌘N") { navigator.newPage() }
+            SidebarActionPill("app:page.new", symbol: .notePencil, shortcut: "⌘N") { navigator.newPage() }
                 .accessibilityIdentifier("new-page")
                 .padding(Spacing.s3)
         }
@@ -112,7 +112,7 @@ private struct DesktopTree: View {
             DesktopPageRow(page: node.page, depth: depth, hasChildren: !node.children.isEmpty, navigator: navigator, expandable: true)
             if navigator.expanded.contains(node.id) {
                 if node.children.isEmpty {
-                    Text("No pages inside")
+                    Text("app:sidebar.noPagesInside")
                         .font(.hk(.md))
                         .foregroundStyle(Theme.mutedForeground)
                         .padding(.leading, CGFloat(depth + 1) * Spacing.s3_5 + Spacing.s10)
@@ -140,7 +140,7 @@ private struct DesktopPageRow: View {
             isExpanded: expandable ? expansion : nil, isSelected: selected
         ) {
             PageRowMenu(page: page, navigator: navigator)
-            SidebarIconButton("Add a page inside", symbol: .plus) { navigator.newPage(parentId: page.id) }
+            SidebarIconButton("app:page.addInside", symbol: .plus) { navigator.newPage(parentId: page.id) }
         }
         .contentShape(.rect)
         .onTapGesture { navigator.open(page.id) }
@@ -216,7 +216,7 @@ private struct PageRowDropDelegate: DropDelegate {
     }
 }
 
-/// Drop onto the "Private" header: move the dragged page to the end of the top level.
+/// Drop onto the "app:sidebar.private" header: move the dragged page to the end of the top level.
 private struct SectionDropDelegate: DropDelegate {
     let navigator: Navigator
     let model: AppModel
@@ -237,7 +237,7 @@ private struct SectionDropDelegate: DropDelegate {
     }
 }
 
-/// "Favorites" / "Private" label with optional hover-revealed trailing buttons.
+/// "app:sidebar.favorites" / "app:sidebar.private" label with optional hover-revealed trailing buttons.
 private struct SectionTitle<Trailing: View>: View {
     let title: LocalizedStringKey
     let trailing: Trailing
@@ -273,15 +273,15 @@ private struct WorkspaceHeader: View {
         HStack(spacing: Spacing.s0_5) {
             Color.clear.frame(width: max(0, metrics.leadingInset - Spacing.s2))  // traffic lights
             Menu {
-                ShareLink("Export Logs", items: model.exportableFiles)
+                ShareLink("app:workspace.exportLogs", items: model.exportableFiles)
             } label: {
                 HStack(spacing: Spacing.s2) {
-                    Text("H")
+                    Text("H")  // l10n: allow (workspace badge; user-named workspaces will replace it)
                         .font(.hk(.x2s, .bold))
                         .foregroundStyle(.white)
                         .frame(width: 20, height: 20)
                         .background(Theme.primary.gradient, in: .rect(cornerRadius: Radius.sm))
-                    Text("Hikki")
+                    Text("Hikki")  // l10n: allow (brand; becomes the workspace name)
                         .font(.hk(.sm, .semibold))
                         .foregroundStyle(Theme.foreground)
                         .lineLimit(1)
@@ -315,12 +315,12 @@ private struct PhoneSidebar: View {
                 Button {
                     navigator.isSearching = true
                 } label: {
-                    SidebarRow(String(localized: "Search"), symbol: .magnifyingGlass)
+                    SidebarRow(String(localized: "app:nav.search"), symbol: .magnifyingGlass)
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("sidebar-search")
                 NavigationLink(value: Route.home) {
-                    SidebarRow(String(localized: "Home"), symbol: .house)
+                    SidebarRow(String(localized: "app:nav.home"), symbol: .house)
                 }
             }
 
@@ -333,7 +333,7 @@ private struct PhoneSidebar: View {
                         .contextMenu { PageActions(page: page, navigator: navigator) }
                     }
                 } header: {
-                    SidebarSectionHeader("Favorites")
+                    SidebarSectionHeader("app:sidebar.favorites")
                 }
             }
 
@@ -342,23 +342,23 @@ private struct PhoneSidebar: View {
                     Button {
                         navigator.newPage()
                     } label: {
-                        SidebarRow(String(localized: "Add a page"), symbol: .plus)
+                        SidebarRow(String(localized: "app:sidebar.addPage"), symbol: .plus)
                     }
                     .buttonStyle(.plain)
                 }
                 PhoneTree(nodes: model.tree.roots, depth: 0, navigator: navigator)
             } header: {
                 HStack {
-                    SidebarSectionHeader("Private")
+                    SidebarSectionHeader("app:sidebar.private")
                     Spacer()
-                    SidebarIconButton("New Page", symbol: .plus) { navigator.newPage() }
+                    SidebarIconButton("app:page.new", symbol: .plus) { navigator.newPage() }
                         .accessibilityIdentifier("new-page-section")
                 }
             }
 
             Section {
                 NavigationLink(value: Route.trash) {
-                    SidebarRow(String(localized: "Trash"), symbol: .trash)
+                    SidebarRow(String(localized: "app:nav.trash"), symbol: .trash)
                 }
                 .badge(model.trash.count)
             }
@@ -366,21 +366,21 @@ private struct PhoneSidebar: View {
         .listStyle(.sidebar)
         .scrollContentBackground(.hidden)
         .background(Theme.sidebar)
-        .navigationTitle("Hikki")
+        .navigationTitle("Hikki")  // l10n: allow (brand)
         .toolbar {
             ToolbarItem {
                 Button {
                     navigator.newPage()
                 } label: {
-                    IconLabel("New Page", icon: .notePencil)
+                    IconLabel("app:page.new", icon: .notePencil)
                 }
                 .accessibilityIdentifier("new-page")
             }
             ToolbarItem {
                 Menu {
-                    ShareLink("Export Logs", items: model.exportableFiles)
+                    ShareLink("app:workspace.exportLogs", items: model.exportableFiles)
                 } label: {
-                    IconLabel("More", icon: .dotsThreeCircle)
+                    IconLabel("app:common.more", icon: .dotsThreeCircle)
                 }
             }
         }
@@ -435,7 +435,7 @@ struct PageRowMenu: View {
         .buttonStyle(HoverHighlightStyle())
         .menuIndicator(.hidden)
         .fixedSize()
-        .help("Delete, favorite and more…")
+        .help("app:sidebar.rowMenuHelp")
     }
 }
 
@@ -449,23 +449,23 @@ struct PageActions: View {
         Button {
             model.setFavorite(!page.isFavorite, id: page.id)
         } label: {
-            IconLabel(page.isFavorite ? "Remove from Favorites" : "Add to Favorites", icon: page.isFavorite ? .starFill : .star)
+            IconLabel(page.isFavorite ? "app:page.unfavorite" : "app:page.favorite", icon: page.isFavorite ? .starFill : .star)
         }
         Button {
             navigator.openInNewTab(.page(page.id))
         } label: {
-            IconLabel("Open in New Tab", icon: .browsers)
+            IconLabel("app:page.openInNewTab", icon: .browsers)
         }
         Button {
             navigator.newPage(parentId: page.id)
         } label: {
-            IconLabel("Add a Page Inside", icon: .plus)
+            IconLabel("app:page.addInside", icon: .plus)
         }
         Divider()
         Button(role: .destructive) {
             model.moveToTrash(id: page.id)
         } label: {
-            IconLabel("Move to Trash", icon: .trash)
+            IconLabel("app:page.moveToTrash", icon: .trash)
         }
     }
 }

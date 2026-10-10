@@ -69,6 +69,20 @@ final class EditorController {
         }
     }
 
+    // MARK: - Locale
+
+    /// The app's resolved language (e.g. "zh-Hans"), so the editor UI matches the native chrome.
+    static var appLocale: String { Bundle.main.preferredLocalizations.first ?? "en" }
+
+    private func applyLocale() async {
+        do {
+            _ = try await webView.callAsyncJavaScript(
+                "window.hikki.setLocale(locale)", arguments: ["locale": Self.appLocale], contentWorld: .page)
+        } catch {
+            Log.warn("setLocale failed: \(error)", category: "bridge")
+        }
+    }
+
     // MARK: - Loading
 
     private func load(_ id: String?) async {
@@ -110,7 +124,10 @@ final class EditorController {
             let pending = pendingDocumentID ?? currentDocumentID
             pendingDocumentID = nil
             currentDocumentID = nil
-            Task { await load(pending ?? nil) }
+            Task {
+                await applyLocale()
+                await load(pending ?? nil)
+            }
         case .changed(let snapshot):
             save(snapshot)
         case .activeFormats(let active):

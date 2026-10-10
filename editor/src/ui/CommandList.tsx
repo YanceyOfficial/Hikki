@@ -21,13 +21,7 @@ type Props = {
  * Generic keyboard/touch command list (slash menu today; mentions, emoji, "turn into" later).
  * Purely presentational: selection state and key handling live in the caller.
  */
-export function CommandList({
-  items,
-  selectedIndex,
-  emptyText = 'No results',
-  onSelect,
-  onHover
-}: Props) {
+export function CommandList({ items, selectedIndex, emptyText, onSelect, onHover }: Props) {
   const listRef = useRef<HTMLDivElement>(null)
 
   // `items` is a deliberate dependency: a new result list must scroll its selected row into view too.

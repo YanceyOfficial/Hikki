@@ -11,21 +11,21 @@ enum EditorCommand: String, CaseIterable, Identifiable, Hashable {
 
     var title: String {
         switch self {
-        case .bold: "Bold"
-        case .italic: "Italic"
-        case .strike: "Strikethrough"
-        case .code: "Inline Code"
-        case .heading1: "Heading 1"
-        case .heading2: "Heading 2"
-        case .heading3: "Heading 3"
-        case .paragraph: "Text"
-        case .bulletList: "Bulleted List"
-        case .orderedList: "Numbered List"
-        case .taskList: "To-do List"
-        case .blockquote: "Quote"
-        case .codeBlock: "Code Block"
-        case .undo: "Undo"
-        case .redo: "Redo"
+        case .bold: String(localized: "app:format.bold")
+        case .italic: String(localized: "app:format.italic")
+        case .strike: String(localized: "app:format.strikethrough")
+        case .code: String(localized: "app:format.inlineCode")
+        case .heading1: String(localized: "app:format.heading1")
+        case .heading2: String(localized: "app:format.heading2")
+        case .heading3: String(localized: "app:format.heading3")
+        case .paragraph: String(localized: "app:format.text")
+        case .bulletList: String(localized: "app:format.bulletedList")
+        case .orderedList: String(localized: "app:format.numberedList")
+        case .taskList: String(localized: "app:format.todoList")
+        case .blockquote: String(localized: "app:format.quote")
+        case .codeBlock: String(localized: "app:format.codeBlock")
+        case .undo: String(localized: "app:format.undo")
+        case .redo: String(localized: "app:format.redo")
         }
     }
 

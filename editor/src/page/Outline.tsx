@@ -1,4 +1,5 @@
 import { useState, useSyncExternalStore } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import type { EditorBridge } from '../bridge'
 import { cn } from '../ui/cn'
@@ -8,6 +9,7 @@ import { cn } from '../ui/cn'
  * that expands into a clickable table of contents on hover/focus. Hidden for fewer than two headings.
  */
 export function Outline({ bridge }: { bridge: EditorBridge }) {
+  const { t } = useTranslation()
   const { headings } = useSyncExternalStore(bridge.page.subscribe, bridge.page.get)
   const [open, setOpen] = useState(false)
   if (headings.length < 2) return null
@@ -16,7 +18,7 @@ export function Outline({ bridge }: { bridge: EditorBridge }) {
   return (
     <nav
       className="fixed top-1/2 right-4 z-20 flex -translate-y-1/2 justify-end max-[1000px]:hidden"
-      aria-label="Outline"
+      aria-label={t('page.outline')}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
       onFocus={() => setOpen(true)}

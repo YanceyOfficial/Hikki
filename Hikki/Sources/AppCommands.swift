@@ -8,36 +8,36 @@ struct AppCommands: Commands {
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
-            Button("New Page") { navigator?.newPage() }
+            Button("app:page.new") { navigator?.newPage() }
                 .keyboardShortcut("n")
-            Button("New Tab") { navigator?.openInNewTab(.home) }
+            Button("app:tabs.new") { navigator?.openInNewTab(.home) }
                 .keyboardShortcut("t")
-            Button("Close Tab") {
+            Button("app:tabs.close") {
                 guard let navigator else { return }
                 if !navigator.closeTab(navigator.tabs.activeID) { closeWindow() }
             }
             .keyboardShortcut("w")
             Divider()
-            Button("Search…") { navigator?.isSearching = true }
+            Button("app:menu.search") { navigator?.isSearching = true }
                 .keyboardShortcut("k")
         }
-        CommandMenu("Go") {
-            Button("Back") { navigator?.goBack() }
+        CommandMenu("app:menu.go") {
+            Button("app:chrome.back") { navigator?.goBack() }
                 .keyboardShortcut("[")
                 .disabled(navigator?.tabs.active.canGoBack != true)
-            Button("Forward") { navigator?.goForward() }
+            Button("app:chrome.forward") { navigator?.goForward() }
                 .keyboardShortcut("]")
                 .disabled(navigator?.tabs.active.canGoForward != true)
             Divider()
-            Button("Next Tab") { navigator?.selectNeighborTab(1) }
+            Button("app:tabs.next") { navigator?.selectNeighborTab(1) }
                 .keyboardShortcut(.tab, modifiers: .control)
-            Button("Previous Tab") { navigator?.selectNeighborTab(-1) }
+            Button("app:tabs.previous") { navigator?.selectNeighborTab(-1) }
                 .keyboardShortcut(.tab, modifiers: [.control, .shift])
             Divider()
-            Button("Home") { navigator?.go(.home) }
-            Button("Trash") { navigator?.go(.trash) }
+            Button("app:nav.home") { navigator?.go(.home) }
+            Button("app:nav.trash") { navigator?.go(.trash) }
         }
-        CommandMenu("Format") {
+        CommandMenu("app:menu.format") {
             ForEach(EditorCommand.menuGroups, id: \.self) { group in
                 ForEach(group) { command in
                     Button(command.title) { editor?.exec(command) }

@@ -19,7 +19,7 @@ public struct PageCard: View {
                 PageIcon(icon, size: 20)
                     .offset(y: -Spacing.s4)
                     .padding(.bottom, -Spacing.s4)
-                Text(title.isEmpty ? String(localized: "Untitled") : title)
+                Text(title.isEmpty ? String(localized: "app:page.untitled") : title)
                     .font(.hk(.sm, .semibold))
                     .foregroundStyle(Theme.foreground)
                     .lineLimit(2, reservesSpace: true)

@@ -37,7 +37,7 @@ public struct Breadcrumbs: View {
                     } label: {
                         HStack(spacing: Spacing.s1) {
                             if crumb.icon != nil { PageIcon(crumb.icon, size: 13) }
-                            Text(crumb.title.isEmpty ? String(localized: "Untitled") : crumb.title)
+                            Text(crumb.title.isEmpty ? String(localized: "app:page.untitled") : crumb.title)
                                 .font(.hk(.md, isLast ? .medium : .regular))
                                 .foregroundStyle(isLast ? Theme.foreground : Theme.subtleForeground)
                                 .lineLimit(1)

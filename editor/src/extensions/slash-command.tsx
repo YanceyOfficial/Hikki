@@ -3,6 +3,7 @@ import { PluginKey } from '@tiptap/pm/state'
 import Suggestion, { type SuggestionProps } from '@tiptap/suggestion'
 
 import { filterBlockTypes, type BlockType } from '../blocks'
+import { t } from '../i18n'
 import { CommandList, handleListKey } from '../ui/CommandList'
 import { FloatingLayer } from '../ui/floating'
 
@@ -38,7 +39,13 @@ export const SlashCommand = Extension.create({
             if (props.loading && props.items.length === 0) return
             layer.render(
               <CommandList
-                items={props.items}
+                items={props.items.map((b) => ({
+                  id: b.id,
+                  title: b.label(),
+                  hint: b.description(),
+                  icon: b.icon
+                }))}
+                emptyText={t('editor.noResults')}
                 selectedIndex={selected}
                 onHover={(i) => {
                   selected = i

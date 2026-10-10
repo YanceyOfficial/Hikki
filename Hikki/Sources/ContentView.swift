@@ -145,7 +145,8 @@ private struct DetailView: View {
             #if os(macOS)
                 if sidebarHidden { Color.clear.frame(width: max(0, chromeMetrics.leadingInset - Spacing.s2)) }  // traffic lights
             #endif
-            SidebarIconButton(sidebarHidden ? "Show Sidebar" : "Hide Sidebar", symbol: .sidebarSimple, action: toggleSidebar)
+            SidebarIconButton(
+                sidebarHidden ? "app:chrome.showSidebar" : "app:chrome.hideSidebar", symbol: .sidebarSimple, action: toggleSidebar)
         }
         .background(Theme.sidebar)
         #if os(macOS)
@@ -155,8 +156,8 @@ private struct DetailView: View {
 
     private func tabItem(_ id: UUID, _ route: Route) -> TabStripItem {
         switch route {
-        case .home: TabStripItem(id: id, title: String(localized: "Home"), symbol: .house)
-        case .trash: TabStripItem(id: id, title: String(localized: "Trash"), symbol: .trash)
+        case .home: TabStripItem(id: id, title: String(localized: "app:nav.home"), symbol: .house)
+        case .trash: TabStripItem(id: id, title: String(localized: "app:nav.trash"), symbol: .trash)
         case .page(let pageID):
             TabStripItem(id: id, title: model.tree.page(pageID)?.title ?? "", icon: model.tree.page(pageID)?.icon)
         }

@@ -17,14 +17,14 @@ struct SearchPalette: View {
         VStack(spacing: Spacing.s0) {
             HStack(spacing: Spacing.s2_5) {
                 IconView(.magnifyingGlass, size: TextSize.base.rawValue).foregroundStyle(Theme.mutedForeground)
-                TextField("Search pages…", text: $query)
+                TextField("app:search.placeholder", text: $query)
                     .textFieldStyle(.plain)
                     .font(.hk(.base))
                     .focused($fieldFocused)
                     .onSubmit(openSelection)
                     .accessibilityIdentifier("search-field")
                 #if os(iOS)
-                    Button("Cancel", action: dismiss).foregroundStyle(Theme.subtleForeground)
+                    Button("app:common.cancel", action: dismiss).foregroundStyle(Theme.subtleForeground)
                 #endif
             }
             .padding(.horizontal, Spacing.s4)
@@ -35,7 +35,7 @@ struct SearchPalette: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: Spacing.px) {
                         if rows.isEmpty {
-                            Text(query.isEmpty ? "No pages yet" : "No results for “\(query)”")
+                            Text(query.isEmpty ? "app:search.noPages" : "app:search.noResults \(query)")
                                 .font(.hk(.md))
                                 .foregroundStyle(Theme.mutedForeground)
                                 .frame(maxWidth: .infinity)
@@ -70,9 +70,9 @@ struct SearchPalette: View {
             #if os(macOS)
                 Theme.border.frame(height: 1)
                 HStack(spacing: Spacing.s3_5) {
-                    hint("↑↓", "Select")
-                    hint("↵", "Open")
-                    hint("esc", "Close")
+                    hint("↑↓", "app:search.hintSelect")
+                    hint("↵", "app:search.hintOpen")
+                    hint("esc", "app:search.hintClose")
                     Spacer()
                 }
                 .padding(.horizontal, Spacing.s4)
@@ -102,13 +102,13 @@ struct SearchPalette: View {
     private var sections: [Section] {
         let indexed = Array(rows.enumerated())
         if query.trimmingCharacters(in: .whitespaces).isEmpty {
-            return indexed.isEmpty ? [] : [Section(title: String(localized: "Recent"), items: indexed)]
+            return indexed.isEmpty ? [] : [Section(title: String(localized: "app:search.recent"), items: indexed)]
         }
         let titles = indexed.filter { $0.element.snippet.isEmpty }
         let content = indexed.filter { !$0.element.snippet.isEmpty }
         return [
-            titles.isEmpty ? nil : Section(title: String(localized: "Pages"), items: titles),
-            content.isEmpty ? nil : Section(title: String(localized: "In page content"), items: content),
+            titles.isEmpty ? nil : Section(title: String(localized: "app:search.pages"), items: titles),
+            content.isEmpty ? nil : Section(title: String(localized: "app:search.inContent"), items: content),
         ].compactMap(\.self)
     }
 
@@ -131,7 +131,8 @@ struct SearchPalette: View {
     }
 
     private func path(of id: String) -> String {
-        model.tree.path(to: id).dropLast().map { $0.title.isEmpty ? String(localized: "Untitled") : $0.title }.joined(separator: " / ")
+        model.tree.path(to: id).dropLast().map { $0.title.isEmpty ? String(localized: "app:page.untitled") : $0.title }.joined(
+            separator: " / ")
     }
 
     private func move(_ delta: Int) -> KeyPress.Result {

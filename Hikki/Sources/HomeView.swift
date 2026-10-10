@@ -16,7 +16,7 @@ struct HomeView: View {
                     .padding(.top, Spacing.s12)
 
                 VStack(alignment: .leading, spacing: Spacing.s2_5) {
-                    IconLabel("Recently edited", icon: .clock)
+                    IconLabel("app:home.recentlyEdited", icon: .clock)
                         .font(.hk(.xs, .medium))
                         .foregroundStyle(Theme.mutedForeground)
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -36,7 +36,7 @@ struct HomeView: View {
                             } label: {
                                 VStack(spacing: Spacing.s2) {
                                     IconView(.plus, size: TextSize.lg.rawValue)
-                                    Text("New page").font(.hk(.md, .medium))
+                                    Text("app:page.new").font(.hk(.md, .medium))
                                 }
                                 .foregroundStyle(Theme.mutedForeground)
                                 .frame(width: 148, height: 132)
@@ -54,7 +54,7 @@ struct HomeView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Theme.background)
-        .navigationTitle("Home")
+        .navigationTitle("app:nav.home")
         #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
         #endif
@@ -62,9 +62,9 @@ struct HomeView: View {
 
     private var greeting: LocalizedStringKey {
         switch Calendar.current.component(.hour, from: .now) {
-        case 5..<12: "Good morning"
-        case 12..<18: "Good afternoon"
-        default: "Good evening"
+        case 5..<12: "app:home.goodMorning"
+        case 12..<18: "app:home.goodAfternoon"
+        default: "app:home.goodEvening"
         }
     }
 }

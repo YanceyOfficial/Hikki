@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,19 +20,20 @@ const ACCEPTED = 'image/png,image/jpeg,image/gif,image/webp,image/heic'
 
 /** Notion-style cover picker: Gallery / Upload / Link / Unsplash, Remove on the right. */
 export function CoverPicker({ current, onSelect, onRemove, onUpload }: Props) {
+  const { t } = useTranslation()
   return (
     <Tabs defaultValue="gallery" className="gap-0">
       <div className="flex items-center border-b border-border px-2">
         <TabsList variant="line" className="h-10">
-          <TabsTrigger value="gallery">Gallery</TabsTrigger>
-          <TabsTrigger value="upload">Upload</TabsTrigger>
-          <TabsTrigger value="link">Link</TabsTrigger>
-          <TabsTrigger value="unsplash">Unsplash</TabsTrigger>
+          <TabsTrigger value="gallery">{t('cover.tabs.gallery')}</TabsTrigger>
+          <TabsTrigger value="upload">{t('cover.tabs.upload')}</TabsTrigger>
+          <TabsTrigger value="link">{t('cover.tabs.link')}</TabsTrigger>
+          <TabsTrigger value="unsplash">{t('cover.tabs.unsplash')}</TabsTrigger>
         </TabsList>
         <span className="flex-1" />
         {current && (
           <Button variant="ghost" size="sm" onClick={onRemove}>
-            Remove
+            {t('cover.remove')}
           </Button>
         )}
       </div>
@@ -47,7 +49,7 @@ export function CoverPicker({ current, onSelect, onRemove, onUpload }: Props) {
               'h-14 cursor-pointer rounded-sm shadow-[inset_0_0_0_1px_var(--color-border)] hover:opacity-85',
               current === gradientCover(g.id) && 'outline-2 outline-offset-2 outline-primary'
             )}
-            aria-label={g.label}
+            aria-label={g.label()}
             aria-pressed={current === gradientCover(g.id)}
             style={{ background: g.css }}
             onClick={() => onSelect(gradientCover(g.id))}
@@ -68,6 +70,7 @@ export function CoverPicker({ current, onSelect, onRemove, onUpload }: Props) {
 }
 
 function UploadPane({ onUpload }: { onUpload: Props['onUpload'] }) {
+  const { t } = useTranslation()
   const input = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -91,9 +94,9 @@ function UploadPane({ onUpload }: { onUpload: Props['onUpload'] }) {
         disabled={busy}
         onClick={() => input.current?.click()}
       >
-        {busy ? 'Uploading…' : 'Upload file'}
+        {busy ? t('cover.uploading') : t('cover.uploadFile')}
       </Button>
-      <p className="m-0 text-xs text-muted-foreground">Images wider than 1500 pixels work best.</p>
+      <p className="m-0 text-xs text-muted-foreground">{t('cover.uploadHint')}</p>
       {error && <p className="m-0 text-xs text-destructive">{error}</p>}
       <input
         ref={input}
@@ -107,6 +110,7 @@ function UploadPane({ onUpload }: { onUpload: Props['onUpload'] }) {
 }
 
 function LinkPane({ onSelect }: { onSelect: Props['onSelect'] }) {
+  const { t } = useTranslation()
   const [value, setValue] = useState('')
   const valid = /^https:\/\/\S+$/u.test(value.trim())
   return (
@@ -118,20 +122,21 @@ function LinkPane({ onSelect }: { onSelect: Props['onSelect'] }) {
       }}
     >
       <Input
-        placeholder="Paste an image link…"
+        placeholder={t('cover.linkPlaceholder')}
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        aria-label="Image link"
+        aria-label={t('cover.linkLabel')}
       />
       <Button type="submit" disabled={!valid}>
-        Submit
+        {t('cover.linkSubmit')}
       </Button>
-      <p className="m-0 text-xs text-muted-foreground">Works with any https image on the web.</p>
+      <p className="m-0 text-xs text-muted-foreground">{t('cover.linkHint')}</p>
     </form>
   )
 }
 
 function UnsplashPane({ onSelect }: { onSelect: Props['onSelect'] }) {
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const [photos, setPhotos] = useState<UnsplashPhoto[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -148,8 +153,8 @@ function UnsplashPane({ onSelect }: { onSelect: Props['onSelect'] }) {
             alive &&
             setError(
               e instanceof Error && e.message === 'rate_limited'
-                ? 'Unsplash is busy — try again later.'
-                : 'Could not load Unsplash.'
+                ? t('cover.unsplashBusy')
+                : t('cover.unsplashFailed')
             )
         )
     }, 300)
@@ -157,22 +162,22 @@ function UnsplashPane({ onSelect }: { onSelect: Props['onSelect'] }) {
       alive = false
       clearTimeout(timer)
     }
-  }, [query, configured])
+  }, [query, configured, t])
 
   if (!configured) {
     return (
       <p className="m-0 py-6 text-center text-xs text-muted-foreground">
-        Unsplash isn't configured for this build.
+        {t('cover.unsplashNotConfigured')}
       </p>
     )
   }
   return (
     <div className="flex flex-col gap-3">
       <Input
-        placeholder="Search for an image…"
+        placeholder={t('cover.unsplashSearch')}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        aria-label="Search Unsplash"
+        aria-label={t('cover.unsplashLabel')}
       />
       {error && <p className="m-0 text-xs text-destructive">{error}</p>}
       <div className="grid max-h-80 grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3 overflow-y-auto">
@@ -186,12 +191,12 @@ function UnsplashPane({ onSelect }: { onSelect: Props['onSelect'] }) {
                 trackUnsplashDownload(photo)
                 onSelect(photo.regular)
               }}
-              aria-label={photo.alt ?? `Photo by ${photo.author}`}
+              aria-label={photo.alt ?? t('cover.photoBy', { name: photo.author })}
             >
               <img src={photo.thumb} alt="" loading="lazy" className="size-full object-cover" />
             </button>
             <figcaption className="truncate text-xs text-muted-foreground">
-              by{' '}
+              {t('cover.by')}{' '}
               <a href={photo.authorUrl} target="_blank" rel="noreferrer" className="underline">
                 {photo.author}
               </a>

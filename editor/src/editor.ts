@@ -6,6 +6,7 @@ import StarterKit from '@tiptap/starter-kit'
 import { blockHandleExtensions } from './extensions/block-handle'
 import { EdgeNavigation } from './extensions/edge-navigation'
 import { SlashCommand } from './extensions/slash-command'
+import { t } from './i18n'
 import type { Command } from './protocol'
 
 type EditorOptions = { onExitTop?: () => void }
@@ -25,7 +26,8 @@ export function createEditor(
       TaskItem.configure({ nested: true }),
       Placeholder.configure({
         includeChildren: false,
-        placeholder: ({ node }) => (node.type.name === 'paragraph' ? "Type '/' for commands" : '')
+        placeholder: ({ node }) =>
+          node.type.name === 'paragraph' ? t('editor.bodyPlaceholder') : ''
       }),
       EdgeNavigation.configure({ onExitTop: options.onExitTop ?? (() => {}) }),
       SlashCommand,
