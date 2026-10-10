@@ -1,0 +1,7 @@
+{
+  // Local typecheck incl. tests (bun:test). tsconfig.json stays free of Bun types — Vercel compiles
+  // src/ with it and can't resolve bun's isolated @types/bun.
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "types": ["bun"] },
+  "include": ["src", "test"]
+}

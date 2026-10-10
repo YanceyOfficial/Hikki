@@ -1,4 +1,5 @@
-import { Hono } from 'hono'
+import { Hono, type Context } from 'hono'
+import { env } from 'hono/adapter'
 import { cors } from 'hono/cors'
 
 import { listPhotos, triggerDownload, type ProxyResult } from './unsplash'
@@ -18,8 +19,10 @@ app.use(
 
 app.get('/', (c) => c.text('hikki-bff'))
 
-function accessKey(): string | null {
-  return process.env.UNSPLASH_ACCESS_KEY || null
+// Read through Hono's adapter (not `process.env`) so the source needs no Node/Bun ambient types:
+// Vercel type-checks src/ with its own compiler and doesn't see bun's isolated @types.
+function accessKey(c: Context): string | null {
+  return env<{ UNSPLASH_ACCESS_KEY?: string }>(c).UNSPLASH_ACCESS_KEY || null
 }
 
 function send(result: ProxyResult): Response {
@@ -31,7 +34,7 @@ function send(result: ProxyResult): Response {
 }
 
 app.get('/api/unsplash/photos', async (c) => {
-  const key = accessKey()
+  const key = accessKey(c)
   if (!key) return c.json({ error: 'unsplash_not_configured' }, 503)
   return send(
     await listPhotos(key, c.req.query('query') ?? '', Number(c.req.query('page') ?? 1) || 1)
@@ -39,7 +42,7 @@ app.get('/api/unsplash/photos', async (c) => {
 })
 
 app.post('/api/unsplash/download', async (c) => {
-  const key = accessKey()
+  const key = accessKey(c)
   if (!key) return c.json({ error: 'unsplash_not_configured' }, 503)
   const body = await c.req.json().catch(() => ({}))
   return send(await triggerDownload(key, (body as { downloadLocation?: unknown }).downloadLocation))

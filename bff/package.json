@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit -p tsconfig.test.json"
   },
   "dependencies": {
     "hono": "^4.13.13"
