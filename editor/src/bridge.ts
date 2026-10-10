@@ -33,6 +33,8 @@ export class EditorBridge {
   readonly page = new Store<PageState>({ docId: null, title: '', icon: null, cover: null, headings: [], focusTitleRequest: 0 })
   private editor: Editor | null = null
   private timer: ReturnType<typeof setTimeout> | null = null
+  /** True between a user edit and the snapshot that reports it. Viewing a page must never save it. */
+  private dirty = false
   private lastActive = ''
 
   constructor(
@@ -47,6 +49,7 @@ export class EditorBridge {
     this.editor?.destroy()
     this.host.replaceChildren()
     this.lastActive = ''
+    this.dirty = false
     const { body, title } = normalizeBody(payload.content, payload.title ?? '')
     const editor = createEditor(this.host, body, { onExitTop: () => this.requestTitleFocus() })
     editor.on('update', () => {
@@ -97,9 +100,14 @@ export class EditorBridge {
     return runCommand(this.editor, command as Command)
   }
 
-  /** Synchronously returns the current snapshot and cancels the pending debounce (native saves it). */
+  /**
+   * Returns the pending (unsaved) snapshot and cancels the debounce, or null when nothing changed —
+   * the native side calls this on page switch / backgrounding and saves whatever it gets.
+   */
   flush(): Snapshot | null {
     this.clearTimer()
+    if (!this.dirty) return null
+    this.dirty = false
     return this.snapshot()
   }
 
@@ -153,6 +161,7 @@ export class EditorBridge {
   }
 
   private scheduleChanged(): void {
+    this.dirty = true
     this.clearTimer()
     this.timer = setTimeout(() => this.flushPending(), this.options.debounceMs)
   }
@@ -160,6 +169,7 @@ export class EditorBridge {
   private flushPending(): void {
     if (!this.timer) return
     this.clearTimer()
+    this.dirty = false
     const snapshot = this.snapshot()
     if (snapshot) void this.send({ type: 'changed', snapshot })
   }

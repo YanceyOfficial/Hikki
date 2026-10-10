@@ -10,6 +10,20 @@ describe('block handle', () => {
     editor.destroy()
   })
 
+  it('starts hidden so it never shows at the top-left before a block is hovered', () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const editor = createEditor(host, null)
+    const grip = document.querySelector('.hk-drag-handle')
+    // jsdom-like envs report pointer: fine as false, so build one explicitly.
+    const [ext] = blockHandleExtensions(true)
+    const rendered = (ext.options as { render: () => HTMLElement }).render()
+    expect(rendered.classList.contains('hk-hidden')).toBe(true)
+    expect(grip === null || grip.classList.contains('hk-hidden')).toBe(true)
+    editor.destroy()
+    host.remove()
+  })
+
   it('is disabled for coarse (touch) pointers', () => {
     expect(blockHandleExtensions(false)).toEqual([])
     expect(blockHandleExtensions(true)).toHaveLength(1)

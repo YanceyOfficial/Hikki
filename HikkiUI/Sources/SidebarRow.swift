@@ -9,6 +9,8 @@ public struct SidebarRow<Actions: View>: View {
     private let depth: Int
     private let isExpanded: Binding<Bool>?
     private let hasChildren: Bool
+    private let isSelected: Bool
+    private let shortcut: String?
     private let actions: Actions
     @State private var hovering = false
 
@@ -19,6 +21,8 @@ public struct SidebarRow<Actions: View>: View {
         depth: Int = 0,
         hasChildren: Bool = false,
         isExpanded: Binding<Bool>? = nil,
+        isSelected: Bool = false,
+        shortcut: String? = nil,
         @ViewBuilder actions: () -> Actions = { EmptyView() }
     ) {
         self.title = title
@@ -27,54 +31,64 @@ public struct SidebarRow<Actions: View>: View {
         self.depth = depth
         self.hasChildren = hasChildren
         self.isExpanded = isExpanded
+        self.isSelected = isSelected
+        self.shortcut = shortcut
         self.actions = actions()
     }
 
     public var body: some View {
         HStack(spacing: 6) {
-            if let isExpanded {
-                Button {
-                    withAnimation(.snappy(duration: 0.2)) { isExpanded.wrappedValue.toggle() }
-                } label: {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
-                        .rotationEffect(.degrees(isExpanded.wrappedValue ? 90 : 0))
-                        .foregroundStyle(Theme.mutedText)
-                        .frame(width: 16, height: 16)
-                        .opacity(hasChildren ? 1 : 0.35)
-                        .contentShape(.rect)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(isExpanded.wrappedValue ? "Collapse" : "Expand")
-            }
-            if let systemImage {
-                Image(systemName: systemImage)
-                    .font(.system(size: 14))
-                    .foregroundStyle(Theme.secondaryText)
-                    .frame(width: 20, height: 20)
-            } else {
-                PageIcon(icon)
-            }
+            leadingGlyph
             Text(title.isEmpty ? String(localized: "Untitled") : title)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(title.isEmpty ? Theme.mutedText : Theme.secondaryText)
+                .font(.system(size: 14, weight: isSelected ? .medium : .regular))
+                .foregroundStyle(isSelected ? Theme.text : title.isEmpty ? Theme.mutedText : Theme.secondaryText)
                 .lineLimit(1)
             Spacer(minLength: 0)
+            if let shortcut {
+                Text(shortcut).font(.system(size: 12)).foregroundStyle(Theme.mutedText.opacity(hovering ? 1 : 0))
+            }
+            // Inline and only while hovered (like Notion): the title gives up room then, and
+            // there is no mask/gradient to clash with the row's hover highlight.
+            if hovering {
+                HStack(spacing: 2) { actions }
+            }
         }
         .padding(.leading, CGFloat(depth) * 14)
         .frame(minHeight: Theme.Metrics.rowHeight)
-        // Overlaid, not inline: hidden actions must not steal width from the title.
-        .overlay(alignment: .trailing) {
-            if hovering {
-                HStack(spacing: 2) { actions }
-                    .padding(.leading, 12)
-                    .background(alignment: .leading) {
-                        LinearGradient(colors: [Theme.sidebar.opacity(0), Theme.sidebar], startPoint: .leading, endPoint: UnitPoint(x: 0.3, y: 0.5))
-                    }
-            }
-        }
         .contentShape(.rect)
         .onHover { hovering = $0 }
+    }
+
+    /// Notion-style: the page icon, which turns into the disclosure chevron while hovered.
+    /// Without hover (touch), the chevron sits before the icon, and only for pages with children.
+    @ViewBuilder private var leadingGlyph: some View {
+        if let isExpanded {
+            let chevron = Button {
+                withAnimation(.snappy(duration: 0.2)) { isExpanded.wrappedValue.toggle() }
+            } label: {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .rotationEffect(.degrees(isExpanded.wrappedValue ? 90 : 0))
+                    .foregroundStyle(Theme.mutedText)
+                    .frame(width: 20, height: 20)
+                    .contentShape(.rect)
+            }
+            .buttonStyle(HoverHighlightStyle())
+            .accessibilityLabel(isExpanded.wrappedValue ? "Collapse" : "Expand")
+            #if os(macOS)
+                if hovering { chevron } else { PageIcon(icon) }
+            #else
+                if hasChildren { chevron }
+                PageIcon(icon)
+            #endif
+        } else if let systemImage {
+            Image(systemName: systemImage)
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.secondaryText)
+                .frame(width: 20, height: 20)
+        } else {
+            PageIcon(icon)
+        }
     }
 }
 

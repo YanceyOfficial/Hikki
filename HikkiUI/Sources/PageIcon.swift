@@ -5,7 +5,7 @@ public struct PageIcon: View {
     private let emoji: String?
     private let size: CGFloat
 
-    public init(_ emoji: String?, size: CGFloat = 16) {
+    public init(_ emoji: String?, size: CGFloat = 14) {
         self.emoji = emoji
         self.size = size
     }
@@ -13,7 +13,7 @@ public struct PageIcon: View {
     public var body: some View {
         Group {
             if let emoji, !emoji.isEmpty {
-                Text(emoji).font(.system(size: size))
+                Text(emoji).font(.system(size: size * 0.92))
             } else {
                 Image(systemName: "doc.text")
                     .font(.system(size: size * 0.85, weight: .regular))

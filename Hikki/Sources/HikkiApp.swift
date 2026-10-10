@@ -40,7 +40,12 @@ struct HikkiApp: App {
                 ContentView().environment(model)
             #endif
         }
-        .defaultSize(width: 1100, height: 760)
+        .defaultSize(width: 1180, height: 780)
+        #if os(macOS)
+        // The tab bar and sidebar header draw their own title bar (Notion-style); see WindowChrome.
+        .windowStyle(.hiddenTitleBar)
+        .windowToolbarStyle(.unifiedCompact(showsTitle: false))
+        #endif
         .commands { AppCommands() }
     }
 }

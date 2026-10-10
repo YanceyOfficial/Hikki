@@ -16,7 +16,7 @@ public struct PageCard: View {
         VStack(alignment: .leading, spacing: 0) {
             Theme.hover.frame(height: 36)
             VStack(alignment: .leading, spacing: 6) {
-                PageIcon(icon, size: 24)
+                PageIcon(icon, size: 20)
                     .offset(y: -18)
                     .padding(.bottom, -18)
                 Text(title.isEmpty ? String(localized: "Untitled") : title)

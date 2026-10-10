@@ -2,107 +2,112 @@ import HikkiCore
 import HikkiUI
 import SwiftUI
 
-/// A page: the shared editor web view plus Notion-style chrome (breadcrumbs, edited time, favorite, ⋯).
+/// The editor for one page. On iPhone it also owns the nav-bar toolbar; wider layouts use `PageBar`.
 struct PageScreen: View {
     @Environment(AppModel.self) private var model
     let pageID: String
     let editor: EditorController
     let navigator: Navigator
+    let phoneToolbar: Bool
 
     var body: some View {
         let page = model.tree.page(pageID)
         EditorView(controller: editor)
             .ignoresSafeArea(.container, edges: .bottom)
-            .background(Theme.background)
             .navigationTitle(page.map { $0.title.isEmpty ? String(localized: "Untitled") : $0.title } ?? "")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            #else
-            .toolbar(removing: .title)
-            #endif
             .toolbar {
-                ToolbarItem(placement: breadcrumbPlacement) {
-                    Breadcrumbs(path: model.tree.path(to: pageID)) { navigator.open($0) }
-                }
-                if let page {
+                if phoneToolbar, let page {
                     ToolbarItemGroup(placement: .primaryAction) {
-                        #if os(macOS)
-                            TimelineView(.periodic(from: .now, by: 60)) { _ in
-                                Text("Edited \(page.updatedAt, format: .relative(presentation: .named))")
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(Theme.mutedText)
-                            }
-                        #endif
-                        Button(page.isFavorite ? "Remove from Favorites" : "Add to Favorites",
-                               systemImage: page.isFavorite ? "star.fill" : "star") {
-                            model.setFavorite(!page.isFavorite, id: page.id)
-                        }
-                        .tint(page.isFavorite ? .yellow : nil)
-                        .accessibilityIdentifier("favorite-toggle")
-                        Menu("More", systemImage: "ellipsis") {
-                            PageActions(page: page, navigator: navigator)
-                            Divider()
-                            Text("Edited \(page.updatedAt, format: .relative(presentation: .named))")
-                        }
-                        .accessibilityIdentifier("page-more")
+                        FavoriteButton(page: page)
+                        PageMoreMenu(page: page, navigator: navigator)
                     }
                 }
             }
-    }
-
-    private var breadcrumbPlacement: ToolbarItemPlacement {
-        #if os(iOS)
-            .principal
-        #else
-            .navigation
-        #endif
+            #endif
     }
 }
 
-/// "📄 Parent / 📄 Child" — every crumb but the last navigates.
-private struct Breadcrumbs: View {
-    let path: [PageSummary]
-    let onSelect: (String) -> Void
+/// Notion's second row: breadcrumbs on the left; edited time, favorite and ⋯ on the right. Flat, no glass.
+struct PageBar: View {
+    @Environment(AppModel.self) private var model
+    let route: Route
+    let navigator: Navigator
 
     var body: some View {
-        HStack(spacing: 2) {
-            ForEach(Array(visible.enumerated()), id: \.offset) { index, crumb in
-                if index > 0 {
-                    Text("/").font(.system(size: 13)).foregroundStyle(Theme.mutedText).padding(.horizontal, 2)
-                }
-                switch crumb {
-                case .ellipsis:
-                    Text("…").font(.system(size: 13)).foregroundStyle(Theme.mutedText)
-                case .page(let page, let isLast):
-                    Button { if !isLast { onSelect(page.id) } } label: {
-                        HStack(spacing: 4) {
-                            if page.icon != nil { PageIcon(page.icon, size: 13) }
-                            Text(page.title.isEmpty ? String(localized: "Untitled") : page.title)
-                                .font(.system(size: 13, weight: isLast ? .medium : .regular))
-                                .foregroundStyle(isLast ? Theme.text : Theme.secondaryText)
-                                .lineLimit(1)
-                        }
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 2)
+        HStack(spacing: 4) {
+            switch route {
+            case .page(let id):
+                Breadcrumbs(model.tree.path(to: id).map { Crumb(id: $0.id, title: $0.title, icon: $0.icon) }) { navigator.open($0) }
+                Spacer(minLength: 8)
+                if let page = model.tree.page(id) {
+                    TimelineView(.periodic(from: .now, by: 60)) { _ in
+                        Text("Edited \(page.updatedAt, format: .relative(presentation: .named))")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Theme.mutedText)
+                            .lineLimit(1)
                     }
-                    .buttonStyle(HoverHighlightStyle())
-                    .disabled(isLast)
+                    .padding(.trailing, 6)
+                    FavoriteButton(page: page)
+                    PageMoreMenu(page: page, navigator: navigator)
                 }
+            case .home:
+                barTitle("Home", systemImage: "house")
+                Spacer()
+            case .trash:
+                barTitle("Trash", systemImage: "trash")
+                Spacer()
             }
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("breadcrumbs")
+        .padding(.horizontal, 12)
+        .frame(height: 44)
+        .background(Theme.background)
     }
 
-    private enum Crumb {
-        case page(PageSummary, isLast: Bool)
-        case ellipsis
+    private func barTitle(_ title: LocalizedStringKey, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(Theme.text)
+            .padding(.horizontal, 6)
     }
+}
 
-    /// Long paths collapse the middle, like Notion: first / … / parent / page.
-    private var visible: [Crumb] {
-        let crumbs = path.enumerated().map { Crumb.page($1, isLast: $0 == path.count - 1) }
-        guard crumbs.count > 3 else { return crumbs }
-        return [crumbs[0], .ellipsis] + crumbs.suffix(2)
+struct FavoriteButton: View {
+    @Environment(AppModel.self) private var model
+    let page: PageSummary
+
+    var body: some View {
+        BarIconButton(page.isFavorite ? "Remove from Favorites" : "Add to Favorites",
+                      systemImage: page.isFavorite ? "star.fill" : "star",
+                      tint: page.isFavorite ? .yellow : nil) {
+            model.setFavorite(!page.isFavorite, id: page.id)
+        }
+        .accessibilityIdentifier("favorite-toggle")
+    }
+}
+
+struct PageMoreMenu: View {
+    let page: PageSummary
+    let navigator: Navigator
+
+    var body: some View {
+        Menu {
+            PageActions(page: page, navigator: navigator)
+            Divider()
+            Text("Edited \(page.updatedAt, format: .relative(presentation: .named))")
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 14))
+                .foregroundStyle(Theme.secondaryText)
+                .frame(width: 28, height: 28)
+                .contentShape(.rect)
+        }
+        .menuStyle(.button)
+        .buttonStyle(HoverHighlightStyle())
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .accessibilityLabel("More")
+        .accessibilityIdentifier("page-more")
     }
 }

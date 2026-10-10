@@ -18,8 +18,11 @@ generate: editor
 test-web:
 	cd editor && pnpm typecheck && pnpm test
 
+# `tuist test` regenerates a test-focused workspace; regenerate the full one afterwards so the
+# Hikki scheme exists again for builds and UI tests.
 test-core:
 	tuist test HikkiCore --platform macos
+	tuist generate --no-open
 
 test-core-ios:
 	tuist test HikkiCore --platform ios

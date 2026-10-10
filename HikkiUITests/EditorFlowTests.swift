@@ -143,9 +143,13 @@ final class EditorFlowTests: XCTestCase {
         sleep(1)
         attachScreenshot(app, "page")
         backToSidebarIfNeeded(app)
-        app.staticTexts["Home"].firstMatch.tap()
+        let navHome = app.buttons["nav-home"].firstMatch
+        if navHome.exists { navHome.tap() } else { app.staticTexts["Home"].firstMatch.tap() }
         sleep(1)
         attachScreenshot(app, "home")
+        app.buttons["sidebar-search"].firstMatch.tap()
+        sleep(1)
+        attachScreenshot(app, "search")
     }
 
     // MARK: - Helpers

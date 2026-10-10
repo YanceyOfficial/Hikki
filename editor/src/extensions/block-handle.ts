@@ -18,7 +18,8 @@ export function blockHandleExtensions(finePointer: boolean = matchMedia?.('(poin
     DragHandle.configure({
       render: () => {
         grip = document.createElement('div')
-        grip.className = 'hk-drag-handle'
+        // Hidden until the pointer is over a block — otherwise it sits at the editor's top-left on load.
+        grip.className = 'hk-drag-handle hk-hidden'
         grip.setAttribute('aria-label', 'Drag to move block')
         grip.innerHTML =
           '<svg viewBox="0 0 10 16" width="10" height="16" aria-hidden="true"><g fill="currentColor">' +

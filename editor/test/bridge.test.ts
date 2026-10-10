@@ -78,6 +78,14 @@ describe('EditorBridge', () => {
     expect(msg.type === 'changed' && msg.snapshot.docId).toBe('a')
   })
 
+  it('flush() returns null when the page was only viewed (viewing must not bump "edited")', () => {
+    bridge.loadDocument(page('a'))
+    expect(bridge.flush()).toBeNull()
+    editor().commands.insertContent('!')
+    vi.advanceTimersByTime(400) // the debounced save already reported it
+    expect(bridge.flush()).toBeNull()
+  })
+
   it('flush() returns the snapshot and cancels the pending debounce', () => {
     bridge.loadDocument(page('a'))
     editor().commands.insertContent('!')

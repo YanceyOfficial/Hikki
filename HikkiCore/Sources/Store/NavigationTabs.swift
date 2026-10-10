@@ -1,0 +1,108 @@
+import Foundation
+
+/// Browser-style tabs, each with its own back/forward history. Pure value type so the rules
+/// (what back means, which tab gets focus after a close…) are unit-tested, not buried in views.
+public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equatable, Sendable {
+    public struct Tab: Codable, Equatable, Identifiable, Sendable {
+        public let id: UUID
+        public private(set) var history: [Route]
+        public private(set) var position: Int
+
+        public var route: Route { history[position] }
+        public var canGoBack: Bool { position > 0 }
+        public var canGoForward: Bool { position < history.count - 1 }
+
+        init(id: UUID = UUID(), route: Route) {
+            self.id = id
+            self.history = [route]
+            self.position = 0
+        }
+
+        mutating func navigate(to route: Route, maxHistory: Int) {
+            guard route != self.route else { return }
+            history = Array(history.prefix(position + 1)) + [route]
+            if history.count > maxHistory { history.removeFirst(history.count - maxHistory) }
+            position = history.count - 1
+        }
+
+        mutating func move(by delta: Int) {
+            position = min(max(position + delta, 0), history.count - 1)
+        }
+
+        /// Drops every history entry matching `isGone`; false when nothing is left.
+        mutating func prune(_ isGone: (Route) -> Bool) -> Bool {
+            let current = route
+            history.removeAll(where: isGone)
+            // Collapse neighbours made adjacent-equal by the removal.
+            history = history.reduce(into: []) { if $0.last != $1 { $0.append($1) } }
+            guard !history.isEmpty else { return false }
+            position = history.lastIndex(of: current) ?? history.count - 1
+            return true
+        }
+    }
+
+    public private(set) var tabs: [Tab]
+    public private(set) var activeID: UUID
+    public var maxHistory = 50
+
+    public init(initial: Route) {
+        let tab = Tab(route: initial)
+        tabs = [tab]
+        activeID = tab.id
+    }
+
+    public var active: Tab { tabs.first { $0.id == activeID } ?? tabs[0] }
+    public var route: Route { active.route }
+
+    /// Navigates the active tab (like clicking a link).
+    public mutating func navigate(to route: Route) {
+        let limit = maxHistory
+        update(activeID) { $0.navigate(to: route, maxHistory: limit) }
+    }
+
+    public mutating func goBack() { update(activeID) { $0.move(by: -1) } }
+    public mutating func goForward() { update(activeID) { $0.move(by: 1) } }
+
+    /// Opens a new tab after the active one and focuses it.
+    @discardableResult
+    public mutating func openTab(_ route: Route) -> UUID {
+        let tab = Tab(route: route)
+        let index = (tabs.firstIndex { $0.id == activeID } ?? tabs.count - 1) + 1
+        tabs.insert(tab, at: index)
+        activeID = tab.id
+        return tab.id
+    }
+
+    public mutating func select(_ id: UUID) {
+        if tabs.contains(where: { $0.id == id }) { activeID = id }
+    }
+
+    /// Cycles focus (⌃Tab / ⌃⇧Tab).
+    public mutating func selectNeighbor(_ delta: Int) {
+        guard let index = tabs.firstIndex(where: { $0.id == activeID }) else { return }
+        activeID = tabs[(index + delta + tabs.count) % tabs.count].id
+    }
+
+    /// Closes a tab; the last tab is never closed (returns false so the caller can close the window).
+    /// Closing the active tab focuses its right neighbour, else its left one — like browsers.
+    @discardableResult
+    public mutating func close(_ id: UUID) -> Bool {
+        guard tabs.count > 1, let index = tabs.firstIndex(where: { $0.id == id }) else { return false }
+        tabs.remove(at: index)
+        if activeID == id { activeID = tabs[min(index, tabs.count - 1)].id }
+        return true
+    }
+
+    /// Removes routes that no longer exist (trashed pages) from every tab; a tab with nothing left
+    /// falls back to `fallback`.
+    public mutating func prune(fallback: Route, isGone: (Route) -> Bool) {
+        for index in tabs.indices where !tabs[index].prune(isGone) {
+            tabs[index] = Tab(id: tabs[index].id, route: fallback)
+        }
+    }
+
+    private mutating func update(_ id: UUID, _ body: (inout Tab) -> Void) {
+        guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
+        body(&tabs[index])
+    }
+}
