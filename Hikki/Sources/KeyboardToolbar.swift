@@ -1,35 +1,31 @@
 #if os(iOS)
     import HikkiCore
+    import HikkiUI
     import ObjectiveC
     import SwiftUI
     import WebKit
 
-    /// Native formatting bar shown above the iPhone/iPad software keyboard.
+    /// Editor formatting bar shown above the iPhone/iPad software keyboard.
     struct KeyboardToolbar: View {
         let controller: EditorController
-        private let commands: [EditorCommand] = [
+
+        static let commands: [EditorCommand] = [
             .heading1, .heading2, .bold, .italic, .strike, .code,
             .bulletList, .orderedList, .taskList, .blockquote, .codeBlock, .undo, .redo,
         ]
 
         var body: some View {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 4) {
-                    ForEach(commands) { command in
-                        Button {
-                            controller.exec(command)
-                        } label: {
-                            Image(systemName: command.systemImage)
-                                .frame(width: 40, height: 36)
-                                .foregroundStyle(controller.activeFormats.contains(command.rawValue) ? Color.accentColor : .primary)
-                        }
-                        .accessibilityLabel(command.title)
+            KeyboardAccessoryBar(onDismiss: controller.dismissKeyboard) {
+                ForEach(Self.commands) { command in
+                    ToolbarIconButton(
+                        LocalizedStringKey(command.title),
+                        systemImage: command.systemImage,
+                        isActive: controller.activeFormats.contains(command.rawValue)
+                    ) {
+                        controller.exec(command)
                     }
                 }
-                .padding(.horizontal, 8)
             }
-            .frame(height: 44)
-            .background(.bar)
         }
     }
 
@@ -41,7 +37,7 @@
             let host = UIHostingController(rootView: KeyboardToolbar(controller: controller))
             host.sizingOptions = .intrinsicContentSize
             host.view.backgroundColor = .clear
-            host.view.frame = CGRect(x: 0, y: 0, width: 320, height: 44)
+            host.view.frame = CGRect(x: 0, y: 0, width: 320, height: KeyboardAccessoryBar<EmptyView>.height)
             host.view.autoresizingMask = [.flexibleWidth]
             keyboardToolbar = host.view
 

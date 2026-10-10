@@ -62,6 +62,11 @@ export class EditorBridge {
     this.editor?.commands.focus()
   }
 
+  /** Drops DOM focus so the software keyboard goes away (native "hide keyboard" button). */
+  blur(): void {
+    this.editor?.commands.blur()
+  }
+
   private scheduleChanged(): void {
     this.clearTimer()
     this.timer = setTimeout(() => this.flushPending(), this.options.debounceMs)

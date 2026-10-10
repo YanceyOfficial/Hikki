@@ -28,7 +28,7 @@ let project = Project(
             sources: ["Hikki/Sources/**"],
             // Built by `make editor` (vite). A folder reference keeps the bundle's relative layout intact.
             resources: [.folderReference(path: "Hikki/Resources/Editor")],
-            dependencies: [.target(name: "HikkiCore")],
+            dependencies: [.target(name: "HikkiCore"), .target(name: "HikkiUI")],
             settings: .settings(base: ["SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor"])
         ),
         .target(
@@ -39,6 +39,15 @@ let project = Project(
             deploymentTargets: deploymentTargets,
             sources: ["HikkiCore/Sources/**"],
             dependencies: [.external(name: "GRDB")]
+        ),
+        .target(
+            name: "HikkiUI",
+            destinations: destinations,
+            product: .framework,
+            bundleId: "app.yancey.hikki.ui",
+            deploymentTargets: deploymentTargets,
+            sources: ["HikkiUI/Sources/**"],
+            settings: .settings(base: ["SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor"])
         ),
         .target(
             name: "HikkiCoreTests",

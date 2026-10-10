@@ -67,6 +67,17 @@ describe('EditorBridge', () => {
     expect(bridge.snapshot()?.text).toBe('other')
   })
 
+  it('blur() drops editor focus and is safe before any document is loaded', () => {
+    expect(() => bridge.blur()).not.toThrow()
+    bridge.loadDocument({ id: 'a', content: para('hi') })
+    bridge.focus()
+    vi.advanceTimersByTime(50) // Tiptap applies focus on the next frame
+    expect((bridge as any).editor.isFocused).toBe(true)
+    bridge.blur()
+    vi.advanceTimersByTime(50)
+    expect((bridge as any).editor.isFocused).toBe(false)
+  })
+
   it('rejects unknown commands', () => {
     bridge.loadDocument({ id: 'a', content: null })
     expect(bridge.exec('rm -rf')).toBe(false)

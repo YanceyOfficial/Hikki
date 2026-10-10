@@ -30,8 +30,15 @@ struct HikkiApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environment(model)
+            #if DEBUG
+                if ComponentGalleryLaunch.isEnabled {
+                    ComponentGalleryView()
+                } else {
+                    ContentView().environment(model)
+                }
+            #else
+                ContentView().environment(model)
+            #endif
         }
         .defaultSize(width: 1100, height: 760)
         .commands { FormatCommands() }

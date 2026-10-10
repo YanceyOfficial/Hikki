@@ -30,6 +30,14 @@ final class EditorFlowTests: XCTestCase {
         shot.lifetime = .keepAlways
         add(shot)
 
+        #if os(iOS)
+            let hide = app.buttons["hide-keyboard"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(hide, in: app), "hide-keyboard button missing from keyboard toolbar")
+            hide.tap()
+            let keyboardGone = NSPredicate(format: "count == 0")
+            wait(for: [expectation(for: keyboardGone, evaluatedWith: app.keyboards)], timeout: 5)
+        #endif
+
         app.terminate()
         app = launch()
         #if os(iOS)

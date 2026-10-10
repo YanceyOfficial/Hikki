@@ -19,6 +19,7 @@ window.hikki = {
   exec: (command: string) => bridge.exec(command),
   flush: () => bridge.flush(),
   focus: () => bridge.focus(),
+  blur: () => bridge.blur(),
 }
 
 if (!native) bridge.loadDocument({ id: 'dev', content: null })

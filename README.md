@@ -5,6 +5,7 @@ Notion-like editor for macOS, iPhone and iPad: SwiftUI shell + Tiptap editor in 
 ```
 Hikki/            SwiftUI app (shell, WKWebView host, keyboard toolbar, menus)
 HikkiCore/        Framework: SQLite store (GRDB), bridge protocol, logging, crash collection
+HikkiUI/          Framework: reusable SwiftUI components (no app state; plain values + closures)
 HikkiUITests/     XCUITest end-to-end flows
 editor/           Tiptap 3 web editor (vite → Hikki/Resources/Editor)
 ```
@@ -21,6 +22,11 @@ editor/           Tiptap 3 web editor (vite → Hikki/Resources/Editor)
 | `make check` | tests + macOS and iOS builds |
 
 `cd editor && pnpm dev` runs the editor alone in a browser with a console-logging bridge.
+
+## Components
+
+Reusable UI goes in `HikkiUI` rather than the app target: one component per file, a `#Preview` in each, and an
+entry in the DEBUG gallery (`Hikki/Sources/ComponentGallery.swift`, launch with `-HikkiGallery`).
 
 ## Observability
 

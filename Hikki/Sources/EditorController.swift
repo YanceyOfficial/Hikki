@@ -36,6 +36,21 @@ final class EditorController {
         }
     }
 
+    /// Blurs the editor in JS (so ProseMirror's focus state stays truthful), then resigns the native first
+    /// responder as a fallback in case the page is unresponsive.
+    func dismissKeyboard() {
+        Task {
+            do {
+                _ = try await webView.callAsyncJavaScript("window.hikki.blur()", contentWorld: .page)
+            } catch {
+                Log.warn("blur failed: \(error)", category: "bridge")
+            }
+            #if os(iOS)
+                webView.endEditing(true)
+            #endif
+        }
+    }
+
     /// Pulls the editor's current state synchronously from JS and saves it (scene backgrounding, doc switch).
     func flush(reason: String) async {
         guard isReady, currentDocumentID != nil else { return }
