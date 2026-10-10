@@ -2,7 +2,7 @@ import { Hono, type Context } from 'hono'
 import { env } from 'hono/adapter'
 import { cors } from 'hono/cors'
 
-import { listPhotos, triggerDownload, type ProxyResult } from './unsplash'
+import { listPhotos, triggerDownload, type ProxyResult } from './unsplash.js'
 
 /**
  * Hikki's backend-for-frontend: keeps third-party API keys server-side (Unsplash requires its

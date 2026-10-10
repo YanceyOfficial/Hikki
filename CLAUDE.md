@@ -66,7 +66,7 @@ make test-ui-ios    # XCUITest on the iOS simulator
 make test-ui-mac    # XCUITest on macOS — takes over the screen; don't run while someone is using the Mac
 make check          # test + macOS and iOS builds
 cd editor && bun run dev   # the editor alone in a browser (console-logging bridge)
-cd bff && bun run dev      # the BFF locally (needs UNSPLASH_ACCESS_KEY); the editor reads VITE_HIKKI_BFF_URL
+cd bff && bun run dev      # the BFF locally (needs UNSPLASH_ACCESS_KEY); the editor reads VITE_HIKKI_BFF_URL (editor/.env.*; prod: unsplash.yancey.app)
 ```
 
 ## Code Structure
@@ -104,4 +104,7 @@ HikkiUITests/                 XCUITest flows
 - **Demos and screenshots** on the Mac: launch the built binary with `HIKKI_DATA_DIR` and
   `-ApplePersistenceIgnoreState YES` (otherwise saved-state restoration can leave no window), capture by window id. Never
   `pkill -f Hikki` — the developer runs their own instance of the same binary (shared DerivedData).
+- **BFF on Vercel** (project root `bff/`) compiles `src/` per file and runs it as Node ESM: relative imports need
+  `.js` extensions (enforced by `NodeNext` in `bff/tsconfig.json`), and `src/` must not rely on Bun/Node ambient
+  types (read env through Hono's `env(c)` adapter); tests get Bun types from `bff/tsconfig.test.json`.
 - Simulators sometimes fail with "Busy (Application failed preflight checks)": `xcrun simctl shutdown all`, boot again.

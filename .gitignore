@@ -20,4 +20,7 @@ editor/public/emojibase/
 .env
 .env.*
 !.env.example
+# Public, non-secret Vite build config (VITE_* is bundled into the app anyway).
+!editor/.env.production
+!editor/.env.development
 .vercel

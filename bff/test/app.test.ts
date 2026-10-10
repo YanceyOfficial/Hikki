@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'bun:test'
 
-import app from '../src/index'
+import app from '../src/index.js'
 
 const realFetch = globalThis.fetch
 

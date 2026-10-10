@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { listPhotos, toPhoto, triggerDownload } from '../src/unsplash'
+import { listPhotos, toPhoto, triggerDownload } from '../src/unsplash.js'
 
 const raw = {
   id: 'abc',
