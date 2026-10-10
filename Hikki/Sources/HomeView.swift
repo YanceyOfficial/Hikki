@@ -16,7 +16,7 @@ struct HomeView: View {
                     .padding(.top, Spacing.s12)
 
                 VStack(alignment: .leading, spacing: Spacing.s2_5) {
-                    Label("Recently edited", systemImage: "clock")
+                    IconLabel("Recently edited", icon: .clock)
                         .font(.hk(.xs, .medium))
                         .foregroundStyle(Theme.mutedForeground)
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -35,7 +35,7 @@ struct HomeView: View {
                                 navigator.newPage()
                             } label: {
                                 VStack(spacing: Spacing.s2) {
-                                    Image(systemName: "plus").font(.hk(.lg))
+                                    IconView(.plus, size: TextSize.lg.rawValue)
                                     Text("New page").font(.hk(.md, .medium))
                                 }
                                 .foregroundStyle(Theme.mutedForeground)

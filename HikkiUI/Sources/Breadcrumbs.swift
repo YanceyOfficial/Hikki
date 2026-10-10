@@ -70,22 +70,21 @@ public struct Breadcrumbs: View {
 /// Flat icon button for bars (no glass capsule), with hover highlight.
 public struct BarIconButton: View {
     private let title: LocalizedStringKey
-    private let systemImage: String
+    private let symbol: Icon
     private let tint: Color?
     private let action: () -> Void
 
-    public init(_ title: LocalizedStringKey, systemImage: String, tint: Color? = nil, action: @escaping () -> Void) {
+    public init(_ title: LocalizedStringKey, symbol: Icon, tint: Color? = nil, action: @escaping () -> Void) {
         self.title = title
-        self.systemImage = systemImage
+        self.symbol = symbol
         self.tint = tint
         self.action = action
     }
 
     public var body: some View {
         Button(action: action) {
-            Label(title, systemImage: systemImage)
+            IconLabel(title, icon: symbol, size: TextSize.base.rawValue)
                 .labelStyle(.iconOnly)
-                .font(.hk(.sm))
                 .foregroundStyle(tint ?? Theme.subtleForeground)
                 .frame(width: 28, height: 28)
                 .contentShape(.rect)

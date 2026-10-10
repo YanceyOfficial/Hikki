@@ -18,7 +18,7 @@
                         HStack {
                             ForEach(EditorCommand.allCases.prefix(6)) { command in
                                 ToolbarIconButton(
-                                    LocalizedStringKey(command.title), systemImage: command.systemImage,
+                                    LocalizedStringKey(command.title), symbol: command.icon,
                                     isActive: active.contains(command.rawValue)
                                 ) {
                                     active.formSymmetricDifference([command.rawValue])
@@ -33,7 +33,7 @@
                         KeyboardAccessoryBar(onDismiss: {}) {
                             ForEach(EditorCommand.allCases) { command in
                                 ToolbarIconButton(
-                                    LocalizedStringKey(command.title), systemImage: command.systemImage,
+                                    LocalizedStringKey(command.title), symbol: command.icon,
                                     isActive: active.contains(command.rawValue)
                                 ) {
                                     active.formSymmetricDifference([command.rawValue])

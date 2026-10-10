@@ -11,10 +11,11 @@ struct TrashView: View {
     var body: some View {
         List {
             if filtered.isEmpty {
-                ContentUnavailableView(
-                    filter.isEmpty ? "Trash is empty" : "No matches", systemImage: "trash",
-                    description: Text("Pages you delete show up here.")
-                )
+                ContentUnavailableView {
+                    IconLabel(filter.isEmpty ? "Trash is empty" : "No matches", icon: .trash)
+                } description: {
+                    Text("Pages you delete show up here.")
+                }
                 .listRowBackground(Color.clear)
             }
             ForEach(filtered) { page in
@@ -31,14 +32,22 @@ struct TrashView: View {
                         }
                     }
                     Spacer()
-                    Button("Restore", systemImage: "arrow.uturn.backward") { model.restore(id: page.id) }
-                        .labelStyle(.iconOnly)
-                        .buttonStyle(.borderless)
-                        .help("Restore")
-                    Button("Delete Permanently", systemImage: "trash", role: .destructive) { pendingDelete = page }
-                        .labelStyle(.iconOnly)
-                        .buttonStyle(.borderless)
-                        .help("Delete permanently")
+                    Button {
+                        model.restore(id: page.id)
+                    } label: {
+                        IconLabel("Restore", icon: .arrowCounterClockwise)
+                    }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.borderless)
+                    .help("Restore")
+                    Button(role: .destructive) {
+                        pendingDelete = page
+                    } label: {
+                        IconLabel("Delete Permanently", icon: .trash)
+                    }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.borderless)
+                    .help("Delete permanently")
                 }
                 .padding(.vertical, Spacing.s0_5)
                 .swipeActions(edge: .trailing) {

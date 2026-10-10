@@ -53,10 +53,10 @@ struct PageBar: View {
                     PageMoreMenu(page: page, navigator: navigator)
                 }
             case .home:
-                barTitle("Home", systemImage: "house")
+                barTitle("Home", symbol: .house)
                 Spacer()
             case .trash:
-                barTitle("Trash", systemImage: "trash")
+                barTitle("Trash", symbol: .trash)
                 Spacer()
             }
         }
@@ -65,8 +65,8 @@ struct PageBar: View {
         .background(Theme.background)
     }
 
-    private func barTitle(_ title: LocalizedStringKey, systemImage: String) -> some View {
-        Label(title, systemImage: systemImage)
+    private func barTitle(_ title: LocalizedStringKey, symbol: Icon) -> some View {
+        IconLabel(title, icon: symbol)
             .font(.hk(.md, .medium))
             .foregroundStyle(Theme.foreground)
             .padding(.horizontal, Spacing.s1_5)
@@ -80,7 +80,7 @@ struct FavoriteButton: View {
     var body: some View {
         BarIconButton(
             page.isFavorite ? "Remove from Favorites" : "Add to Favorites",
-            systemImage: page.isFavorite ? "star.fill" : "star",
+            symbol: page.isFavorite ? .starFill : .star,
             tint: page.isFavorite ? .yellow : nil
         ) {
             model.setFavorite(!page.isFavorite, id: page.id)
@@ -99,8 +99,7 @@ struct PageMoreMenu: View {
             Divider()
             Text("Edited \(page.updatedAt, format: .relative(presentation: .named))")
         } label: {
-            Image(systemName: "ellipsis")
-                .font(.hk(.sm))
+            IconView(.dotsThree, size: TextSize.sm.rawValue)
                 .foregroundStyle(Theme.subtleForeground)
                 .frame(width: 28, height: 28)
                 .contentShape(.rect)

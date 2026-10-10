@@ -5,7 +5,7 @@ import SwiftUI
 public struct SidebarRow<Actions: View>: View {
     private let title: String
     private let icon: String?
-    private let systemImage: String?
+    private let symbol: Icon?
     private let depth: Int
     private let isExpanded: Binding<Bool>?
     private let hasChildren: Bool
@@ -17,7 +17,7 @@ public struct SidebarRow<Actions: View>: View {
     public init(
         _ title: String,
         icon: String? = nil,
-        systemImage: String? = nil,
+        symbol: Icon? = nil,
         depth: Int = 0,
         hasChildren: Bool = false,
         isExpanded: Binding<Bool>? = nil,
@@ -27,7 +27,7 @@ public struct SidebarRow<Actions: View>: View {
     ) {
         self.title = title
         self.icon = icon
-        self.systemImage = systemImage
+        self.symbol = symbol
         self.depth = depth
         self.hasChildren = hasChildren
         self.isExpanded = isExpanded
@@ -73,8 +73,7 @@ public struct SidebarRow<Actions: View>: View {
                 let chevron = Button {
                     withAnimation(.snappy(duration: 0.2)) { isExpanded.wrappedValue.toggle() }
                 } label: {
-                    Image(systemName: "chevron.right")
-                        .font(.hk(.x2s, .semibold))
+                    IconView(.caretRight, size: TextSize.x2s.rawValue)
                         .rotationEffect(.degrees(isExpanded.wrappedValue ? 90 : 0))
                         .foregroundStyle(Theme.mutedForeground)
                         .frame(width: glyphSlot, height: glyphSlot)
@@ -87,9 +86,8 @@ public struct SidebarRow<Actions: View>: View {
                 #else
                     PageIcon(icon, size: Size.sidebarIcon)
                 #endif
-            } else if let systemImage {
-                Image(systemName: systemImage)
-                    .font(.hk(.sm))
+            } else if let symbol {
+                IconView(symbol, size: TextSize.sm.rawValue)
                     .foregroundStyle(Theme.subtleForeground)
             } else {
                 PageIcon(icon, size: Size.sidebarIcon)
@@ -102,20 +100,19 @@ public struct SidebarRow<Actions: View>: View {
 /// Small square icon button used inside sidebar rows and headers.
 public struct SidebarIconButton: View {
     private let title: LocalizedStringKey
-    private let systemImage: String
+    private let symbol: Icon
     private let action: () -> Void
 
-    public init(_ title: LocalizedStringKey, systemImage: String, action: @escaping () -> Void) {
+    public init(_ title: LocalizedStringKey, symbol: Icon, action: @escaping () -> Void) {
         self.title = title
-        self.systemImage = systemImage
+        self.symbol = symbol
         self.action = action
     }
 
     public var body: some View {
         Button(action: action) {
-            Label(title, systemImage: systemImage)
+            IconLabel(title, icon: symbol, size: TextSize.sm.rawValue)
                 .labelStyle(.iconOnly)
-                .font(.hk(.xs, .semibold))
                 .foregroundStyle(Theme.mutedForeground)
                 .frame(width: 22, height: 22)
                 .contentShape(.rect)
@@ -152,11 +149,11 @@ public struct HoverHighlightStyle: ButtonStyle {
     @Previewable @State var expanded = true
     List {
         SidebarRow("Welcome to Hikki", icon: "👋", hasChildren: true, isExpanded: $expanded) {
-            SidebarIconButton("More", systemImage: "ellipsis") {}
-            SidebarIconButton("Add page inside", systemImage: "plus") {}
+            SidebarIconButton("More", symbol: .dotsThree) {}
+            SidebarIconButton("Add page inside", symbol: .plus) {}
         }
         SidebarRow("Meeting notes", icon: nil, depth: 1, isExpanded: .constant(false))
-        SidebarRow("Trash", systemImage: "trash")
+        SidebarRow("Trash", symbol: .trash)
     }
     .frame(width: 260)
 }

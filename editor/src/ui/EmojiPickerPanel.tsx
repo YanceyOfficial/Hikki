@@ -1,3 +1,4 @@
+import { Shuffle } from '@phosphor-icons/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { cn, ui } from './cn'
@@ -107,7 +108,7 @@ export function EmojiPickerPanel({
             title={t.random}
             aria-label={t.random}
           >
-            🎲
+            <Shuffle size={16} aria-hidden />
           </button>
         )}
         {onRemove && (

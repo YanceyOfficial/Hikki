@@ -4,20 +4,20 @@ import SwiftUI
 /// The title is kept as the accessibility label and tooltip.
 public struct ToolbarIconButton: View {
     private let title: LocalizedStringKey
-    private let systemImage: String
+    private let symbol: Icon
     private let isActive: Bool
     private let action: () -> Void
 
-    public init(_ title: LocalizedStringKey, systemImage: String, isActive: Bool = false, action: @escaping () -> Void) {
+    public init(_ title: LocalizedStringKey, symbol: Icon, isActive: Bool = false, action: @escaping () -> Void) {
         self.title = title
-        self.systemImage = systemImage
+        self.symbol = symbol
         self.isActive = isActive
         self.action = action
     }
 
     public var body: some View {
         Button(action: action) {
-            Label(title, systemImage: systemImage)
+            IconLabel(title, icon: symbol, size: TextSize.lg.rawValue)
                 .labelStyle(.iconOnly)
                 .frame(width: 40, height: 36)
                 .foregroundStyle(isActive ? Color.accentColor : .primary)
@@ -32,8 +32,8 @@ public struct ToolbarIconButton: View {
 
 #Preview {
     HStack {
-        ToolbarIconButton("Bold", systemImage: "bold", isActive: true) {}
-        ToolbarIconButton("Italic", systemImage: "italic") {}
+        ToolbarIconButton("Bold", symbol: .textB, isActive: true) {}
+        ToolbarIconButton("Italic", symbol: .textItalic) {}
     }
     .padding()
 }

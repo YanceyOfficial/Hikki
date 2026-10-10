@@ -3,7 +3,7 @@ export PATH := $(shell echo "$$PATH" | tr ':' '\n' | grep -v swiftly | paste -sd
 
 IOS_SIM ?= generic/platform=iOS Simulator
 
-.PHONY: bootstrap test-bff tokens lint lint-design lint-docs fmt fmt-check editor generate test test-web test-core test-core-ios build-mac build-ios check
+.PHONY: bootstrap test-bff tokens icons lint lint-design lint-docs fmt fmt-check editor generate test test-web test-core test-core-ios build-mac build-ios check
 
 bootstrap:
 	bun install
@@ -13,9 +13,14 @@ bootstrap:
 tokens:
 	node scripts/gen-tokens.mjs
 
+# Phosphor icons for the native app: edit design/icons.json, then regenerate the asset catalog + Icon enum.
+icons:
+	node scripts/gen-icons.mjs
+
 # Fails on stale generated tokens or on literal colors/fonts/spacing in view code.
 lint-design:
 	node scripts/gen-tokens.mjs --check
+	node scripts/gen-icons.mjs --check
 	scripts/lint-design.sh
 
 SWIFT_DIRS := Hikki HikkiCore HikkiUI HikkiUITests Project.swift Tuist.swift

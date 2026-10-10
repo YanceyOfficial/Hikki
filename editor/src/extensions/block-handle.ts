@@ -1,3 +1,4 @@
+import gripSvg from '@phosphor-icons/core/assets/bold/dots-six-vertical-bold.svg?raw'
 import DragHandle from '@tiptap/extension-drag-handle'
 import type { Node as PMNode } from '@tiptap/pm/model'
 
@@ -23,10 +24,8 @@ export function blockHandleExtensions(
         // Hidden until the pointer is over a block — otherwise it sits at the editor's top-left on load.
         grip.className = 'hk-drag-handle hk-hidden'
         grip.setAttribute('aria-label', 'Drag to move block')
-        grip.innerHTML =
-          '<svg viewBox="0 0 10 16" width="10" height="16" aria-hidden="true"><g fill="currentColor">' +
-          '<circle cx="2" cy="2" r="1.5"/><circle cx="8" cy="2" r="1.5"/><circle cx="2" cy="8" r="1.5"/>' +
-          '<circle cx="8" cy="8" r="1.5"/><circle cx="2" cy="14" r="1.5"/><circle cx="8" cy="14" r="1.5"/></g></svg>'
+        // Phosphor's dots-six-vertical (same icon set as the native app), sized to the row.
+        grip.innerHTML = gripSvg.replace('<svg ', '<svg width="16" height="16" aria-hidden="true" ')
         return grip
       },
       onNodeChange: ({ node }) => {

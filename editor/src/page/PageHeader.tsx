@@ -1,3 +1,4 @@
+import { Image as ImageIcon, Smiley } from '@phosphor-icons/react'
 import {
   useCallback,
   useEffect,
@@ -98,7 +99,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
               ref={setIconAnchor}
               onClick={() => bridge.setIcon(randomIcon())}
             >
-              <span aria-hidden>☺︎</span> Add icon
+              <Smiley size={16} aria-hidden /> Add icon
             </button>
           )}
           {!background && (
@@ -107,7 +108,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
               className={ui.ghost}
               onClick={() => bridge.setCover(randomGradient())}
             >
-              <span aria-hidden>▨</span> Add cover
+              <ImageIcon size={16} aria-hidden /> Add cover
             </button>
           )}
         </div>

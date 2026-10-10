@@ -6,14 +6,14 @@ public struct SidebarNavBar<Trailing: View>: View {
     public struct Item: Identifiable {
         public var id: String
         public var title: String
-        public var systemImage: String
+        public var symbol: Icon
         public var isSelected: Bool
         public var action: () -> Void
 
-        public init(id: String, title: String, systemImage: String, isSelected: Bool, action: @escaping () -> Void) {
+        public init(id: String, title: String, symbol: Icon, isSelected: Bool, action: @escaping () -> Void) {
             self.id = id
             self.title = title
-            self.systemImage = systemImage
+            self.symbol = symbol
             self.isSelected = isSelected
             self.action = action
         }
@@ -32,8 +32,7 @@ public struct SidebarNavBar<Trailing: View>: View {
             ForEach(items) { item in
                 Button(action: item.action) {
                     HStack(spacing: Spacing.s1_5) {
-                        Image(systemName: item.systemImage)
-                            .font(.hk(.sm, item.isSelected ? .semibold : .regular))
+                        IconView(item.symbol, size: TextSize.base.rawValue)
                         if item.isSelected {
                             Text(item.title).font(.hk(.sm, .semibold)).lineLimit(1)
                         }
@@ -79,13 +78,13 @@ public struct HoverCapsuleStyle: ButtonStyle {
 /// Big rounded action at the bottom of the sidebar (Notion's "New chat ⌘O").
 public struct SidebarActionPill: View {
     private let title: LocalizedStringKey
-    private let systemImage: String
+    private let symbol: Icon
     private let shortcut: String?
     private let action: () -> Void
 
-    public init(_ title: LocalizedStringKey, systemImage: String, shortcut: String? = nil, action: @escaping () -> Void) {
+    public init(_ title: LocalizedStringKey, symbol: Icon, shortcut: String? = nil, action: @escaping () -> Void) {
         self.title = title
-        self.systemImage = systemImage
+        self.symbol = symbol
         self.shortcut = shortcut
         self.action = action
     }
@@ -93,7 +92,7 @@ public struct SidebarActionPill: View {
     public var body: some View {
         Button(action: action) {
             HStack(spacing: Spacing.s2) {
-                Image(systemName: systemImage).font(.hk(.sm))
+                IconView(symbol, size: TextSize.sm.rawValue)
                 Text(title).font(.hk(.sm, .medium))
                 if let shortcut {
                     Text(shortcut)

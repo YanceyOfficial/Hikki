@@ -15,8 +15,7 @@ public struct PageIcon: View {
             if let emoji, !emoji.isEmpty {
                 Text(emoji).font(.system(size: size * 0.92))  // design-lint: allow (scales with the icon size)
             } else {
-                Image(systemName: "doc.text")
-                    .font(.system(size: size * 0.85, weight: .regular))  // design-lint: allow
+                IconView(.fileText, size: size * 0.95)
                     .foregroundStyle(Theme.mutedForeground)
             }
         }

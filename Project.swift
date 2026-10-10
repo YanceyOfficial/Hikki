@@ -58,6 +58,7 @@ let project = Project(
             bundleId: "app.yancey.hikki.ui",
             deploymentTargets: deploymentTargets,
             sources: ["HikkiUI/Sources/**"],
+            resources: ["HikkiUI/Resources/**"],
             settings: .settings(base: ["SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor"])
         ),
         .target(

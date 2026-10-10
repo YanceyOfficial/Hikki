@@ -37,10 +37,9 @@ public struct KeyboardAccessoryBar<Tools: View>: View {
     VStack {
         Spacer()
         KeyboardAccessoryBar(onDismiss: {}) {
-            ForEach(
-                ["bold", "italic", "strikethrough", "list.bullet", "list.number", "checklist", "text.quote", "curlybraces"], id: \.self
-            ) { icon in
-                ToolbarIconButton(LocalizedStringKey(icon), systemImage: icon, isActive: icon == "bold") {}
+            let icons: [Icon] = [.textB, .textItalic, .textStrikethrough, .listBullets, .listNumbers, .listChecks, .quotes, .codeBlock]
+            ForEach(icons, id: \.self) { icon in
+                ToolbarIconButton(LocalizedStringKey(icon.rawValue), symbol: icon, isActive: icon == .textB) {}
             }
         }
     }

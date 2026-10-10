@@ -41,7 +41,7 @@ public struct SearchResultRow: View {
             }
             Spacer(minLength: 0)
             if isSelected {
-                Image(systemName: "return").font(.hk(.x2s)).foregroundStyle(Theme.mutedForeground)
+                IconView(.arrowUDownLeft, size: TextSize.x2s.rawValue).foregroundStyle(Theme.mutedForeground)
             }
         }
         .padding(.horizontal, Spacing.s2_5)

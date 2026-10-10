@@ -19,7 +19,7 @@
                 ForEach(Self.commands) { command in
                     ToolbarIconButton(
                         LocalizedStringKey(command.title),
-                        systemImage: command.systemImage,
+                        symbol: command.icon,
                         isActive: controller.activeFormats.contains(command.rawValue)
                     ) {
                         controller.exec(command)

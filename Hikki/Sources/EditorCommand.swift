@@ -1,3 +1,5 @@
+import HikkiUI
+
 /// Mirrors COMMANDS in editor/src/protocol.ts.
 enum EditorCommand: String, CaseIterable, Identifiable, Hashable {
     case bold, italic, strike, code
@@ -27,23 +29,23 @@ enum EditorCommand: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
-    var systemImage: String {
+    var icon: Icon {
         switch self {
-        case .bold: "bold"
-        case .italic: "italic"
-        case .strike: "strikethrough"
-        case .code: "chevron.left.forwardslash.chevron.right"
-        case .heading1: "textformat.size.larger"
-        case .heading2: "textformat.size"
-        case .heading3: "textformat.size.smaller"
-        case .paragraph: "textformat"
-        case .bulletList: "list.bullet"
-        case .orderedList: "list.number"
-        case .taskList: "checklist"
-        case .blockquote: "text.quote"
-        case .codeBlock: "curlybraces"
-        case .undo: "arrow.uturn.backward"
-        case .redo: "arrow.uturn.forward"
+        case .bold: .textB
+        case .italic: .textItalic
+        case .strike: .textStrikethrough
+        case .code: .code
+        case .heading1: .textHOne
+        case .heading2: .textHTwo
+        case .heading3: .textHThree
+        case .paragraph: .textT
+        case .bulletList: .listBullets
+        case .orderedList: .listNumbers
+        case .taskList: .listChecks
+        case .blockquote: .quotes
+        case .codeBlock: .codeBlock
+        case .undo: .arrowUUpLeft
+        case .redo: .arrowUUpRight
         }
     }
 

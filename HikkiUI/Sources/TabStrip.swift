@@ -5,13 +5,13 @@ public struct TabStripItem: Identifiable, Equatable {
     public var id: UUID
     public var title: String
     public var icon: String?
-    public var systemImage: String?
+    public var symbol: Icon?
 
-    public init(id: UUID, title: String, icon: String? = nil, systemImage: String? = nil) {
+    public init(id: UUID, title: String, icon: String? = nil, symbol: Icon? = nil) {
         self.id = id
         self.title = title
         self.icon = icon
-        self.systemImage = systemImage
+        self.symbol = symbol
     }
 }
 
@@ -53,10 +53,10 @@ public struct TabStrip<Leading: View>: View {
     public var body: some View {
         HStack(spacing: Spacing.s1) {
             leading
-            SidebarIconButton("Back", systemImage: "chevron.left", action: onBack)
+            SidebarIconButton("Back", symbol: .caretLeft, action: onBack)
                 .disabled(!canGoBack)
                 .opacity(canGoBack ? 1 : 0.4)
-            SidebarIconButton("Forward", systemImage: "chevron.right", action: onForward)
+            SidebarIconButton("Forward", symbol: .caretRight, action: onForward)
                 .disabled(!canGoForward)
                 .opacity(canGoForward ? 1 : 0.4)
             HStack(spacing: Spacing.s0_5) {
@@ -66,7 +66,7 @@ public struct TabStrip<Leading: View>: View {
                         onSelect: { onSelect(item.id) }, onClose: { onClose(item.id) })
                 }
             }
-            SidebarIconButton("New Tab", systemImage: "plus", action: onNew)
+            SidebarIconButton("New Tab", symbol: .plus, action: onNew)
             Spacer(minLength: 24)
         }
         .padding(.horizontal, Spacing.s2)
@@ -84,8 +84,8 @@ private struct TabButton: View {
 
     var body: some View {
         HStack(spacing: Spacing.s1_5) {
-            if let systemImage = item.systemImage {
-                Image(systemName: systemImage).font(.hk(.xs)).foregroundStyle(Theme.subtleForeground)
+            if let symbol = item.symbol {
+                IconView(symbol, size: TextSize.xs.rawValue).foregroundStyle(Theme.subtleForeground)
             } else {
                 PageIcon(item.icon, size: 13)
             }
@@ -96,8 +96,7 @@ private struct TabButton: View {
             Spacer(minLength: 0)
             if canClose && (hovering || isActive) {
                 Button(action: onClose) {
-                    Image(systemName: "xmark")
-                        .font(.hk(.x2s, .bold))
+                    IconView(.x, size: TextSize.x2s.rawValue)
                         .foregroundStyle(Theme.mutedForeground)
                         .frame(width: 16, height: 16)
                         .contentShape(.rect)
@@ -126,7 +125,7 @@ private struct TabButton: View {
     let a = UUID()
     let b = UUID()
     TabStrip(
-        items: [TabStripItem(id: a, title: "Welcome to Hikki", icon: "👋"), TabStripItem(id: b, title: "", systemImage: "house")],
+        items: [TabStripItem(id: a, title: "Welcome to Hikki", icon: "👋"), TabStripItem(id: b, title: "", symbol: .house)],
         activeID: a, canGoBack: true, canGoForward: false,
         onSelect: { _ in }, onClose: { _ in }, onNew: {}, onBack: {}, onForward: {}
     )

@@ -16,9 +16,17 @@
     "editor/src/theme.css",
     "HikkiUI/Sources/Generated/",
     "*.xcodeproj/",
-    "*.xcworkspace/"
+    "*.xcworkspace/",
+    "HikkiUI/Resources/"
   ],
-  "sortImports": { "enabled": true },
-  "sortTailwindcss": { "enabled": true, "stylesheet": "./editor/src/style.css" },
-  "sortPackageJson": { "enabled": true }
+  "sortImports": {
+    "enabled": true
+  },
+  "sortTailwindcss": {
+    "enabled": true,
+    "stylesheet": "./editor/src/style.css"
+  },
+  "sortPackageJson": {
+    "enabled": true
+  }
 }

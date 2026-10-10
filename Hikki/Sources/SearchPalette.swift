@@ -16,7 +16,7 @@ struct SearchPalette: View {
     var body: some View {
         VStack(spacing: Spacing.s0) {
             HStack(spacing: Spacing.s2_5) {
-                Image(systemName: "magnifyingglass").font(.hk(.base)).foregroundStyle(Theme.mutedForeground)
+                IconView(.magnifyingGlass, size: TextSize.base.rawValue).foregroundStyle(Theme.mutedForeground)
                 TextField("Search pages…", text: $query)
                     .textFieldStyle(.plain)
                     .font(.hk(.base))
