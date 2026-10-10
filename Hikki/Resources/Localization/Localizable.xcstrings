@@ -987,6 +987,23 @@
         }
       }
     },
+    "app:page.copyLink": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy link"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制链接"
+          }
+        }
+      }
+    },
     "app:page.duplicate": {
       "extractionState": "manual",
       "localizations": {
@@ -1072,6 +1089,40 @@
         }
       }
     },
+    "app:page.moveTo": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move to"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移动到"
+          }
+        }
+      }
+    },
+    "app:page.moveToTopLevel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Top level"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "顶层"
+          }
+        }
+      }
+    },
     "app:page.moveToTrash": {
       "extractionState": "manual",
       "localizations": {
@@ -1119,6 +1170,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "在新标签页中打开"
+          }
+        }
+      }
+    },
+    "app:page.openInNewWindow": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open in new window"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在新窗口中打开"
+          }
+        }
+      }
+    },
+    "app:page.rename": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重命名"
           }
         }
       }

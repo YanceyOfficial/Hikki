@@ -451,11 +451,14 @@ struct PageRowMenu: View {
 /// Shared page actions for the ⋯ menu, context menus and the page bar.
 struct PageActions: View {
     @Environment(AppModel.self) private var model
+    #if os(macOS)
+        @Environment(\.openWindow) private var openWindow
+    #endif
     let page: PageSummary
     let navigator: Navigator
 
     var body: some View {
-        // Notion-style: a titled section, grouped actions, and when it was last edited at the bottom.
+        // Notion's page menu: a titled section, grouped actions, and when it was last edited at the bottom.
         Section("app:page.menuTitle") {
             Button {
                 model.setFavorite(!page.isFavorite, id: page.id)
@@ -465,10 +468,21 @@ struct PageActions: View {
         }
         Section {
             Button {
+                copyLink()
+            } label: {
+                IconLabel("app:page.copyLink", icon: .link)
+            }
+            Button {
                 model.duplicate(id: page.id)
             } label: {
                 IconLabel("app:page.duplicate", icon: .copy)
             }
+            Button {
+                navigator.rename(page.id)
+            } label: {
+                IconLabel("app:page.rename", icon: .pencilSimple)
+            }
+            moveToMenu
             Button {
                 navigator.newPage(parentId: page.id)
             } label: {
@@ -486,10 +500,51 @@ struct PageActions: View {
             } label: {
                 IconLabel("app:page.openInNewTab", icon: .browsers)
             }
+            #if os(macOS)
+                Button {
+                    openWindow(id: "page", value: page.id)
+                } label: {
+                    IconLabel("app:page.openInNewWindow", icon: .appWindow)
+                }
+            #endif
         }
         Section {
             Text("app:page.lastEdited \(page.updatedAt, format: .dateTime.month().day().hour().minute())")
         }
+    }
+
+    /// Every other page (not this one's subtree), indented by depth, plus the top level.
+    private var moveToMenu: some View {
+        Menu {
+            if page.parentId != nil {
+                Button("app:page.moveToTopLevel") { model.movePageToTopLevel(page.id) }
+            }
+            ForEach(model.tree.moveTargets(for: page.id), id: \.page.id) { target in
+                Button {
+                    model.movePage(page.id, onto: target.page.id, zone: .inside)
+                } label: {
+                    // The page's own title, shown as-is (indented by depth like the sidebar).
+                    Text(verbatim: String(repeating: "    ", count: target.depth) + displayTitle(target.page))
+                }
+            }
+        } label: {
+            IconLabel("app:page.moveTo", icon: .arrowBendUpRight)
+        }
+    }
+
+    private func displayTitle(_ page: PageSummary) -> String {
+        let icon = page.icon.map { "\($0) " } ?? ""
+        return icon + (page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
+    }
+
+    private func copyLink() {
+        let url = PageLink.url(for: page.id)
+        #if os(macOS)
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(url.absoluteString, forType: .string)
+        #else
+            UIPasteboard.general.url = url
+        #endif
     }
 }
 

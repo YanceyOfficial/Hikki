@@ -17,6 +17,14 @@ struct PageTreeTests {
         #expect(tree.roots[0].children[0].children.map(\.id) == ["a1x"])
     }
 
+    @Test func moveTargetsSkipTheSubtreeAndCurrentParent() {
+        let tree = PageTree([page("a"), page("b"), page("a1", parent: "a"), page("a1x", parent: "a1"), page("b1", parent: "b")])
+        let targets = tree.moveTargets(for: "a1")
+        #expect(targets.map(\.page.id) == ["b", "b1"])  // not a1 / a1x (own subtree), not a (already its parent)
+        #expect(targets.map(\.depth) == [0, 1])
+        #expect(tree.moveTargets(for: "b").map(\.page.id) == ["a", "a1", "a1x"])
+    }
+
     @Test func orphansSurfaceAtTheTopLevel() {
         let tree = PageTree([page("a"), page("orphan", parent: "gone")])
         #expect(tree.roots.map(\.id) == ["a", "orphan"])

@@ -23,8 +23,10 @@ export type PageState = {
   icon: string | null
   cover: string | null
   headings: HeadingItem[]
-  /** Bumped when the caret should move into the title (EdgeNavigation). */
+  /** Bumped when the caret should move into the title (EdgeNavigation, native Rename). */
   focusTitleRequest: number
+  /** With the latest request: select the whole title (Rename) instead of a caret at its end. */
+  selectTitle: boolean
 }
 
 type Options = { debounceMs: number }
@@ -43,7 +45,8 @@ export class EditorBridge {
     icon: null,
     cover: null,
     headings: [],
-    focusTitleRequest: 0
+    focusTitleRequest: 0,
+    selectTitle: false
   })
   private editor: Editor | null = null
   private timer: ReturnType<typeof setTimeout> | null = null
@@ -176,8 +179,13 @@ export class EditorBridge {
     this.editor.commands.setTextSelection(pos + 1)
   }
 
-  private requestTitleFocus(): void {
-    this.page.set({ focusTitleRequest: this.page.get().focusTitleRequest + 1 })
+  private requestTitleFocus(select = false): void {
+    this.page.set({ focusTitleRequest: this.page.get().focusTitleRequest + 1, selectTitle: select })
+  }
+
+  /** Native "Rename": the title gets focus with its text selected, ready to be typed over. */
+  focusTitle(): void {
+    this.requestTitleFocus(true)
   }
 
   private scheduleChanged(): void {

@@ -6,7 +6,7 @@ import Testing
 struct BridgeMessageTests {
     /// Shapes exactly as WebKit bridges a JS object literal (NSDictionary / NSNumber).
     @Test func decodesReady() throws {
-        let body: NSDictionary = ["type": "ready", "protocolVersion": NSNumber(value: 3)]
+        let body: NSDictionary = ["type": "ready", "protocolVersion": NSNumber(value: BridgeProtocol.version)]
         #expect(try BridgeMessage.decode(scriptMessageBody: body) == .ready(protocolVersion: BridgeProtocol.version))
     }
 

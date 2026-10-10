@@ -118,6 +118,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
           bridge={bridge}
           title={page.title}
           focusRequest={page.focusTitleRequest}
+          selectOnFocus={page.selectTitle}
           docId={page.docId}
         />
       </div>
@@ -149,11 +150,13 @@ function TitleField({
   bridge,
   title,
   focusRequest,
+  selectOnFocus,
   docId
 }: {
   bridge: EditorBridge
   title: string
   focusRequest: number
+  selectOnFocus: boolean
   docId: string
 }) {
   const { t } = useTranslation()
@@ -173,7 +176,9 @@ function TitleField({
     if (!focusRequest || !ref.current) return
     const el = ref.current
     el.focus()
-    el.setSelectionRange(el.value.length, el.value.length)
+    if (selectOnFocus) el.select()
+    else el.setSelectionRange(el.value.length, el.value.length)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusRequest])
 
   // New, empty pages start with the caret in the title.

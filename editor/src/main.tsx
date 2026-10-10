@@ -40,6 +40,7 @@ window.hikki = {
   flush: () => bridge.flush(),
   focus: () => bridge.focus(),
   blur: () => bridge.blur(),
+  focusTitle: () => bridge.focusTitle(),
   setLocale: (tag: string) => setLocale(tag)
 }
 

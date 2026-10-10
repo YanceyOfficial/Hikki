@@ -12,6 +12,11 @@ nonisolated enum Route: Hashable, Codable, Sendable {
     }
 }
 
+struct TitleFocusRequest: Equatable {
+    let pageID: String
+    let serial: Int
+}
+
 /// Per-window navigation: browser-style tabs (each with back/forward history) plus the sidebar's
 /// selection and expansion state.
 @Observable
@@ -25,6 +30,8 @@ final class Navigator {
         }
     }
     var isSearching = false
+    /// Bumped by "Rename": the editor selects that page's title once it has loaded it.
+    private(set) var titleFocusRequest: TitleFocusRequest?
     var expanded: Set<String> = []
     /// Sidebar drag state: the page being dragged and where it would land (for the drop indicator).
     var draggingPageID: String?
@@ -42,6 +49,13 @@ final class Navigator {
     func open(_ id: String) {
         reveal(id)
         go(.page(id))
+    }
+
+    /// Opens the page with its title selected for typing (Notion's Rename, done in the editor so the title
+    /// keeps a single write path).
+    func rename(_ id: String) {
+        open(id)
+        titleFocusRequest = TitleFocusRequest(pageID: id, serial: (titleFocusRequest?.serial ?? 0) + 1)
     }
 
     func go(_ route: Route) {
@@ -92,8 +106,11 @@ final class Navigator {
 
     /// Drops trashed pages from every tab's history.
     func prune(existing: (String) -> Bool) {
+        let before = tabs.route
         tabs.prune(fallback: .home) { route in route.pageID.map { !existing($0) } ?? false }
-        syncSelection()
+        // Only when pruning changed the page: re-selecting on every tree change pushed the last page back
+        // onto the iPhone stack while the sidebar was showing (e.g. after Duplicate).
+        if tabs.route != before { syncSelection() }
     }
 
     // MARK: Persistence (scene storage)

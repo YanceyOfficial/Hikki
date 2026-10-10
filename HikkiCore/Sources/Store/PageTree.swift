@@ -32,6 +32,21 @@ public struct PageTree: Equatable, Sendable {
 
     public func page(_ id: String) -> PageSummary? { byId[id] }
 
+    /// "Move to" choices for a page, depth-first in sidebar order with their depth: every page except the
+    /// page itself and its own subtree (it can't move inside itself) and its current parent (a no-op).
+    public func moveTargets(for id: String) -> [(page: PageSummary, depth: Int)] {
+        let parent = byId[id]?.parentId
+        var out: [(page: PageSummary, depth: Int)] = []
+        func walk(_ nodes: [PageNode], _ depth: Int) {
+            for node in nodes where node.id != id {
+                if node.id != parent { out.append((node.page, depth)) }
+                walk(node.children, depth + 1)
+            }
+        }
+        walk(roots, 0)
+        return out
+    }
+
     /// Root → … → the page itself.
     public func path(to id: String) -> [PageSummary] {
         var path: [PageSummary] = []

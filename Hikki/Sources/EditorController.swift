@@ -14,6 +14,8 @@ final class EditorController {
     @ObservationIgnored private var assets: AssetStore?
     @ObservationIgnored private var currentDocumentID: String?
     @ObservationIgnored private var pendingDocumentID: String??
+    /// A page whose title should get focus (selected) as soon as it is the loaded document.
+    @ObservationIgnored private var titleFocusPageID: String?
 
     init() {
         webView = makeWebView()
@@ -27,6 +29,23 @@ final class EditorController {
 
     func open(documentID: String?) {
         Task { await load(documentID) }
+    }
+
+    /// Selects the page title for typing — now if that page is loaded, otherwise right after it loads.
+    func focusTitle(of id: String) {
+        if isReady, currentDocumentID == id, pendingDocumentID == nil {
+            Task { await callFocusTitle() }
+        } else {
+            titleFocusPageID = id
+        }
+    }
+
+    private func callFocusTitle() async {
+        do {
+            _ = try await webView.callAsyncJavaScript("window.hikki.focusTitle()", contentWorld: .page)
+        } catch {
+            Log.warn("focusTitle failed: \(error)", category: "bridge")
+        }
     }
 
     func exec(_ command: EditorCommand) {
@@ -103,6 +122,10 @@ final class EditorController {
                 arguments: ["page": try PagePayload.make(from: record)],
                 contentWorld: .page
             )
+            if titleFocusPageID == id {
+                titleFocusPageID = nil
+                await callFocusTitle()
+            }
         } catch {
             Log.error("load failed: \(error)", category: "bridge", context: ["docId": id])
         }

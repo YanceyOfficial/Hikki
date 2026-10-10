@@ -84,6 +84,35 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(waitOrDumpTree(app.staticTexts["Atlas"].firstMatch, in: app), "renamed workspace not shown")
     }
 
+    #if os(iOS)
+        /// Page context menu (long press on iPhone): Duplicate adds a sibling copy; Rename opens the page with
+        /// the title selected, so typing replaces it.
+        func testPageContextMenuDuplicateAndRename() throws {
+            continueAfterFailure = false
+            let app = launch()
+            createPage(app, title: "Draft")
+            backToSidebarIfNeeded(app)
+            let row = app.buttons["page-row-Draft"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(row, in: app))
+            row.press(forDuration: 1.0)
+            let duplicate = app.buttons["Duplicate"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(duplicate, in: app))
+            duplicate.tap()
+            let rows = app.buttons.matching(identifier: "page-row-Draft")
+            XCTAssertTrue(waitOrDumpTree(rows.element(boundBy: 1), in: app), "no duplicate row")
+
+            app.buttons.matching(identifier: "page-row-Draft").element(boundBy: 0).press(forDuration: 1.0)
+            let rename = app.buttons["Rename"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(rename, in: app))
+            rename.tap()
+            let title = app.webViews.textViews["Page title"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(title, in: app, timeout: 15))
+            sleep(1)
+            title.typeText("Final")
+            XCTAssertEqual(title.value as? String, "Final")
+        }
+    #endif
+
     /// Simplified Chinese end to end: native chrome from the String Catalog, the web editor via setLocale.
     func testSimplifiedChineseUI() throws {
         continueAfterFailure = false

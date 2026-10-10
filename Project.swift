@@ -35,6 +35,8 @@ let project = Project(
                 "CFBundleShortVersionString": "$(MARKETING_VERSION)",
                 "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
                 "UILaunchScreen": [:],
+                // hikki://page/<id> — "Copy link" (HikkiCore/Sources/Store/PageLink.swift).
+                "CFBundleURLTypes": [["CFBundleURLName": "app.yancey.hikki", "CFBundleURLSchemes": ["hikki"]]],
                 "UIApplicationSceneManifest": ["UIApplicationSupportsMultipleScenes": true],
             ]),
             sources: ["Hikki/Sources/**"],

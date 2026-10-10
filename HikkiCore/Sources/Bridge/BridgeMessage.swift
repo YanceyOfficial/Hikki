@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 3
+    public static let version = 4
 }
 
 public struct Snapshot: Codable, Sendable, Equatable {

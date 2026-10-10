@@ -34,6 +34,15 @@ describe('PageHeader', () => {
 
   const load = (patch = {}) => act(() => bridge.loadDocument(page('a', patch)))
 
+  it('focusTitle (native Rename) focuses the title with all of it selected', () => {
+    render(<PageHeader bridge={bridge} />)
+    load({ title: 'Trip to Iceland' })
+    const title = screen.getByLabelText('Page title') as HTMLTextAreaElement
+    act(() => bridge.focusTitle())
+    expect(document.activeElement).toBe(title)
+    expect([title.selectionStart, title.selectionEnd]).toEqual([0, 'Trip to Iceland'.length])
+  })
+
   it('renders the title as an independent field and writes edits back', async () => {
     render(<PageHeader bridge={bridge} />)
     load({ title: 'Plan' })

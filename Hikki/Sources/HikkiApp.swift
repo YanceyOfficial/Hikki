@@ -63,5 +63,14 @@ struct HikkiApp: App {
             .windowToolbarStyle(.unifiedCompact(showsTitle: false))
         #endif
         .commands { AppCommands() }
+        #if os(macOS)
+            // "Open in new window": a window that starts on that page.
+            WindowGroup(id: "page", for: String.self) { $pageID in
+                RootView(initialPageID: pageID).environment(model)
+            }
+            .defaultSize(width: 1180, height: 780)
+            .windowStyle(.hiddenTitleBar)
+            .windowToolbarStyle(.unifiedCompact(showsTitle: false))
+        #endif
     }
 }
