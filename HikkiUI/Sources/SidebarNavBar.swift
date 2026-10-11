@@ -76,15 +76,14 @@ public struct HoverCapsuleStyle: ButtonStyle {
 }
 
 /// Big rounded action at the bottom of the sidebar (Notion's "New chat ⌘O").
-public struct SidebarActionPill: View {
+/// Notion's "Search or ask ⌘K" box at the top of the sidebar: looks like a field, opens search.
+public struct SidebarSearchField: View {
     private let title: LocalizedStringKey
-    private let symbol: Icon
-    private let shortcut: String?
+    private let shortcut: String
     private let action: () -> Void
 
-    public init(_ title: LocalizedStringKey, symbol: Icon, shortcut: String? = nil, action: @escaping () -> Void) {
+    public init(_ title: LocalizedStringKey, shortcut: String, action: @escaping () -> Void) {
         self.title = title
-        self.symbol = symbol
         self.shortcut = shortcut
         self.action = action
     }
@@ -92,25 +91,29 @@ public struct SidebarActionPill: View {
     public var body: some View {
         Button(action: action) {
             HStack(spacing: Spacing.s2) {
-                IconView(symbol, size: TextSize.sm.rawValue)
-                Text(title).font(.hk(.sm, .medium))
-                if let shortcut {
-                    Text(shortcut)
-                        .font(.hk(.x2s, .medium))
-                        .foregroundStyle(Theme.mutedForeground)
-                        .padding(.horizontal, Spacing.s1)
-                        .padding(.vertical, Spacing.s0_5)
-                        .background(Theme.accent, in: .rect(cornerRadius: Radius.sm))
-                }
+                IconView(.magnifyingGlass, size: TextSize.base.rawValue)
+                Text(title).font(.hk(.sm))
+                Spacer(minLength: Spacing.s1)
+                Text(verbatim: shortcut)
+                    .font(.hk(.x2s, .medium))
+                    .padding(.horizontal, Spacing.s1)
+                    .padding(.vertical, Spacing.s0_5)
+                    .background(Theme.accent, in: .rect(cornerRadius: Radius.sm))
             }
-            .foregroundStyle(Theme.foreground)
-            .frame(maxWidth: .infinity)
-            .frame(height: 40)
-            .background(Theme.popover, in: .capsule)
-            .overlay(Capsule().strokeBorder(Theme.border))
-            .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
-            .contentShape(.capsule)
+            .foregroundStyle(Theme.mutedForeground)
+            .padding(.horizontal, Spacing.s2_5)
+            .frame(height: Size.iconButton)
+            .background(Theme.background.opacity(0.6), in: .rect(cornerRadius: Radius.md))
+            .overlay(RoundedRectangle(cornerRadius: Radius.md).strokeBorder(Theme.border))
+            .contentShape(.rect)
         }
-        .buttonStyle(HoverCapsuleStyle())
+        .buttonStyle(.plain)
     }
+}
+
+#Preview("Sidebar search field") {
+    SidebarSearchField("Search", shortcut: "⌘K") {}
+        .padding(Spacing.s3)
+        .frame(width: 280)
+        .background(Theme.sidebar)
 }

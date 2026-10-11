@@ -7,11 +7,13 @@ struct AppCommands: Commands {
     @FocusedValue(\.navigator) private var navigator
 
     var body: some Commands {
-        // Our in-window settings (Notion-style) instead of a separate Settings scene.
-        CommandGroup(replacing: .appSettings) {
-            Button("app:settings.open") { navigator?.isShowingSettings = true }
-                .keyboardShortcut(",")
-        }
+        #if os(iOS)
+            // iPad menu bar: ⌘, opens the settings sheet (macOS has a real Settings scene).
+            CommandGroup(replacing: .appSettings) {
+                Button("app:settings.open") { navigator?.isShowingSettings = true }
+                    .keyboardShortcut(",")
+            }
+        #endif
         CommandGroup(replacing: .newItem) {
             Button("app:page.new") { navigator?.newPage() }
                 .keyboardShortcut("n")

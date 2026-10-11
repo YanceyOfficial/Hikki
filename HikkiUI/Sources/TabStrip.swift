@@ -48,7 +48,7 @@ public struct TabStrip<Leading: View>: View {
         self.leading = leading()
     }
 
-    public static var height: CGFloat { 40 }
+    public static var height: CGFloat { Size.tabBar }
 
     public var body: some View {
         HStack(spacing: Spacing.s1) {
@@ -85,9 +85,9 @@ private struct TabButton: View {
     var body: some View {
         HStack(spacing: Spacing.s1_5) {
             if let symbol = item.symbol {
-                IconView(symbol, size: TextSize.xs.rawValue).foregroundStyle(Theme.subtleForeground)
+                IconView(symbol, size: TextSize.sm.rawValue).foregroundStyle(Theme.subtleForeground)
             } else {
-                PageIcon(item.icon, size: 13)
+                PageIcon(item.icon, size: 15)
             }
             Text(item.title.isEmpty ? String(localized: "app:page.untitled") : item.title)
                 .font(.hk(.md, isActive ? .medium : .regular))
@@ -96,7 +96,7 @@ private struct TabButton: View {
             Spacer(minLength: 0)
             if canClose && (hovering || isActive) {
                 Button(action: onClose) {
-                    IconView(.x, size: TextSize.x2s.rawValue)
+                    IconView(.x, size: TextSize.xs.rawValue)
                         .foregroundStyle(Theme.mutedForeground)
                         .frame(width: 16, height: 16)
                         .contentShape(.rect)

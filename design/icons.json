@@ -3,6 +3,7 @@
   "baseWeight": "regular",
   "strokeBoost": 4,
   "icons": {
+    "caret-up-down": {},
     "sliders-horizontal": {},
     "info": {},
     "gear-six": {},

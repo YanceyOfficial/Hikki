@@ -64,6 +64,10 @@ struct HikkiApp: App {
         #endif
         .commands { AppCommands() }
         #if os(macOS)
+            // The standard Settings window (⌘,), Apple-style tabs.
+            Settings {
+                SettingsView().environment(model)
+            }
             // "Open in new window": a window that starts on that page.
             WindowGroup(id: "page", for: String.self) { $pageID in
                 RootView(initialPageID: pageID).environment(model)

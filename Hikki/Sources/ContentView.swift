@@ -14,33 +14,36 @@ struct ContentView: View {
     @State private var editor = EditorController()
     @State private var navigator = Navigator()
     @State private var columns: NavigationSplitViewVisibility = .all
+    @State private var sidebarVisible = true
+    @AppStorage("sidebarWidth") private var sidebarWidth = Double(Size.sidebarIdeal)
     @State private var chrome = ChromeMetrics()
     @SceneStorage("tabs") private var storedTabs: Data?
+    #if os(macOS)
+        @Environment(\.openSettings) private var openSettings
+    #endif
 
     var body: some View {
         @Bindable var navigator = navigator
-        NavigationSplitView(columnVisibility: $columns) {
-            SidebarView(navigator: navigator, customChrome: customChrome)
-                .navigationSplitViewColumnWidth(
-                    min: Size.sidebarMin, ideal: Size.sidebarIdeal, max: Size.sidebarMax
-                )
-        } detail: {
-            DetailView(
-                navigator: navigator, editor: editor, customChrome: customChrome,
-                sidebarHidden: columns == .detailOnly,
-                toggleSidebar: { withAnimation { columns = columns == .detailOnly ? .all : .detailOnly } })
+        Group {
+            if customChrome {
+                desktopLayout
+            } else {
+                // iPhone (and compact iPad): native stack navigation from a List sidebar.
+                NavigationSplitView(columnVisibility: $columns) {
+                    SidebarView(navigator: navigator, customChrome: false)
+                } detail: {
+                    DetailView(navigator: navigator, editor: editor, customChrome: false)
+                }
+            }
         }
         #if os(macOS)
             .toolbar(removing: .sidebarToggle)
             // Our tab bar / sidebar header replace the window toolbar (see WindowChrome).
             .background(WindowChrome { chrome = $0 })
         #endif
-        .sheet(isPresented: $navigator.isShowingSettings) {
-            SettingsView()
-                #if os(iOS)
-                    .presentationSizing(.page)
-                #endif
-        }
+        #if os(iOS)
+            .sheet(isPresented: $navigator.isShowingSettings) { SettingsView() }
+        #endif
         .sheet(isPresented: customChrome ? .constant(false) : $navigator.isSearching) {
             SearchPalette(navigator: navigator) { navigator.isSearching = false }
         }
@@ -57,6 +60,14 @@ struct ContentView: View {
             #if DEBUG
                 // Screenshot/test hooks: HIKKI_OPEN_TABS=pageA,pageB opens those pages as tabs; HIKKI_OPEN_SEARCH opens ⌘K.
                 if ProcessInfo.processInfo.environment["HIKKI_OPEN_SEARCH"] != nil { navigator.isSearching = true }
+                // HIKKI_OPEN_SETTINGS opens Settings (screenshots).
+                if ProcessInfo.processInfo.environment["HIKKI_OPEN_SETTINGS"] != nil {
+                    #if os(macOS)
+                        openSettings()
+                    #else
+                        navigator.isShowingSettings = true
+                    #endif
+                }
                 // HIKKI_DEBUG_NAV=a,b,c visits those pages one per second (reproduces page-switch bugs).
                 if let ids = ProcessInfo.processInfo.environment["HIKKI_DEBUG_NAV"]?.split(separator: ",") {
                     Task {
@@ -73,9 +84,9 @@ struct ContentView: View {
                             NSApp.activate()  // the bug shows on a key window
                         #endif
                         try? await Task.sleep(for: .seconds(2))
-                        withAnimation { columns = .detailOnly }  // same path as the toolbar button
+                        toggleSidebar()  // same path as the header button
                         try? await Task.sleep(for: .seconds(2))
-                        withAnimation { columns = .all }
+                        toggleSidebar()
                     }
                 }
                 if let ids = ProcessInfo.processInfo.environment["HIKKI_OPEN_TABS"]?.split(separator: ",") {
@@ -110,6 +121,36 @@ struct ContentView: View {
         .tint(Theme.primary)
     }
 
+    // MARK: Mac / iPad
+
+    /// Notion's frame: one header across the whole top (sidebar controls on the left, tabs from the sidebar's
+    /// edge), the sidebar and the page below it. Collapsing the sidebar leaves the header's left controls in
+    /// place next to the traffic lights; only the tabs slide over.
+    private var desktopLayout: some View {
+        VStack(spacing: Spacing.s0) {
+            AppHeader(
+                navigator: navigator, sidebarVisible: sidebarVisible, sidebarWidth: sidebarWidth,
+                toggleSidebar: toggleSidebar)
+            HStack(spacing: Spacing.s0) {
+                if sidebarVisible {
+                    SidebarView(navigator: navigator, customChrome: true)
+                        .frame(width: sidebarWidth)
+                        .overlay(alignment: .trailing) { SidebarResizeHandle(width: $sidebarWidth) }
+                        .transition(.move(edge: .leading))
+                }
+                DetailView(navigator: navigator, editor: editor, customChrome: true)
+            }
+        }
+        .background(Theme.background)
+        #if os(macOS)
+            .ignoresSafeArea(.container, edges: .top)
+        #endif
+    }
+
+    private func toggleSidebar() {
+        withAnimation(.snappy(duration: 0.22)) { sidebarVisible.toggle() }
+    }
+
     /// Notion-style tab bar + page bar instead of the system toolbar (Mac and iPad); iPhone keeps the nav bar.
     private var customChrome: Bool {
         #if os(macOS)
@@ -120,29 +161,22 @@ struct ContentView: View {
     }
 }
 
-/// The detail column: custom chrome (tabs + page bar) above the routed content.
+/// The detail column: the page bar (Mac/iPad) above the routed content.
 private struct DetailView: View {
-    @Environment(AppModel.self) private var model
     let navigator: Navigator
     let editor: EditorController
     let customChrome: Bool
-    let sidebarHidden: Bool
-    let toggleSidebar: () -> Void
-    @Environment(\.chromeMetrics) private var chromeMetrics
 
     var body: some View {
         VStack(spacing: Spacing.s0) {
             if customChrome {
-                tabBar
                 PageBar(route: navigator.route, navigator: navigator)
             }
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Theme.background)
-        #if os(macOS)
-            .ignoresSafeArea(.container, edges: .top)
-        #else
+        #if os(iOS)
             .toolbar(customChrome ? .hidden : .automatic, for: .navigationBar)
         #endif
     }
@@ -157,29 +191,60 @@ private struct DetailView: View {
             HomeView(navigator: navigator)
         }
     }
+}
 
-    private var tabBar: some View {
-        TabStrip(
-            items: navigator.tabs.tabs.map { tab in tabItem(tab.id, tab.route) },
-            activeID: navigator.tabs.activeID,
-            canGoBack: navigator.tabs.active.canGoBack,
-            canGoForward: navigator.tabs.active.canGoForward,
-            onSelect: navigator.selectTab,
-            onClose: { navigator.closeTab($0) },
-            onNew: { navigator.openInNewTab(.home) },
-            onBack: navigator.goBack,
-            onForward: navigator.goForward
-        ) {
-            #if os(macOS)
-                if sidebarHidden { Color.clear.frame(width: max(0, chromeMetrics.leadingInset - Spacing.s2)) }  // traffic lights
-            #endif
-            SidebarIconButton(
-                sidebarHidden ? "app:chrome.showSidebar" : "app:chrome.hideSidebar", symbol: .sidebarSimple, action: toggleSidebar)
+/// The full-width header (Mac/iPad): the sidebar's controls over the sidebar, then back/forward, tabs and
+/// "+" starting at the sidebar's edge. It doubles as the window's title bar (drag to move).
+private struct AppHeader: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.chromeMetrics) private var metrics
+    let navigator: Navigator
+    let sidebarVisible: Bool
+    let sidebarWidth: Double
+    let toggleSidebar: () -> Void
+
+    var body: some View {
+        HStack(spacing: Spacing.s0) {
+            sidebarControls
+                .frame(width: sidebarVisible ? sidebarWidth : nil, alignment: .leading)
+                .frame(maxHeight: .infinity)
+                .background(sidebarVisible ? Theme.sidebar : .clear)
+                .overlay(alignment: .trailing) {
+                    if sidebarVisible { Theme.sidebarBorder.frame(width: 1) }
+                }
+            TabStrip(
+                items: navigator.tabs.tabs.map { tab in tabItem(tab.id, tab.route) },
+                activeID: navigator.tabs.activeID,
+                canGoBack: navigator.tabs.active.canGoBack,
+                canGoForward: navigator.tabs.active.canGoForward,
+                onSelect: navigator.selectTab,
+                onClose: { navigator.closeTab($0) },
+                onNew: { navigator.openInNewTab(.home) },
+                onBack: navigator.goBack,
+                onForward: navigator.goForward
+            )
         }
+        .frame(height: metrics.barHeight)
         .background(Theme.sidebar)
+        .overlay(alignment: .bottom) { Theme.border.frame(height: 1) }
         #if os(macOS)
             .background(WindowDragArea())
         #endif
+    }
+
+    /// Traffic lights (macOS), the sidebar toggle and New page — the same spot whether or not the sidebar
+    /// is open.
+    private var sidebarControls: some View {
+        HStack(spacing: Spacing.s1) {
+            Color.clear.frame(width: max(0, metrics.leadingInset - Spacing.s2))  // traffic lights
+            SidebarIconButton(
+                sidebarVisible ? "app:chrome.hideSidebar" : "app:chrome.showSidebar", symbol: .sidebarSimple,
+                action: toggleSidebar)
+            if sidebarVisible { Spacer(minLength: 0) }
+            SidebarIconButton("app:page.new", symbol: .notePencil) { navigator.newPage() }
+                .accessibilityIdentifier("new-page")
+        }
+        .padding(.horizontal, Spacing.s2)
     }
 
     private func tabItem(_ id: UUID, _ route: Route) -> TabStripItem {
@@ -189,6 +254,32 @@ private struct DetailView: View {
         case .page(let pageID):
             TabStripItem(id: id, title: model.tree.page(pageID)?.title ?? "", icon: model.tree.page(pageID)?.icon)
         }
+    }
+}
+
+/// Drag the sidebar's edge to resize it (clamped to the token range).
+private struct SidebarResizeHandle: View {
+    @Binding var width: Double
+    @State private var start: Double?
+
+    var body: some View {
+        Color.clear
+            .frame(width: Spacing.s1_5)
+            .contentShape(.rect)
+            .gesture(
+                DragGesture(minimumDistance: 1)
+                    .onChanged { value in
+                        let origin = start ?? width
+                        start = origin
+                        width = min(max(origin + value.translation.width, Size.sidebarMin), Size.sidebarMax)
+                    }
+                    .onEnded { _ in start = nil }
+            )
+            #if os(macOS)
+                .onHover { inside in
+                    if inside { NSCursor.columnResize.push() } else { NSCursor.pop() }
+                }
+            #endif
     }
 }
 

@@ -26,7 +26,10 @@ private struct DesktopSidebar: View {
 
     var body: some View {
         VStack(spacing: Spacing.s0) {
-            WorkspaceHeader(navigator: navigator)
+            SidebarSearchField("app:nav.search", shortcut: "⌘K") { navigator.isSearching = true }
+                .accessibilityIdentifier("sidebar-search")
+                .padding(.horizontal, Spacing.s3)
+                .padding(.top, Spacing.s3)
             SidebarNavBar([
                 .init(id: "home", title: String(localized: "app:nav.home"), symbol: .house, isSelected: navigator.route == .home) {
                     navigator.go(.home)
@@ -35,11 +38,10 @@ private struct DesktopSidebar: View {
                     navigator.go(.trash)
                 },
             ]) {
-                BarIconButton("app:nav.searchShortcut", symbol: .magnifyingGlass) { navigator.isSearching = true }
-                    .accessibilityIdentifier("sidebar-search")
+                EmptyView()
             }
             .padding(.horizontal, Spacing.s2)
-            .padding(.top, Spacing.s3)
+            .padding(.top, Spacing.s2)
             .padding(.bottom, Spacing.s1)
             ScrollView {
                 VStack(alignment: .leading, spacing: Spacing.px) {
@@ -66,18 +68,13 @@ private struct DesktopSidebar: View {
             }
             .scrollIndicators(.never)
 
-            SidebarActionPill("app:page.new", symbol: .notePencil, shortcut: "⌘N") { navigator.newPage() }
-                .accessibilityIdentifier("new-page")
-                .padding(Spacing.s3)
+            WorkspaceSwitcher(navigator: navigator)
+                .padding(.horizontal, Spacing.s2)
+                .padding(.vertical, Spacing.s2)
         }
         .background(Theme.sidebar)
-        // Hairline between the sidebar and the page, full height (title bar included).
-        .overlay(alignment: .trailing) { Theme.sidebarBorder.frame(width: 1).ignoresSafeArea() }
-        #if os(macOS)
-            .ignoresSafeArea(.container, edges: .top)
-        #else
-            .toolbar(.hidden, for: .navigationBar)
-        #endif
+        // Hairline between the sidebar and the page (the header draws its own segment above).
+        .overlay(alignment: .trailing) { Theme.sidebarBorder.frame(width: 1) }
     }
 
     private func item(
@@ -267,48 +264,42 @@ private struct SectionTitle<Trailing: View>: View {
 }
 
 /// Top of the sidebar on Mac/iPad: workspace menu next to the traffic lights.
-private struct WorkspaceHeader: View {
+/// Bottom of the sidebar (Notion): the workspace's badge and name; its menu holds Settings and the other
+/// workspace actions.
+private struct WorkspaceSwitcher: View {
     let navigator: Navigator
     @Environment(AppModel.self) private var model
-    @Environment(\.chromeMetrics) private var metrics
     @State private var renaming = false
 
     var body: some View {
-        HStack(spacing: Spacing.s0_5) {
-            Color.clear.frame(width: max(0, metrics.leadingInset - Spacing.s2))  // traffic lights
-            Menu {
-                Button {
-                    navigator.isShowingSettings = true
-                } label: {
-                    IconLabel("app:settings.open", icon: .gearSix)
-                }
-                .accessibilityIdentifier("settings-open")
+        Menu {
+            Section {
+                SettingsMenuItem(navigator: navigator)
                 Button("app:workspace.rename") { renaming = true }
                     .accessibilityIdentifier("workspace-rename")
                 ShareLink("app:workspace.exportLogs", items: model.exportableFiles)
-            } label: {
-                HStack(spacing: Spacing.s2) {
-                    WorkspaceBadge(initial: model.workspace?.initial ?? "H", size: Size.iconButtonSm - Spacing.s0_5)
-                    Text(model.workspace?.name ?? "Hikki")  // l10n: allow (the user's workspace name)
-                        .font(.hk(.sm, .semibold))
-                        .foregroundStyle(Theme.foreground)
-                        .lineLimit(1)
-                    IconView(.caretDown, size: TextSize.x2s.rawValue)
-                        .foregroundStyle(Theme.mutedForeground)
-                }
-                .padding(.horizontal, Spacing.s1_5)
-                .padding(.vertical, Spacing.s1)
-                .contentShape(.rect)
+            } header: {
+                Text(verbatim: model.workspace?.name ?? "Hikki")  // the user's workspace name
             }
-            .menuStyle(.button)
-            .buttonStyle(HoverHighlightStyle())
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .accessibilityIdentifier("workspace-menu")
-            Spacer(minLength: 4)
+        } label: {
+            HStack(spacing: Spacing.s2) {
+                WorkspaceBadge(initial: model.workspace?.initial ?? "H", size: Size.iconButtonSm)
+                Text(verbatim: model.workspace?.name ?? "Hikki")  // the user's workspace name
+                    .font(.hk(.sm, .medium))
+                    .foregroundStyle(Theme.foreground)
+                    .lineLimit(1)
+                IconView(.caretUpDown, size: TextSize.xs.rawValue)
+                    .foregroundStyle(Theme.mutedForeground)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, Spacing.s2)
+            .frame(height: Size.iconButton + Spacing.s1)
+            .contentShape(.rect)
         }
-        .padding(.horizontal, Spacing.s2)
-        .frame(height: metrics.barHeight)
+        .menuStyle(.button)
+        .buttonStyle(HoverHighlightStyle())
+        .menuIndicator(.hidden)
+        .accessibilityIdentifier("workspace-menu")
         .renameWorkspaceAlert(isPresented: $renaming)
     }
 }
@@ -391,12 +382,7 @@ private struct PhoneSidebar: View {
                 .accessibilityIdentifier("new-page")
                 // The workspace menu (iPhone has no sidebar header).
                 Menu {
-                    Button {
-                        navigator.isShowingSettings = true
-                    } label: {
-                        IconLabel("app:settings.open", icon: .gearSix)
-                    }
-                    .accessibilityIdentifier("settings-open")
+                    SettingsMenuItem(navigator: navigator)
                     Button("app:workspace.rename") { renaming = true }
                         .accessibilityIdentifier("workspace-rename")
                     ShareLink("app:workspace.exportLogs", items: model.exportableFiles)
@@ -586,5 +572,26 @@ private struct RenameWorkspaceAlert: ViewModifier {
 extension View {
     fileprivate func renameWorkspaceAlert(isPresented: Binding<Bool>) -> some View {
         modifier(RenameWorkspaceAlert(isPresented: isPresented))
+    }
+}
+
+/// "Settings…" in the workspace menus: the Settings window on macOS, the settings sheet on iOS.
+private struct SettingsMenuItem: View {
+    let navigator: Navigator
+    #if os(macOS)
+        @Environment(\.openSettings) private var openSettings
+    #endif
+
+    var body: some View {
+        Button {
+            #if os(macOS)
+                openSettings()
+            #else
+                navigator.isShowingSettings = true
+            #endif
+        } label: {
+            IconLabel("app:settings.open", icon: .gearSix)
+        }
+        .accessibilityIdentifier("settings-open")
     }
 }

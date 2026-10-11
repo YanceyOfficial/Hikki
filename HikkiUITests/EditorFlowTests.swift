@@ -113,7 +113,7 @@ final class EditorFlowTests: XCTestCase {
         }
     #endif
 
-    /// Workspace menu → Settings → General: renaming there updates the sidebar. Screenshots each pane.
+    /// Workspace menu → Settings: renaming the workspace there updates the sidebar.
     func testSettingsRenamesWorkspace() throws {
         continueAfterFailure = false
         let app = launch(workspace: "Old Name")
@@ -126,22 +126,12 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(waitOrDumpTree(open, in: app))
         open.tap()
 
-        let preferences = app.buttons["settings-pane-preferences"].firstMatch
-        XCTAssertTrue(waitOrDumpTree(preferences, in: app))
-        if app.buttons["settings-theme"].waitForExistence(timeout: 2) { attachScreenshot(app, "settings-preferences") }
-        let general = app.buttons["settings-pane-general"].firstMatch
-        general.tap()
         let name = app.textFields["settings-name"].firstMatch
         XCTAssertTrue(waitOrDumpTree(name, in: app))
-        attachScreenshot(app, "settings-general")
-        name.tap()
+        attachScreenshot(app, "settings")
+        // The field is trailing-aligned: tap its right edge so the caret lands after the text.
+        name.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()
         name.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 10) + "Atlas\n")
-        let about = app.buttons["settings-pane-about"].firstMatch
-        if !about.waitForExistence(timeout: 1) { app.navigationBars.buttons.element(boundBy: 0).tap() }  // iPhone: back to the list
-        XCTAssertTrue(waitOrDumpTree(about, in: app))
-        about.tap()
-        attachScreenshot(app, "settings-about")
-        if !app.buttons["settings-close"].isHittable { app.navigationBars.buttons.element(boundBy: 0).tap() }
         app.buttons["settings-close"].firstMatch.tap()
         XCTAssertTrue(waitOrDumpTree(app.staticTexts["Atlas"].firstMatch, in: app), "renamed workspace not shown")
     }

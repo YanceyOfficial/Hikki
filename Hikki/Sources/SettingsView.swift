@@ -2,7 +2,7 @@ import HikkiCore
 import HikkiUI
 import SwiftUI
 
-/// Device-level appearance choice (Settings → Preferences → Theme), applied at the root of each window.
+/// Device-level appearance choice (Settings → Appearance → Theme), applied at the root of each window.
 enum AppearancePreference: String, CaseIterable, Identifiable {
     case system, light, dark
 
@@ -27,126 +27,70 @@ enum AppearancePreference: String, CaseIterable, Identifiable {
     }
 }
 
-/// Notion-style settings: a section list on the left and the chosen pane on the right (Mac/iPad); a
-/// navigation list on iPhone.
+/// Settings in Apple's own style: native grouped forms. macOS gets a Settings window with toolbar tabs
+/// (like Safari or Notes, opened with ⌘,); iPhone and iPad get an inset-grouped form in a sheet.
 struct SettingsView: View {
-    enum Pane: String, CaseIterable, Identifiable {
-        case preferences, general, about
-        var id: String { rawValue }
-
-        var title: LocalizedStringKey {
-            switch self {
-            case .preferences: "app:settings.preferences"
-            case .general: "app:settings.general"
-            case .about: "app:settings.about"
-            }
-        }
-
-        var subtitle: LocalizedStringKey {
-            switch self {
-            case .preferences: "app:settings.preferences.subtitle"
-            case .general: "app:settings.general.subtitle"
-            case .about: "app:settings.about.subtitle"
-            }
-        }
-
-        var icon: Icon {
-            switch self {
-            case .preferences: .slidersHorizontal
-            case .general: .buildings
-            case .about: .info
-            }
-        }
-    }
-
-    @Environment(\.dismiss) private var dismiss
-    @State private var pane: Pane = .preferences
+    @AppStorage(AppearancePreference.storageKey) private var appearance = AppearancePreference.system
 
     var body: some View {
-        // By device, not size class: an iPad sheet reports a compact width but has room for two columns.
-        #if os(iOS)
-            if UIDevice.current.userInterfaceIdiom == .phone { compact } else { regular }
-        #else
-            regular
-        #endif
+        content.preferredColorScheme(appearance.colorScheme)
     }
 
-    // MARK: Mac / iPad
-
-    private var regular: some View {
-        HStack(spacing: Spacing.s0) {
-            VStack(alignment: .leading, spacing: Spacing.s0_5) {
-                group("app:settings.group.app", panes: [.preferences])
-                group("app:settings.group.workspace", panes: [.general])
-                group("app:settings.group.hikki", panes: [.about])
-                Spacer()
-            }
-            .padding(.vertical, Spacing.s4)
-            .frame(width: Size.sidebarMin)
-            .background(Theme.sidebar)
-            .overlay(alignment: .trailing) { Theme.sidebarBorder.frame(width: 1) }
-
-            ScrollView {
-                PaneView(pane: pane)
-                    .padding(.horizontal, Spacing.s12)
-                    .padding(.vertical, Spacing.s10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .background(Theme.background)
-            .overlay(alignment: .topTrailing) {
-                Button {
-                    dismiss()
-                } label: {
-                    IconView(.x, size: TextSize.base.rawValue).foregroundStyle(Theme.mutedForeground)
-                        .frame(width: Size.iconButton, height: Size.iconButton)
-                        .contentShape(.rect)
-                }
-                .buttonStyle(.plain)
-                .keyboardShortcut(.cancelAction)
-                .accessibilityLabel(Text("app:settings.close"))
-                .accessibilityIdentifier("settings-close")
-                .padding(Spacing.s3)
-            }
-        }
-        #if os(macOS)
-            .frame(minWidth: 820, idealWidth: 920, minHeight: 560, idealHeight: 640)  // design-lint: allow (window size)
-        #endif
-    }
-
-    private func group(_ title: LocalizedStringKey, panes: [Pane]) -> some View {
-        VStack(alignment: .leading, spacing: Spacing.s0_5) {
-            Text(title)
-                .font(.hk(.xs, .medium))
-                .foregroundStyle(Theme.mutedForeground)
-                .padding(.horizontal, Spacing.s3_5)
-                .padding(.top, Spacing.s3)
-                .padding(.bottom, Spacing.s1)
-            ForEach(panes) { item in
-                SettingsNavItem(item.title, icon: item.icon, isSelected: pane == item) { pane = item }
-                    .accessibilityIdentifier("settings-pane-\(item.rawValue)")
-            }
-        }
-    }
-
-    // MARK: iPhone
-
-    #if os(iOS)
-        private var compact: some View {
-            NavigationStack {
-                List(Pane.allCases) { item in
-                    NavigationLink {
-                        ScrollView { PaneView(pane: item).padding(Spacing.s5) }
-                            .background(Theme.background)
-                            .navigationBarTitleDisplayMode(.inline)
-                    } label: {
-                        IconLabel(item.title, icon: item.icon)
+    #if os(macOS)
+        private var content: some View {
+            TabView {
+                Tab {
+                    Form {
+                        WorkspaceSection()
+                        LanguageSection()
                     }
-                    .accessibilityIdentifier("settings-pane-\(item.rawValue)")
+                    .formStyle(.grouped)
+                } label: {
+                    Label {
+                        Text("app:settings.general")
+                    } icon: {
+                        Icon.gearSix.image
+                    }
+                }
+                Tab {
+                    Form { AppearanceSection() }.formStyle(.grouped)
+                } label: {
+                    Label {
+                        Text("app:settings.appearance")
+                    } icon: {
+                        Icon.slidersHorizontal.image
+                    }
+                }
+                Tab {
+                    Form { AboutSection() }.formStyle(.grouped)
+                } label: {
+                    Label {
+                        Text("app:settings.about")
+                    } icon: {
+                        Icon.info.image
+                    }
+                }
+            }
+            .scenePadding()
+            .frame(width: 520)  // design-lint: allow (Settings window width, like Apple's apps)
+            .frame(minHeight: 280)  // design-lint: allow
+        }
+    #else
+        @Environment(\.dismiss) private var dismiss
+
+        private var content: some View {
+            NavigationStack {
+                Form {
+                    WorkspaceSection()
+                    AppearanceSection()
+                    LanguageSection()
+                    AboutSection()
                 }
                 .navigationTitle(Text("app:settings.title"))
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("app:settings.close") { dismiss() }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("app:settings.done") { dismiss() }
                             .accessibilityIdentifier("settings-close")
                     }
                 }
@@ -155,47 +99,76 @@ struct SettingsView: View {
     #endif
 }
 
-/// One settings pane: title, subtitle and its sections.
-private struct PaneView: View {
-    let pane: SettingsView.Pane
+// MARK: - Sections
+
+private struct WorkspaceSection: View {
+    @Environment(AppModel.self) private var model
+    @State private var name = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.s10) {
-            VStack(alignment: .leading, spacing: Spacing.s2) {
-                Text(pane.title).font(.hk(.x3l, .bold)).foregroundStyle(Theme.foreground)
-                Text(pane.subtitle).font(.hk(.sm)).foregroundStyle(Theme.mutedForeground)
+        Section {
+            LabeledContent("app:settings.name") {
+                TextField("app:onboarding.name.placeholder", text: $name)
+                    .multilineTextAlignment(.trailing)
+                    .labelsHidden()
+                    .onSubmit { model.renameWorkspace(name) }
+                    .accessibilityIdentifier("settings-name")
             }
-            switch pane {
-            case .preferences: PreferencesPane()
-            case .general: GeneralPane()
-            case .about: AboutPane()
+            LabeledContent("app:settings.storage") {
+                storage
             }
+        } header: {
+            Text("app:settings.group.workspace")
+        }
+        .onAppear { name = model.workspace?.name ?? "" }
+        // Saved when Settings closes too, not only on Return.
+        .onDisappear { model.renameWorkspace(name) }
+        .onChange(of: model.workspace?.name) { _, current in
+            if let current, current != name { name = current }
+        }
+    }
+
+    @ViewBuilder private var storage: some View {
+        switch model.workspace?.location {
+        case .folder(_, let displayName): Text(verbatim: displayName)  // the folder path, as-is
+        default: Text("app:onboarding.location.device")
         }
     }
 }
 
-private struct PreferencesPane: View {
+private struct AppearanceSection: View {
     @AppStorage(AppearancePreference.storageKey) private var appearance = AppearancePreference.system
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.s10) {
-            SettingsSection("app:settings.appearance") {
-                SettingsRow("app:settings.theme", detail: "app:settings.theme.detail") {
-                    Picker("app:settings.theme", selection: $appearance) {
-                        ForEach(AppearancePreference.allCases) { Text($0.title).tag($0) }
-                    }
-                    .labelsHidden()
-                    .fixedSize()
-                    .accessibilityIdentifier("settings-theme")
-                }
+        Section {
+            Picker("app:settings.theme", selection: $appearance) {
+                ForEach(AppearancePreference.allCases) { Text($0.title).tag($0) }
             }
-            SettingsSection("app:settings.languageSection") {
-                SettingsRow("app:settings.language", detail: "app:settings.language.detail") {
-                    Button("app:settings.language.open", action: openLanguageSettings)
-                        .buttonStyle(.hikki(.outline))
-                }
-            }
+            .accessibilityIdentifier("settings-theme")
+        } header: {
+            Text("app:settings.appearance")
+        } footer: {
+            Text("app:settings.theme.detail")
         }
+    }
+}
+
+private struct LanguageSection: View {
+    var body: some View {
+        Section {
+            LabeledContent("app:settings.language") {
+                Text(verbatim: Self.currentLanguage)
+            }
+            Button("app:settings.language.open", action: openLanguageSettings)
+        } footer: {
+            Text("app:settings.language.detail")
+        }
+    }
+
+    /// The language the app is running in, named in that language (e.g. "English", "简体中文").
+    private static var currentLanguage: String {
+        let code = Bundle.main.preferredLocalizations.first ?? "en"
+        return Locale(identifier: code).localizedString(forIdentifier: code)?.localizedCapitalized ?? code
     }
 
     /// In-app language switching would need a relaunch; the system's per-app language setting is the
@@ -211,52 +184,19 @@ private struct PreferencesPane: View {
     }
 }
 
-private struct GeneralPane: View {
-    @Environment(AppModel.self) private var model
-    @State private var name = ""
-
-    var body: some View {
-        SettingsSection("app:settings.group.workspace") {
-            SettingsRow("app:settings.name", detail: "app:settings.name.detail") {
-                HStack(spacing: Spacing.s2) {
-                    WorkspaceBadge(initial: Workspace(name: name, location: .device).initial)
-                    TextField("app:onboarding.name.placeholder", text: $name)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 220)  // design-lint: allow (field width)
-                        .onSubmit { model.renameWorkspace(name) }
-                        .accessibilityIdentifier("settings-name")
-                }
-            }
-            SettingsRow("app:settings.storage", detail: storageDetail) {
-                EmptyView()
-            }
-        }
-        .onAppear { name = model.workspace?.name ?? "" }
-        // Saved when leaving the pane too, not only on Return.
-        .onDisappear { model.renameWorkspace(name) }
-    }
-
-    private var storageDetail: LocalizedStringKey {
-        switch model.workspace?.location {
-        case .folder(_, let displayName): "app:settings.storage.folder \(displayName)"
-        default: "app:onboarding.location.device"
-        }
-    }
-}
-
-private struct AboutPane: View {
+private struct AboutSection: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        SettingsSection("app:settings.about") {
-            SettingsRow("app:settings.version") {
-                Text(verbatim: Self.version).font(.hk(.sm)).foregroundStyle(Theme.mutedForeground)
-                    .textSelection(.enabled)
+        Section {
+            LabeledContent("app:settings.version") {
+                Text(verbatim: Self.version).textSelection(.enabled)
             }
-            SettingsRow("app:settings.logs", detail: "app:settings.logs.detail") {
-                ShareLink("app:workspace.exportLogs", items: model.exportableFiles)
-                    .buttonStyle(.hikki(.outline))
-            }
+            ShareLink("app:workspace.exportLogs", items: model.exportableFiles)
+        } header: {
+            Text("app:settings.about")
+        } footer: {
+            Text("app:settings.logs.detail")
         }
     }
 

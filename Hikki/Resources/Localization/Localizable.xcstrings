@@ -562,23 +562,6 @@
         }
       }
     },
-    "app:nav.searchShortcut": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Search (⌘K)"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "搜索 (⌘K)"
-          }
-        }
-      }
-    },
     "app:nav.trash": {
       "extractionState": "manual",
       "localizations": {
@@ -1412,23 +1395,6 @@
         }
       }
     },
-    "app:settings.about.subtitle": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Version and diagnostics."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "版本与诊断信息。"
-          }
-        }
-      }
-    },
     "app:settings.appearance": {
       "extractionState": "manual",
       "localizations": {
@@ -1446,19 +1412,19 @@
         }
       }
     },
-    "app:settings.close": {
+    "app:settings.done": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Close"
+            "value": "Done"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "关闭"
+            "value": "完成"
           }
         }
       }
@@ -1476,57 +1442,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "通用"
-          }
-        }
-      }
-    },
-    "app:settings.general.subtitle": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your workspace's name and where it lives."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "工作区的名称与存储位置。"
-          }
-        }
-      }
-    },
-    "app:settings.group.app": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "App"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "应用"
-          }
-        }
-      }
-    },
-    "app:settings.group.hikki": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hikki"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hikki"
           }
         }
       }
@@ -1599,40 +1514,6 @@
         }
       }
     },
-    "app:settings.languageSection": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Language & region"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "语言与地区"
-          }
-        }
-      }
-    },
-    "app:settings.logs": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Diagnostic logs"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "诊断日志"
-          }
-        }
-      }
-    },
     "app:settings.logs.detail": {
       "extractionState": "manual",
       "localizations": {
@@ -1667,23 +1548,6 @@
         }
       }
     },
-    "app:settings.name.detail": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shown at the top of the sidebar"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "显示在侧边栏顶部"
-          }
-        }
-      }
-    },
     "app:settings.open": {
       "extractionState": "manual",
       "localizations": {
@@ -1701,40 +1565,6 @@
         }
       }
     },
-    "app:settings.preferences": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Preferences"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "偏好设置"
-          }
-        }
-      }
-    },
-    "app:settings.preferences.subtitle": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose how Hikki looks and behaves on this device."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "选择 Hikki 在此设备上的外观与行为。"
-          }
-        }
-      }
-    },
     "app:settings.storage": {
       "extractionState": "manual",
       "localizations": {
@@ -1748,23 +1578,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "存储位置"
-          }
-        }
-      }
-    },
-    "app:settings.storage.folder %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Folder: %@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "文件夹：%@"
           }
         }
       }

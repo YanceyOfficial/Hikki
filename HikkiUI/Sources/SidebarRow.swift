@@ -111,7 +111,7 @@ public struct SidebarIconButton: View {
 
     public var body: some View {
         Button(action: action) {
-            IconLabel(title, icon: symbol, size: TextSize.sm.rawValue)
+            IconLabel(title, icon: symbol, size: TextSize.base.rawValue)
                 .labelStyle(.iconOnly)
                 .foregroundStyle(Theme.mutedForeground)
                 .frame(width: 22, height: 22)

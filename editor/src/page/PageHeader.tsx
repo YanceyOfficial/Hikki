@@ -101,7 +101,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
               ref={setIconAnchor}
               onClick={() => bridge.setIcon(randomIcon())}
             >
-              <Smiley size={16} aria-hidden /> {t('page.addIcon')}
+              <Smiley size={18} aria-hidden /> {t('page.addIcon')}
             </button>
           )}
           {!background && (
@@ -110,7 +110,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
               className={ui.ghost}
               onClick={() => bridge.setCover(randomGradient())}
             >
-              <ImageIcon size={16} aria-hidden /> {t('page.addCover')}
+              <ImageIcon size={18} aria-hidden /> {t('page.addCover')}
             </button>
           )}
         </div>

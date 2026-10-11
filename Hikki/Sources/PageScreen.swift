@@ -99,7 +99,7 @@ struct PageMoreMenu: View {
             Divider()
             Text("app:page.edited \(page.updatedAt, format: .relative(presentation: .named))")
         } label: {
-            IconView(.dotsThree, size: TextSize.sm.rawValue)
+            IconView(.dotsThree, size: TextSize.base.rawValue)
                 .foregroundStyle(Theme.subtleForeground)
                 .frame(width: 28, height: 28)
                 .contentShape(.rect)

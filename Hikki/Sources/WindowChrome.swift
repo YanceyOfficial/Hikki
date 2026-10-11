@@ -97,7 +97,7 @@
             /// Native routes were tried and rejected: keeping SwiftUI's toolbar covered our tab strip,
             /// swapping in our own toolbar crashed (SwiftUI and AppKit fought over it), and a titlebar
             /// accessory covered the tab strip too.
-            static let barHeight: CGFloat = 46
+            static let barHeight: CGFloat = Size.tabBar
 
             static func configure(_ window: NSWindow) {
                 if !window.titlebarAppearsTransparent { window.titlebarAppearsTransparent = true }

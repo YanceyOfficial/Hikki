@@ -96,7 +96,7 @@ public nonisolated enum Size {
     public static let sidebarIdeal: CGFloat = 280
     public static let sidebarMax: CGFloat = 400
     public static let row: CGFloat = 31
-    public static let tabBar: CGFloat = 40
+    public static let tabBar: CGFloat = 38
     public static let pageBar: CGFloat = 44
     public static let column: CGFloat = 708
     public static let iconButton: CGFloat = 28
