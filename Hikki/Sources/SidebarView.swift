@@ -320,13 +320,16 @@ private struct PhoneSidebar: View {
         // recolour at runtime. Rows are buttons with a grey pill instead, icons in the colour tone (Apple Music).
         List(selection: wideSidebar ? .constant(nil) : $navigator.sidebarSelection) {
             Section {
-                Button {
-                    navigator.isSearching = true
-                } label: {
-                    NativeSymbolLabel("app:nav.search", icon: .magnifyingGlass)
+                // Mac/iPad: search is the glass field pinned above the list (NativeSidebarChrome).
+                if !wideSidebar {
+                    Button {
+                        navigator.isSearching = true
+                    } label: {
+                        NativeSymbolLabel("app:nav.search", icon: .magnifyingGlass)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("sidebar-search")
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("sidebar-search")
                 SidebarDestination(route: .home, navigator: navigator, wide: wideSidebar) {
                     NativeSymbolLabel("app:nav.home", icon: .house)
                 }
@@ -712,6 +715,12 @@ private struct NativeSidebarChrome: ViewModifier {
     func body(content: Content) -> some View {
         if isWide {
             content
+                .safeAreaInset(edge: .top) {
+                    GlassSearchField("app:nav.search", shortcut: "⌘K") { navigator.isSearching = true }
+                        .accessibilityIdentifier("sidebar-search")
+                        .padding(.horizontal, Spacing.s3)
+                        .padding(.bottom, Spacing.s1)
+                }
                 .safeAreaInset(edge: .bottom) {
                     WorkspaceSwitcher(navigator: navigator)
                         .padding(.horizontal, Spacing.s2)

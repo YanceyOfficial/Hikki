@@ -107,6 +107,37 @@ public struct SidebarFooterLabel<Badge: View>: View {
     }
 }
 
+/// A search "field" in Liquid Glass that opens search when clicked (no typing in place) — Apple Music's
+/// sidebar search, for a native sidebar.
+public struct GlassSearchField: View {
+    private let title: LocalizedStringKey
+    private let shortcut: String
+    private let action: () -> Void
+
+    public init(_ title: LocalizedStringKey, shortcut: String, action: @escaping () -> Void) {
+        self.title = title
+        self.shortcut = shortcut
+        self.action = action
+    }
+
+    public var body: some View {
+        Button(action: action) {
+            HStack(spacing: Spacing.s2) {
+                IconView(.magnifyingGlass, size: TextSize.base.rawValue)
+                Text(title)
+                Spacer(minLength: Spacing.s1)
+                Text(verbatim: shortcut).font(.hk(.xs, .medium))
+            }
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, Spacing.s3)
+            .frame(height: Size.searchField)
+            .contentShape(.capsule)
+        }
+        .buttonStyle(.plain)
+        .glassEffect(.regular.interactive(), in: .capsule)
+    }
+}
+
 /// Notion's "Search or ask ⌘K" box at the top of the sidebar: looks like a field, opens search.
 public struct SidebarSearchField: View {
     private let title: LocalizedStringKey
@@ -144,6 +175,7 @@ public struct SidebarSearchField: View {
 
 #Preview("Sidebar search field + footer") {
     VStack(spacing: Spacing.s4) {
+        GlassSearchField("Search", shortcut: "⌘K") {}
         SidebarSearchField("Search", shortcut: "⌘K") {}
         Button {
         } label: {
