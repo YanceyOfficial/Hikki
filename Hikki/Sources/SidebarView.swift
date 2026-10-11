@@ -472,6 +472,7 @@ private struct SidebarDestination<Label: View>: View {
     var reservesChevron = true
     @ViewBuilder let label: Label
     @Environment(\.colorTone) private var colorTone
+    @Environment(\.self) private var environment
 
     var body: some View {
         if wide {
@@ -481,7 +482,10 @@ private struct SidebarDestination<Label: View>: View {
             } label: {
                 label
                     .padding(.leading, reservesChevron ? Spacing.s3_5 : 0)
+                    // A little taller than the system default (~32pt rows, like Apple Music).
+                    .padding(.vertical, Spacing.s1)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, Spacing.s2)
                     .contentShape(.rect)
                     // On the tone's fill: title and symbol switch to its on-fill colour.
                     .environment(\.sidebarRowSelected, selected)
@@ -492,11 +496,13 @@ private struct SidebarDestination<Label: View>: View {
             // The selection in the colour tone, drawn behind the row's content and flat: as a list row
             // background the sidebar rendered it raised, with a shadow.
             .background {
+                // Resolved to a concrete colour: the tone's dynamic (light/dark) colour got the active sidebar's
+                // vibrancy — a lighter band on top, like a raised button. A resolved colour draws flat.
                 RoundedRectangle(cornerRadius: Radius.lg)
-                    .fill(selected ? colorTone.fill : .clear)
-                    .padding(.horizontal, -Spacing.s2)
-                    .padding(.vertical, -Spacing.s1)
+                    .fill(selected ? Color(colorTone.fill.resolve(in: environment)) : .clear)
             }
+            // The padding moved inside the button for the pill; pull it back so content keeps its place.
+            .padding(.horizontal, -Spacing.s2)
             .listRowBackground(Color.clear)
             .accessibilityAddTraits(selected ? .isSelected : [])
         } else {
