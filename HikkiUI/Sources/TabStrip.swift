@@ -103,21 +103,22 @@ private struct TabButton: View {
                 Button(action: onClose) {
                     IconView(.x, size: TextSize.xs.rawValue)
                         .foregroundStyle(Theme.mutedForeground)
-                        .frame(width: 16, height: 16)
-                        .contentShape(.rect)
+                        .frame(width: 18, height: 18)
+                        .contentShape(.circle)
                 }
-                .buttonStyle(HoverHighlightStyle())
+                .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.full))
                 .accessibilityLabel("app:tabs.close")
             }
         }
-        .padding(.horizontal, Spacing.s2_5)
+        .padding(.horizontal, Spacing.s3)
         .frame(minWidth: 60, idealWidth: 200, maxWidth: 220, minHeight: 30, maxHeight: 30)
+        // Capsules inside the toolbar's glass capsule, like a segmented control (App Store's sidebar).
         .background(
-            RoundedRectangle(cornerRadius: Radius.lg)
+            Capsule()
                 .fill(isActive ? Theme.background : hovering ? Theme.accent : .clear)
                 .shadow(color: isActive ? .black.opacity(0.08) : .clear, radius: 1, y: 0.5)
         )
-        .contentShape(.rect)
+        .contentShape(.capsule)
         .onTapGesture(perform: onSelect)
         .onHover { hovering = $0 }
         .accessibilityElement(children: .combine)

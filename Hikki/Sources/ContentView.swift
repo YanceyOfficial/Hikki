@@ -197,11 +197,17 @@ private struct NativeDetailToolbar: ToolbarContent {
     // Photos' toolbar: each group is its own Liquid Glass capsule — back/forward, the tabs, the page's
     // actions. (Search lives in the sidebar's glass field.)
     var body: some ToolbarContent {
-        ToolbarItemGroup(placement: .navigation) {
-            Button(action: navigator.goBack) { IconLabel("app:chrome.back", icon: .caretLeft) }
-                .disabled(!navigator.tabs.active.canGoBack)
-            Button(action: navigator.goForward) { IconLabel("app:chrome.forward", icon: .caretRight) }
-                .disabled(!navigator.tabs.active.canGoForward)
+        ToolbarItem(placement: .navigation) {
+            // One control with a divider between the two (‹ | ›), as in Finder/Safari.
+            ControlGroup {
+                Button(action: navigator.goBack) { IconLabel("app:chrome.back", icon: .caretLeft) }
+                    .disabled(!navigator.tabs.active.canGoBack)
+                Button(action: navigator.goForward) { IconLabel("app:chrome.forward", icon: .caretRight) }
+                    .disabled(!navigator.tabs.active.canGoForward)
+            }
+            #if os(macOS)
+                .controlGroupStyle(.navigation)
+            #endif
         }
         ToolbarItem(placement: .principal) {
             TabStrip(

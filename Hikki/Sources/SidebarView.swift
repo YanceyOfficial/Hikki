@@ -415,22 +415,39 @@ private struct PhoneTree: View {
 
     var body: some View {
         ForEach(nodes) { node in
-            if node.children.isEmpty {
-                row(node)
+            if wide {
+                // Mac/iPad: our own chevron inside the row, so it can turn white on the tone-filled selection
+                // (the system disclosure triangle can't be recoloured); children follow as their own rows.
+                row(node, chevron: node.children.isEmpty ? nil : expansion(node.id))
+                if !node.children.isEmpty, navigator.expanded.contains(node.id) {
+                    PhoneTree(nodes: node.children, depth: depth + 1, navigator: navigator, wide: wide)
+                }
+            } else if node.children.isEmpty {
+                row(node, chevron: nil)
             } else {
-                // The system disclosure triangle for subpages.
+                // iPhone: the system disclosure triangle for subpages.
                 DisclosureGroup(isExpanded: expansion(node.id)) {
                     PhoneTree(nodes: node.children, depth: depth + 1, navigator: navigator, wide: wide)
                 } label: {
-                    row(node)
+                    row(node, chevron: nil)
                 }
             }
         }
     }
 
-    private func row(_ node: PageNode) -> some View {
-        SidebarDestination(route: .page(node.id), navigator: navigator, wide: wide) {
-            NativePageLabel(page: node.page)
+    private func row(_ node: PageNode, chevron: Binding<Bool>?) -> some View {
+        SidebarDestination(route: .page(node.id), navigator: navigator, wide: wide, reservesChevron: false) {
+            if wide {
+                // The chevron's slot comes first; other rows reserve the same slot (SidebarDestination), so every
+                // icon lines up and the chevron stays inside the selection.
+                HStack(spacing: Spacing.s0) {
+                    DisclosureChevron(isExpanded: chevron)
+                    NativePageLabel(page: node.page)
+                }
+                .padding(.leading, CGFloat(depth) * Spacing.s3_5)
+            } else {
+                NativePageLabel(page: node.page)
+            }
         }
         .contextMenu { PageActions(page: node.page, navigator: navigator) }
         .accessibilityIdentifier("page-row-\(node.page.title)")
@@ -451,6 +468,8 @@ private struct SidebarDestination<Label: View>: View {
     let navigator: Navigator
     let wide: Bool
     var showsSelection = true
+    /// Rows without their own chevron leave its slot empty, so icons line up with tree rows.
+    var reservesChevron = true
     @ViewBuilder let label: Label
     @Environment(\.colorTone) private var colorTone
 
@@ -461,6 +480,7 @@ private struct SidebarDestination<Label: View>: View {
                 if let id = route.pageID { navigator.open(id) } else { navigator.go(route) }
             } label: {
                 label
+                    .padding(.leading, reservesChevron ? Spacing.s3_5 : 0)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(.rect)
                     // On the tone's fill: title and symbol switch to its on-fill colour.
@@ -478,6 +498,34 @@ private struct SidebarDestination<Label: View>: View {
             .accessibilityAddTraits(selected ? .isSelected : [])
         } else {
             NavigationLink(value: route) { label }
+        }
+    }
+}
+
+/// The expand/collapse chevron of a native sidebar row (Mac/iPad). Every page row reserves its slot so icons
+/// line up, as with the system triangle; it takes the row's colour (white on the selection).
+private struct DisclosureChevron: View {
+    let isExpanded: Binding<Bool>?
+    @Environment(\.sidebarRowSelected) private var selected
+    @Environment(\.colorTone) private var colorTone
+
+    var body: some View {
+        Group {
+            if let isExpanded {
+                Button {
+                    withAnimation(.snappy(duration: 0.2)) { isExpanded.wrappedValue.toggle() }
+                } label: {
+                    IconView(.caretRight, size: TextSize.xs.rawValue)
+                        .rotationEffect(.degrees(isExpanded.wrappedValue ? 90 : 0))
+                        .foregroundStyle(selected ? AnyShapeStyle(colorTone.onFill) : AnyShapeStyle(.secondary))
+                        .frame(width: Spacing.s3_5, height: Size.iconButtonSm)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(isExpanded.wrappedValue ? "app:sidebar.collapse" : "app:sidebar.expand")
+            } else {
+                Color.clear.frame(width: Spacing.s3_5, height: Size.iconButtonSm)
+            }
         }
     }
 }
