@@ -114,4 +114,8 @@ HikkiUITests/                 XCUITest flows
 - **Demo recordings** (macOS): `HikkiUITests/UnsplashDemoRecording.swift` drives a flow at a watchable pace when run
   with `TEST_RUNNER_HIKKI_RECORD=1`; record with `screencapture -v -V <s>` meanwhile. UI tests paste text rather than
   type it on macOS when spaces matter — synthesized keys go through the active input method (a Chinese IME eats them).
+- **Appearance** (Settings → Theme) is applied app-wide (`NSApp.appearance` / window `overrideUserInterfaceStyle`),
+  not with `preferredColorScheme`, which left parts of windows in the old scheme after switching back.
+- **macOS windows**: closing the last main window only hides it (Dock click restores it) and closes Settings —
+  `Hikki/Sources/WindowLifecycle.swift`.
 - Simulators sometimes fail with "Busy (Application failed preflight checks)": `xcrun simctl shutdown all`, boot again.

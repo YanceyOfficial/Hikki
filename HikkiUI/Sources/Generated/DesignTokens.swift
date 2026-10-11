@@ -93,7 +93,7 @@ public nonisolated enum TextSize: CGFloat, Sendable {
 public nonisolated enum ColorTone: String, CaseIterable, Sendable, Identifiable {
     case sumi, kurenai, terigaki, kohaku, wakatake, seiheki, edomurasaki
 
-    public static let standard = ColorTone.sumi
+    public static let standard = ColorTone.kurenai
     public var id: String { rawValue }
 
     public var fill: Color {

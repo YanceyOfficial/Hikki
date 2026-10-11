@@ -18,6 +18,30 @@ enum AppearancePreference: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Applies it app-wide. `preferredColorScheme` isn't reliable for this: once a scheme has been forced,
+    /// going back (to light, or to "system") left parts of windows — Settings, the toolbar — in the old one.
+    /// The app-level appearance switches every window, the editor's web view included, at once.
+    @MainActor func apply() {
+        #if os(macOS)
+            NSApp.appearance =
+                switch self {
+                case .system: nil
+                case .light: NSAppearance(named: .aqua)
+                case .dark: NSAppearance(named: .darkAqua)
+                }
+        #else
+            let style: UIUserInterfaceStyle =
+                switch self {
+                case .system: .unspecified
+                case .light: .light
+                case .dark: .dark
+                }
+            for case let scene as UIWindowScene in UIApplication.shared.connectedScenes {
+                for window in scene.windows { window.overrideUserInterfaceStyle = style }
+            }
+        #endif
+    }
+
     var title: LocalizedStringKey {
         switch self {
         case .system: "app:settings.theme.system"
@@ -35,7 +59,6 @@ struct SettingsView: View {
 
     var body: some View {
         content
-            .preferredColorScheme(appearance.colorScheme)
             .environment(\.colorTone, tone)
             .tint(tone.fill)
     }

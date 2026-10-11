@@ -16,8 +16,9 @@ struct RootView: View {
                 ContentView(initialPageID: initialPageID)
             }
         }
-        // Settings → Theme; the editor's web view follows the window's appearance.
-        .preferredColorScheme(appearance.colorScheme)
+        // Settings → Theme, app-wide (see AppearancePreference.apply); the editor follows its window.
+        .onAppear { appearance.apply() }
+        .onChange(of: appearance) { _, new in new.apply() }
         // Settings → Appearance → Color tone: components read it from the environment; system controls via tint.
         .environment(\.colorTone, tone)
         .tint(tone.fill)

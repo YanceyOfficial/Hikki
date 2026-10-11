@@ -35,6 +35,8 @@ struct ContentView: View {
         }
         #if os(iOS)
             .sheet(isPresented: $navigator.isShowingSettings) { SettingsView() }
+        #else
+            .background(HideOnClose())
         #endif
         .sheet(isPresented: $navigator.isSearching) {
             SearchPalette(navigator: navigator) { navigator.isSearching = false }

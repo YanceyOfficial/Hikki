@@ -508,6 +508,7 @@ private struct NativeSymbolLabel: View {
 private struct NativePageLabel: View {
     let page: PageSummary
     @Environment(\.sidebarRowSelected) private var selected
+    @Environment(\.colorTone) private var colorTone
 
     var body: some View {
         Label {
@@ -517,7 +518,15 @@ private struct NativePageLabel: View {
                 Text(verbatim: page.title)  // the page's own title
             }
         } icon: {
-            PageIcon(page.icon, size: TextSize.base.rawValue).frame(width: Size.sidebarIcon + Spacing.s1)
+            Group {
+                if page.icon == nil, selected {
+                    // The default page glyph is a muted grey; on the tone's fill it takes the row's white.
+                    IconView(.fileText, size: TextSize.base.rawValue * 0.95).foregroundStyle(colorTone.onFill)
+                } else {
+                    PageIcon(page.icon, size: TextSize.base.rawValue)
+                }
+            }
+            .frame(width: Size.sidebarIcon + Spacing.s1)
         }
     }
 }

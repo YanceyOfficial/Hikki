@@ -4,6 +4,10 @@ import SwiftUI
 @main
 struct HikkiApp: App {
     @State private var model: AppModel
+    #if os(macOS)
+        // Closing the last window hides it; the Dock brings it back (see WindowLifecycle).
+        @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    #endif
 
     init() {
         let paths: AppPaths
