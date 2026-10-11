@@ -189,6 +189,31 @@
     cursor: col-resize;
   }
 
+  /* Columns (extensions/columns.ts): flex row; gutters are drag handles between columns. */
+  .tiptap .hk-cols-wrapper {
+    @apply relative my-1;
+  }
+  .tiptap .hk-cols {
+    @apply flex gap-6;
+  }
+  .tiptap .hk-col {
+    @apply min-w-0;
+  }
+  .tiptap .hk-col-gutters {
+    @apply pointer-events-none absolute inset-0;
+  }
+  .tiptap .hk-col-gutter {
+    @apply pointer-events-auto absolute top-0 bottom-0 w-3 -translate-x-1/2 cursor-col-resize;
+  }
+  .tiptap .hk-col-gutter::after {
+    @apply absolute top-0 bottom-0 left-1/2 w-0.5 -translate-x-1/2 rounded-full bg-transparent transition-colors duration-150;
+    content: '';
+  }
+  .tiptap .hk-col-gutter:hover::after,
+  .tiptap .hk-col-gutter.is-dragging::after {
+    @apply bg-primary/50;
+  }
+
   /* Formulas (extensions/math.tsx). */
   .tiptap [data-type='block-math'] {
     @apply my-1 cursor-pointer overflow-x-auto rounded-md px-2 py-3 text-center hover:bg-accent;
@@ -363,4 +388,12 @@
   .hk-pop-in {
     animation: none;
   }
+}
+
+/* Dragging a block to another block's side: a vertical line replaces the drop cursor (columns.ts). */
+.hk-side-drop {
+  @apply pointer-events-none fixed z-40 w-0.5 rounded-full bg-primary;
+}
+.hk-side-dropping .hk-dropcursor {
+  display: none;
 }

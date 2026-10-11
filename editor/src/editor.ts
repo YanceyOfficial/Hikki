@@ -10,6 +10,7 @@ import { blockHandleExtensions } from './extensions/block-handle'
 import { Callout } from './extensions/callout'
 import { CodeBlock } from './extensions/code-block'
 import { Colors, ColorTextStyle } from './extensions/colors'
+import { Column, Columns, ColumnsKeymap } from './extensions/columns'
 import { EdgeNavigation } from './extensions/edge-navigation'
 import { mathExtension } from './extensions/math'
 import { SelectionMenuExtension } from './extensions/selection-menu'
@@ -44,7 +45,8 @@ export const BLOCK_ID_TYPES = [
   'details',
   'callout',
   'blockMath',
-  'table'
+  'table',
+  'columns'
 ]
 
 /** The page body editor. `content` must already be normalized (see normalizeBody). */
@@ -65,7 +67,9 @@ export function createEditor(
         // Only allowlisted targets are stored or rendered (links.ts); hikki:// links open pages.
         link: { openOnClick: false, protocols: ['hikki'], isAllowedUri: (url) => isSafeHref(url) },
         codeBlock: false,
-        blockquote: false
+        blockquote: false,
+        // Hidden while a block is dragged to another block's side (columns.ts draws a vertical line).
+        dropcursor: { class: 'hk-dropcursor', width: 2 }
       }),
       CodeBlock,
       Quote,
@@ -73,6 +77,9 @@ export function createEditor(
       Callout,
       mathExtension(),
       ...tableExtensions,
+      Columns,
+      Column,
+      ColumnsKeymap,
       TaskList,
       TaskItem.configure({ nested: true }),
       ColorTextStyle,

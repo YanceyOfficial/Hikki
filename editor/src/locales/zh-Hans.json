@@ -80,6 +80,18 @@
     "table": {
       "title": "表格",
       "hint": "行与列"
+    },
+    "columns2": {
+      "title": "两栏",
+      "hint": "并排的 2 栏"
+    },
+    "columns3": {
+      "title": "三栏",
+      "hint": "并排的 3 栏"
+    },
+    "columns4": {
+      "title": "四栏",
+      "hint": "并排的 4 栏"
     }
   },
   "cover": {

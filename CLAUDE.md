@@ -120,6 +120,11 @@ HikkiUITests/                 XCUITest flows
   `syntax-*` tokens (Xcode's Default Light/Dark); no auto-detection — new blocks use the last picked language
   (`editor/src/extensions/code-languages.ts`). Node views are plain DOM with small React roots for controls (the editor
   is the core `Editor`, not `@tiptap/react`).
+- **Rich blocks**: toggles (`editor/src/extensions/toggle.ts`; open/closed is not stored, so opening never saves),
+  callouts, KaTeX formulas (`editor/src/extensions/math.tsx`; our panel replaces Tiptap's `prompt()`), tables
+  (`editor/src/extensions/table.tsx` + `editor/src/extensions/table-ops.ts`, controls drawn by
+  `editor/src/ui/TableOverlay.tsx`) and columns (`editor/src/extensions/columns.ts`: schema needs 2–5 columns, so
+  removing one of two replaces the row; dragging a block onto another's side edge makes a row).
 - **Editor content safety**: content that doesn't fit the schema (corrupt, or from a newer Hikki) opens read-only and
   is never saved (`enableContentCheck`); housekeeping transactions (`addToHistory: false` — UniqueID stamping
   block ids, remote reloads) never count as edits; continuous typing still saves every 2 s (`maxWaitMs`).

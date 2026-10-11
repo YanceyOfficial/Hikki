@@ -1,6 +1,7 @@
 import {
   CaretCircleRight,
   CheckSquare,
+  Columns,
   Function as FunctionIcon,
   Info,
   Sigma,
@@ -253,6 +254,39 @@ export const BLOCK_TYPES: BlockType[] = [
     group: 'advanced',
     aliases: ['table', 'grid', 'spreadsheet', '表格', 'biaoge', 'bg'],
     apply: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+  },
+  {
+    id: 'columns2',
+    title: '2 columns',
+    hint: '2 side-by-side columns',
+    label: () => t('blocks.columns2.title'),
+    description: () => t('blocks.columns2.hint'),
+    icon: Columns,
+    group: 'advanced',
+    aliases: ['columns', 'column', 'layout', '2', '2col', '分栏', '两栏', 'fenlan', 'fl'],
+    apply: (c) => c.insertColumns(2)
+  },
+  {
+    id: 'columns3',
+    title: '3 columns',
+    hint: '3 side-by-side columns',
+    label: () => t('blocks.columns3.title'),
+    description: () => t('blocks.columns3.hint'),
+    icon: Columns,
+    group: 'advanced',
+    aliases: ['columns', 'column', 'layout', '3', '3col', '分栏', '三栏', 'fenlan', 'fl'],
+    apply: (c) => c.insertColumns(3)
+  },
+  {
+    id: 'columns4',
+    title: '4 columns',
+    hint: '4 side-by-side columns',
+    label: () => t('blocks.columns4.title'),
+    description: () => t('blocks.columns4.hint'),
+    icon: Columns,
+    group: 'advanced',
+    aliases: ['columns', 'column', 'layout', '4', '4col', '分栏', '四栏', 'fenlan', 'fl'],
+    apply: (c) => c.insertColumns(4)
   },
   {
     id: 'blockMath',

@@ -80,6 +80,18 @@
     "table": {
       "title": "Table",
       "hint": "Rows and columns"
+    },
+    "columns2": {
+      "title": "2 columns",
+      "hint": "2 side-by-side columns"
+    },
+    "columns3": {
+      "title": "3 columns",
+      "hint": "3 side-by-side columns"
+    },
+    "columns4": {
+      "title": "4 columns",
+      "hint": "4 side-by-side columns"
     }
   },
   "cover": {

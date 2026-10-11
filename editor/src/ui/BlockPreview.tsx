@@ -140,6 +140,20 @@ export function BlockPreview({ id }: { id: string }) {
           <Line w="35%" />
         </div>
       )
+    case 'columns2':
+    case 'columns3':
+    case 'columns4': {
+      const count = Number(id.slice(-1))
+      return (
+        <div className="flex gap-2">
+          {Array.from({ length: count }, (_, i) => (
+            <div key={i} className="min-w-0 flex-1">
+              <Lines widths={['100%', '80%', '90%']} />
+            </div>
+          ))}
+        </div>
+      )
+    }
     case 'divider':
       return (
         <div className="flex flex-col gap-2.5">
