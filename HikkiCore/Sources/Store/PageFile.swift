@@ -96,18 +96,51 @@ public struct PageFiles: Sendable {
     /// Every readable page file. Files that aren't pages (or come from a newer format) are skipped and returned
     /// in `skipped`, so a stray file never blocks the rest.
     public func readAll() throws -> (pages: [PageFile], skipped: [URL]) {
-        guard FileManager.default.fileExists(atPath: directory.path) else { return ([], []) }
-        var pages: [PageFile] = []
-        var skipped: [URL] = []
-        for url in try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
-        where url.pathExtension == "json" {
-            if let page = try? Self.decode(Data(contentsOf: url)), Self.isValid(page.id) {
-                pages.append(page)
-            } else {
-                skipped.append(url)
+        let listing = try scan()
+        return (listing.pages, listing.skipped)
+    }
+
+    /// What the folder holds. `present` names every page the folder has *any* trace of — a readable file, one
+    /// that isn't (half-downloaded, corrupt, from a newer Hikki) and iCloud placeholders for files not downloaded
+    /// yet — so nothing that merely can't be read right now is ever mistaken for a deletion.
+    public struct Listing: Sendable {
+        public var folderExists: Bool
+        public var pages: [PageFile]
+        public var skipped: [URL]
+        public var placeholders: [URL]
+        public var present: Set<String>
+    }
+
+    public func scan() throws -> Listing {
+        guard FileManager.default.fileExists(atPath: directory.path) else {
+            return Listing(folderExists: false, pages: [], skipped: [], placeholders: [], present: [])
+        }
+        var listing = Listing(folderExists: true, pages: [], skipped: [], placeholders: [], present: [])
+        for url in try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) {
+            let name = url.lastPathComponent
+            if let id = Self.placeholderID(name) {
+                // ".<id>.json.icloud": in iCloud, not on this device yet.
+                listing.placeholders.append(url)
+                listing.present.insert(id)
+            } else if url.pathExtension == "json" {
+                let id = String(name.dropLast(".json".count))
+                if Self.isValid(id) { listing.present.insert(id) }
+                if let page = try? Self.decode(Data(contentsOf: url)), Self.isValid(page.id) {
+                    listing.pages.append(page)
+                    listing.present.insert(page.id)
+                } else {
+                    listing.skipped.append(url)
+                }
             }
         }
-        return (pages.sorted { $0.id < $1.id }, skipped)
+        listing.pages.sort { $0.id < $1.id }
+        return listing
+    }
+
+    static func placeholderID(_ name: String) -> String? {
+        guard name.hasPrefix("."), name.hasSuffix(".json.icloud") else { return nil }
+        let id = String(name.dropFirst().dropLast(".json.icloud".count))
+        return isValid(id) ? id : nil
     }
 
     public func delete(_ id: String) throws {

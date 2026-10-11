@@ -112,4 +112,77 @@ struct WorkspaceSyncTests {
         let after = try FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate] as? Date
         #expect(before == after)
     }
+
+    // MARK: Data-loss guards (security review)
+
+    private func syncedStore(_ ids: [String], files: PageFiles) throws -> (DocumentStore, WorkspaceSync) {
+        let store = try DocumentStore.inMemory()
+        for id in ids { try store.create(id: id, now: t0) }
+        let sync = WorkspaceSync(store: store, files: files)
+        try sync.reconcile()
+        return (store, sync)
+    }
+
+    @Test func iCloudPlaceholdersAreNotDeletions() throws {
+        let files = try folder()
+        let (store, sync) = try syncedStore(["a", "b", "c", "d"], files: files)
+        // iCloud evicted every file ("Optimize Mac Storage"): only placeholders remain.
+        for id in ["a", "b", "c", "d"] {
+            try files.delete(id)
+            try Data().write(to: files.directory.appending(path: ".\(id).json.icloud"))
+        }
+        let report = try sync.reconcile()
+        #expect(report.deletedHere == 0 && report.waitingForDownload == 4)
+        #expect(try store.allDocuments().count == 4)
+    }
+
+    @Test func unreadableFilesAreNotDeletions() throws {
+        let files = try folder()
+        let (store, sync) = try syncedStore(["a", "b"], files: files)
+        try Data("{ half-downloaded".utf8).write(to: try files.url(for: "a"))  // corrupt / mid-write
+        let report = try sync.reconcile()
+        #expect(report.deletedHere == 0 && report.skippedFiles == 1)
+        #expect(try store.document(id: "a") != nil)
+    }
+
+    @Test func aMissingFolderDeletesNothing() throws {
+        let files = try folder()
+        let (store, sync) = try syncedStore(["a", "b"], files: files)
+        try FileManager.default.removeItem(at: files.directory)  // folder gone / not populated yet
+        let report = try sync.reconcile()
+        #expect(report.deletedHere == 0 && report.deletionsHeldBack == 2)
+        #expect(try store.allDocuments().count == 2)
+    }
+
+    @Test func massDeletionIsHeldBackButOrdinaryDeletesComeThrough() throws {
+        let files = try folder()
+        let ids = (1...12).map { "p\($0)" }
+        let (store, sync) = try syncedStore(ids, files: files)
+        // One page deleted elsewhere: applied.
+        try files.delete("p1")
+        #expect(try sync.reconcile().deletedHere == 1)
+        // Most files vanish at once: held back, nothing lost.
+        for id in ids.dropFirst().prefix(8) { try files.delete(id) }
+        let report = try sync.reconcile()
+        #expect(report.deletedHere == 0 && report.deletionsHeldBack == 8)
+        #expect(try store.allDocuments().count == 11)
+    }
+
+    @Test func deletingHereKeepsFilesAnotherDeviceJustAdded() throws {
+        let files = try folder()
+        let store = try DocumentStore.inMemory()
+        let sync = WorkspaceSync(store: store, files: files)
+        _ = try sync.start()
+        try store.create(id: "mine", now: t0)
+        sync.flush()
+        // Another device adds a page; this store hasn't imported it yet.
+        let other = try DocumentStore.inMemory()
+        try other.create(id: "theirs", now: t0)
+        try files.write(try PageFile(record: try #require(try other.document(id: "theirs"))))
+
+        try store.deletePermanently(id: "mine")
+        sync.flush()
+        #expect(!files.exists("mine"))
+        #expect(files.exists("theirs"))  // not ours to delete
+    }
 }
