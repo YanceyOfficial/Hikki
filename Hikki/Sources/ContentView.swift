@@ -47,6 +47,10 @@ struct ContentView: View {
             #if DEBUG
                 // Screenshot/test hooks: HIKKI_OPEN_TABS=pageA,pageB opens those pages as tabs; HIKKI_OPEN_SEARCH opens ⌘K.
                 if ProcessInfo.processInfo.environment["HIKKI_OPEN_SEARCH"] != nil { navigator.isSearching = true }
+                // HIKKI_ACTIVATE brings the window to the front (screenshots of the active-window look).
+                #if os(macOS)
+                    if ProcessInfo.processInfo.environment["HIKKI_ACTIVATE"] != nil { NSApp.activate() }
+                #endif
                 // HIKKI_OPEN_SETTINGS opens Settings (screenshots).
                 if ProcessInfo.processInfo.environment["HIKKI_OPEN_SETTINGS"] != nil {
                     #if os(macOS)

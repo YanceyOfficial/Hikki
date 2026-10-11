@@ -313,7 +313,9 @@ private struct PhoneSidebar: View {
     @Environment(\.colorTone) private var colorTone
 
     var body: some View {
-        List(selection: $navigator.sidebarSelection) {
+        // Mac/iPad: no List selection — the system paints it in its own accent (blue), which an app can't
+        // recolour at runtime. Rows are buttons with a grey pill instead, icons in the colour tone (Apple Music).
+        List(selection: wideSidebar ? .constant(nil) : $navigator.sidebarSelection) {
             Section {
                 Button {
                     navigator.isSearching = true
@@ -322,7 +324,7 @@ private struct PhoneSidebar: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("sidebar-search")
-                NavigationLink(value: Route.home) {
+                SidebarDestination(route: .home, navigator: navigator, wide: wideSidebar) {
                     NativeSymbolLabel("app:nav.home", icon: .house)
                 }
             }
@@ -330,7 +332,7 @@ private struct PhoneSidebar: View {
             if !model.tree.favorites.isEmpty {
                 Section {
                     ForEach(model.tree.favorites) { page in
-                        NavigationLink(value: Route.page(page.id)) {
+                        SidebarDestination(route: .page(page.id), navigator: navigator, wide: wideSidebar) {
                             NativePageLabel(page: page)
                         }
                         .contextMenu { PageActions(page: page, navigator: navigator) }
@@ -349,14 +351,14 @@ private struct PhoneSidebar: View {
                     }
                     .buttonStyle(.plain)
                 }
-                PhoneTree(nodes: model.tree.roots, depth: 0, navigator: navigator)
+                PhoneTree(nodes: model.tree.roots, depth: 0, navigator: navigator, wide: wideSidebar)
             } header: {
                 // No "+" here: New page sits in the toolbar on every platform.
                 Text("app:sidebar.private")
             }
 
             Section {
-                NavigationLink(value: Route.trash) {
+                SidebarDestination(route: .trash, navigator: navigator, wide: wideSidebar) {
                     NativeSymbolLabel("app:nav.trash", icon: .trash)
                 }
                 .badge(model.trash.count)
@@ -364,7 +366,8 @@ private struct PhoneSidebar: View {
         }
         .listStyle(.sidebar)
         // Sidebar icons in the colour tone (the system would use its own accent).
-        .listItemTint(.preferred(colorTone.fill))
+        // `.fixed`: `.preferred` lets macOS swap in the system accent.
+        .listItemTint(.fixed(colorTone.fill))
         // EXPERIMENT: Mac/iPad keep the system sidebar material, with the workspace at the bottom (Apple Music
         // puts the account there); iPhone keeps its tinted list and nav-bar menu.
         .modifier(NativeSidebarChrome(navigator: navigator, isWide: wideSidebar))
@@ -401,6 +404,7 @@ private struct PhoneTree: View {
     let nodes: [PageNode]
     let depth: Int
     @Bindable var navigator: Navigator
+    var wide = false
 
     var body: some View {
         ForEach(nodes) { node in
@@ -409,7 +413,7 @@ private struct PhoneTree: View {
             } else {
                 // The system disclosure triangle for subpages.
                 DisclosureGroup(isExpanded: expansion(node.id)) {
-                    PhoneTree(nodes: node.children, depth: depth + 1, navigator: navigator)
+                    PhoneTree(nodes: node.children, depth: depth + 1, navigator: navigator, wide: wide)
                 } label: {
                     row(node)
                 }
@@ -418,7 +422,7 @@ private struct PhoneTree: View {
     }
 
     private func row(_ node: PageNode) -> some View {
-        NavigationLink(value: Route.page(node.id)) {
+        SidebarDestination(route: .page(node.id), navigator: navigator, wide: wide) {
             NativePageLabel(page: node.page)
         }
         .contextMenu { PageActions(page: node.page, navigator: navigator) }
@@ -433,10 +437,39 @@ private struct PhoneTree: View {
     }
 }
 
+/// A sidebar row that goes somewhere. iPhone: a NavigationLink (pushes). Mac/iPad: a button with a grey
+/// selection pill — the List's own selection would be painted in the system accent, not the colour tone.
+private struct SidebarDestination<Label: View>: View {
+    let route: Route
+    let navigator: Navigator
+    let wide: Bool
+    @ViewBuilder let label: Label
+
+    var body: some View {
+        if wide {
+            Button {
+                if let id = route.pageID { navigator.open(id) } else { navigator.go(route) }
+            } label: {
+                label.frame(maxWidth: .infinity, alignment: .leading).contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .listRowBackground(
+                RoundedRectangle(cornerRadius: Radius.lg)
+                    .fill(navigator.route == route ? Theme.sidebarAccent : .clear)
+                    .padding(.horizontal, Spacing.s2_5)
+            )
+            .accessibilityAddTraits(navigator.route == route ? .isSelected : [])
+        } else {
+            NavigationLink(value: route) { label }
+        }
+    }
+}
+
 /// A system sidebar row for a fixed destination: Phosphor icon (tinted like system sidebar icons) + title.
 private struct NativeSymbolLabel: View {
     let title: LocalizedStringKey
     let icon: Icon
+    @Environment(\.colorTone) private var colorTone
 
     init(_ title: LocalizedStringKey, icon: Icon) {
         self.title = title
@@ -449,6 +482,8 @@ private struct NativeSymbolLabel: View {
         } icon: {
             // One fixed, centred slot so symbols of different widths (house vs. magnifying glass) line up.
             icon.glyph.frame(width: Size.sidebarIcon + Spacing.s1)
+                // Explicit, so neither the system accent nor list tinting replaces the colour tone.
+                .foregroundStyle(colorTone.fill)
         }
     }
 }
