@@ -17,6 +17,12 @@ export const MAX_COLUMNS = 5
 /** No column narrower than this share of the row while resizing. */
 const MIN_SHARE = 10
 
+/** A stored width as a share in percent, or null when it isn't a sane number. */
+export function columnWidth(value: unknown): number | null {
+  const width = typeof value === 'number' ? value : Number.NaN
+  return Number.isFinite(width) && width > 0 && width <= 100 ? width : null
+}
+
 /** One column: any blocks. `width` is its share of the row in percent (null = equal shares). */
 export const Column = Node.create({
   name: 'column',
@@ -29,11 +35,12 @@ export const Column = Node.create({
       width: {
         default: null,
         parseHTML: (el) => {
-          const value = Number.parseFloat(el.getAttribute('data-width') ?? '')
-          return Number.isFinite(value) && value > 0 ? value : null
+          return columnWidth(Number.parseFloat(el.getAttribute('data-width') ?? ''))
         },
         renderHTML: (attrs) => {
-          const width = attrs.width as number | null
+          // Only a number reaches the style: stored content (a synced or imported file) could carry
+          // anything in this attribute, and a string would inject CSS.
+          const width = columnWidth(attrs.width)
           return width
             ? { 'data-width': String(width), style: `flex: ${width} 1 0%` }
             : { style: 'flex: 1 1 0%' }

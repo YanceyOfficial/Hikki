@@ -100,4 +100,28 @@ describe('columns', () => {
     expect(cols[0].style.flex).toContain('70')
     expect(editor.getHTML()).toContain('data-width="30"')
   })
+
+  it('never lets a stored width into the style unless it is a number (no CSS injection)', () => {
+    const evil = '50 1 0%; position: fixed; inset: 0; background: url(https://example.com/x)'
+    const stored = {
+      type: 'doc',
+      content: [
+        {
+          type: 'columns',
+          content: [
+            { type: 'column', attrs: { width: evil }, content: [{ type: 'paragraph' }] },
+            { type: 'column', attrs: { width: 1e9 }, content: [{ type: 'paragraph' }] }
+          ]
+        }
+      ]
+    }
+    editor = createEditor(host, stored)
+    const html = editor.getHTML()
+    expect(html).not.toContain('position')
+    expect(html).not.toContain('url(')
+    const cols = host.querySelectorAll<HTMLElement>('[data-type="column"]')
+    expect(cols[0].style.position).toBe('')
+    expect(cols[0].style.flexGrow).toBe('1')
+    expect(cols[1].hasAttribute('data-width')).toBe(false)
+  })
 })
