@@ -65,6 +65,8 @@ public struct SidebarRow<Actions: View>: View {
     /// Without hover (touch), the chevron sits before the icon, and only for pages with children.
     /// Every row reserves the same fixed glyph slot, so swapping icon ↔ chevron on hover never
     /// shifts the title (it used to jitter by the 2pt difference between the two frames).
+    @Environment(\.sidebarSymbolTint) private var symbolTint
+
     private var glyphSlot: CGFloat { Size.sidebarIcon + Spacing.s1 }
 
     @ViewBuilder private var leadingGlyph: some View {
@@ -87,8 +89,8 @@ public struct SidebarRow<Actions: View>: View {
                     PageIcon(icon, size: Size.sidebarIcon)
                 #endif
             } else if let symbol {
-                IconView(symbol, size: TextSize.sm.rawValue)
-                    .foregroundStyle(Theme.subtleForeground)
+                IconView(symbol, size: symbolTint == nil ? TextSize.sm.rawValue : TextSize.base.rawValue)
+                    .foregroundStyle(symbolTint ?? Theme.subtleForeground)
             } else {
                 PageIcon(icon, size: Size.sidebarIcon)
             }
@@ -166,4 +168,9 @@ public struct HoverHighlightStyle: ButtonStyle {
         SidebarRow("Trash", symbol: .trash)
     }
     .frame(width: 260)
+}
+
+extension EnvironmentValues {
+    /// Tints `SidebarRow` symbols (Search, Home, Trash) — Apple Music style accent icons. Nil: muted.
+    @Entry public var sidebarSymbolTint: Color? = nil
 }

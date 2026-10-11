@@ -24,33 +24,19 @@ struct ContentView: View {
 
     var body: some View {
         @Bindable var navigator = navigator
-        Group {
-            if customChrome {
-                desktopLayout
-            } else {
-                // iPhone (and compact iPad): native stack navigation from a List sidebar.
-                NavigationSplitView(columnVisibility: $columns) {
-                    SidebarView(navigator: navigator, customChrome: false)
-                } detail: {
-                    DetailView(navigator: navigator, editor: editor, customChrome: false)
-                }
-            }
+        // EXPERIMENT (native chrome): the system split view, sidebar List and window toolbar everywhere.
+        NavigationSplitView(columnVisibility: $columns) {
+            SidebarView(navigator: navigator, customChrome: false, wide: customChrome)
+                .navigationSplitViewColumnWidth(min: Size.sidebarMin, ideal: Size.sidebarIdeal, max: Size.sidebarMax)
+        } detail: {
+            DetailView(navigator: navigator, editor: editor, customChrome: false, phoneToolbar: !customChrome)
+                .toolbar { if customChrome { NativeDetailToolbar(navigator: navigator) } }
         }
-        #if os(macOS)
-            .toolbar(removing: .sidebarToggle)
-            // Our tab bar / sidebar header replace the window toolbar (see WindowChrome).
-            .background(WindowChrome { chrome = $0 })
-        #endif
         #if os(iOS)
             .sheet(isPresented: $navigator.isShowingSettings) { SettingsView() }
         #endif
-        .sheet(isPresented: customChrome ? .constant(false) : $navigator.isSearching) {
+        .sheet(isPresented: $navigator.isSearching) {
             SearchPalette(navigator: navigator) { navigator.isSearching = false }
-        }
-        .overlay {
-            if customChrome && navigator.isSearching {
-                SearchOverlay(navigator: navigator)
-            }
         }
         .animation(.snappy(duration: 0.18), value: navigator.isSearching)
         .task { await model.observe() }
@@ -133,7 +119,7 @@ struct ContentView: View {
                 toggleSidebar: toggleSidebar)
             HStack(spacing: Spacing.s0) {
                 if sidebarVisible {
-                    SidebarView(navigator: navigator, customChrome: true)
+                    SidebarView(navigator: navigator, customChrome: true, wide: true)
                         .frame(width: sidebarWidth)
                         .overlay(alignment: .trailing) { SidebarResizeHandle(width: $sidebarWidth) }
                         .transition(.move(edge: .leading))
@@ -166,6 +152,7 @@ private struct DetailView: View {
     let navigator: Navigator
     let editor: EditorController
     let customChrome: Bool
+    var phoneToolbar = true
 
     var body: some View {
         VStack(spacing: Spacing.s0) {
@@ -184,11 +171,50 @@ private struct DetailView: View {
     @ViewBuilder private var content: some View {
         switch navigator.route {
         case .page(let id):
-            PageScreen(pageID: id, editor: editor, navigator: navigator, phoneToolbar: !customChrome)
+            PageScreen(pageID: id, editor: editor, navigator: navigator, phoneToolbar: !customChrome && phoneToolbar)
         case .trash:
             TrashView()
         case .home:
             HomeView(navigator: navigator)
+        }
+    }
+}
+
+/// EXPERIMENT: the detail column's window toolbar on Mac/iPad — tabs (with back/forward) in the middle,
+/// the page's favorite and ⋯ on the trailing side; the page title and edited time are the window's title.
+private struct NativeDetailToolbar: ToolbarContent {
+    @Environment(AppModel.self) private var model
+    let navigator: Navigator
+
+    var body: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            TabStrip(
+                items: navigator.tabs.tabs.map { tab in tabItem(tab.id, tab.route) },
+                activeID: navigator.tabs.activeID,
+                canGoBack: navigator.tabs.active.canGoBack,
+                canGoForward: navigator.tabs.active.canGoForward,
+                onSelect: navigator.selectTab,
+                onClose: { navigator.closeTab($0) },
+                onNew: { navigator.openInNewTab(.home) },
+                onBack: navigator.goBack,
+                onForward: navigator.goForward
+            )
+            .frame(minWidth: 320, idealWidth: 560, maxWidth: 720)  // design-lint: allow (toolbar item width)
+        }
+        if let id = navigator.route.pageID, let page = model.tree.page(id) {
+            ToolbarItemGroup(placement: .primaryAction) {
+                FavoriteButton(page: page)
+                PageMoreMenu(page: page, navigator: navigator)
+            }
+        }
+    }
+
+    private func tabItem(_ id: UUID, _ route: Route) -> TabStripItem {
+        switch route {
+        case .home: TabStripItem(id: id, title: String(localized: "app:nav.home"), symbol: .house)
+        case .trash: TabStripItem(id: id, title: String(localized: "app:nav.trash"), symbol: .trash)
+        case .page(let pageID):
+            TabStripItem(id: id, title: model.tree.page(pageID)?.title ?? "", icon: model.tree.page(pageID)?.icon)
         }
     }
 }

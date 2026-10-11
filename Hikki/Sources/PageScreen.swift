@@ -15,6 +15,10 @@ struct PageScreen: View {
         EditorView(controller: editor)
             .ignoresSafeArea(.container, edges: .bottom)
             .navigationTitle(page.map { $0.title.isEmpty ? String(localized: "app:page.untitled") : $0.title } ?? "")
+            #if os(macOS)
+                .navigationSubtitle(
+                    page.map { Text("app:page.edited \($0.updatedAt, format: .relative(presentation: .named))") } ?? Text(verbatim: ""))
+            #endif
             #if os(iOS)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {

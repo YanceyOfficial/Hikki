@@ -7,12 +7,14 @@ import SwiftUI
 struct SidebarView: View {
     @Bindable var navigator: Navigator
     let customChrome: Bool
+    /// The window is wide (Mac / regular iPad): native sidebar footer instead of the nav-bar menu.
+    var wide = false
 
     var body: some View {
         if customChrome {
             DesktopSidebar(navigator: navigator)
         } else {
-            PhoneSidebar(navigator: navigator)
+            PhoneSidebar(navigator: navigator, wideSidebar: wide)
         }
     }
 }
@@ -305,6 +307,7 @@ private struct WorkspaceSwitcher: View {
 private struct PhoneSidebar: View {
     @Environment(AppModel.self) private var model
     @Bindable var navigator: Navigator
+    let wideSidebar: Bool
     @State private var renaming = false
 
     var body: some View {
@@ -362,8 +365,9 @@ private struct PhoneSidebar: View {
             }
         }
         .listStyle(.sidebar)
-        .scrollContentBackground(.hidden)
-        .background(Theme.sidebar)
+        // EXPERIMENT: Mac/iPad keep the system sidebar material, with the workspace at the bottom (Apple Music
+        // puts the account there); iPhone keeps its tinted list and nav-bar menu.
+        .modifier(NativeSidebarChrome(navigator: navigator, isWide: wideSidebar))
         .navigationTitle(model.workspace?.name ?? "Hikki")  // l10n: allow (the user's workspace name)
         .renameWorkspaceAlert(isPresented: $renaming)
         .toolbar {
@@ -376,16 +380,18 @@ private struct PhoneSidebar: View {
                     IconLabel("app:page.new", icon: .notePencil).labelStyle(.iconOnly)
                 }
                 .accessibilityIdentifier("new-page")
-                // The workspace menu (iPhone has no sidebar header).
-                Menu {
-                    SettingsMenuItem(navigator: navigator)
-                    Button("app:workspace.rename") { renaming = true }
-                        .accessibilityIdentifier("workspace-rename")
-                    ShareLink("app:workspace.exportLogs", items: model.exportableFiles)
-                } label: {
-                    IconLabel("app:common.more", icon: .dotsThreeCircle).labelStyle(.iconOnly)
+                // The workspace menu (iPhone has no sidebar header; Mac/iPad have the footer switcher).
+                if !wideSidebar {
+                    Menu {
+                        SettingsMenuItem(navigator: navigator)
+                        Button("app:workspace.rename") { renaming = true }
+                            .accessibilityIdentifier("workspace-rename")
+                        ShareLink("app:workspace.exportLogs", items: model.exportableFiles)
+                    } label: {
+                        IconLabel("app:common.more", icon: .dotsThreeCircle).labelStyle(.iconOnly)
+                    }
+                    .accessibilityIdentifier("workspace-more")
                 }
-                .accessibilityIdentifier("workspace-more")
             }
         }
     }
@@ -590,4 +596,23 @@ private struct SettingsMenuItem: View {
         }
         .accessibilityIdentifier("settings-open")
     }
+}
+
+/// EXPERIMENT: Mac/iPad sidebar chrome for the native look.
+private struct NativeSidebarChrome: ViewModifier {
+    let navigator: Navigator
+    let isWide: Bool
+
+    func body(content: Content) -> some View {
+        if isWide {
+            content.environment(\.sidebarSymbolTint, Theme.primary).safeAreaInset(edge: .bottom) {
+                WorkspaceSwitcher(navigator: navigator)
+                    .padding(.horizontal, Spacing.s2)
+                    .padding(.bottom, Spacing.s2)
+            }
+        } else {
+            content.scrollContentBackground(.hidden).background(Theme.sidebar)
+        }
+    }
+
 }
