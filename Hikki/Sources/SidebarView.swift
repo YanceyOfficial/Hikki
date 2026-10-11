@@ -316,12 +316,12 @@ private struct PhoneSidebar: View {
                 Button {
                     navigator.isSearching = true
                 } label: {
-                    SidebarRow(String(localized: "app:nav.search"), symbol: .magnifyingGlass)
+                    NativeSymbolLabel("app:nav.search", icon: .magnifyingGlass)
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("sidebar-search")
                 NavigationLink(value: Route.home) {
-                    SidebarRow(String(localized: "app:nav.home"), symbol: .house)
+                    NativeSymbolLabel("app:nav.home", icon: .house)
                 }
             }
 
@@ -329,12 +329,12 @@ private struct PhoneSidebar: View {
                 Section {
                     ForEach(model.tree.favorites) { page in
                         NavigationLink(value: Route.page(page.id)) {
-                            SidebarRow(page.title, icon: page.icon)
+                            NativePageLabel(page: page)
                         }
                         .contextMenu { PageActions(page: page, navigator: navigator) }
                     }
                 } header: {
-                    SidebarSectionHeader("app:sidebar.favorites")
+                    Text("app:sidebar.favorites")
                 }
             }
 
@@ -343,19 +343,19 @@ private struct PhoneSidebar: View {
                     Button {
                         navigator.newPage()
                     } label: {
-                        SidebarRow(String(localized: "app:sidebar.addPage"), symbol: .plus)
+                        NativeSymbolLabel("app:sidebar.addPage", icon: .plus)
                     }
                     .buttonStyle(.plain)
                 }
                 PhoneTree(nodes: model.tree.roots, depth: 0, navigator: navigator)
             } header: {
                 // No "+" here: New page sits in the toolbar on every platform.
-                SidebarSectionHeader("app:sidebar.private")
+                Text("app:sidebar.private")
             }
 
             Section {
                 NavigationLink(value: Route.trash) {
-                    SidebarRow(String(localized: "app:nav.trash"), symbol: .trash)
+                    NativeSymbolLabel("app:nav.trash", icon: .trash)
                 }
                 .badge(model.trash.count)
             }
@@ -400,17 +400,25 @@ private struct PhoneTree: View {
 
     var body: some View {
         ForEach(nodes) { node in
-            NavigationLink(value: Route.page(node.id)) {
-                SidebarRow(
-                    node.page.title, icon: node.page.icon, depth: depth, hasChildren: !node.children.isEmpty,
-                    isExpanded: expansion(node.id))
-            }
-            .contextMenu { PageActions(page: node.page, navigator: navigator) }
-            .accessibilityIdentifier("page-row-\(node.page.title)")
-            if navigator.expanded.contains(node.id), !node.children.isEmpty {
-                PhoneTree(nodes: node.children, depth: depth + 1, navigator: navigator)
+            if node.children.isEmpty {
+                row(node)
+            } else {
+                // The system disclosure triangle for subpages.
+                DisclosureGroup(isExpanded: expansion(node.id)) {
+                    PhoneTree(nodes: node.children, depth: depth + 1, navigator: navigator)
+                } label: {
+                    row(node)
+                }
             }
         }
+    }
+
+    private func row(_ node: PageNode) -> some View {
+        NavigationLink(value: Route.page(node.id)) {
+            NativePageLabel(page: node.page)
+        }
+        .contextMenu { PageActions(page: node.page, navigator: navigator) }
+        .accessibilityIdentifier("page-row-\(node.page.title)")
     }
 
     private func expansion(_ id: String) -> Binding<Bool> {
@@ -418,6 +426,42 @@ private struct PhoneTree: View {
             get: { navigator.expanded.contains(id) },
             set: { open in if open { navigator.expanded.insert(id) } else { navigator.expanded.remove(id) } }
         )
+    }
+}
+
+/// A system sidebar row for a fixed destination: Phosphor icon (tinted like system sidebar icons) + title.
+private struct NativeSymbolLabel: View {
+    let title: LocalizedStringKey
+    let icon: Icon
+
+    init(_ title: LocalizedStringKey, icon: Icon) {
+        self.title = title
+        self.icon = icon
+    }
+
+    var body: some View {
+        Label {
+            Text(title)
+        } icon: {
+            icon.image.frame(width: TextSize.base.rawValue, height: TextSize.base.rawValue)
+        }
+    }
+}
+
+/// A system sidebar row for a page: its emoji (or the page glyph) + title, system font.
+private struct NativePageLabel: View {
+    let page: PageSummary
+
+    var body: some View {
+        Label {
+            if page.title.isEmpty {
+                Text("app:page.untitled").foregroundStyle(.secondary)
+            } else {
+                Text(verbatim: page.title)  // the page's own title
+            }
+        } icon: {
+            PageIcon(page.icon, size: TextSize.base.rawValue)
+        }
     }
 }
 
@@ -602,13 +646,6 @@ private struct NativeSidebarChrome: ViewModifier {
     func body(content: Content) -> some View {
         if isWide {
             content
-                .environment(\.sidebarSymbolTint, Theme.primary)
-                // Denser rows: the system's small sidebar size on Mac, a lower row floor everywhere.
-                .environment(\.sidebarRowMinHeight, Size.iconButtonSm)
-                .environment(\.defaultMinListRowHeight, Size.iconButtonSm)
-                #if os(macOS)
-                    .environment(\.sidebarRowSize, .small)
-                #endif
                 .safeAreaInset(edge: .bottom) {
                     WorkspaceSwitcher(navigator: navigator)
                         .padding(.horizontal, Spacing.s2)
