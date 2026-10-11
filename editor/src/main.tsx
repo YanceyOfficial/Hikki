@@ -41,7 +41,11 @@ window.hikki = {
   focus: () => bridge.focus(),
   blur: () => bridge.blur(),
   focusTitle: () => bridge.focusTitle(),
-  setLocale: (tag: string) => setLocale(tag)
+  setLocale: (tag: string) => setLocale(tag),
+  // Settings → Appearance → Color tone: theme.css keys its [data-tone] palettes on this attribute.
+  setTone: (tone: string) => {
+    document.documentElement.dataset.tone = tone
+  }
 }
 
 if (!native) bridge.loadDocument({ id: 'dev', title: '', icon: null, cover: null, content: null })

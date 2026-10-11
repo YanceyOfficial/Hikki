@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 /// this device). Creates the workspace; the root view then switches to the app.
 struct OnboardingView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.colorTone) private var tone
     @State private var step: Step = .welcome
     @State private var name = OnboardingView.defaultName
     @State private var nameSelection: TextSelection?
@@ -39,7 +40,7 @@ struct OnboardingView: View {
         .animation(.snappy(duration: 0.25), value: step)
         .fileImporter(isPresented: $importing, allowedContentTypes: [.folder]) { result in pickFolder(result) }
         #if os(macOS)
-            .background(WindowChrome())
+            .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
             .ignoresSafeArea()
         #endif
     }
@@ -86,7 +87,7 @@ struct OnboardingView: View {
                 }
             }
             .padding(Spacing.s3)
-            .overlay(RoundedRectangle(cornerRadius: Radius.lg).strokeBorder(nameFocused ? Theme.ring : Theme.border))
+            .overlay(RoundedRectangle(cornerRadius: Radius.lg).strokeBorder(nameFocused ? tone.fill : Theme.border))
             // The suggested name arrives focused and selected: typing replaces it, Return keeps it.
             .onAppear { nameFocused = true }
             .onChange(of: nameFocused) { _, focused in
@@ -206,16 +207,45 @@ struct OnboardingView: View {
 }
 
 /// Workspace initial on an accent tile (sidebar header, onboarding).
+/// The workspace's badge: its uploaded image, its emoji, or its initial on the colour tone — flat.
 struct WorkspaceBadge: View {
     let initial: String
+    var icon: WorkspaceIcon? = nil
     var size: CGFloat = Size.iconButtonSm
+    @Environment(\.colorTone) private var tone
 
     var body: some View {
+        let shape = RoundedRectangle(cornerRadius: size * 0.25)
+        switch icon {
+        case .image(let data):
+            if let image = Self.image(data) {
+                image.resizable().scaledToFill().frame(width: size, height: size).clipShape(shape)
+            } else {
+                letter(shape)
+            }
+        case .emoji(let emoji):
+            Text(verbatim: emoji)
+                .font(.system(size: size * 0.7))  // design-lint: allow (scales with the badge)
+                .frame(width: size, height: size)
+        case nil:
+            letter(shape)
+        }
+    }
+
+    private func letter(_ shape: RoundedRectangle) -> some View {
         Text(initial)  // l10n: allow (a workspace initial)
             .font(.system(size: size * 0.55, weight: .bold))  // design-lint: allow (scales with the badge)
-            .foregroundStyle(Theme.primaryForeground)
+            .foregroundStyle(tone.onFill)
             .frame(width: size, height: size)
-            .background(Theme.primary.gradient, in: .rect(cornerRadius: size * 0.25))
+            .background(tone.fill, in: shape)
+    }
+
+    private static func image(_ data: Data) -> Image? {
+        #if os(macOS)
+            NSImage(data: data).map(Image.init(nsImage:))
+        #else
+            UIImage(data: data).map(Image.init(uiImage:))
+        #endif
     }
 }
 

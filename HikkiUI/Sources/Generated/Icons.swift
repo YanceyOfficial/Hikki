@@ -3,7 +3,8 @@
 
 import SwiftUI
 
-/// Phosphor icons bundled with HikkiUI (the web editor uses the same names via @phosphor-icons/react).
+/// The native shell's icons: SF Symbols where design/icons.json names one, else the bundled Phosphor asset
+/// (the web editor uses the Phosphor names via @phosphor-icons/react).
 public nonisolated enum Icon: String, CaseIterable, Sendable {
     case caretUpDown = "caret-up-down"
     case slidersHorizontal = "sliders-horizontal"
@@ -58,9 +59,83 @@ public nonisolated enum Icon: String, CaseIterable, Sendable {
     case check = "check"
     case arrowRight = "arrow-right"
     case checkCircleFill = "check-circle-fill"
+    case files = "files"
+    case textAa = "text-aa"
+    case flame = "flame"
+    case pencilLine = "pencil-line"
+    case calendarDots = "calendar-dots"
 
-    /// Template image: tint with `.foregroundStyle`, size with `.frame` (it is resizable).
+    /// The SF Symbol drawn for this icon, if any.
+    public var systemName: String? {
+        switch self {
+        case .caretUpDown: "chevron.up.chevron.down"
+        case .slidersHorizontal: "slider.horizontal.3"
+        case .info: "info.circle"
+        case .gearSix: "gearshape"
+        case .buildings: "building.2"
+        case .link: "link"
+        case .pencilSimple: "pencil"
+        case .arrowBendUpRight: "arrowshape.turn.up.right"
+        case .appWindow: "macwindow"
+        case .copy: "doc.on.doc"
+        case .house: "house"
+        case .trash: "trash"
+        case .magnifyingGlass: "magnifyingglass"
+        case .plus: "plus"
+        case .notePencil: "square.and.pencil"
+        case .sidebarSimple: "sidebar.left"
+        case .caretRight: "chevron.right"
+        case .caretLeft: "chevron.left"
+        case .caretDown: "chevron.down"
+        case .dotsThree: "ellipsis"
+        case .dotsThreeCircle: "ellipsis.circle"
+        case .x: "xmark"
+        case .arrowUDownLeft: "return"
+        case .fileText: "doc.text"
+        case .clock: "clock"
+        case .keyboard: "keyboard.chevron.compact.down"
+        case .browsers: "plus.square.on.square"
+        case .arrowCounterClockwise: "arrow.counterclockwise"
+        case .dotsSixVertical: "line.3.horizontal"
+        case .export: "square.and.arrow.up"
+        case .star: "star"
+        case .starFill: "star.fill"
+        case .textB: "bold"
+        case .textItalic: "italic"
+        case .textStrikethrough: "strikethrough"
+        case .code: "chevron.left.forwardslash.chevron.right"
+        case .listBullets: "list.bullet"
+        case .listNumbers: "list.number"
+        case .listChecks: "checklist"
+        case .quotes: "text.quote"
+        case .codeBlock: "curlybraces.square"
+        case .arrowUUpLeft: "arrow.uturn.backward"
+        case .arrowUUpRight: "arrow.uturn.forward"
+        case .cloud: "icloud"
+        case .laptop: "laptopcomputer"
+        case .folderSimple: "folder"
+        case .check: "checkmark"
+        case .arrowRight: "arrow.right"
+        case .checkCircleFill: "checkmark.circle.fill"
+        case .files: "doc.on.doc"
+        case .textAa: "textformat"
+        case .flame: "flame"
+        case .pencilLine: "pencil.line"
+        case .calendarDots: "calendar"
+        default: nil
+        }
+    }
+
+    /// Not resizable: the system sizes it (toolbar and Settings tabs, sidebar and menu labels).
+    public var glyph: Image {
+        if let systemName { return Image(systemName: systemName) }
+        return Image(rawValue, bundle: .module).renderingMode(.template)
+    }
+
+    /// Template image: tint with `.foregroundStyle`, size with `.frame` — resizable, so pair it with
+    /// `.aspectRatio(contentMode: .fit)` (SF Symbols aren't square).
     public var image: Image {
-        Image(rawValue, bundle: .module).renderingMode(.template).resizable()
+        if let systemName { return Image(systemName: systemName).resizable() }
+        return Image(rawValue, bundle: .module).renderingMode(.template).resizable()
     }
 }

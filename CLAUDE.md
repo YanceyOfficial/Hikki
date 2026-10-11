@@ -25,9 +25,10 @@ These rules are mandatory. Automated ones are noted.
   components in `editor/src/components/ui/`). Add components only with `cd editor && bun run ui:add <name>` — the
   wrapper fixes the CLI's wrong `cn` import under TypeScript 7. Prefer a shadcn component over a hand-rolled one;
   editor-specific pieces live in `editor/src/ui/`.
-- **One icon set: Phosphor.** Web uses `@phosphor-icons/react`; native uses the generated `Icon` enum (list icons in
-  `design/icons.json`, run `make icons`; `IconView` / `IconLabel` in HikkiUI). No SF Symbols — _enforced by
-  `make lint-design`_.
+- **Icons go through one list** (`design/icons.json`, `make icons`). The native shell draws SF Symbols (each icon's
+  `"sf"` name; the generated `Icon` enum, `IconView` / `IconLabel`, `Icon.glyph` for system-sized spots), falling
+  back to the bundled Phosphor asset where there is no symbol; the web editor uses `@phosphor-icons/react`. No raw
+  `Image(systemName:)` / `systemImage:` — _enforced by `make lint-design`_.
 - **Copy language.** User-facing strings are keys, never literals: native `app:<area>.<element>` keys in
   `Hikki/Resources/Localization/Localizable.xcstrings` (interpolations become `%@`, e.g. `app:page.edited %@`); web
   `t('area.key')` with catalogs in `editor/src/locales/`. English is the source; zh-Hans must be complete. The native
@@ -92,14 +93,15 @@ HikkiUITests/                 XCUITest flows
 
 - **swiftly** on `PATH` shadows Xcode's Swift and breaks `tuist install`; the Makefile strips it.
 - `make test-core` (tuist test) regenerates a test-only workspace; the target regenerates the full one afterwards.
-- **macOS title bar**: SwiftUI re-installs a window toolbar on navigation changes. `Hikki/Sources/WindowChrome.swift`
-  removes it via KVO and keeps the traffic lights centred in the header bar (`Size.tabBar`) via a `layout()` hook on AppKit's title-bar
-  view (isa-swizzled subclass), because AppKit re-lays them out on its own (e.g. sidebar toggles). Rejected:
-  SwiftUI's toolbar (covered the tab strip), an own `NSToolbar` (crashed), a titlebar accessory (covered the strip),
-  frame-change notifications (async showed a jump; sync fought AppKit — the zoom button bounced ~100×/s), sliding
-  the container (AppKit snapped it back, runaway). Verify with `HIKKI_DEBUG_SIDEBAR` + sampled button positions.
+- **Window chrome is native**: the system `NavigationSplitView` and window toolbar (Liquid Glass groups: back/forward
+  `ControlGroup`, tabs, page actions). Don't reintroduce a custom title bar — an earlier one needed an isa-swizzled
+  layout hook to keep the traffic lights in place. The page scrolls under the toolbar (WKWebView
+  `obscuredContentInsets` on macOS, an explicit scroll inset on iOS).
+- **Sidebar**: Mac/iPad draw our own rows in a `LazyVStack` (`Hikki/Sources/SidebarView.swift`) — a native `List`
+  paints selection in the system accent (not the colour tone) and swallowed row drops on iPad; iPhone keeps a `List`.
+  Fills on the sidebar use resolved colours (dynamic ones picked up the active window's vibrancy).
 - **Data directory**: `HIKKI_DATA_DIR` overrides it (UI tests, demos). DEBUG hooks: `HIKKI_OPEN_TABS=a,b`,
-  `HIKKI_OPEN_SEARCH`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SIDEBAR` (hide + show the sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
+  `HIKKI_OPEN_SEARCH`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SIDEBAR` (hide + show the split view sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_ACTIVATE`, `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
   UI tests set it by default — pass `workspace: nil` to `launch()` to test onboarding).
 - **Workspace**: first launch shows `Hikki/Sources/OnboardingView.swift` until the workspace file (`AppPaths.workspace`) exists
   (`HikkiCore/Sources/Store/Workspace.swift`). A folder location stores a security-scoped bookmark
@@ -113,4 +115,8 @@ HikkiUITests/                 XCUITest flows
 - **Demo recordings** (macOS): `HikkiUITests/UnsplashDemoRecording.swift` drives a flow at a watchable pace when run
   with `TEST_RUNNER_HIKKI_RECORD=1`; record with `screencapture -v -V <s>` meanwhile. UI tests paste text rather than
   type it on macOS when spaces matter — synthesized keys go through the active input method (a Chinese IME eats them).
+- **Appearance** (Settings → Theme) is applied app-wide (`NSApp.appearance` / window `overrideUserInterfaceStyle`),
+  not with `preferredColorScheme`, which left parts of windows in the old scheme after switching back.
+- **macOS windows**: closing the last main window only hides it (Dock click restores it) and closes Settings —
+  `Hikki/Sources/WindowLifecycle.swift`.
 - Simulators sometimes fail with "Busy (Application failed preflight checks)": `xcrun simctl shutdown all`, boot again.

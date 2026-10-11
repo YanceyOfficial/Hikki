@@ -11,8 +11,8 @@ public nonisolated extension Theme {
     static let cardForeground = dynamic(light: 0x37352F, lightAlpha: 1, dark: 0xFFFFFF, darkAlpha: 0.81)
     static let popover = dynamic(light: 0xFFFFFF, lightAlpha: 1, dark: 0x252525, darkAlpha: 1)
     static let popoverForeground = dynamic(light: 0x37352F, lightAlpha: 1, dark: 0xFFFFFF, darkAlpha: 0.81)
-    static let primary = dynamic(light: 0x2383E2, lightAlpha: 1, dark: 0x2383E2, darkAlpha: 1)
-    static let primaryForeground = dynamic(light: 0xFFFFFF, lightAlpha: 1, dark: 0xFFFFFF, darkAlpha: 1)
+    static let primary = dynamic(light: 0x1C1C1C, lightAlpha: 1, dark: 0xE6E4DF, darkAlpha: 1)
+    static let primaryForeground = dynamic(light: 0xFFFFFF, lightAlpha: 1, dark: 0x141414, darkAlpha: 1)
     static let secondary = dynamic(light: 0x37352F, lightAlpha: 0.06, dark: 0xFFFFFF, darkAlpha: 0.055)
     static let secondaryForeground = dynamic(light: 0x37352F, lightAlpha: 1, dark: 0xFFFFFF, darkAlpha: 0.81)
     static let muted = dynamic(light: 0x37352F, lightAlpha: 0.06, dark: 0xFFFFFF, darkAlpha: 0.055)
@@ -22,10 +22,10 @@ public nonisolated extension Theme {
     static let destructive = dynamic(light: 0xE03E3E, lightAlpha: 1, dark: 0xFF7369, darkAlpha: 1)
     static let border = dynamic(light: 0x37352F, lightAlpha: 0.09, dark: 0xFFFFFF, darkAlpha: 0.094)
     static let input = dynamic(light: 0x37352F, lightAlpha: 0.16, dark: 0xFFFFFF, darkAlpha: 0.14)
-    static let ring = dynamic(light: 0x2383E2, lightAlpha: 0.35, dark: 0x2383E2, darkAlpha: 0.5)
+    static let ring = dynamic(light: 0x1C1C1C, lightAlpha: 0.3, dark: 0xE6E4DF, darkAlpha: 0.4)
     static let sidebar = dynamic(light: 0xF8F8F7, lightAlpha: 1, dark: 0x202020, darkAlpha: 1)
     static let sidebarForeground = dynamic(light: 0x37352F, lightAlpha: 0.82, dark: 0xFFFFFF, darkAlpha: 0.78)
-    static let sidebarPrimary = dynamic(light: 0x2383E2, lightAlpha: 1, dark: 0x2383E2, darkAlpha: 1)
+    static let sidebarPrimary = dynamic(light: 0x1C1C1C, lightAlpha: 1, dark: 0xE6E4DF, darkAlpha: 1)
     static let sidebarAccent = dynamic(light: 0x37352F, lightAlpha: 0.08, dark: 0xFFFFFF, darkAlpha: 0.08)
     static let sidebarAccentForeground = dynamic(light: 0x37352F, lightAlpha: 1, dark: 0xFFFFFF, darkAlpha: 0.81)
     static let sidebarBorder = dynamic(light: 0x37352F, lightAlpha: 0.09, dark: 0xFFFFFF, darkAlpha: 0.094)
@@ -35,8 +35,7 @@ public nonisolated extension Theme {
     static let placeholder = dynamic(light: 0x37352F, lightAlpha: 0.3, dark: 0xFFFFFF, darkAlpha: 0.28)
     /// Hikki: pressed / selected surface
     static let accentStrong = dynamic(light: 0x37352F, lightAlpha: 0.1, dark: 0xFFFFFF, darkAlpha: 0.1)
-    /// Hikki: text selection, focus halo
-    static let selection = dynamic(light: 0x2383E2, lightAlpha: 0.14, dark: 0x2383E2, darkAlpha: 0.25)
+    static let selection = dynamic(light: 0x1C1C1C, lightAlpha: 0.12, dark: 0xE6E4DF, darkAlpha: 0.2)
     /// Hikki: inline code / code block surface
     static let code = dynamic(light: 0x878378, lightAlpha: 0.15, dark: 0x878378, darkAlpha: 0.15)
     /// Hikki
@@ -90,6 +89,63 @@ public nonisolated enum TextSize: CGFloat, Sendable {
     case x4l = 40
 }
 
+/// Colour tones (Settings → Appearance), after exodus: `fill` for shapes, `ink` for text, `onFill` for text on a fill.
+public nonisolated enum ColorTone: String, CaseIterable, Sendable, Identifiable {
+    case sumi, kurenai, terigaki, kohaku, wakatake, seiheki, edomurasaki
+
+    public static let standard = ColorTone.kurenai
+    public var id: String { rawValue }
+
+    public var fill: Color {
+        switch self {
+        case .sumi: Theme.dynamic(light: 0x1C1C1C, lightAlpha: 1, dark: 0x959491, darkAlpha: 1)
+        case .kurenai: Theme.dynamic(light: 0xCB1B45, lightAlpha: 1, dark: 0xCC2049, darkAlpha: 1)
+        case .terigaki: Theme.dynamic(light: 0xC46243, lightAlpha: 1, dark: 0xC46243, darkAlpha: 1)
+        case .kohaku: Theme.dynamic(light: 0xCA7A2C, lightAlpha: 1, dark: 0xCA7A2C, darkAlpha: 1)
+        case .wakatake: Theme.dynamic(light: 0x569E77, lightAlpha: 1, dark: 0x58A37B, darkAlpha: 1)
+        case .seiheki: Theme.dynamic(light: 0x268785, lightAlpha: 1, dark: 0x268785, darkAlpha: 1)
+        case .edomurasaki: Theme.dynamic(light: 0x77428D, lightAlpha: 1, dark: 0x87599B, darkAlpha: 1)
+        }
+    }
+
+    public var ink: Color {
+        switch self {
+        case .sumi: Theme.dynamic(light: 0x1C1C1C, lightAlpha: 1, dark: 0x959491, darkAlpha: 1)
+        case .kurenai: Theme.dynamic(light: 0xCB1B45, lightAlpha: 1, dark: 0xDB617E, darkAlpha: 1)
+        case .terigaki: Theme.dynamic(light: 0xAE573C, lightAlpha: 1, dark: 0xC97054, darkAlpha: 1)
+        case .kohaku: Theme.dynamic(light: 0xA06023, lightAlpha: 1, dark: 0xCA7A2C, darkAlpha: 1)
+        case .wakatake: Theme.dynamic(light: 0x437B5D, lightAlpha: 1, dark: 0x58A37B, darkAlpha: 1)
+        case .seiheki: Theme.dynamic(light: 0x237C7A, lightAlpha: 1, dark: 0x409594, darkAlpha: 1)
+        case .edomurasaki: Theme.dynamic(light: 0x77428D, lightAlpha: 1, dark: 0xA07CB0, darkAlpha: 1)
+        }
+    }
+
+    public var onFill: Color {
+        switch self {
+        case .sumi: Theme.dynamic(light: 0xFFFFFF, lightAlpha: 1, dark: 0xFFFFFF, darkAlpha: 1)
+        case .kurenai: Theme.dynamic(light: 0xFFFFFF, lightAlpha: 1, dark: 0xFFFFFF, darkAlpha: 1)
+        case .terigaki: Theme.dynamic(light: 0xFFFFFF, lightAlpha: 1, dark: 0xFFFFFF, darkAlpha: 1)
+        case .kohaku: Theme.dynamic(light: 0xFFFFFF, lightAlpha: 1, dark: 0xFFFFFF, darkAlpha: 1)
+        case .wakatake: Theme.dynamic(light: 0xFFFFFF, lightAlpha: 1, dark: 0xFFFFFF, darkAlpha: 1)
+        case .seiheki: Theme.dynamic(light: 0xFFFFFF, lightAlpha: 1, dark: 0xFFFFFF, darkAlpha: 1)
+        case .edomurasaki: Theme.dynamic(light: 0xFFFFFF, lightAlpha: 1, dark: 0xFFFFFF, darkAlpha: 1)
+        }
+    }
+
+    public var selectionFill: Color {
+        switch self {
+        case .sumi: Theme.dynamic(light: 0x1C1C1C, lightAlpha: 0.16, dark: 0x959491, darkAlpha: 0.3)
+        case .kurenai: Theme.dynamic(light: 0xCB1B45, lightAlpha: 0.16, dark: 0xCC2049, darkAlpha: 0.3)
+        case .terigaki: Theme.dynamic(light: 0xC46243, lightAlpha: 0.16, dark: 0xC46243, darkAlpha: 0.3)
+        case .kohaku: Theme.dynamic(light: 0xCA7A2C, lightAlpha: 0.16, dark: 0xCA7A2C, darkAlpha: 0.3)
+        case .wakatake: Theme.dynamic(light: 0x569E77, lightAlpha: 0.16, dark: 0x58A37B, darkAlpha: 0.3)
+        case .seiheki: Theme.dynamic(light: 0x268785, lightAlpha: 0.16, dark: 0x268785, darkAlpha: 0.3)
+        case .edomurasaki: Theme.dynamic(light: 0x77428D, lightAlpha: 0.16, dark: 0x87599B, darkAlpha: 0.3)
+        }
+    }
+
+}
+
 /// Component dimensions.
 public nonisolated enum Size {
     public static let sidebarMin: CGFloat = 240
@@ -105,4 +161,5 @@ public nonisolated enum Size {
     public static let iconButtonSm: CGFloat = 22
     public static let sidebarIcon: CGFloat = 18
     public static let onboardingBadge: CGFloat = 64
+    public static let heatmapCell: CGFloat = 12
 }

@@ -2,7 +2,7 @@ import HikkiCore
 import HikkiUI
 import SwiftUI
 
-/// The editor for one page. On iPhone it also owns the nav-bar toolbar; wider layouts use `PageBar`.
+/// The editor for one page. On iPhone it also owns the nav-bar toolbar; wider layouts use the window toolbar.
 struct PageScreen: View {
     @Environment(AppModel.self) private var model
     let pageID: String
@@ -12,72 +12,77 @@ struct PageScreen: View {
 
     var body: some View {
         let page = model.tree.page(pageID)
-        EditorView(controller: editor)
-            .ignoresSafeArea(.container, edges: .bottom)
-            .navigationTitle(page.map { $0.title.isEmpty ? String(localized: "app:page.untitled") : $0.title } ?? "")
-            #if os(iOS)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    if phoneToolbar, let page {
-                        ToolbarItemGroup(placement: .primaryAction) {
-                            FavoriteButton(page: page)
-                            PageMoreMenu(page: page, navigator: navigator)
-                        }
-                    }
+        // The page runs under the window toolbar (Photos-style glass); the toolbar's height becomes the
+        // editor's top inset so the first line still starts below it.
+        GeometryReader { proxy in
+            EditorView(controller: editor, topInset: proxy.safeAreaInsets.top)
+                .ignoresSafeArea(.container, edges: [.top, .bottom])
+        }
+        .navigationTitle(page.map { Self.title($0) } ?? "")
+        #if os(macOS)
+            // Breadcrumbs, natively: the path in the subtitle ("Parent › Child · Edited …")…
+            .navigationSubtitle(page.map(subtitle) ?? Text(verbatim: ""))
+        #endif
+        // …and the title's menu jumps to any parent (as Finder's and Xcode's titles do).
+        .toolbarTitleMenu {
+            ForEach(ancestors.reversed()) { parent in
+                Button {
+                    navigator.open(parent.id)
+                } label: {
+                    Text(verbatim: (parent.icon.map { "\($0) " } ?? "") + Self.title(parent))
                 }
-            #endif
-    }
-}
-
-/// Notion's second row: breadcrumbs on the left; edited time, favorite and ⋯ on the right. Flat, no glass.
-struct PageBar: View {
-    @Environment(AppModel.self) private var model
-    let route: Route
-    let navigator: Navigator
-
-    var body: some View {
-        HStack(spacing: Spacing.s1) {
-            switch route {
-            case .page(let id):
-                Breadcrumbs(model.tree.path(to: id).map { Crumb(id: $0.id, title: $0.title, icon: $0.icon) }) { navigator.open($0) }
-                Spacer(minLength: 8)
-                if let page = model.tree.page(id) {
-                    TimelineView(.periodic(from: .now, by: 60)) { _ in
-                        Text("app:page.edited \(page.updatedAt, format: .relative(presentation: .named))")
-                            .font(.hk(.md))
-                            .foregroundStyle(Theme.mutedForeground)
-                            .lineLimit(1)
-                    }
-                    .padding(.trailing, Spacing.s1_5)
-                    FavoriteButton(page: page)
-                    PageMoreMenu(page: page, navigator: navigator)
-                }
-            case .home:
-                barTitle("app:nav.home", symbol: .house)
-                Spacer()
-            case .trash:
-                barTitle("app:nav.trash", symbol: .trash)
-                Spacer()
             }
         }
-        .padding(.horizontal, Spacing.s3)
-        .frame(height: 44)
-        .background(Theme.background)
+        #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if phoneToolbar, let page {
+                    ToolbarItemGroup(placement: .primaryAction) {
+                        FavoriteButton(page: page)
+                        PageMoreMenu(page: page, navigator: navigator)
+                    }
+                }
+            }
+        #endif
     }
 
-    private func barTitle(_ title: LocalizedStringKey, symbol: Icon) -> some View {
-        IconLabel(title, icon: symbol)
-            .font(.hk(.md, .medium))
-            .foregroundStyle(Theme.foreground)
-            .padding(.horizontal, Spacing.s1_5)
+    /// Parents of the page, nearest last (root first).
+    private var ancestors: [PageSummary] { model.tree.path(to: pageID).dropLast() }
+
+    private func subtitle(_ page: PageSummary) -> Text {
+        let edited = Text("app:page.edited \(page.updatedAt, format: .relative(presentation: .named))")
+        guard !ancestors.isEmpty else { return edited }
+        // The page titles, shown as-is.
+        return Text(verbatim: ancestors.map(Self.title).joined(separator: " › ") + " · ") + edited
+    }
+
+    private static func title(_ page: PageSummary) -> String {
+        page.title.isEmpty ? String(localized: "app:page.untitled") : page.title
     }
 }
 
 struct FavoriteButton: View {
     @Environment(AppModel.self) private var model
     let page: PageSummary
+    /// In a window toolbar: a plain button, so the system draws it inside the group's glass.
+    var toolbar = false
 
     var body: some View {
+        if toolbar {
+            Button {
+                model.setFavorite(!page.isFavorite, id: page.id)
+            } label: {
+                IconLabel(page.isFavorite ? "app:page.unfavorite" : "app:page.favorite", icon: page.isFavorite ? .starFill : .star)
+            }
+            .foregroundStyle(page.isFavorite ? AnyShapeStyle(.yellow) : AnyShapeStyle(.primary))
+            .help(page.isFavorite ? "app:page.unfavorite" : "app:page.favorite")
+            .accessibilityIdentifier("favorite-toggle")
+        } else {
+            barButton
+        }
+    }
+
+    private var barButton: some View {
         BarIconButton(
             page.isFavorite ? "app:page.unfavorite" : "app:page.favorite",
             symbol: page.isFavorite ? .starFill : .star,
@@ -92,12 +97,33 @@ struct FavoriteButton: View {
 struct PageMoreMenu: View {
     let page: PageSummary
     let navigator: Navigator
+    /// In a window toolbar: a plain menu button, drawn by the system inside the group's glass.
+    var toolbar = false
 
     var body: some View {
+        if toolbar {
+            Menu {
+                items
+            } label: {
+                IconLabel("app:common.more", icon: .dotsThree)
+            }
+            .menuIndicator(.hidden)
+            .help("app:common.more")
+            .accessibilityIdentifier("page-more")
+        } else {
+            barMenu
+        }
+    }
+
+    @ViewBuilder private var items: some View {
+        PageActions(page: page, navigator: navigator)
+        Divider()
+        Text("app:page.edited \(page.updatedAt, format: .relative(presentation: .named))")
+    }
+
+    private var barMenu: some View {
         Menu {
-            PageActions(page: page, navigator: navigator)
-            Divider()
-            Text("app:page.edited \(page.updatedAt, format: .relative(presentation: .named))")
+            items
         } label: {
             IconView(.dotsThree, size: TextSize.base.rawValue)
                 .foregroundStyle(Theme.subtleForeground)

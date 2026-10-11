@@ -1,6 +1,7 @@
 import HikkiCore
 import HikkiUI
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Device-level appearance choice (Settings → Appearance → Theme), applied at the root of each window.
 enum AppearancePreference: String, CaseIterable, Identifiable {
@@ -18,6 +19,30 @@ enum AppearancePreference: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Applies it app-wide. `preferredColorScheme` isn't reliable for this: once a scheme has been forced,
+    /// going back (to light, or to "system") left parts of windows — Settings, the toolbar — in the old one.
+    /// The app-level appearance switches every window, the editor's web view included, at once.
+    @MainActor func apply() {
+        #if os(macOS)
+            NSApp.appearance =
+                switch self {
+                case .system: nil
+                case .light: NSAppearance(named: .aqua)
+                case .dark: NSAppearance(named: .darkAqua)
+                }
+        #else
+            let style: UIUserInterfaceStyle =
+                switch self {
+                case .system: .unspecified
+                case .light: .light
+                case .dark: .dark
+                }
+            for case let scene as UIWindowScene in UIApplication.shared.connectedScenes {
+                for window in scene.windows { window.overrideUserInterfaceStyle = style }
+            }
+        #endif
+    }
+
     var title: LocalizedStringKey {
         switch self {
         case .system: "app:settings.theme.system"
@@ -31,9 +56,12 @@ enum AppearancePreference: String, CaseIterable, Identifiable {
 /// (like Safari or Notes, opened with ⌘,); iPhone and iPad get an inset-grouped form in a sheet.
 struct SettingsView: View {
     @AppStorage(AppearancePreference.storageKey) private var appearance = AppearancePreference.system
+    @AppStorage(ColorTone.storageKey) private var tone = ColorTone.standard
 
     var body: some View {
-        content.preferredColorScheme(appearance.colorScheme)
+        content
+            .environment(\.colorTone, tone)
+            .tint(tone.fill)
     }
 
     #if os(macOS)
@@ -49,16 +77,20 @@ struct SettingsView: View {
                     Label {
                         Text("app:settings.general")
                     } icon: {
-                        Icon.gearSix.image
+                        Icon.gearSix.glyph
                     }
                 }
                 Tab {
-                    Form { AppearanceSection() }.formStyle(.grouped)
+                    Form {
+                        AppearanceSection()
+                        ColorToneSection()
+                    }
+                    .formStyle(.grouped)
                 } label: {
                     Label {
                         Text("app:settings.appearance")
                     } icon: {
-                        Icon.slidersHorizontal.image
+                        Icon.slidersHorizontal.glyph
                     }
                 }
                 Tab {
@@ -67,7 +99,7 @@ struct SettingsView: View {
                     Label {
                         Text("app:settings.about")
                     } icon: {
-                        Icon.info.image
+                        Icon.info.glyph
                     }
                 }
             }
@@ -83,6 +115,7 @@ struct SettingsView: View {
                 Form {
                     WorkspaceSection()
                     AppearanceSection()
+                    ColorToneSection()
                     LanguageSection()
                     AboutSection()
                 }
@@ -114,6 +147,7 @@ private struct WorkspaceSection: View {
                     .onSubmit { model.renameWorkspace(name) }
                     .accessibilityIdentifier("settings-name")
             }
+            WorkspaceIconRow()
             LabeledContent("app:settings.storage") {
                 storage
             }
@@ -136,6 +170,73 @@ private struct WorkspaceSection: View {
     }
 }
 
+/// Settings → General → Icon (Notion): upload an image, pick an emoji, or go back to the initial.
+private struct WorkspaceIconRow: View {
+    @Environment(AppModel.self) private var model
+    @State private var importing = false
+    @State private var pickingEmoji = false
+    @State private var failed = false
+
+    private static let emoji = [
+        "🏠", "📓", "📚", "🗂️", "✏️", "🖋️", "🧠", "💡", "🚀", "🌱", "🌸", "🍀", "🌊", "🔥", "⭐️", "🌙",
+        "☕️", "🍵", "🎧", "🎨", "📷", "🧭", "🗻", "🏔️", "🏯", "⛩️", "🎌", "🐱", "🦊", "🐼", "🐳", "🦉",
+    ]
+
+    var body: some View {
+        LabeledContent {
+            HStack(spacing: Spacing.s2) {
+                Button("app:settings.icon.upload") { importing = true }
+                Button("app:settings.icon.emoji") { pickingEmoji = true }
+                    .popover(isPresented: $pickingEmoji) { emojiGrid }
+                if model.workspace?.icon != nil {
+                    Button("app:settings.icon.remove", role: .destructive) { model.setWorkspaceIcon(nil) }
+                }
+            }
+            // Borderless: in an iOS form row, plain buttons would all fire on one tap.
+            .buttonStyle(.borderless)
+        } label: {
+            HStack(spacing: Spacing.s3) {
+                WorkspaceBadge(initial: model.workspace?.initial ?? "H", icon: model.workspace?.icon, size: Size.iconButton + Spacing.s3)
+                VStack(alignment: .leading, spacing: Spacing.s0_5) {
+                    Text("app:settings.icon")
+                    Text(failed ? "app:settings.icon.error" : "app:settings.icon.detail")
+                        .font(.caption)
+                        .foregroundStyle(failed ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+                }
+            }
+        }
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.image]) { result in
+            guard case .success(let url) = result else { return }
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            if let data = try? Data(contentsOf: url), let thumbnail = WorkspaceIcon.thumbnail(of: data) {
+                failed = false
+                model.setWorkspaceIcon(.image(thumbnail))
+            } else {
+                failed = true
+            }
+        }
+    }
+
+    private var emojiGrid: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.fixed(Size.iconButton + Spacing.s2)), count: 8), spacing: Spacing.s1) {
+            ForEach(Self.emoji, id: \.self) { emoji in
+                Button {
+                    model.setWorkspaceIcon(.emoji(emoji))
+                    pickingEmoji = false
+                } label: {
+                    Text(verbatim: emoji)
+                        .font(.title2)
+                        .frame(width: Size.iconButton + Spacing.s2, height: Size.iconButton + Spacing.s2)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(Spacing.s3)
+    }
+}
+
 private struct AppearanceSection: View {
     @AppStorage(AppearancePreference.storageKey) private var appearance = AppearancePreference.system
 
@@ -149,6 +250,38 @@ private struct AppearanceSection: View {
             Text("app:settings.appearance")
         } footer: {
             Text("app:settings.theme.detail")
+        }
+    }
+}
+
+/// exodus's colour tone: each preset as a row with its swatch and a checkmark on the chosen one.
+private struct ColorToneSection: View {
+    @AppStorage(ColorTone.storageKey) private var selected = ColorTone.standard
+
+    var body: some View {
+        Section {
+            ForEach(ColorTone.allCases) { tone in
+                Button {
+                    selected = tone
+                } label: {
+                    HStack(spacing: Spacing.s3) {
+                        ColorToneSwatch(tone)
+                        Text(tone.title).foregroundStyle(.primary)
+                        Spacer()
+                        if tone == selected {
+                            IconView(.check, size: TextSize.sm.rawValue).foregroundStyle(tone.ink)
+                        }
+                    }
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(tone == selected ? [.isButton, .isSelected] : .isButton)
+                .accessibilityIdentifier("settings-tone-\(tone.rawValue)")
+            }
+        } header: {
+            Text("app:settings.tone")
+        } footer: {
+            Text("app:settings.tone.detail")
         }
     }
 }

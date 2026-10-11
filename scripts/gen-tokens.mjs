@@ -29,6 +29,63 @@ function parseColor(value) {
   throw new Error(`unsupported color: ${value}`)
 }
 const hex6 = (n) => `0x${n.toString(16).toUpperCase().padStart(6, '0')}`
+const cssHex = (n) => `#${n.toString(16).padStart(6, '0')}`
+
+// ---- color tones (accent presets): contrast-checked fills / inks per scheme
+const channels = (n) => [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+const pack = ([r, g, b]) => (Math.round(r) << 16) | (Math.round(g) << 8) | Math.round(b)
+const luminance = (n) => {
+  const [r, g, b] = channels(n).map((v) => {
+    const c = v / 255
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  })
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+const contrast = (a, b) => {
+  const [x, y] = [luminance(a), luminance(b)].toSorted((p, q) => q - p)
+  return (x + 0.05) / (y + 0.05)
+}
+const mix = (n, target, t) => pack(channels(n).map((v, i) => v + (channels(target)[i] - v) * t))
+/** Moves `color` toward `target` in small steps until it reaches `ratio` against every surface. */
+function reach(color, target, surfaces, ratio, what) {
+  for (let t = 0; t <= 1.0001; t += 0.01) {
+    const c = mix(color, target, t)
+    if (surfaces.every((s) => contrast(c, s) >= ratio)) return c
+  }
+  throw new Error(`tone: cannot reach ${ratio}:1 for ${what}`)
+}
+const surface = (name, mode) => parseColor(tokens.color[name][mode]).rgb
+/** The fill: as close to the preset as possible (either direction) while ≥3:1 on the page and sidebar and
+ *  carrying white bold text (≥3:1) — selected sidebar rows and buttons are always white on the tone. */
+function fillFor(color, surfaces, what) {
+  const ok = (c) => surfaces.every((s) => contrast(c, s) >= 3) && contrast(c, 0xffffff) >= 3
+  for (let t = 0; t <= 1.0001; t += 0.01) {
+    for (const target of [0x000000, 0xffffff]) {
+      const c = mix(color, target, t)
+      if (ok(c)) return c
+    }
+  }
+  throw new Error(`tone: no fill for ${what} reaches 3:1 on its surfaces and under white text`)
+}
+function tones() {
+  const out = []
+  for (const [name, v] of entries(tokens.tone.presets)) {
+    const base = typeof v === 'string' ? { light: v, dark: v } : v
+    const scheme = {}
+    for (const mode of ['light', 'dark']) {
+      const away = mode === 'light' ? 0x000000 : 0xffffff
+      const surfaces = [surface('background', mode), surface('sidebar', mode)]
+      const fill = fillFor(parseColor(base[mode]).rgb, surfaces, `${name} ${mode}`)
+      const ink = reach(fill, away, surfaces, 4.6, `${name} ${mode} ink`)
+      const [r, g, b] = channels(fill)
+      // Text highlight / drop targets: the fill, translucent.
+      const selection = `rgba(${r}, ${g}, ${b}, ${mode === 'light' ? 0.16 : 0.3})`
+      scheme[mode] = { fill, ink, onFill: 0xffffff, selection }
+    }
+    out.push({ name, ...scheme })
+  }
+  return out
+}
 
 function swift() {
   const lines = [header('//'), '// swift-format-ignore-file', '', 'import SwiftUI', '']
@@ -61,6 +118,25 @@ function swift() {
   lines.push('public nonisolated enum TextSize: CGFloat, Sendable {')
   for (const [k, v] of entries(tokens.text)) lines.push(`    case ${scaleId(k)} = ${v}`)
   lines.push('}', '')
+  lines.push(
+    '/// Colour tones (Settings → Appearance), after exodus: `fill` for shapes, `ink` for text, `onFill` for text on a fill.'
+  )
+  lines.push('public nonisolated enum ColorTone: String, CaseIterable, Sendable, Identifiable {')
+  const all = tones()
+  lines.push(`    case ${all.map((t) => camel(t.name)).join(', ')}`, '')
+  lines.push(`    public static let standard = ColorTone.${camel(tokens.tone.default)}`)
+  lines.push('    public var id: String { rawValue }', '')
+  for (const role of ['fill', 'ink', 'onFill', 'selectionFill']) {
+    lines.push(`    public var ${role}: Color {`, '        switch self {')
+    for (const t of all)
+      lines.push(
+        role === 'selectionFill'
+          ? `        case .${camel(t.name)}: Theme.dynamic(light: ${hex6(t.light.fill)}, lightAlpha: 0.16, dark: ${hex6(t.dark.fill)}, darkAlpha: 0.3)`
+          : `        case .${camel(t.name)}: Theme.dynamic(light: ${hex6(t.light[role])}, lightAlpha: 1, dark: ${hex6(t.dark[role])}, darkAlpha: 1)`
+      )
+    lines.push('        }', '    }', '')
+  }
+  lines.push('}', '')
   lines.push('/// Component dimensions.')
   lines.push('public nonisolated enum Size {')
   for (const [k, v] of entries(tokens.size))
@@ -74,6 +150,25 @@ const colorVars = (mode, indent) => [
   ...entries(tokens.color).map(([n, v]) => `${indent}--${n}: ${v[mode]};`),
   ...entries(tokens.shadow).map(([n, v]) => `${indent}--${n}-shadow: ${v[mode]};`)
 ]
+
+// Colour tones: the editor switches palettes with <html data-tone="…"> (set by the native side).
+// The default tone also covers a page the native side hasn't told yet (no data-tone).
+const sel = (t) =>
+  t.name === tokens.tone.default
+    ? `:root[data-tone='${t.name}'], :root:not([data-tone])`
+    : `:root[data-tone='${t.name}']`
+const toneVars = (t, mode, indent) => {
+  const { fill, ink, onFill } = t[mode]
+  const [r, g, b] = channels(fill)
+  return [
+    `${indent}--primary: ${cssHex(fill)};`,
+    `${indent}--primary-foreground: ${cssHex(onFill)};`,
+    `${indent}--sidebar-primary: ${cssHex(fill)};`,
+    `${indent}--ring: rgba(${r}, ${g}, ${b}, ${mode === 'light' ? 0.35 : 0.5});`,
+    `${indent}--tone-ink: ${cssHex(ink)};`,
+    `${indent}--selection: ${t[mode].selection};`
+  ]
+}
 
 /** Tailwind v4 theme (shadcn-style): semantic CSS variables switched by color scheme, mapped into
  *  Tailwind with `@theme inline`. Default palettes/scales are cleared so only tokens exist. */
@@ -92,6 +187,10 @@ function css() {
     '}',
     ''
   )
+  for (const t of tones()) L.push(`${sel(t)} {`, ...toneVars(t, 'light', '  '), '}')
+  L.push('', '@media (prefers-color-scheme: dark) {')
+  for (const t of tones()) L.push(`  ${sel(t)} {`, ...toneVars(t, 'dark', '    '), '  }')
+  L.push('}', '')
   L.push('@theme inline {')
   L.push(
     '  --color-*: initial;',
@@ -100,6 +199,7 @@ function css() {
     '  --color-transparent: transparent;'
   )
   for (const [n] of entries(tokens.color)) L.push(`  --color-${n}: var(--${n});`)
+  L.push('  --color-tone-ink: var(--tone-ink, var(--primary));')
   L.push('  --spacing: 4px; /* Tailwind spacing = n × 4px, matching design/tokens.json spacing */')
   L.push('  --radius-*: initial;')
   for (const [k, v] of entries(tokens.radius)) L.push(`  --radius-${k}: ${v}px;`)

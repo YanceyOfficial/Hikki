@@ -20,7 +20,13 @@ struct AppCommands: Commands {
             Button("app:tabs.new") { navigator?.openInNewTab(.home) }
                 .keyboardShortcut("t")
             Button("app:tabs.close") {
-                guard let navigator else { return }
+                guard let navigator else {
+                    // Settings (or another window without tabs): ⌘W closes it.
+                    #if os(macOS)
+                        NSApp.keyWindow?.performClose(nil)
+                    #endif
+                    return
+                }
                 if !navigator.closeTab(navigator.tabs.activeID) { closeWindow() }
             }
             .keyboardShortcut("w")
@@ -56,7 +62,7 @@ struct AppCommands: Commands {
 
     private func closeWindow() {
         #if os(macOS)
-            NSApp.keyWindow?.performClose(nil)
+            MainWindows.closeOrHide(NSApp.keyWindow)
         #endif
     }
 }

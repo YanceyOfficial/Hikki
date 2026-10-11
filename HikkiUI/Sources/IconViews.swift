@@ -12,12 +12,14 @@ public struct IconView: View {
 
     public var body: some View {
         icon.image
+            .aspectRatio(contentMode: .fit)
             .frame(width: size, height: size)
             .accessibilityHidden(true)
     }
 }
 
-/// `Label` with a Phosphor icon — the replacement for `Label(_:systemImage:)` (menus, buttons).
+/// `Label` with an `Icon` — the replacement for `Label(_:systemImage:)` (menus, buttons). In menus the
+/// system sizes the symbol itself (`glyph`).
 public struct IconLabel: View {
     private let title: LocalizedStringKey
     private let icon: Icon
@@ -33,7 +35,11 @@ public struct IconLabel: View {
         Label {
             Text(title)
         } icon: {
-            icon.image.frame(width: size, height: size)
+            if icon.systemName != nil {
+                icon.glyph
+            } else {
+                icon.image.aspectRatio(contentMode: .fit).frame(width: size, height: size)
+            }
         }
     }
 }

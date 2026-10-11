@@ -1,4 +1,5 @@
 import Foundation
+import ImageIO
 
 /// The user's workspace: a name and where it lives. Created by onboarding on first launch.
 /// (Page data still lives in the app's own store; moving it into `location` is a later step.)
@@ -14,6 +15,8 @@ public struct Workspace: Codable, Equatable, Sendable {
     public var name: String
     public var location: Location
     public var createdAt: Date
+    /// Shown in the sidebar instead of the name's initial. Older workspace files have none.
+    public var icon: WorkspaceIcon?
 
     public init(id: UUID = UUID(), name: String, location: Location, createdAt: Date = .now) {
         self.id = id
@@ -31,6 +34,33 @@ public struct Workspace: Codable, Equatable, Sendable {
     /// The badge letter shown next to the workspace name.
     public var initial: String {
         name.first.map { String($0).uppercased() } ?? "H"
+    }
+}
+
+/// A workspace's own icon (Settings → General): an emoji, or a small image kept inside the workspace file so
+/// it travels with it.
+public enum WorkspaceIcon: Codable, Equatable, Sendable {
+    case emoji(String)
+    /// PNG, at most `maxPixels` on its longer side (see `thumbnail(of:)`).
+    case image(Data)
+
+    public static let maxPixels = 256
+
+    /// Downscales any image ImageIO can read to a PNG of at most `maxPixels`; nil if it isn't an image.
+    public static func thumbnail(of data: Data, maxPixels: Int = maxPixels) -> Data? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+            let image = CGImageSourceCreateThumbnailAtIndex(
+                source, 0,
+                [
+                    kCGImageSourceCreateThumbnailFromImageAlways: true,
+                    kCGImageSourceCreateThumbnailWithTransform: true,
+                    kCGImageSourceThumbnailMaxPixelSize: maxPixels,
+                ] as CFDictionary)
+        else { return nil }
+        let out = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(out, "public.png" as CFString, 1, nil) else { return nil }
+        CGImageDestinationAddImage(destination, image, nil)
+        return CGImageDestinationFinalize(destination) ? out as Data : nil
     }
 }
 

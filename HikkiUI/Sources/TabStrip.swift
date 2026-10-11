@@ -28,14 +28,16 @@ public struct TabStrip<Leading: View>: View {
     private let onBack: () -> Void
     private let onForward: () -> Void
     private let leading: Leading
+    private let showsHistory: Bool
     @Environment(\.chromeMetrics) private var metrics
 
     public init(
         items: [TabStripItem], activeID: UUID, canGoBack: Bool, canGoForward: Bool,
         onSelect: @escaping (UUID) -> Void, onClose: @escaping (UUID) -> Void, onNew: @escaping () -> Void,
-        onBack: @escaping () -> Void, onForward: @escaping () -> Void,
+        onBack: @escaping () -> Void, onForward: @escaping () -> Void, showsHistory: Bool = true,
         @ViewBuilder leading: () -> Leading = { EmptyView() }
     ) {
+        self.showsHistory = showsHistory
         self.items = items
         self.activeID = activeID
         self.canGoBack = canGoBack
@@ -53,12 +55,15 @@ public struct TabStrip<Leading: View>: View {
     public var body: some View {
         HStack(spacing: Spacing.s1) {
             leading
-            SidebarIconButton("app:chrome.back", symbol: .caretLeft, action: onBack)
-                .disabled(!canGoBack)
-                .opacity(canGoBack ? 1 : 0.4)
-            SidebarIconButton("app:chrome.forward", symbol: .caretRight, action: onForward)
-                .disabled(!canGoForward)
-                .opacity(canGoForward ? 1 : 0.4)
+            // A native toolbar puts back/forward in their own glass group (showsHistory: false).
+            if showsHistory {
+                SidebarIconButton("app:chrome.back", symbol: .caretLeft, action: onBack)
+                    .disabled(!canGoBack)
+                    .opacity(canGoBack ? 1 : 0.4)
+                SidebarIconButton("app:chrome.forward", symbol: .caretRight, action: onForward)
+                    .disabled(!canGoForward)
+                    .opacity(canGoForward ? 1 : 0.4)
+            }
             HStack(spacing: Spacing.s0_5) {
                 ForEach(items) { item in
                     TabButton(
@@ -67,7 +72,7 @@ public struct TabStrip<Leading: View>: View {
                 }
             }
             SidebarIconButton("app:tabs.new", symbol: .plus, action: onNew)
-            Spacer(minLength: 24)
+            if showsHistory { Spacer(minLength: 24) }
         }
         .padding(.horizontal, Spacing.s2)
         .frame(height: metrics.barHeight)
@@ -98,21 +103,22 @@ private struct TabButton: View {
                 Button(action: onClose) {
                     IconView(.x, size: TextSize.xs.rawValue)
                         .foregroundStyle(Theme.mutedForeground)
-                        .frame(width: 16, height: 16)
-                        .contentShape(.rect)
+                        .frame(width: 18, height: 18)
+                        .contentShape(.circle)
                 }
-                .buttonStyle(HoverHighlightStyle())
+                .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.full))
                 .accessibilityLabel("app:tabs.close")
             }
         }
-        .padding(.horizontal, Spacing.s2_5)
+        .padding(.horizontal, Spacing.s3)
         .frame(minWidth: 60, idealWidth: 200, maxWidth: 220, minHeight: 30, maxHeight: 30)
+        // Capsules inside the toolbar's glass capsule, like a segmented control (App Store's sidebar).
         .background(
-            RoundedRectangle(cornerRadius: Radius.lg)
+            Capsule()
                 .fill(isActive ? Theme.background : hovering ? Theme.accent : .clear)
                 .shadow(color: isActive ? .black.opacity(0.08) : .clear, radius: 1, y: 0.5)
         )
-        .contentShape(.rect)
+        .contentShape(.capsule)
         .onTapGesture(perform: onSelect)
         .onHover { hovering = $0 }
         .accessibilityElement(children: .combine)

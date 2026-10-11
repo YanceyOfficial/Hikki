@@ -51,6 +51,21 @@ final class AppModel {
         }
     }
 
+    /// Settings → General → Icon (nil: back to the name's initial).
+    func setWorkspaceIcon(_ icon: WorkspaceIcon?) {
+        guard var workspace, workspace.icon != icon else { return }
+        workspace.icon = icon
+        do {
+            try workspaceStore.save(workspace)
+            self.workspace = workspace
+            Log.info(
+                "workspace icon set", category: "workspace",
+                context: ["kind": icon.map { if case .image = $0 { "image" } else { "emoji" } } ?? "none"])
+        } catch {
+            Log.error("workspace save failed: \(error)", category: "workspace")
+        }
+    }
+
     /// Keeps `tree` and `trash` in sync with the database for the lifetime of the calling task.
     func observe() async {
         await withDiscardingTaskGroup { group in
@@ -120,6 +135,16 @@ final class AppModel {
 
     func search(_ query: String) -> [SearchHit] {
         perform("search") { try store.search(query) } ?? []
+    }
+
+    /// Home: this device's writing activity over the last `days` days, and the workspace's totals.
+    func activity(days: Int) -> [DailyActivity] {
+        let start = Calendar.current.date(byAdding: .day, value: -days, to: .now) ?? .now
+        return perform("load activity") { try store.activity(since: start) } ?? []
+    }
+
+    func stats() -> WorkspaceStats {
+        perform("load stats") { try store.stats() } ?? WorkspaceStats(pages: 0, words: 0)
     }
 
     var exportableFiles: [URL] {

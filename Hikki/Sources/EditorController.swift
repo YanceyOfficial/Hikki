@@ -1,4 +1,5 @@
 import HikkiCore
+import HikkiUI
 import Observation
 import UniformTypeIdentifiers
 import WebKit
@@ -102,6 +103,26 @@ final class EditorController {
         }
     }
 
+    // MARK: - Color tone
+
+    /// The tone the editor should paint in (Settings → Appearance); sent on ready and whenever it changes.
+    @ObservationIgnored private var tone = ColorTone.standard
+
+    func setTone(_ tone: ColorTone) {
+        self.tone = tone
+        guard isReady else { return }
+        Task { await applyTone() }
+    }
+
+    private func applyTone() async {
+        do {
+            _ = try await webView.callAsyncJavaScript(
+                "window.hikki.setTone(tone)", arguments: ["tone": tone.rawValue], contentWorld: .page)
+        } catch {
+            Log.warn("setTone failed: \(error)", category: "bridge")
+        }
+    }
+
     // MARK: - Loading
 
     private func load(_ id: String?) async {
@@ -151,6 +172,7 @@ final class EditorController {
             currentDocumentID = nil
             Task {
                 await applyLocale()
+                await applyTone()
                 await load(pending ?? nil)
             }
         case .changed(let snapshot):
