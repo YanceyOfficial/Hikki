@@ -152,6 +152,13 @@ public final class DocumentStore: Sendable {
                 }
             }
         }
+        migrator.registerMigration("v5-page-file-state") { db in
+            // Pages known to have a file in the workspace folder (written or imported). A page in here whose file
+            // has gone was deleted on another device; one not in here has simply never been written.
+            try db.create(table: "pageFileState") { t in
+                t.primaryKey("id", .text)
+            }
+        }
         return migrator
     }
 
@@ -325,6 +332,50 @@ public final class DocumentStore: Sendable {
         }
     }
 
+    // MARK: - Workspace folder sync (storage option C)
+
+    /// Calls `onCommit` after every committed transaction that changed pages: the rows inserted or updated, and
+    /// whether any row was deleted (the caller then reconciles by id — foreign-key cascades aren't reported row
+    /// by row). Runs on the database's queue; keep it short and hand real work elsewhere.
+    public func observePageCommits(
+        _ onCommit: @escaping @Sendable (_ changed: [DocumentRecord], _ deletions: Bool, _ liveIDs: Set<String>?) -> Void
+    ) throws {
+        writer.add(transactionObserver: PageCommitObserver(onCommit: onCommit), extent: .databaseLifetime)
+    }
+
+    /// Writes a page as it came from its file: no activity bump, no edited-time change, `titlePinyin` derived.
+    public func importPage(_ record: DocumentRecord) throws {
+        var record = record
+        record.titlePinyin = Pinyin.searchKey(for: record.title)
+        try writer.write { db in
+            try record.save(db)
+            try db.execute(sql: "INSERT OR IGNORE INTO pageFileState (id) VALUES (?)", arguments: [record.id])
+        }
+    }
+
+    public func deletePage(id: String) throws {
+        try writer.write { db in
+            _ = try DocumentRecord.deleteOne(db, key: id)
+            try db.execute(sql: "DELETE FROM pageFileState WHERE id = ?", arguments: [id])
+        }
+    }
+
+    public func markSynced(_ ids: some Sequence<String>) throws {
+        try writer.write { db in
+            for id in ids { try db.execute(sql: "INSERT OR IGNORE INTO pageFileState (id) VALUES (?)", arguments: [id]) }
+        }
+    }
+
+    public func unmarkSynced(_ ids: some Sequence<String>) throws {
+        try writer.write { db in
+            for id in ids { try db.execute(sql: "DELETE FROM pageFileState WHERE id = ?", arguments: [id]) }
+        }
+    }
+
+    public func syncedIDs() throws -> Set<String> {
+        try writer.read { Set(try String.fetchAll($0, sql: "SELECT id FROM pageFileState")) }
+    }
+
     // MARK: - Activity (Home)
 
     static func bumpActivity(_ db: Database, day: Date, edits: Int, words: Int) throws {
@@ -495,5 +546,41 @@ public final class DocumentStore: Sendable {
         let end = text.index(range.upperBound, offsetBy: radius, limitedBy: text.endIndex) ?? text.endIndex
         let body = text[start..<end].replacingOccurrences(of: "\n", with: " ")
         return (start > text.startIndex ? "…" : "") + body + (end < text.endIndex ? "…" : "")
+    }
+}
+
+/// Collects page row changes in a transaction and reports them once it commits (see `observePageCommits`).
+private final class PageCommitObserver: TransactionObserver, @unchecked Sendable {
+    private let onCommit: @Sendable ([DocumentRecord], Bool, Set<String>?) -> Void
+    private var changed = Set<Int64>()
+    private var deletions = false
+
+    init(onCommit: @escaping @Sendable ([DocumentRecord], Bool, Set<String>?) -> Void) {
+        self.onCommit = onCommit
+    }
+
+    func observes(eventsOfKind eventKind: DatabaseEventKind) -> Bool {
+        eventKind.tableName == DocumentRecord.databaseTableName
+    }
+
+    func databaseDidChange(with event: DatabaseEvent) {
+        if event.kind == .delete { deletions = true } else { changed.insert(event.rowID) }
+    }
+
+    func databaseDidCommit(_ db: Database) {
+        defer {
+            changed = []
+            deletions = false
+        }
+        guard !changed.isEmpty || deletions else { return }
+        let rowIDs = Array(changed)
+        let records = (try? DocumentRecord.filter(rowIDs.contains(Column.rowID)).fetchAll(db)) ?? []
+        let live = deletions ? (try? Set(String.fetchAll(db, sql: "SELECT id FROM document"))) : nil
+        onCommit(records, deletions, live)
+    }
+
+    func databaseDidRollback(_ db: Database) {
+        changed = []
+        deletions = false
     }
 }

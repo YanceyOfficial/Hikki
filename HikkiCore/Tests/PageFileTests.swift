@@ -85,19 +85,4 @@ struct PageFileTests {
             #expect(throws: PageFiles.PageFileError.invalidID(bad)) { try files.url(for: bad) }
         }
     }
-
-    @Test func migrationExportsEveryPageOnceAndKeepsTheTrash() throws {
-        let store = try DocumentStore.inMemory()
-        try store.create(id: "p1", now: t0)
-        try store.create(id: "p2", parentId: "p1", now: t0)
-        try store.create(id: "gone", now: t0)
-        try store.moveToTrash(id: "gone", now: t0)
-        let files = PageFiles(root: try tempFolder())
-
-        #expect(try PageFileMigration.export(from: store, to: files) == .init(written: 3, alreadyThere: 0))
-        #expect(try files.read("p2")?.parentId == "p1")
-        #expect(try files.read("gone")?.deletedAt != nil)
-        // Running again (next launch) writes nothing.
-        #expect(try PageFileMigration.export(from: store, to: files) == .init(written: 0, alreadyThere: 3))
-    }
 }

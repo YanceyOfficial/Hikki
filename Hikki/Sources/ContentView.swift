@@ -105,7 +105,14 @@ struct ContentView: View {
             navigator.prune { tree.page($0) != nil }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase != .active { Task { await editor.flush(reason: "scenePhase-\(phase)") } }
+            if phase == .active {
+                model.reconcileWorkspace()  // pick up other devices' changes
+            } else {
+                Task {
+                    await editor.flush(reason: "scenePhase-\(phase)")
+                    model.flushWorkspace()
+                }
+            }
         }
         .focusedSceneValue(\.editor, editor)
         .focusedSceneValue(\.navigator, navigator)

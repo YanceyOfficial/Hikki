@@ -24,27 +24,59 @@ final class AppModel {
         } catch {
             Log.error("workspace load failed: \(error)", category: "workspace")
         }
-        exportPagesToWorkspaceFolder()
+        startWorkspaceSync()
     }
 
-    /// Storage step 1: every page also gets a file in the workspace folder (the database stays the source of
-    /// truth until step 2). Off the main thread; idempotent, so it runs on every launch and after onboarding.
-    func exportPagesToWorkspaceFolder() {
-        guard let workspace else { return }
-        let store = store
+    // MARK: Workspace folder (storage option C)
+
+    @ObservationIgnored private var sync: WorkspaceSync?
+
+    /// The workspace folder is the source of truth: reconcile with it, then write every page change through.
+    /// Access to a picked folder is held for the session. Runs once per launch (and after onboarding).
+    func startWorkspaceSync() {
+        guard let workspace, sync == nil else { return }
         let appRoot = workspaceStore.url.deletingLastPathComponent()
+        do {
+            let folder = try WorkspaceFolder.url(for: workspace, appRoot: appRoot)
+            _ = folder.startAccessingSecurityScopedResource()  // released when the app quits
+            let sync = WorkspaceSync(store: store, files: PageFiles(root: folder))
+            self.sync = sync
+            Task.detached(priority: .utility) {
+                do {
+                    Self.log("workspace sync started", try sync.start())
+                } catch {
+                    Log.error("workspace sync failed to start: \(error)", category: "workspace")
+                }
+            }
+        } catch {
+            Log.error("workspace folder unavailable: \(error)", category: "workspace")
+        }
+    }
+
+    /// Picks up what other devices changed (app activation). Cheap when nothing did.
+    func reconcileWorkspace() {
+        guard let sync else { return }
         Task.detached(priority: .utility) {
             do {
-                let result = try WorkspaceFolder.withPages(of: workspace, appRoot: appRoot) { files in
-                    try PageFileMigration.export(from: store, to: files)
-                }
-                Log.info(
-                    "workspace folder export", category: "workspace",
-                    context: ["written": "\(result.written)", "alreadyThere": "\(result.alreadyThere)"])
+                Self.log("workspace reconciled", try sync.reconcile())
             } catch {
-                Log.error("workspace folder export failed: \(error)", category: "workspace")
+                Log.error("workspace reconcile failed: \(error)", category: "workspace")
             }
         }
+    }
+
+    /// Waits for queued file writes (before the app goes to the background).
+    func flushWorkspace() {
+        sync?.flush()
+    }
+
+    nonisolated private static func log(_ message: String, _ report: WorkspaceSync.Report) {
+        Log.info(
+            message, category: "workspace",
+            context: [
+                "imported": "\(report.imported)", "exported": "\(report.exported)", "deletedHere": "\(report.deletedHere)",
+                "skippedFiles": "\(report.skippedFiles)",
+            ])
     }
 
     func createWorkspace(name: String, location: Workspace.Location) {
@@ -54,7 +86,7 @@ final class AppModel {
             self.workspace = workspace
             let kind = if case .folder = location { "folder" } else { "device" }
             Log.info("workspace created", category: "workspace", context: ["location": kind])
-            exportPagesToWorkspaceFolder()
+            startWorkspaceSync()
         } catch {
             Log.error("workspace save failed: \(error)", category: "workspace")
         }

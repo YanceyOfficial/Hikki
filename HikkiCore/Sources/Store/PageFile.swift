@@ -155,25 +155,3 @@ public struct PageFiles: Sendable {
 
     private static let dateStyle = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
 }
-
-/// Step 1 of moving a workspace into its folder: every page in the store gets a file (trashed ones too, so
-/// the trash survives). Pages that already have a file are left alone, so running it again changes nothing.
-public enum PageFileMigration {
-    public struct Result: Equatable, Sendable {
-        public var written: Int
-        public var alreadyThere: Int
-    }
-
-    public static func export(from store: DocumentStore, to files: PageFiles) throws -> Result {
-        var result = Result(written: 0, alreadyThere: 0)
-        for record in try store.allDocuments() {
-            if files.exists(record.id) {
-                result.alreadyThere += 1
-            } else {
-                try files.write(try PageFile(record: record))
-                result.written += 1
-            }
-        }
-        return result
-    }
-}
