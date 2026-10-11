@@ -349,12 +349,8 @@ private struct PhoneSidebar: View {
                 }
                 PhoneTree(nodes: model.tree.roots, depth: 0, navigator: navigator)
             } header: {
-                HStack {
-                    SidebarSectionHeader("app:sidebar.private")
-                    Spacer()
-                    SidebarIconButton("app:page.new", symbol: .plus) { navigator.newPage() }
-                        .accessibilityIdentifier("new-page-section")
-                }
+                // No "+" here: New page sits in the toolbar on every platform.
+                SidebarSectionHeader("app:sidebar.private")
             }
 
             Section {
@@ -605,11 +601,19 @@ private struct NativeSidebarChrome: ViewModifier {
 
     func body(content: Content) -> some View {
         if isWide {
-            content.environment(\.sidebarSymbolTint, Theme.primary).safeAreaInset(edge: .bottom) {
-                WorkspaceSwitcher(navigator: navigator)
-                    .padding(.horizontal, Spacing.s2)
-                    .padding(.bottom, Spacing.s2)
-            }
+            content
+                .environment(\.sidebarSymbolTint, Theme.primary)
+                // Denser rows: the system's small sidebar size on Mac, a lower row floor everywhere.
+                .environment(\.sidebarRowMinHeight, Size.iconButtonSm)
+                .environment(\.defaultMinListRowHeight, Size.iconButtonSm)
+                #if os(macOS)
+                    .environment(\.sidebarRowSize, .small)
+                #endif
+                .safeAreaInset(edge: .bottom) {
+                    WorkspaceSwitcher(navigator: navigator)
+                        .padding(.horizontal, Spacing.s2)
+                        .padding(.bottom, Spacing.s2)
+                }
         } else {
             content.scrollContentBackground(.hidden).background(Theme.sidebar)
         }

@@ -56,7 +56,7 @@ public struct SidebarRow<Actions: View>: View {
             }
         }
         .padding(.leading, CGFloat(depth) * 14)
-        .frame(minHeight: Size.row)
+        .frame(minHeight: rowMinHeight)
         .contentShape(.rect)
         .onHover { hovering = $0 }
     }
@@ -66,6 +66,7 @@ public struct SidebarRow<Actions: View>: View {
     /// Every row reserves the same fixed glyph slot, so swapping icon ↔ chevron on hover never
     /// shifts the title (it used to jitter by the 2pt difference between the two frames).
     @Environment(\.sidebarSymbolTint) private var symbolTint
+    @Environment(\.sidebarRowMinHeight) private var rowMinHeight
 
     private var glyphSlot: CGFloat { Size.sidebarIcon + Spacing.s1 }
 
@@ -173,4 +174,6 @@ public struct HoverHighlightStyle: ButtonStyle {
 extension EnvironmentValues {
     /// Tints `SidebarRow` symbols (Search, Home, Trash) — Apple Music style accent icons. Nil: muted.
     @Entry public var sidebarSymbolTint: Color? = nil
+    /// `SidebarRow`'s minimum height; a native `List` sidebar lowers it and lets the list pad the row.
+    @Entry public var sidebarRowMinHeight: CGFloat = Size.row
 }
