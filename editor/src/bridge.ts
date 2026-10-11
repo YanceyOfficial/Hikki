@@ -1,4 +1,5 @@
 import type { Editor } from '@tiptap/core'
+import type { Transaction } from '@tiptap/pm/state'
 
 import { activeCommands, createEditor, runCommand } from './editor'
 import { plainText, wordCount } from './extract'
@@ -27,9 +28,25 @@ export type PageState = {
   focusTitleRequest: number
   /** With the latest request: select the whole title (Rename) instead of a caret at its end. */
   selectTitle: boolean
+  /**
+   * The stored content didn't fit the schema (corrupt, or written by a newer Hikki): the page is shown
+   * as far as possible but never saved, so the original stays intact on disk.
+   */
+  readOnly: boolean
 }
 
-type Options = { debounceMs: number }
+type Options = {
+  debounceMs: number
+  /** Continuous typing still saves at least this often (the debounce alone would wait for a pause). */
+  maxWaitMs?: number
+}
+
+/**
+ * Edits the user made, as opposed to housekeeping the editor does by itself (UniqueID stamping block ids
+ * on load, a remote reload) — those are marked not to enter the undo history and must not count as
+ * editing the page.
+ */
+const isUserEdit = (transaction: Transaction) => transaction.getMeta('addToHistory') !== false
 
 const MAX_TITLE_LENGTH = 500
 
@@ -46,10 +63,13 @@ export class EditorBridge {
     cover: null,
     headings: [],
     focusTitleRequest: 0,
-    selectTitle: false
+    selectTitle: false,
+    readOnly: false
   })
   private editor: Editor | null = null
   private timer: ReturnType<typeof setTimeout> | null = null
+  /** When the oldest unsaved edit was made (for maxWaitMs); null when nothing is pending. */
+  private pendingSince: number | null = null
   /** True between a user edit and the snapshot that reports it. Viewing a page must never save it. */
   private dirty = false
   private lastActive = ''
@@ -57,7 +77,7 @@ export class EditorBridge {
   constructor(
     private readonly host: HTMLElement,
     private readonly transport: Transport,
-    private readonly options: Options = { debounceMs: 400 }
+    private readonly options: Options = { debounceMs: 400, maxWaitMs: 2000 }
   ) {}
 
   loadDocument(payload: PagePayload): void {
@@ -66,12 +86,23 @@ export class EditorBridge {
     this.editor?.destroy()
     this.host.replaceChildren()
     this.lastActive = ''
-    this.dirty = false
+    this.markSaved()
     const { body, title } = normalizeBody(payload.content, payload.title ?? '')
-    const editor = createEditor(this.host, body, { onExitTop: () => this.requestTitleFocus() })
-    editor.on('update', () => {
+    let contentError: Error | null = null
+    const editor = createEditor(this.host, body, {
+      onExitTop: () => this.requestTitleFocus(),
+      onContentError: (error) => {
+        contentError = error
+      }
+    })
+    if (contentError) {
+      editor.setEditable(false)
+      // IDs and the reason only — never page content.
+      console.warn(`page opened read-only: content doesn't fit the schema (${payload.id})`)
+    }
+    editor.on('update', ({ transaction }) => {
       this.page.set({ headings: collectHeadings(editor) })
-      this.scheduleChanged()
+      if (isUserEdit(transaction)) this.scheduleChanged()
     })
     editor.on('selectionUpdate', () => this.reportActive())
     editor.on('transaction', () => this.reportActive())
@@ -81,13 +112,52 @@ export class EditorBridge {
       title,
       icon: payload.icon,
       cover: payload.cover,
+      headings: collectHeadings(editor),
+      readOnly: contentError !== null
+    })
+  }
+
+  /**
+   * The open page changed on disk (another device, via the workspace folder). Applied in place —
+   * caret and scroll kept — unless the user has unsaved edits, which win and will be saved over it.
+   * Returns whether it was applied.
+   */
+  reload(payload: PagePayload): boolean {
+    const editor = this.editor
+    const { docId, readOnly } = this.page.get()
+    if (!editor || payload.id !== docId || this.dirty || readOnly) return false
+    const { body, title } = normalizeBody(payload.content, payload.title ?? '')
+    const { from, to } = editor.state.selection
+    // Not an edit of this page: no undo step, no save. An invalid body leaves the page as it is.
+    let applied = false
+    try {
+      applied = editor
+        .chain()
+        .setMeta('addToHistory', false)
+        .setContent(body, { emitUpdate: true })
+        .run()
+    } catch {
+      applied = false
+    }
+    if (!applied) {
+      console.warn(`remote page change not applied: content doesn't fit the schema (${payload.id})`)
+      return false
+    }
+    const end = editor.state.doc.content.size
+    editor.commands.setTextSelection({ from: Math.min(from, end), to: Math.min(to, end) })
+    this.page.set({
+      title,
+      icon: payload.icon,
+      cover: payload.cover,
       headings: collectHeadings(editor)
     })
+    return true
   }
 
   // MARK: header
 
   setTitle(title: string): void {
+    if (this.page.get().readOnly) return
     const clean = title.replace(/[\r\n]+/g, ' ').slice(0, MAX_TITLE_LENGTH)
     if (clean === this.page.get().title) return
     this.page.set({ title: clean })
@@ -130,7 +200,7 @@ export class EditorBridge {
   flush(): Snapshot | null {
     this.clearTimer()
     if (!this.dirty) return null
-    this.dirty = false
+    this.markSaved()
     return this.snapshot()
   }
 
@@ -189,15 +259,20 @@ export class EditorBridge {
   }
 
   private scheduleChanged(): void {
+    if (this.page.get().readOnly) return
     this.dirty = true
+    const now = Date.now()
+    this.pendingSince ??= now
     this.clearTimer()
-    this.timer = setTimeout(() => this.flushPending(), this.options.debounceMs)
+    const { debounceMs, maxWaitMs = Infinity } = this.options
+    const wait = Math.max(0, Math.min(debounceMs, this.pendingSince + maxWaitMs - now))
+    this.timer = setTimeout(() => this.flushPending(), wait)
   }
 
   private flushPending(): void {
     if (!this.timer) return
     this.clearTimer()
-    this.dirty = false
+    this.markSaved()
     const snapshot = this.snapshot()
     if (snapshot) void this.send({ type: 'changed', snapshot })
   }
@@ -214,6 +289,12 @@ export class EditorBridge {
   private clearTimer(): void {
     if (this.timer) clearTimeout(this.timer)
     this.timer = null
+  }
+
+  /** Called whenever the pending edit is handed over (debounce fired, flush, page switch). */
+  private markSaved(): void {
+    this.dirty = false
+    this.pendingSince = null
   }
 
   private async send(message: ToNativeMessage): Promise<void> {

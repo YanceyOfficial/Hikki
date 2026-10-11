@@ -12,22 +12,59 @@
     "changeIcon": "更换图标",
     "changeCover": "更换封面",
     "remove": "移除",
-    "outline": "目录"
+    "outline": "目录",
+    "readOnlyTitle": "此页面暂时无法编辑",
+    "readOnlyDescription": "它的内容来自更新版本的 Hikki，或未能完整读取。这里尽量显示并保持原样不做改动——更新 Hikki 后即可编辑。"
   },
   "blocks": {
-    "paragraph": { "title": "正文", "hint": "普通文本" },
-    "heading1": { "title": "标题 1", "hint": "大号章节标题" },
-    "heading2": { "title": "标题 2", "hint": "中号章节标题" },
-    "heading3": { "title": "标题 3", "hint": "小号章节标题" },
-    "bulletList": { "title": "无序列表", "hint": "简单的项目符号列表" },
-    "orderedList": { "title": "有序列表", "hint": "带编号的列表" },
-    "taskList": { "title": "待办列表", "hint": "用复选框追踪任务" },
-    "blockquote": { "title": "引用", "hint": "摘录一段引文" },
-    "codeBlock": { "title": "代码", "hint": "代码块" },
-    "divider": { "title": "分割线", "hint": "视觉分隔" }
+    "paragraph": {
+      "title": "正文",
+      "hint": "普通文本"
+    },
+    "heading1": {
+      "title": "标题 1",
+      "hint": "大号章节标题"
+    },
+    "heading2": {
+      "title": "标题 2",
+      "hint": "中号章节标题"
+    },
+    "heading3": {
+      "title": "标题 3",
+      "hint": "小号章节标题"
+    },
+    "bulletList": {
+      "title": "无序列表",
+      "hint": "简单的项目符号列表"
+    },
+    "orderedList": {
+      "title": "有序列表",
+      "hint": "带编号的列表"
+    },
+    "taskList": {
+      "title": "待办列表",
+      "hint": "用复选框追踪任务"
+    },
+    "blockquote": {
+      "title": "引用",
+      "hint": "摘录一段引文"
+    },
+    "codeBlock": {
+      "title": "代码",
+      "hint": "代码块"
+    },
+    "divider": {
+      "title": "分割线",
+      "hint": "视觉分隔"
+    }
   },
   "cover": {
-    "tabs": { "gallery": "图库", "upload": "上传", "link": "链接", "unsplash": "Unsplash" },
+    "tabs": {
+      "gallery": "图库",
+      "upload": "上传",
+      "link": "链接",
+      "unsplash": "Unsplash"
+    },
     "remove": "移除",
     "uploadFile": "上传文件",
     "uploading": "上传中…",

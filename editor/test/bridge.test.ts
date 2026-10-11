@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { EditorBridge, type Transport } from '../src/bridge'
 import type { ToNativeMessage } from '../src/protocol'
-import { doc, page } from './helpers'
+import { doc, page, stripIds } from './helpers'
 
 describe('EditorBridge', () => {
   let sent: ToNativeMessage[]
@@ -176,7 +176,7 @@ describe('EditorBridge', () => {
     // Focus must already be in the editor — no frame delay for keystrokes to slip into the title.
     expect(editor().view.hasFocus()).toBe(true)
     expect(editor().state.selection.from).toBe(1)
-    expect(editor().getJSON().content).toEqual([
+    expect(stripIds(editor().getJSON().content)).toEqual([
       { type: 'paragraph' },
       { type: 'paragraph', content: [{ type: 'text', text: 'existing' }] }
     ])
@@ -185,11 +185,123 @@ describe('EditorBridge', () => {
   it('enterFromTitle reuses an empty first line instead of stacking blanks', () => {
     bridge.loadDocument(page('a', { content: doc('') }))
     bridge.enterFromTitle()
-    expect(editor().getJSON().content).toEqual([{ type: 'paragraph' }])
+    expect(stripIds(editor().getJSON().content)).toEqual([{ type: 'paragraph' }])
   })
 
   it('rejects unknown commands', () => {
     bridge.loadDocument(page('a'))
     expect(bridge.exec('rm -rf')).toBe(false)
+  })
+
+  describe('block ids', () => {
+    it('stamps ids on load without counting it as an edit (viewing never saves)', () => {
+      bridge.loadDocument(page('a', { content: doc('one', 'two') }))
+      vi.advanceTimersByTime(5000)
+      expect(changed()).toHaveLength(0)
+      expect(bridge.flush()).toBeNull()
+      const ids = editor()
+        .getJSON()
+        .content.map((n: any) => n.attrs?.id)
+      expect(ids.every((id: unknown) => typeof id === 'string' && id.length > 0)).toBe(true)
+    })
+
+    it('saves the ids with the first real edit and keeps stored ones', () => {
+      const stored = {
+        type: 'doc',
+        content: [
+          { type: 'paragraph', attrs: { id: 'keep-me' }, content: [{ type: 'text', text: 'x' }] }
+        ]
+      }
+      bridge.loadDocument(page('a', { content: stored }))
+      editor().commands.insertContentAt(editor().state.doc.content.size, { type: 'paragraph' })
+      const snapshot = bridge.flush()
+      expect(snapshot?.content.content?.[0].attrs?.id).toBe('keep-me')
+      expect(snapshot?.content.content?.[1].attrs?.id).toEqual(expect.any(String))
+    })
+  })
+
+  describe('saving while typing', () => {
+    it('continuous typing still saves at least every maxWaitMs', () => {
+      bridge = new EditorBridge(
+        host,
+        { post: async (m) => void sent.push(m) },
+        { debounceMs: 400, maxWaitMs: 2000 }
+      )
+      bridge.loadDocument(page('a'))
+      // A keystroke every 100 ms never leaves a 400 ms pause.
+      for (let i = 0; i < 25; i++) {
+        editor().commands.insertContent('x')
+        vi.advanceTimersByTime(100)
+      }
+      expect(changed().length).toBeGreaterThanOrEqual(1)
+    })
+  })
+
+  describe('content that does not fit the schema', () => {
+    const future = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'before' }] },
+        { type: 'columns', content: [{ type: 'column', content: [{ type: 'paragraph' }] }] }
+      ]
+    }
+
+    it('opens read-only and never saves, so the stored content stays intact', () => {
+      bridge.loadDocument(page('a', { title: 'Future', content: future }))
+      expect(bridge.page.get().readOnly).toBe(true)
+      expect(editor().isEditable).toBe(false)
+      editor().commands.insertContent('typed')
+      bridge.setTitle('Renamed')
+      vi.advanceTimersByTime(5000)
+      expect(changed()).toHaveLength(0)
+      expect(bridge.flush()).toBeNull()
+      expect(bridge.page.get().title).toBe('Future')
+    })
+
+    it('a valid page loaded afterwards is editable again', () => {
+      bridge.loadDocument(page('a', { content: future }))
+      bridge.loadDocument(page('b'))
+      expect(bridge.page.get().readOnly).toBe(false)
+      expect(editor().isEditable).toBe(true)
+    })
+  })
+
+  describe('reload (page changed on another device)', () => {
+    it('applies the new content in place without saving or adding an undo step', () => {
+      bridge.loadDocument(page('a', { content: doc('old') }))
+      expect(
+        bridge.reload(page('a', { title: 'New title', icon: '🌱', content: doc('new') }))
+      ).toBe(true)
+      expect(bridge.snapshot()?.text).toBe('new')
+      expect(bridge.page.get()).toMatchObject({ title: 'New title', icon: '🌱' })
+      vi.advanceTimersByTime(5000)
+      expect(changed()).toHaveLength(0)
+      expect(editor().can().undo()).toBe(false)
+    })
+
+    it('keeps unsaved edits instead (they win and are saved over it)', () => {
+      bridge.loadDocument(page('a', { content: doc('old') }))
+      editor().commands.insertContent('mine ')
+      expect(bridge.reload(page('a', { content: doc('theirs') }))).toBe(false)
+      expect(bridge.snapshot()?.text).toContain('mine')
+    })
+
+    it('ignores another page and invalid content', () => {
+      bridge.loadDocument(page('a', { content: doc('old') }))
+      expect(bridge.reload(page('b', { content: doc('other') }))).toBe(false)
+      expect(
+        bridge.reload(page('a', { content: { type: 'doc', content: [{ type: 'columns' }] } }))
+      ).toBe(false)
+      expect(bridge.snapshot()?.text).toBe('old')
+    })
+
+    it('keeps the caret where it was (clamped to the new length)', () => {
+      bridge.loadDocument(page('a', { content: doc('hello world') }))
+      editor().commands.setTextSelection(4)
+      bridge.reload(page('a', { content: doc('hello brave world') }))
+      expect(editor().state.selection.from).toBe(4)
+      bridge.reload(page('a', { content: doc('hi') }))
+      expect(editor().state.selection.from).toBeLessThanOrEqual(editor().state.doc.content.size)
+    })
   })
 })

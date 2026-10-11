@@ -39,7 +39,15 @@ final class AppModel {
         do {
             let folder = try WorkspaceFolder.url(for: workspace, appRoot: appRoot)
             _ = folder.startAccessingSecurityScopedResource()  // released when the app quits
-            let sync = WorkspaceSync(store: store, files: PageFiles(root: folder))
+            // Every pass — launch, activation, or the folder watcher noticing another device — tells open
+            // editors which pages came from disk, so one showing such a page reloads it.
+            let sync = WorkspaceSync(store: store, files: PageFiles(root: folder)) { report in
+                guard !report.importedIDs.isEmpty else { return }
+                let ids = report.importedIDs
+                Task { @MainActor in
+                    NotificationCenter.default.post(name: .pagesChangedOnDisk, object: nil, userInfo: ["ids": ids])
+                }
+            }
             self.sync = sync
             Task.detached(priority: .utility) {
                 do {
@@ -214,4 +222,9 @@ final class AppModel {
             return nil
         }
     }
+}
+
+extension Notification.Name {
+    /// Pages the workspace sync imported from the folder; `userInfo["ids"]` is `[String]`.
+    static let pagesChangedOnDisk = Notification.Name("app.yancey.hikki.pagesChangedOnDisk")
 }

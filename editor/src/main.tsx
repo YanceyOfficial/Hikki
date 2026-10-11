@@ -36,6 +36,8 @@ declare global {
 window.hikki = {
   protocolVersion: PROTOCOL_VERSION,
   loadDocument: (page: PagePayload) => bridge.loadDocument(page),
+  // The open page changed on disk (another device); false when it wasn't applied (unsaved edits win).
+  reload: (page: PagePayload) => bridge.reload(page),
   exec: (command: string) => bridge.exec(command),
   flush: () => bridge.flush(),
   focus: () => bridge.focus(),

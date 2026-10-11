@@ -100,23 +100,36 @@ public struct PageFiles: Sendable {
         return (listing.pages, listing.skipped)
     }
 
+    /// A page file as last seen: when it was modified, its size, and the `updatedAt` it holds. A file whose
+    /// date and size still match needn't be read again.
+    public struct Stamp: Equatable, Sendable {
+        public var modified: Date
+        public var size: Int
+        public var updatedAt: Date
+    }
+
     /// What the folder holds. `present` names every page the folder has *any* trace of — a readable file, one
     /// that isn't (half-downloaded, corrupt, from a newer Hikki) and iCloud placeholders for files not downloaded
     /// yet — so nothing that merely can't be read right now is ever mistaken for a deletion.
     public struct Listing: Sendable {
         public var folderExists: Bool
+        /// Pages read in this scan: every readable file, minus those `known` already describes.
         public var pages: [PageFile]
         public var skipped: [URL]
         public var placeholders: [URL]
         public var present: Set<String>
+        /// Every readable page file, whether read now or reused from `known`.
+        public var stamps: [String: Stamp]
     }
 
-    public func scan() throws -> Listing {
-        guard FileManager.default.fileExists(atPath: directory.path) else {
-            return Listing(folderExists: false, pages: [], skipped: [], placeholders: [], present: [])
-        }
-        var listing = Listing(folderExists: true, pages: [], skipped: [], placeholders: [], present: [])
-        for url in try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) {
+    /// Lists the folder. Files matching their stamp in `known` aren't read again (the folder watcher scans
+    /// after every change, including this device's own writes).
+    public func scan(known: [String: Stamp] = [:]) throws -> Listing {
+        var listing = Listing(folderExists: false, pages: [], skipped: [], placeholders: [], present: [], stamps: [:])
+        guard FileManager.default.fileExists(atPath: directory.path) else { return listing }
+        listing.folderExists = true
+        let keys: [URLResourceKey] = [.contentModificationDateKey, .fileSizeKey]
+        for url in try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: keys) {
             let name = url.lastPathComponent
             if let id = Self.placeholderID(name) {
                 // ".<id>.json.icloud": in iCloud, not on this device yet.
@@ -125,9 +138,15 @@ public struct PageFiles: Sendable {
             } else if url.pathExtension == "json" {
                 let id = String(name.dropLast(".json".count))
                 if Self.isValid(id) { listing.present.insert(id) }
-                if let page = try? Self.decode(Data(contentsOf: url)), Self.isValid(page.id) {
+                let attributes = Self.attributes(of: url)
+                if let attributes, let stamp = known[id], stamp.modified == attributes.modified, stamp.size == attributes.size {
+                    listing.stamps[id] = stamp
+                } else if let page = try? Self.decode(Data(contentsOf: url)), Self.isValid(page.id), page.id == id {
                     listing.pages.append(page)
                     listing.present.insert(page.id)
+                    if let attributes {
+                        listing.stamps[id] = Stamp(modified: attributes.modified, size: attributes.size, updatedAt: page.updatedAt)
+                    }
                 } else {
                     listing.skipped.append(url)
                 }
@@ -135,6 +154,22 @@ public struct PageFiles: Sendable {
         }
         listing.pages.sort { $0.id < $1.id }
         return listing
+    }
+
+    /// The stamp of a page's file as it is now (after this device wrote it).
+    public func stamp(of id: String, updatedAt: Date) -> Stamp? {
+        guard let url = try? url(for: id), let attributes = Self.attributes(of: url) else { return nil }
+        return Stamp(modified: attributes.modified, size: attributes.size, updatedAt: updatedAt)
+    }
+
+    private static func attributes(of url: URL) -> (modified: Date, size: Int)? {
+        // Fresh values: URL caches resource values per instance.
+        var url = url
+        url.removeAllCachedResourceValues()
+        guard let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey]),
+            let modified = values.contentModificationDate, let size = values.fileSize
+        else { return nil }
+        return (modified, size)
     }
 
     static func placeholderID(_ name: String) -> String? {

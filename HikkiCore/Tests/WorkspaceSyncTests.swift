@@ -4,9 +4,9 @@ import Testing
 @testable import HikkiCore
 
 struct WorkspaceSyncTests {
-    private let t0 = Date(timeIntervalSince1970: 1_760_000_000)
+    let t0 = Date(timeIntervalSince1970: 1_760_000_000)
 
-    private func folder() throws -> PageFiles {
+    func folder() throws -> PageFiles {
         let url = FileManager.default.temporaryDirectory.appending(path: "hikki-sync-\(UUID().uuidString)", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return PageFiles(root: url)
@@ -185,4 +185,106 @@ struct WorkspaceSyncTests {
         #expect(!files.exists("mine"))
         #expect(files.exists("theirs"))  // not ours to delete
     }
+
+    // MARK: Watching (step 3)
+
+    @Test func aRescanReadsOnlyFilesThatChanged() throws {
+        let files = try folder()
+        let store = try DocumentStore.inMemory()
+        try store.create(id: "a", now: t0)
+        try store.create(id: "b", now: t0)
+        try WorkspaceSync(store: store, files: files).reconcile()
+
+        let first = try files.scan()
+        #expect(first.pages.map(\.id) == ["a", "b"])
+        var b = try #require(try files.read("b"))
+        b.title = "Changed"
+        try files.write(b)
+        let second = try files.scan(known: first.stamps)
+        #expect(second.pages.map(\.id) == ["b"])  // "a" reused from its stamp
+        #expect(second.present == ["a", "b"] && Set(second.stamps.keys) == ["a", "b"])
+    }
+
+    @Test func aNewerRowIsWrittenEvenWhenItsFileWasNotReadAgain() throws {
+        let files = try folder()
+        let store = try DocumentStore.inMemory()
+        try store.create(id: "a", now: t0)
+        let sync = WorkspaceSync(store: store, files: files)
+        try sync.reconcile()
+        // Edited here with no write-through running (as if it had failed).
+        _ = try store.saveContent(
+            Snapshot(docId: "a", content: try body("x"), title: "Later", text: "x", wordCount: 1), now: t0.addingTimeInterval(60))
+        #expect(try sync.reconcile().exported == 1)
+        #expect(try files.read("a")?.title == "Later")
+    }
+
+    @Test func aPassBeforeTheFileIsRemovedDoesNotBringALocalDeleteBack() throws {
+        let files = try folder()
+        let store = try DocumentStore.inMemory()
+        try store.create(id: "gone", now: t0)
+        let sync = WorkspaceSync(store: store, files: files)
+        try sync.reconcile()
+        try store.deletePermanently(id: "gone")  // its file removal hasn't run (no write-through here)
+
+        let report = try sync.reconcile()
+        #expect(report.imported == 0)
+        #expect(try store.document(id: "gone") == nil)
+        #expect(!files.exists("gone"))
+    }
+
+    @Test func theWatchedFolderBringsInAnotherDevicesChangeOnItsOwn() async throws {
+        let files = try folder()
+        let store = try DocumentStore.inMemory()
+        try store.create(id: "mine", now: t0)
+        let seen = ImportedIDs()
+        let sync = WorkspaceSync(store: store, files: files, watchDelay: 0.05) { seen.add($0.importedIDs) }
+        _ = try sync.start()
+
+        // Another device edits "mine" and adds "theirs" — nobody calls reconcile().
+        var mine = try #require(try files.read("mine"))
+        mine.title = "Edited elsewhere"
+        mine.updatedAt = t0.addingTimeInterval(60)
+        try files.write(mine)
+        let other = try DocumentStore.inMemory()
+        try other.create(id: "theirs", now: t0)
+        try files.write(try PageFile(record: try #require(try other.document(id: "theirs"))))
+
+        for _ in 0..<100 where seen.all.isSuperset(of: ["mine", "theirs"]) == false {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        #expect(seen.all.isSuperset(of: ["mine", "theirs"]))
+        #expect(try store.document(id: "mine")?.title == "Edited elsewhere")
+        #expect(try store.document(id: "theirs") != nil)
+        withExtendedLifetime(sync) {}
+    }
+}
+
+extension WorkspaceSyncTests {
+    @Test func watchingStartsOnceTheFirstPageCreatesTheFolder() async throws {
+        let files = try folder()  // no pages/ yet: a brand-new workspace
+        let store = try DocumentStore.inMemory()
+        let seen = ImportedIDs()
+        let sync = WorkspaceSync(store: store, files: files, watchDelay: 0.05) { seen.add($0.importedIDs) }
+        _ = try sync.start()
+        try store.create(id: "first", now: t0)  // write-through creates pages/
+        sync.flush()
+
+        let other = try DocumentStore.inMemory()
+        try other.create(id: "theirs", now: t0)
+        try files.write(try PageFile(record: try #require(try other.document(id: "theirs"))))
+        for _ in 0..<100 where !seen.all.contains("theirs") {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        #expect(seen.all.contains("theirs"))
+        withExtendedLifetime(sync) {}
+    }
+}
+
+/// Collects `importedIDs` from the sync queue's callbacks.
+private final class ImportedIDs: @unchecked Sendable {
+    private let lock = NSLock()
+    private var ids: Set<String> = []
+
+    func add(_ new: [String]) { lock.withLock { ids.formUnion(new) } }
+    var all: Set<String> { lock.withLock { ids } }
 }

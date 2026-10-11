@@ -12,22 +12,59 @@
     "changeIcon": "Change icon",
     "changeCover": "Change cover",
     "remove": "Remove",
-    "outline": "Outline"
+    "outline": "Outline",
+    "readOnlyTitle": "Can't edit this page here",
+    "readOnlyDescription": "Its content was made with a newer version of Hikki or couldn't be read completely. It's shown as far as possible and left unchanged — update Hikki to edit it."
   },
   "blocks": {
-    "paragraph": { "title": "Text", "hint": "Plain text" },
-    "heading1": { "title": "Heading 1", "hint": "Big section heading" },
-    "heading2": { "title": "Heading 2", "hint": "Medium section heading" },
-    "heading3": { "title": "Heading 3", "hint": "Small section heading" },
-    "bulletList": { "title": "Bulleted list", "hint": "Simple bulleted list" },
-    "orderedList": { "title": "Numbered list", "hint": "List with numbering" },
-    "taskList": { "title": "To-do list", "hint": "Track tasks with checkboxes" },
-    "blockquote": { "title": "Quote", "hint": "Capture a quote" },
-    "codeBlock": { "title": "Code", "hint": "Code block" },
-    "divider": { "title": "Divider", "hint": "Visual separator" }
+    "paragraph": {
+      "title": "Text",
+      "hint": "Plain text"
+    },
+    "heading1": {
+      "title": "Heading 1",
+      "hint": "Big section heading"
+    },
+    "heading2": {
+      "title": "Heading 2",
+      "hint": "Medium section heading"
+    },
+    "heading3": {
+      "title": "Heading 3",
+      "hint": "Small section heading"
+    },
+    "bulletList": {
+      "title": "Bulleted list",
+      "hint": "Simple bulleted list"
+    },
+    "orderedList": {
+      "title": "Numbered list",
+      "hint": "List with numbering"
+    },
+    "taskList": {
+      "title": "To-do list",
+      "hint": "Track tasks with checkboxes"
+    },
+    "blockquote": {
+      "title": "Quote",
+      "hint": "Capture a quote"
+    },
+    "codeBlock": {
+      "title": "Code",
+      "hint": "Code block"
+    },
+    "divider": {
+      "title": "Divider",
+      "hint": "Visual separator"
+    }
   },
   "cover": {
-    "tabs": { "gallery": "Gallery", "upload": "Upload", "link": "Link", "unsplash": "Unsplash" },
+    "tabs": {
+      "gallery": "Gallery",
+      "upload": "Upload",
+      "link": "Link",
+      "unsplash": "Unsplash"
+    },
     "remove": "Remove",
     "uploadFile": "Upload file",
     "uploading": "Uploading…",

@@ -1,5 +1,6 @@
 import { Editor, type JSONContent } from '@tiptap/core'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
+import UniqueID from '@tiptap/extension-unique-id'
 import { Placeholder } from '@tiptap/extensions'
 import StarterKit from '@tiptap/starter-kit'
 
@@ -9,7 +10,28 @@ import { SlashCommand } from './extensions/slash-command'
 import { t } from './i18n'
 import type { Command } from './protocol'
 
-type EditorOptions = { onExitTop?: () => void }
+type EditorOptions = {
+  onExitTop?: () => void
+  /** The stored content doesn't fit the schema (corrupt, or from a newer Hikki). See EditorBridge. */
+  onContentError?: (error: Error) => void
+}
+
+/**
+ * Blocks that carry a stable `id` attribute: the anchor for version diffs, block links and, later,
+ * comments and collaboration. Inline nodes and list wrappers don't need one.
+ */
+export const BLOCK_ID_TYPES = [
+  'paragraph',
+  'heading',
+  'blockquote',
+  'codeBlock',
+  'horizontalRule',
+  'listItem',
+  'taskItem',
+  'bulletList',
+  'orderedList',
+  'taskList'
+]
 
 /** The page body editor. `content` must already be normalized (see normalizeBody). */
 export function createEditor(
@@ -20,6 +42,10 @@ export function createEditor(
   return new Editor({
     element,
     content: content ?? { type: 'doc', content: [{ type: 'paragraph' }] },
+    // Invalid content (unknown nodes, wrong nesting) raises contentError instead of loading silently
+    // stripped: saving that stripped copy would delete what this build can't show.
+    enableContentCheck: true,
+    onContentError: ({ error }) => options.onContentError?.(error),
     extensions: [
       StarterKit.configure({ link: { openOnClick: false } }),
       TaskList,
@@ -31,6 +57,7 @@ export function createEditor(
       }),
       EdgeNavigation.configure({ onExitTop: options.onExitTop ?? (() => {}) }),
       SlashCommand,
+      UniqueID.configure({ types: BLOCK_ID_TYPES }),
       ...blockHandleExtensions()
     ]
   })

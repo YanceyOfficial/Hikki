@@ -20,6 +20,30 @@ final class EditorController {
 
     init() {
         webView = makeWebView()
+        diskChanges = NotificationCenter.default.addObserver(forName: .pagesChangedOnDisk, object: nil, queue: .main) {
+            [weak self] note in
+            let ids = note.userInfo?["ids"] as? [String] ?? []
+            MainActor.assumeIsolated { self?.reloadIfShowing(ids) }
+        }
+    }
+
+    @ObservationIgnored private var diskChanges: (any NSObjectProtocol)?
+
+    /// Another device changed the open page (the workspace folder): show the new version in place. The editor
+    /// declines while it holds unsaved edits — those win and are saved over it.
+    func reloadIfShowing(_ ids: [String]) {
+        guard isReady, pendingDocumentID == nil, let id = currentDocumentID, ids.contains(id) else { return }
+        Task {
+            do {
+                guard let record = try store?.document(id: id), currentDocumentID == id else { return }
+                let applied = try await webView.callAsyncJavaScript(
+                    "return window.hikki.reload(page)", arguments: ["page": try PagePayload.make(from: record)], contentWorld: .page)
+                Log.info(
+                    "open page changed on disk", category: "bridge", context: ["docId": id, "applied": "\(applied as? Bool ?? false)"])
+            } catch {
+                Log.error("reload failed: \(error)", category: "bridge", context: ["docId": id])
+            }
+        }
     }
 
     func attach(store: DocumentStore, assets: AssetStore) {

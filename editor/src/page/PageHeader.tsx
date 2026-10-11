@@ -1,4 +1,4 @@
-import { Image as ImageIcon, Smiley } from '@phosphor-icons/react'
+import { Image as ImageIcon, LockSimple, Smiley } from '@phosphor-icons/react'
 import {
   useCallback,
   useEffect,
@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { Popover as CoverPopover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -114,8 +115,16 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
             </button>
           )}
         </div>
+        {page.readOnly && (
+          <Alert className="mb-3" data-testid="read-only-notice">
+            <LockSimple aria-hidden />
+            <AlertTitle>{t('page.readOnlyTitle')}</AlertTitle>
+            <AlertDescription>{t('page.readOnlyDescription')}</AlertDescription>
+          </Alert>
+        )}
         <TitleField
           bridge={bridge}
+          readOnly={page.readOnly}
           title={page.title}
           focusRequest={page.focusTitleRequest}
           selectOnFocus={page.selectTitle}
@@ -151,9 +160,11 @@ function TitleField({
   title,
   focusRequest,
   selectOnFocus,
-  docId
+  docId,
+  readOnly
 }: {
   bridge: EditorBridge
+  readOnly: boolean
   title: string
   focusRequest: number
   selectOnFocus: boolean
@@ -193,6 +204,7 @@ function TitleField({
       className="mb-2 block w-full resize-none overflow-hidden border-0 bg-transparent py-[3px] text-4xl leading-tight font-bold tracking-[-0.01em] text-foreground outline-none placeholder:text-placeholder max-sm:text-3xl"
       rows={1}
       value={title}
+      readOnly={readOnly}
       placeholder={t('page.untitled')}
       aria-label={t('page.titleLabel')}
       spellCheck={false}

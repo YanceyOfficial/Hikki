@@ -107,7 +107,13 @@ HikkiUITests/                 XCUITest flows
   (`HikkiCore/Sources/Store/PageFile.swift`: `pages/<id>.json`, format-versioned, content as JSON); SQLite is a
   rebuildable cache/index. `HikkiCore/Sources/Store/WorkspaceSync.swift` reconciles on launch and app activation
   (newer side wins; a missing file deletes the page only if it was synced before — `pageFileState`) and writes every
-  committed page change through (a GRDB transaction observer). Not yet: live folder watching, conflict copies, assets.
+  committed page change through (a GRDB transaction observer). It also watches `pages/` (a dispatch source;
+  unchanged files are skipped by modification date + size) and posts `pagesChangedOnDisk`, so an open editor
+  reloads a page another device changed (`window.hikki.reload`, declined while it has unsaved edits). Not yet:
+  conflict copies, assets.
+- **Editor content safety**: content that doesn't fit the schema (corrupt, or from a newer Hikki) opens read-only and
+  is never saved (`enableContentCheck`); housekeeping transactions (`addToHistory: false` — UniqueID stamping
+  block ids, remote reloads) never count as edits; continuous typing still saves every 2 s (`maxWaitMs`).
 - **Workspace**: first launch shows `Hikki/Sources/OnboardingView.swift` until the workspace file (`AppPaths.workspace`) exists
   (`HikkiCore/Sources/Store/Workspace.swift`). A folder location stores a security-scoped bookmark
   (`HikkiCore/Sources/Store/FolderBookmark.swift`); page data does not live in that folder yet.
