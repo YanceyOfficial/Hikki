@@ -76,6 +76,37 @@ public struct HoverCapsuleStyle: ButtonStyle {
 }
 
 /// Big rounded action at the bottom of the sidebar (Notion's "New chat ⌘O").
+/// The sidebar footer's account/workspace row (shadcn `SidebarMenuButton size="lg"`): a badge, a title
+/// with a muted subtitle, and an up-down chevron. Use as the label of the footer's menu.
+public struct SidebarFooterLabel<Badge: View>: View {
+    private let title: String
+    private let subtitle: String
+    private let badge: Badge
+
+    /// `title` / `subtitle` are shown as-is (a workspace name, a folder path): pass already-localized text.
+    public init(title: String, subtitle: String, @ViewBuilder badge: () -> Badge) {
+        self.title = title
+        self.subtitle = subtitle
+        self.badge = badge()
+    }
+
+    public var body: some View {
+        HStack(spacing: Spacing.s2) {
+            badge
+            VStack(alignment: .leading, spacing: Spacing.px) {
+                Text(verbatim: title).font(.hk(.sm, .medium)).foregroundStyle(Theme.foreground)
+                Text(verbatim: subtitle).font(.hk(.xs)).foregroundStyle(Theme.mutedForeground)
+            }
+            .lineLimit(1)
+            Spacer(minLength: Spacing.s1)
+            IconView(.caretUpDown, size: TextSize.base.rawValue).foregroundStyle(Theme.mutedForeground)
+        }
+        .padding(.horizontal, Spacing.s2)
+        .frame(height: Size.sidebarFooter)
+        .contentShape(.rect)
+    }
+}
+
 /// Notion's "Search or ask ⌘K" box at the top of the sidebar: looks like a field, opens search.
 public struct SidebarSearchField: View {
     private let title: LocalizedStringKey
@@ -102,7 +133,7 @@ public struct SidebarSearchField: View {
             }
             .foregroundStyle(Theme.mutedForeground)
             .padding(.horizontal, Spacing.s2_5)
-            .frame(height: Size.iconButton)
+            .frame(height: Size.searchField)
             .background(Theme.background.opacity(0.6), in: .rect(cornerRadius: Radius.md))
             .overlay(RoundedRectangle(cornerRadius: Radius.md).strokeBorder(Theme.border))
             .contentShape(.rect)
@@ -111,9 +142,18 @@ public struct SidebarSearchField: View {
     }
 }
 
-#Preview("Sidebar search field") {
-    SidebarSearchField("Search", shortcut: "⌘K") {}
-        .padding(Spacing.s3)
-        .frame(width: 280)
-        .background(Theme.sidebar)
+#Preview("Sidebar search field + footer") {
+    VStack(spacing: Spacing.s4) {
+        SidebarSearchField("Search", shortcut: "⌘K") {}
+        Button {
+        } label: {
+            SidebarFooterLabel(title: "Yancey’s Space", subtitle: "This device only") {
+                Text(verbatim: "Y").frame(width: 32, height: 32).background(Theme.primary, in: .rect(cornerRadius: Radius.lg))
+            }
+        }
+        .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.xl, hoverFill: Theme.sidebarAccent))
+    }
+    .padding(Spacing.s3)
+    .frame(width: 280)
+    .background(Theme.sidebar)
 }

@@ -282,25 +282,21 @@ private struct WorkspaceSwitcher: View {
                 Text(verbatim: model.workspace?.name ?? "Hikki")  // the user's workspace name
             }
         } label: {
-            HStack(spacing: Spacing.s2) {
-                WorkspaceBadge(initial: model.workspace?.initial ?? "H", size: Size.iconButtonSm)
-                Text(verbatim: model.workspace?.name ?? "Hikki")  // the user's workspace name
-                    .font(.hk(.sm, .medium))
-                    .foregroundStyle(Theme.foreground)
-                    .lineLimit(1)
-                IconView(.caretUpDown, size: TextSize.xs.rawValue)
-                    .foregroundStyle(Theme.mutedForeground)
-                Spacer(minLength: 0)
+            SidebarFooterLabel(title: model.workspace?.name ?? "Hikki", subtitle: location) {
+                WorkspaceBadge(initial: model.workspace?.initial ?? "H", size: Size.iconButton + Spacing.s1)
             }
-            .padding(.horizontal, Spacing.s2)
-            .frame(height: Size.iconButton + Spacing.s1)
-            .contentShape(.rect)
         }
         .menuStyle(.button)
-        .buttonStyle(HoverHighlightStyle())
+        .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.xl, hoverFill: Theme.sidebarAccent))
         .menuIndicator(.hidden)
         .accessibilityIdentifier("workspace-menu")
         .renameWorkspaceAlert(isPresented: $renaming)
+    }
+
+    /// Where the workspace lives: the chosen folder, or "This device only".
+    private var location: String {
+        if case .folder(_, let displayName) = model.workspace?.location { return displayName }
+        return String(localized: "app:onboarding.location.device")
     }
 }
 

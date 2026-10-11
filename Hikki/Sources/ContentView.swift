@@ -223,10 +223,11 @@ private struct AppHeader: View {
                 onBack: navigator.goBack,
                 onForward: navigator.goForward
             )
+            // A line under the tabs only; the sidebar runs up into the header without one (Notion).
+            .overlay(alignment: .bottom) { Theme.border.frame(height: 1) }
         }
         .frame(height: metrics.barHeight)
         .background(Theme.sidebar)
-        .overlay(alignment: .bottom) { Theme.border.frame(height: 1) }
         #if os(macOS)
             .background(WindowDragArea())
         #endif

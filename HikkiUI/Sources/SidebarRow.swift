@@ -124,21 +124,31 @@ public struct SidebarIconButton: View {
 
 /// Rounded hover/press highlight for plain buttons.
 public struct HoverHighlightStyle: ButtonStyle {
-    public init() {}
+    private let cornerRadius: CGFloat
+    private let hoverFill: Color
+
+    /// Defaults: a small chip. The sidebar footer uses `Radius.xl` + `Theme.sidebarAccent` (shadcn's
+    /// `SidebarMenuButton size="lg"`).
+    public init(cornerRadius: CGFloat = Radius.sm, hoverFill: Color = Theme.accent) {
+        self.cornerRadius = cornerRadius
+        self.hoverFill = hoverFill
+    }
 
     public func makeBody(configuration: Configuration) -> some View {
-        HoverHighlight(configuration: configuration)
+        HoverHighlight(configuration: configuration, cornerRadius: cornerRadius, hoverFill: hoverFill)
     }
 
     private struct HoverHighlight: View {
         let configuration: Configuration
+        let cornerRadius: CGFloat
+        let hoverFill: Color
         @State private var hovering = false
 
         var body: some View {
             configuration.label
                 .background(
-                    RoundedRectangle(cornerRadius: Radius.sm)
-                        .fill(configuration.isPressed ? Theme.accentStrong : hovering ? Theme.accent : .clear)
+                    RoundedRectangle(cornerRadius: cornerRadius)
+                        .fill(configuration.isPressed ? Theme.accentStrong : hovering ? hoverFill : .clear)
                 )
                 .onHover { hovering = $0 }
         }
