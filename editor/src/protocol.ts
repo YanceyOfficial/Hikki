@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 6
+export const PROTOCOL_VERSION = 7
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {

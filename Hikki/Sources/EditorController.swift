@@ -127,6 +127,60 @@ final class EditorController {
         }
     }
 
+    // MARK: - Find, spelling, insets
+
+    /// Edit → Find… / Find and Replace… / Find Next / Find Previous (mirrors FindMode in the editor).
+    enum FindMode: String { case find, replace, next, previous }
+
+    func find(_ mode: FindMode) {
+        guard isReady else { return }
+        Task {
+            do {
+                _ = try await webView.callAsyncJavaScript(
+                    "window.hikki.find(mode)", arguments: ["mode": mode.rawValue], contentWorld: .page)
+            } catch {
+                Log.warn("find failed: \(error)", category: "bridge")
+            }
+        }
+    }
+
+    /// Settings → Editor → Check spelling; sent on ready and whenever it changes.
+    @ObservationIgnored private var spellcheck = true
+
+    func setSpellcheck(_ on: Bool) {
+        spellcheck = on
+        guard isReady else { return }
+        Task { await applySpellcheck() }
+    }
+
+    private func applySpellcheck() async {
+        do {
+            _ = try await webView.callAsyncJavaScript(
+                "window.hikki.setSpellcheck(on)", arguments: ["on": spellcheck], contentWorld: .page)
+        } catch {
+            Log.warn("setSpellcheck failed: \(error)", category: "bridge")
+        }
+    }
+
+    /// Height of the toolbar the page runs under, so fixed panels in the page (find) sit below it.
+    @ObservationIgnored private var topInset: CGFloat = 0
+
+    func setTopInset(_ top: CGFloat) {
+        guard top != topInset else { return }
+        topInset = top
+        guard isReady else { return }
+        Task { await applyInsets() }
+    }
+
+    private func applyInsets() async {
+        do {
+            _ = try await webView.callAsyncJavaScript(
+                "window.hikki.setInsets({ top })", arguments: ["top": Double(topInset)], contentWorld: .page)
+        } catch {
+            Log.warn("setInsets failed: \(error)", category: "bridge")
+        }
+    }
+
     // MARK: - Color tone
 
     /// The tone the editor should paint in (Settings → Appearance); sent on ready and whenever it changes.
@@ -197,6 +251,8 @@ final class EditorController {
             Task {
                 await applyLocale()
                 await applyTone()
+                await applySpellcheck()
+                await applyInsets()
                 await load(pending ?? nil)
             }
         case .changed(let snapshot):

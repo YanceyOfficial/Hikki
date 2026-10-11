@@ -214,6 +214,27 @@
     @apply bg-primary/50;
   }
 
+  /* Find (extensions/find.tsx): every match, the current one stronger. */
+  .tiptap .find-and-replace-result {
+    @apply rounded-[2px] bg-wash-yellow;
+    box-shadow: 0 0 0 1px var(--color-wash-yellow);
+  }
+  .tiptap .find-and-replace-result-current {
+    @apply bg-ink-yellow/45;
+    box-shadow: 0 0 0 1px var(--color-ink-yellow);
+  }
+
+  /* Table of contents block (extensions/toc.ts). */
+  .tiptap .hk-toc {
+    @apply my-1 flex flex-col rounded-md py-1;
+  }
+  .tiptap .hk-toc-item {
+    @apply cursor-pointer truncate rounded-sm py-1 text-left text-muted-foreground underline decoration-border underline-offset-4 hover:bg-accent hover:text-foreground;
+  }
+  .tiptap .hk-toc-empty {
+    @apply text-placeholder;
+  }
+
   /* Formulas (extensions/math.tsx). */
   .tiptap [data-type='block-math'] {
     @apply my-1 cursor-pointer overflow-x-auto rounded-md px-2 py-3 text-center hover:bg-accent;
@@ -396,4 +417,16 @@
 }
 .hk-side-dropping .hk-dropcursor {
   display: none;
+}
+
+/*
+ * iOS zooms the page in when a field with text under 16px gets focus, and fixed panels (find) then sit off
+ * screen. Touch devices get 16px fields. Unlayered, so it beats utilities like text-sm.
+ */
+@media (pointer: coarse) {
+  input,
+  textarea:not([data-page-title]),
+  select {
+    font-size: max(16px, 1em);
+  }
 }

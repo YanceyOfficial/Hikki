@@ -39,7 +39,7 @@ struct PageScreen: View {
                 if phoneToolbar, let page {
                     ToolbarItemGroup(placement: .primaryAction) {
                         FavoriteButton(page: page)
-                        PageMoreMenu(page: page, navigator: navigator)
+                        PageMoreMenu(page: page, navigator: navigator, editor: editor)
                     }
                 }
             }
@@ -97,6 +97,8 @@ struct FavoriteButton: View {
 struct PageMoreMenu: View {
     let page: PageSummary
     let navigator: Navigator
+    /// The editor showing this page: "Find in Page" (the only way to find on a phone without a keyboard).
+    var editor: EditorController?
     /// In a window toolbar: a plain menu button, drawn by the system inside the group's glass.
     var toolbar = false
 
@@ -116,6 +118,15 @@ struct PageMoreMenu: View {
     }
 
     @ViewBuilder private var items: some View {
+        if let editor {
+            Button {
+                editor.find(.find)
+            } label: {
+                IconLabel("app:find.inPage", icon: .magnifyingGlass)
+            }
+            .accessibilityIdentifier("find-in-page")
+            Divider()
+        }
         PageActions(page: page, navigator: navigator)
         Divider()
         Text("app:page.edited \(page.updatedAt, format: .relative(presentation: .named))")

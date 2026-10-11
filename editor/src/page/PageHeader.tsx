@@ -201,6 +201,7 @@ function TitleField({
   return (
     <textarea
       ref={ref}
+      data-page-title
       className="mb-2 block w-full resize-none overflow-hidden border-0 bg-transparent py-[3px] text-4xl leading-tight font-bold tracking-[-0.01em] text-foreground outline-none placeholder:text-placeholder max-sm:text-3xl"
       rows={1}
       value={title}

@@ -154,6 +154,15 @@ export function BlockPreview({ id }: { id: string }) {
         </div>
       )
     }
+    case 'tableOfContents':
+      return (
+        <div className="flex flex-col gap-2">
+          <Line w="60%" className="bg-muted-foreground/40" />
+          <Line w="50%" className="ml-3 bg-muted-foreground/40" />
+          <Line w="45%" className="ml-3 bg-muted-foreground/40" />
+          <Line w="55%" className="bg-muted-foreground/40" />
+        </div>
+      )
     case 'divider':
       return (
         <div className="flex flex-col gap-2.5">

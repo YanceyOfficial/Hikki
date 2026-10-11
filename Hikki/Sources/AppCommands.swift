@@ -34,6 +34,18 @@ struct AppCommands: Commands {
             Button("app:menu.search") { navigator?.isSearching = true }
                 .keyboardShortcut("k")
         }
+        // Edit → Find: in-page find (the editor's panel). The page handles these keys itself when it has
+        // focus; the menu covers the rest (focus elsewhere in the window, iPad keyboards).
+        CommandGroup(replacing: .textEditing) {
+            Button("app:find.find") { editor?.find(.find) }
+                .keyboardShortcut("f")
+            Button("app:find.replace") { editor?.find(.replace) }
+                .keyboardShortcut("f", modifiers: [.command, .option])
+            Button("app:find.next") { editor?.find(.next) }
+                .keyboardShortcut("g")
+            Button("app:find.previous") { editor?.find(.previous) }
+                .keyboardShortcut("g", modifiers: [.command, .shift])
+        }
         CommandMenu("app:menu.go") {
             Button("app:chrome.back") { navigator?.goBack() }
                 .keyboardShortcut("[")

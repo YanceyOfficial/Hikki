@@ -70,6 +70,7 @@ struct SettingsView: View {
                 Tab {
                     Form {
                         WorkspaceSection()
+                        EditorSection()
                         LanguageSection()
                     }
                     .formStyle(.grouped)
@@ -116,6 +117,7 @@ struct SettingsView: View {
                     WorkspaceSection()
                     AppearanceSection()
                     ColorToneSection()
+                    EditorSection()
                     LanguageSection()
                     AboutSection()
                 }
@@ -282,6 +284,26 @@ private struct ColorToneSection: View {
             Text("app:settings.tone")
         } footer: {
             Text("app:settings.tone.detail")
+        }
+    }
+}
+
+/// Editor preferences (stored in UserDefaults, sent to the editor by ContentView).
+enum EditorPreferences {
+    static let spellcheckKey = "editor.spellcheck"
+}
+
+private struct EditorSection: View {
+    @AppStorage(EditorPreferences.spellcheckKey) private var spellcheck = true
+
+    var body: some View {
+        Section {
+            Toggle("app:settings.spellcheck", isOn: $spellcheck)
+                .accessibilityIdentifier("settings-spellcheck")
+        } header: {
+            Text("app:settings.editor")
+        } footer: {
+            Text("app:settings.spellcheck.detail")
         }
     }
 }

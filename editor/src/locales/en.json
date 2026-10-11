@@ -2,7 +2,8 @@
   "editor": {
     "bodyPlaceholder": "Type '/' for commands",
     "dragBlock": "Drag to move block",
-    "noResults": "No results"
+    "noResults": "No results",
+    "contentLabel": "Page content"
   },
   "page": {
     "untitled": "Untitled",
@@ -92,6 +93,10 @@
     "columns4": {
       "title": "4 columns",
       "hint": "4 side-by-side columns"
+    },
+    "tableOfContents": {
+      "title": "Table of contents",
+      "hint": "Links to the headings on this page"
     }
   },
   "cover": {
@@ -224,5 +229,25 @@
     "addColumn": "Add a column",
     "merge": "Merge cells",
     "split": "Split cell"
+  },
+  "find": {
+    "label": "Find in page",
+    "placeholder": "Find",
+    "replacePlaceholder": "Replace with",
+    "noResults": "No results",
+    "count": "{{current}} of {{total}}",
+    "previous": "Previous match",
+    "next": "Next match",
+    "close": "Close",
+    "matchCase": "Match case",
+    "wholeWord": "Whole words",
+    "regex": "Regular expression",
+    "replaceToggle": "Replace",
+    "replace": "Replace",
+    "replaceAll": "Replace all"
+  },
+  "toc": {
+    "label": "Table of contents",
+    "empty": "Add headings to build the table of contents."
   }
 }

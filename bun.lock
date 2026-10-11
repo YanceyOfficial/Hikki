@@ -35,6 +35,7 @@
         "@tiptap/extension-details": "3.31.4",
         "@tiptap/extension-document": "3.31.4",
         "@tiptap/extension-drag-handle": "3.31.4",
+        "@tiptap/extension-find-and-replace": "3.31.4",
         "@tiptap/extension-list": "3.31.4",
         "@tiptap/extension-mathematics": "3.31.4",
         "@tiptap/extension-subscript": "3.31.4",
@@ -350,6 +351,8 @@
     "@tiptap/extension-drag-handle": ["@tiptap/extension-drag-handle@3.31.4", "", { "dependencies": { "@floating-ui/dom": "^1.6.13" }, "peerDependencies": { "@tiptap/core": "3.31.4", "@tiptap/extension-collaboration": "3.31.4", "@tiptap/extension-node-range": "3.31.4", "@tiptap/pm": "3.31.4", "@tiptap/y-tiptap": "^3.0.7" } }, "sha512-UiHZNmr3fU/YeZxVyMyFTbb/ougIGSX0q3BkiCE0l1JPARhfYEsT6oULP6IC3tV8qnZHxiAZBSLlwRuJH0vuAw=="],
 
     "@tiptap/extension-dropcursor": ["@tiptap/extension-dropcursor@3.31.4", "", { "peerDependencies": { "@tiptap/extensions": "3.31.4" } }, "sha512-5TbCPCC4RL+QT1NYHjXCYDBHBtVqYOFvFEnk3v98lvXCM2PNL13ofXUfJPuykAVy1OdTAx4DlZOQAD9WKy/IdQ=="],
+
+    "@tiptap/extension-find-and-replace": ["@tiptap/extension-find-and-replace@3.31.4", "", { "dependencies": { "re2js": "^2.8.6" }, "peerDependencies": { "@tiptap/core": "3.31.4", "@tiptap/pm": "3.31.4" } }, "sha512-RNk+VkcjER54lNHDFar5S9ZccNWmR25mSpfejrPG/Jr73HBFUXUgKTqyO/GBPwNe8c8G62UQZszR9pUCU19qaQ=="],
 
     "@tiptap/extension-gapcursor": ["@tiptap/extension-gapcursor@3.31.4", "", { "peerDependencies": { "@tiptap/extensions": "3.31.4" } }, "sha512-hBogUAepQH6IQUhaePhPWzQ1Oeu+yqlJVMKO06Eue5m36uRy1PZZAQ780pCGT0SC4R5MH2td1N8EUQ7bupQdDA=="],
 
@@ -950,6 +953,8 @@
     "range-parser": ["range-parser@1.3.0", "", {}, "sha512-hek2mFQpPuI4E1BBKrSto+BU3e3x4xuarsbiwr3+lf7p44juvFMV0XFWQAP3xUyqXA4RrXLIoaSUGbSt056ZMw=="],
 
     "raw-body": ["raw-body@3.0.2", "", { "dependencies": { "bytes": "~3.1.2", "http-errors": "~2.0.1", "iconv-lite": "~0.7.0", "unpipe": "~1.0.0" } }, "sha512-K5zQjDllxWkf7Z5xJdV0/B0WTNqx6vxG70zJE4N0kBs4LovmEYWJzQGxC9bS9RAKu3bgM40lrd5zoLJ12MQ5BA=="],
+
+    "re2js": ["re2js@2.8.6", "", {}, "sha512-xLgQil4kIUCrAzVk9fRSkxkFNwmygLFjVxXrLc65aE1F0+Zsb8rxumFBy4XKyvgMCTL6kilDq3EZ0piE2dP/Dg=="],
 
     "react": ["react@19.3.0", "", {}, "sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog=="],
 

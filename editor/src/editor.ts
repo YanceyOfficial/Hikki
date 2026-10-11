@@ -12,10 +12,12 @@ import { CodeBlock } from './extensions/code-block'
 import { Colors, ColorTextStyle } from './extensions/colors'
 import { Column, Columns, ColumnsKeymap } from './extensions/columns'
 import { EdgeNavigation } from './extensions/edge-navigation'
+import { Find } from './extensions/find'
 import { mathExtension } from './extensions/math'
 import { SelectionMenuExtension } from './extensions/selection-menu'
 import { SlashCommand } from './extensions/slash-command'
 import { tableExtensions } from './extensions/table'
+import { TableOfContents } from './extensions/toc'
 import { Quote, toggleExtensions } from './extensions/toggle'
 import { t } from './i18n'
 import { isSafeHref } from './links'
@@ -25,6 +27,8 @@ type EditorOptions = {
   onExitTop?: () => void
   /** The stored content doesn't fit the schema (corrupt, or from a newer Hikki). See EditorBridge. */
   onContentError?: (error: Error) => void
+  /** WebKit's spell checker (system dictionaries, suggestions in the context menu); on by default. */
+  spellcheck?: boolean
 }
 
 /**
@@ -61,6 +65,12 @@ export function createEditor(
     // Invalid content (unknown nodes, wrong nesting) raises contentError instead of loading silently
     // stripped: saving that stripped copy would delete what this build can't show.
     enableContentCheck: true,
+    editorProps: {
+      attributes: {
+        spellcheck: String(options.spellcheck ?? true),
+        'aria-label': t('editor.contentLabel')
+      }
+    },
     onContentError: ({ error }) => options.onContentError?.(error),
     extensions: [
       StarterKit.configure({
@@ -80,6 +90,8 @@ export function createEditor(
       Columns,
       Column,
       ColumnsKeymap,
+      Find,
+      TableOfContents,
       TaskList,
       TaskItem.configure({ nested: true }),
       ColorTextStyle,

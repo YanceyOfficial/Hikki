@@ -16,6 +16,7 @@ struct ContentView: View {
     @State private var columns: NavigationSplitViewVisibility = .all
     @SceneStorage("tabs") private var storedTabs: Data?
     @AppStorage(ColorTone.storageKey) private var tone = ColorTone.standard
+    @AppStorage(EditorPreferences.spellcheckKey) private var spellcheck = true
     #if os(macOS)
         @Environment(\.openSettings) private var openSettings
     #endif
@@ -28,7 +29,7 @@ struct ContentView: View {
                 .navigationSplitViewColumnWidth(min: Size.sidebarMin, ideal: Size.sidebarIdeal, max: Size.sidebarMax)
         } detail: {
             DetailView(navigator: navigator, editor: editor, phoneToolbar: !wide)
-                .toolbar { if wide { NativeDetailToolbar(navigator: navigator) } }
+                .toolbar { if wide { NativeDetailToolbar(navigator: navigator, editor: editor) } }
         }
         #if os(iOS)
             .sheet(isPresented: $navigator.isShowingSettings) { SettingsView() }
@@ -87,11 +88,13 @@ struct ContentView: View {
             #endif
             if let initialPageID, model.tree.page(initialPageID) != nil { navigator.open(initialPageID) }
             editor.setTone(tone)
+            editor.setSpellcheck(spellcheck)
             editor.attach(store: model.store, assets: model.assets)
             editor.open(documentID: navigator.route.pageID)
         }
         .onChange(of: navigator.route) { _, route in editor.open(documentID: route.pageID) }
         .onChange(of: tone) { _, tone in editor.setTone(tone) }
+        .onChange(of: spellcheck) { _, on in editor.setSpellcheck(on) }
         .onChange(of: navigator.titleFocusRequest) { _, request in
             if let request { editor.focusTitle(of: request.pageID) }
         }
@@ -159,6 +162,7 @@ private struct DetailView: View {
 private struct NativeDetailToolbar: ToolbarContent {
     @Environment(AppModel.self) private var model
     let navigator: Navigator
+    let editor: EditorController
 
     // Photos' toolbar: each group is its own Liquid Glass capsule — back/forward, the tabs, the page's
     // actions. (Search lives in the sidebar's glass field.)
@@ -193,7 +197,7 @@ private struct NativeDetailToolbar: ToolbarContent {
         if let id = navigator.route.pageID, let page = model.tree.page(id) {
             ToolbarItemGroup(placement: .primaryAction) {
                 FavoriteButton(page: page, toolbar: true)
-                PageMoreMenu(page: page, navigator: navigator, toolbar: true)
+                PageMoreMenu(page: page, navigator: navigator, editor: editor, toolbar: true)
             }
         }
     }

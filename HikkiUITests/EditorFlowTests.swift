@@ -201,7 +201,13 @@ final class EditorFlowTests: XCTestCase {
         let title = app.webViews.textViews["Page title"].firstMatch
         XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
         title.tap()
-        title.typeText("Plan\n/todo")
+        title.typeText("Plan\n")
+        // Type into the body once it's there: keystrokes sent while focus is still moving from the title
+        // were occasionally lost (flaky on the simulator).
+        let body = app.webViews.textViews["Page content"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(body, in: app), "body missing")
+        body.tap()
+        body.typeText("/todo")
 
         let item = app.webViews.descendants(matching: .any)["To-do list"].firstMatch
         XCTAssertTrue(waitOrDumpTree(item, in: app), "slash menu did not show the To-do item")
@@ -213,6 +219,35 @@ final class EditorFlowTests: XCTestCase {
 
         XCTAssertTrue(waitOrDumpTree(app.webViews.switches.firstMatch, in: app), "to-do checkbox not inserted")
         XCTAssertFalse(app.webViews.descendants(matching: .any)["To-do list"].exists, "menu should close after choosing")
+    }
+
+    /// The page's ⋯ menu opens the in-page find panel (⌘F does too, with a keyboard: covered by the
+    /// editor's unit tests — the simulator's software keyboard doesn't deliver ⌘ shortcuts).
+    func testFindInPageFromPageMenu() throws {
+        continueAfterFailure = false
+        let app = launch()
+        let newPage = app.buttons["new-page"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+        newPage.tap()
+        let title = app.webViews.textViews["Page title"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+        title.tap()
+        title.typeText("Find me")
+
+        let more = app.buttons["page-more"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(more, in: app))
+        more.tap()
+        let item = app.buttons["find-in-page"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(item, in: app), "no Find in Page item")
+        item.tap()
+        let field = app.webViews.textFields["Find"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(field, in: app), "find panel did not open")
+        // The panel sits below the toolbar (window.hikki.setInsets), not under its glass.
+        XCTAssertGreaterThan(field.frame.minY, app.navigationBars.firstMatch.frame.maxY - 1, "find panel under the toolbar")
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "find-panel"
+        shot.lifetime = .keepAlways
+        add(shot)
     }
 
     /// Regression: on iPhone, tag-based List selection didn't navigate; rows must be NavigationLinks.

@@ -2,6 +2,7 @@ import type { Editor } from '@tiptap/core'
 import type { Transaction } from '@tiptap/pm/state'
 
 import { activeCommands, createEditor, runCommand } from './editor'
+import { runFind, type FindMode } from './extensions/find'
 import { plainText, wordCount } from './extract'
 import { normalizeBody } from './normalize'
 import { collectHeadings, type HeadingItem } from './page/headings'
@@ -73,6 +74,8 @@ export class EditorBridge {
   /** True between a user edit and the snapshot that reports it. Viewing a page must never save it. */
   private dirty = false
   private lastActive = ''
+  /** Settings → Editor → Check spelling; applied to every page's editor. */
+  private spellcheck = true
 
   constructor(
     private readonly host: HTMLElement,
@@ -90,6 +93,7 @@ export class EditorBridge {
     const { body, title } = normalizeBody(payload.content, payload.title ?? '')
     let contentError: Error | null = null
     const editor = createEditor(this.host, body, {
+      spellcheck: this.spellcheck,
       onExitTop: () => this.requestTitleFocus(),
       onContentError: (error) => {
         contentError = error
@@ -214,6 +218,18 @@ export class EditorBridge {
 
   focus(): void {
     this.editor?.commands.focus()
+  }
+
+  /** Find in page (⌘F etc., or the native Edit menu). Returns whether there was an editor to search. */
+  find(mode: FindMode): boolean {
+    if (!this.editor) return false
+    runFind(this.editor, mode)
+    return true
+  }
+
+  setSpellcheck(on: boolean): void {
+    this.spellcheck = on
+    this.editor?.view.dom.setAttribute('spellcheck', String(on))
   }
 
   /**

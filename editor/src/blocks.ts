@@ -9,6 +9,7 @@ import {
   Code,
   type Icon,
   ListBullets,
+  ListMagnifyingGlass,
   ListNumbers,
   Minus,
   Quotes,
@@ -287,6 +288,17 @@ export const BLOCK_TYPES: BlockType[] = [
     group: 'advanced',
     aliases: ['columns', 'column', 'layout', '4', '4col', '分栏', '四栏', 'fenlan', 'fl'],
     apply: (c) => c.insertColumns(4)
+  },
+  {
+    id: 'tableOfContents',
+    title: 'Table of contents',
+    hint: 'Links to the headings on this page',
+    label: () => t('blocks.tableOfContents.title'),
+    description: () => t('blocks.tableOfContents.hint'),
+    icon: ListMagnifyingGlass,
+    group: 'advanced',
+    aliases: ['toc', 'contents', 'outline', '目录', 'mulu', 'ml'],
+    apply: (c) => c.insertContent({ type: 'tableOfContents' })
   },
   {
     id: 'blockMath',

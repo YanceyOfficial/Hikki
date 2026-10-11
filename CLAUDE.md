@@ -125,6 +125,12 @@ HikkiUITests/                 XCUITest flows
   (`editor/src/extensions/table.tsx` + `editor/src/extensions/table-ops.ts`, controls drawn by
   `editor/src/ui/TableOverlay.tsx`) and columns (`editor/src/extensions/columns.ts`: schema needs 2–5 columns, so
   removing one of two replaces the row; dragging a block onto another's side edge makes a row).
+- **Find, spelling, insets**: find and replace is `editor/src/extensions/find.tsx` (Tiptap's extension, RE2 regex) with
+  `editor/src/ui/FindPanel.tsx`; the page handles ⌘F/⌥⌘F/⌘G itself, the native Edit menu and the page ⋯ menu ("Find
+  in Page", the only way on a phone) call `window.hikki.find`. Spellcheck is WebKit's (Settings → Editor,
+  `window.hikki.setSpellcheck`). `window.hikki.setInsets` gives the page the toolbar height for fixed panels.
+- **iOS input zoom**: fields under 16px make iOS zoom the page on focus (fixed panels then sit off screen); touch
+  devices get 16px fields via an unlayered rule in `editor/src/style.css` (the page title is exempt).
 - **Editor content safety**: content that doesn't fit the schema (corrupt, or from a newer Hikki) opens read-only and
   is never saved (`enableContentCheck`); housekeeping transactions (`addToHistory: false` — UniqueID stamping
   block ids, remote reloads) never count as edits; continuous typing still saves every 2 s (`maxWaitMs`).

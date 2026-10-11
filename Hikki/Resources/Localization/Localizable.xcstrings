@@ -103,6 +103,91 @@
         }
       }
     },
+    "app:find.find": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查找…"
+          }
+        }
+      }
+    },
+    "app:find.inPage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find in Page"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "页内查找"
+          }
+        }
+      }
+    },
+    "app:find.next": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find Next"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查找下一个"
+          }
+        }
+      }
+    },
+    "app:find.previous": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find Previous"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查找上一个"
+          }
+        }
+      }
+    },
+    "app:find.replace": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find and Replace…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查找并替换…"
+          }
+        }
+      }
+    },
     "app:format.bold": {
       "extractionState": "manual",
       "localizations": {
@@ -1616,6 +1701,23 @@
         }
       }
     },
+    "app:settings.editor": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editor"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑器"
+          }
+        }
+      }
+    },
     "app:settings.general": {
       "extractionState": "manual",
       "localizations": {
@@ -1850,6 +1952,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "设置…"
+          }
+        }
+      }
+    },
+    "app:settings.spellcheck": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check spelling while typing"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输入时检查拼写"
+          }
+        }
+      }
+    },
+    "app:settings.spellcheck.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uses the system dictionaries; right-click a word for suggestions."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用系统词典；右键点按单词查看建议。"
           }
         }
       }
