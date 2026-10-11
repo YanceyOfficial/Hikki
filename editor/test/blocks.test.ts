@@ -16,13 +16,13 @@ describe('filterBlockTypes', () => {
 
   it('matches Chinese and pinyin aliases', () => {
     expect(ids('待办')).toEqual(['taskList'])
-    expect(ids('标题')).toEqual(['heading1', 'heading2', 'heading3'])
+    expect(ids('标题')).toEqual(['heading1', 'heading2', 'heading3', 'heading4'])
     expect(ids('daima')).toEqual(['codeBlock'])
     expect(ids('fenge')).toEqual(['divider'])
   })
 
   it('matches pinyin initials', () => {
-    expect(ids('bt')).toEqual(['heading1', 'heading2', 'heading3'])
+    expect(ids('bt')).toEqual(['heading1', 'heading2', 'heading3', 'heading4'])
     expect(ids('db')).toEqual(['taskList'])
     expect(ids('dm')).toEqual(['codeBlock'])
   })

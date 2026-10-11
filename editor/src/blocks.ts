@@ -1,21 +1,51 @@
-import type { ChainedCommands } from '@tiptap/core'
+import {
+  CheckSquare,
+  Code,
+  type Icon,
+  ListBullets,
+  ListNumbers,
+  Minus,
+  Quotes,
+  TextHFour,
+  TextHOne,
+  TextHThree,
+  TextHTwo,
+  TextT
+} from '@phosphor-icons/react'
+import type { ChainedCommands, Editor } from '@tiptap/core'
 
 import { t } from './i18n'
 
+/** Sections of the "/" menu, in display order. */
+export const BLOCK_GROUPS = ['basic', 'lists', 'other'] as const
+export type BlockGroup = (typeof BLOCK_GROUPS)[number]
+
 /**
- * Catalog of insertable block types: the single source for the "/" menu (and later "Turn into", the
- * block "+" button and native menus). Aliases include Chinese, full pinyin and pinyin initials, so "/标题", "/biaoti" and "/bt" all work.
+ * Catalog of insertable block types: the single source for the "/" menu, "Turn into" and (later) the
+ * block "+" button and native menus. Aliases include Chinese, full pinyin and pinyin initials, so "/标题",
+ * "/biaoti" and "/bt" all work.
  */
 export type BlockType = {
   id: string
   title: string
   hint: string
-  icon: string
+  icon: Icon
+  group: BlockGroup
+  /** The Markdown shortcut that creates it as you type, shown at the row's end. */
+  shortcut?: string
   aliases: string[]
   /** Localized display name / hint (title + aliases stay English/pinyin/Chinese for search). */
   label: () => string
   description: () => string
+  /** Inserts it at the (empty) current block — the "/" menu. */
   apply: (chain: ChainedCommands) => ChainedCommands
+  /**
+   * Converts the current block, keeping its text ("Turn into"); absent for blocks without text (divider).
+   * Lists and quotes are lifted first, so any text block can become any other.
+   */
+  turnInto?: (chain: ChainedCommands) => ChainedCommands
+  /** Whether the selection is in this kind of block (the current item in "Turn into"). */
+  isActive?: (editor: Editor) => boolean
 }
 
 export const BLOCK_TYPES: BlockType[] = [
@@ -25,9 +55,17 @@ export const BLOCK_TYPES: BlockType[] = [
     hint: 'Plain text',
     label: () => t('blocks.paragraph.title'),
     description: () => t('blocks.paragraph.hint'),
-    icon: 'T',
+    icon: TextT,
+    group: 'basic',
     aliases: ['text', 'paragraph', 'p', '正文', '文本', 'zhengwen', 'wenben', 'zw', 'wb'],
-    apply: (c) => c.setParagraph()
+    apply: (c) => c.setParagraph(),
+    turnInto: (c) => c.clearNodes(),
+    isActive: (e) =>
+      e.isActive('paragraph') &&
+      !e.isActive('bulletList') &&
+      !e.isActive('orderedList') &&
+      !e.isActive('taskList') &&
+      !e.isActive('blockquote')
   },
   {
     id: 'heading1',
@@ -35,9 +73,13 @@ export const BLOCK_TYPES: BlockType[] = [
     hint: 'Big section heading',
     label: () => t('blocks.heading1.title'),
     description: () => t('blocks.heading1.hint'),
-    icon: 'H1',
+    icon: TextHOne,
+    group: 'basic',
+    shortcut: '#',
     aliases: ['h1', 'heading', 'title', '标题', '一级标题', 'biaoti', 'bt'],
-    apply: (c) => c.setHeading({ level: 1 })
+    apply: (c) => c.setHeading({ level: 1 }),
+    turnInto: (c) => c.clearNodes().setHeading({ level: 1 }),
+    isActive: (e) => e.isActive('heading', { level: 1 })
   },
   {
     id: 'heading2',
@@ -45,9 +87,13 @@ export const BLOCK_TYPES: BlockType[] = [
     hint: 'Medium section heading',
     label: () => t('blocks.heading2.title'),
     description: () => t('blocks.heading2.hint'),
-    icon: 'H2',
+    icon: TextHTwo,
+    group: 'basic',
+    shortcut: '##',
     aliases: ['h2', 'heading', '标题', '二级标题', 'biaoti', 'bt'],
-    apply: (c) => c.setHeading({ level: 2 })
+    apply: (c) => c.setHeading({ level: 2 }),
+    turnInto: (c) => c.clearNodes().setHeading({ level: 2 }),
+    isActive: (e) => e.isActive('heading', { level: 2 })
   },
   {
     id: 'heading3',
@@ -55,9 +101,27 @@ export const BLOCK_TYPES: BlockType[] = [
     hint: 'Small section heading',
     label: () => t('blocks.heading3.title'),
     description: () => t('blocks.heading3.hint'),
-    icon: 'H3',
+    icon: TextHThree,
+    group: 'basic',
+    shortcut: '###',
     aliases: ['h3', 'heading', '标题', '三级标题', 'biaoti', 'bt'],
-    apply: (c) => c.setHeading({ level: 3 })
+    apply: (c) => c.setHeading({ level: 3 }),
+    turnInto: (c) => c.clearNodes().setHeading({ level: 3 }),
+    isActive: (e) => e.isActive('heading', { level: 3 })
+  },
+  {
+    id: 'heading4',
+    title: 'Heading 4',
+    hint: 'Smallest section heading',
+    label: () => t('blocks.heading4.title'),
+    description: () => t('blocks.heading4.hint'),
+    icon: TextHFour,
+    group: 'basic',
+    shortcut: '####',
+    aliases: ['h4', 'heading', '标题', '四级标题', 'biaoti', 'bt'],
+    apply: (c) => c.setHeading({ level: 4 }),
+    turnInto: (c) => c.clearNodes().setHeading({ level: 4 }),
+    isActive: (e) => e.isActive('heading', { level: 4 })
   },
   {
     id: 'bulletList',
@@ -65,9 +129,13 @@ export const BLOCK_TYPES: BlockType[] = [
     hint: 'Simple bulleted list',
     label: () => t('blocks.bulletList.title'),
     description: () => t('blocks.bulletList.hint'),
-    icon: '•',
+    icon: ListBullets,
+    group: 'lists',
+    shortcut: '-',
     aliases: ['bullet', 'ul', 'list', '无序列表', '列表', 'liebiao', 'lb'],
-    apply: (c) => c.toggleBulletList()
+    apply: (c) => c.toggleBulletList(),
+    turnInto: (c) => c.clearNodes().toggleBulletList(),
+    isActive: (e) => e.isActive('bulletList')
   },
   {
     id: 'orderedList',
@@ -75,9 +143,13 @@ export const BLOCK_TYPES: BlockType[] = [
     hint: 'List with numbering',
     label: () => t('blocks.orderedList.title'),
     description: () => t('blocks.orderedList.hint'),
-    icon: '1.',
+    icon: ListNumbers,
+    group: 'lists',
+    shortcut: '1.',
     aliases: ['number', 'ol', 'ordered', '有序列表', '编号', 'bianhao', 'bh'],
-    apply: (c) => c.toggleOrderedList()
+    apply: (c) => c.toggleOrderedList(),
+    turnInto: (c) => c.clearNodes().toggleOrderedList(),
+    isActive: (e) => e.isActive('orderedList')
   },
   {
     id: 'taskList',
@@ -85,9 +157,13 @@ export const BLOCK_TYPES: BlockType[] = [
     hint: 'Track tasks with checkboxes',
     label: () => t('blocks.taskList.title'),
     description: () => t('blocks.taskList.hint'),
-    icon: '☐',
+    icon: CheckSquare,
+    group: 'lists',
+    shortcut: '[]',
     aliases: ['todo', 'task', 'check', '待办', '任务', 'daiban', 'renwu', 'db', 'rw'],
-    apply: (c) => c.toggleTaskList()
+    apply: (c) => c.toggleTaskList(),
+    turnInto: (c) => c.clearNodes().toggleTaskList(),
+    isActive: (e) => e.isActive('taskList')
   },
   {
     id: 'blockquote',
@@ -95,9 +171,13 @@ export const BLOCK_TYPES: BlockType[] = [
     hint: 'Capture a quote',
     label: () => t('blocks.blockquote.title'),
     description: () => t('blocks.blockquote.hint'),
-    icon: '❝',
+    icon: Quotes,
+    group: 'other',
+    shortcut: '"',
     aliases: ['quote', 'blockquote', '引用', 'yinyong', 'yy'],
-    apply: (c) => c.toggleBlockquote()
+    apply: (c) => c.toggleBlockquote(),
+    turnInto: (c) => c.clearNodes().toggleBlockquote(),
+    isActive: (e) => e.isActive('blockquote')
   },
   {
     id: 'codeBlock',
@@ -105,9 +185,13 @@ export const BLOCK_TYPES: BlockType[] = [
     hint: 'Code block',
     label: () => t('blocks.codeBlock.title'),
     description: () => t('blocks.codeBlock.hint'),
-    icon: '</>',
+    icon: Code,
+    group: 'other',
+    shortcut: '```',
     aliases: ['code', 'pre', '代码', 'daima', 'dm'],
-    apply: (c) => c.toggleCodeBlock()
+    apply: (c) => c.toggleCodeBlock(),
+    turnInto: (c) => c.clearNodes().toggleCodeBlock(),
+    isActive: (e) => e.isActive('codeBlock')
   },
   {
     id: 'divider',
@@ -115,7 +199,9 @@ export const BLOCK_TYPES: BlockType[] = [
     hint: 'Visual separator',
     label: () => t('blocks.divider.title'),
     description: () => t('blocks.divider.hint'),
-    icon: '—',
+    icon: Minus,
+    group: 'other',
+    shortcut: '---',
     aliases: ['divider', 'hr', 'line', 'separator', '分割线', '分隔线', 'fengexian', 'fgx'],
     apply: (c) => c.setHorizontalRule()
   }

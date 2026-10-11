@@ -56,6 +56,10 @@
     "divider": {
       "title": "Divider",
       "hint": "Visual separator"
+    },
+    "heading4": {
+      "title": "Heading 4",
+      "hint": "Smallest section heading"
     }
   },
   "cover": {
@@ -101,5 +105,47 @@
     "empty": "No emoji found",
     "loading": "Loading…",
     "failed": "Could not load emoji"
+  },
+  "slash": {
+    "group": {
+      "basic": "Basic blocks",
+      "lists": "Lists",
+      "other": "Other"
+    },
+    "close": "Close menu"
+  },
+  "format": {
+    "turnInto": "Turn into",
+    "bold": "Bold",
+    "italic": "Italic",
+    "underline": "Underline",
+    "strike": "Strikethrough",
+    "code": "Inline code",
+    "link": "Link",
+    "color": "Color",
+    "clear": "Clear formatting",
+    "subscript": "Subscript",
+    "superscript": "Superscript",
+    "menu": "Formatting"
+  },
+  "color": {
+    "text": "Text color",
+    "background": "Background color",
+    "default": "Default",
+    "gray": "Gray",
+    "brown": "Brown",
+    "orange": "Orange",
+    "yellow": "Yellow",
+    "green": "Green",
+    "blue": "Blue",
+    "purple": "Purple",
+    "pink": "Pink",
+    "red": "Red"
+  },
+  "link": {
+    "placeholder": "Paste or type a link",
+    "apply": "Apply",
+    "remove": "Remove link",
+    "open": "Open link"
   }
 }

@@ -56,6 +56,10 @@
     "divider": {
       "title": "分割线",
       "hint": "视觉分隔"
+    },
+    "heading4": {
+      "title": "标题 4",
+      "hint": "最小的章节标题"
     }
   },
   "cover": {
@@ -101,5 +105,47 @@
     "empty": "没有找到",
     "loading": "加载中…",
     "failed": "表情加载失败"
+  },
+  "slash": {
+    "group": {
+      "basic": "基础",
+      "lists": "列表",
+      "other": "其他"
+    },
+    "close": "关闭菜单"
+  },
+  "format": {
+    "turnInto": "转换为",
+    "bold": "粗体",
+    "italic": "斜体",
+    "underline": "下划线",
+    "strike": "删除线",
+    "code": "行内代码",
+    "link": "链接",
+    "color": "颜色",
+    "clear": "清除格式",
+    "subscript": "下标",
+    "superscript": "上标",
+    "menu": "格式"
+  },
+  "color": {
+    "text": "文字颜色",
+    "background": "背景颜色",
+    "default": "默认",
+    "gray": "灰色",
+    "brown": "棕色",
+    "orange": "橙色",
+    "yellow": "黄色",
+    "green": "绿色",
+    "blue": "蓝色",
+    "purple": "紫色",
+    "pink": "粉色",
+    "red": "红色"
+  },
+  "link": {
+    "placeholder": "粘贴或输入链接",
+    "apply": "应用",
+    "remove": "移除链接",
+    "open": "打开链接"
   }
 }

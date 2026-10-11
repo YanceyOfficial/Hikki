@@ -111,6 +111,11 @@ HikkiUITests/                 XCUITest flows
   unchanged files are skipped by modification date + size) and posts `pagesChangedOnDisk`, so an open editor
   reloads a page another device changed (`window.hikki.reload`, declined while it has unsaved edits). Not yet:
   conflict copies, assets.
+- **Editor menus**: `editor/src/blocks.ts` is the one block catalog (groups, Markdown shortcuts, `turnInto`, `isActive`)
+  behind the "/" menu (`editor/src/ui/SlashMenu.tsx`) and the selection menu's "Turn into"
+  (`editor/src/ui/SelectionMenu.tsx`, positioned by Tiptap's BubbleMenu; its side panels stay inside the menu element
+  or BubbleMenu hides on blur). Text/background colors are stored as palette names (`editor/src/extensions/colors.ts`) and
+  styled from the `ink-*` / `wash-*` tokens — never raw CSS colors in the document.
 - **Editor content safety**: content that doesn't fit the schema (corrupt, or from a newer Hikki) opens read-only and
   is never saved (`enableContentCheck`); housekeeping transactions (`addToHistory: false` — UniqueID stamping
   block ids, remote reloads) never count as edits; continuous typing still saves every 2 s (`maxWaitMs`).

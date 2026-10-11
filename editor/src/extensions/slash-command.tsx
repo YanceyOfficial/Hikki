@@ -1,11 +1,18 @@
 import { Extension } from '@tiptap/core'
 import { PluginKey } from '@tiptap/pm/state'
-import Suggestion, { type SuggestionProps } from '@tiptap/suggestion'
+import Suggestion, { exitSuggestion, type SuggestionProps } from '@tiptap/suggestion'
 
-import { filterBlockTypes, type BlockType } from '../blocks'
-import { t } from '../i18n'
-import { CommandList, handleListKey } from '../ui/CommandList'
+import { BLOCK_GROUPS, filterBlockTypes, type BlockType } from '../blocks'
+import { handleListKey } from '../ui/CommandList'
 import { FloatingLayer } from '../ui/floating'
+import { SlashMenu } from '../ui/SlashMenu'
+
+/** The menu's items: grouped (catalog sections in order) without a query, ranked with one. */
+export function slashItems(query: string): BlockType[] {
+  const items = filterBlockTypes(query)
+  if (query.trim()) return items
+  return items.toSorted((a, b) => BLOCK_GROUPS.indexOf(a.group) - BLOCK_GROUPS.indexOf(b.group))
+}
 
 export const SlashCommandKey = new PluginKey('slashCommand')
 
@@ -23,7 +30,7 @@ export const SlashCommand = Extension.create({
           const $from = state.doc.resolve(range.from)
           return $from.parent.type.name !== 'codeBlock'
         },
-        items: ({ query }) => filterBlockTypes(query),
+        items: ({ query }) => slashItems(query),
         command: ({ editor, range, props }) => {
           props.apply(editor.chain().focus().deleteRange(range)).run()
         },
@@ -38,20 +45,16 @@ export const SlashCommand = Extension.create({
             // Items load asynchronously; don't flash "No results" while the first batch is in flight.
             if (props.loading && props.items.length === 0) return
             layer.render(
-              <CommandList
-                items={props.items.map((b) => ({
-                  id: b.id,
-                  title: b.label(),
-                  hint: b.description(),
-                  icon: b.icon
-                }))}
-                emptyText={t('editor.noResults')}
+              <SlashMenu
+                items={props.items}
+                query={props.query}
                 selectedIndex={selected}
                 onHover={(i) => {
                   selected = i
                   draw()
                 }}
                 onSelect={(i) => props.items[i] && props.command(props.items[i])}
+                onClose={() => exitSuggestion(props.editor.view, SlashCommandKey)}
               />,
               props.clientRect
             )
@@ -59,7 +62,7 @@ export const SlashCommand = Extension.create({
 
           return {
             onStart: (props) => {
-              layer = new FloatingLayer('hk-slash-menu w-[300px] max-w-[calc(100vw-16px)]')
+              layer = new FloatingLayer('hk-slash-menu', { bare: true })
               current = props
               selected = 0
               draw()
@@ -72,8 +75,7 @@ export const SlashCommand = Extension.create({
             onKeyDown: ({ event }) => {
               if (!current) return false
               if (event.key === 'Escape') {
-                layer?.destroy()
-                layer = null
+                exitSuggestion(current.editor.view, SlashCommandKey)
                 return true
               }
               const items = current.items

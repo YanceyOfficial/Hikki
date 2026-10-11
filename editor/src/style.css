@@ -54,6 +54,69 @@
     @apply mt-[1em] mb-[0.1em] leading-tight font-semibold;
     font-size: 1.25em;
   }
+  .tiptap h4 {
+    @apply mt-[0.8em] mb-0 leading-snug font-semibold;
+    font-size: 1.1em;
+  }
+
+  /* Text / background colors (extensions/colors.ts): palette names → ink-* / wash-* tokens. */
+  [data-text-color='gray'] {
+    color: var(--color-ink-gray);
+  }
+  [data-text-color='brown'] {
+    color: var(--color-ink-brown);
+  }
+  [data-text-color='orange'] {
+    color: var(--color-ink-orange);
+  }
+  [data-text-color='yellow'] {
+    color: var(--color-ink-yellow);
+  }
+  [data-text-color='green'] {
+    color: var(--color-ink-green);
+  }
+  [data-text-color='blue'] {
+    color: var(--color-ink-blue);
+  }
+  [data-text-color='purple'] {
+    color: var(--color-ink-purple);
+  }
+  [data-text-color='pink'] {
+    color: var(--color-ink-pink);
+  }
+  [data-text-color='red'] {
+    color: var(--color-ink-red);
+  }
+  [data-bg-color] {
+    @apply -mx-[1px] rounded-[3px] box-decoration-clone px-[1px] py-[1px];
+  }
+  [data-bg-color='gray'] {
+    background: var(--color-wash-gray);
+  }
+  [data-bg-color='brown'] {
+    background: var(--color-wash-brown);
+  }
+  [data-bg-color='orange'] {
+    background: var(--color-wash-orange);
+  }
+  [data-bg-color='yellow'] {
+    background: var(--color-wash-yellow);
+  }
+  [data-bg-color='green'] {
+    background: var(--color-wash-green);
+  }
+  [data-bg-color='blue'] {
+    background: var(--color-wash-blue);
+  }
+  [data-bg-color='purple'] {
+    background: var(--color-wash-purple);
+  }
+  [data-bg-color='pink'] {
+    background: var(--color-wash-pink);
+  }
+  [data-bg-color='red'] {
+    background: var(--color-wash-red);
+  }
   .tiptap a {
     @apply underline decoration-muted-foreground underline-offset-2;
     color: inherit;
@@ -120,5 +183,26 @@
   }
   .hk-drag-handle.hk-hidden {
     @apply pointer-events-none invisible;
+  }
+}
+
+/*
+ * Selection menu entrance: re-attached each time it shows, so the animation replays. Short and from
+ * slightly smaller, origin at the selection; none with reduced motion. (The "/" menu is opened by typing
+ * and so never animates.)
+ */
+@keyframes hk-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(var(--hk-pop-shift, 2px));
+  }
+}
+.hk-pop-in {
+  animation: hk-pop-in 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  transform-origin: var(--hk-pop-origin, top left);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hk-pop-in {
+    animation: none;
   }
 }

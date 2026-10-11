@@ -1,11 +1,15 @@
 import { Editor, type JSONContent } from '@tiptap/core'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
+import Subscript from '@tiptap/extension-subscript'
+import Superscript from '@tiptap/extension-superscript'
 import UniqueID from '@tiptap/extension-unique-id'
 import { Placeholder } from '@tiptap/extensions'
 import StarterKit from '@tiptap/starter-kit'
 
 import { blockHandleExtensions } from './extensions/block-handle'
+import { Colors, ColorTextStyle } from './extensions/colors'
 import { EdgeNavigation } from './extensions/edge-navigation'
+import { SelectionMenuExtension } from './extensions/selection-menu'
 import { SlashCommand } from './extensions/slash-command'
 import { t } from './i18n'
 import type { Command } from './protocol'
@@ -50,6 +54,10 @@ export function createEditor(
       StarterKit.configure({ link: { openOnClick: false } }),
       TaskList,
       TaskItem.configure({ nested: true }),
+      ColorTextStyle,
+      Colors,
+      Subscript,
+      Superscript,
       Placeholder.configure({
         includeChildren: false,
         placeholder: ({ node }) =>
@@ -57,6 +65,7 @@ export function createEditor(
       }),
       EdgeNavigation.configure({ onExitTop: options.onExitTop ?? (() => {}) }),
       SlashCommand,
+      SelectionMenuExtension,
       UniqueID.configure({ types: BLOCK_ID_TYPES }),
       ...blockHandleExtensions()
     ]

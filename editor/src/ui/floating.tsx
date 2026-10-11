@@ -12,10 +12,16 @@ import { cn, ui } from './cn'
 export class FloatingLayer {
   readonly element: HTMLDivElement
   private readonly root: Root
+  private readonly bare: boolean
 
-  constructor(className: string) {
+  /**
+   * `bare`: only positioned — the content draws its own surface(s) and may overflow (a menu with a side
+   * preview). Its height budget is then the `--hk-available-height` variable instead of max-height.
+   */
+  constructor(className: string, { bare = false }: { bare?: boolean } = {}) {
+    this.bare = bare
     this.element = document.createElement('div')
-    this.element.className = cn(ui.floating, className)
+    this.element.className = cn(bare ? 'fixed top-0 left-0 z-50' : ui.floating, className)
     document.body.append(this.element)
     this.root = createRoot(this.element)
   }
@@ -50,7 +56,9 @@ export class FloatingLayer {
           rootBoundary,
           padding: 8,
           apply: ({ availableHeight, elements }) => {
-            elements.floating.style.maxHeight = `${Math.max(120, Math.min(360, availableHeight))}px`
+            const height = `${Math.max(120, Math.min(this.bare ? 420 : 360, availableHeight))}px`
+            if (this.bare) elements.floating.style.setProperty('--hk-available-height', height)
+            else elements.floating.style.maxHeight = height
           }
         })
       ]

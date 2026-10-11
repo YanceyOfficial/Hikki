@@ -42,6 +42,26 @@ public nonisolated extension Theme {
     static let codeForeground = dynamic(light: 0xEB5757, lightAlpha: 1, dark: 0xFF7369, darkAlpha: 1)
     /// Hikki: favorite star
     static let favorite = dynamic(light: 0xF2B705, lightAlpha: 1, dark: 0xF5C242, darkAlpha: 1)
+    /// Hikki: editor text color (Notion palette)
+    static let inkGray = dynamic(light: 0x787774, lightAlpha: 1, dark: 0x9B9B9B, darkAlpha: 1)
+    static let inkBrown = dynamic(light: 0x9F6B53, lightAlpha: 1, dark: 0xBA856F, darkAlpha: 1)
+    static let inkOrange = dynamic(light: 0xD9730D, lightAlpha: 1, dark: 0xC77D48, darkAlpha: 1)
+    static let inkYellow = dynamic(light: 0xCB912F, lightAlpha: 1, dark: 0xCA9849, darkAlpha: 1)
+    static let inkGreen = dynamic(light: 0x448361, lightAlpha: 1, dark: 0x529E72, darkAlpha: 1)
+    static let inkBlue = dynamic(light: 0x337EA9, lightAlpha: 1, dark: 0x5E87C9, darkAlpha: 1)
+    static let inkPurple = dynamic(light: 0x9065B0, lightAlpha: 1, dark: 0x9D68D3, darkAlpha: 1)
+    static let inkPink = dynamic(light: 0xC14C8A, lightAlpha: 1, dark: 0xD15796, darkAlpha: 1)
+    static let inkRed = dynamic(light: 0xD44C47, lightAlpha: 1, dark: 0xDF5452, darkAlpha: 1)
+    /// Hikki: editor background color (Notion palette)
+    static let washGray = dynamic(light: 0xF1F1EF, lightAlpha: 1, dark: 0x2F2F2F, darkAlpha: 1)
+    static let washBrown = dynamic(light: 0xF4EEEE, lightAlpha: 1, dark: 0x4A3228, darkAlpha: 1)
+    static let washOrange = dynamic(light: 0xFBECDD, lightAlpha: 1, dark: 0x5C3B23, darkAlpha: 1)
+    static let washYellow = dynamic(light: 0xFBF3DB, lightAlpha: 1, dark: 0x564328, darkAlpha: 1)
+    static let washGreen = dynamic(light: 0xEDF3EC, lightAlpha: 1, dark: 0x243D30, darkAlpha: 1)
+    static let washBlue = dynamic(light: 0xE7F3F8, lightAlpha: 1, dark: 0x143A4E, darkAlpha: 1)
+    static let washPurple = dynamic(light: 0xF6F3F9, lightAlpha: 1, dark: 0x3C2D49, darkAlpha: 1)
+    static let washPink = dynamic(light: 0xFAF1F5, lightAlpha: 1, dark: 0x4E2C3C, darkAlpha: 1)
+    static let washRed = dynamic(light: 0xFDEBEC, lightAlpha: 1, dark: 0x522E2A, darkAlpha: 1)
 }
 
 /// Spacing scale (Tailwind names, 4pt grid): `Spacing.s2` = Tailwind `2` = 8pt.
