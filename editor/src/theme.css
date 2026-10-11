@@ -46,6 +46,7 @@
   --size-icon-button-sm: 22px;
   --size-sidebar-icon: 18px;
   --size-onboarding-badge: 64px;
+  --size-heatmap-cell: 12px;
 }
 
 @media (prefers-color-scheme: dark) {

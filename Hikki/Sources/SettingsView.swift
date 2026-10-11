@@ -1,6 +1,7 @@
 import HikkiCore
 import HikkiUI
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Device-level appearance choice (Settings → Appearance → Theme), applied at the root of each window.
 enum AppearancePreference: String, CaseIterable, Identifiable {
@@ -146,6 +147,7 @@ private struct WorkspaceSection: View {
                     .onSubmit { model.renameWorkspace(name) }
                     .accessibilityIdentifier("settings-name")
             }
+            WorkspaceIconRow()
             LabeledContent("app:settings.storage") {
                 storage
             }
@@ -165,6 +167,73 @@ private struct WorkspaceSection: View {
         case .folder(_, let displayName): Text(verbatim: displayName)  // the folder path, as-is
         default: Text("app:onboarding.location.device")
         }
+    }
+}
+
+/// Settings → General → Icon (Notion): upload an image, pick an emoji, or go back to the initial.
+private struct WorkspaceIconRow: View {
+    @Environment(AppModel.self) private var model
+    @State private var importing = false
+    @State private var pickingEmoji = false
+    @State private var failed = false
+
+    private static let emoji = [
+        "🏠", "📓", "📚", "🗂️", "✏️", "🖋️", "🧠", "💡", "🚀", "🌱", "🌸", "🍀", "🌊", "🔥", "⭐️", "🌙",
+        "☕️", "🍵", "🎧", "🎨", "📷", "🧭", "🗻", "🏔️", "🏯", "⛩️", "🎌", "🐱", "🦊", "🐼", "🐳", "🦉",
+    ]
+
+    var body: some View {
+        LabeledContent {
+            HStack(spacing: Spacing.s2) {
+                Button("app:settings.icon.upload") { importing = true }
+                Button("app:settings.icon.emoji") { pickingEmoji = true }
+                    .popover(isPresented: $pickingEmoji) { emojiGrid }
+                if model.workspace?.icon != nil {
+                    Button("app:settings.icon.remove", role: .destructive) { model.setWorkspaceIcon(nil) }
+                }
+            }
+            // Borderless: in an iOS form row, plain buttons would all fire on one tap.
+            .buttonStyle(.borderless)
+        } label: {
+            HStack(spacing: Spacing.s3) {
+                WorkspaceBadge(initial: model.workspace?.initial ?? "H", icon: model.workspace?.icon, size: Size.iconButton + Spacing.s3)
+                VStack(alignment: .leading, spacing: Spacing.s0_5) {
+                    Text("app:settings.icon")
+                    Text(failed ? "app:settings.icon.error" : "app:settings.icon.detail")
+                        .font(.caption)
+                        .foregroundStyle(failed ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+                }
+            }
+        }
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.image]) { result in
+            guard case .success(let url) = result else { return }
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            if let data = try? Data(contentsOf: url), let thumbnail = WorkspaceIcon.thumbnail(of: data) {
+                failed = false
+                model.setWorkspaceIcon(.image(thumbnail))
+            } else {
+                failed = true
+            }
+        }
+    }
+
+    private var emojiGrid: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.fixed(Size.iconButton + Spacing.s2)), count: 8), spacing: Spacing.s1) {
+            ForEach(Self.emoji, id: \.self) { emoji in
+                Button {
+                    model.setWorkspaceIcon(.emoji(emoji))
+                    pickingEmoji = false
+                } label: {
+                    Text(verbatim: emoji)
+                        .font(.title2)
+                        .frame(width: Size.iconButton + Spacing.s2, height: Size.iconButton + Spacing.s2)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(Spacing.s3)
     }
 }
 

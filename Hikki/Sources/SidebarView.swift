@@ -289,7 +289,7 @@ private struct WorkspaceSwitcher: View {
             }
         } label: {
             SidebarFooterLabel(title: model.workspace?.name ?? "Hikki", subtitle: location) {
-                WorkspaceBadge(initial: model.workspace?.initial ?? "H", size: Size.iconButton + Spacing.s1)
+                WorkspaceBadge(initial: model.workspace?.initial ?? "H", icon: model.workspace?.icon, size: Size.iconButton + Spacing.s1)
             }
         }
         .menuStyle(.button)
@@ -489,12 +489,15 @@ private struct SidebarDestination<Label: View>: View {
                     .fontWeight(selected ? .semibold : nil)
             }
             .buttonStyle(.plain)
-            // The selection in the colour tone, like the system highlight would be in its accent.
-            .listRowBackground(
+            // The selection in the colour tone, drawn behind the row's content and flat: as a list row
+            // background the sidebar rendered it raised, with a shadow.
+            .background {
                 RoundedRectangle(cornerRadius: Radius.lg)
                     .fill(selected ? colorTone.fill : .clear)
-                    .padding(.horizontal, Spacing.s2_5)
-            )
+                    .padding(.horizontal, -Spacing.s2)
+                    .padding(.vertical, -Spacing.s1)
+            }
+            .listRowBackground(Color.clear)
             .accessibilityAddTraits(selected ? .isSelected : [])
         } else {
             NavigationLink(value: route) { label }

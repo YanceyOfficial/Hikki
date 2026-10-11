@@ -133,6 +133,25 @@ public final class DocumentStore: Sendable {
                     sql: "UPDATE document SET titlePinyin = ? WHERE id = ?", arguments: [Pinyin.searchKey(for: title), row["id"] as String])
             }
         }
+        migrator.registerMigration("v4-activity") { db in
+            // Per-day writing activity on this device (Home's heatmap and chart). Local only, like the index.
+            try db.create(table: "activity") { t in
+                t.primaryKey("day", .text)  // yyyy-MM-dd, local calendar
+                t.column("edits", .integer).notNull().defaults(to: 0)
+                t.column("wordsAdded", .integer).notNull().defaults(to: 0)
+            }
+            // Backfill from what pages remember: a creation and a last edit each count once, and the page's
+            // words land on its last-edit day — so Home isn't empty on the first launch after the update.
+            for row in try Row.fetchAll(db, sql: "SELECT createdAt, updatedAt, wordCount FROM document WHERE deletedAt IS NULL") {
+                let created: Date = row["createdAt"]
+                let updated: Date = row["updatedAt"]
+                try Self.bumpActivity(db, day: created, edits: 1, words: 0)
+                if ActivityDay.key(updated) != ActivityDay.key(created) || (row["wordCount"] as Int) > 0 {
+                    try Self.bumpActivity(
+                        db, day: updated, edits: ActivityDay.key(updated) == ActivityDay.key(created) ? 0 : 1, words: row["wordCount"])
+                }
+            }
+        }
         return migrator
     }
 
@@ -224,6 +243,7 @@ public final class DocumentStore: Sendable {
     public func saveContent(_ snapshot: Snapshot, now: Date = .now) throws -> Bool {
         let json = String(decoding: try snapshot.content.jsonData(), as: UTF8.self)
         return try writer.write { db in
+            let previousWords = try Int.fetchOne(db, sql: "SELECT wordCount FROM document WHERE id = ?", arguments: [snapshot.docId]) ?? 0
             try db.execute(
                 sql: """
                     UPDATE document SET title = ?, titlePinyin = ?, content = ?, plainText = ?, wordCount = ?, updatedAt = ?
@@ -234,7 +254,10 @@ public final class DocumentStore: Sendable {
                     snapshot.docId, json, snapshot.title,
                 ]
             )
-            if db.changesCount > 0 { return true }
+            if db.changesCount > 0 {
+                try Self.bumpActivity(db, day: now, edits: 1, words: max(0, snapshot.wordCount - previousWords))
+                return true
+            }
             return try DocumentRecord.exists(db, key: snapshot.docId)
         }
     }
@@ -294,6 +317,37 @@ public final class DocumentStore: Sendable {
             for (position, sibling) in siblings.enumerated() {
                 try db.execute(sql: "UPDATE document SET sortKey = ? WHERE id = ?", arguments: [Double(position), sibling])
             }
+        }
+    }
+
+    // MARK: - Activity (Home)
+
+    static func bumpActivity(_ db: Database, day: Date, edits: Int, words: Int) throws {
+        try db.execute(
+            sql: """
+                INSERT INTO activity (day, edits, wordsAdded) VALUES (?, ?, ?)
+                ON CONFLICT(day) DO UPDATE SET edits = edits + excluded.edits, wordsAdded = wordsAdded + excluded.wordsAdded
+                """, arguments: [ActivityDay.key(day), edits, words])
+    }
+
+    /// Days with any activity since `start` (inclusive), oldest first.
+    public func activity(since start: Date) throws -> [DailyActivity] {
+        try writer.read { db in
+            try Row.fetchAll(
+                db, sql: "SELECT day, edits, wordsAdded FROM activity WHERE day >= ? ORDER BY day",
+                arguments: [ActivityDay.key(start)]
+            ).compactMap { row in
+                ActivityDay.date(row["day"]).map { DailyActivity(day: $0, edits: row["edits"], wordsAdded: row["wordsAdded"]) }
+            }
+        }
+    }
+
+    /// Live pages and the words in them.
+    public func stats() throws -> WorkspaceStats {
+        try writer.read { db in
+            let row = try Row.fetchOne(
+                db, sql: "SELECT COUNT(*) AS pages, COALESCE(SUM(wordCount), 0) AS words FROM document WHERE deletedAt IS NULL")
+            return WorkspaceStats(pages: row?["pages"] ?? 0, words: row?["words"] ?? 0)
         }
     }
 

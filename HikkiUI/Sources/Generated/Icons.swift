@@ -59,6 +59,11 @@ public nonisolated enum Icon: String, CaseIterable, Sendable {
     case check = "check"
     case arrowRight = "arrow-right"
     case checkCircleFill = "check-circle-fill"
+    case files = "files"
+    case textAa = "text-aa"
+    case flame = "flame"
+    case pencilLine = "pencil-line"
+    case calendarDots = "calendar-dots"
 
     /// The SF Symbol drawn for this icon, if any.
     public var systemName: String? {
@@ -112,6 +117,11 @@ public nonisolated enum Icon: String, CaseIterable, Sendable {
         case .check: "checkmark"
         case .arrowRight: "arrow.right"
         case .checkCircleFill: "checkmark.circle.fill"
+        case .files: "doc.on.doc"
+        case .textAa: "textformat"
+        case .flame: "flame"
+        case .pencilLine: "pencil.line"
+        case .calendarDots: "calendar"
         default: nil
         }
     }

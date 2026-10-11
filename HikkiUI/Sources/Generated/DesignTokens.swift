@@ -161,4 +161,5 @@ public nonisolated enum Size {
     public static let iconButtonSm: CGFloat = 22
     public static let sidebarIcon: CGFloat = 18
     public static let onboardingBadge: CGFloat = 64
+    public static let heatmapCell: CGFloat = 12
 }

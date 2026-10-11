@@ -157,6 +157,21 @@
       "sf": {
         "fill": "checkmark.circle.fill"
       }
+    },
+    "files": {
+      "sf": "doc.on.doc"
+    },
+    "text-aa": {
+      "sf": "textformat"
+    },
+    "flame": {
+      "sf": "flame"
+    },
+    "pencil-line": {
+      "sf": "pencil.line"
+    },
+    "calendar-dots": {
+      "sf": "calendar"
     }
   }
 }
