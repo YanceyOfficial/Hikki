@@ -16,31 +16,35 @@ struct HomeView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.s8) {
-                header
-                statTiles
-                HomeCard {
-                    ActivityHeatmap(activity: activity, weeks: Self.weeks)
-                } title: {
-                    Text("app:home.activity")
-                } subtitle: {
-                    Text("app:home.activity.summary \(String(activity.reduce(0) { $0 + $1.edits }))")
+            // One container so neighbouring glass shapes blend and render together.
+            GlassEffectContainer(spacing: Spacing.s3) {
+                VStack(alignment: .leading, spacing: Spacing.s8) {
+                    header
+                    statTiles
+                    HomeCard {
+                        ActivityHeatmap(activity: activity, weeks: Self.weeks)
+                    } title: {
+                        Text("app:home.activity")
+                    } subtitle: {
+                        Text("app:home.activity.summary \(String(activity.reduce(0) { $0 + $1.edits }))")
+                    }
+                    HomeCard {
+                        WritingChart(activity: activity)
+                    } title: {
+                        Text("app:home.writing")
+                    } subtitle: {
+                        Text("app:home.writing.subtitle")
+                    }
+                    recent
                 }
-                HomeCard {
-                    WritingChart(activity: activity)
-                } title: {
-                    Text("app:home.writing")
-                } subtitle: {
-                    Text("app:home.writing.subtitle")
-                }
-                recent
             }
             .frame(maxWidth: 920)  // design-lint: allow (reading width)
             .padding(.horizontal, Spacing.s8)
             .padding(.vertical, Spacing.s10)
             .frame(maxWidth: .infinity)
         }
-        .background(Theme.background)
+        // Glass needs something to refract: a soft wash of the colour tone behind the page.
+        .background { HomeBackdrop() }
         .navigationTitle("app:nav.home")
         #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -120,6 +124,21 @@ struct HomeView: View {
 
 // MARK: - Pieces
 
+/// Blurred shapes in the colour tone behind Home, for its glass to pick up.
+private struct HomeBackdrop: View {
+    @Environment(\.colorTone) private var tone
+
+    var body: some View {
+        ZStack {
+            Theme.background
+            Circle().fill(tone.fill.opacity(0.28)).frame(width: 520, height: 520).blur(radius: 140).offset(x: -260, y: -260)
+            Circle().fill(tone.fill.opacity(0.16)).frame(width: 640, height: 640).blur(radius: 160).offset(x: 320, y: 120)
+            Ellipse().fill(tone.ink.opacity(0.10)).frame(width: 700, height: 360).blur(radius: 150).offset(x: -80, y: 520)
+        }
+        .ignoresSafeArea()
+    }
+}
+
 /// A titled panel on Home.
 private struct HomeCard<Content: View, Title: View, Subtitle: View>: View {
     @ViewBuilder let content: Content
@@ -136,7 +155,7 @@ private struct HomeCard<Content: View, Title: View, Subtitle: View>: View {
         }
         .padding(Spacing.s5)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary.opacity(0.35), in: .rect(cornerRadius: Radius.xl))
+        .glassEffect(.regular, in: .rect(cornerRadius: Radius.xl))
     }
 }
 
@@ -158,7 +177,7 @@ private struct StatTile: View {
         }
         .padding(Spacing.s4)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary.opacity(0.35), in: .rect(cornerRadius: Radius.xl))
+        .glassEffect(.regular, in: .rect(cornerRadius: Radius.xl))
     }
 }
 
@@ -278,7 +297,6 @@ private struct RecentPageCard: View {
     let page: PageSummary
     let parent: PageSummary?
     @Environment(\.colorTone) private var tone
-    @State private var hovering = false
 
     var body: some View {
         HStack(spacing: Spacing.s3) {
@@ -304,8 +322,8 @@ private struct RecentPageCard: View {
         }
         .padding(Spacing.s3)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary.opacity(hovering ? 0.6 : 0.35), in: .rect(cornerRadius: Radius.xl))
         .contentShape(.rect(cornerRadius: Radius.xl))
-        .onHover { hovering = $0 }
+        // Interactive glass: it reacts to hover and press itself.
+        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: Radius.xl))
     }
 }
