@@ -20,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { BLOCK_TYPES } from '../blocks'
 import { PALETTE, type PaletteColor } from '../extensions/colors'
 import { t } from '../i18n'
+import { isSafeHref, normalizeHref } from '../links'
 import { cn } from './cn'
 import { useEditorSnapshot } from './use-editor-snapshot'
 
@@ -58,15 +59,6 @@ function snapshot(editor: Editor) {
     textColor: (style.textColor as PaletteColor | undefined) ?? null,
     bgColor: (style.bgColor as PaletteColor | undefined) ?? null
   }
-}
-
-/** Accepts "example.com" as https; keeps explicit schemes (the Link extension rejects unsafe ones). */
-export function normalizeHref(raw: string): string | null {
-  const value = raw.trim()
-  if (!value) return null
-  if (/^[a-z][a-z0-9+.-]*:/i.test(value)) return value
-  if (value.startsWith('/') || value.startsWith('#')) return value
-  return `https://${value}`
 }
 
 /**
@@ -472,14 +464,16 @@ function LinkPanel({
       <div className="flex justify-end gap-1">
         {href && (
           <>
-            <a
-              className="inline-flex h-7 items-center rounded-md px-2 text-xs text-muted-foreground hover:bg-accent"
-              href={href}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {t('link.open')}
-            </a>
+            {isSafeHref(href) && (
+              <a
+                className="inline-flex h-7 items-center rounded-md px-2 text-xs text-muted-foreground hover:bg-accent"
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {t('link.open')}
+              </a>
+            )}
             <button
               type="button"
               className="inline-flex h-7 cursor-pointer items-center rounded-md px-2 text-xs text-destructive hover:bg-accent"

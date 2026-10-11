@@ -12,6 +12,7 @@ import { EdgeNavigation } from './extensions/edge-navigation'
 import { SelectionMenuExtension } from './extensions/selection-menu'
 import { SlashCommand } from './extensions/slash-command'
 import { t } from './i18n'
+import { isSafeHref } from './links'
 import type { Command } from './protocol'
 
 type EditorOptions = {
@@ -51,7 +52,10 @@ export function createEditor(
     enableContentCheck: true,
     onContentError: ({ error }) => options.onContentError?.(error),
     extensions: [
-      StarterKit.configure({ link: { openOnClick: false } }),
+      StarterKit.configure({
+        // Only allowlisted targets are stored or rendered (links.ts); hikki:// links open pages.
+        link: { openOnClick: false, protocols: ['hikki'], isAllowedUri: (url) => isSafeHref(url) }
+      }),
       TaskList,
       TaskItem.configure({ nested: true }),
       ColorTextStyle,

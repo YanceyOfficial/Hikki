@@ -5,7 +5,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
 import { createEditor } from '../src/editor'
-import { normalizeHref, SelectionMenu } from '../src/ui/SelectionMenu'
+import { isSafeHref, normalizeHref } from '../src/links'
+import { SelectionMenu } from '../src/ui/SelectionMenu'
 import { doc } from './helpers'
 
 let host: HTMLElement
@@ -144,5 +145,52 @@ describe('normalizeHref', () => {
     expect(normalizeHref('hikki://page/x')).toBe('hikki://page/x')
     expect(normalizeHref('#top')).toBe('#top')
     expect(normalizeHref('   ')).toBeNull()
+  })
+
+  it('refuses script and data schemes, however they are disguised', () => {
+    for (const href of [
+      'javascript:alert(1)',
+      ' JaVaScRiPt:alert(1)',
+      'java\tscript:alert(1)',
+      'java\nscript:alert(1)',
+      'data:text/html,<script>alert(1)</script>',
+      'vbscript:x',
+      'file:///etc/passwd'
+    ]) {
+      expect(normalizeHref(href), href).toBeNull()
+      expect(isSafeHref(href), href).toBe(false)
+    }
+  })
+})
+
+const withLink = (href: string) => ({
+  type: 'doc',
+  content: [
+    {
+      type: 'paragraph',
+      content: [{ type: 'text', text: 'hello world', marks: [{ type: 'link', attrs: { href } }] }]
+    }
+  ]
+})
+
+describe('links in stored documents', () => {
+  it('never offers to open an unsafe stored href', () => {
+    editor.commands.setContent(withLink('javascript:alert(1)'))
+    show()
+    selectHello()
+    fireEvent.click(screen.getByRole('button', { name: 'Link' }))
+    expect(screen.queryByText('Open link')).toBeNull()
+    expect(host.querySelector('a')?.getAttribute('href')).toBe('')
+  })
+
+  it('page links (hikki://) are kept, rendered and openable', () => {
+    editor.commands.setContent(withLink('hikki://page/abc'))
+    show()
+    selectHello()
+    fireEvent.click(screen.getByRole('button', { name: 'Link' }))
+    expect(screen.getByText('Open link').getAttribute('href')).toBe('hikki://page/abc')
+    expect(host.querySelector('a')?.getAttribute('href')).toBe('hikki://page/abc')
+    act(() => void editor.commands.setTextSelection({ from: 7, to: 12 }))
+    expect(editor.commands.setLink({ href: 'hikki://page/def' })).toBe(true)
   })
 })
