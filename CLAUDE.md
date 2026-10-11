@@ -103,6 +103,9 @@ HikkiUITests/                 XCUITest flows
 - **Data directory**: `HIKKI_DATA_DIR` overrides it (UI tests, demos). DEBUG hooks: `HIKKI_OPEN_TABS=a,b`,
   `HIKKI_OPEN_SEARCH`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SIDEBAR` (hide + show the split view sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_ACTIVATE`, `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
   UI tests set it by default — pass `workspace: nil` to `launch()` to test onboarding).
+- **Storage (option C, in progress)**: the workspace folder will be the source of truth — one JSON file per page
+  (`HikkiCore/Sources/Store/PageFile.swift`: `pages/<id>.json`, format-versioned, content as JSON), SQLite only a
+  cache/index. Step 1 (now): every launch exports pages that have no file yet; the database is still authoritative.
 - **Workspace**: first launch shows `Hikki/Sources/OnboardingView.swift` until the workspace file (`AppPaths.workspace`) exists
   (`HikkiCore/Sources/Store/Workspace.swift`). A folder location stores a security-scoped bookmark
   (`HikkiCore/Sources/Store/FolderBookmark.swift`); page data does not live in that folder yet.

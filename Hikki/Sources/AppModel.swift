@@ -24,6 +24,27 @@ final class AppModel {
         } catch {
             Log.error("workspace load failed: \(error)", category: "workspace")
         }
+        exportPagesToWorkspaceFolder()
+    }
+
+    /// Storage step 1: every page also gets a file in the workspace folder (the database stays the source of
+    /// truth until step 2). Off the main thread; idempotent, so it runs on every launch and after onboarding.
+    func exportPagesToWorkspaceFolder() {
+        guard let workspace else { return }
+        let store = store
+        let appRoot = workspaceStore.url.deletingLastPathComponent()
+        Task.detached(priority: .utility) {
+            do {
+                let result = try WorkspaceFolder.withPages(of: workspace, appRoot: appRoot) { files in
+                    try PageFileMigration.export(from: store, to: files)
+                }
+                Log.info(
+                    "workspace folder export", category: "workspace",
+                    context: ["written": "\(result.written)", "alreadyThere": "\(result.alreadyThere)"])
+            } catch {
+                Log.error("workspace folder export failed: \(error)", category: "workspace")
+            }
+        }
     }
 
     func createWorkspace(name: String, location: Workspace.Location) {
@@ -33,6 +54,7 @@ final class AppModel {
             self.workspace = workspace
             let kind = if case .folder = location { "folder" } else { "device" }
             Log.info("workspace created", category: "workspace", context: ["location": kind])
+            exportPagesToWorkspaceFolder()
         } catch {
             Log.error("workspace save failed: \(error)", category: "workspace")
         }

@@ -194,6 +194,11 @@ public final class DocumentStore: Sendable {
         }
     }
 
+    /// Every page, trashed ones included (exporting the workspace to its folder).
+    public func allDocuments() throws -> [DocumentRecord] {
+        try writer.read { try DocumentRecord.order(Column("createdAt")).fetchAll($0) }
+    }
+
     public func document(id: String) throws -> DocumentRecord? {
         try writer.read { try DocumentRecord.fetchOne($0, key: id) }
     }

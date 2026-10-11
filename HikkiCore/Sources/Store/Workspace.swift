@@ -87,3 +87,22 @@ public struct WorkspaceStore: Sendable {
         try encoder.encode(workspace).write(to: url, options: .atomic)
     }
 }
+
+/// Where a workspace's files live (`pages/`, later `assets/`): the folder picked at onboarding, or — for
+/// "this device only" — `Workspace/` next to the app's database.
+public enum WorkspaceFolder {
+    public static func url(for workspace: Workspace, appRoot: URL) throws -> URL {
+        switch workspace.location {
+        case .device: appRoot.appending(path: "Workspace", directoryHint: .isDirectory)
+        case .folder(let bookmark, _): try FolderBookmark.resolve(bookmark)
+        }
+    }
+
+    /// Runs `body` with the folder's page files, holding security-scoped access to a picked folder meanwhile.
+    public static func withPages<T>(of workspace: Workspace, appRoot: URL, _ body: (PageFiles) throws -> T) throws -> T {
+        let folder = try url(for: workspace, appRoot: appRoot)
+        let scoped = folder.startAccessingSecurityScopedResource()
+        defer { if scoped { folder.stopAccessingSecurityScopedResource() } }
+        return try body(PageFiles(root: folder))
+    }
+}

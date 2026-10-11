@@ -82,4 +82,26 @@ struct FolderBookmarkTests {
         #expect(max(image.width, image.height) == WorkspaceIcon.maxPixels)
         #expect(WorkspaceIcon.thumbnail(of: Data("not an image".utf8)) == nil)
     }
+
+    @Test func workspaceFolderIsLocalForThisDeviceAndTheBookmarkOtherwise() throws {
+        let appRoot = FileManager.default.temporaryDirectory.appending(path: "hikki-root-\(UUID().uuidString)")
+        let device = Workspace(name: "Local", location: .device)
+        #expect(try WorkspaceFolder.url(for: device, appRoot: appRoot).lastPathComponent == "Workspace")
+
+        let picked = FileManager.default.temporaryDirectory.appending(
+            path: "hikki-picked-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: picked, withIntermediateDirectories: true)
+        let synced = Workspace(name: "Synced", location: .folder(bookmark: try FolderBookmark.make(for: picked), displayName: "Picked"))
+        let resolved = try WorkspaceFolder.url(for: synced, appRoot: appRoot)
+        #expect(resolved.resolvingSymlinksInPath().path == picked.resolvingSymlinksInPath().path)
+        let written = try WorkspaceFolder.withPages(of: synced, appRoot: appRoot) { files in
+            try files.write(
+                try PageFile(
+                    record: DocumentRecord(
+                        id: "p", title: "", content: nil, plainText: "", wordCount: 0, createdAt: .now, updatedAt: .now, parentId: nil,
+                        icon: nil, cover: nil, favoritedAt: nil, deletedAt: nil, sortKey: 0, titlePinyin: "")))
+            return files.exists("p")
+        }
+        #expect(written)
+    }
 }
