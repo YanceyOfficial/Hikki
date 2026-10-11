@@ -50,6 +50,17 @@
   --wash-purple: #f6f3f9;
   --wash-pink: #faf1f5;
   --wash-red: #fdebec;
+  --syntax-comment: #5d6c79;
+  --syntax-string: #c41a16;
+  --syntax-number: #1c00cf;
+  --syntax-keyword: #9b2393;
+  --syntax-preprocessor: #643820;
+  --syntax-url: #0e0eff;
+  --syntax-attribute: #815f03;
+  --syntax-declaration: #0b4f79;
+  --syntax-definition: #0f68a0;
+  --syntax-type: #3900a0;
+  --syntax-function: #6c36a9;
   --popover-shadow: 0 0 0 1px rgba(15, 15, 15, 0.05), 0 3px 6px rgba(15, 15, 15, 0.1), 0 9px 24px rgba(15, 15, 15, 0.2);
   --size-sidebar-min: 240px;
   --size-sidebar-ideal: 280px;
@@ -118,6 +129,17 @@
     --wash-purple: #3c2d49;
     --wash-pink: #4e2c3c;
     --wash-red: #522e2a;
+    --syntax-comment: #6c7986;
+    --syntax-string: #fc6a5d;
+    --syntax-number: #d0bf69;
+    --syntax-keyword: #fc5fa3;
+    --syntax-preprocessor: #fd8f3f;
+    --syntax-url: #5482ff;
+    --syntax-attribute: #bf8555;
+    --syntax-declaration: #5dd8ff;
+    --syntax-definition: #41a1c0;
+    --syntax-type: #d0a8ff;
+    --syntax-function: #a167e6;
     --popover-shadow: 0 0 0 1px rgba(255, 255, 255, 0.094), 0 3px 6px rgba(0, 0, 0, 0.2), 0 9px 24px rgba(0, 0, 0, 0.4);
   }
 }
@@ -292,6 +314,17 @@
   --color-wash-purple: var(--wash-purple);
   --color-wash-pink: var(--wash-pink);
   --color-wash-red: var(--wash-red);
+  --color-syntax-comment: var(--syntax-comment);
+  --color-syntax-string: var(--syntax-string);
+  --color-syntax-number: var(--syntax-number);
+  --color-syntax-keyword: var(--syntax-keyword);
+  --color-syntax-preprocessor: var(--syntax-preprocessor);
+  --color-syntax-url: var(--syntax-url);
+  --color-syntax-attribute: var(--syntax-attribute);
+  --color-syntax-declaration: var(--syntax-declaration);
+  --color-syntax-definition: var(--syntax-definition);
+  --color-syntax-type: var(--syntax-type);
+  --color-syntax-function: var(--syntax-function);
   --color-tone-ink: var(--tone-ink, var(--primary));
   --spacing: 4px; /* Tailwind spacing = n × 4px, matching design/tokens.json spacing */
   --radius-*: initial;

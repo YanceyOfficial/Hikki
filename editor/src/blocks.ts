@@ -14,6 +14,7 @@ import {
 } from '@phosphor-icons/react'
 import type { ChainedCommands, Editor } from '@tiptap/core'
 
+import { lastCodeLanguage } from './extensions/code-languages'
 import { t } from './i18n'
 
 /** Sections of the "/" menu, in display order. */
@@ -189,8 +190,8 @@ export const BLOCK_TYPES: BlockType[] = [
     group: 'other',
     shortcut: '```',
     aliases: ['code', 'pre', '代码', 'daima', 'dm'],
-    apply: (c) => c.toggleCodeBlock(),
-    turnInto: (c) => c.clearNodes().toggleCodeBlock(),
+    apply: (c) => c.toggleCodeBlock({ language: lastCodeLanguage() }),
+    turnInto: (c) => c.clearNodes().toggleCodeBlock({ language: lastCodeLanguage() }),
     isActive: (e) => e.isActive('codeBlock')
   },
   {

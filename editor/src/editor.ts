@@ -7,6 +7,7 @@ import { Placeholder } from '@tiptap/extensions'
 import StarterKit from '@tiptap/starter-kit'
 
 import { blockHandleExtensions } from './extensions/block-handle'
+import { CodeBlock } from './extensions/code-block'
 import { Colors, ColorTextStyle } from './extensions/colors'
 import { EdgeNavigation } from './extensions/edge-navigation'
 import { SelectionMenuExtension } from './extensions/selection-menu'
@@ -54,8 +55,10 @@ export function createEditor(
     extensions: [
       StarterKit.configure({
         // Only allowlisted targets are stored or rendered (links.ts); hikki:// links open pages.
-        link: { openOnClick: false, protocols: ['hikki'], isAllowedUri: (url) => isSafeHref(url) }
+        link: { openOnClick: false, protocols: ['hikki'], isAllowedUri: (url) => isSafeHref(url) },
+        codeBlock: false
       }),
+      CodeBlock,
       TaskList,
       TaskItem.configure({ nested: true }),
       ColorTextStyle,

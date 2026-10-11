@@ -62,6 +62,18 @@ public nonisolated extension Theme {
     static let washPurple = dynamic(light: 0xF6F3F9, lightAlpha: 1, dark: 0x3C2D49, darkAlpha: 1)
     static let washPink = dynamic(light: 0xFAF1F5, lightAlpha: 1, dark: 0x4E2C3C, darkAlpha: 1)
     static let washRed = dynamic(light: 0xFDEBEC, lightAlpha: 1, dark: 0x522E2A, darkAlpha: 1)
+    /// Hikki: code highlighting — Xcode's Default (Light) / Default (Dark) themes
+    static let syntaxComment = dynamic(light: 0x5D6C79, lightAlpha: 1, dark: 0x6C7986, darkAlpha: 1)
+    static let syntaxString = dynamic(light: 0xC41A16, lightAlpha: 1, dark: 0xFC6A5D, darkAlpha: 1)
+    static let syntaxNumber = dynamic(light: 0x1C00CF, lightAlpha: 1, dark: 0xD0BF69, darkAlpha: 1)
+    static let syntaxKeyword = dynamic(light: 0x9B2393, lightAlpha: 1, dark: 0xFC5FA3, darkAlpha: 1)
+    static let syntaxPreprocessor = dynamic(light: 0x643820, lightAlpha: 1, dark: 0xFD8F3F, darkAlpha: 1)
+    static let syntaxUrl = dynamic(light: 0x0E0EFF, lightAlpha: 1, dark: 0x5482FF, darkAlpha: 1)
+    static let syntaxAttribute = dynamic(light: 0x815F03, lightAlpha: 1, dark: 0xBF8555, darkAlpha: 1)
+    static let syntaxDeclaration = dynamic(light: 0x0B4F79, lightAlpha: 1, dark: 0x5DD8FF, darkAlpha: 1)
+    static let syntaxDefinition = dynamic(light: 0x0F68A0, lightAlpha: 1, dark: 0x41A1C0, darkAlpha: 1)
+    static let syntaxType = dynamic(light: 0x3900A0, lightAlpha: 1, dark: 0xD0A8FF, darkAlpha: 1)
+    static let syntaxFunction = dynamic(light: 0x6C36A9, lightAlpha: 1, dark: 0xA167E6, darkAlpha: 1)
 }
 
 /// Spacing scale (Tailwind names, 4pt grid): `Spacing.s2` = Tailwind `2` = 8pt.

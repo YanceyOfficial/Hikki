@@ -116,6 +116,10 @@ HikkiUITests/                 XCUITest flows
   (`editor/src/ui/SelectionMenu.tsx`, positioned by Tiptap's BubbleMenu; its side panels stay inside the menu element
   or BubbleMenu hides on blur). Text/background colors are stored as palette names (`editor/src/extensions/colors.ts`) and
   styled from the `ink-*` / `wash-*` tokens — never raw CSS colors in the document.
+- **Code blocks** (`editor/src/extensions/code-block.tsx`): lowlight with the `common` grammars, colored by the
+  `syntax-*` tokens (Xcode's Default Light/Dark); no auto-detection — new blocks use the last picked language
+  (`editor/src/extensions/code-languages.ts`). Node views are plain DOM with small React roots for controls (the editor
+  is the core `Editor`, not `@tiptap/react`).
 - **Editor content safety**: content that doesn't fit the schema (corrupt, or from a newer Hikki) opens read-only and
   is never saved (`enableContentCheck`); housekeeping transactions (`addToHistory: false` — UniqueID stamping
   block ids, remote reloads) never count as edits; continuous typing still saves every 2 s (`maxWaitMs`).

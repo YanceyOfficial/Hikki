@@ -125,12 +125,89 @@
     @apply rounded-sm bg-code px-1.5 py-0.5 font-mono text-code-foreground;
     font-size: 85%;
   }
+  /* Code block (extensions/code-block.tsx): header bar + pre; Xcode's Default themes via syntax-* tokens. */
+  .tiptap .hk-code-block {
+    @apply my-1 rounded-md bg-code/50;
+  }
   .tiptap pre {
-    @apply my-1 overflow-x-auto rounded-sm bg-code/50 px-6 py-7;
+    @apply m-0 overflow-x-auto px-4 pt-1 pb-4;
+    tab-size: 2;
   }
   .tiptap pre code {
     @apply bg-transparent p-0 text-foreground;
+    font-size: 85%;
     line-height: 1.6;
+  }
+  .tiptap pre .hljs-comment,
+  .tiptap pre .hljs-quote {
+    color: var(--color-syntax-comment);
+  }
+  .tiptap pre .hljs-doctag,
+  .tiptap pre .hljs-keyword,
+  .tiptap pre .hljs-literal,
+  .tiptap pre .hljs-selector-tag,
+  .tiptap pre .hljs-tag .hljs-name {
+    color: var(--color-syntax-keyword);
+    font-weight: 600;
+  }
+  .tiptap pre .hljs-string,
+  .tiptap pre .hljs-regexp,
+  .tiptap pre .hljs-template-tag,
+  .tiptap pre .hljs-char.escape_ {
+    color: var(--color-syntax-string);
+  }
+  .tiptap pre .hljs-number,
+  .tiptap pre .hljs-symbol,
+  .tiptap pre .hljs-bullet {
+    color: var(--color-syntax-number);
+  }
+  .tiptap pre .hljs-meta,
+  .tiptap pre .hljs-meta .hljs-keyword {
+    color: var(--color-syntax-preprocessor);
+    font-weight: 400;
+  }
+  .tiptap pre .hljs-link {
+    color: var(--color-syntax-url);
+    text-decoration: underline;
+  }
+  .tiptap pre .hljs-attr,
+  .tiptap pre .hljs-attribute,
+  .tiptap pre .hljs-selector-attr,
+  .tiptap pre .hljs-selector-pseudo {
+    color: var(--color-syntax-attribute);
+  }
+  .tiptap pre .hljs-title.class_,
+  .tiptap pre .hljs-title.class_.inherited__ {
+    color: var(--color-syntax-declaration);
+  }
+  .tiptap pre .hljs-title,
+  .tiptap pre .hljs-title.function_,
+  .tiptap pre .hljs-section,
+  .tiptap pre .hljs-selector-id,
+  .tiptap pre .hljs-selector-class {
+    color: var(--color-syntax-definition);
+  }
+  .tiptap pre .hljs-type,
+  .tiptap pre .hljs-built_in {
+    color: var(--color-syntax-type);
+  }
+  .tiptap pre .hljs-property,
+  .tiptap pre .hljs-function .hljs-params .hljs-type {
+    color: var(--color-syntax-function);
+  }
+  .tiptap pre .hljs-addition {
+    color: var(--color-ink-green);
+    background: var(--color-wash-green);
+  }
+  .tiptap pre .hljs-deletion {
+    color: var(--color-ink-red);
+    background: var(--color-wash-red);
+  }
+  .tiptap pre .hljs-emphasis {
+    font-style: italic;
+  }
+  .tiptap pre .hljs-strong {
+    font-weight: 600;
   }
   .tiptap blockquote {
     @apply my-1 border-l-[3px] border-current px-3.5;
