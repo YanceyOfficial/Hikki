@@ -1,6 +1,10 @@
 import {
   CaretCircleRight,
   CheckSquare,
+  FilmStrip,
+  ImageSquare,
+  MusicNotes,
+  Paperclip,
   Columns,
   Function as FunctionIcon,
   Info,
@@ -23,11 +27,12 @@ import type { ChainedCommands, Editor } from '@tiptap/core'
 
 import { lastCodeLanguage } from './extensions/code-languages'
 import { openMathEditor } from './extensions/math'
+import { pickFiles, type MediaHost } from './extensions/media'
 import { openToggleAtSelection } from './extensions/toggle'
 import { t } from './i18n'
 
 /** Sections of the "/" menu, in display order. */
-export const BLOCK_GROUPS = ['basic', 'lists', 'other', 'advanced'] as const
+export const BLOCK_GROUPS = ['basic', 'lists', 'media', 'other', 'advanced'] as const
 export type BlockGroup = (typeof BLOCK_GROUPS)[number]
 
 /**
@@ -58,6 +63,12 @@ export type BlockType = {
   isActive?: (editor: Editor) => boolean
   /** Runs after `apply` (e.g. open the formula editor on the new equation). */
   after?: (editor: Editor) => void
+}
+
+/** Set by the editor for "/" media items (the file picker needs the bridge). */
+let mediaHost: MediaHost | null = null
+export function setMediaHost(host: MediaHost | null): void {
+  mediaHost = host
 }
 
 export const BLOCK_TYPES: BlockType[] = [
@@ -191,6 +202,73 @@ export const BLOCK_TYPES: BlockType[] = [
     turnInto: (c) => c.clearNodes().setDetails(),
     isActive: (e) => e.isActive('details'),
     after: (editor) => openToggleAtSelection(editor)
+  },
+  {
+    id: 'image',
+    title: 'Image',
+    hint: 'Upload an image',
+    label: () => t('blocks.image.title'),
+    description: () => t('blocks.image.hint'),
+    icon: ImageSquare,
+    group: 'media',
+    aliases: ['image', 'picture', 'photo', 'img', '图片', '图像', 'tupian', 'tp'],
+    apply: (c) => c,
+    after: (editor) => {
+      if (mediaHost) pickFiles(editor, mediaHost, 'image')
+    }
+  },
+  {
+    id: 'video',
+    title: 'Video',
+    hint: 'Upload a video',
+    label: () => t('blocks.video.title'),
+    description: () => t('blocks.video.hint'),
+    icon: FilmStrip,
+    group: 'media',
+    aliases: ['video', 'movie', 'mp4', '视频', 'shipin', 'sp'],
+    apply: (c) => c,
+    after: (editor) => {
+      if (mediaHost) pickFiles(editor, mediaHost, 'video')
+    }
+  },
+  {
+    id: 'audio',
+    title: 'Audio',
+    hint: 'Upload audio',
+    label: () => t('blocks.audio.title'),
+    description: () => t('blocks.audio.hint'),
+    icon: MusicNotes,
+    group: 'media',
+    aliases: ['audio', 'sound', 'music', 'mp3', '音频', '音乐', 'yinpin', 'yp'],
+    apply: (c) => c,
+    after: (editor) => {
+      if (mediaHost) pickFiles(editor, mediaHost, 'audio')
+    }
+  },
+  {
+    id: 'file',
+    title: 'File',
+    hint: 'Attach a file',
+    label: () => t('blocks.file.title'),
+    description: () => t('blocks.file.hint'),
+    icon: Paperclip,
+    group: 'media',
+    aliases: [
+      'file',
+      'attachment',
+      'pdf',
+      'upload',
+      '文件',
+      '附件',
+      'wenjian',
+      'fujian',
+      'wj',
+      'fj'
+    ],
+    apply: (c) => c,
+    after: (editor) => {
+      if (mediaHost) pickFiles(editor, mediaHost, 'file')
+    }
   },
   {
     id: 'blockquote',

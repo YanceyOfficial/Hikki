@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 7
+export const PROTOCOL_VERSION = 8
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -54,3 +54,12 @@ export type ToNativeMessage =
   | { type: 'setCover'; docId: string; cover: string | null }
   /** Replies with the asset URL to use (e.g. `hikki-editor://assets/<name>`). */
   | { type: 'saveAsset'; fileExtension: string; dataBase64: string }
+  /** Chunked upload (video, audio, attachments, large images): begin replies with an id, finish with the URL. */
+  | { type: 'beginUpload'; fileExtension: string; size: number }
+  | { type: 'uploadChunk'; id: string; dataBase64: string }
+  | { type: 'finishUpload'; id: string }
+  | { type: 'cancelUpload'; id: string }
+  /** Opens an attachment with the system (Quick Look), never in the web view. */
+  | { type: 'openAsset'; url: string }
+  /** A page link was clicked. */
+  | { type: 'openPage'; id: string }

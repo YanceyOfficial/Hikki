@@ -235,6 +235,74 @@
     @apply text-placeholder;
   }
 
+  /* Media (extensions/media.tsx). */
+  .tiptap [data-resize-container] {
+    @apply my-2;
+  }
+  .tiptap [data-resize-container]:has(img[data-align='center']) {
+    @apply justify-center;
+  }
+  .tiptap [data-resize-container]:has(img[data-align='right']) {
+    @apply justify-end;
+  }
+  /* The selection hugs the image (the container spans the column). */
+  .tiptap [data-resize-container].ProseMirror-selectednode {
+    @apply outline-none;
+  }
+  .tiptap [data-resize-container].ProseMirror-selectednode [data-resize-wrapper] {
+    @apply rounded-md outline-2 outline-offset-2 outline-selection;
+  }
+  .tiptap img.hk-image {
+    @apply block h-auto max-w-full rounded-md;
+  }
+  /* Handles are full-height hit areas (inline top/bottom 0); the visible pill is centred inside. */
+  .tiptap [data-resize-handle='left'],
+  .tiptap [data-resize-handle='right'] {
+    @apply w-4 cursor-ew-resize opacity-0 transition-opacity duration-150;
+  }
+  .tiptap [data-resize-handle]::after {
+    @apply absolute top-1/2 left-1/2 h-10 max-h-[60%] w-1.5 -translate-1/2 rounded-full border border-border bg-background shadow-popover;
+    content: '';
+  }
+  .tiptap [data-resize-container]:hover [data-resize-handle],
+  .tiptap [data-resize-container].ProseMirror-selectednode [data-resize-handle],
+  .tiptap [data-resize-state='true'] [data-resize-handle] {
+    @apply opacity-100;
+  }
+  .tiptap .hk-media {
+    @apply my-2;
+  }
+  .tiptap .hk-video {
+    @apply block w-full rounded-md bg-muted;
+  }
+  .tiptap .hk-audio {
+    @apply block w-full;
+  }
+  .tiptap .hk-file {
+    @apply flex w-full cursor-pointer items-center gap-3 rounded-md border border-border px-3 py-2.5 text-left hover:bg-accent;
+  }
+  .tiptap .hk-file-icon {
+    @apply grid h-8 w-7 flex-none place-items-center rounded-sm bg-muted text-2xs font-semibold text-muted-foreground;
+  }
+  .tiptap .hk-file-name {
+    @apply min-w-0 flex-1 truncate;
+  }
+  .tiptap .hk-file-size {
+    @apply flex-none text-xs text-muted-foreground;
+  }
+  .tiptap .hk-upload {
+    @apply my-2 flex flex-col gap-2 rounded-md border border-dashed border-border px-3 py-2.5 text-sm text-muted-foreground;
+  }
+  .tiptap .hk-upload[data-failed='true'] {
+    @apply border-destructive/50 text-destructive;
+  }
+  .tiptap .hk-upload-bar {
+    @apply block h-1 overflow-hidden rounded-full bg-muted;
+  }
+  .tiptap .hk-upload-bar > span {
+    @apply block h-full origin-left bg-primary transition-transform duration-200 ease-out;
+  }
+
   /* Formulas (extensions/math.tsx). */
   .tiptap [data-type='block-math'] {
     @apply my-1 cursor-pointer overflow-x-auto rounded-md px-2 py-3 text-center hover:bg-accent;

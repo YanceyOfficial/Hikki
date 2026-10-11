@@ -49,8 +49,17 @@ final class EditorController {
     func attach(store: DocumentStore, assets: AssetStore) {
         self.store = store
         self.assets = assets
+        uploads = AssetUploads(store: assets)
         schemeHandler.assets = assets
     }
+
+    @ObservationIgnored private var uploads: AssetUploads?
+
+    /// An attachment to show in Quick Look (ContentView's `.quickLookPreview`), opened from the editor.
+    var previewURL: URL?
+
+    /// A page link was clicked in the editor (ContentView routes it).
+    @ObservationIgnored var onOpenPage: ((String) -> Void)?
 
     func open(documentID: String?) {
         Task { await load(documentID) }
@@ -270,6 +279,26 @@ final class EditorController {
             let url = try assets.save(data, fileExtension: fileExtension)
             Log.info("asset saved", category: "store", context: ["bytes": "\(data.count)", "ext": fileExtension])
             return url
+        case .beginUpload(let fileExtension, let size):
+            guard let uploads else { throw BridgeError.invalidPayload("asset store not attached") }
+            return try uploads.begin(fileExtension: fileExtension, size: size)
+        case .uploadChunk(let id, let data):
+            try uploads?.append(id, data)
+        case .finishUpload(let id):
+            guard let uploads else { throw BridgeError.invalidPayload("asset store not attached") }
+            let url = try uploads.finish(id)
+            Log.info("upload saved", category: "store", context: ["ext": (url as NSString).pathExtension])
+            return url
+        case .cancelUpload(let id):
+            uploads?.cancel(id)
+        case .openAsset(let url):
+            // Attachments open in Quick Look, never inside the web view (an HTML file must not run there).
+            guard let name = AssetStore.name(fromURL: url), let file = assets?.file(named: name) else {
+                throw BridgeError.invalidPayload("openAsset: unknown asset")
+            }
+            previewURL = file
+        case .openPage(let id):
+            onOpenPage?(id)
         }
         return nil
     }
@@ -352,7 +381,7 @@ private final class ScriptMessageProxy: NSObject, WKScriptMessageHandlerWithRepl
     }
 }
 
-/// `<input type="file">` (cover upload): iOS presents the system picker itself, but a macOS WKWebView
+/// `<input type="file">` (covers, media, attachments): iOS presents the system picker itself, but a macOS WKWebView
 /// does nothing unless the UI delegate shows an open panel.
 private final class EditorUIDelegate: NSObject, WKUIDelegate {
     #if os(macOS)
@@ -362,7 +391,7 @@ private final class EditorUIDelegate: NSObject, WKUIDelegate {
             let panel = NSOpenPanel()
             panel.allowsMultipleSelection = parameters.allowsMultipleSelection
             panel.canChooseDirectories = false
-            panel.allowedContentTypes = [.image]
+            // Images (covers), video, audio and any attachment: the page and the asset store check types.
             let response: NSApplication.ModalResponse
             if let window = webView.window {
                 response = await panel.beginSheetModal(for: window)
@@ -382,8 +411,11 @@ private final class NavigationDelegate: NSObject, WKNavigationDelegate {
     }
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction) async -> WKNavigationActionPolicy {
-        // Only the bundled editor may load in the web view; links open in the system browser.
-        if navigationAction.request.url?.scheme == EditorSchemeHandler.scheme { return .allow }
+        // Only the bundled editor may load in the web view (not an asset: an uploaded HTML file must never
+        // become the page); links open in the system browser.
+        if let url = navigationAction.request.url, url.scheme == EditorSchemeHandler.scheme {
+            return url.host == "app" ? .allow : .cancel
+        }
         if let url = navigationAction.request.url, navigationAction.navigationType == .linkActivated {
             #if os(iOS)
                 await UIApplication.shared.open(url)

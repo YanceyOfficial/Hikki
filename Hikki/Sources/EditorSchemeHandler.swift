@@ -15,8 +15,9 @@ final class EditorSchemeHandler: NSObject, WKURLSchemeHandler {
     func webView(_ webView: WKWebView, start urlSchemeTask: any WKURLSchemeTask) {
         guard let url = urlSchemeTask.request.url else { return }
         let relative = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let isAsset = url.host == "assets"
         let file: URL?
-        if url.host == "assets" {
+        if isAsset {
             file = assets?.file(named: relative)
         } else if let root {
             let candidate = root.appending(path: relative.isEmpty ? "index.html" : relative).standardizedFileURL
@@ -25,20 +26,51 @@ final class EditorSchemeHandler: NSObject, WKURLSchemeHandler {
             fail(urlSchemeTask, "editor bundle missing — run `make editor`")
             return
         }
-        guard let file, let data = try? Data(contentsOf: file) else {
+        guard let file, let handle = try? FileHandle(forReadingFrom: file),
+            let size = try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize
+        else {
             fail(urlSchemeTask, "not found: \(url.absoluteString)")
             return
         }
-        let mime = UTType(filenameExtension: file.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
-        let response = HTTPURLResponse(
-            url: url, statusCode: 200, httpVersion: "HTTP/1.1",
-            headerFields: [
-                "Content-Type": mime,
-                "Content-Length": "\(data.count)",
-            ])!
+        defer { try? handle.close() }
+        let range = ByteRange.parse(urlSchemeTask.request.value(forHTTPHeaderField: "Range"), size: size)
+        var headers = [
+            "Content-Type": Self.mimeType(for: file, isAsset: isAsset),
+            "Accept-Ranges": "bytes",
+            "Content-Length": "\(range.count)",
+        ]
+        if isAsset {
+            // Assets are data, never documents: even if loaded directly they get no scripts or plugins.
+            headers["Content-Security-Policy"] = "sandbox; default-src 'none'"
+            headers["X-Content-Type-Options"] = "nosniff"
+        }
+        let partial = range.count != size
+        if partial { headers["Content-Range"] = "bytes \(range.lowerBound)-\(range.upperBound - 1)/\(size)" }
+        let response = HTTPURLResponse(url: url, statusCode: partial ? 206 : 200, httpVersion: "HTTP/1.1", headerFields: headers)!
         urlSchemeTask.didReceive(response)
-        urlSchemeTask.didReceive(data)
-        urlSchemeTask.didFinish()
+        // Streamed in chunks: a video isn't read into memory whole.
+        do {
+            try handle.seek(toOffset: UInt64(range.lowerBound))
+            var remaining = range.count
+            while remaining > 0 {
+                let chunk = try handle.read(upToCount: min(remaining, 1 << 20)) ?? Data()
+                if chunk.isEmpty { break }
+                urlSchemeTask.didReceive(chunk)
+                remaining -= chunk.count
+            }
+            urlSchemeTask.didFinish()
+        } catch {
+            fail(urlSchemeTask, "read failed: \(url.lastPathComponent)")
+        }
+    }
+
+    /// Media and images by type; any other asset (an attachment) as inert bytes.
+    static func mimeType(for file: URL, isAsset: Bool) -> String {
+        let type = UTType(filenameExtension: file.pathExtension)
+        if isAsset, let kind = AssetStore.kind(ofExtension: file.pathExtension), kind == .file {
+            return "application/octet-stream"
+        }
+        return type?.preferredMIMEType ?? "application/octet-stream"
     }
 
     func webView(_ webView: WKWebView, stop urlSchemeTask: any WKURLSchemeTask) {}

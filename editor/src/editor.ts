@@ -6,6 +6,7 @@ import UniqueID from '@tiptap/extension-unique-id'
 import { Placeholder } from '@tiptap/extensions'
 import StarterKit from '@tiptap/starter-kit'
 
+import { setMediaHost } from './blocks'
 import { blockHandleExtensions } from './extensions/block-handle'
 import { Callout } from './extensions/callout'
 import { CodeBlock } from './extensions/code-block'
@@ -14,6 +15,7 @@ import { Column, Columns, ColumnsKeymap } from './extensions/columns'
 import { EdgeNavigation } from './extensions/edge-navigation'
 import { Find } from './extensions/find'
 import { mathExtension } from './extensions/math'
+import { mediaExtensions, type MediaHost } from './extensions/media'
 import { SelectionMenuExtension } from './extensions/selection-menu'
 import { SlashCommand } from './extensions/slash-command'
 import { tableExtensions } from './extensions/table'
@@ -29,6 +31,8 @@ type EditorOptions = {
   onContentError?: (error: Error) => void
   /** WebKit's spell checker (system dictionaries, suggestions in the context menu); on by default. */
   spellcheck?: boolean
+  /** Uploads and opening attachments (the bridge); without it, files can't be dropped or picked. */
+  media?: MediaHost
 }
 
 /**
@@ -50,7 +54,11 @@ export const BLOCK_ID_TYPES = [
   'callout',
   'blockMath',
   'table',
-  'columns'
+  'columns',
+  'image',
+  'video',
+  'audio',
+  'fileAttachment'
 ]
 
 /** The page body editor. `content` must already be normalized (see normalizeBody). */
@@ -59,6 +67,7 @@ export function createEditor(
   content: JSONContent | null,
   options: EditorOptions = {}
 ): Editor {
+  setMediaHost(options.media ?? null)
   return new Editor({
     element,
     content: content ?? { type: 'doc', content: [{ type: 'paragraph' }] },
@@ -92,6 +101,7 @@ export function createEditor(
       ColumnsKeymap,
       Find,
       TableOfContents,
+      ...mediaExtensions(options.media ?? null),
       TaskList,
       TaskItem.configure({ nested: true }),
       ColorTextStyle,

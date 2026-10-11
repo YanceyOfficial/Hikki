@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 7
+    public static let version = 8
 }
 
 public struct Snapshot: Codable, Sendable, Equatable {
@@ -32,6 +32,16 @@ public enum BridgeMessage: Sendable, Equatable {
     case setCover(docId: String, cover: String?)
     /// Expects the asset URL as the reply.
     case saveAsset(fileExtension: String, data: Data)
+    /// Chunked upload of a large file (video, audio, attachment). `beginUpload` replies with the upload id,
+    /// `finishUpload` with the asset URL.
+    case beginUpload(fileExtension: String, size: Int)
+    case uploadChunk(id: String, data: Data)
+    case finishUpload(id: String)
+    case cancelUpload(id: String)
+    /// Open an attachment with the system (Quick Look / default app), never inside the web view.
+    case openAsset(url: String)
+    /// A page link was clicked.
+    case openPage(id: String)
 }
 
 public enum BridgeError: Error, Equatable {
@@ -56,6 +66,7 @@ public enum PagePayload {
 extension BridgeMessage: Decodable {
     private enum CodingKeys: String, CodingKey {
         case type, protocolVersion, snapshot, active, level, message, context, docId, icon, cover, fileExtension, dataBase64
+        case size, id, url
     }
 
     public init(from decoder: Decoder) throws {
@@ -80,6 +91,18 @@ extension BridgeMessage: Decodable {
                 throw BridgeError.invalidPayload("saveAsset: dataBase64 is not base64")
             }
             self = .saveAsset(fileExtension: try c.decode(String.self, forKey: .fileExtension), data: data)
+        case "beginUpload":
+            self = .beginUpload(
+                fileExtension: try c.decode(String.self, forKey: .fileExtension), size: try c.decode(Int.self, forKey: .size))
+        case "uploadChunk":
+            guard let data = Data(base64Encoded: try c.decode(String.self, forKey: .dataBase64)) else {
+                throw BridgeError.invalidPayload("uploadChunk: dataBase64 is not base64")
+            }
+            self = .uploadChunk(id: try c.decode(String.self, forKey: .id), data: data)
+        case "finishUpload": self = .finishUpload(id: try c.decode(String.self, forKey: .id))
+        case "cancelUpload": self = .cancelUpload(id: try c.decode(String.self, forKey: .id))
+        case "openAsset": self = .openAsset(url: try c.decode(String.self, forKey: .url))
+        case "openPage": self = .openPage(id: try c.decode(String.self, forKey: .id))
         default: throw BridgeError.unknownType(type)
         }
     }

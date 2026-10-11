@@ -163,6 +163,32 @@ export function BlockPreview({ id }: { id: string }) {
           <Line w="55%" className="bg-muted-foreground/40" />
         </div>
       )
+    case 'image':
+      return (
+        <div className="grid h-14 place-items-center rounded-sm bg-gradient-to-br from-wash-blue to-wash-purple">
+          <span className="size-3 rounded-full bg-ink-yellow/70" />
+        </div>
+      )
+    case 'video':
+      return (
+        <div className="grid h-14 place-items-center rounded-sm bg-foreground/80">
+          <span className="size-0 border-y-[6px] border-l-[10px] border-y-transparent border-l-background" />
+        </div>
+      )
+    case 'audio':
+      return (
+        <div className="flex items-center gap-2 rounded-full bg-muted px-2 py-1.5">
+          <span className="size-0 border-y-[4px] border-l-[6px] border-y-transparent border-l-foreground/70" />
+          <Line w="70%" />
+        </div>
+      )
+    case 'file':
+      return (
+        <div className="flex items-center gap-2 rounded-sm border border-border p-1.5">
+          <span className="h-5 w-4 rounded-[2px] bg-muted" />
+          <Line w="60%" />
+        </div>
+      )
     case 'divider':
       return (
         <div className="flex flex-col gap-2.5">

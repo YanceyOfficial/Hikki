@@ -1,5 +1,6 @@
 import HikkiCore
 import HikkiUI
+import QuickLook
 import SwiftUI
 
 struct ContentView: View {
@@ -22,9 +23,17 @@ struct ContentView: View {
     #endif
 
     var body: some View {
+        // Split in two so the type checker copes: the layout, then the scene's events.
+        sceneEvents(layout)
+            .focusedSceneValue(\.editor, editor)
+            .focusedSceneValue(\.navigator, navigator)
+    }
+
+    /// The system split view and window toolbar (the sidebar is native rows, see SidebarView), sheets.
+    private var layout: some View {
         @Bindable var navigator = navigator
-        // The system split view and window toolbar; the sidebar is native rows (see SidebarView).
-        NavigationSplitView(columnVisibility: $columns) {
+        @Bindable var editor = editor
+        return NavigationSplitView(columnVisibility: $columns) {
             SidebarView(navigator: navigator, wide: wide)
                 .navigationSplitViewColumnWidth(min: Size.sidebarMin, ideal: Size.sidebarIdeal, max: Size.sidebarMax)
         } detail: {
@@ -40,85 +49,94 @@ struct ContentView: View {
             SearchPalette(navigator: navigator) { navigator.isSearching = false }
         }
         .animation(.snappy(duration: 0.18), value: navigator.isSearching)
-        .task { await model.observe() }
-        .onAppear {
-            navigator.attach(model)
-            navigator.restoreTabs(from: storedTabs)
-            #if DEBUG
-                // Screenshot/test hooks: HIKKI_OPEN_TABS=pageA,pageB opens those pages as tabs; HIKKI_OPEN_SEARCH opens ⌘K.
-                if ProcessInfo.processInfo.environment["HIKKI_OPEN_SEARCH"] != nil { navigator.isSearching = true }
-                // HIKKI_ACTIVATE brings the window to the front (screenshots of the active-window look).
-                #if os(macOS)
-                    if ProcessInfo.processInfo.environment["HIKKI_ACTIVATE"] != nil { NSApp.activate() }
-                #endif
-                // HIKKI_OPEN_SETTINGS opens Settings (screenshots).
-                if ProcessInfo.processInfo.environment["HIKKI_OPEN_SETTINGS"] != nil {
-                    #if os(macOS)
-                        openSettings()
-                    #else
-                        navigator.isShowingSettings = true
-                    #endif
-                }
-                // HIKKI_DEBUG_NAV=a,b,c visits those pages one per second (reproduces page-switch bugs).
-                if let ids = ProcessInfo.processInfo.environment["HIKKI_DEBUG_NAV"]?.split(separator: ",") {
+        // Attachments opened from the editor.
+        .quickLookPreview($editor.previewURL)
+    }
+
+    /// Setup, routing to the editor, settings, deep links, tab persistence, backgrounding.
+    private func sceneEvents(_ content: some View) -> some View {
+        content
+            .task { await model.observe() }
+            .onAppear(perform: setUp)
+            .onChange(of: navigator.route) { _, route in editor.open(documentID: route.pageID) }
+            .onChange(of: tone) { _, tone in editor.setTone(tone) }
+            .onChange(of: spellcheck) { _, on in editor.setSpellcheck(on) }
+            .onChange(of: navigator.titleFocusRequest) { _, request in
+                if let request { editor.focusTitle(of: request.pageID) }
+            }
+            // hikki://page/<id> (Copy link).
+            .onOpenURL { url in
+                if let id = PageLink.pageID(from: url), model.tree.page(id) != nil { navigator.open(id) }
+            }
+            .onChange(of: navigator.tabs) { _, _ in storedTabs = navigator.encodedTabs() }
+            .onChange(of: model.tree) { _, tree in
+                // Pages trashed here or in another window disappear from every tab's history.
+                navigator.prune { tree.page($0) != nil }
+            }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active {
+                    model.reconcileWorkspace()  // pick up other devices' changes
+                } else {
                     Task {
-                        for id in ids {
-                            try? await Task.sleep(for: .seconds(1))
-                            navigator.open(String(id))
-                        }
+                        await editor.flush(reason: "scenePhase-\(phase)")
+                        model.flushWorkspace()
                     }
-                }
-                // HIKKI_DEBUG_SIDEBAR: hides the sidebar after 2s and shows it again after 4s (title-bar layout bugs).
-                if ProcessInfo.processInfo.environment["HIKKI_DEBUG_SIDEBAR"] != nil {
-                    Task {
-                        #if os(macOS)
-                            NSApp.activate()  // the bug shows on a key window
-                        #endif
-                        try? await Task.sleep(for: .seconds(2))
-                        withAnimation { columns = .detailOnly }
-                        try? await Task.sleep(for: .seconds(2))
-                        withAnimation { columns = .all }
-                    }
-                }
-                if let ids = ProcessInfo.processInfo.environment["HIKKI_OPEN_TABS"]?.split(separator: ",") {
-                    for (index, id) in ids.enumerated() {
-                        if index == 0 { navigator.open(String(id)) } else { navigator.openInNewTab(.page(String(id))) }
-                    }
-                }
-            #endif
-            if let initialPageID, model.tree.page(initialPageID) != nil { navigator.open(initialPageID) }
-            editor.setTone(tone)
-            editor.setSpellcheck(spellcheck)
-            editor.attach(store: model.store, assets: model.assets)
-            editor.open(documentID: navigator.route.pageID)
-        }
-        .onChange(of: navigator.route) { _, route in editor.open(documentID: route.pageID) }
-        .onChange(of: tone) { _, tone in editor.setTone(tone) }
-        .onChange(of: spellcheck) { _, on in editor.setSpellcheck(on) }
-        .onChange(of: navigator.titleFocusRequest) { _, request in
-            if let request { editor.focusTitle(of: request.pageID) }
-        }
-        // hikki://page/<id> (Copy link).
-        .onOpenURL { url in
-            if let id = PageLink.pageID(from: url), model.tree.page(id) != nil { navigator.open(id) }
-        }
-        .onChange(of: navigator.tabs) { _, _ in storedTabs = navigator.encodedTabs() }
-        .onChange(of: model.tree) { _, tree in
-            // Pages trashed here or in another window disappear from every tab's history.
-            navigator.prune { tree.page($0) != nil }
-        }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active {
-                model.reconcileWorkspace()  // pick up other devices' changes
-            } else {
-                Task {
-                    await editor.flush(reason: "scenePhase-\(phase)")
-                    model.flushWorkspace()
                 }
             }
-        }
-        .focusedSceneValue(\.editor, editor)
-        .focusedSceneValue(\.navigator, navigator)
+    }
+
+    /// First appearance: tabs, the editor's settings and store, DEBUG hooks, the first page.
+    private func setUp() {
+        navigator.attach(model)
+        navigator.restoreTabs(from: storedTabs)
+        #if DEBUG
+            // Screenshot/test hooks: HIKKI_OPEN_TABS=pageA,pageB opens those pages as tabs; HIKKI_OPEN_SEARCH opens ⌘K.
+            if ProcessInfo.processInfo.environment["HIKKI_OPEN_SEARCH"] != nil { navigator.isSearching = true }
+            // HIKKI_ACTIVATE brings the window to the front (screenshots of the active-window look).
+            #if os(macOS)
+                if ProcessInfo.processInfo.environment["HIKKI_ACTIVATE"] != nil { NSApp.activate() }
+            #endif
+            // HIKKI_OPEN_SETTINGS opens Settings (screenshots).
+            if ProcessInfo.processInfo.environment["HIKKI_OPEN_SETTINGS"] != nil {
+                #if os(macOS)
+                    openSettings()
+                #else
+                    navigator.isShowingSettings = true
+                #endif
+            }
+            // HIKKI_DEBUG_NAV=a,b,c visits those pages one per second (reproduces page-switch bugs).
+            if let ids = ProcessInfo.processInfo.environment["HIKKI_DEBUG_NAV"]?.split(separator: ",") {
+                Task {
+                    for id in ids {
+                        try? await Task.sleep(for: .seconds(1))
+                        navigator.open(String(id))
+                    }
+                }
+            }
+            // HIKKI_DEBUG_SIDEBAR: hides the sidebar after 2s and shows it again after 4s (title-bar layout bugs).
+            if ProcessInfo.processInfo.environment["HIKKI_DEBUG_SIDEBAR"] != nil {
+                Task {
+                    #if os(macOS)
+                        NSApp.activate()  // the bug shows on a key window
+                    #endif
+                    try? await Task.sleep(for: .seconds(2))
+                    withAnimation { columns = .detailOnly }
+                    try? await Task.sleep(for: .seconds(2))
+                    withAnimation { columns = .all }
+                }
+            }
+            if let ids = ProcessInfo.processInfo.environment["HIKKI_OPEN_TABS"]?.split(separator: ",") {
+                for (index, id) in ids.enumerated() {
+                    if index == 0 { navigator.open(String(id)) } else { navigator.openInNewTab(.page(String(id))) }
+                }
+            }
+        #endif
+        if let initialPageID, model.tree.page(initialPageID) != nil { navigator.open(initialPageID) }
+        editor.setTone(tone)
+        editor.setSpellcheck(spellcheck)
+        editor.attach(store: model.store, assets: model.assets)
+        editor.onOpenPage = { id in if model.tree.page(id) != nil { navigator.open(id) } }
+        editor.open(documentID: navigator.route.pageID)
     }
 
     /// A wide window (Mac, regular-width iPad): tabs and page actions in the window toolbar, the workspace

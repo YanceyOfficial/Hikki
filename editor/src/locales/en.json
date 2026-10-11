@@ -97,6 +97,22 @@
     "tableOfContents": {
       "title": "Table of contents",
       "hint": "Links to the headings on this page"
+    },
+    "image": {
+      "title": "Image",
+      "hint": "Upload an image"
+    },
+    "video": {
+      "title": "Video",
+      "hint": "Upload a video"
+    },
+    "audio": {
+      "title": "Audio",
+      "hint": "Upload audio"
+    },
+    "file": {
+      "title": "File",
+      "hint": "Attach a file"
     }
   },
   "cover": {
@@ -148,7 +164,8 @@
       "basic": "Basic blocks",
       "lists": "Lists",
       "other": "Other",
-      "advanced": "Advanced"
+      "advanced": "Advanced",
+      "media": "Media"
     },
     "close": "Close menu"
   },
@@ -249,5 +266,15 @@
   "toc": {
     "label": "Table of contents",
     "empty": "Add headings to build the table of contents."
+  },
+  "media": {
+    "file": "File",
+    "uploadFailed": "Couldn't upload {{name}}",
+    "imageToolbar": "Image",
+    "alignLeft": "Align left",
+    "alignCenter": "Center",
+    "alignRight": "Align right",
+    "view": "View full size",
+    "delete": "Delete"
   }
 }

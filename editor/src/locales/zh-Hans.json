@@ -97,6 +97,22 @@
     "tableOfContents": {
       "title": "目录",
       "hint": "链接到本页的各个标题"
+    },
+    "image": {
+      "title": "图片",
+      "hint": "上传图片"
+    },
+    "video": {
+      "title": "视频",
+      "hint": "上传视频"
+    },
+    "audio": {
+      "title": "音频",
+      "hint": "上传音频"
+    },
+    "file": {
+      "title": "文件",
+      "hint": "添加附件"
     }
   },
   "cover": {
@@ -148,7 +164,8 @@
       "basic": "基础",
       "lists": "列表",
       "other": "其他",
-      "advanced": "高级"
+      "advanced": "高级",
+      "media": "媒体"
     },
     "close": "关闭菜单"
   },
@@ -249,5 +266,15 @@
   "toc": {
     "label": "目录",
     "empty": "添加标题后，这里会生成目录。"
+  },
+  "media": {
+    "file": "文件",
+    "uploadFailed": "无法上传 {{name}}",
+    "imageToolbar": "图片",
+    "alignLeft": "左对齐",
+    "alignCenter": "居中",
+    "alignRight": "右对齐",
+    "view": "查看原图",
+    "delete": "删除"
   }
 }

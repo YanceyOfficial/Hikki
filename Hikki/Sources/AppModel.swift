@@ -39,6 +39,9 @@ final class AppModel {
         do {
             let folder = try WorkspaceFolder.url(for: workspace, appRoot: appRoot)
             _ = folder.startAccessingSecurityScopedResource()  // released when the app quits
+            assets.useWorkspaceFolder(folder)
+            let assets = assets
+            Task.detached(priority: .utility) { assets.copyLegacyAssets() }
             // Every pass — launch, activation, or the folder watcher noticing another device — tells open
             // editors which pages came from disk, so one showing such a page reloads it.
             let sync = WorkspaceSync(store: store, files: PageFiles(root: folder)) { report in

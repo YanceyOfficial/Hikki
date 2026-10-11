@@ -3,6 +3,7 @@ import type { Transaction } from '@tiptap/pm/state'
 
 import { activeCommands, createEditor, runCommand } from './editor'
 import { runFind, type FindMode } from './extensions/find'
+import type { MediaHost } from './extensions/media'
 import { plainText, wordCount } from './extract'
 import { normalizeBody } from './normalize'
 import { collectHeadings, type HeadingItem } from './page/headings'
@@ -94,6 +95,7 @@ export class EditorBridge {
     let contentError: Error | null = null
     const editor = createEditor(this.host, body, {
       spellcheck: this.spellcheck,
+      media: this.media,
       onExitTop: () => this.requestTitleFocus(),
       onContentError: (error) => {
         contentError = error
@@ -180,6 +182,38 @@ export class EditorBridge {
     if (!docId) return
     this.page.set({ cover })
     void this.send({ type: 'setCover', docId, cover })
+  }
+
+  /** Uploads and attachments for the editor's media blocks. */
+  readonly media: MediaHost = {
+    upload: (file, onProgress) => this.uploadFile(file, onProgress),
+    openAsset: (url) => void this.send({ type: 'openAsset', url })
+  }
+
+  /**
+   * Sends a file to the native side in chunks (one base64 message per chunk instead of one huge one) and
+   * resolves to its asset URL. A failure cancels the upload, so no partial file is kept.
+   */
+  async uploadFile(
+    file: Blob & { name?: string },
+    onProgress: (fraction: number) => void = () => {}
+  ): Promise<string> {
+    const fileExtension = extensionOf(file)
+    const id = await this.transport.post({ type: 'beginUpload', fileExtension, size: file.size })
+    if (typeof id !== 'string') throw new Error('beginUpload: native side returned no id')
+    try {
+      for (let offset = 0; offset < file.size; offset += UPLOAD_CHUNK) {
+        const dataBase64 = await blobToBase64(file.slice(offset, offset + UPLOAD_CHUNK))
+        await this.transport.post({ type: 'uploadChunk', id, dataBase64 })
+        onProgress(Math.min(1, (offset + UPLOAD_CHUNK) / file.size))
+      }
+      const url = await this.transport.post({ type: 'finishUpload', id })
+      if (typeof url !== 'string') throw new Error('finishUpload: native side returned no URL')
+      return url
+    } catch (error) {
+      void this.send({ type: 'cancelUpload', id })
+      throw error
+    }
   }
 
   /** Hands an image to the native side for storage; resolves to the URL to reference it by. */
@@ -321,6 +355,28 @@ export class EditorBridge {
       console.error('[hikki] bridge post failed', message.type, error)
     }
   }
+}
+
+/** Raw bytes per upload message (base64 adds a third). */
+const UPLOAD_CHUNK = 768 * 1024
+
+const MIME_EXTENSIONS: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+  'image/heic': 'heic',
+  'video/mp4': 'mp4',
+  'video/quicktime': 'mov',
+  'audio/mpeg': 'mp3',
+  'audio/mp4': 'm4a'
+}
+
+/** The file's extension (from its name, else its type; "bin" when neither says). */
+export function extensionOf(file: { name?: string; type: string }): string {
+  const fromName = file.name?.includes('.') ? file.name.split('.').pop()?.toLowerCase() : undefined
+  if (fromName && /^[a-z0-9]{1,10}$/u.test(fromName)) return fromName
+  return MIME_EXTENSIONS[file.type] ?? 'bin'
 }
 
 function blobToBase64(blob: Blob): Promise<string> {

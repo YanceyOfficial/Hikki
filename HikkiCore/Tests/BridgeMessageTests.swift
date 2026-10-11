@@ -83,4 +83,19 @@ struct BridgeMessageTests {
         let value = try JSONValue(jsonData: original)
         #expect(String(decoding: try value.jsonData(), as: UTF8.self) == #"{"a":[1,2.5,true,null,"x"]}"#)
     }
+
+    @Test func decodesUploadAndOpenMessages() throws {
+        func decode(_ body: [String: Any]) throws -> BridgeMessage {
+            try BridgeMessage.decode(scriptMessageBody: body as NSDictionary)
+        }
+        #expect(try decode(["type": "beginUpload", "fileExtension": "mp4", "size": 10]) == .beginUpload(fileExtension: "mp4", size: 10))
+        #expect(try decode(["type": "uploadChunk", "id": "u1", "dataBase64": "AQID"]) == .uploadChunk(id: "u1", data: Data([1, 2, 3])))
+        #expect(try decode(["type": "finishUpload", "id": "u1"]) == .finishUpload(id: "u1"))
+        #expect(try decode(["type": "cancelUpload", "id": "u1"]) == .cancelUpload(id: "u1"))
+        #expect(try decode(["type": "openAsset", "url": "hikki-editor://assets/a.pdf"]) == .openAsset(url: "hikki-editor://assets/a.pdf"))
+        #expect(try decode(["type": "openPage", "id": "p1"]) == .openPage(id: "p1"))
+        #expect(throws: BridgeError.invalidPayload("uploadChunk: dataBase64 is not base64")) {
+            try decode(["type": "uploadChunk", "id": "u1", "dataBase64": "%%%"])
+        }
+    }
 }
