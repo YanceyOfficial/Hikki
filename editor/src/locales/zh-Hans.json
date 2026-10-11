@@ -60,6 +60,22 @@
     "heading4": {
       "title": "标题 4",
       "hint": "最小的章节标题"
+    },
+    "toggle": {
+      "title": "折叠列表",
+      "hint": "把内容收起来"
+    },
+    "callout": {
+      "title": "标注",
+      "hint": "让文字更醒目"
+    },
+    "blockMath": {
+      "title": "公式块",
+      "hint": "独立显示公式（LaTeX）"
+    },
+    "inlineMath": {
+      "title": "行内公式",
+      "hint": "在文字中插入公式（LaTeX）"
     }
   },
   "cover": {
@@ -110,7 +126,8 @@
     "group": {
       "basic": "基础",
       "lists": "列表",
-      "other": "其他"
+      "other": "其他",
+      "advanced": "高级"
     },
     "close": "关闭菜单"
   },
@@ -126,7 +143,9 @@
     "clear": "清除格式",
     "subscript": "下标",
     "superscript": "上标",
-    "menu": "格式"
+    "menu": "格式",
+    "math": "公式",
+    "more": "更多"
   },
   "color": {
     "text": "文字颜色",
@@ -154,5 +173,20 @@
     "copy": "复制",
     "copied": "已复制",
     "searchLanguage": "搜索语言"
+  },
+  "callout": {
+    "icon": "更换图标",
+    "color": "背景颜色"
+  },
+  "math": {
+    "placeholder": "E = mc^2",
+    "label": "公式（LaTeX）",
+    "hintInline": "Enter 完成 · Esc 取消",
+    "hintBlock": "⌘Enter 完成 · Esc 取消",
+    "done": "完成"
+  },
+  "toggle": {
+    "expand": "展开",
+    "collapse": "收起"
   }
 }

@@ -1,6 +1,8 @@
 import { Extension } from '@tiptap/core'
 import { TextStyle } from '@tiptap/extension-text-style'
 
+import { t } from '../i18n'
+
 /** Notion's palette. Names, not CSS colors, are stored, so pages re-theme (light/dark, future palettes). */
 export const PALETTE = [
   'gray',
@@ -14,6 +16,23 @@ export const PALETTE = [
   'red'
 ] as const
 export type PaletteColor = (typeof PALETTE)[number]
+
+/** Color names, spelled out so the l10n audit sees every key. */
+const COLOR_LABEL: Record<PaletteColor, () => string> = {
+  gray: () => t('color.gray'),
+  brown: () => t('color.brown'),
+  orange: () => t('color.orange'),
+  yellow: () => t('color.yellow'),
+  green: () => t('color.green'),
+  blue: () => t('color.blue'),
+  purple: () => t('color.purple'),
+  pink: () => t('color.pink'),
+  red: () => t('color.red')
+}
+
+/** The localized name of a palette color; null is "Default". */
+export const colorLabel = (color: PaletteColor | null) =>
+  color ? COLOR_LABEL[color]() : t('color.default')
 
 const isPaletteColor = (value: unknown): value is PaletteColor =>
   typeof value === 'string' && (PALETTE as readonly string[]).includes(value)

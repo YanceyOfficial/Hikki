@@ -26,13 +26,18 @@ export const SlashCommand = Extension.create({
         editor: this.editor,
         pluginKey: SlashCommandKey,
         char: '/',
+        // "/block equation": multi-word names. A space right after "/" still closes the menu.
+        allowSpaces: true,
         allow: ({ state, range }) => {
           const $from = state.doc.resolve(range.from)
-          return $from.parent.type.name !== 'codeBlock'
+          if ($from.parent.type.name === 'codeBlock') return false
+          const query = state.doc.textBetween(range.from, range.to).slice(1)
+          return !query.startsWith(' ') && !query.includes('  ')
         },
         items: ({ query }) => slashItems(query),
         command: ({ editor, range, props }) => {
           props.apply(editor.chain().focus().deleteRange(range)).run()
+          props.after?.(editor)
         },
         render: () => {
           let layer: FloatingLayer | null = null

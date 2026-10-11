@@ -60,6 +60,22 @@
     "heading4": {
       "title": "Heading 4",
       "hint": "Smallest section heading"
+    },
+    "toggle": {
+      "title": "Toggle list",
+      "hint": "Hide content inside"
+    },
+    "callout": {
+      "title": "Callout",
+      "hint": "Make writing stand out"
+    },
+    "blockMath": {
+      "title": "Block equation",
+      "hint": "Display a formula (LaTeX)"
+    },
+    "inlineMath": {
+      "title": "Inline equation",
+      "hint": "A formula within text (LaTeX)"
     }
   },
   "cover": {
@@ -110,7 +126,8 @@
     "group": {
       "basic": "Basic blocks",
       "lists": "Lists",
-      "other": "Other"
+      "other": "Other",
+      "advanced": "Advanced"
     },
     "close": "Close menu"
   },
@@ -126,7 +143,9 @@
     "clear": "Clear formatting",
     "subscript": "Subscript",
     "superscript": "Superscript",
-    "menu": "Formatting"
+    "menu": "Formatting",
+    "math": "Equation",
+    "more": "More"
   },
   "color": {
     "text": "Text color",
@@ -154,5 +173,20 @@
     "copy": "Copy",
     "copied": "Copied",
     "searchLanguage": "Search languages"
+  },
+  "callout": {
+    "icon": "Change icon",
+    "color": "Background color"
+  },
+  "math": {
+    "placeholder": "E = mc^2",
+    "label": "Formula (LaTeX)",
+    "hintInline": "Enter to finish · Esc to cancel",
+    "hintBlock": "⌘Enter to finish · Esc to cancel",
+    "done": "Done"
+  },
+  "toggle": {
+    "expand": "Expand",
+    "collapse": "Collapse"
   }
 }

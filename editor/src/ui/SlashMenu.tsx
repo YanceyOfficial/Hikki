@@ -19,7 +19,8 @@ type Props = {
 const GROUP_LABEL: Record<BlockGroup, () => string> = {
   basic: () => t('slash.group.basic'),
   lists: () => t('slash.group.lists'),
-  other: () => t('slash.group.other')
+  other: () => t('slash.group.other'),
+  advanced: () => t('slash.group.advanced')
 }
 
 /** The preview waits this long the first time, then follows the selection instantly. */

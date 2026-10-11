@@ -76,7 +76,7 @@ describe('slash menu', () => {
     const groups = [...document.querySelectorAll('.hk-slash-menu [role=group]')].map((g) =>
       g.getAttribute('aria-label')
     )
-    expect(groups).toEqual(['Basic blocks', 'Lists', 'Other'])
+    expect(groups).toEqual(['Basic blocks', 'Lists', 'Other', 'Advanced'])
     const todo = document.querySelector('.hk-slash-menu [aria-label="To-do list"]')
     expect(todo?.textContent).toContain('[]')
   })
@@ -118,6 +118,18 @@ describe('slash menu', () => {
     expect(document.querySelector('[data-testid=slash-preview]')?.textContent).toContain(
       'Plain text'
     )
+  })
+
+  it('multi-word queries keep the menu open ("/block equation")', async () => {
+    editor.commands.insertContent('/block equation')
+    await settle()
+    expect(menuTitles()).toEqual(['Block equation'])
+  })
+
+  it('a space right after "/" closes it', async () => {
+    editor.commands.insertContent('/ ')
+    await settle()
+    expect(menu()).toBeNull()
   })
 
   it('does not open inside a code block', async () => {

@@ -1,5 +1,9 @@
 import {
+  CaretCircleRight,
   CheckSquare,
+  Function as FunctionIcon,
+  Info,
+  Sigma,
   Code,
   type Icon,
   ListBullets,
@@ -15,10 +19,12 @@ import {
 import type { ChainedCommands, Editor } from '@tiptap/core'
 
 import { lastCodeLanguage } from './extensions/code-languages'
+import { openMathEditor } from './extensions/math'
+import { openToggleAtSelection } from './extensions/toggle'
 import { t } from './i18n'
 
 /** Sections of the "/" menu, in display order. */
-export const BLOCK_GROUPS = ['basic', 'lists', 'other'] as const
+export const BLOCK_GROUPS = ['basic', 'lists', 'other', 'advanced'] as const
 export type BlockGroup = (typeof BLOCK_GROUPS)[number]
 
 /**
@@ -47,6 +53,8 @@ export type BlockType = {
   turnInto?: (chain: ChainedCommands) => ChainedCommands
   /** Whether the selection is in this kind of block (the current item in "Turn into"). */
   isActive?: (editor: Editor) => boolean
+  /** Runs after `apply` (e.g. open the formula editor on the new equation). */
+  after?: (editor: Editor) => void
 }
 
 export const BLOCK_TYPES: BlockType[] = [
@@ -167,6 +175,21 @@ export const BLOCK_TYPES: BlockType[] = [
     isActive: (e) => e.isActive('taskList')
   },
   {
+    id: 'toggle',
+    title: 'Toggle list',
+    hint: 'Hide content inside',
+    label: () => t('blocks.toggle.title'),
+    description: () => t('blocks.toggle.hint'),
+    icon: CaretCircleRight,
+    group: 'lists',
+    shortcut: '>',
+    aliases: ['toggle', 'details', 'collapse', '折叠', '折叠列表', 'zhedie', 'zd'],
+    apply: (c) => c.setDetails(),
+    turnInto: (c) => c.clearNodes().setDetails(),
+    isActive: (e) => e.isActive('details'),
+    after: (editor) => openToggleAtSelection(editor)
+  },
+  {
     id: 'blockquote',
     title: 'Quote',
     hint: 'Capture a quote',
@@ -179,6 +202,19 @@ export const BLOCK_TYPES: BlockType[] = [
     apply: (c) => c.toggleBlockquote(),
     turnInto: (c) => c.clearNodes().toggleBlockquote(),
     isActive: (e) => e.isActive('blockquote')
+  },
+  {
+    id: 'callout',
+    title: 'Callout',
+    hint: 'Make writing stand out',
+    label: () => t('blocks.callout.title'),
+    description: () => t('blocks.callout.hint'),
+    icon: Info,
+    group: 'other',
+    aliases: ['callout', 'note', 'tip', 'info', '标注', '提示', 'biaozhu', 'tishi', 'bz', 'ts'],
+    apply: (c) => c.setCallout(),
+    turnInto: (c) => c.clearNodes().setCallout(),
+    isActive: (e) => e.isActive('callout')
   },
   {
     id: 'codeBlock',
@@ -205,8 +241,64 @@ export const BLOCK_TYPES: BlockType[] = [
     shortcut: '---',
     aliases: ['divider', 'hr', 'line', 'separator', '分割线', '分隔线', 'fengexian', 'fgx'],
     apply: (c) => c.setHorizontalRule()
+  },
+  {
+    id: 'blockMath',
+    title: 'Block equation',
+    hint: 'Display a formula (LaTeX)',
+    label: () => t('blocks.blockMath.title'),
+    description: () => t('blocks.blockMath.hint'),
+    icon: Sigma,
+    group: 'advanced',
+    shortcut: '$$$',
+    aliases: ['math', 'equation', 'latex', 'tex', 'formula', '公式', '数学', 'gongshi', 'gs'],
+    apply: (c) => c.insertContent({ type: 'blockMath', attrs: { latex: '' } }),
+    after: (editor) => {
+      const pos = findNear(editor, 'blockMath')
+      if (pos !== null) openMathEditor(editor, pos, 'block')
+    }
+  },
+  {
+    id: 'inlineMath',
+    title: 'Inline equation',
+    hint: 'A formula within text (LaTeX)',
+    label: () => t('blocks.inlineMath.title'),
+    description: () => t('blocks.inlineMath.hint'),
+    icon: FunctionIcon,
+    group: 'advanced',
+    shortcut: '$$',
+    aliases: [
+      'math',
+      'equation',
+      'inline',
+      'latex',
+      'formula',
+      '公式',
+      '行内公式',
+      'gongshi',
+      'gs'
+    ],
+    apply: (c) => c.insertContent({ type: 'inlineMath', attrs: { latex: '' } }),
+    after: (editor) => {
+      const pos = findNear(editor, 'inlineMath')
+      if (pos !== null) openMathEditor(editor, pos, 'inline')
+    }
   }
 ]
+
+/** The position of the nearest `type` node at or before the caret (the one just inserted). */
+function findNear(editor: Editor, type: string): number | null {
+  const { from } = editor.state.selection
+  let found: number | null = null
+  editor.state.doc.nodesBetween(
+    Math.max(0, from - 4),
+    Math.min(editor.state.doc.content.size, from + 1),
+    (node, pos) => {
+      if (node.type.name === type) found = pos
+    }
+  )
+  return found
+}
 
 /** Ranks exact alias/title match, then prefix, then substring; empty query keeps catalog order. */
 export function filterBlockTypes(query: string, types: BlockType[] = BLOCK_TYPES): BlockType[] {

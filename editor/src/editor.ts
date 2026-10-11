@@ -7,11 +7,14 @@ import { Placeholder } from '@tiptap/extensions'
 import StarterKit from '@tiptap/starter-kit'
 
 import { blockHandleExtensions } from './extensions/block-handle'
+import { Callout } from './extensions/callout'
 import { CodeBlock } from './extensions/code-block'
 import { Colors, ColorTextStyle } from './extensions/colors'
 import { EdgeNavigation } from './extensions/edge-navigation'
+import { mathExtension } from './extensions/math'
 import { SelectionMenuExtension } from './extensions/selection-menu'
 import { SlashCommand } from './extensions/slash-command'
+import { Quote, toggleExtensions } from './extensions/toggle'
 import { t } from './i18n'
 import { isSafeHref } from './links'
 import type { Command } from './protocol'
@@ -36,7 +39,10 @@ export const BLOCK_ID_TYPES = [
   'taskItem',
   'bulletList',
   'orderedList',
-  'taskList'
+  'taskList',
+  'details',
+  'callout',
+  'blockMath'
 ]
 
 /** The page body editor. `content` must already be normalized (see normalizeBody). */
@@ -56,9 +62,14 @@ export function createEditor(
       StarterKit.configure({
         // Only allowlisted targets are stored or rendered (links.ts); hikki:// links open pages.
         link: { openOnClick: false, protocols: ['hikki'], isAllowedUri: (url) => isSafeHref(url) },
-        codeBlock: false
+        codeBlock: false,
+        blockquote: false
       }),
       CodeBlock,
+      Quote,
+      ...toggleExtensions,
+      Callout,
+      mathExtension(),
       TaskList,
       TaskItem.configure({ nested: true }),
       ColorTextStyle,

@@ -99,6 +99,47 @@ export function BlockPreview({ id }: { id: string }) {
           <Line w="40%" className="ml-3 bg-ink-red/50" />
         </div>
       )
+    case 'toggle':
+      return (
+        <div className="flex flex-col gap-2">
+          {['75%', '60%'].map((w, i) => (
+            <div key={w} className="flex items-center gap-2">
+              <span
+                className={cn(
+                  'size-0 flex-none border-y-[3.5px] border-l-[5px] border-y-transparent border-l-muted-foreground',
+                  i === 0 && 'rotate-90'
+                )}
+              />
+              <Line w={w} />
+            </div>
+          ))}
+          <div className="pl-3.5">
+            <Lines widths={['80%']} />
+          </div>
+        </div>
+      )
+    case 'callout':
+      return (
+        <div className="flex gap-2 rounded-sm bg-wash-gray p-2">
+          <span className="text-xs leading-none">💡</span>
+          <Lines widths={['90%', '70%']} />
+        </div>
+      )
+    case 'blockMath':
+      return (
+        <div className="flex flex-col items-center gap-2">
+          <span className="font-serif text-base text-foreground/70 italic">∑ x² = y</span>
+          <Lines widths={['60%']} />
+        </div>
+      )
+    case 'inlineMath':
+      return (
+        <div className="flex items-center gap-1.5">
+          <Line w="30%" />
+          <span className="font-serif text-xs text-foreground/70 italic">e^iπ</span>
+          <Line w="35%" />
+        </div>
+      )
     case 'divider':
       return (
         <div className="flex flex-col gap-2.5">

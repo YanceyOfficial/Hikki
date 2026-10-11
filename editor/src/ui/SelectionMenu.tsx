@@ -2,9 +2,11 @@ import {
   CaretRight,
   Check,
   Code,
+  DotsThree,
   Eraser,
   type Icon,
   LinkSimple,
+  MathOperations,
   TextB,
   TextItalic,
   TextStrikethrough,
@@ -18,28 +20,15 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 import { BLOCK_TYPES } from '../blocks'
-import { PALETTE, type PaletteColor } from '../extensions/colors'
+import { colorLabel, PALETTE, type PaletteColor } from '../extensions/colors'
 import { t } from '../i18n'
 import { isSafeHref, normalizeHref } from '../links'
 import { cn } from './cn'
 import { useEditorSnapshot } from './use-editor-snapshot'
 
-type Panel = 'turnInto' | 'color' | 'link' | null
+type Panel = 'turnInto' | 'color' | 'link' | 'more' | null
 
 const TURN_INTO = BLOCK_TYPES.filter((b) => b.turnInto)
-
-/** Color names, spelled out so the l10n audit sees every key. */
-const COLOR_LABEL: Record<PaletteColor, () => string> = {
-  gray: () => t('color.gray'),
-  brown: () => t('color.brown'),
-  orange: () => t('color.orange'),
-  yellow: () => t('color.yellow'),
-  green: () => t('color.green'),
-  blue: () => t('color.blue'),
-  purple: () => t('color.purple'),
-  pink: () => t('color.pink'),
-  red: () => t('color.red')
-}
 
 /** What the menu shows; recomputed per transaction, re-rendered only on change. */
 function snapshot(editor: Editor) {
@@ -165,18 +154,20 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
             onClick={() => run((c) => c.toggleCode())}
           />
           <MarkButton
-            icon={TextSuperscript}
-            label={t('format.superscript')}
-            keys="⌘."
-            active={state.superscript}
-            onClick={() => run((c) => c.toggleSuperscript())}
+            icon={MathOperations}
+            label={t('format.math')}
+            active={false}
+            onClick={() => {
+              const { from, to } = editor.state.selection
+              const latex = editor.state.doc.textBetween(from, to, ' ')
+              run((c) => c.insertContentAt({ from, to }, { type: 'inlineMath', attrs: { latex } }))
+            }}
           />
           <MarkButton
-            icon={TextSubscript}
-            label={t('format.subscript')}
-            keys="⌘,"
-            active={state.subscript}
-            onClick={() => run((c) => c.toggleSubscript())}
+            icon={DotsThree}
+            label={t('format.more')}
+            active={panel === 'more' || state.superscript || state.subscript}
+            onClick={() => toggle('more')}
           />
         </div>
       </div>
@@ -204,6 +195,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
                     className={rowClass}
                     onClick={() => {
                       block.turnInto?.(editor.chain().focus()).run()
+                      block.after?.(editor)
                       setPanel(null)
                     }}
                   >
@@ -213,6 +205,32 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
                   </button>
                 )
               })}
+            </div>
+          )}
+          {panel === 'more' && (
+            <div role="menu" aria-label={t('format.more')}>
+              <button
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={state.superscript}
+                className={rowClass}
+                onClick={() => run((c) => c.toggleSuperscript())}
+              >
+                <TextSuperscript size={18} className="text-subtle-foreground" aria-hidden />
+                <span className="flex-1 truncate">{t('format.superscript')}</span>
+                <span className="text-xs text-placeholder">⌘.</span>
+              </button>
+              <button
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={state.subscript}
+                className={rowClass}
+                onClick={() => run((c) => c.toggleSubscript())}
+              >
+                <TextSubscript size={18} className="text-subtle-foreground" aria-hidden />
+                <span className="flex-1 truncate">{t('format.subscript')}</span>
+                <span className="text-xs text-placeholder">⌘,</span>
+              </button>
             </div>
           )}
           {panel === 'color' && (
@@ -374,7 +392,7 @@ function ColorRow({
       onClick={onPick}
     >
       {children}
-      <span className="flex-1 truncate">{color ? COLOR_LABEL[color]() : t('color.default')}</span>
+      <span className="flex-1 truncate">{color ? colorLabel(color) : t('color.default')}</span>
       {selected && <Check size={14} aria-hidden />}
     </button>
   )

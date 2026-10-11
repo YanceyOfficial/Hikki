@@ -125,6 +125,57 @@
     @apply rounded-sm bg-code px-1.5 py-0.5 font-mono text-code-foreground;
     font-size: 85%;
   }
+  /* Toggle list (extensions/toggle.ts): caret button + summary; content shows when open. */
+  .tiptap .hk-toggle {
+    @apply my-0.5 flex items-start gap-1;
+  }
+  .tiptap .hk-toggle > button {
+    @apply mt-[5px] grid size-5 flex-none cursor-pointer place-items-center rounded-sm text-subtle-foreground hover:bg-accent;
+  }
+  .tiptap .hk-toggle > button svg {
+    @apply size-3 transition-transform duration-150 ease-out;
+  }
+  .tiptap .hk-toggle.is-open > button svg {
+    @apply rotate-90;
+  }
+  .tiptap .hk-toggle > div {
+    @apply min-w-0 flex-1;
+  }
+  .tiptap .hk-toggle [data-type='detailsContent'] {
+    @apply pl-0.5;
+  }
+  .tiptap .hk-toggle:not(.is-open) > div > [data-type='detailsContent'] {
+    @apply hidden;
+  }
+
+  /* Callout (extensions/callout.tsx): emoji + content on a wash background (gray by default). */
+  .tiptap .hk-callout {
+    @apply my-1 flex gap-2 rounded-md bg-wash-gray px-3 py-3;
+  }
+  .tiptap .hk-callout-icon {
+    @apply -ml-0.5 flex-none select-none;
+  }
+  .tiptap .hk-callout-content {
+    @apply min-w-0 flex-1 pt-px;
+  }
+
+  /* Formulas (extensions/math.tsx). */
+  .tiptap [data-type='block-math'] {
+    @apply my-1 cursor-pointer overflow-x-auto rounded-md px-2 py-3 text-center hover:bg-accent;
+  }
+  .tiptap [data-type='inline-math'] {
+    @apply cursor-pointer rounded-sm px-0.5 hover:bg-accent;
+  }
+  .tiptap [data-type='block-math']:empty::before,
+  .tiptap .block-math-inner:empty::before {
+    @apply text-placeholder;
+    content: 'TeX';
+  }
+  .tiptap .block-math-error,
+  .tiptap .inline-math-error {
+    @apply font-mono text-destructive;
+  }
+
   /* Code block (extensions/code-block.tsx): header bar + pre; Xcode's Default themes via syntax-* tokens. */
   .tiptap .hk-code-block {
     @apply my-1 rounded-md bg-code/50;
