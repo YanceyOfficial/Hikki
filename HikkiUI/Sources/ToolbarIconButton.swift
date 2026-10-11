@@ -7,6 +7,7 @@ public struct ToolbarIconButton: View {
     private let symbol: Icon
     private let isActive: Bool
     private let action: () -> Void
+    @Environment(\.colorTone) private var tone
 
     public init(_ title: LocalizedStringKey, symbol: Icon, isActive: Bool = false, action: @escaping () -> Void) {
         self.title = title
@@ -20,8 +21,8 @@ public struct ToolbarIconButton: View {
             IconLabel(title, icon: symbol, size: TextSize.lg.rawValue)
                 .labelStyle(.iconOnly)
                 .frame(width: 40, height: 36)
-                .foregroundStyle(isActive ? Color.accentColor : .primary)
-                .background(isActive ? Color.accentColor.opacity(0.12) : .clear, in: .rect(cornerRadius: Radius.lg))
+                .foregroundStyle(isActive ? tone.ink : .primary)
+                .background(isActive ? tone.selectionFill : .clear, in: .rect(cornerRadius: Radius.lg))
                 .contentShape(.rect)
         }
         .buttonStyle(.plain)

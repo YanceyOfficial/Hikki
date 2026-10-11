@@ -7,7 +7,7 @@
   --card-foreground: #37352f;
   --popover: #ffffff;
   --popover-foreground: #37352f;
-  --primary: #2383e2;
+  --primary: #1c1c1c;
   --primary-foreground: #ffffff;
   --secondary: rgba(55, 53, 47, 0.06);
   --secondary-foreground: #37352f;
@@ -18,17 +18,17 @@
   --destructive: #e03e3e;
   --border: rgba(55, 53, 47, 0.09);
   --input: rgba(55, 53, 47, 0.16);
-  --ring: rgba(35, 131, 226, 0.35);
+  --ring: rgba(28, 28, 28, 0.3);
   --sidebar: #f8f8f7;
   --sidebar-foreground: rgba(55, 53, 47, 0.82);
-  --sidebar-primary: #2383e2;
+  --sidebar-primary: #1c1c1c;
   --sidebar-accent: rgba(55, 53, 47, 0.08);
   --sidebar-accent-foreground: #37352f;
   --sidebar-border: rgba(55, 53, 47, 0.09);
   --subtle-foreground: rgba(55, 53, 47, 0.65);
   --placeholder: rgba(55, 53, 47, 0.3);
   --accent-strong: rgba(55, 53, 47, 0.1);
-  --selection: rgba(35, 131, 226, 0.14);
+  --selection: rgba(28, 28, 28, 0.12);
   --code: rgba(135, 131, 120, 0.15);
   --code-foreground: #eb5757;
   --favorite: #f2b705;
@@ -56,8 +56,8 @@
     --card-foreground: rgba(255, 255, 255, 0.81);
     --popover: #252525;
     --popover-foreground: rgba(255, 255, 255, 0.81);
-    --primary: #2383e2;
-    --primary-foreground: #ffffff;
+    --primary: #e6e4df;
+    --primary-foreground: #141414;
     --secondary: rgba(255, 255, 255, 0.055);
     --secondary-foreground: rgba(255, 255, 255, 0.81);
     --muted: rgba(255, 255, 255, 0.055);
@@ -67,17 +67,17 @@
     --destructive: #ff7369;
     --border: rgba(255, 255, 255, 0.094);
     --input: rgba(255, 255, 255, 0.14);
-    --ring: rgba(35, 131, 226, 0.5);
+    --ring: rgba(230, 228, 223, 0.4);
     --sidebar: #202020;
     --sidebar-foreground: rgba(255, 255, 255, 0.78);
-    --sidebar-primary: #2383e2;
+    --sidebar-primary: #e6e4df;
     --sidebar-accent: rgba(255, 255, 255, 0.08);
     --sidebar-accent-foreground: rgba(255, 255, 255, 0.81);
     --sidebar-border: rgba(255, 255, 255, 0.094);
     --subtle-foreground: rgba(255, 255, 255, 0.6);
     --placeholder: rgba(255, 255, 255, 0.28);
     --accent-strong: rgba(255, 255, 255, 0.1);
-    --selection: rgba(35, 131, 226, 0.25);
+    --selection: rgba(230, 228, 223, 0.2);
     --code: rgba(135, 131, 120, 0.15);
     --code-foreground: #ff7369;
     --favorite: #f5c242;
@@ -91,6 +91,7 @@
   --sidebar-primary: #1c1c1c;
   --ring: rgba(28, 28, 28, 0.35);
   --tone-ink: #1c1c1c;
+  --selection: rgba(28, 28, 28, 0.16);
 }
 :root[data-tone='kurenai'] {
   --primary: #cb1b45;
@@ -98,27 +99,31 @@
   --sidebar-primary: #cb1b45;
   --ring: rgba(203, 27, 69, 0.35);
   --tone-ink: #cb1b45;
+  --selection: rgba(203, 27, 69, 0.16);
 }
 :root[data-tone='terigaki'] {
   --primary: #c46243;
-  --primary-foreground: #141414;
+  --primary-foreground: #ffffff;
   --sidebar-primary: #c46243;
   --ring: rgba(196, 98, 67, 0.35);
   --tone-ink: #ae573c;
+  --selection: rgba(196, 98, 67, 0.16);
 }
 :root[data-tone='kohaku'] {
   --primary: #ca7a2c;
-  --primary-foreground: #141414;
+  --primary-foreground: #ffffff;
   --sidebar-primary: #ca7a2c;
   --ring: rgba(202, 122, 44, 0.35);
   --tone-ink: #a06023;
+  --selection: rgba(202, 122, 44, 0.16);
 }
 :root[data-tone='wakatake'] {
   --primary: #569e77;
-  --primary-foreground: #141414;
+  --primary-foreground: #ffffff;
   --sidebar-primary: #569e77;
   --ring: rgba(86, 158, 119, 0.35);
   --tone-ink: #437b5d;
+  --selection: rgba(86, 158, 119, 0.16);
 }
 :root[data-tone='seiheki'] {
   --primary: #268785;
@@ -126,6 +131,7 @@
   --sidebar-primary: #268785;
   --ring: rgba(38, 135, 133, 0.35);
   --tone-ink: #237c7a;
+  --selection: rgba(38, 135, 133, 0.16);
 }
 :root[data-tone='edomurasaki'] {
   --primary: #77428d;
@@ -133,15 +139,17 @@
   --sidebar-primary: #77428d;
   --ring: rgba(119, 66, 141, 0.35);
   --tone-ink: #77428d;
+  --selection: rgba(119, 66, 141, 0.16);
 }
 
 @media (prefers-color-scheme: dark) {
   :root[data-tone='sumi'], :root:not([data-tone]) {
-    --primary: #e6e4df;
-    --primary-foreground: #141414;
-    --sidebar-primary: #e6e4df;
-    --ring: rgba(230, 228, 223, 0.5);
-    --tone-ink: #e6e4df;
+    --primary: #959491;
+    --primary-foreground: #ffffff;
+    --sidebar-primary: #959491;
+    --ring: rgba(149, 148, 145, 0.5);
+    --tone-ink: #959491;
+    --selection: rgba(149, 148, 145, 0.3);
   }
   :root[data-tone='kurenai'] {
     --primary: #cc2049;
@@ -149,27 +157,31 @@
     --sidebar-primary: #cc2049;
     --ring: rgba(204, 32, 73, 0.5);
     --tone-ink: #db617e;
+    --selection: rgba(204, 32, 73, 0.3);
   }
   :root[data-tone='terigaki'] {
     --primary: #c46243;
-    --primary-foreground: #141414;
+    --primary-foreground: #ffffff;
     --sidebar-primary: #c46243;
     --ring: rgba(196, 98, 67, 0.5);
     --tone-ink: #c97054;
+    --selection: rgba(196, 98, 67, 0.3);
   }
   :root[data-tone='kohaku'] {
     --primary: #ca7a2c;
-    --primary-foreground: #141414;
+    --primary-foreground: #ffffff;
     --sidebar-primary: #ca7a2c;
     --ring: rgba(202, 122, 44, 0.5);
     --tone-ink: #ca7a2c;
+    --selection: rgba(202, 122, 44, 0.3);
   }
   :root[data-tone='wakatake'] {
-    --primary: #5dac81;
-    --primary-foreground: #141414;
-    --sidebar-primary: #5dac81;
-    --ring: rgba(93, 172, 129, 0.5);
-    --tone-ink: #5dac81;
+    --primary: #58a37b;
+    --primary-foreground: #ffffff;
+    --sidebar-primary: #58a37b;
+    --ring: rgba(88, 163, 123, 0.5);
+    --tone-ink: #58a37b;
+    --selection: rgba(88, 163, 123, 0.3);
   }
   :root[data-tone='seiheki'] {
     --primary: #268785;
@@ -177,6 +189,7 @@
     --sidebar-primary: #268785;
     --ring: rgba(38, 135, 133, 0.5);
     --tone-ink: #409594;
+    --selection: rgba(38, 135, 133, 0.3);
   }
   :root[data-tone='edomurasaki'] {
     --primary: #87599b;
@@ -184,6 +197,7 @@
     --sidebar-primary: #87599b;
     --ring: rgba(135, 89, 155, 0.5);
     --tone-ink: #a07cb0;
+    --selection: rgba(135, 89, 155, 0.3);
   }
 }
 

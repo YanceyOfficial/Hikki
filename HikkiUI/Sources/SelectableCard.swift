@@ -38,7 +38,7 @@ public struct SelectableCard: View {
             }
             .padding(Spacing.s4)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(isSelected ? Theme.selection : hovering ? Theme.accent : Theme.card, in: .rect(cornerRadius: Radius.lg))
+            .background(isSelected ? tone.selectionFill : hovering ? Theme.accent : Theme.card, in: .rect(cornerRadius: Radius.lg))
             .overlay(
                 RoundedRectangle(cornerRadius: Radius.lg)
                     .strokeBorder(isSelected ? tone.fill : Theme.border, lineWidth: isSelected ? 1.5 : 1)

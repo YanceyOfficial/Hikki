@@ -55,6 +55,18 @@ function reach(color, target, surfaces, ratio, what) {
   throw new Error(`tone: cannot reach ${ratio}:1 for ${what}`)
 }
 const surface = (name, mode) => parseColor(tokens.color[name][mode]).rgb
+/** The fill: as close to the preset as possible (either direction) while ≥3:1 on the page and sidebar and
+ *  carrying white bold text (≥3:1) — selected sidebar rows and buttons are always white on the tone. */
+function fillFor(color, surfaces, what) {
+  const ok = (c) => surfaces.every((s) => contrast(c, s) >= 3) && contrast(c, 0xffffff) >= 3
+  for (let t = 0; t <= 1.0001; t += 0.01) {
+    for (const target of [0x000000, 0xffffff]) {
+      const c = mix(color, target, t)
+      if (ok(c)) return c
+    }
+  }
+  throw new Error(`tone: no fill for ${what} reaches 3:1 on its surfaces and under white text`)
+}
 function tones() {
   const out = []
   for (const [name, v] of entries(tokens.tone.presets)) {
@@ -63,10 +75,12 @@ function tones() {
     for (const mode of ['light', 'dark']) {
       const away = mode === 'light' ? 0x000000 : 0xffffff
       const surfaces = [surface('background', mode), surface('sidebar', mode)]
-      const fill = reach(parseColor(base[mode]).rgb, away, surfaces, 3, `${name} ${mode} fill`)
+      const fill = fillFor(parseColor(base[mode]).rgb, surfaces, `${name} ${mode}`)
       const ink = reach(fill, away, surfaces, 4.6, `${name} ${mode} ink`)
-      const onFill = contrast(fill, 0xffffff) >= contrast(fill, 0x141414) ? 0xffffff : 0x141414
-      scheme[mode] = { fill, ink, onFill }
+      const [r, g, b] = channels(fill)
+      // Text highlight / drop targets: the fill, translucent.
+      const selection = `rgba(${r}, ${g}, ${b}, ${mode === 'light' ? 0.16 : 0.3})`
+      scheme[mode] = { fill, ink, onFill: 0xffffff, selection }
     }
     out.push({ name, ...scheme })
   }
@@ -112,11 +126,13 @@ function swift() {
   lines.push(`    case ${all.map((t) => camel(t.name)).join(', ')}`, '')
   lines.push(`    public static let standard = ColorTone.${camel(tokens.tone.default)}`)
   lines.push('    public var id: String { rawValue }', '')
-  for (const role of ['fill', 'ink', 'onFill']) {
+  for (const role of ['fill', 'ink', 'onFill', 'selectionFill']) {
     lines.push(`    public var ${role}: Color {`, '        switch self {')
     for (const t of all)
       lines.push(
-        `        case .${camel(t.name)}: Theme.dynamic(light: ${hex6(t.light[role])}, lightAlpha: 1, dark: ${hex6(t.dark[role])}, darkAlpha: 1)`
+        role === 'selectionFill'
+          ? `        case .${camel(t.name)}: Theme.dynamic(light: ${hex6(t.light.fill)}, lightAlpha: 0.16, dark: ${hex6(t.dark.fill)}, darkAlpha: 0.3)`
+          : `        case .${camel(t.name)}: Theme.dynamic(light: ${hex6(t.light[role])}, lightAlpha: 1, dark: ${hex6(t.dark[role])}, darkAlpha: 1)`
       )
     lines.push('        }', '    }', '')
   }
@@ -149,7 +165,8 @@ const toneVars = (t, mode, indent) => {
     `${indent}--primary-foreground: ${cssHex(onFill)};`,
     `${indent}--sidebar-primary: ${cssHex(fill)};`,
     `${indent}--ring: rgba(${r}, ${g}, ${b}, ${mode === 'light' ? 0.35 : 0.5});`,
-    `${indent}--tone-ink: ${cssHex(ink)};`
+    `${indent}--tone-ink: ${cssHex(ink)};`,
+    `${indent}--selection: ${t[mode].selection};`
   ]
 }
 

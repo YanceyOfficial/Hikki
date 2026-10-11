@@ -23,6 +23,7 @@ struct SidebarView: View {
 
 private struct DesktopSidebar: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.colorTone) private var colorTone
     @Bindable var navigator: Navigator
     @State private var privateTargeted = false
 
@@ -58,7 +59,7 @@ private struct DesktopSidebar: View {
                         SidebarIconButton("app:page.new", symbol: .plus) { navigator.newPage() }
                             .accessibilityIdentifier("new-page-section")
                     }
-                    .background(privateTargeted ? Theme.selection : .clear, in: .rect(cornerRadius: Radius.md))
+                    .background(privateTargeted ? colorTone.selectionFill : .clear, in: .rect(cornerRadius: Radius.md))
                     .onDrop(
                         of: [.plainText], delegate: SectionDropDelegate(navigator: navigator, model: model, isTargeted: $privateTargeted))
                     if model.tree.roots.isEmpty {
@@ -146,7 +147,9 @@ private struct DesktopPageRow: View {
         }
         .contentShape(.rect)
         .onTapGesture { navigator.open(page.id) }
-        .sidebarItemBackground(isSelected: selected || indicator == .inside, highlight: indicator == .inside ? Theme.selection : nil)
+        .sidebarItemBackground(
+            isSelected: selected || indicator == .inside, highlight: indicator == .inside ? colorTone.selectionFill : nil
+        )
         .overlay(alignment: indicator == .before ? .top : .bottom) {
             if indicator == .before || indicator == .after {
                 colorTone.fill.frame(height: 2).clipShape(.capsule).padding(.leading, CGFloat(depth) * Spacing.s3_5 + Spacing.s2)
@@ -332,7 +335,8 @@ private struct PhoneSidebar: View {
             if !model.tree.favorites.isEmpty {
                 Section {
                     ForEach(model.tree.favorites) { page in
-                        SidebarDestination(route: .page(page.id), navigator: navigator, wide: wideSidebar) {
+                        // A shortcut: the selection shows on the page's own row in the tree, once (like a native list).
+                        SidebarDestination(route: .page(page.id), navigator: navigator, wide: wideSidebar, showsSelection: false) {
                             NativePageLabel(page: page)
                         }
                         .contextMenu { PageActions(page: page, navigator: navigator) }
@@ -443,12 +447,13 @@ private struct SidebarDestination<Label: View>: View {
     let route: Route
     let navigator: Navigator
     let wide: Bool
+    var showsSelection = true
     @ViewBuilder let label: Label
     @Environment(\.colorTone) private var colorTone
 
     var body: some View {
         if wide {
-            let selected = navigator.route == route
+            let selected = showsSelection && navigator.route == route
             Button {
                 if let id = route.pageID { navigator.open(id) } else { navigator.go(route) }
             } label: {
@@ -458,6 +463,7 @@ private struct SidebarDestination<Label: View>: View {
                     // On the tone's fill: title and symbol switch to its on-fill colour.
                     .environment(\.sidebarRowSelected, selected)
                     .foregroundStyle(selected ? colorTone.onFill : Theme.foreground)
+                    .fontWeight(selected ? .semibold : nil)
             }
             .buttonStyle(.plain)
             // The selection in the colour tone, like the system highlight would be in its accent.

@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 /// this device). Creates the workspace; the root view then switches to the app.
 struct OnboardingView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.colorTone) private var tone
     @State private var step: Step = .welcome
     @State private var name = OnboardingView.defaultName
     @State private var nameSelection: TextSelection?
@@ -86,7 +87,7 @@ struct OnboardingView: View {
                 }
             }
             .padding(Spacing.s3)
-            .overlay(RoundedRectangle(cornerRadius: Radius.lg).strokeBorder(nameFocused ? Theme.ring : Theme.border))
+            .overlay(RoundedRectangle(cornerRadius: Radius.lg).strokeBorder(nameFocused ? tone.fill : Theme.border))
             // The suggested name arrives focused and selected: typing replaces it, Return keeps it.
             .onAppear { nameFocused = true }
             .onChange(of: nameFocused) { _, focused in
