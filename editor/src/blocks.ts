@@ -4,6 +4,7 @@ import {
   Function as FunctionIcon,
   Info,
   Sigma,
+  Table,
   Code,
   type Icon,
   ListBullets,
@@ -241,6 +242,17 @@ export const BLOCK_TYPES: BlockType[] = [
     shortcut: '---',
     aliases: ['divider', 'hr', 'line', 'separator', '分割线', '分隔线', 'fengexian', 'fgx'],
     apply: (c) => c.setHorizontalRule()
+  },
+  {
+    id: 'table',
+    title: 'Table',
+    hint: 'Rows and columns',
+    label: () => t('blocks.table.title'),
+    description: () => t('blocks.table.hint'),
+    icon: Table,
+    group: 'advanced',
+    aliases: ['table', 'grid', 'spreadsheet', '表格', 'biaoge', 'bg'],
+    apply: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true })
   },
   {
     id: 'blockMath',

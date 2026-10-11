@@ -76,6 +76,10 @@
     "inlineMath": {
       "title": "行内公式",
       "hint": "在文字中插入公式（LaTeX）"
+    },
+    "table": {
+      "title": "表格",
+      "hint": "行与列"
     }
   },
   "cover": {
@@ -188,5 +192,25 @@
   "toggle": {
     "expand": "展开",
     "collapse": "收起"
+  },
+  "table": {
+    "rowMenu": "行选项",
+    "columnMenu": "列选项",
+    "insertAbove": "在上方插入",
+    "insertBelow": "在下方插入",
+    "insertLeft": "在左侧插入",
+    "insertRight": "在右侧插入",
+    "headerRow": "标题行",
+    "headerColumn": "标题列",
+    "sortAscending": "升序排列",
+    "sortDescending": "降序排列",
+    "color": "颜色",
+    "clear": "清除内容",
+    "deleteRow": "删除行",
+    "deleteColumn": "删除列",
+    "addRow": "添加一行",
+    "addColumn": "添加一列",
+    "merge": "合并单元格",
+    "split": "拆分单元格"
   }
 }

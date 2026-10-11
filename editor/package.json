@@ -26,6 +26,7 @@
     "@tiptap/extension-mathematics": "3.31.4",
     "@tiptap/extension-subscript": "3.31.4",
     "@tiptap/extension-superscript": "3.31.4",
+    "@tiptap/extension-table": "3.31.4",
     "@tiptap/extension-text-style": "3.31.4",
     "@tiptap/extension-unique-id": "3.31.4",
     "@tiptap/extensions": "3.31.4",

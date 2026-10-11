@@ -14,6 +14,7 @@ import { EdgeNavigation } from './extensions/edge-navigation'
 import { mathExtension } from './extensions/math'
 import { SelectionMenuExtension } from './extensions/selection-menu'
 import { SlashCommand } from './extensions/slash-command'
+import { tableExtensions } from './extensions/table'
 import { Quote, toggleExtensions } from './extensions/toggle'
 import { t } from './i18n'
 import { isSafeHref } from './links'
@@ -42,7 +43,8 @@ export const BLOCK_ID_TYPES = [
   'taskList',
   'details',
   'callout',
-  'blockMath'
+  'blockMath',
+  'table'
 ]
 
 /** The page body editor. `content` must already be normalized (see normalizeBody). */
@@ -70,6 +72,7 @@ export function createEditor(
       ...toggleExtensions,
       Callout,
       mathExtension(),
+      ...tableExtensions,
       TaskList,
       TaskItem.configure({ nested: true }),
       ColorTextStyle,

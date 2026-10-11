@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { Editor } from '@tiptap/core'
 import katex from 'katex'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -102,8 +102,9 @@ describe('callout', () => {
     const json = editor.getJSON().content?.[0]
     expect(json).toMatchObject({ type: 'callout', attrs: { icon: '💡', color: null } })
     expect(editor.getText()).toContain('Remember this')
-    await settle()
-    expect(host.querySelector('.hk-callout [aria-label="Change icon"]')?.textContent).toBe('💡')
+    await waitFor(() =>
+      expect(host.querySelector('.hk-callout [aria-label="Change icon"]')?.textContent).toBe('💡')
+    )
   })
 
   it('round-trips through HTML (icon and palette color)', () => {

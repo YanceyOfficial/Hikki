@@ -159,6 +159,36 @@
     @apply min-w-0 flex-1 pt-px;
   }
 
+  /* Tables (extensions/table.tsx): TableKit with column resizing; controls are an overlay. */
+  .tiptap .tableWrapper {
+    @apply my-2 overflow-x-auto pt-2.5 pb-1;
+  }
+  .tiptap table {
+    @apply w-max min-w-full table-fixed border-collapse;
+  }
+  .tiptap td,
+  .tiptap th {
+    @apply relative border border-border px-2 py-1.5 text-left align-top;
+    min-width: 6rem;
+  }
+  .tiptap th {
+    @apply bg-muted/60 font-medium;
+  }
+  .tiptap td > p,
+  .tiptap th > p {
+    @apply py-0;
+  }
+  .tiptap .selectedCell::after {
+    @apply pointer-events-none absolute inset-0 bg-selection;
+    content: '';
+  }
+  .tiptap .column-resize-handle {
+    @apply pointer-events-none absolute top-0 -right-px -bottom-px w-0.5 bg-primary;
+  }
+  .tiptap.resize-cursor {
+    cursor: col-resize;
+  }
+
   /* Formulas (extensions/math.tsx). */
   .tiptap [data-type='block-math'] {
     @apply my-1 cursor-pointer overflow-x-auto rounded-md px-2 py-3 text-center hover:bg-accent;
