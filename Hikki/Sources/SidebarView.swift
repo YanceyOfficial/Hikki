@@ -444,21 +444,29 @@ private struct SidebarDestination<Label: View>: View {
     let navigator: Navigator
     let wide: Bool
     @ViewBuilder let label: Label
+    @Environment(\.colorTone) private var colorTone
 
     var body: some View {
         if wide {
+            let selected = navigator.route == route
             Button {
                 if let id = route.pageID { navigator.open(id) } else { navigator.go(route) }
             } label: {
-                label.frame(maxWidth: .infinity, alignment: .leading).contentShape(.rect)
+                label
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(.rect)
+                    // On the tone's fill: title and symbol switch to its on-fill colour.
+                    .environment(\.sidebarRowSelected, selected)
+                    .foregroundStyle(selected ? colorTone.onFill : Theme.foreground)
             }
             .buttonStyle(.plain)
+            // The selection in the colour tone, like the system highlight would be in its accent.
             .listRowBackground(
                 RoundedRectangle(cornerRadius: Radius.lg)
-                    .fill(navigator.route == route ? Theme.sidebarAccent : .clear)
+                    .fill(selected ? colorTone.fill : .clear)
                     .padding(.horizontal, Spacing.s2_5)
             )
-            .accessibilityAddTraits(navigator.route == route ? .isSelected : [])
+            .accessibilityAddTraits(selected ? .isSelected : [])
         } else {
             NavigationLink(value: route) { label }
         }
@@ -470,6 +478,7 @@ private struct NativeSymbolLabel: View {
     let title: LocalizedStringKey
     let icon: Icon
     @Environment(\.colorTone) private var colorTone
+    @Environment(\.sidebarRowSelected) private var selected
 
     init(_ title: LocalizedStringKey, icon: Icon) {
         self.title = title
@@ -482,8 +491,9 @@ private struct NativeSymbolLabel: View {
         } icon: {
             // One fixed, centred slot so symbols of different widths (house vs. magnifying glass) line up.
             icon.glyph.frame(width: Size.sidebarIcon + Spacing.s1)
-                // Explicit, so neither the system accent nor list tinting replaces the colour tone.
-                .foregroundStyle(colorTone.fill)
+                // Explicit, so neither the system accent nor list tinting replaces the colour tone; on the
+                // selection it takes the row's on-fill colour.
+                .foregroundStyle(selected ? colorTone.onFill : colorTone.fill)
         }
     }
 }
@@ -491,11 +501,12 @@ private struct NativeSymbolLabel: View {
 /// A system sidebar row for a page: its emoji (or the page glyph) + title, system font.
 private struct NativePageLabel: View {
     let page: PageSummary
+    @Environment(\.sidebarRowSelected) private var selected
 
     var body: some View {
         Label {
             if page.title.isEmpty {
-                Text("app:page.untitled").foregroundStyle(.secondary)
+                Text("app:page.untitled").foregroundStyle(selected ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
             } else {
                 Text(verbatim: page.title)  // the page's own title
             }
@@ -696,4 +707,9 @@ private struct NativeSidebarChrome: ViewModifier {
         }
     }
 
+}
+
+extension EnvironmentValues {
+    /// Set on a selected native sidebar row (Mac/iPad), so its label draws on the tone's fill.
+    @Entry var sidebarRowSelected = false
 }
