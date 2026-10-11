@@ -12,24 +12,28 @@ struct PageScreen: View {
 
     var body: some View {
         let page = model.tree.page(pageID)
-        EditorView(controller: editor)
-            .ignoresSafeArea(.container, edges: .bottom)
-            .navigationTitle(page.map { $0.title.isEmpty ? String(localized: "app:page.untitled") : $0.title } ?? "")
-            #if os(macOS)
-                .navigationSubtitle(
-                    page.map { Text("app:page.edited \($0.updatedAt, format: .relative(presentation: .named))") } ?? Text(verbatim: ""))
-            #endif
-            #if os(iOS)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    if phoneToolbar, let page {
-                        ToolbarItemGroup(placement: .primaryAction) {
-                            FavoriteButton(page: page)
-                            PageMoreMenu(page: page, navigator: navigator)
-                        }
+        // The page runs under the window toolbar (Photos-style glass); the toolbar's height becomes the
+        // editor's top inset so the first line still starts below it.
+        GeometryReader { proxy in
+            EditorView(controller: editor, topInset: proxy.safeAreaInsets.top)
+                .ignoresSafeArea(.container, edges: [.top, .bottom])
+        }
+        .navigationTitle(page.map { $0.title.isEmpty ? String(localized: "app:page.untitled") : $0.title } ?? "")
+        #if os(macOS)
+            .navigationSubtitle(
+                page.map { Text("app:page.edited \($0.updatedAt, format: .relative(presentation: .named))") } ?? Text(verbatim: ""))
+        #endif
+        #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if phoneToolbar, let page {
+                    ToolbarItemGroup(placement: .primaryAction) {
+                        FavoriteButton(page: page)
+                        PageMoreMenu(page: page, navigator: navigator)
                     }
                 }
-            #endif
+            }
+        #endif
     }
 }
 

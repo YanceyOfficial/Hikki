@@ -28,14 +28,16 @@ public struct TabStrip<Leading: View>: View {
     private let onBack: () -> Void
     private let onForward: () -> Void
     private let leading: Leading
+    private let showsHistory: Bool
     @Environment(\.chromeMetrics) private var metrics
 
     public init(
         items: [TabStripItem], activeID: UUID, canGoBack: Bool, canGoForward: Bool,
         onSelect: @escaping (UUID) -> Void, onClose: @escaping (UUID) -> Void, onNew: @escaping () -> Void,
-        onBack: @escaping () -> Void, onForward: @escaping () -> Void,
+        onBack: @escaping () -> Void, onForward: @escaping () -> Void, showsHistory: Bool = true,
         @ViewBuilder leading: () -> Leading = { EmptyView() }
     ) {
+        self.showsHistory = showsHistory
         self.items = items
         self.activeID = activeID
         self.canGoBack = canGoBack
@@ -53,12 +55,15 @@ public struct TabStrip<Leading: View>: View {
     public var body: some View {
         HStack(spacing: Spacing.s1) {
             leading
-            SidebarIconButton("app:chrome.back", symbol: .caretLeft, action: onBack)
-                .disabled(!canGoBack)
-                .opacity(canGoBack ? 1 : 0.4)
-            SidebarIconButton("app:chrome.forward", symbol: .caretRight, action: onForward)
-                .disabled(!canGoForward)
-                .opacity(canGoForward ? 1 : 0.4)
+            // A native toolbar puts back/forward in their own glass group (showsHistory: false).
+            if showsHistory {
+                SidebarIconButton("app:chrome.back", symbol: .caretLeft, action: onBack)
+                    .disabled(!canGoBack)
+                    .opacity(canGoBack ? 1 : 0.4)
+                SidebarIconButton("app:chrome.forward", symbol: .caretRight, action: onForward)
+                    .disabled(!canGoForward)
+                    .opacity(canGoForward ? 1 : 0.4)
+            }
             HStack(spacing: Spacing.s0_5) {
                 ForEach(items) { item in
                     TabButton(
@@ -67,7 +72,7 @@ public struct TabStrip<Leading: View>: View {
                 }
             }
             SidebarIconButton("app:tabs.new", symbol: .plus, action: onNew)
-            Spacer(minLength: 24)
+            if showsHistory { Spacer(minLength: 24) }
         }
         .padding(.horizontal, Spacing.s2)
         .frame(height: metrics.barHeight)

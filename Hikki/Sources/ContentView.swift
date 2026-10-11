@@ -194,7 +194,15 @@ private struct NativeDetailToolbar: ToolbarContent {
     @Environment(AppModel.self) private var model
     let navigator: Navigator
 
+    // Photos' toolbar: each group is its own Liquid Glass capsule — back/forward, the tabs, the page's
+    // actions, and search on its own at the end.
     var body: some ToolbarContent {
+        ToolbarItemGroup(placement: .navigation) {
+            Button(action: navigator.goBack) { IconLabel("app:chrome.back", icon: .caretLeft) }
+                .disabled(!navigator.tabs.active.canGoBack)
+            Button(action: navigator.goForward) { IconLabel("app:chrome.forward", icon: .caretRight) }
+                .disabled(!navigator.tabs.active.canGoForward)
+        }
         ToolbarItem(placement: .principal) {
             TabStrip(
                 items: navigator.tabs.tabs.map { tab in tabItem(tab.id, tab.route) },
@@ -205,15 +213,25 @@ private struct NativeDetailToolbar: ToolbarContent {
                 onClose: { navigator.closeTab($0) },
                 onNew: { navigator.openInNewTab(.home) },
                 onBack: navigator.goBack,
-                onForward: navigator.goForward
+                onForward: navigator.goForward,
+                showsHistory: false
             )
-            .frame(minWidth: 320, idealWidth: 560, maxWidth: 720)  // design-lint: allow (toolbar item width)
+            .frame(minWidth: 240, idealWidth: 480, maxWidth: 640)  // design-lint: allow (toolbar item width)
         }
         if let id = navigator.route.pageID, let page = model.tree.page(id) {
             ToolbarItemGroup(placement: .primaryAction) {
                 FavoriteButton(page: page)
                 PageMoreMenu(page: page, navigator: navigator)
             }
+        }
+        ToolbarSpacer(.fixed, placement: .primaryAction)
+        ToolbarItem(placement: .primaryAction) {
+            Button {
+                navigator.isSearching = true
+            } label: {
+                IconLabel("app:nav.search", icon: .magnifyingGlass)
+            }
+            .accessibilityIdentifier("toolbar-search")
         }
     }
 
