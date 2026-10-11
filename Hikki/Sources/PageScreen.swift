@@ -2,7 +2,7 @@ import HikkiCore
 import HikkiUI
 import SwiftUI
 
-/// The editor for one page. On iPhone it also owns the nav-bar toolbar; wider layouts use `PageBar`.
+/// The editor for one page. On iPhone it also owns the nav-bar toolbar; wider layouts use the window toolbar.
 struct PageScreen: View {
     @Environment(AppModel.self) private var model
     let pageID: String
@@ -18,11 +18,21 @@ struct PageScreen: View {
             EditorView(controller: editor, topInset: proxy.safeAreaInsets.top)
                 .ignoresSafeArea(.container, edges: [.top, .bottom])
         }
-        .navigationTitle(page.map { $0.title.isEmpty ? String(localized: "app:page.untitled") : $0.title } ?? "")
+        .navigationTitle(page.map { Self.title($0) } ?? "")
         #if os(macOS)
-            .navigationSubtitle(
-                page.map { Text("app:page.edited \($0.updatedAt, format: .relative(presentation: .named))") } ?? Text(verbatim: ""))
+            // Breadcrumbs, natively: the path in the subtitle ("Parent › Child · Edited …")…
+            .navigationSubtitle(page.map(subtitle) ?? Text(verbatim: ""))
         #endif
+        // …and the title's menu jumps to any parent (as Finder's and Xcode's titles do).
+        .toolbarTitleMenu {
+            ForEach(ancestors.reversed()) { parent in
+                Button {
+                    navigator.open(parent.id)
+                } label: {
+                    Text(verbatim: (parent.icon.map { "\($0) " } ?? "") + Self.title(parent))
+                }
+            }
+        }
         #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -35,49 +45,19 @@ struct PageScreen: View {
             }
         #endif
     }
-}
 
-/// Notion's second row: breadcrumbs on the left; edited time, favorite and ⋯ on the right. Flat, no glass.
-struct PageBar: View {
-    @Environment(AppModel.self) private var model
-    let route: Route
-    let navigator: Navigator
+    /// Parents of the page, nearest last (root first).
+    private var ancestors: [PageSummary] { model.tree.path(to: pageID).dropLast() }
 
-    var body: some View {
-        HStack(spacing: Spacing.s1) {
-            switch route {
-            case .page(let id):
-                Breadcrumbs(model.tree.path(to: id).map { Crumb(id: $0.id, title: $0.title, icon: $0.icon) }) { navigator.open($0) }
-                Spacer(minLength: 8)
-                if let page = model.tree.page(id) {
-                    TimelineView(.periodic(from: .now, by: 60)) { _ in
-                        Text("app:page.edited \(page.updatedAt, format: .relative(presentation: .named))")
-                            .font(.hk(.md))
-                            .foregroundStyle(Theme.mutedForeground)
-                            .lineLimit(1)
-                    }
-                    .padding(.trailing, Spacing.s1_5)
-                    FavoriteButton(page: page)
-                    PageMoreMenu(page: page, navigator: navigator)
-                }
-            case .home:
-                barTitle("app:nav.home", symbol: .house)
-                Spacer()
-            case .trash:
-                barTitle("app:nav.trash", symbol: .trash)
-                Spacer()
-            }
-        }
-        .padding(.horizontal, Spacing.s3)
-        .frame(height: 44)
-        .background(Theme.background)
+    private func subtitle(_ page: PageSummary) -> Text {
+        let edited = Text("app:page.edited \(page.updatedAt, format: .relative(presentation: .named))")
+        guard !ancestors.isEmpty else { return edited }
+        // The page titles, shown as-is.
+        return Text(verbatim: ancestors.map(Self.title).joined(separator: " › ") + " · ") + edited
     }
 
-    private func barTitle(_ title: LocalizedStringKey, symbol: Icon) -> some View {
-        IconLabel(title, icon: symbol)
-            .font(.hk(.md, .medium))
-            .foregroundStyle(Theme.foreground)
-            .padding(.horizontal, Spacing.s1_5)
+    private static func title(_ page: PageSummary) -> String {
+        page.title.isEmpty ? String(localized: "app:page.untitled") : page.title
     }
 }
 

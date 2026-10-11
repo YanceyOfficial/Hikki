@@ -151,24 +151,3 @@ struct SearchPalette: View {
         dismiss()
     }
 }
-
-/// Centered floating card with a dimmed backdrop (Mac/iPad).
-struct SearchOverlay: View {
-    let navigator: Navigator
-
-    var body: some View {
-        ZStack(alignment: .top) {
-            Color.black.opacity(0.35)
-                .ignoresSafeArea()
-                .onTapGesture { navigator.isSearching = false }
-            SearchPalette(navigator: navigator) { navigator.isSearching = false }
-                .frame(maxWidth: 640)
-                .clipShape(.rect(cornerRadius: Radius.xl))
-                .overlay(RoundedRectangle(cornerRadius: Radius.xl).strokeBorder(Theme.border))
-                .shadow(color: .black.opacity(0.35), radius: 30, y: 12)
-                .padding(.horizontal, Spacing.s6)
-                .padding(.top, Spacing.s24)
-        }
-        .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
-    }
-}

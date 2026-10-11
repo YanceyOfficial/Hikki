@@ -40,7 +40,7 @@ struct OnboardingView: View {
         .animation(.snappy(duration: 0.25), value: step)
         .fileImporter(isPresented: $importing, allowedContentTypes: [.folder]) { result in pickFolder(result) }
         #if os(macOS)
-            .background(WindowChrome())
+            .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
             .ignoresSafeArea()
         #endif
     }

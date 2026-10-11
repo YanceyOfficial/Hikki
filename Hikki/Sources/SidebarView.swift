@@ -6,180 +6,16 @@ import SwiftUI
 /// iPhone keeps a List so rows push the page with native navigation.
 struct SidebarView: View {
     @Bindable var navigator: Navigator
-    let customChrome: Bool
-    /// The window is wide (Mac / regular iPad): native sidebar footer instead of the nav-bar menu.
+    /// The window is wide (Mac / regular iPad): our own rows in a stack, the workspace switcher at the bottom.
+    /// iPhone: a native List that pushes pages.
     var wide = false
 
     var body: some View {
-        if customChrome {
-            DesktopSidebar(navigator: navigator)
-        } else {
-            PhoneSidebar(navigator: navigator, wideSidebar: wide)
-        }
+        PhoneSidebar(navigator: navigator, wideSidebar: wide)
     }
 }
 
 // MARK: - Mac / iPad
-
-private struct DesktopSidebar: View {
-    @Environment(AppModel.self) private var model
-    @Environment(\.colorTone) private var colorTone
-    @Bindable var navigator: Navigator
-    @State private var privateTargeted = false
-
-    var body: some View {
-        VStack(spacing: Spacing.s0) {
-            SidebarSearchField("app:nav.search", shortcut: "⌘K") { navigator.isSearching = true }
-                .accessibilityIdentifier("sidebar-search")
-                .padding(.horizontal, Spacing.s3)
-                .padding(.top, Spacing.s3)
-            SidebarNavBar([
-                .init(id: "home", title: String(localized: "app:nav.home"), symbol: .house, isSelected: navigator.route == .home) {
-                    navigator.go(.home)
-                },
-                .init(id: "trash", title: String(localized: "app:nav.trash"), symbol: .trash, isSelected: navigator.route == .trash) {
-                    navigator.go(.trash)
-                },
-            ]) {
-                EmptyView()
-            }
-            .padding(.horizontal, Spacing.s2)
-            .padding(.top, Spacing.s2)
-            .padding(.bottom, Spacing.s1)
-            ScrollView {
-                VStack(alignment: .leading, spacing: Spacing.px) {
-                    if !model.tree.favorites.isEmpty {
-                        SectionTitle("app:sidebar.favorites")
-                        ForEach(model.tree.favorites) { page in
-                            pageRow(page, depth: 0, children: [])
-                        }
-                    }
-
-                    SectionTitle("app:sidebar.private") {
-                        SidebarIconButton("app:page.new", symbol: .plus) { navigator.newPage() }
-                            .accessibilityIdentifier("new-page-section")
-                    }
-                    .background(privateTargeted ? colorTone.selectionFill : .clear, in: .rect(cornerRadius: Radius.md))
-                    .onDrop(
-                        of: [.plainText], delegate: SectionDropDelegate(navigator: navigator, model: model, isTargeted: $privateTargeted))
-                    if model.tree.roots.isEmpty {
-                        item(Route?.none, "app:sidebar.addPage", symbol: .plus) { navigator.newPage() }
-                    }
-                    DesktopTree(nodes: model.tree.roots, depth: 0, navigator: navigator)
-                }
-                .padding(.vertical, Spacing.s1_5)
-            }
-            .scrollIndicators(.never)
-
-            WorkspaceSwitcher(navigator: navigator)
-                .padding(.horizontal, Spacing.s2)
-                .padding(.vertical, Spacing.s2)
-        }
-        .background(Theme.sidebar)
-        // Hairline between the sidebar and the page (the header draws its own segment above).
-        .overlay(alignment: .trailing) { Theme.sidebarBorder.frame(width: 1) }
-    }
-
-    private func item(
-        _ route: Route?, _ title: String.LocalizationValue, symbol: Icon, shortcut: String? = nil, badge: Int = 0,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack {
-                SidebarRow(
-                    String(localized: title), symbol: symbol, isSelected: route != nil && navigator.route == route,
-                    shortcut: shortcut)
-                if badge > 0 {
-                    Text(verbatim: "\(badge)").font(.hk(.xs)).foregroundStyle(Theme.mutedForeground)
-                }
-            }
-            .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-        .sidebarItemBackground(isSelected: route != nil && navigator.route == route)
-    }
-
-    private func pageRow(_ page: PageSummary, depth: Int, children: [PageNode]) -> some View {
-        DesktopPageRow(page: page, depth: depth, hasChildren: !children.isEmpty, navigator: navigator, expandable: false)
-    }
-}
-
-private struct DesktopTree: View {
-    let nodes: [PageNode]
-    let depth: Int
-    @Bindable var navigator: Navigator
-
-    var body: some View {
-        ForEach(nodes) { node in
-            DesktopPageRow(page: node.page, depth: depth, hasChildren: !node.children.isEmpty, navigator: navigator, expandable: true)
-            if navigator.expanded.contains(node.id) {
-                if node.children.isEmpty {
-                    Text("app:sidebar.noPagesInside")
-                        .font(.hk(.md))
-                        .foregroundStyle(Theme.mutedForeground)
-                        .padding(.leading, CGFloat(depth + 1) * Spacing.s3_5 + Spacing.s10)
-                        .frame(height: 28)
-                } else {
-                    DesktopTree(nodes: node.children, depth: depth + 1, navigator: navigator)
-                }
-            }
-        }
-    }
-}
-
-private struct DesktopPageRow: View {
-    @Environment(AppModel.self) private var model
-    @Environment(\.colorTone) private var colorTone
-    let page: PageSummary
-    let depth: Int
-    let hasChildren: Bool
-    @Bindable var navigator: Navigator
-    let expandable: Bool
-
-    var body: some View {
-        let selected = navigator.route == .page(page.id)
-        SidebarRow(
-            page.title, icon: page.icon, depth: depth, hasChildren: hasChildren,
-            isExpanded: expandable ? expansion : nil, isSelected: selected
-        ) {
-            PageRowMenu(page: page, navigator: navigator)
-            SidebarIconButton("app:page.addInside", symbol: .plus) { navigator.newPage(parentId: page.id) }
-        }
-        .contentShape(.rect)
-        .onTapGesture { navigator.open(page.id) }
-        .sidebarItemBackground(
-            isSelected: selected || indicator == .inside, highlight: indicator == .inside ? colorTone.selectionFill : nil
-        )
-        .overlay(alignment: indicator == .before ? .top : .bottom) {
-            if indicator == .before || indicator == .after {
-                colorTone.fill.frame(height: 2).clipShape(.capsule).padding(.leading, CGFloat(depth) * Spacing.s3_5 + Spacing.s2)
-                    .padding(.trailing, Spacing.s2)
-            }
-        }
-        .onDrag {
-            navigator.draggingPageID = page.id
-            return NSItemProvider(object: page.id as NSString)
-        }
-        .onDrop(of: [.plainText], delegate: PageRowDropDelegate(target: page.id, navigator: navigator, model: model))
-        .contextMenu { PageActions(page: page, navigator: navigator) }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isButton)
-        .accessibilityIdentifier("page-row-\(page.title)")
-        // Outline level for VoiceOver (and UI tests): "level 1" at the top, +1 per nesting.
-        .accessibilityValue(expandable ? "level \(depth + 1)" : "")
-    }
-
-    private var indicator: DropZone? {
-        navigator.dropIndicator?.pageID == page.id ? navigator.dropIndicator?.zone : nil
-    }
-
-    private var expansion: Binding<Bool> {
-        Binding(
-            get: { navigator.expanded.contains(page.id) },
-            set: { open in if open { navigator.expanded.insert(page.id) } else { navigator.expanded.remove(page.id) } }
-        )
-    }
-}
 
 /// Drop handling for one sidebar row: tracks the pointer to show before / inside / after, and
 /// moves the dragged page on drop (validity comes from `PageTree.destination`).
@@ -242,33 +78,6 @@ private struct SectionDropDelegate: DropDelegate {
     }
 }
 
-/// "app:sidebar.favorites" / "app:sidebar.private" label with optional hover-revealed trailing buttons.
-private struct SectionTitle<Trailing: View>: View {
-    let title: LocalizedStringKey
-    let trailing: Trailing
-    @State private var hovering = false
-
-    init(_ title: LocalizedStringKey, @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
-        self.title = title
-        self.trailing = trailing()
-    }
-
-    var body: some View {
-        HStack {
-            SidebarSectionHeader(title)
-            Spacer()
-            trailing.opacity(hovering ? 1 : 0)
-        }
-        .padding(.leading, Spacing.s3_5)
-        .padding(.trailing, Spacing.s2_5)
-        .padding(.top, Spacing.s3_5)
-        .frame(height: 40, alignment: .bottom)
-        .padding(.bottom, Spacing.s0_5)
-        .contentShape(.rect)
-        .onHover { hovering = $0 }
-    }
-}
-
 /// Top of the sidebar on Mac/iPad: workspace menu next to the traffic lights.
 /// Bottom of the sidebar (Notion): the workspace's badge and name; its menu holds Settings and the other
 /// workspace actions.
@@ -313,70 +122,26 @@ private struct PhoneSidebar: View {
     @Bindable var navigator: Navigator
     let wideSidebar: Bool
     @State private var renaming = false
+    @State private var privateTargeted = false
     @Environment(\.colorTone) private var colorTone
 
     var body: some View {
-        // Mac/iPad: no List selection — the system paints it in its own accent (blue), which an app can't
-        // recolour at runtime. Rows are buttons with a grey pill instead, icons in the colour tone (Apple Music).
-        List(selection: wideSidebar ? .constant(nil) : $navigator.sidebarSelection) {
-            Section {
-                // Mac/iPad: search is the glass field pinned above the list (NativeSidebarChrome).
-                if !wideSidebar {
-                    Button {
-                        navigator.isSearching = true
-                    } label: {
-                        NativeSymbolLabel("app:nav.search", icon: .magnifyingGlass)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("sidebar-search")
+        Group {
+            if wideSidebar {
+                // Mac/iPad: a plain scrolling stack of our own rows. A native List painted its selection in the
+                // system accent and swallowed row drops on iPad; selection, chevrons and icons are ours anyway,
+                // and the sidebar material comes from the split view column.
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: Spacing.px) { sections }
+                        .padding(.horizontal, Spacing.s4)
+                        .padding(.vertical, Spacing.s1)
                 }
-                SidebarDestination(route: .home, navigator: navigator, wide: wideSidebar) {
-                    NativeSymbolLabel("app:nav.home", icon: .house)
-                }
-            }
-
-            if !model.tree.favorites.isEmpty {
-                Section {
-                    ForEach(model.tree.favorites) { page in
-                        // A shortcut: the selection shows on the page's own row in the tree, once (like a native list).
-                        SidebarDestination(route: .page(page.id), navigator: navigator, wide: wideSidebar, showsSelection: false) {
-                            NativePageLabel(page: page)
-                        }
-                        .contextMenu { PageActions(page: page, navigator: navigator) }
-                    }
-                } header: {
-                    Text("app:sidebar.favorites")
-                }
-            }
-
-            Section {
-                if model.tree.roots.isEmpty {
-                    Button {
-                        navigator.newPage()
-                    } label: {
-                        NativeSymbolLabel("app:sidebar.addPage", icon: .plus)
-                    }
-                    .buttonStyle(.plain)
-                }
-                PhoneTree(nodes: model.tree.roots, depth: 0, navigator: navigator, wide: wideSidebar)
-            } header: {
-                // No "+" here: New page sits in the toolbar on every platform.
-                Text("app:sidebar.private")
-            }
-
-            Section {
-                SidebarDestination(route: .trash, navigator: navigator, wide: wideSidebar) {
-                    NativeSymbolLabel("app:nav.trash", icon: .trash)
-                }
-                .badge(model.trash.count)
+                .scrollIndicators(.never)
+            } else {
+                List(selection: $navigator.sidebarSelection) { sections }
+                    .listStyle(.sidebar)
             }
         }
-        .listStyle(.sidebar)
-        // Sidebar icons in the colour tone (the system would use its own accent).
-        // `.fixed`: `.preferred` lets macOS swap in the system accent.
-        .listItemTint(.fixed(colorTone.fill))
-        // EXPERIMENT: Mac/iPad keep the system sidebar material, with the workspace at the bottom (Apple Music
-        // puts the account there); iPhone keeps its tinted list and nav-bar menu.
         .modifier(NativeSidebarChrome(navigator: navigator, isWide: wideSidebar))
         .navigationTitle(model.workspace?.name ?? "Hikki")  // l10n: allow (the user's workspace name)
         .renameWorkspaceAlert(isPresented: $renaming)
@@ -405,6 +170,75 @@ private struct PhoneSidebar: View {
             }
         }
     }
+
+    @ViewBuilder private var sections: some View {
+        Section {
+            // Mac/iPad: search is the glass field pinned above the list (NativeSidebarChrome).
+            if !wideSidebar {
+                Button {
+                    navigator.isSearching = true
+                } label: {
+                    NativeSymbolLabel("app:nav.search", icon: .magnifyingGlass)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("sidebar-search")
+            }
+            SidebarDestination(route: .home, navigator: navigator, wide: wideSidebar) {
+                NativeSymbolLabel("app:nav.home", icon: .house)
+            }
+            .accessibilityIdentifier("nav-home")
+        }
+
+        if !model.tree.favorites.isEmpty {
+            Section {
+                ForEach(model.tree.favorites) { page in
+                    // A shortcut: the selection shows on the page's own row in the tree, once (like a native list).
+                    SidebarDestination(route: .page(page.id), navigator: navigator, wide: wideSidebar, showsSelection: false) {
+                        NativePageLabel(page: page)
+                    }
+                    .contextMenu { PageActions(page: page, navigator: navigator) }
+                }
+            } header: {
+                SidebarHeader("app:sidebar.favorites")
+            }
+        }
+
+        Section {
+            if model.tree.roots.isEmpty {
+                Button {
+                    navigator.newPage()
+                } label: {
+                    NativeSymbolLabel("app:sidebar.addPage", icon: .plus)
+                }
+                .buttonStyle(.plain)
+            }
+            PhoneTree(nodes: model.tree.roots, depth: 0, navigator: navigator, wide: wideSidebar)
+        } header: {
+            // No "+" here: New page sits in the toolbar on every platform. Dropping a page here moves it
+            // to the end of the top level.
+            SidebarHeader("app:sidebar.private")
+                .background(privateTargeted ? colorTone.selectionFill : .clear, in: .rect(cornerRadius: Radius.md))
+                .onDrop(
+                    of: [.plainText], delegate: SectionDropDelegate(navigator: navigator, model: model, isTargeted: $privateTargeted))
+        }
+
+        Section {
+            SidebarDestination(route: .trash, navigator: navigator, wide: wideSidebar) {
+                HStack {
+                    NativeSymbolLabel("app:nav.trash", icon: .trash)
+                    // List's .badge doesn't exist in the stack; the same count, drawn here.
+                    if wideSidebar, !model.trash.isEmpty {
+                        Spacer()
+                        Text(model.trash.count, format: .number).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .badge(wideSidebar ? 0 : model.trash.count)
+            // A section's worth of space above it in the stack (the List adds its own).
+            .padding(.top, wideSidebar ? Spacing.s3 : 0)
+        }
+    }
+
 }
 
 private struct PhoneTree: View {
@@ -435,7 +269,15 @@ private struct PhoneTree: View {
         }
     }
 
-    private func row(_ node: PageNode, chevron: Binding<Bool>?) -> some View {
+    @ViewBuilder private func row(_ node: PageNode, chevron: Binding<Bool>?) -> some View {
+        if wide {
+            destination(node, chevron: chevron).modifier(PageRowDragDrop(page: node.page, depth: depth, navigator: navigator))
+        } else {
+            destination(node, chevron: chevron)
+        }
+    }
+
+    private func destination(_ node: PageNode, chevron: Binding<Bool>?) -> some View {
         SidebarDestination(route: .page(node.id), navigator: navigator, wide: wide, reservesChevron: false) {
             if wide {
                 // The chevron's slot comes first; other rows reserve the same slot (SidebarDestination), so every
@@ -482,8 +324,8 @@ private struct SidebarDestination<Label: View>: View {
             } label: {
                 label
                     .padding(.leading, reservesChevron ? Spacing.s3_5 : 0)
-                    // A little taller than the system default (~32pt rows, like Apple Music).
-                    .padding(.vertical, Spacing.s1)
+                    // ~32pt rows, like Apple Music.
+                    .padding(.vertical, Spacing.s1_5)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, Spacing.s2)
                     .contentShape(.rect)
@@ -508,6 +350,57 @@ private struct SidebarDestination<Label: View>: View {
         } else {
             NavigationLink(value: route) { label }
         }
+    }
+}
+
+/// Drag a page row onto another to nest it, or onto its top/bottom edge to move it before/after (Mac/iPad).
+/// Same rules as the custom sidebar (PageRowDropDelegate / PageTree.destination); the indicator is a line for
+/// before/after and a tint for "inside".
+private struct PageRowDragDrop: ViewModifier {
+    let page: PageSummary
+    let depth: Int
+    let navigator: Navigator
+    @Environment(AppModel.self) private var model
+    @Environment(\.colorTone) private var colorTone
+
+    func body(content: Content) -> some View {
+        let indicator = navigator.dropIndicator?.pageID == page.id ? navigator.dropIndicator?.zone : nil
+        content
+            .background {
+                if indicator == .inside {
+                    RoundedRectangle(cornerRadius: Radius.lg).fill(colorTone.selectionFill)
+                }
+            }
+            .overlay(alignment: indicator == .before ? .top : .bottom) {
+                if indicator == .before || indicator == .after {
+                    colorTone.fill.frame(height: 2).clipShape(.capsule)
+                        .padding(.leading, CGFloat(depth) * Spacing.s3_5 + Spacing.s3_5)
+                }
+            }
+            .onDrag {
+                navigator.draggingPageID = page.id
+                return NSItemProvider(object: page.id as NSString)
+            }
+            .onDrop(of: [.plainText], delegate: PageRowDropDelegate(target: page.id, navigator: navigator, model: model))
+            // Outline level for VoiceOver (and UI tests): "level 1" at the top, +1 per nesting.
+            .accessibilityValue("level \(depth + 1)")
+    }
+}
+
+/// A section title in the Mac/iPad sidebar stack (Favorites, Private), styled like the system sidebar's.
+private struct SidebarHeader: View {
+    let title: LocalizedStringKey
+
+    init(_ title: LocalizedStringKey) { self.title = title }
+
+    var body: some View {
+        Text(title)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, Spacing.s2)
+            .padding(.top, Spacing.s4)
+            .padding(.bottom, Spacing.s1)
     }
 }
 
@@ -556,7 +449,7 @@ private struct NativeSymbolLabel: View {
             Text(title)
         } icon: {
             // One fixed, centred slot so symbols of different widths (house vs. magnifying glass) line up.
-            icon.glyph.frame(width: Size.sidebarIcon + Spacing.s1)
+            icon.glyph.imageScale(.large).frame(width: Size.sidebarIcon + Spacing.s1)
                 // Explicit, so neither the system accent nor list tinting replaces the colour tone; on the
                 // selection it takes the row's on-fill colour.
                 .foregroundStyle(selected ? colorTone.onFill : colorTone.fill)

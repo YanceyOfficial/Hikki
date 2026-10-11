@@ -35,40 +35,6 @@
         }
       }
     },
-    "app:chrome.hideSidebar": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hide Sidebar"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "隐藏侧边栏"
-          }
-        }
-      }
-    },
-    "app:chrome.showSidebar": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Show Sidebar"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "显示侧边栏"
-          }
-        }
-      }
-    },
     "app:common.cancel": {
       "extractionState": "manual",
       "localizations": {
@@ -2122,23 +2088,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "收藏"
-          }
-        }
-      }
-    },
-    "app:sidebar.noPagesInside": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No pages inside"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "没有子页面"
           }
         }
       }
