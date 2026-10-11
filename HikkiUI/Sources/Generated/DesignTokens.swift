@@ -90,6 +90,51 @@ public nonisolated enum TextSize: CGFloat, Sendable {
     case x4l = 40
 }
 
+/// Colour tones (Settings → Appearance), after exodus: `fill` for shapes, `ink` for text, `onFill` for text on a fill.
+public nonisolated enum ColorTone: String, CaseIterable, Sendable, Identifiable {
+    case sumi, kurenai, terigaki, kohaku, wakatake, seiheki, edomurasaki
+
+    public static let standard = ColorTone.sumi
+    public var id: String { rawValue }
+
+    public var fill: Color {
+        switch self {
+        case .sumi: Theme.dynamic(light: 0x1C1C1C, lightAlpha: 1, dark: 0xE6E4DF, darkAlpha: 1)
+        case .kurenai: Theme.dynamic(light: 0xCB1B45, lightAlpha: 1, dark: 0xCC2049, darkAlpha: 1)
+        case .terigaki: Theme.dynamic(light: 0xC46243, lightAlpha: 1, dark: 0xC46243, darkAlpha: 1)
+        case .kohaku: Theme.dynamic(light: 0xCA7A2C, lightAlpha: 1, dark: 0xCA7A2C, darkAlpha: 1)
+        case .wakatake: Theme.dynamic(light: 0x569E77, lightAlpha: 1, dark: 0x5DAC81, darkAlpha: 1)
+        case .seiheki: Theme.dynamic(light: 0x268785, lightAlpha: 1, dark: 0x268785, darkAlpha: 1)
+        case .edomurasaki: Theme.dynamic(light: 0x77428D, lightAlpha: 1, dark: 0x87599B, darkAlpha: 1)
+        }
+    }
+
+    public var ink: Color {
+        switch self {
+        case .sumi: Theme.dynamic(light: 0x1C1C1C, lightAlpha: 1, dark: 0xE6E4DF, darkAlpha: 1)
+        case .kurenai: Theme.dynamic(light: 0xCB1B45, lightAlpha: 1, dark: 0xDB617E, darkAlpha: 1)
+        case .terigaki: Theme.dynamic(light: 0xAE573C, lightAlpha: 1, dark: 0xC97054, darkAlpha: 1)
+        case .kohaku: Theme.dynamic(light: 0xA06023, lightAlpha: 1, dark: 0xCA7A2C, darkAlpha: 1)
+        case .wakatake: Theme.dynamic(light: 0x437B5D, lightAlpha: 1, dark: 0x5DAC81, darkAlpha: 1)
+        case .seiheki: Theme.dynamic(light: 0x237C7A, lightAlpha: 1, dark: 0x409594, darkAlpha: 1)
+        case .edomurasaki: Theme.dynamic(light: 0x77428D, lightAlpha: 1, dark: 0xA07CB0, darkAlpha: 1)
+        }
+    }
+
+    public var onFill: Color {
+        switch self {
+        case .sumi: Theme.dynamic(light: 0xFFFFFF, lightAlpha: 1, dark: 0x141414, darkAlpha: 1)
+        case .kurenai: Theme.dynamic(light: 0xFFFFFF, lightAlpha: 1, dark: 0xFFFFFF, darkAlpha: 1)
+        case .terigaki: Theme.dynamic(light: 0x141414, lightAlpha: 1, dark: 0x141414, darkAlpha: 1)
+        case .kohaku: Theme.dynamic(light: 0x141414, lightAlpha: 1, dark: 0x141414, darkAlpha: 1)
+        case .wakatake: Theme.dynamic(light: 0x141414, lightAlpha: 1, dark: 0x141414, darkAlpha: 1)
+        case .seiheki: Theme.dynamic(light: 0xFFFFFF, lightAlpha: 1, dark: 0xFFFFFF, darkAlpha: 1)
+        case .edomurasaki: Theme.dynamic(light: 0xFFFFFF, lightAlpha: 1, dark: 0xFFFFFF, darkAlpha: 1)
+        }
+    }
+
+}
+
 /// Component dimensions.
 public nonisolated enum Size {
     public static let sidebarMin: CGFloat = 240

@@ -23,6 +23,7 @@ public struct HikkiButtonStyle: ButtonStyle {
         let fullWidth: Bool
         @Environment(\.isEnabled) private var isEnabled
         @State private var hovering = false
+        @Environment(\.colorTone) private var tone
 
         var body: some View {
             configuration.label
@@ -45,12 +46,12 @@ public struct HikkiButtonStyle: ButtonStyle {
         }
 
         private var foreground: Color {
-            variant == .primary ? Theme.primaryForeground : Theme.foreground
+            variant == .primary ? tone.onFill : Theme.foreground
         }
 
         private var background: Color {
             switch variant {
-            case .primary: Theme.primary.opacity(configuration.isPressed || hovering ? 0.85 : 1)
+            case .primary: tone.fill.opacity(configuration.isPressed || hovering ? 0.85 : 1)
             case .outline: hovering ? Theme.accent : Theme.background
             case .ghost: hovering ? Theme.accent : .clear
             }

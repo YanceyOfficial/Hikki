@@ -31,9 +31,13 @@ enum AppearancePreference: String, CaseIterable, Identifiable {
 /// (like Safari or Notes, opened with ⌘,); iPhone and iPad get an inset-grouped form in a sheet.
 struct SettingsView: View {
     @AppStorage(AppearancePreference.storageKey) private var appearance = AppearancePreference.system
+    @AppStorage(ColorTone.storageKey) private var tone = ColorTone.standard
 
     var body: some View {
-        content.preferredColorScheme(appearance.colorScheme)
+        content
+            .preferredColorScheme(appearance.colorScheme)
+            .environment(\.colorTone, tone)
+            .tint(tone.fill)
     }
 
     #if os(macOS)
@@ -53,7 +57,11 @@ struct SettingsView: View {
                     }
                 }
                 Tab {
-                    Form { AppearanceSection() }.formStyle(.grouped)
+                    Form {
+                        AppearanceSection()
+                        ColorToneSection()
+                    }
+                    .formStyle(.grouped)
                 } label: {
                     Label {
                         Text("app:settings.appearance")
@@ -83,6 +91,7 @@ struct SettingsView: View {
                 Form {
                     WorkspaceSection()
                     AppearanceSection()
+                    ColorToneSection()
                     LanguageSection()
                     AboutSection()
                 }
@@ -149,6 +158,38 @@ private struct AppearanceSection: View {
             Text("app:settings.appearance")
         } footer: {
             Text("app:settings.theme.detail")
+        }
+    }
+}
+
+/// exodus's colour tone: each preset as a row with its swatch and a checkmark on the chosen one.
+private struct ColorToneSection: View {
+    @AppStorage(ColorTone.storageKey) private var selected = ColorTone.standard
+
+    var body: some View {
+        Section {
+            ForEach(ColorTone.allCases) { tone in
+                Button {
+                    selected = tone
+                } label: {
+                    HStack(spacing: Spacing.s3) {
+                        ColorToneSwatch(tone)
+                        Text(tone.title).foregroundStyle(.primary)
+                        Spacer()
+                        if tone == selected {
+                            IconView(.check, size: TextSize.sm.rawValue).foregroundStyle(tone.ink)
+                        }
+                    }
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(tone == selected ? [.isButton, .isSelected] : .isButton)
+                .accessibilityIdentifier("settings-tone-\(tone.rawValue)")
+            }
+        } header: {
+            Text("app:settings.tone")
+        } footer: {
+            Text("app:settings.tone.detail")
         }
     }
 }

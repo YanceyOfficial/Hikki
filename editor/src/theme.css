@@ -85,6 +85,108 @@
   }
 }
 
+:root[data-tone='sumi'], :root:not([data-tone]) {
+  --primary: #1c1c1c;
+  --primary-foreground: #ffffff;
+  --sidebar-primary: #1c1c1c;
+  --ring: rgba(28, 28, 28, 0.35);
+  --tone-ink: #1c1c1c;
+}
+:root[data-tone='kurenai'] {
+  --primary: #cb1b45;
+  --primary-foreground: #ffffff;
+  --sidebar-primary: #cb1b45;
+  --ring: rgba(203, 27, 69, 0.35);
+  --tone-ink: #cb1b45;
+}
+:root[data-tone='terigaki'] {
+  --primary: #c46243;
+  --primary-foreground: #141414;
+  --sidebar-primary: #c46243;
+  --ring: rgba(196, 98, 67, 0.35);
+  --tone-ink: #ae573c;
+}
+:root[data-tone='kohaku'] {
+  --primary: #ca7a2c;
+  --primary-foreground: #141414;
+  --sidebar-primary: #ca7a2c;
+  --ring: rgba(202, 122, 44, 0.35);
+  --tone-ink: #a06023;
+}
+:root[data-tone='wakatake'] {
+  --primary: #569e77;
+  --primary-foreground: #141414;
+  --sidebar-primary: #569e77;
+  --ring: rgba(86, 158, 119, 0.35);
+  --tone-ink: #437b5d;
+}
+:root[data-tone='seiheki'] {
+  --primary: #268785;
+  --primary-foreground: #ffffff;
+  --sidebar-primary: #268785;
+  --ring: rgba(38, 135, 133, 0.35);
+  --tone-ink: #237c7a;
+}
+:root[data-tone='edomurasaki'] {
+  --primary: #77428d;
+  --primary-foreground: #ffffff;
+  --sidebar-primary: #77428d;
+  --ring: rgba(119, 66, 141, 0.35);
+  --tone-ink: #77428d;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-tone='sumi'], :root:not([data-tone]) {
+    --primary: #e6e4df;
+    --primary-foreground: #141414;
+    --sidebar-primary: #e6e4df;
+    --ring: rgba(230, 228, 223, 0.5);
+    --tone-ink: #e6e4df;
+  }
+  :root[data-tone='kurenai'] {
+    --primary: #cc2049;
+    --primary-foreground: #ffffff;
+    --sidebar-primary: #cc2049;
+    --ring: rgba(204, 32, 73, 0.5);
+    --tone-ink: #db617e;
+  }
+  :root[data-tone='terigaki'] {
+    --primary: #c46243;
+    --primary-foreground: #141414;
+    --sidebar-primary: #c46243;
+    --ring: rgba(196, 98, 67, 0.5);
+    --tone-ink: #c97054;
+  }
+  :root[data-tone='kohaku'] {
+    --primary: #ca7a2c;
+    --primary-foreground: #141414;
+    --sidebar-primary: #ca7a2c;
+    --ring: rgba(202, 122, 44, 0.5);
+    --tone-ink: #ca7a2c;
+  }
+  :root[data-tone='wakatake'] {
+    --primary: #5dac81;
+    --primary-foreground: #141414;
+    --sidebar-primary: #5dac81;
+    --ring: rgba(93, 172, 129, 0.5);
+    --tone-ink: #5dac81;
+  }
+  :root[data-tone='seiheki'] {
+    --primary: #268785;
+    --primary-foreground: #ffffff;
+    --sidebar-primary: #268785;
+    --ring: rgba(38, 135, 133, 0.5);
+    --tone-ink: #409594;
+  }
+  :root[data-tone='edomurasaki'] {
+    --primary: #87599b;
+    --primary-foreground: #ffffff;
+    --sidebar-primary: #87599b;
+    --ring: rgba(135, 89, 155, 0.5);
+    --tone-ink: #a07cb0;
+  }
+}
+
 @theme inline {
   --color-*: initial;
   --color-white: #ffffff;
@@ -121,6 +223,7 @@
   --color-code: var(--code);
   --color-code-foreground: var(--code-foreground);
   --color-favorite: var(--favorite);
+  --color-tone-ink: var(--tone-ink, var(--primary));
   --spacing: 4px; /* Tailwind spacing = n × 4px, matching design/tokens.json spacing */
   --radius-*: initial;
   --radius-sm: 4px;

@@ -128,6 +128,7 @@ private struct DesktopTree: View {
 
 private struct DesktopPageRow: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.colorTone) private var colorTone
     let page: PageSummary
     let depth: Int
     let hasChildren: Bool
@@ -148,7 +149,7 @@ private struct DesktopPageRow: View {
         .sidebarItemBackground(isSelected: selected || indicator == .inside, highlight: indicator == .inside ? Theme.selection : nil)
         .overlay(alignment: indicator == .before ? .top : .bottom) {
             if indicator == .before || indicator == .after {
-                Theme.primary.frame(height: 2).clipShape(.capsule).padding(.leading, CGFloat(depth) * Spacing.s3_5 + Spacing.s2)
+                colorTone.fill.frame(height: 2).clipShape(.capsule).padding(.leading, CGFloat(depth) * Spacing.s3_5 + Spacing.s2)
                     .padding(.trailing, Spacing.s2)
             }
         }
@@ -309,6 +310,7 @@ private struct PhoneSidebar: View {
     @Bindable var navigator: Navigator
     let wideSidebar: Bool
     @State private var renaming = false
+    @Environment(\.colorTone) private var colorTone
 
     var body: some View {
         List(selection: $navigator.sidebarSelection) {
@@ -361,6 +363,8 @@ private struct PhoneSidebar: View {
             }
         }
         .listStyle(.sidebar)
+        // Sidebar icons in the colour tone (the system would use its own accent).
+        .listItemTint(.preferred(colorTone.fill))
         // EXPERIMENT: Mac/iPad keep the system sidebar material, with the workspace at the bottom (Apple Music
         // puts the account there); iPhone keeps its tinted list and nav-bar menu.
         .modifier(NativeSidebarChrome(navigator: navigator, isWide: wideSidebar))
@@ -443,7 +447,8 @@ private struct NativeSymbolLabel: View {
         Label {
             Text(title)
         } icon: {
-            icon.glyph
+            // One fixed, centred slot so symbols of different widths (house vs. magnifying glass) line up.
+            icon.glyph.frame(width: Size.sidebarIcon + Spacing.s1)
         }
     }
 }
@@ -460,7 +465,7 @@ private struct NativePageLabel: View {
                 Text(verbatim: page.title)  // the page's own title
             }
         } icon: {
-            PageIcon(page.icon, size: TextSize.base.rawValue)
+            PageIcon(page.icon, size: TextSize.base.rawValue).frame(width: Size.sidebarIcon + Spacing.s1)
         }
     }
 }

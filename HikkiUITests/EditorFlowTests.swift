@@ -128,6 +128,11 @@ final class EditorFlowTests: XCTestCase {
 
         let name = app.textFields["settings-name"].firstMatch
         XCTAssertTrue(waitOrDumpTree(name, in: app))
+        // Color tone: picking one moves the checkmark (selected trait) to it.
+        let kurenai = app.buttons["settings-tone-kurenai"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(kurenai, in: app))
+        kurenai.tap()
+        XCTAssertTrue(kurenai.isSelected, "tone not selected")
         attachScreenshot(app, "settings")
         // The field is trailing-aligned: tap its right edge so the caret lands after the text.
         name.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()

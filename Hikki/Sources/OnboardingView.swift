@@ -209,13 +209,14 @@ struct OnboardingView: View {
 struct WorkspaceBadge: View {
     let initial: String
     var size: CGFloat = Size.iconButtonSm
+    @Environment(\.colorTone) private var tone
 
     var body: some View {
         Text(initial)  // l10n: allow (a workspace initial)
             .font(.system(size: size * 0.55, weight: .bold))  // design-lint: allow (scales with the badge)
-            .foregroundStyle(Theme.primaryForeground)
+            .foregroundStyle(tone.onFill)
             .frame(width: size, height: size)
-            .background(Theme.primary.gradient, in: .rect(cornerRadius: size * 0.25))
+            .background(tone.fill.gradient, in: .rect(cornerRadius: size * 0.25))
     }
 }
 

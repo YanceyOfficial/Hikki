@@ -148,7 +148,7 @@ public struct SidebarSearchField: View {
         Button {
         } label: {
             SidebarFooterLabel(title: "Yancey’s Space", subtitle: "This device only") {
-                Text(verbatim: "Y").frame(width: 32, height: 32).background(Theme.primary, in: .rect(cornerRadius: Radius.lg))
+                Text(verbatim: "Y").frame(width: 32, height: 32).background(ColorTone.standard.fill, in: .rect(cornerRadius: Radius.lg))
             }
         }
         .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.xl, hoverFill: Theme.sidebarAccent))

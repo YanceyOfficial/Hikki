@@ -18,6 +18,7 @@ struct ContentView: View {
     @AppStorage("sidebarWidth") private var sidebarWidth = Double(Size.sidebarIdeal)
     @State private var chrome = ChromeMetrics()
     @SceneStorage("tabs") private var storedTabs: Data?
+    @AppStorage(ColorTone.storageKey) private var tone = ColorTone.standard
     #if os(macOS)
         @Environment(\.openSettings) private var openSettings
     #endif
@@ -82,10 +83,12 @@ struct ContentView: View {
                 }
             #endif
             if let initialPageID, model.tree.page(initialPageID) != nil { navigator.open(initialPageID) }
+            editor.setTone(tone)
             editor.attach(store: model.store, assets: model.assets)
             editor.open(documentID: navigator.route.pageID)
         }
         .onChange(of: navigator.route) { _, route in editor.open(documentID: route.pageID) }
+        .onChange(of: tone) { _, tone in editor.setTone(tone) }
         .onChange(of: navigator.titleFocusRequest) { _, request in
             if let request { editor.focusTitle(of: request.pageID) }
         }
@@ -104,7 +107,6 @@ struct ContentView: View {
         .environment(\.chromeMetrics, chrome)
         .focusedSceneValue(\.editor, editor)
         .focusedSceneValue(\.navigator, navigator)
-        .tint(Theme.primary)
     }
 
     // MARK: Mac / iPad

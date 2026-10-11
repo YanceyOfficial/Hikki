@@ -52,7 +52,7 @@ struct TrashView: View {
                 .padding(.vertical, Spacing.s0_5)
                 .swipeActions(edge: .trailing) {
                     Button("app:common.delete", role: .destructive) { pendingDelete = page }
-                    Button("app:trash.restore") { model.restore(id: page.id) }.tint(Theme.primary)
+                    Button("app:trash.restore") { model.restore(id: page.id) }
                 }
             }
         }
