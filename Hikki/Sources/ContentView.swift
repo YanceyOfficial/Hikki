@@ -195,7 +195,7 @@ private struct NativeDetailToolbar: ToolbarContent {
     let navigator: Navigator
 
     // Photos' toolbar: each group is its own Liquid Glass capsule — back/forward, the tabs, the page's
-    // actions, and search on its own at the end.
+    // actions. (Search lives in the sidebar's glass field.)
     var body: some ToolbarContent {
         ToolbarItemGroup(placement: .navigation) {
             Button(action: navigator.goBack) { IconLabel("app:chrome.back", icon: .caretLeft) }
@@ -220,18 +220,9 @@ private struct NativeDetailToolbar: ToolbarContent {
         }
         if let id = navigator.route.pageID, let page = model.tree.page(id) {
             ToolbarItemGroup(placement: .primaryAction) {
-                FavoriteButton(page: page)
-                PageMoreMenu(page: page, navigator: navigator)
+                FavoriteButton(page: page, toolbar: true)
+                PageMoreMenu(page: page, navigator: navigator, toolbar: true)
             }
-        }
-        ToolbarSpacer(.fixed, placement: .primaryAction)
-        ToolbarItem(placement: .primaryAction) {
-            Button {
-                navigator.isSearching = true
-            } label: {
-                IconLabel("app:nav.search", icon: .magnifyingGlass)
-            }
-            .accessibilityIdentifier("toolbar-search")
         }
     }
 

@@ -84,8 +84,25 @@ struct PageBar: View {
 struct FavoriteButton: View {
     @Environment(AppModel.self) private var model
     let page: PageSummary
+    /// In a window toolbar: a plain button, so the system draws it inside the group's glass.
+    var toolbar = false
 
     var body: some View {
+        if toolbar {
+            Button {
+                model.setFavorite(!page.isFavorite, id: page.id)
+            } label: {
+                IconLabel(page.isFavorite ? "app:page.unfavorite" : "app:page.favorite", icon: page.isFavorite ? .starFill : .star)
+            }
+            .foregroundStyle(page.isFavorite ? AnyShapeStyle(.yellow) : AnyShapeStyle(.primary))
+            .help(page.isFavorite ? "app:page.unfavorite" : "app:page.favorite")
+            .accessibilityIdentifier("favorite-toggle")
+        } else {
+            barButton
+        }
+    }
+
+    private var barButton: some View {
         BarIconButton(
             page.isFavorite ? "app:page.unfavorite" : "app:page.favorite",
             symbol: page.isFavorite ? .starFill : .star,
@@ -100,12 +117,33 @@ struct FavoriteButton: View {
 struct PageMoreMenu: View {
     let page: PageSummary
     let navigator: Navigator
+    /// In a window toolbar: a plain menu button, drawn by the system inside the group's glass.
+    var toolbar = false
 
     var body: some View {
+        if toolbar {
+            Menu {
+                items
+            } label: {
+                IconLabel("app:common.more", icon: .dotsThree)
+            }
+            .menuIndicator(.hidden)
+            .help("app:common.more")
+            .accessibilityIdentifier("page-more")
+        } else {
+            barMenu
+        }
+    }
+
+    @ViewBuilder private var items: some View {
+        PageActions(page: page, navigator: navigator)
+        Divider()
+        Text("app:page.edited \(page.updatedAt, format: .relative(presentation: .named))")
+    }
+
+    private var barMenu: some View {
         Menu {
-            PageActions(page: page, navigator: navigator)
-            Divider()
-            Text("app:page.edited \(page.updatedAt, format: .relative(presentation: .named))")
+            items
         } label: {
             IconView(.dotsThree, size: TextSize.base.rawValue)
                 .foregroundStyle(Theme.subtleForeground)
