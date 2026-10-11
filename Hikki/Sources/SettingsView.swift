@@ -49,7 +49,7 @@ struct SettingsView: View {
                     Label {
                         Text("app:settings.general")
                     } icon: {
-                        Icon.gearSix.image
+                        Icon.gearSix.glyph
                     }
                 }
                 Tab {
@@ -58,7 +58,7 @@ struct SettingsView: View {
                     Label {
                         Text("app:settings.appearance")
                     } icon: {
-                        Icon.slidersHorizontal.image
+                        Icon.slidersHorizontal.glyph
                     }
                 }
                 Tab {
@@ -67,7 +67,7 @@ struct SettingsView: View {
                     Label {
                         Text("app:settings.about")
                     } icon: {
-                        Icon.info.image
+                        Icon.info.glyph
                     }
                 }
             }

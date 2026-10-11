@@ -443,7 +443,7 @@ private struct NativeSymbolLabel: View {
         Label {
             Text(title)
         } icon: {
-            icon.image.frame(width: TextSize.base.rawValue, height: TextSize.base.rawValue)
+            icon.glyph
         }
     }
 }

@@ -1,63 +1,162 @@
 {
-  "$comment": "Phosphor icons used by the native app (web uses @phosphor-icons/react with the same names). Run `make icons` after editing; generated: HikkiUI/Resources/Icons.xcassets and HikkiUI/Sources/Generated/Icons.swift. Map: Swift case = camelCase name (+ weight suffix when not baseWeight). baseWeight + strokeBoost (an outline stroke in 256-grid units that thickens base-weight icons; 4 ≈ halfway between regular and bold) are mirrored by editor/src/ui/icons.tsx (checked by a test).",
+  "$comment": "Phosphor icons used by the native app (web uses @phosphor-icons/react with the same names). Run `make icons` after editing; generated: HikkiUI/Resources/Icons.xcassets and HikkiUI/Sources/Generated/Icons.swift. Map: Swift case = camelCase name (+ weight suffix when not baseWeight). baseWeight + strokeBoost (an outline stroke in 256-grid units that thickens base-weight icons; 4 ≈ halfway between regular and bold) are mirrored by editor/src/ui/icons.tsx (checked by a test). \"sf\": the SF Symbol the native shell draws instead (a name, or {weight: name}); icons without one fall back to the Phosphor asset. The web editor always uses Phosphor.",
   "baseWeight": "regular",
   "strokeBoost": 4,
   "icons": {
-    "caret-up-down": {},
-    "sliders-horizontal": {},
-    "info": {},
-    "gear-six": {},
-    "buildings": {},
-    "link": {},
-    "pencil-simple": {},
-    "arrow-bend-up-right": {},
-    "app-window": {},
-    "copy": {},
-    "house": {},
-    "trash": {},
-    "magnifying-glass": {},
-    "plus": {},
-    "note-pencil": {},
-    "sidebar-simple": {},
-    "caret-right": {},
-    "caret-left": {},
-    "caret-down": {},
-    "dots-three": {},
-    "dots-three-circle": {},
-    "x": {},
-    "arrow-u-down-left": {},
-    "file-text": {},
-    "clock": {},
-    "keyboard": {},
-    "browsers": {},
-    "arrow-counter-clockwise": {},
-    "dots-six-vertical": {},
-    "export": {},
-    "star": {
-      "weights": ["regular", "fill"]
+    "caret-up-down": {
+      "sf": "chevron.up.chevron.down"
     },
-    "text-b": {},
-    "text-italic": {},
-    "text-strikethrough": {},
-    "code": {},
+    "sliders-horizontal": {
+      "sf": "slider.horizontal.3"
+    },
+    "info": {
+      "sf": "info.circle"
+    },
+    "gear-six": {
+      "sf": "gearshape"
+    },
+    "buildings": {
+      "sf": "building.2"
+    },
+    "link": {
+      "sf": "link"
+    },
+    "pencil-simple": {
+      "sf": "pencil"
+    },
+    "arrow-bend-up-right": {
+      "sf": "arrowshape.turn.up.right"
+    },
+    "app-window": {
+      "sf": "macwindow"
+    },
+    "copy": {
+      "sf": "doc.on.doc"
+    },
+    "house": {
+      "sf": "house"
+    },
+    "trash": {
+      "sf": "trash"
+    },
+    "magnifying-glass": {
+      "sf": "magnifyingglass"
+    },
+    "plus": {
+      "sf": "plus"
+    },
+    "note-pencil": {
+      "sf": "square.and.pencil"
+    },
+    "sidebar-simple": {
+      "sf": "sidebar.left"
+    },
+    "caret-right": {
+      "sf": "chevron.right"
+    },
+    "caret-left": {
+      "sf": "chevron.left"
+    },
+    "caret-down": {
+      "sf": "chevron.down"
+    },
+    "dots-three": {
+      "sf": "ellipsis"
+    },
+    "dots-three-circle": {
+      "sf": "ellipsis.circle"
+    },
+    "x": {
+      "sf": "xmark"
+    },
+    "arrow-u-down-left": {
+      "sf": "return"
+    },
+    "file-text": {
+      "sf": "doc.text"
+    },
+    "clock": {
+      "sf": "clock"
+    },
+    "keyboard": {
+      "sf": "keyboard.chevron.compact.down"
+    },
+    "browsers": {
+      "sf": "plus.square.on.square"
+    },
+    "arrow-counter-clockwise": {
+      "sf": "arrow.counterclockwise"
+    },
+    "dots-six-vertical": {
+      "sf": "line.3.horizontal"
+    },
+    "export": {
+      "sf": "square.and.arrow.up"
+    },
+    "star": {
+      "weights": ["regular", "fill"],
+      "sf": {
+        "regular": "star",
+        "fill": "star.fill"
+      }
+    },
+    "text-b": {
+      "sf": "bold"
+    },
+    "text-italic": {
+      "sf": "italic"
+    },
+    "text-strikethrough": {
+      "sf": "strikethrough"
+    },
+    "code": {
+      "sf": "chevron.left.forwardslash.chevron.right"
+    },
     "text-h-one": {},
     "text-h-two": {},
     "text-h-three": {},
     "text-t": {},
-    "list-bullets": {},
-    "list-numbers": {},
-    "list-checks": {},
-    "quotes": {},
-    "code-block": {},
-    "arrow-u-up-left": {},
-    "arrow-u-up-right": {},
-    "cloud": {},
-    "laptop": {},
-    "folder-simple": {},
-    "check": {},
-    "arrow-right": {},
+    "list-bullets": {
+      "sf": "list.bullet"
+    },
+    "list-numbers": {
+      "sf": "list.number"
+    },
+    "list-checks": {
+      "sf": "checklist"
+    },
+    "quotes": {
+      "sf": "text.quote"
+    },
+    "code-block": {
+      "sf": "curlybraces.square"
+    },
+    "arrow-u-up-left": {
+      "sf": "arrow.uturn.backward"
+    },
+    "arrow-u-up-right": {
+      "sf": "arrow.uturn.forward"
+    },
+    "cloud": {
+      "sf": "icloud"
+    },
+    "laptop": {
+      "sf": "laptopcomputer"
+    },
+    "folder-simple": {
+      "sf": "folder"
+    },
+    "check": {
+      "sf": "checkmark"
+    },
+    "arrow-right": {
+      "sf": "arrow.right"
+    },
     "check-circle": {
-      "weights": ["fill"]
+      "weights": ["fill"],
+      "sf": {
+        "fill": "checkmark.circle.fill"
+      }
     }
   }
 }

@@ -25,9 +25,10 @@ These rules are mandatory. Automated ones are noted.
   components in `editor/src/components/ui/`). Add components only with `cd editor && bun run ui:add <name>` — the
   wrapper fixes the CLI's wrong `cn` import under TypeScript 7. Prefer a shadcn component over a hand-rolled one;
   editor-specific pieces live in `editor/src/ui/`.
-- **One icon set: Phosphor.** Web uses `@phosphor-icons/react`; native uses the generated `Icon` enum (list icons in
-  `design/icons.json`, run `make icons`; `IconView` / `IconLabel` in HikkiUI). No SF Symbols — _enforced by
-  `make lint-design`_.
+- **Icons go through one list** (`design/icons.json`, `make icons`). The native shell draws SF Symbols (each icon's
+  `"sf"` name; the generated `Icon` enum, `IconView` / `IconLabel`, `Icon.glyph` for system-sized spots), falling
+  back to the bundled Phosphor asset where there is no symbol; the web editor uses `@phosphor-icons/react`. No raw
+  `Image(systemName:)` / `systemImage:` — _enforced by `make lint-design`_.
 - **Copy language.** User-facing strings are keys, never literals: native `app:<area>.<element>` keys in
   `Hikki/Resources/Localization/Localizable.xcstrings` (interpolations become `%@`, e.g. `app:page.edited %@`); web
   `t('area.key')` with catalogs in `editor/src/locales/`. English is the source; zh-Hans must be complete. The native
