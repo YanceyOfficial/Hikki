@@ -43,11 +43,9 @@ export const SlashCommand = Extension.create({
           let layer: FloatingLayer | null = null
           let selected = 0
           let current: SuggestionProps<BlockType, BlockType> | null = null
-          // A press outside the menu (blank margin, another control) closes it, as in Notion.
-          const onOutside = (event: PointerEvent) => {
-            if (!current || layer?.element.contains(event.target as Node)) return
-            if (current.editor.view.dom.contains(event.target as Node)) return
-            exitSuggestion(current.editor.view, SlashCommandKey)
+          // Escape or a press outside the menu closes it, as in Notion (the layers' bus).
+          const dismiss = () => {
+            if (current) exitSuggestion(current.editor.view, SlashCommandKey)
           }
 
           const draw = () => {
@@ -76,8 +74,7 @@ export const SlashCommand = Extension.create({
 
           return {
             onStart: (props) => {
-              document.addEventListener('pointerdown', onOutside, true)
-              layer = new FloatingLayer('hk-slash-menu', { bare: true })
+              layer = new FloatingLayer('hk-slash-menu', { bare: true, onDismiss: dismiss })
               current = props
               selected = 0
               draw()
@@ -106,7 +103,6 @@ export const SlashCommand = Extension.create({
               )
             },
             onExit: () => {
-              document.removeEventListener('pointerdown', onOutside, true)
               layer?.destroy()
               layer = null
               current = null

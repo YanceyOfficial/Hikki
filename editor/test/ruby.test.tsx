@@ -112,6 +112,24 @@ describe('ruby (furigana)', () => {
     expect(document.querySelector('.hk-ruby-panel')).toBeNull()
   })
 
+  it('a press outside the panel, or Escape anywhere, closes it without a ruby', async () => {
+    editor.commands.setTextSelection({ from: 3, to: 5 })
+    act(() => void editor.commands.editRuby())
+    await screen.findByLabelText('Reading')
+    act(() => void document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })))
+    expect(document.querySelector('.hk-ruby-panel')).toBeNull()
+    expect(editor.getHTML()).not.toContain('<ruby')
+    act(() => void editor.commands.editRuby())
+    await screen.findByLabelText('Reading')
+    act(
+      () =>
+        void document.body.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+        )
+    )
+    expect(document.querySelector('.hk-ruby-panel')).toBeNull()
+  })
+
   it('clicking a reading reopens the panel for that ruby; Remove takes the ruby off', async () => {
     editor.commands.setTextSelection({ from: 3, to: 5 })
     editor.commands.setRuby('かんじ')

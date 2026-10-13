@@ -39,6 +39,18 @@
   .tiptap > * + * {
     @apply mt-0.5;
   }
+  /* Bold: 700 asks for the heaviest face (SF Pro Bold; PingFang stops at Semibold), and in dark mode a hair of
+     stroke makes up for how light-on-dark glyphs read thinner. */
+  .tiptap strong,
+  .tiptap b {
+    @apply font-bold;
+  }
+  @media (prefers-color-scheme: dark) {
+    .tiptap strong,
+    .tiptap b {
+      -webkit-text-stroke: 0.3px currentColor;
+    }
+  }
   .tiptap p {
     @apply m-0 py-[3px];
   }
@@ -464,8 +476,14 @@
   .tiptap pre .hljs-strong {
     font-weight: 600;
   }
+  /* The bar is a strip of its own, not a border: a left border taper into a spike at the rounded corners of
+     the block highlight. */
   .tiptap blockquote {
-    @apply my-1 border-l-[3px] border-current px-3.5;
+    @apply relative my-1 px-3.5;
+  }
+  .tiptap blockquote::before {
+    content: '';
+    @apply absolute inset-y-0.5 left-0 w-[3px] rounded-full bg-current;
   }
   .tiptap ul,
   .tiptap ol {

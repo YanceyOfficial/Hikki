@@ -8,21 +8,71 @@ import { createRoot, type Root } from 'react-dom/client'
 export type FloatingAnchor = (() => DOMRect | null) | null | undefined
 
 /**
+ * The open layers, newest last. One pair of document listeners serves them all: Escape and a press outside
+ * every open layer dismiss the newest one (its own `onDismiss` decides what that means — close the menu, cancel
+ * the panel). So every popup closes the same way, and a press on something else closes what was open before
+ * it opens anything new.
+ */
+const openLayers: FloatingLayer[] = []
+
+function dismissOnPress(event: PointerEvent): void {
+  const top = openLayers.at(-1)
+  if (!top || openLayers.some((layer) => layer.element.contains(event.target as Node))) return
+  top.dismiss()
+}
+
+function dismissOnEscape(event: KeyboardEvent): void {
+  if (event.key !== 'Escape') return
+  const top = openLayers.at(-1)
+  if (!top) return
+  event.preventDefault()
+  event.stopPropagation()
+  top.dismiss()
+}
+
+function register(layer: FloatingLayer): void {
+  if (openLayers.length === 0) {
+    document.addEventListener('pointerdown', dismissOnPress, true)
+    document.addEventListener('keydown', dismissOnEscape, true)
+  }
+  openLayers.push(layer)
+}
+
+function unregister(layer: FloatingLayer): void {
+  const index = openLayers.indexOf(layer)
+  if (index >= 0) openLayers.splice(index, 1)
+  if (openLayers.length === 0) {
+    document.removeEventListener('pointerdown', dismissOnPress, true)
+    document.removeEventListener('keydown', dismissOnEscape, true)
+  }
+}
+
+/** The layers the bus is managing right now (tests). */
+export const openFloatingLayers = (): readonly FloatingLayer[] => openLayers
+
+/**
  * A React tree rendered into a body-level layer and positioned next to a caret rect.
  * Reusable for every editor popup (slash menu, mentions, link editor…). It enters and leaves with the
- * shared motion (`hk-pop`, style.css).
+ * shared motion (`hk-pop`, style.css), and with `onDismiss` it joins the dismiss bus above.
  */
 export class FloatingLayer {
   readonly element: HTMLDivElement
   private readonly root: Root
   private readonly bare: boolean
+  private readonly onDismiss: (() => void) | null
+  private dismissed = false
 
   /**
    * `bare`: only positioned — the content draws its own surface(s) and may overflow (a menu with a side
    * preview). Its height budget is then the `--hk-available-height` variable instead of max-height.
+   * `onDismiss`: what Escape or a press outside does (the caller closes the layer in it).
    */
-  constructor(className: string, { bare = false }: { bare?: boolean } = {}) {
+  constructor(
+    className: string,
+    { bare = false, onDismiss = null }: { bare?: boolean; onDismiss?: (() => void) | null } = {}
+  ) {
     this.bare = bare
+    this.onDismiss = onDismiss
     this.element = document.createElement('div')
     this.element.className = cn(
       'hk-pop',
@@ -31,6 +81,15 @@ export class FloatingLayer {
     )
     document.body.append(this.element)
     this.root = createRoot(this.element)
+    if (onDismiss) register(this)
+  }
+
+  /** Escape or a press outside: once. */
+  dismiss(): void {
+    if (this.dismissed) return
+    this.dismissed = true
+    unregister(this)
+    this.onDismiss?.()
   }
 
   render(node: ReactElement, anchor: FloatingAnchor): void {
@@ -40,6 +99,7 @@ export class FloatingLayer {
 
   /** Plays the leave motion, then takes the layer down. */
   destroy(): void {
+    unregister(this)
     leave(this.element, () => {
       this.root.unmount()
       this.element.remove()

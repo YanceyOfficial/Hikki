@@ -142,6 +142,20 @@ describe('block units', () => {
   })
 })
 
+describe('block handle', () => {
+  it('goes while text is selected and may come back once the selection collapses', () => {
+    editor = createEditor(host, doc('first line', 'second line'))
+    const handle = document.querySelector('.hk-block-handle') as HTMLElement
+    // Shown by a hover (not reproducible in this DOM): stand in for it.
+    handle.dataset.hidden = 'false'
+    editor.commands.setTextSelection({ from: posOf('first'), to: posOf('first') + 5 })
+    expect(handle.dataset.hidden).toBe('true')
+    handle.dataset.hidden = 'false'
+    editor.commands.setTextSelection(posOf('second'))
+    expect(handle.dataset.hidden).toBe('false')
+  })
+})
+
 const openMenu = (text: string) => {
   const unit = unitAtPos(editor.state, posOf(text))!
   act(() => openBlockMenu(editor, unit, new DOMRect(10, 10, 20, 20)))

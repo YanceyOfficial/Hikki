@@ -233,6 +233,9 @@ private struct TabButton: View {
             }
         }
         .padding(.horizontal, Spacing.s3)
+        // The capsule's glass shading is heavier along its bottom edge, so content centred on the frame reads a
+        // touch high; a point down lands it on the capsule's visual middle (measured on a 2x capture).
+        .offset(y: Spacing.s0_5 / 2)
         .frame(minWidth: 60, idealWidth: 200, maxWidth: 220, minHeight: 30, maxHeight: 30)
         // Capsules inside the toolbar's glass capsule, like a segmented control (App Store's sidebar).
         .background(

@@ -32,13 +32,6 @@ import {
 } from '../lib/covers'
 import { CoverPicker } from './cover-picker'
 
-/**
- * The buttons over a cover: a solid popover surface whatever is behind them, and a hover that tints the
- * surface instead of swapping it for the translucent `muted` (which let the picture through).
- */
-const coverButton =
-  'bg-popover text-popover-foreground shadow-sm hover:bg-[color-mix(in_oklch,var(--popover),var(--foreground)_6%)] hover:text-popover-foreground aria-expanded:bg-[color-mix(in_oklch,var(--popover),var(--foreground)_6%)] aria-expanded:text-popover-foreground dark:bg-popover dark:hover:bg-[color-mix(in_oklch,var(--popover),var(--foreground)_10%)]'
-
 /** Notion-style page header: cover, icon, hover actions and the page title (a page property, not body content). */
 export function PageHeader({ bridge }: { bridge: EditorBridge }) {
   const { t } = useTranslation()
@@ -69,7 +62,6 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
               <Button
                 variant="outline"
                 size="sm"
-                className={coverButton}
                 onClick={() => {
                   if (page.cover) bridge.setCover(withCoverPosition(page.cover, draftY))
                   setDraftY(null)
@@ -77,12 +69,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
               >
                 {t('page.savePosition')}
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className={coverButton}
-                onClick={() => setDraftY(null)}
-              >
+              <Button variant="outline" size="sm" onClick={() => setDraftY(null)}>
                 {t('page.cancelReposition')}
               </Button>
             </ButtonGroup>
@@ -91,9 +78,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
             !frozen && (
               <ButtonGroup className="absolute top-3 right-3 opacity-0 transition-opacity group-focus-within/cover:opacity-100 group-hover/cover:opacity-100 has-aria-expanded:opacity-100 touch:opacity-100">
                 <CoverPopover>
-                  <PopoverTrigger
-                    render={<Button variant="outline" size="sm" className={coverButton} />}
-                  >
+                  <PopoverTrigger render={<Button variant="outline" size="sm" />}>
                     {t('page.changeCover')}
                   </PopoverTrigger>
                   <PopoverContent
@@ -112,7 +97,6 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
                   <Button
                     variant="outline"
                     size="sm"
-                    className={coverButton}
                     onClick={() => setDraftY(coverPosition(page.cover))}
                   >
                     {t('page.reposition')}

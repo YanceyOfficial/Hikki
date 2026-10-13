@@ -275,7 +275,14 @@ export function openRubyPanel(editor: Editor, host: RubyHost | null): void {
   const existing = rubyAt(state.doc, state.selection.from)
   const base = existing ? existing.node.textContent : (selectedText(editor) ?? '')
   if (!base.trim()) return
-  const layer = new FloatingLayer('hk-ruby-panel w-[320px] max-w-[calc(100vw-16px)] p-2')
+  const finish = () => {
+    closePanel()
+    editor.commands.focus()
+  }
+  // Escape or a press outside cancels (the layers' bus).
+  const layer = new FloatingLayer('hk-ruby-panel w-[320px] max-w-[calc(100vw-16px)] p-2', {
+    onDismiss: finish
+  })
   openPanel = layer
   const anchorPos = existing ? existing.pos : state.selection.from
   const anchor = () => {
@@ -283,10 +290,6 @@ export function openRubyPanel(editor: Editor, host: RubyHost | null): void {
     if (dom instanceof HTMLElement) return dom.getBoundingClientRect()
     const coords = editor.view.coordsAtPos(anchorPos)
     return new DOMRect(coords.left, coords.top, 1, coords.bottom - coords.top)
-  }
-  const finish = () => {
-    closePanel()
-    editor.commands.focus()
   }
   const done = (reading: string) => {
     if (reading.trim()) editor.commands.setRuby(reading)

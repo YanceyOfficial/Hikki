@@ -40,20 +40,15 @@ export function setBlockLinkBuilder(builder: ((blockId: string) => BlockLink | n
 /** Opens the block menu for `unit` below `anchor` (the grip). One at a time. */
 export function openBlockMenu(editor: Editor, unit: BlockUnit, anchor: DOMRect): void {
   open?.close()
-  const layer = new FloatingLayer('hk-block-menu', { bare: true })
+  // Escape or a press anywhere outside closes it (and the press does what it does): the layers' bus.
+  const layer = new FloatingLayer('hk-block-menu', { bare: true, onDismiss: () => close() })
   // The block is tinted while its menu is open (a decoration: the same for every block type).
   setBlockHighlight(editor.view, { menu: { from: unit.pos, to: unit.pos + unit.node.nodeSize } })
-  const close = () => {
-    document.removeEventListener('pointerdown', onOutside, true)
+  function close() {
     if (!editor.isDestroyed) setBlockHighlight(editor.view, { menu: null })
     layer.destroy()
     if (open?.layer === layer) open = null
   }
-  // A press anywhere outside the menu closes it (and does what it does).
-  const onOutside = (event: PointerEvent) => {
-    if (!layer.element.contains(event.target as Node)) close()
-  }
-  document.addEventListener('pointerdown', onOutside, true)
   open = { layer, close }
   layer.render(
     <IconProvider>

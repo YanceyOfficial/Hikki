@@ -130,6 +130,8 @@ class BlockControlsView {
   update() {
     // Locked (or unreadable) now: whatever handle was showing goes at once, not on the next pointer move.
     if (!this.editor.isEditable) return this.hide()
+    // Text being selected (the selection menu is up, or about to be): one surface at a time, as in Notion.
+    if (this.selecting()) return this.hide()
     // The hovered block may have moved or gone; re-find it from where it was.
     if (this.unit && !this.press) {
       const unit = unitAtPos(
@@ -165,10 +167,16 @@ class BlockControlsView {
     return unitAtPos(this.view.state, at.inside >= 0 ? at.inside : at.pos)
   }
 
+  /** A non-empty text selection: the selection menu's moment, not the handle's. */
+  private selecting(): boolean {
+    const { selection } = this.view.state
+    return selection instanceof TextSelection && !selection.empty
+  }
+
   private onMove = (event: MouseEvent) => {
     if (this.press) return
     // A locked (or unreadable) page has no handle at all — the one already showing goes too.
-    if (!this.editor.isEditable) return this.hide()
+    if (!this.editor.isEditable || this.selecting()) return this.hide()
     const rect = this.contentRect()
     // Over the page or its left gutter (where the handle sits), within the page's height.
     const inBand = event.clientX >= rect.left - 96 && event.clientX <= rect.right + 24

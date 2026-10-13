@@ -2,7 +2,7 @@ import { act, cleanup, render, screen } from '@testing-library/react'
 import { useRef } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { FloatingLayer, leave, usePresence } from '../src/components/floating'
+import { FloatingLayer, leave, openFloatingLayers, usePresence } from '../src/components/floating'
 import { GlidingHighlight } from '../src/components/gliding-highlight'
 
 /** An element whose only animation finishes when the returned function is called. */
@@ -51,6 +51,35 @@ describe('shared motion', () => {
     expect(layer.element.classList.contains('hk-pop')).toBe(true)
     layer.destroy()
     expect(document.querySelector('.test-layer')).toBeNull()
+  })
+
+  it('the dismiss bus: Escape or a press outside closes the newest layer, once', () => {
+    const first = vi.fn()
+    const second = vi.fn()
+    const a = new FloatingLayer('bus-a', { onDismiss: first })
+    const b = new FloatingLayer('bus-b', { onDismiss: second })
+    const plain = new FloatingLayer('bus-plain')
+    expect(openFloatingLayers()).toEqual([a, b])
+    // A press inside any open layer is that layer's business.
+    a.element.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    expect(second).not.toHaveBeenCalled()
+    // Outside every layer: the newest goes, the older stays.
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    expect(second).toHaveBeenCalledTimes(1)
+    expect(first).not.toHaveBeenCalled()
+    expect(openFloatingLayers()).toEqual([a])
+    // Escape: the newest again (b is out of the bus: its owner closes it).
+    const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+    document.body.dispatchEvent(escape)
+    expect(escape.defaultPrevented).toBe(true)
+    expect(first).toHaveBeenCalledTimes(1)
+    expect(openFloatingLayers()).toEqual([])
+    // With nothing left the listeners are gone: nothing fires, and a layer without onDismiss never joined.
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    expect(first).toHaveBeenCalledTimes(1)
+    a.destroy()
+    b.destroy()
+    plain.destroy()
   })
 
   it('a leaving surface is marked and stays until its animation has finished', async () => {

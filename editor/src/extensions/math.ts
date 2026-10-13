@@ -25,7 +25,16 @@ export function openMathEditor(editor: Editor, pos: number, kind: MathKind): voi
   const node = editor.state.doc.nodeAt(pos)
   const dom = editor.view.nodeDOM(pos)
   if (!node || !(dom instanceof HTMLElement)) return
-  const layer = new FloatingLayer('hk-math-editor w-[360px] max-w-[calc(100vw-16px)] p-2')
+  const cancel = () => {
+    // A formula that was never written (just inserted) goes away again.
+    if (!(node.attrs.latex as string).trim())
+      editor.chain().setNodeSelection(pos).deleteSelection().run()
+    close(editor)
+  }
+  // Escape or a press outside cancels (the layers' bus).
+  const layer = new FloatingLayer('hk-math-editor w-[360px] max-w-[calc(100vw-16px)] p-2', {
+    onDismiss: cancel
+  })
   open = layer
   const commit = (latex: string) => {
     // The update commands read `pos`, not the chain's selection.
@@ -40,12 +49,7 @@ export function openMathEditor(editor: Editor, pos: number, kind: MathKind): voi
       initial: node.attrs.latex as string,
       multiline: kind === 'block',
       onDone: commit,
-      onCancel: () => {
-        // A formula that was never written (just inserted) goes away again.
-        if (!(node.attrs.latex as string).trim())
-          editor.chain().setNodeSelection(pos).deleteSelection().run()
-        close(editor)
-      }
+      onCancel: cancel
     },
     () => dom.getBoundingClientRect()
   )

@@ -149,6 +149,10 @@ HikkiUITests/                 XCUITest flows
   (onboarding says so), and a newer identity from another device replaces the local name/icon on activation. Settings →
   Storage → Change folder re-points a workspace (`AppModel.changeLocation`: synced marks cleared, local pages written
   out, the folder's imported — nothing deleted).
+- **Popups close one way**: every `FloatingLayer` opened with `onDismiss` (`editor/src/components/floating.tsx`) joins
+  one dismiss bus — a single pair of document listeners: Escape and a press outside every open layer dismiss the newest
+  one, and the opener says what that means (the slash and block menus exit, the math and ruby panels cancel). No popup
+  installs its own outside-click or Escape listener. Base UI popups (shadcn) bring their own.
 - **Editor menus**: `editor/src/core/blocks.ts` is the one block catalog (groups, Markdown shortcuts, `turnInto`, `isActive`)
   behind the "/" menu (`editor/src/components/slash-menu.tsx`) and the selection menu's "Turn into"
   (`editor/src/components/selection-menu.tsx`, positioned by Tiptap's BubbleMenu; its side panels stay inside the menu element
@@ -174,8 +178,7 @@ HikkiUITests/                 XCUITest flows
 - **Covers**: the stored value is `gradient:<id>` or an image URL, and an image's vertical position rides along
   as a `#y=<0-100>` fragment (`editor/src/lib/covers.ts`: `coverPosition`, `withCoverPosition`), so the store and
   the protocol keep a plain string. "Reposition" on the cover (`editor/src/page/page-header.tsx`) drags the picture
-  one pixel per pixel over its overflow and saves or cancels; the buttons over a cover use the solid `coverButton`
-  look (the outline hover's translucent `muted` let the picture through).
+  one pixel per pixel over its overflow and saves or cancels.
 - **Page links** (`editor/src/extensions/page-links.ts`): `hikki://page/<id>#<block>`. The native side feeds the editor
   the page index (`window.hikki.setPages`) so pasted links get titles; "Copy link to block" puts a ready `<a>` plus the
   URL on the clipboard; a plain-text paste of a link becomes a labelled hyperlink, and so does a dropped one: a
@@ -194,8 +197,8 @@ HikkiUITests/                 XCUITest flows
   changes draw nothing); dropping `autoHideMenuBar` from the presentation options makes AppKit hide the menu bar for
   good; Photos' hide-and-slide-in bar (`windowToolbarFullScreenVisibility(.onHover)`) came back transparent over the
   sidebar's search field. When the menu bar comes in, the toolbar row slides down with it by the menu bar's height,
-  so the columns keep that much free under the row in full screen (`fullScreenSlack` in the environment; the sidebar's
-  search bar and the detail column pad by it — a padding on the split view itself doesn't reach the columns). The
+  so the sidebar search field keeps that much free under the row in full screen (`fullScreenSlack` in the
+  environment). The detail content doesn't add this extra inset, avoiding excess whitespace below the toolbar. The
   state is re-read on enter/exit/resize/key (restored windows) and logged (category `fullscreen`). DEBUG:
   `HIKKI_DEBUG_FULLSCREEN` forces the layout on in a window, `HIKKI_DEBUG_ENTER_FULLSCREEN` enters full screen 1.5 s
   after launch, `HIKKI_DEBUG_QUIT_AFTER=<s>` quits — own-instance checks.
