@@ -147,7 +147,7 @@ describe('ruby (furigana)', () => {
     editor.commands.setTextSelection({ from: 1, to: 8 })
     act(() => void editor.commands.editRuby())
     await screen.findByLabelText('Reading for 漢字')
-    act(() => screen.getByRole('radio', { name: 'Whole' }).click())
+    act(() => screen.getByRole('tab', { name: 'Whole' }).click())
     const input = screen.getByLabelText('Reading') as HTMLInputElement
     expect(input.value).toBe('このかんじをよむ')
     fireEvent.keyDown(input, { key: 'Enter' })

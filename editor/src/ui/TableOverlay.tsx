@@ -18,6 +18,7 @@ import type { Editor } from '@tiptap/core'
 import type { CellSelection } from '@tiptap/pm/tables'
 import { useState, type ReactNode } from 'react'
 
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -443,8 +444,6 @@ function CellBar({ editor, selection }: { editor: Editor; selection: CellSelecti
   })
   if (!rect) return null
   const { left, top } = rect as DOMRect
-  const button =
-    'inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-2 text-xs text-foreground hover:bg-accent disabled:cursor-default disabled:opacity-40'
   return (
     <div
       className="hk-pop fixed z-30 flex items-center gap-0.5 rounded-lg bg-popover p-1 shadow-popover"
@@ -453,26 +452,28 @@ function CellBar({ editor, selection }: { editor: Editor; selection: CellSelecti
       data-testid="table-cell-bar"
       onMouseDown={(e) => e.preventDefault()}
     >
-      <button
-        type="button"
-        className={button}
+      <Button
+        variant="ghost"
+        size="xs"
+        className="font-normal"
         disabled={!editor.can().mergeCells()}
         onClick={() => editor.chain().focus().mergeCells().run()}
       >
         <ArrowsInLineHorizontalIcon size={14} aria-hidden />
         {t('table.merge')}
-      </button>
-      <button
-        type="button"
-        className={button}
+      </Button>
+      <Button
+        variant="ghost"
+        size="xs"
+        className="font-normal"
         disabled={!editor.can().splitCell()}
         onClick={() => editor.chain().focus().splitCell().run()}
       >
         <SquareSplitHorizontalIcon size={14} aria-hidden />
         {t('table.split')}
-      </button>
+      </Button>
       <DropdownMenu>
-        <DropdownMenuTrigger render={<button type="button" className={button} />}>
+        <DropdownMenuTrigger render={<Button variant="ghost" size="xs" className="font-normal" />}>
           <PaintBucketIcon size={14} aria-hidden />
           {t('table.color')}
         </DropdownMenuTrigger>
@@ -492,10 +493,10 @@ function CellBar({ editor, selection }: { editor: Editor; selection: CellSelecti
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-      <button type="button" className={button} onClick={() => clearCells(editor)}>
+      <Button variant="ghost" size="xs" className="font-normal" onClick={() => clearCells(editor)}>
         <EraserIcon size={14} aria-hidden />
         {t('table.clear')}
-      </button>
+      </Button>
     </div>
   )
 }

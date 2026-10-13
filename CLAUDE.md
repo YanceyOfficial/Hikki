@@ -23,8 +23,8 @@ These rules are mandatory. Automated ones are noted.
   the Base UI popups in `editor/src/components/ui/` carry it, a React panel stays mounted through its leave with
   `usePresence` (`editor/src/ui/floating.tsx`) — or `hk-pop-toggle` + `data-open` when they stay mounted. Lists
   mark the selected row with one gliding surface (`editor/src/ui/GlidingHighlight.tsx`, rows `relative` +
-  `data-index`), block tints fade (`.tiptap [data-id]`), anything clickable takes `ui.press` / the `ui.button`
-  recipes (hover fade + 97 % press); Swift uses `Motion.easeOut()`. No per-component durations, easings or
+  `data-index`), block tints fade (`.tiptap [data-id]`), hover fades and the 97 % press live in the shadcn `Button` /
+  `Toggle` (restyled in `editor/src/components/ui/`); Swift uses `Motion.easeOut()`. No per-component durations, easings or
   tw-animate classes. _Enforced by `make lint-design`._
 - **Reusable UI lives in `HikkiUI`** (no app state: plain values + closures, a `#Preview` each, listed in the DEBUG
   gallery `Hikki/Sources/ComponentGallery.swift`, launch argument `-HikkiGallery`). Native components follow the same
@@ -32,7 +32,9 @@ These rules are mandatory. Automated ones are noted.
 - **Web UI primitives are shadcn** (style `base-vega`, Base UI primitives, hugeicons; config in `editor/components.json`,
   components in `editor/src/components/ui/`). Add components only with `cd editor && bun run ui:add <name>` — the
   wrapper fixes the CLI's wrong `cn` import under TypeScript 7. Prefer a shadcn component over a hand-rolled one;
-  editor-specific pieces live in `editor/src/ui/`.
+  editor-specific pieces live in `editor/src/ui/`. Fields, buttons, toggles, tooltips and popovers are always the shadcn
+  components (`Input`, `InputGroup`, `Textarea`, `Button`, `Toggle`, `Kbd`…) restyled with classes — never a bare
+  `<input>` / `<button>`; Phosphor icons are imported by their `…Icon` names.
 - **Icons go through one list** (`design/icons.json`, `make icons`). The native shell draws SF Symbols (each icon's
   `"sf"` name; the generated `Icon` enum, `IconView` / `IconLabel`, `Icon.glyph` for system-sized spots), falling
   back to the bundled Phosphor asset where there is no symbol; the web editor uses `@phosphor-icons/react`. No raw

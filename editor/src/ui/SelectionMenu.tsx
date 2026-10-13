@@ -18,6 +18,10 @@ import {
 import type { Editor } from '@tiptap/core'
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
+import { Button } from '@/components/ui/button'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
+import { Kbd } from '@/components/ui/kbd'
+import { Toggle } from '@/components/ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 import { BLOCK_TYPES } from '../blocks'
@@ -26,6 +30,7 @@ import { t } from '../i18n'
 import { isSafeHref, normalizeHref } from '../links'
 import { shortcutLabel } from '../shortcuts'
 import { cn } from './cn'
+import { usePresence } from './floating'
 import { useEditorSnapshot } from './use-editor-snapshot'
 
 type Panel = 'turnInto' | 'color' | 'link' | 'more' | null
@@ -78,6 +83,11 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
   const run = (apply: (chain: ReturnType<Editor['chain']>) => ReturnType<Editor['chain']>) =>
     apply(editor.chain().focus()).run()
   const toggle = (name: Panel) => setPanel((current) => (current === name ? null : name))
+  // The side panel stays in the tree through its leave motion, showing whatever it last showed.
+  const panelRef = useRef<HTMLDivElement>(null)
+  const panelShown = usePresence(panel !== null, panelRef)
+  const [shownPanel, setShownPanel] = useState(panel)
+  if (panel && panel !== shownPanel) setShownPanel(panel)
   const current = TURN_INTO.find((b) => b.id === state.block) ?? TURN_INTO[0]
   const CurrentIcon = current.icon
 
@@ -174,16 +184,17 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
         </div>
       </div>
 
-      {panel && (
+      {panelShown && shownPanel && (
         <div
+          ref={panelRef}
           className={cn(
             // Scrolls on its own (wheel and trackpad stay inside, the page doesn't move).
-            'absolute top-0 max-h-[min(440px,calc(100vh-96px))] w-[224px] overflow-y-auto overscroll-contain rounded-xl bg-popover p-1 text-popover-foreground shadow-popover',
-            panelLeft ? 'right-full mr-1.5' : 'left-full ml-1.5'
+            'hk-pop absolute top-0 max-h-[min(440px,calc(100vh-96px))] w-[224px] overflow-y-auto overscroll-contain rounded-xl bg-popover p-1 text-popover-foreground shadow-popover',
+            panelLeft ? 'right-full mr-1.5 [--hk-pop-origin:top_right]' : 'left-full ml-1.5'
           )}
-          data-testid={`selection-menu-${panel}`}
+          data-testid={`selection-menu-${shownPanel}`}
         >
-          {panel === 'turnInto' && (
+          {shownPanel === 'turnInto' && (
             <div role="menu" aria-label={t('format.turnInto')}>
               <PanelTitle>{t('format.turnInto')}</PanelTitle>
               {TURN_INTO.map((block) => {
@@ -210,7 +221,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
               })}
             </div>
           )}
-          {panel === 'more' && (
+          {shownPanel === 'more' && (
             <div role="menu" aria-label={t('format.more')}>
               <button
                 type="button"
@@ -249,7 +260,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
               </button>
             </div>
           )}
-          {panel === 'color' && (
+          {shownPanel === 'color' && (
             <ColorPanel
               textColor={state.textColor}
               bgColor={state.bgColor}
@@ -257,7 +268,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
               onBackground={(color) => run((c) => c.setBackgroundColor(color))}
             />
           )}
-          {panel === 'link' && (
+          {shownPanel === 'link' && (
             <LinkPanel
               href={state.link}
               onApply={(href) => {
@@ -312,15 +323,12 @@ function MarkButton({
     <Tooltip>
       <TooltipTrigger
         render={
-          <button
-            type="button"
+          <Toggle
+            size="sm"
             aria-label={label}
-            aria-pressed={active}
-            className={cn(
-              'grid h-8 cursor-pointer place-items-center rounded-md text-foreground transition-transform duration-(--motion-pop-out) ease-out hover:bg-accent active:scale-[0.97] coarse:h-10',
-              active && 'bg-accent text-accent-strong'
-            )}
-            onClick={onClick}
+            pressed={active}
+            onPressedChange={() => onClick()}
+            className="size-8 min-w-8 px-0 text-foreground hover:bg-accent aria-pressed:bg-accent aria-pressed:text-foreground coarse:size-10"
           />
         }
       >
@@ -328,7 +336,7 @@ function MarkButton({
       </TooltipTrigger>
       <TooltipContent side="bottom">
         {label}
-        {keys && <span className="text-background/60">{keys}</span>}
+        {keys && <Kbd>{keys}</Kbd>}
       </TooltipContent>
     </Tooltip>
   )
@@ -368,15 +376,13 @@ function ColorButton({
     <Tooltip>
       <TooltipTrigger
         render={
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon-sm"
             aria-label={t('format.color')}
             aria-haspopup="menu"
             aria-expanded={active}
-            className={cn(
-              'grid h-8 cursor-pointer place-items-center rounded-md hover:bg-accent coarse:h-10',
-              active && 'bg-accent'
-            )}
+            className={cn('hover:bg-accent coarse:size-10', active && 'bg-accent')}
             onClick={onClick}
           />
         }
@@ -473,12 +479,14 @@ function LinkPanel({
   }
   return (
     <div className="flex flex-col gap-1 p-1">
-      <div className="flex items-center gap-1.5">
-        <LinkSimpleIcon size={16} className="flex-none text-muted-foreground" aria-hidden />
-        <input
+      <InputGroup className="h-8 shadow-none">
+        <InputGroupAddon>
+          <LinkSimpleIcon aria-hidden />
+        </InputGroupAddon>
+        <InputGroupInput
           // oxlint-disable-next-line jsx-a11y/no-autofocus -- the panel exists to type a link
           autoFocus
-          className="h-8 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-sm outline-none focus:border-ring focus:ring-3 focus:ring-ring/50"
+          className="md:text-sm"
           placeholder={t('link.placeholder')}
           aria-label={t('format.link')}
           value={value}
@@ -494,36 +502,29 @@ function LinkPanel({
             }
           }}
         />
-      </div>
+      </InputGroup>
       <div className="flex justify-end gap-1">
         {href && (
           <>
             {isSafeHref(href) && (
-              <a
-                className="inline-flex h-7 items-center rounded-md px-2 text-xs text-muted-foreground hover:bg-accent"
-                href={href}
-                target="_blank"
-                rel="noreferrer"
+              <Button
+                variant="ghost"
+                size="xs"
+                className="text-muted-foreground"
+                nativeButton={false}
+                render={<a href={href} target="_blank" rel="noreferrer" />}
               >
                 {t('link.open')}
-              </a>
+              </Button>
             )}
-            <button
-              type="button"
-              className="inline-flex h-7 cursor-pointer items-center rounded-md px-2 text-xs text-destructive hover:bg-accent"
-              onClick={onRemove}
-            >
+            <Button variant="ghost" size="xs" className="text-destructive" onClick={onRemove}>
               {t('link.remove')}
-            </button>
+            </Button>
           </>
         )}
-        <button
-          type="button"
-          className="inline-flex h-7 cursor-pointer items-center rounded-md bg-primary px-2.5 text-xs text-primary-foreground"
-          onClick={apply}
-        >
+        <Button size="xs" onClick={apply}>
           {t('link.apply')}
-        </button>
+        </Button>
       </div>
     </div>
   )

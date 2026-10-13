@@ -1,6 +1,8 @@
 import { CaretDownIcon, CheckIcon, CopyIcon } from '@phosphor-icons/react'
 import { useEffect, useRef, useState } from 'react'
 
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 import { filterLanguages, findLanguage } from '../extensions/code-languages'
@@ -58,9 +60,10 @@ export function CodeBlockHeader({
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger
             render={
-              <button
-                type="button"
-                className="inline-flex h-6 cursor-pointer items-center gap-1 rounded-md px-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-subtle-foreground"
+              <Button
+                variant="ghost"
+                size="xs"
+                className="px-1.5 font-normal text-muted-foreground hover:text-subtle-foreground"
                 aria-label={t('code.language')}
               />
             }
@@ -81,10 +84,11 @@ export function CodeBlockHeader({
       ) : (
         <span className="px-1.5 text-xs text-muted-foreground">{label}</span>
       )}
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="xs"
         className={cn(
-          'inline-flex h-6 cursor-pointer items-center gap-1 rounded-md px-1.5 text-xs text-muted-foreground opacity-0 transition-opacity duration-(--motion-pop-in) group-hover/code:opacity-100 hover:bg-accent hover:text-subtle-foreground focus-visible:opacity-100 touch:opacity-100',
+          'px-1.5 font-normal text-muted-foreground opacity-0 transition-[opacity,color,background-color] duration-(--motion-pop-in) group-hover/code:opacity-100 hover:text-subtle-foreground focus-visible:opacity-100 touch:opacity-100',
           copied && 'opacity-100'
         )}
         onClick={() => {
@@ -93,7 +97,7 @@ export function CodeBlockHeader({
       >
         {copied ? <CheckIcon size={12} aria-hidden /> : <CopyIcon size={12} aria-hidden />}
         {copied ? t('code.copied') : t('code.copy')}
-      </button>
+      </Button>
     </div>
   )
 }
@@ -117,10 +121,10 @@ function LanguageList({ current, onPick }: { current: string; onPick: (id: strin
 
   return (
     <div className="flex flex-col">
-      <input
+      <Input
         // oxlint-disable-next-line jsx-a11y/no-autofocus -- the picker opens to type a language
         autoFocus
-        className="h-9 border-b border-border bg-transparent px-3 text-sm outline-none placeholder:text-placeholder"
+        className="h-9 rounded-none border-0 border-b border-border px-3 shadow-none focus-visible:ring-0 md:text-sm"
         placeholder={t('code.searchLanguage')}
         aria-label={t('code.searchLanguage')}
         value={query}

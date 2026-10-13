@@ -128,6 +128,8 @@ class BlockControlsView {
   }
 
   update() {
+    // Locked (or unreadable) now: whatever handle was showing goes at once, not on the next pointer move.
+    if (!this.editor.isEditable) return this.hide()
     // The hovered block may have moved or gone; re-find it from where it was.
     if (this.unit && !this.press) {
       const unit = unitAtPos(
@@ -164,7 +166,9 @@ class BlockControlsView {
   }
 
   private onMove = (event: MouseEvent) => {
-    if (this.press || !this.editor.isEditable) return
+    if (this.press) return
+    // A locked (or unreadable) page has no handle at all — the one already showing goes too.
+    if (!this.editor.isEditable) return this.hide()
     const rect = this.contentRect()
     // Over the page or its left gutter (where the handle sits), within the page's height.
     const inBand = event.clientX >= rect.left - 96 && event.clientX <= rect.right + 24

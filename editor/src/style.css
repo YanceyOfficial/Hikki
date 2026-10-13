@@ -186,7 +186,11 @@
 
   /* Callout (extensions/callout.tsx): emoji + content on a wash background (gray by default). */
   .tiptap .hk-callout {
-    @apply my-1 flex gap-2 rounded-md bg-wash-gray px-3 py-3;
+    @apply my-1 flex gap-2 rounded-md px-3 py-3;
+  }
+  /* The default wash only: a chosen colour ([data-bg-color], one class less specific) must win. */
+  .tiptap .hk-callout:not([data-bg-color]) {
+    @apply bg-wash-gray;
   }
   .tiptap .hk-callout-icon {
     @apply -ml-0.5 flex-none select-none;
@@ -209,7 +213,10 @@
     min-width: 6rem;
   }
   .tiptap th {
-    @apply bg-muted/60 font-medium;
+    @apply font-medium;
+  }
+  .tiptap th:not([data-bg-color]) {
+    @apply bg-muted/60;
   }
   .tiptap td > p,
   .tiptap th > p {

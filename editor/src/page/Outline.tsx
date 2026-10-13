@@ -60,7 +60,7 @@ export function Outline({ bridge }: { bridge: EditorBridge }) {
       <div className="absolute top-1/2 right-0 -translate-y-1/2">
         <ol
           data-open={open}
-          className="hk-pop-toggle m-0 max-h-[60vh] w-60 list-none overflow-y-auto rounded-xl bg-popover p-2 shadow-popover [--hk-pop-dx:2px] [--hk-pop-dy:0px] [--hk-pop-origin:right_center]"
+          className="hk-pop-toggle m-0 max-h-[60vh] w-60 list-none overflow-y-auto rounded-xl bg-popover p-2 shadow-popover [--hk-pop-dx:8px] [--hk-pop-dy:0px] [--hk-pop-origin:right_center]"
         >
           {headings.map((h) => (
             <li key={h.pos} style={{ paddingLeft: `${(h.level - minLevel) * 12}px` }}>

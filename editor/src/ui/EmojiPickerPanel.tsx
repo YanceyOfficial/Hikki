@@ -2,7 +2,10 @@ import { ShuffleIcon } from '@phosphor-icons/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { cn, ui } from './cn'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+
+import { cn } from './cn'
 import {
   loadEmojiCategories,
   recentEmoji,
@@ -74,8 +77,8 @@ export function EmojiPickerPanel({ onSelect, onRemove, onRandom, locale: localeP
   return (
     <div className="flex h-[380px] max-h-[inherit] flex-col">
       <div className="flex gap-1 px-2.5 pt-2.5 pb-1.5">
-        <input
-          className={ui.input}
+        <Input
+          className="h-8 md:text-sm"
           type="search"
           placeholder={text.search}
           value={query}
@@ -87,20 +90,20 @@ export function EmojiPickerPanel({ onSelect, onRemove, onRandom, locale: localeP
           aria-label={text.search}
         />
         {onRandom && (
-          <button
-            type="button"
-            className={ui.button}
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={onRandom}
             title={text.random}
             aria-label={text.random}
           >
             <ShuffleIcon size={16} aria-hidden />
-          </button>
+          </Button>
         )}
         {onRemove && (
-          <button type="button" className={ui.button} onClick={onRemove}>
+          <Button variant="ghost" size="sm" onClick={onRemove}>
             {text.remove}
-          </button>
+          </Button>
         )}
       </div>
 

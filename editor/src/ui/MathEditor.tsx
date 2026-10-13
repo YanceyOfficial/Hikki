@@ -1,6 +1,9 @@
 import katex from 'katex'
 import { useMemo, useState } from 'react'
 
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+
 import { t } from '../i18n'
 
 type Props = {
@@ -25,11 +28,11 @@ export function MathEditor({ initial, multiline, onDone, onCancel }: Props) {
 
   return (
     <div className="flex flex-col gap-2" data-testid="math-editor">
-      <textarea
+      <Textarea
         // oxlint-disable-next-line jsx-a11y/no-autofocus -- the panel opens to type a formula
         autoFocus
         rows={multiline ? 3 : 1}
-        className="min-h-9 w-full resize-none rounded-md border border-input bg-transparent px-2 py-1.5 font-mono text-sm outline-none focus:border-ring focus:ring-3 focus:ring-ring/50"
+        className="min-h-9 px-2 py-1.5 font-mono text-sm md:text-sm"
         placeholder={t('math.placeholder')}
         aria-label={t('math.label')}
         value={latex}
@@ -56,13 +59,9 @@ export function MathEditor({ initial, multiline, onDone, onCancel }: Props) {
         <span className="text-xs text-muted-foreground">
           {multiline ? t('math.hintBlock') : t('math.hintInline')}
         </span>
-        <button
-          type="button"
-          className="inline-flex h-7 cursor-pointer items-center rounded-md bg-primary px-2.5 text-xs text-primary-foreground"
-          onClick={() => onDone(latex)}
-        >
+        <Button size="xs" onClick={() => onDone(latex)}>
           {t('math.done')}
-        </button>
+        </Button>
       </div>
     </div>
   )

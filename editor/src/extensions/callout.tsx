@@ -160,7 +160,9 @@ class CalloutView implements NodeView {
   }
 
   ignoreMutation(mutation: MutationRecord | { type: 'selection'; target: globalThis.Node }) {
-    return this.icon.contains(mutation.target)
+    if (this.icon.contains(mutation.target)) return true
+    // The colour attribute on the wrapper is ours, written on update; not a change to the document.
+    return mutation.type === 'attributes' && mutation.target === this.dom
   }
 
   destroy() {

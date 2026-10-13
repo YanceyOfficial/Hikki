@@ -1,8 +1,11 @@
 import { useState } from 'react'
 
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
 import { wholeReading, type RubySegment } from '../extensions/ruby'
 import { t } from '../i18n'
-import { cn } from './cn'
 
 type Props = {
   base: string
@@ -18,8 +21,8 @@ type Props = {
   onCancel: () => void
 }
 
-const field =
-  'h-8 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-sm outline-none placeholder:text-placeholder focus:border-ring focus:ring-3 focus:ring-ring/50'
+/** The panel's fields are a size smaller than the default form control. */
+const field = 'h-8 text-sm md:text-sm'
 
 /**
  * The furigana fields (Enter saves, Esc cancels). A phrase with several kanji runs gets one field per run
@@ -41,7 +44,8 @@ export function RubyPanel({
   const [typed, setTyped] = useState<Record<string, string>>({})
   const [wholeChosen, setWholeChosen] = useState(false)
   const kanjiRuns = segments?.filter((s) => s.reading !== undefined) ?? []
-  const perKanji = !initial && kanjiRuns.length > 0 && segments!.length > 1 && !wholeChosen
+  const segmented = kanjiRuns.length > 0 && segments!.length > 1 && !initial
+  const perKanji = segmented && !wholeChosen
   const whole = typed.whole ?? (initial || (segments ? wholeReading(segments) : ''))
 
   const keys = (e: React.KeyboardEvent, save: () => void) => {
@@ -67,31 +71,20 @@ export function RubyPanel({
         <div className="min-w-0 flex-1 truncate px-0.5 text-xs text-muted-foreground">
           {t('ruby.baseLabel')} <span className="text-foreground">{base}</span>
         </div>
-        {kanjiRuns.length > 0 && segments!.length > 1 && !initial && (
-          <div
-            className="flex rounded-md bg-muted p-0.5 text-xs"
-            role="radiogroup"
-            aria-label={t('ruby.mode')}
+        {segmented && (
+          <Tabs
+            value={perKanji ? 'perKanji' : 'whole'}
+            onValueChange={(mode) => setWholeChosen(mode === 'whole')}
           >
-            {(['perKanji', 'whole'] as const).map((mode) => {
-              const active = mode === 'perKanji' ? perKanji : !perKanji
-              return (
-                <button
-                  key={mode}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  className={cn(
-                    'cursor-pointer rounded-[5px] px-2 py-0.5',
-                    active && 'bg-background shadow-xs'
-                  )}
-                  onClick={() => setWholeChosen(mode === 'whole')}
-                >
-                  {mode === 'perKanji' ? t('ruby.perKanji') : t('ruby.whole')}
-                </button>
-              )
-            })}
-          </div>
+            <TabsList className="h-7" aria-label={t('ruby.mode')}>
+              <TabsTrigger value="perKanji" className="h-6 px-2 text-xs">
+                {t('ruby.perKanji')}
+              </TabsTrigger>
+              <TabsTrigger value="whole" className="h-6 px-2 text-xs">
+                {t('ruby.whole')}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         )}
       </div>
       {perKanji ? (
@@ -100,7 +93,7 @@ export function RubyPanel({
             segment.reading === undefined ? null : (
               <label key={i} className="flex items-center gap-2 text-sm">
                 <span className="w-16 shrink-0 truncate text-right">{segment.text}</span>
-                <input
+                <Input
                   // oxlint-disable-next-line jsx-a11y/no-autofocus -- the first field takes the caret
                   autoFocus={i === segments!.findIndex((s) => s.reading !== undefined)}
                   className={field}
@@ -117,7 +110,7 @@ export function RubyPanel({
           )}
         </div>
       ) : (
-        <input
+        <Input
           // oxlint-disable-next-line jsx-a11y/no-autofocus -- the panel exists to type the reading
           autoFocus
           className={field}
@@ -133,21 +126,13 @@ export function RubyPanel({
         <span className="text-xs text-muted-foreground">{t('ruby.hint')}</span>
         <div className="flex gap-1">
           {canRemove && (
-            <button
-              type="button"
-              className="inline-flex h-7 cursor-pointer items-center rounded-md px-2 text-xs text-destructive hover:bg-accent"
-              onClick={onRemove}
-            >
+            <Button variant="ghost" size="xs" className="text-destructive" onClick={onRemove}>
               {t('ruby.remove')}
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
-            className="inline-flex h-7 cursor-pointer items-center rounded-md bg-primary px-2.5 text-xs text-primary-foreground"
-            onClick={() => (perKanji ? saveSegments() : onDone(whole))}
-          >
+          <Button size="xs" onClick={() => (perKanji ? saveSegments() : onDone(whole))}>
             {t('ruby.done')}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

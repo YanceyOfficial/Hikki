@@ -11,6 +11,8 @@ import type { Editor } from '@tiptap/core'
 import { TextSelection } from '@tiptap/pm/state'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
+import { Input } from '@/components/ui/input'
+
 import { BLOCK_TYPES } from '../blocks'
 import { setBlockHighlight } from '../extensions/block-highlight'
 import { deleteUnit, duplicateUnit, firstTextPos, type BlockUnit } from '../extensions/block-units'
@@ -19,7 +21,7 @@ import { blockLabel, copyLink } from '../extensions/page-links'
 import { t } from '../i18n'
 import { shortcutLabel } from '../shortcuts'
 import { cn } from './cn'
-import { FloatingLayer } from './floating'
+import { FloatingLayer, usePresence } from './floating'
 import { GlidingHighlight } from './GlidingHighlight'
 import { IconProvider } from './icons'
 
@@ -85,6 +87,10 @@ function BlockMenu({
   const [submenu, setSubmenu] = useState<'turnInto' | 'color' | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const submenuRef = useRef<HTMLDivElement>(null)
+  // The submenu stays in the tree through its leave motion, showing whatever it last showed.
+  const submenuShown = usePresence(submenu !== null, submenuRef)
+  const [shownSubmenu, setShownSubmenu] = useState(submenu)
+  if (submenu && submenu !== shownSubmenu) setShownSubmenu(submenu)
 
   // A long submenu opened near the bottom of the window moves up so all of it is reachable.
   useLayoutEffect(() => {
@@ -208,9 +214,9 @@ function BlockMenu({
         aria-label={t('blockMenu.label')}
         className="flex w-64 flex-col rounded-xl bg-popover p-1 text-popover-foreground shadow-popover"
       >
-        <input
+        <Input
           ref={inputRef}
-          className="mb-1 h-8 rounded-md border border-input bg-transparent px-2 text-sm outline-none placeholder:text-placeholder focus:border-ring"
+          className="mb-1 h-8 md:text-sm"
           placeholder={t('blockMenu.search')}
           aria-label={t('blockMenu.search')}
           value={query}
@@ -260,13 +266,13 @@ function BlockMenu({
           ))}
         </div>
       </div>
-      {submenu && (
+      {submenuShown && shownSubmenu && (
         <div
           ref={submenuRef}
           role="menu"
-          className="absolute top-0 left-full ml-1.5 flex max-h-[min(460px,calc(100vh-120px))] w-56 flex-col overflow-y-auto overscroll-contain rounded-xl bg-popover p-1 text-popover-foreground shadow-popover"
+          className="hk-pop absolute top-0 left-full ml-1.5 flex max-h-[min(460px,calc(100vh-120px))] w-56 flex-col overflow-y-auto overscroll-contain rounded-xl bg-popover p-1 text-popover-foreground shadow-popover"
         >
-          {submenu === 'turnInto' ? (
+          {shownSubmenu === 'turnInto' ? (
             <TurnIntoList editor={editor} unit={unit} onDone={act(() => {})} />
           ) : (
             <ColorList editor={editor} unit={unit} onDone={act(() => {})} />

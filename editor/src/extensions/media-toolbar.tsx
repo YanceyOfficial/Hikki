@@ -10,8 +10,11 @@ import { BubbleMenuPlugin } from '@tiptap/extension-bubble-menu'
 import { NodeSelection, PluginKey } from '@tiptap/pm/state'
 import { createRoot, type Root } from 'react-dom/client'
 
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { Toggle } from '@/components/ui/toggle'
+
 import { t } from '../i18n'
-import { cn } from '../ui/cn'
 import { IconProvider } from '../ui/icons'
 import { useEditorSnapshot } from '../ui/use-editor-snapshot'
 import type { MediaHost } from './media'
@@ -31,16 +34,14 @@ function selectedImage(editor: Editor) {
   }
 }
 
-const button = (active: boolean) =>
-  cn(
-    'grid size-8 cursor-pointer place-items-center rounded-md text-foreground hover:bg-accent active:scale-[0.97]',
-    active && 'bg-accent text-accent-strong'
-  )
+/** The toolbar's alignment switches: pressed = the image's current alignment. */
+const align =
+  'size-8 min-w-8 px-0 text-foreground hover:bg-accent aria-pressed:bg-accent aria-pressed:text-foreground'
 
 /** Over a selected image: alignment, view full size (Quick Look, for our assets), delete. */
 function MediaToolbar({ editor, host }: { editor: Editor; host: MediaHost | null }) {
   const state = useEditorSnapshot(editor, selectedImage)
-  const align = (value: 'left' | 'center' | 'right') =>
+  const setAlign = (value: 'left' | 'center' | 'right') =>
     editor.chain().focus().updateAttributes('image', { align: value }).run()
   return (
     <div
@@ -49,52 +50,52 @@ function MediaToolbar({ editor, host }: { editor: Editor; host: MediaHost | null
       className="hk-pop flex items-center gap-0.5 rounded-lg bg-popover p-1 shadow-popover"
       onMouseDown={(e) => e.preventDefault()}
     >
-      <button
-        type="button"
+      <Toggle
+        size="sm"
         aria-label={t('media.alignLeft')}
-        aria-pressed={state.align === 'left'}
-        className={button(state.align === 'left')}
-        onClick={() => align('left')}
+        pressed={state.align === 'left'}
+        onPressedChange={() => setAlign('left')}
+        className={align}
       >
         <TextAlignLeftIcon size={16} aria-hidden />
-      </button>
-      <button
-        type="button"
+      </Toggle>
+      <Toggle
+        size="sm"
         aria-label={t('media.alignCenter')}
-        aria-pressed={state.align === 'center'}
-        className={button(state.align === 'center')}
-        onClick={() => align('center')}
+        pressed={state.align === 'center'}
+        onPressedChange={() => setAlign('center')}
+        className={align}
       >
         <TextAlignCenterIcon size={16} aria-hidden />
-      </button>
-      <button
-        type="button"
+      </Toggle>
+      <Toggle
+        size="sm"
         aria-label={t('media.alignRight')}
-        aria-pressed={state.align === 'right'}
-        className={button(state.align === 'right')}
-        onClick={() => align('right')}
+        pressed={state.align === 'right'}
+        onPressedChange={() => setAlign('right')}
+        className={align}
       >
         <TextAlignRightIcon size={16} aria-hidden />
-      </button>
+      </Toggle>
       {state.src?.startsWith('hikki-editor://assets/') && host && (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="icon-sm"
           aria-label={t('media.view')}
-          className={button(false)}
           onClick={() => host.openAsset(state.src!)}
         >
           <ArrowsOutIcon size={16} aria-hidden />
-        </button>
+        </Button>
       )}
-      <div className="mx-0.5 h-5 w-px bg-border" />
-      <button
-        type="button"
+      <Separator orientation="vertical" className="mx-0.5 data-[orientation=vertical]:h-5" />
+      <Button
+        variant="ghost"
+        size="icon-sm"
         aria-label={t('media.delete')}
-        className={button(false)}
         onClick={() => editor.chain().focus().deleteSelection().run()}
       >
         <TrashIcon size={16} aria-hidden />
-      </button>
+      </Button>
     </div>
   )
 }

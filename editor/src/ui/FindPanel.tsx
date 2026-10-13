@@ -97,7 +97,8 @@ export function FindPanel({ editor, open, replace, initialText, onReplaceToggle,
       ref={panelRef}
       data-testid="find-panel"
       className="hk-pop fixed right-4 left-4 z-40 rounded-xl bg-popover text-popover-foreground shadow-popover [--hk-pop-origin:top_right] sm:left-auto sm:w-[440px]"
-      style={{ top: 'calc(var(--hk-inset-top, 0px) + 8px)' }}
+      // The same distance from the toolbar as from the window's edge (right-4).
+      style={{ top: 'calc(var(--hk-inset-top, 0px) + 16px)' }}
     >
       <InputGroup className={cn('h-10 rounded-xl shadow-none', replace && 'rounded-b-none')}>
         <InputGroupInput

@@ -137,7 +137,7 @@ export function SlashMenu({ items, query, selectedIndex, onSelect, onHover, onCl
       {selected && previewReady && (
         <div
           className={cn(
-            'pointer-events-none absolute rounded-lg bg-popover p-2 shadow-popover max-md:hidden coarse:hidden',
+            'hk-pop pointer-events-none absolute rounded-lg bg-popover p-2 shadow-popover max-md:hidden coarse:hidden',
             previewLeft ? 'right-full mr-2' : 'left-full ml-2'
           )}
           style={{ top: previewTop, width: PREVIEW_WIDTH }}

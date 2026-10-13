@@ -13,6 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { Popover as CoverPopover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Textarea } from '@/components/ui/textarea'
 
 import type { EditorBridge } from '../bridge'
 import { cn, ui } from '../ui/cn'
@@ -105,23 +106,25 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
         )}
         <div className="mt-2 mb-1 -ml-1.5 flex min-h-7 gap-1 opacity-0 transition-opacity group-hover/header:opacity-100 focus-within:opacity-100 touch:opacity-100">
           {!page.icon && !frozen && (
-            <button
-              type="button"
-              className={ui.ghost}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="font-normal text-muted-foreground"
               ref={setIconAnchor}
               onClick={() => bridge.setIcon(randomIcon())}
             >
               <SmileyIcon size={18} aria-hidden /> {t('page.addIcon')}
-            </button>
+            </Button>
           )}
           {!background && !frozen && (
-            <button
-              type="button"
-              className={ui.ghost}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="font-normal text-muted-foreground"
               onClick={() => bridge.setCover(randomGradient())}
             >
               <ImageIcon size={18} aria-hidden /> {t('page.addCover')}
-            </button>
+            </Button>
           )}
         </div>
         {page.readOnly && (
@@ -208,10 +211,10 @@ function TitleField({
   }, [docId])
 
   return (
-    <textarea
+    <Textarea
       ref={ref}
       data-page-title
-      className="mb-2 block w-full resize-none overflow-hidden border-0 bg-transparent py-[3px] text-4xl leading-tight font-bold tracking-[-0.01em] text-foreground outline-none placeholder:text-placeholder max-sm:text-3xl"
+      className="mb-2 block min-h-0 w-full resize-none overflow-hidden rounded-none border-0 bg-transparent px-0 py-[3px] text-4xl leading-tight font-bold tracking-[-0.01em] text-foreground shadow-none placeholder:text-placeholder focus-visible:ring-0 max-sm:text-3xl md:text-4xl dark:bg-transparent"
       rows={1}
       value={title}
       readOnly={readOnly}
