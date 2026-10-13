@@ -277,7 +277,7 @@ private struct PhoneTree: View {
     }
 
     private func destination(_ node: PageNode, chevron: Binding<Bool>?) -> some View {
-        SidebarDestination(route: .page(node.id), navigator: navigator, wide: wide) {
+        SidebarDestination(route: .page(node.id), navigator: navigator, wide: wide, reservesChevron: false) {
             if wide {
                 HoverPageRow(page: node.page, isExpanded: chevron, navigator: navigator)
                     .padding(.leading, CGFloat(depth) * Spacing.s4)
@@ -304,6 +304,9 @@ private struct SidebarDestination<Label: View>: View {
     let navigator: Navigator
     let wide: Bool
     var showsSelection = true
+    /// Rows without a chevron of their own (Home, Trash, favorites) leave its slot empty, so icons line up
+    /// with the tree's.
+    var reservesChevron = true
     @ViewBuilder let label: Label
     @Environment(\.colorTone) private var colorTone
     @Environment(\.self) private var environment
@@ -315,6 +318,7 @@ private struct SidebarDestination<Label: View>: View {
                 if let id = route.pageID { navigator.open(id) } else { navigator.go(route) }
             } label: {
                 label
+                    .padding(.leading, reservesChevron ? Size.sidebarIcon + Spacing.s1 + Spacing.s2 : 0)
                     // ~32pt rows, like Apple Music.
                     .padding(.vertical, Spacing.s1_5)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -465,8 +469,8 @@ private struct NativePageLabel: View {
     }
 }
 
-/// A page row's content in the Mac/iPad tree (Notion): icon and title; on hover the icon becomes the expand
-/// chevron (for pages with subpages), and "+" (new subpage) and ⋯ (page actions) appear at the end.
+/// A page row's content in the Mac/iPad tree: expand chevron, icon and title; on hover "+" (new subpage) and ⋯
+/// (page actions) appear at the end (Notion).
 private struct HoverPageRow: View {
     let page: PageSummary
     let isExpanded: Binding<Bool>?
@@ -475,14 +479,11 @@ private struct HoverPageRow: View {
 
     var body: some View {
         HStack(spacing: Spacing.s2) {
-            Group {
-                if hovering, isExpanded != nil {
-                    DisclosureChevron(isExpanded: isExpanded)
-                } else {
-                    PageIcon(page.icon, size: TextSize.base.rawValue)
-                        .frame(width: Size.sidebarIcon + Spacing.s1, height: Size.iconButtonSm)
-                }
-            }
+            // The chevron keeps its own slot (blank for pages without subpages), always visible: swapping it
+            // in for the icon on hover hid where a page could expand.
+            DisclosureChevron(isExpanded: isExpanded)
+            PageIcon(page.icon, size: TextSize.base.rawValue)
+                .frame(width: Size.sidebarIcon + Spacing.s1, height: Size.iconButtonSm)
             Group {
                 if page.title.isEmpty {
                     Text("app:page.untitled").foregroundStyle(.secondary)

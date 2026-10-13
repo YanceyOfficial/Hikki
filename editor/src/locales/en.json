@@ -183,7 +183,8 @@
     "superscript": "Superscript",
     "menu": "Formatting",
     "math": "Equation",
-    "more": "More"
+    "more": "More",
+    "ruby": "Ruby (furigana)"
   },
   "color": {
     "text": "Text color",
@@ -286,5 +287,14 @@
     "duplicate": "Duplicate",
     "delete": "Delete",
     "add": "Add a block below"
+  },
+  "ruby": {
+    "label": "Reading",
+    "baseLabel": "Reading for",
+    "placeholder": "かな",
+    "suggesting": "Looking up…",
+    "hint": "Enter to save · Esc to cancel",
+    "done": "Done",
+    "remove": "Remove"
   }
 }

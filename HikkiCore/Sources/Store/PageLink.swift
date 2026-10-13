@@ -4,12 +4,20 @@ import Foundation
 public enum PageLink {
     public static let scheme = "hikki"
 
-    public static func url(for id: String) -> URL {
+    /// `hikki://page/<id>`, with `#<block>` for a block inside the page ("Copy link to block").
+    public static func url(for id: String, block: String? = nil) -> URL {
         var components = URLComponents()
         components.scheme = scheme
         components.host = "page"
         components.path = "/" + id
+        components.fragment = block
         return components.url!
+    }
+
+    /// The block id in a `hikki://page/<id>#<block>` link, or nil.
+    public static func blockID(from url: URL) -> String? {
+        guard pageID(from: url) != nil, let fragment = url.fragment(), !fragment.isEmpty else { return nil }
+        return fragment.contains("/") ? nil : fragment
     }
 
     /// The page id in a `hikki://page/<id>` link, or nil for anything else.

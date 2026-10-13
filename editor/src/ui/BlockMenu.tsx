@@ -15,6 +15,7 @@ import { BLOCK_TYPES } from '../blocks'
 import { setBlockHighlight } from '../extensions/block-highlight'
 import { deleteUnit, duplicateUnit, firstTextPos, type BlockUnit } from '../extensions/block-units'
 import { BLOCK_COLOR_TYPES, colorLabel, PALETTE, type PaletteColor } from '../extensions/colors'
+import { blockLabel, copyLink } from '../extensions/page-links'
 import { t } from '../i18n'
 import { shortcutLabel } from '../shortcuts'
 import { cn } from './cn'
@@ -25,9 +26,11 @@ const TURN_INTO = BLOCK_TYPES.filter((b) => b.turnInto)
 
 let open: { layer: FloatingLayer; close: () => void } | null = null
 
-/** Builds the link to a block (`hikki://page/<page>#<block>`); set by the bridge, which knows the page. */
-let blockLink: ((blockId: string) => string | null) | null = null
-export function setBlockLinkBuilder(builder: ((blockId: string) => string | null) | null): void {
+/** A link to a block (`hikki://page/<page>#<block>`) and the page's title, for blocks without text of their own. */
+export type BlockLink = { href: string; pageLabel: string }
+/** Set by the bridge, which knows the page. */
+let blockLink: ((blockId: string) => BlockLink | null) | null = null
+export function setBlockLinkBuilder(builder: ((blockId: string) => BlockLink | null) | null): void {
   blockLink = builder
 }
 
@@ -118,7 +121,8 @@ function BlockMenu({
             id: 'copyLink',
             label: t('blockMenu.copyLink'),
             icon: <LinkSimple size={18} />,
-            run: act(() => void navigator.clipboard?.writeText(link))
+            // A ready hyperlink (the block's text) plus the URL: pasting it lands as a link.
+            run: act(() => void copyLink(link.href, blockLabel(unit.node) ?? link.pageLabel))
           }
         ]
       : []),

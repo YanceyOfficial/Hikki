@@ -4,7 +4,10 @@ import type { Transaction } from '@tiptap/pm/state'
 import { activeCommands, createEditor, runCommand } from './editor'
 import { runFind, type FindMode } from './extensions/find'
 import type { MediaHost } from './extensions/media'
+import { pageLinkHref, type PageIndexEntry, type PageLinksHost } from './extensions/page-links'
+import type { RubyHost } from './extensions/ruby'
 import { plainText, wordCount } from './extract'
+import { t } from './i18n'
 import { normalizeBody } from './normalize'
 import { collectHeadings, type HeadingItem } from './page/headings'
 import { Store } from './page/store'
@@ -94,12 +97,19 @@ export class EditorBridge {
     this.markSaved()
     const { body, title } = normalizeBody(payload.content, payload.title ?? '')
     let contentError: Error | null = null
-    setBlockLinkBuilder((blockId) =>
-      this.page.get().docId ? `hikki://page/${this.page.get().docId}#${blockId}` : null
-    )
+    setBlockLinkBuilder((blockId) => {
+      const { docId, title: pageTitle } = this.page.get()
+      if (!docId) return null
+      return {
+        href: pageLinkHref(docId, blockId),
+        pageLabel: pageTitle.trim() || t('page.untitled')
+      }
+    })
     const editor = createEditor(this.host, body, {
       spellcheck: this.spellcheck,
       media: this.media,
+      pageLinks: this.pageLinks,
+      ruby: this.ruby,
       onExitTop: () => this.requestTitleFocus(),
       onContentError: (error) => {
         contentError = error
@@ -186,6 +196,36 @@ export class EditorBridge {
     if (!docId) return
     this.page.set({ cover })
     void this.send({ type: 'setCover', docId, cover })
+  }
+
+  /** The sidebar's pages (`window.hikki.setPages`): how links to other pages get their titles. */
+  private pageIndex: PageIndexEntry[] = []
+
+  setPages(pages: PageIndexEntry[]): void {
+    this.pageIndex = pages
+  }
+
+  /** Page links in the body: labels from the index, clicks routed to the native side. */
+  readonly pageLinks: PageLinksHost = {
+    pages: () => this.pageIndex,
+    currentPageId: () => this.page.get().docId,
+    untitled: () => t('page.untitled'),
+    open: ({ pageId, blockId }) =>
+      void this.send({ type: 'openPage', id: pageId, ...(blockId ? { block: blockId } : {}) }),
+    openExternal: (url) => void this.send({ type: 'openLink', url })
+  }
+
+  /** Furigana suggestions from the native tokenizer (Settings has nothing to configure: it's offline). */
+  readonly ruby: RubyHost = {
+    suggestReading: async (text) => {
+      const reading = await this.transport.post({ type: 'suggestReading', text })
+      return typeof reading === 'string' && reading ? reading : null
+    }
+  }
+
+  /** Arrived by a link to a block: scroll there (false when the block isn't in this page). */
+  scrollToBlock(blockId: string): boolean {
+    return this.editor?.commands.scrollToBlock(blockId) ?? false
   }
 
   /** Uploads and attachments for the editor's media blocks. */

@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 8
+    public static let version = 9
 }
 
 public struct Snapshot: Codable, Sendable, Equatable {
@@ -40,8 +40,12 @@ public enum BridgeMessage: Sendable, Equatable {
     case cancelUpload(id: String)
     /// Open an attachment with the system (Quick Look / default app), never inside the web view.
     case openAsset(url: String)
-    /// A page link was clicked.
-    case openPage(id: String)
+    /// A page link was clicked (with the block to scroll to, for a link to a block).
+    case openPage(id: String, block: String?)
+    /// Any other link was clicked: the system opens it.
+    case openLink(url: String)
+    /// Furigana: expects the hiragana reading of `text` as the reply (nil when there is none).
+    case suggestReading(text: String)
 }
 
 public enum BridgeError: Error, Equatable {
@@ -66,7 +70,7 @@ public enum PagePayload {
 extension BridgeMessage: Decodable {
     private enum CodingKeys: String, CodingKey {
         case type, protocolVersion, snapshot, active, level, message, context, docId, icon, cover, fileExtension, dataBase64
-        case size, id, url
+        case size, id, url, block, text
     }
 
     public init(from decoder: Decoder) throws {
@@ -102,7 +106,10 @@ extension BridgeMessage: Decodable {
         case "finishUpload": self = .finishUpload(id: try c.decode(String.self, forKey: .id))
         case "cancelUpload": self = .cancelUpload(id: try c.decode(String.self, forKey: .id))
         case "openAsset": self = .openAsset(url: try c.decode(String.self, forKey: .url))
-        case "openPage": self = .openPage(id: try c.decode(String.self, forKey: .id))
+        case "openPage":
+            self = .openPage(id: try c.decode(String.self, forKey: .id), block: try c.decodeIfPresent(String.self, forKey: .block))
+        case "openLink": self = .openLink(url: try c.decode(String.self, forKey: .url))
+        case "suggestReading": self = .suggestReading(text: try c.decode(String.self, forKey: .text))
         default: throw BridgeError.unknownType(type)
         }
     }

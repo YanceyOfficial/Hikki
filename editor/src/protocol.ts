@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 8
+export const PROTOCOL_VERSION = 9
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -61,5 +61,9 @@ export type ToNativeMessage =
   | { type: 'cancelUpload'; id: string }
   /** Opens an attachment with the system (Quick Look), never in the web view. */
   | { type: 'openAsset'; url: string }
-  /** A page link was clicked. */
-  | { type: 'openPage'; id: string }
+  /** A page link was clicked; `block` for a link to a block inside the page. */
+  | { type: 'openPage'; id: string; block?: string }
+  /** Any other link was clicked: the system opens it. */
+  | { type: 'openLink'; url: string }
+  /** Furigana: replies with the hiragana reading of `text`, or null. */
+  | { type: 'suggestReading'; text: string }

@@ -16,4 +16,13 @@ struct PageLinkTests {
             #expect(PageLink.pageID(from: URL(string: raw)!) == nil, "\(raw)")
         }
     }
+
+    @Test func carriesABlockAsTheFragment() {
+        let url = PageLink.url(for: "page-1", block: "blk-9")
+        #expect(url.absoluteString == "hikki://page/page-1#blk-9")
+        #expect(PageLink.pageID(from: url) == "page-1")
+        #expect(PageLink.blockID(from: url) == "blk-9")
+        #expect(PageLink.blockID(from: PageLink.url(for: "page-1")) == nil)
+        #expect(PageLink.blockID(from: URL(string: "hikki://page/page-1#a/b")!) == nil)
+    }
 }

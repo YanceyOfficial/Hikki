@@ -69,13 +69,16 @@ struct ContentView: View {
             }
             // hikki://page/<id> (Copy link).
             .onOpenURL { url in
-                if let id = PageLink.pageID(from: url), model.tree.page(id) != nil { navigator.open(id) }
+                guard let id = PageLink.pageID(from: url), model.tree.page(id) != nil else { return }
+                navigator.open(id)
+                if let block = PageLink.blockID(from: url) { editor.scrollToBlock(block, in: id) }
             }
             .onChange(of: navigator.tabs) { _, _ in storedTabs = navigator.encodedTabs() }
             .onChange(of: model.tree) { _, tree in
                 // Pages trashed here or in another window disappear from every tab's history.
                 navigator.prune { tree.page($0) != nil }
                 navigator.revealCurrent()
+                editor.setPages(tree.all)
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {
@@ -129,9 +132,11 @@ struct ContentView: View {
                     withAnimation { columns = .all }
                 }
             }
+            // "home" opens Home (screenshots of it on iPhone, where the root is the sidebar).
             if let ids = ProcessInfo.processInfo.environment["HIKKI_OPEN_TABS"]?.split(separator: ",") {
                 for (index, id) in ids.enumerated() {
-                    if index == 0 { navigator.open(String(id)) } else { navigator.openInNewTab(.page(String(id))) }
+                    let route: Route = id == "home" ? .home : .page(String(id))
+                    if index == 0 { navigator.go(route) } else { navigator.openInNewTab(route) }
                 }
             }
         #endif
@@ -139,7 +144,12 @@ struct ContentView: View {
         editor.setTone(tone)
         editor.setSpellcheck(spellcheck)
         editor.attach(store: model.store, assets: model.assets)
-        editor.onOpenPage = { id in if model.tree.page(id) != nil { navigator.open(id) } }
+        editor.onOpenPage = { id, block in
+            guard model.tree.page(id) != nil else { return }
+            navigator.open(id)
+            if let block { editor.scrollToBlock(block, in: id) }
+        }
+        editor.setPages(model.tree.all)
         editor.open(documentID: navigator.route.pageID)
     }
 

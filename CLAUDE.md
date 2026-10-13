@@ -80,6 +80,7 @@ cd bff && bun run dev      # the BFF locally (needs UNSPLASH_ACCESS_KEY); the ed
 
 ```
 design/tokens.json            design tokens (single source)
+design/icon/                  app icon concepts: layered SVGs for Icon Composer (generate.mjs → <concept>/)
 scripts/gen-tokens.mjs        tokens → Swift + Tailwind theme
 scripts/lint-design.sh        no literal colors/fonts/spacing/radii in view code
 Configs/Version.xcconfig      MARKETING_VERSION / CURRENT_PROJECT_VERSION
@@ -143,6 +144,13 @@ HikkiUITests/                 XCUITest flows
   (`editor/src/extensions/table.tsx` + `editor/src/extensions/table-ops.ts`, controls drawn by
   `editor/src/ui/TableOverlay.tsx`) and columns (`editor/src/extensions/columns.ts`: schema needs 2–5 columns, so
   removing one of two replaces the row; dragging a block onto another's side edge makes a row).
+- **Page links** (`editor/src/extensions/page-links.ts`): `hikki://page/<id>#<block>`. The native side feeds the editor
+  the page index (`window.hikki.setPages`) so pasted links get titles; "Copy link to block" puts a ready `<a>` plus the
+  URL on the clipboard; a plain-text paste of a link becomes a labelled hyperlink; clicks go through the bridge
+  (`openPage` with the block, `openLink` for the web) and `window.hikki.scrollToBlock` lands on the block.
+- **Ruby / furigana** (`editor/src/extensions/ruby.tsx`): an inline node (`<ruby><rb>…</rb><rt>…</rt></ruby>`, reading as
+  an attribute); ⇧⌘R or Format → More → Ruby opens the reading panel, prefilled from the native tokenizer
+  (`HikkiCore/Sources/Search/JapaneseReading.swift`, `suggestReading` message).
 - **Find, spelling, insets**: find and replace is `editor/src/extensions/find.tsx` (Tiptap's extension, RE2 regex) with
   `editor/src/ui/FindPanel.tsx`; the page handles ⌘F/⌥⌘F/⌘G itself, the native Edit menu and the page ⋯ menu ("Find
   in Page", the only way on a phone) call `window.hikki.find`. Spellcheck is WebKit's (Settings → Editor,

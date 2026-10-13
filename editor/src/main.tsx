@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { EditorBridge } from './bridge'
 import { installErrorForwarding } from './errors'
 import { findShortcut, type FindMode } from './extensions/find'
+import type { PageIndexEntry } from './extensions/page-links'
 import { setLocale } from './i18n'
 import { Outline } from './page/Outline'
 import { PageHeader } from './page/PageHeader'
@@ -39,6 +40,9 @@ window.hikki = {
   loadDocument: (page: PagePayload) => bridge.loadDocument(page),
   // The open page changed on disk (another device); false when it wasn't applied (unsaved edits win).
   reload: (page: PagePayload) => bridge.reload(page),
+  // The sidebar's pages, for naming links to them; and a block to land on after a link.
+  setPages: (pages: PageIndexEntry[]) => bridge.setPages(pages),
+  scrollToBlock: (id: string) => bridge.scrollToBlock(id),
   exec: (command: string) => bridge.exec(command),
   flush: () => bridge.flush(),
   focus: () => bridge.focus(),

@@ -183,7 +183,8 @@
     "superscript": "上标",
     "menu": "格式",
     "math": "公式",
-    "more": "更多"
+    "more": "更多",
+    "ruby": "注音（ふりがな）"
   },
   "color": {
     "text": "文字颜色",
@@ -286,5 +287,14 @@
     "duplicate": "创建副本",
     "delete": "删除",
     "add": "在下方添加块"
+  },
+  "ruby": {
+    "label": "读音",
+    "baseLabel": "为以下文字标注读音：",
+    "placeholder": "かな",
+    "suggesting": "正在查找…",
+    "hint": "Enter 保存 · Esc 取消",
+    "done": "完成",
+    "remove": "移除"
   }
 }

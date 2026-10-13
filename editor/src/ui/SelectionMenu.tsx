@@ -10,6 +10,7 @@ import {
   TextB,
   TextItalic,
   TextStrikethrough,
+  TextAa,
   TextSubscript,
   TextSuperscript,
   TextUnderline
@@ -232,6 +233,19 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
                 <TextSubscript size={18} className="text-subtle-foreground" aria-hidden />
                 <span className="flex-1 truncate">{t('format.subscript')}</span>
                 <span className="text-xs text-placeholder">{shortcutLabel('subscript')}</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className={rowClass}
+                onClick={() => {
+                  setPanel(null)
+                  editor.commands.editRuby()
+                }}
+              >
+                <TextAa size={18} className="text-subtle-foreground" aria-hidden />
+                <span className="flex-1 truncate">{t('format.ruby')}</span>
+                <span className="text-xs text-placeholder">{shortcutLabel('ruby')}</span>
               </button>
             </div>
           )}

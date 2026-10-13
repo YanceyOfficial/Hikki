@@ -335,6 +335,19 @@
     @apply block h-full origin-left bg-primary transition-transform duration-200 ease-out;
   }
 
+  /* Ruby / furigana (extensions/ruby.tsx): the reading above the base text, clickable to edit. */
+  .tiptap ruby.hk-ruby {
+    ruby-position: over;
+  }
+  .tiptap ruby.hk-ruby > rt {
+    @apply cursor-pointer text-muted-foreground select-none;
+    font-size: 0.55em;
+    letter-spacing: 0.02em;
+  }
+  .tiptap ruby.hk-ruby > rt:hover {
+    @apply text-foreground;
+  }
+
   /* Formulas (extensions/math.tsx). */
   .tiptap [data-type='block-math'] {
     @apply my-1 cursor-pointer overflow-x-auto rounded-md px-2 py-3 text-center hover:bg-accent;

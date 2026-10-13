@@ -93,7 +93,10 @@ struct BridgeMessageTests {
         #expect(try decode(["type": "finishUpload", "id": "u1"]) == .finishUpload(id: "u1"))
         #expect(try decode(["type": "cancelUpload", "id": "u1"]) == .cancelUpload(id: "u1"))
         #expect(try decode(["type": "openAsset", "url": "hikki-editor://assets/a.pdf"]) == .openAsset(url: "hikki-editor://assets/a.pdf"))
-        #expect(try decode(["type": "openPage", "id": "p1"]) == .openPage(id: "p1"))
+        #expect(try decode(["type": "openPage", "id": "p1"]) == .openPage(id: "p1", block: nil))
+        #expect(try decode(["type": "openPage", "id": "p1", "block": "b2"]) == .openPage(id: "p1", block: "b2"))
+        #expect(try decode(["type": "openLink", "url": "https://example.com"]) == .openLink(url: "https://example.com"))
+        #expect(try decode(["type": "suggestReading", "text": "漢字"]) == .suggestReading(text: "漢字"))
         #expect(throws: BridgeError.invalidPayload("uploadChunk: dataBase64 is not base64")) {
             try decode(["type": "uploadChunk", "id": "u1", "dataBase64": "%%%"])
         }

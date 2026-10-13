@@ -58,8 +58,46 @@ final class EditorController {
     /// An attachment to show in Quick Look (ContentView's `.quickLookPreview`), opened from the editor.
     var previewURL: URL?
 
-    /// A page link was clicked in the editor (ContentView routes it).
-    @ObservationIgnored var onOpenPage: ((String) -> Void)?
+    /// A page link was clicked in the editor (ContentView routes it); the block to land on, if any.
+    @ObservationIgnored var onOpenPage: ((String, String?) -> Void)?
+
+    /// Pages the editor names links with (`window.hikki.setPages`), kept to resend after a reload.
+    @ObservationIgnored private var pages: [[String: Any]] = []
+    /// A block to scroll to as soon as its page is the loaded document (a link to a block).
+    @ObservationIgnored private var pendingBlock: (pageID: String, blockID: String)?
+
+    func setPages(_ summaries: [PageSummary]) {
+        pages = summaries.map { ["id": $0.id, "title": $0.title, "icon": $0.icon ?? NSNull()] }
+        guard isReady else { return }
+        Task { await applyPages() }
+    }
+
+    private func applyPages() async {
+        do {
+            _ = try await webView.callAsyncJavaScript(
+                "window.hikki.setPages(pages)", arguments: ["pages": pages], contentWorld: .page)
+        } catch {
+            Log.warn("setPages failed: \(error)", category: "bridge")
+        }
+    }
+
+    /// Scrolls to a block — now if its page is loaded, otherwise right after that page loads.
+    func scrollToBlock(_ blockID: String, in pageID: String) {
+        if isReady, currentDocumentID == pageID, pendingDocumentID == nil {
+            Task { await callScrollToBlock(blockID) }
+        } else {
+            pendingBlock = (pageID, blockID)
+        }
+    }
+
+    private func callScrollToBlock(_ blockID: String) async {
+        do {
+            _ = try await webView.callAsyncJavaScript(
+                "window.hikki.scrollToBlock(id)", arguments: ["id": blockID], contentWorld: .page)
+        } catch {
+            Log.warn("scrollToBlock failed: \(error)", category: "bridge")
+        }
+    }
 
     func open(documentID: String?) {
         Task { await load(documentID) }
@@ -234,6 +272,10 @@ final class EditorController {
                 titleFocusPageID = nil
                 await callFocusTitle()
             }
+            if let pending = pendingBlock, pending.pageID == id {
+                pendingBlock = nil
+                await callScrollToBlock(pending.blockID)
+            }
         } catch {
             Log.error("load failed: \(error)", category: "bridge", context: ["docId": id])
         }
@@ -262,6 +304,7 @@ final class EditorController {
                 await applyTone()
                 await applySpellcheck()
                 await applyInsets()
+                await applyPages()
                 await load(pending ?? nil)
             }
         case .changed(let snapshot):
@@ -297,8 +340,21 @@ final class EditorController {
                 throw BridgeError.invalidPayload("openAsset: unknown asset")
             }
             previewURL = file
-        case .openPage(let id):
-            onOpenPage?(id)
+        case .openPage(let id, let block):
+            onOpenPage?(id, block)
+        case .openLink(let url):
+            // Clicked in the page: only web/mail/phone links leave the app; nothing else is opened.
+            guard let target = URL(string: url), let scheme = target.scheme?.lowercased(),
+                ["http", "https", "mailto", "tel"].contains(scheme)
+            else { throw BridgeError.invalidPayload("openLink: unsupported URL") }
+            #if os(iOS)
+                UIApplication.shared.open(target)
+            #else
+                NSWorkspace.shared.open(target)
+            #endif
+        case .suggestReading(let text):
+            // Short selections only: a reading is for a word or phrase, and the tokenizer runs on the main thread.
+            return text.count <= 80 ? JapaneseReading.hiragana(for: text) : nil
         }
         return nil
     }

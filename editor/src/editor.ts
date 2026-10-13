@@ -16,6 +16,8 @@ import { EdgeNavigation } from './extensions/edge-navigation'
 import { Find } from './extensions/find'
 import { mathExtension } from './extensions/math'
 import { mediaExtensions, type MediaHost } from './extensions/media'
+import { PageLinks, type PageLinksHost } from './extensions/page-links'
+import { Ruby, type RubyHost } from './extensions/ruby'
 import { SelectionMenuExtension } from './extensions/selection-menu'
 import { BlockShortcuts } from './extensions/shortcuts'
 import { SlashCommand } from './extensions/slash-command'
@@ -27,6 +29,15 @@ import { isSafeHref } from './links'
 import type { Command } from './protocol'
 import { tiptapShortcut } from './shortcuts'
 
+/** Page links without a host (the browser dev build, tests): titles unknown, clicks go nowhere. */
+const noPageLinks: PageLinksHost = {
+  pages: () => [],
+  currentPageId: () => null,
+  untitled: () => t('page.untitled'),
+  open: () => {},
+  openExternal: (href) => window.open(href, '_blank', 'noopener')
+}
+
 type EditorOptions = {
   onExitTop?: () => void
   /** The stored content doesn't fit the schema (corrupt, or from a newer Hikki). See EditorBridge. */
@@ -35,6 +46,10 @@ type EditorOptions = {
   spellcheck?: boolean
   /** Uploads and opening attachments (the bridge); without it, files can't be dropped or picked. */
   media?: MediaHost
+  /** Page links: titles for links to other pages, and where clicks go. */
+  pageLinks?: PageLinksHost
+  /** Furigana reading suggestions (the native tokenizer). */
+  ruby?: RubyHost
 }
 
 /**
@@ -104,6 +119,8 @@ export function createEditor(
       Find,
       TableOfContents,
       ...mediaExtensions(options.media ?? null),
+      PageLinks(options.pageLinks ?? noPageLinks),
+      Ruby(options.ruby ?? null),
       TaskList,
       TaskItem.configure({ nested: true }),
       ColorTextStyle,
