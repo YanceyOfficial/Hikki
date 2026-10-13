@@ -1,7 +1,6 @@
+import { cn } from 'cn'
 import { useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
-
-import { cn } from '@/lib/utils'
 
 import type { EditorBridge } from '../core/bridge'
 

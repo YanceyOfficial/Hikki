@@ -1,11 +1,11 @@
 import { CaretDownIcon, CheckIcon, CopyIcon } from '@phosphor-icons/react'
+import { cn } from 'cn'
 import { useEffect, useRef, useState } from 'react'
 import type { Root } from 'react-dom/client'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { cn } from '@/lib/utils'
 
 import { t } from '../core/i18n'
 import { filterLanguages, findLanguage } from '../extensions/code-languages'

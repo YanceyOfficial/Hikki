@@ -9,10 +9,10 @@ import {
 } from '@phosphor-icons/react'
 import type { Editor } from '@tiptap/core'
 import { TextSelection } from '@tiptap/pm/state'
+import { cn } from 'cn'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
 import { Input } from '@/components/ui/input'
-import { cn } from '@/lib/utils'
 
 import { BLOCK_TYPES } from '../core/blocks'
 import { t } from '../core/i18n'

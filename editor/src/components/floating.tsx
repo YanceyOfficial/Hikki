@@ -1,9 +1,8 @@
 import { computePosition, flip, offset, shift, size, type VirtualElement } from '@floating-ui/dom'
+import { cn } from 'cn'
 import { useEffect, useState, type ReactElement, type RefObject } from 'react'
 import { flushSync } from 'react-dom'
 import { createRoot, type Root } from 'react-dom/client'
-
-import { cn } from '@/lib/utils'
 
 /** Where a layer sits: a function giving the anchor's rect (null while it has none); nothing leaves it in place. */
 export type FloatingAnchor = (() => DOMRect | null) | null | undefined

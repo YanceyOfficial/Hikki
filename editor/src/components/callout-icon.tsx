@@ -1,8 +1,8 @@
+import { cn } from 'cn'
 import { useState } from 'react'
 import type { Root } from 'react-dom/client'
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { cn } from '@/lib/utils'
 
 import { t } from '../core/i18n'
 import { DEFAULT_CALLOUT_ICON } from '../extensions/callout'

@@ -16,6 +16,7 @@ import {
   type Icon
 } from '@phosphor-icons/react'
 import type { Editor } from '@tiptap/core'
+import { cn } from 'cn'
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type { Root } from 'react-dom/client'
 
@@ -24,7 +25,6 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { Kbd } from '@/components/ui/kbd'
 import { Toggle } from '@/components/ui/toggle'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { cn } from '@/lib/utils'
 
 import { BLOCK_TYPES } from '../core/blocks'
 import { t } from '../core/i18n'

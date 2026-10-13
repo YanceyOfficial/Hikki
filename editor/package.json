@@ -37,7 +37,7 @@
     "@tiptap/starter-kit": "3.31.4",
     "@tiptap/suggestion": "3.31.4",
     "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
+    "cn": "^0.4.0",
     "emojibase-data": "^17.0.0",
     "highlight.js": "11.11.1",
     "i18next": "^26.4.3",
@@ -45,8 +45,7 @@
     "lowlight": "3.3.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "react-i18next": "^17.0.16",
-    "tailwind-merge": "^3.7.0"
+    "react-i18next": "^17.0.16"
   },
   "devDependencies": {
     "@phosphor-icons/core": "^2.1.1",

@@ -16,6 +16,7 @@ import {
 } from '@phosphor-icons/react'
 import type { Editor } from '@tiptap/core'
 import type { CellSelection } from '@tiptap/pm/tables'
+import { cn } from 'cn'
 import { useState, type ReactNode } from 'react'
 import type { Root } from 'react-dom/client'
 
@@ -32,7 +33,6 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { cn } from '@/lib/utils'
 
 import { t } from '../core/i18n'
 import { colorLabel, PALETTE, type PaletteColor } from '../extensions/colors'

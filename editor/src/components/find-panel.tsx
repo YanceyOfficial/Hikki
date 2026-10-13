@@ -7,6 +7,7 @@ import {
   XIcon
 } from '@phosphor-icons/react'
 import type { Editor } from '@tiptap/core'
+import { cn } from 'cn'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Root } from 'react-dom/client'
 
@@ -21,7 +22,6 @@ import { Kbd } from '@/components/ui/kbd'
 import { Separator } from '@/components/ui/separator'
 import { Toggle } from '@/components/ui/toggle'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { cn } from '@/lib/utils'
 
 import { t } from '../core/i18n'
 import { shortcutLabel } from '../core/shortcuts'

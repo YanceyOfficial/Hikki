@@ -1,10 +1,10 @@
 import { ShuffleIcon } from '@phosphor-icons/react'
+import { cn } from 'cn'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { cn } from '@/lib/utils'
 
 import {
   loadEmojiCategories,

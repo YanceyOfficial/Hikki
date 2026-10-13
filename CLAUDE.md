@@ -30,8 +30,8 @@ These rules are mandatory. Automated ones are noted.
   gallery `Hikki/Sources/ComponentGallery.swift`, launch argument `-HikkiGallery`). Native components follow the same
   look as the web's shadcn style (`base-vega`: `Radius.md` controls, `Theme.*` colors).
 - **Web UI primitives are shadcn** (style `base-vega`, Base UI primitives, hugeicons; config in `editor/components.json`,
-  components in `editor/src/components/ui/`). Add components only with `cd editor && bun run ui:add <name>` — the
-  wrapper fixes the CLI's wrong `cn` import under TypeScript 7. Prefer a shadcn component over a hand-rolled one;
+  components in `editor/src/components/ui/`). Add components with `cd editor && bun run ui:add <name>` (the shadcn CLI,
+  then oxfmt). Prefer a shadcn component over a hand-rolled one;
   editor-specific pieces live in `editor/src/components/`. Fields, buttons, toggles, tooltips and popovers are always the shadcn
   components (`Input`, `InputGroup`, `Textarea`, `Button`, `Toggle`, `Kbd`…) restyled with classes — never a bare
   `<input>` / `<button>`; Phosphor icons are imported by their `…Icon` names. Files under `editor/src` are
@@ -40,7 +40,8 @@ These rules are mandatory. Automated ones are noted.
   (bridge, protocol, editor setup, catalogs), `editor/src/extensions/`, `editor/src/lib/` and `editor/src/hooks/` are
   plain TypeScript — an extension that shows a React panel calls the component file's `render*` helper
   (`renderFindPanel`, `renderTableOverlay`…) instead of holding JSX. Class recipes that aren't a component
-  (`.hk-floating`, `.hk-column`) live in `editor/src/style.css`, and `cn` comes from `@/lib/utils`.
+  (`.hk-floating`, `.hk-column`) live in `editor/src/style.css`, and `cn` is shadcn's own `cn` npm package, imported
+  `from 'cn'` as the generated components do (`editor/src/lib/utils.ts` is the one-line re-export `shadcn init` writes).
 - **Icons go through one list** (`design/icons.json`, `make icons`). The native shell draws SF Symbols (each icon's
   `"sf"` name; the generated `Icon` enum, `IconView` / `IconLabel`, `Icon.glyph` for system-sized spots), falling
   back to the bundled Phosphor asset where there is no symbol; the web editor uses `@phosphor-icons/react`. No raw
@@ -114,7 +115,7 @@ editor/src/components/        editor UI (.tsx): menus, panels, the floating laye
 editor/src/components/ui/     shadcn components (generated via `bun run ui:add`)
 editor/src/page/              page header, cover picker, outline (.tsx)
 editor/src/hooks/             React hooks (useEditorSnapshot)
-editor/src/lib/               data helpers: cn, cover catalog, Unsplash client, emoji data
+editor/src/lib/               data helpers: cover catalog, Unsplash client, emoji data; shadcn's utils re-export
 editor/test/                  vitest
 bff/                          backend-for-frontend (Hono, Vercel): Unsplash proxy; tests with `bun test`
 HikkiUITests/                 XCUITest flows

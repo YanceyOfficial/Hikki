@@ -1,6 +1,5 @@
+import { cn } from 'cn'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-
-import { cn } from '@/lib/utils'
 
 import { BLOCK_GROUPS, type BlockGroup, type BlockType } from '../core/blocks'
 import { t } from '../core/i18n'
