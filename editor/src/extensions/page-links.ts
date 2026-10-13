@@ -1,6 +1,6 @@
 import { Extension, type Editor } from '@tiptap/core'
 import type { Node as PMNode } from '@tiptap/pm/model'
-import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
+import { Plugin, PluginKey, Selection, TextSelection } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 
 import { isSafeHref } from '../core/links'
@@ -108,10 +108,22 @@ declare module '@tiptap/core' {
 /** How long an arrived-at block stays tinted. */
 const ARRIVAL_TINT_MS = 1400
 
+/** The page link in a drag's payload (a sidebar row carries its URL as a URI list and as text), or null. */
+export function droppedPageLink(data: DataTransfer | null): PageLinkTarget | null {
+  if (!data) return null
+  // A URI list may hold several lines and `#` comments; the first URL is the one.
+  const uri = data
+    .getData('text/uri-list')
+    .split('\n')
+    .find((line) => line && !line.startsWith('#'))
+  return parsePageLink(uri ?? data.getData('text/plain'))
+}
+
 /**
  * Page links (`hikki://page/<id>#<block>`): pasting one as plain text inserts a labelled hyperlink
- * (Notion's "Copy link to block" → paste); clicking a link opens the page, or hands other links to the
- * system. Tiptap's own `linkOnPaste` still links a non-empty selection with the pasted URL.
+ * (Notion's "Copy link to block" → paste), and so does dropping one (a sidebar page dragged into the page);
+ * clicking a link opens the page, or hands other links to the system. Tiptap's own `linkOnPaste` still
+ * links a non-empty selection with the pasted URL.
  */
 export function PageLinks(host: PageLinksHost) {
   return Extension.create({
@@ -175,6 +187,22 @@ export function PageLinks(host: PageLinksHost) {
               // Our own copies carry a ready <a>: the HTML paste path handles those.
               if (!target || /<a\s/iu.test(html) || !view.state.selection.empty) return false
               return editor.commands.insertPageLink(target)
+            },
+            handleDrop(view, event, _slice, moved) {
+              // Blocks moved within the page are the block controls' business, not a link.
+              if (moved || !view.editable) return false
+              const target = droppedPageLink(event.dataTransfer)
+              if (!target) return false
+              const hit = view.posAtCoords({ left: event.clientX, top: event.clientY })
+              if (!hit) return false
+              // The nearest place text can go (a drop on a block's edge or on an image lands beside it).
+              const $pos = view.state.doc.resolve(hit.pos)
+              const selection =
+                Selection.findFrom($pos, 1, true) ?? Selection.findFrom($pos, -1, true)
+              if (!selection) return false
+              event.preventDefault()
+              view.dispatch(view.state.tr.setSelection(selection))
+              return editor.chain().focus().insertPageLink(target).run()
             },
             handleClick(view: EditorView, _pos, event) {
               if (event.button !== 0 || event.shiftKey || event.altKey || event.ctrlKey)

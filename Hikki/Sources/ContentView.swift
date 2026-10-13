@@ -77,6 +77,8 @@ struct ContentView: View {
             }
             // Menu bar extra: New Page / Search land in the key window (MenuBarExtra.swift).
             .menuBarRequests(navigator: navigator)
+            // Full screen: the toolbar that slides in gets its translucent band (FullScreenToolbar.swift).
+            .fullScreenToolbarBackground()
             .onChange(of: navigator.tabs) { _, _ in storedTabs = navigator.encodedTabs() }
             .onChange(of: model.tree) { _, tree in
                 // Pages trashed here or in another window disappear from every tab's history.
@@ -183,9 +185,6 @@ private struct DetailView: View {
         content
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.background)
-            #if os(macOS)
-                .fullScreenScrim(Theme.background)
-            #endif
     }
 
     @ViewBuilder private var content: some View {
@@ -233,7 +232,17 @@ private struct NativeDetailToolbar: ToolbarContent {
                 onNew: { navigator.openInNewTab(.home) },
                 onBack: navigator.goBack,
                 onForward: navigator.goForward,
-                showsHistory: false
+                showsHistory: false,
+                // A sidebar page dragged here opens as a tab (between tabs) or in a tab (onto one).
+                drop: TabStripDrop(
+                    types: [.plainText],
+                    accepts: { navigator.draggingPageID != nil },
+                    perform: { target in
+                        guard let id = navigator.draggingPageID else { return false }
+                        navigator.draggingPageID = nil
+                        navigator.dropPage(id, target)
+                        return true
+                    })
             )
             .frame(minWidth: 240, idealWidth: 480, maxWidth: 640)  // design-lint: allow (toolbar item width)
         }

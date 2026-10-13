@@ -369,6 +369,59 @@ final class EditorFlowTests: XCTestCase {
         attachScreenshot(app, "drag-reordered")
     }
 
+    /// iPad: a sidebar page dragged into the page body lands as a link to it (its title as the text).
+    func testDragPageIntoEditorDropsLink() throws {
+        continueAfterFailure = false
+        let app = launch()
+        guard app.buttons["nav-home"].waitForExistence(timeout: 10) else {
+            throw XCTSkip("needs the sidebar beside the page — run on iPad or Mac")
+        }
+        createPage(app, title: "Alpha")
+        createPage(app, title: "Beta")
+        let alpha = app.descendants(matching: .any)["page-row-Alpha"].firstMatch
+        let body = app.webViews.textViews["Page content"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(alpha, in: app))
+        XCTAssertTrue(waitOrDumpTree(body, in: app))
+        // A coordinate target needs a coordinate source (XCUIElement only drags to elements).
+        alpha.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(
+                forDuration: 0.6, thenDragTo: body.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.3)),
+                withVelocity: .slow, thenHoldForDuration: 0.6)
+        let link = app.webViews.links["Alpha"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(link, in: app, timeout: 5), "the dropped page did not become a link")
+        attachScreenshot(app, "drag-link")
+    }
+
+    /// iPad: a sidebar page dropped onto a tab shows there; dropped on a tab's edge it opens in a new tab.
+    func testDragPageOntoTabStripOpensIt() throws {
+        continueAfterFailure = false
+        let app = launch()
+        guard app.buttons["nav-home"].waitForExistence(timeout: 10) else {
+            throw XCTSkip("needs the sidebar beside the page — run on iPad or Mac")
+        }
+        createPage(app, title: "Alpha")
+        createPage(app, title: "Beta")
+        let alphaRow = app.descendants(matching: .any)["page-row-Alpha"].firstMatch
+        let betaTab = app.descendants(matching: .any)["tab-Beta"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(alphaRow, in: app))
+        XCTAssertTrue(waitOrDumpTree(betaTab, in: app))
+        // Onto the tab: it now shows Alpha.
+        alphaRow.press(forDuration: 0.6, thenDragTo: betaTab, withVelocity: .slow, thenHoldForDuration: 0.6)
+        let alphaTab = app.descendants(matching: .any)["tab-Alpha"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(alphaTab, in: app, timeout: 5), "the tab did not switch to the dropped page")
+        XCTAssertFalse(app.descendants(matching: .any)["tab-Beta"].exists)
+        // Onto that tab's left edge: Beta opens in a new tab before it.
+        let betaRow = app.descendants(matching: .any)["page-row-Beta"].firstMatch
+        betaRow.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(
+                forDuration: 0.6, thenDragTo: alphaTab.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)),
+                withVelocity: .slow, thenHoldForDuration: 0.6)
+        XCTAssertTrue(waitOrDumpTree(betaTab, in: app, timeout: 5), "the dropped page did not open as a tab")
+        XCTAssertTrue(alphaTab.exists)
+        XCTAssertLessThan(betaTab.frame.minX, alphaTab.frame.minX)
+        attachScreenshot(app, "drag-tab")
+    }
+
     /// Visual record of the main screens (run on an iPad destination for the regular-width layout).
     func testCaptureScreens() throws {
         let app = launch()

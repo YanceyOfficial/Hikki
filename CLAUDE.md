@@ -173,14 +173,19 @@ HikkiUITests/                 XCUITest flows
   removing one of two replaces the row; dragging a block onto another's side edge makes a row).
 - **Page links** (`editor/src/extensions/page-links.ts`): `hikki://page/<id>#<block>`. The native side feeds the editor
   the page index (`window.hikki.setPages`) so pasted links get titles; "Copy link to block" puts a ready `<a>` plus the
-  URL on the clipboard; a plain-text paste of a link becomes a labelled hyperlink; clicks go through the bridge
+  URL on the clipboard; a plain-text paste of a link becomes a labelled hyperlink, and so does a dropped one: a
+  sidebar row's drag carries the page's link (`PageLink.dragItem`), the editor's `handleDrop` inserts it where it
+  lands, and the toolbar's `TabStrip` (`TabStripDrop`, `HikkiUI/Sources/TabStrip.swift`) opens it — between tabs
+  as a new tab (or that page's tab is focused), onto a tab in that tab. Clicks go through the bridge
   (`openPage` with the block, `openLink` for the web) and `window.hikki.scrollToBlock` lands on the block.
 - **Ruby / furigana** (`editor/src/extensions/ruby.ts`): an inline node (`<ruby><rb>…</rb><rt>…</rt></ruby>`, reading as
   an attribute); ⇧⌘R or Format → More → Ruby opens the reading panel, prefilled from the native tokenizer
   (`HikkiCore/Sources/Search/JapaneseReading.swift`, `suggestReading` message): a phrase comes back as kanji runs with
   readings and bare kana (役に立ちます → 役(やく)に立(た)ちます), one ruby per run; "Whole" puts one reading over all of it.
-- **Full screen (macOS)**: `Hikki/Sources/FullScreenScrim.swift` fades the top of each column while the window is in full
-  screen, where the auto-hidden toolbar slides down over the content (Photos). `HIKKI_DEBUG_SCRIM` forces it on.
+- **Full screen (macOS)**: the auto-hidden toolbar slides down over the content there, so
+  `Hikki/Sources/FullScreenToolbar.swift` gives it the system's translucent band while the window is in full screen
+  (Photos: a blurred, dimmed strip across both columns under the controls; nothing moves). In a window the toolbar stays
+  transparent. `HIKKI_DEBUG_FULLSCREEN` forces the full-screen look on.
 - **Find, spelling, insets**: find and replace is `editor/src/extensions/find.ts` (Tiptap's extension, RE2 regex) with
   `editor/src/components/find-panel.tsx`; the page handles ⌘F/⌥⌘F/⌘G itself, the native Edit menu and the page ⋯ menu ("Find
   in Page", the only way on a phone) call `window.hikki.find`. Spellcheck is WebKit's (Settings → Editor,

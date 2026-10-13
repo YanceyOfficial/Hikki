@@ -2,13 +2,13 @@ import HikkiUI
 import SwiftUI
 
 extension View {
-    /// Photos' top scrim in full screen (macOS): the auto-hidden title bar and toolbar slide down over the
-    /// content there, so a gradient from the column's colour to clear sits at the top of each column — the
-    /// traffic lights and toolbar buttons stay readable, and the top rows fade under them instead of
-    /// colliding. Nothing is drawn in a normal window, or on iOS.
-    func fullScreenScrim(_ color: Color) -> some View {
+    /// Photos' full screen (macOS): the auto-hidden title bar and toolbar slide down over the content, and
+    /// there they get the system's translucent toolbar band — a blurred, dimmed strip across both columns —
+    /// so the traffic lights and buttons read over whatever is under them (the sidebar's search field, the
+    /// page's top rows), and nothing moves. In a window the toolbar stays transparent, as everywhere else.
+    func fullScreenToolbarBackground() -> some View {
         #if os(macOS)
-            modifier(FullScreenScrim(color: color))
+            modifier(FullScreenToolbarBackground())
         #else
             self
         #endif
@@ -18,26 +18,16 @@ extension View {
 #if os(macOS)
     import AppKit
 
-    /// `HIKKI_DEBUG_SCRIM` forces the scrim on (screenshots).
-    private let debugScrim = ProcessInfo.processInfo.environment["HIKKI_DEBUG_SCRIM"] != nil
+    /// `HIKKI_DEBUG_FULLSCREEN` forces the full-screen look on in a window (screenshots).
+    private let debugFullScreen = ProcessInfo.processInfo.environment["HIKKI_DEBUG_FULLSCREEN"] != nil
 
-    struct FullScreenScrim: ViewModifier {
-        let color: Color
-        @State private var isFullScreen = debugScrim
+    struct FullScreenToolbarBackground: ViewModifier {
+        @State private var isFullScreen = debugFullScreen
 
         func body(content: Content) -> some View {
             content
-                .overlay(alignment: .top) {
-                    if isFullScreen {
-                        LinearGradient(colors: [color, color.opacity(0)], startPoint: .top, endPoint: .bottom)
-                            .frame(height: Size.fullscreenScrim)
-                            .allowsHitTesting(false)
-                            .ignoresSafeArea(edges: .top)
-                            .transition(.opacity)
-                    }
-                }
+                .toolbarBackgroundVisibility(isFullScreen ? .visible : .automatic, for: .windowToolbar)
                 .background(FullScreenObserver(isFullScreen: $isFullScreen))
-                .animation(Motion.easeOut(), value: isFullScreen)
         }
     }
 
@@ -96,7 +86,7 @@ extension View {
             }
 
             private func update(_ value: Bool) {
-                if debugScrim { return }
+                if debugFullScreen { return }
                 if isFullScreen.wrappedValue != value { isFullScreen.wrappedValue = value }
             }
         }

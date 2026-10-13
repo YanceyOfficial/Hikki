@@ -1,4 +1,5 @@
 import HikkiCore
+import HikkiUI
 import Observation
 import SwiftUI
 
@@ -85,6 +86,17 @@ final class Navigator {
     func openInNewTab(_ route: Route) {
         if let id = route.pageID { reveal(id) }
         tabs.openTab(route)
+        syncSelection()
+    }
+
+    /// A page dropped on the tab strip: between tabs it opens there (or its tab is focused), onto a tab it
+    /// shows in that tab.
+    func dropPage(_ id: String, _ target: TabStripDropTarget) {
+        reveal(id)
+        switch target {
+        case .between(let index): tabs.openTab(.page(id), at: index)
+        case .onto(let tabID): tabs.navigate(tabID, to: .page(id))
+        }
         syncSelection()
     }
 

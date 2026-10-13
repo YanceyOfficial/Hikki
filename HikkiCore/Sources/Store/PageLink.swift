@@ -14,6 +14,15 @@ public enum PageLink {
         return components.url!
     }
 
+    /// What a dragged page carries (a sidebar row): its link as a URL and as text. The editor turns the
+    /// dropped link into a labelled hyperlink, the tab strip opens the page, and anything outside gets the URL.
+    public static func dragItem(_ id: String) -> NSItemProvider {
+        let url = url(for: id)
+        let provider = NSItemProvider(object: url as NSURL)
+        provider.registerObject(url.absoluteString as NSString, visibility: .all)
+        return provider
+    }
+
     /// The block id in a `hikki://page/<id>#<block>` link, or nil.
     public static func blockID(from url: URL) -> String? {
         guard pageID(from: url) != nil, let fragment = url.fragment(), !fragment.isEmpty else { return nil }

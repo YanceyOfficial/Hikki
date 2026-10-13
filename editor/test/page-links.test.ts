@@ -11,6 +11,7 @@ import {
   linkLabel,
   PageLinks,
   pageLinkHref,
+  droppedPageLink,
   PageLinksKey,
   parsePageLink,
   type PageLinksHost
@@ -81,7 +82,75 @@ const paste = (text: string, html = '') => {
   )
 }
 
+/**
+ * ProseMirror's drop prop, fed a drag payload at a point the test DOM can't hit-test (posAtCoords is stubbed
+ * to land inside the second block).
+ */
+const drop = (payload: Record<string, string>, moved = false) => {
+  const plugin = PageLinksKey.get(editor.state)!
+  const inside = editor.state.doc.child(0).nodeSize + 1
+  vi.spyOn(editor.view, 'posAtCoords').mockReturnValue({ pos: inside, inside })
+  const event = {
+    clientX: 10,
+    clientY: 10,
+    preventDefault: vi.fn(),
+    dataTransfer: { getData: (type: string) => payload[type] ?? '' }
+  }
+  const handled = plugin.props.handleDrop!.call(
+    plugin,
+    editor.view,
+    event as unknown as DragEvent,
+    editor.state.doc.slice(0, 0),
+    moved
+  )
+  return { handled, prevented: event.preventDefault.mock.calls.length > 0 }
+}
+
+/** A drag's payload, as the drop handler reads it. */
+const data = (map: Record<string, string>) =>
+  ({ getData: (t: string) => map[t] ?? '' }) as unknown as DataTransfer
+
 describe('page links', () => {
+  it('reads the page link out of a drag payload: the URI list first, else the text', () => {
+    expect(droppedPageLink(data({ 'text/uri-list': 'hikki://page/notes' }))).toEqual({
+      pageId: 'notes',
+      blockId: null
+    })
+    expect(
+      droppedPageLink(
+        data({ 'text/uri-list': '# a comment\nhikki://page/a#b\nhttps://x', 'text/plain': 'x' })
+      )
+    ).toEqual({ pageId: 'a', blockId: 'b' })
+    expect(droppedPageLink(data({ 'text/plain': 'hikki://page/notes' }))).toEqual({
+      pageId: 'notes',
+      blockId: null
+    })
+    expect(droppedPageLink(data({ 'text/plain': 'hello' }))).toBeNull()
+    expect(droppedPageLink(null)).toBeNull()
+  })
+
+  it('a page dragged from the sidebar drops as a labelled hyperlink where it lands', () => {
+    const { handled, prevented } = drop({ 'text/uri-list': 'hikki://page/notes' })
+    expect(handled).toBe(true)
+    expect(prevented).toBe(true)
+    const last = editor.getJSON().content?.at(-1)
+    expect(last?.content?.[0]).toMatchObject({
+      text: '📓 Meeting notes',
+      marks: [{ type: 'link', attrs: { href: 'hikki://page/notes' } }]
+    })
+    // The caret sits after the link with the mark cleared, so typing on continues as plain text.
+    expect(editor.isActive('link')).toBe(false)
+  })
+
+  it('other drops stay with ProseMirror: moved blocks, plain text, a locked page', () => {
+    const before = editor.getJSON()
+    expect(drop({ 'text/plain': 'hikki://page/notes' }, true).handled).toBe(false)
+    expect(drop({ 'text/plain': 'just words' }).handled).toBe(false)
+    editor.setEditable(false)
+    expect(drop({ 'text/plain': 'hikki://page/notes' }).handled).toBe(false)
+    expect(editor.getJSON()).toEqual(before)
+  })
+
   it('parse and build hikki:// links with an optional block', () => {
     expect(parsePageLink('hikki://page/abc')).toEqual({ pageId: 'abc', blockId: null })
     expect(parsePageLink(' hikki://page/abc#blk-1 ')).toEqual({ pageId: 'abc', blockId: 'blk-1' })

@@ -65,6 +65,39 @@ struct NavigationTabsTests {
         #expect(tabs.tabs.map(\.route) == ["1", "3", "2"])
     }
 
+    @Test func aPageDroppedBetweenTabsOpensThereOrFocusesItsTab() {
+        var tabs = Tabs(initial: "1")
+        tabs.openTab("2")
+        tabs.openTab("x", at: 1)
+        #expect(tabs.tabs.map(\.route) == ["1", "x", "2"])
+        #expect(tabs.route == "x")
+        // Clamped: past the end appends, below zero prepends.
+        tabs.openTab("y", at: 99)
+        tabs.openTab("z", at: -3)
+        #expect(tabs.tabs.map(\.route) == ["z", "1", "x", "2", "y"])
+        // Already open: that tab is focused, nothing is added.
+        let before = tabs.tabs.map(\.id)
+        tabs.openTab("x", at: 0)
+        #expect(tabs.tabs.map(\.id) == before)
+        #expect(tabs.route == "x")
+    }
+
+    @Test func aPageDroppedOntoATabShowsThereAndKeepsItsHistory() {
+        var tabs = Tabs(initial: "1")
+        let first = tabs.activeID
+        tabs.navigate(to: "a")
+        tabs.openTab("2")
+        tabs.navigate(first, to: "dropped")
+        #expect(tabs.activeID == first)
+        #expect(tabs.route == "dropped")
+        tabs.goBack()
+        #expect(tabs.route == "a")
+        // An unknown tab id changes nothing.
+        let snapshot = tabs
+        tabs.navigate(UUID(), to: "nowhere")
+        #expect(tabs == snapshot)
+    }
+
     @Test func closingFocusesRightNeighbourThenLeft() {
         var tabs = Tabs(initial: "1")
         tabs.openTab("2")

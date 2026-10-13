@@ -77,6 +77,28 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
         if tabs.contains(where: { $0.id == id }) { activeID = id }
     }
 
+    /// Opens `route` in a new tab at `index` (clamped) and focuses it — a page dropped between tabs. A tab
+    /// already showing `route` is focused instead; the strip never gets two tabs on the same page this way.
+    @discardableResult
+    public mutating func openTab(_ route: Route, at index: Int) -> UUID {
+        if let existing = tabs.first(where: { $0.route == route }) {
+            activeID = existing.id
+            return existing.id
+        }
+        let tab = Tab(route: route)
+        tabs.insert(tab, at: min(max(index, 0), tabs.count))
+        activeID = tab.id
+        return tab.id
+    }
+
+    /// Shows `route` in the tab `id` and focuses it — a page dropped onto a tab. The tab keeps its history,
+    /// as if the page had been opened from it.
+    public mutating func navigate(_ id: UUID, to route: Route) {
+        guard tabs.contains(where: { $0.id == id }) else { return }
+        activeID = id
+        navigate(to: route)
+    }
+
     /// Cycles focus (⌃Tab / ⌃⇧Tab).
     public mutating func selectNeighbor(_ delta: Int) {
         guard let index = tabs.firstIndex(where: { $0.id == activeID }) else { return }

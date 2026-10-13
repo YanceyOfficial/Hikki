@@ -196,7 +196,6 @@ public nonisolated enum Size {
     public static let sidebarIcon: CGFloat = 18
     public static let onboardingBadge: CGFloat = 64
     public static let heatmapCell: CGFloat = 12
-    public static let fullscreenScrim: CGFloat = 72
 }
 
 /// Motion: one timing for everything that appears, leaves or reacts (popovers, hover states, scrims).

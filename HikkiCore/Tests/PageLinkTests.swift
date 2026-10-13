@@ -11,6 +11,12 @@ struct PageLinkTests {
         #expect(PageLink.pageID(from: url) == id)
     }
 
+    @Test func aDraggedPageCarriesItsLinkAsURLAndText() {
+        let item = PageLink.dragItem("abc")
+        #expect(item.hasItemConformingToTypeIdentifier("public.url"))
+        #expect(item.hasItemConformingToTypeIdentifier("public.utf8-plain-text"))
+    }
+
     @Test func rejectsOtherLinks() {
         for raw in ["https://page/abc", "hikki://settings/abc", "hikki://page/", "hikki://page/a/b"] {
             #expect(PageLink.pageID(from: URL(string: raw)!) == nil, "\(raw)")

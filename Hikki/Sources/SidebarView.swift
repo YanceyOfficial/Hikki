@@ -378,7 +378,9 @@ private struct PageRowDragDrop: ViewModifier {
             }
             .onDrag {
                 navigator.draggingPageID = page.id
-                return NSItemProvider(object: page.id as NSString)
+                // The payload is the page's link: the editor makes a labelled hyperlink of it and the tab strip
+                // opens it. The sidebar's own drops go by `draggingPageID`.
+                return PageLink.dragItem(page.id)
             }
             .onDrop(of: [.plainText], delegate: PageRowDropDelegate(target: page.id, navigator: navigator, model: model))
             // Outline level for VoiceOver (and UI tests): "level 1" at the top, +1 per nesting.
@@ -735,8 +737,6 @@ private struct NativeSidebarChrome: ViewModifier {
                         .padding(.horizontal, Spacing.s3)
                         .padding(.bottom, Spacing.s1)
                 }
-                // Full screen: the auto-hidden toolbar slides down over the rows (Photos fades them under it).
-                .fullScreenScrim(Theme.sidebar)
                 .safeAreaBar(edge: .bottom) {
                     WorkspaceSwitcher(navigator: navigator)
                         .padding(.horizontal, Spacing.s2)
