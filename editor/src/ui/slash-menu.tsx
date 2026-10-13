@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
+import { cn } from '@/lib/utils'
+
 import { BLOCK_GROUPS, type BlockGroup, type BlockType } from '../blocks'
 import { t } from '../i18n'
-import { BlockPreview } from './BlockPreview'
-import { cn } from './cn'
-import { GlidingHighlight } from './GlidingHighlight'
+import { BlockPreview } from './block-preview'
+import { GlidingHighlight } from './gliding-highlight'
 
 type Props = {
   items: BlockType[]

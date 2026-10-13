@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Generates the Swift tokens and the Tailwind v4 theme from design/tokens.json. `--check` fails if the generated files are stale.
-import { readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -237,9 +237,46 @@ function css() {
   return L.join('\n')
 }
 
+/** One channel of a packed RGB number as the asset catalog writes it ("0xCB"). */
+const channelHex = (n, shift) =>
+  '0x' + ((n >> shift) & 0xff).toString(16).toUpperCase().padStart(2, '0')
+/** An asset catalog sRGB colour. */
+const catalogColor = (rgb) => ({
+  'color-space': 'srgb',
+  components: {
+    alpha: '1.000',
+    blue: channelHex(rgb, 0),
+    green: channelHex(rgb, 8),
+    red: channelHex(rgb, 16)
+  }
+})
+
+/** The app's AccentColor (asset catalog): the default tone's fill, so menus, selection and controls follow it. */
+function accentColor() {
+  const tone = tones().find((t) => t.name === tokens.tone.default)
+  return (
+    JSON.stringify(
+      {
+        colors: [
+          { color: catalogColor(tone.light.fill), idiom: 'universal' },
+          {
+            appearances: [{ appearance: 'luminosity', value: 'dark' }],
+            color: catalogColor(tone.dark.fill),
+            idiom: 'universal'
+          }
+        ],
+        info: { author: 'xcode', version: 1 }
+      },
+      null,
+      2
+    ) + '\n'
+  )
+}
+
 const outputs = [
   [join(root, 'HikkiUI/Sources/Generated/DesignTokens.swift'), swift()],
-  [join(root, 'editor/src/theme.css'), css()]
+  [join(root, 'editor/src/theme.css'), css()],
+  [join(root, 'Hikki/Resources/Assets.xcassets/AccentColor.colorset/Contents.json'), accentColor()]
 ]
 const check = process.argv.includes('--check')
 let stale = false
@@ -252,6 +289,9 @@ for (const [path, content] of outputs) {
   if (check) {
     console.error(`stale: ${path.replace(root + '/', '')} — run \`make tokens\``)
     stale = true
-  } else writeFileSync(path, content)
+  } else {
+    mkdirSync(dirname(path), { recursive: true })
+    writeFileSync(path, content)
+  }
 }
 if (stale) process.exit(1)

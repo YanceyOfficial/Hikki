@@ -10,7 +10,8 @@ import {
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
-import { cn, ui } from './cn'
+import { cn } from '@/lib/utils'
+
 import { usePresence } from './floating'
 
 type Props = {
@@ -27,7 +28,7 @@ type Props = {
  * Anchored popover for React-owned UI (pickers, menus). Closes on outside press and Escape,
  * repositions on scroll/resize, and stays inside the visual viewport (iOS keyboard).
  */
-export function Popover({
+export function AnchoredPopover({
   anchor,
   open,
   onClose,
@@ -97,7 +98,7 @@ export function Popover({
       ref={ref}
       role="dialog"
       aria-label={label}
-      className={cn('hk-pop', ui.floating, 'max-w-[calc(100vw-16px)]', className)}
+      className={cn('hk-pop', 'hk-floating', 'max-w-[calc(100vw-16px)]', className)}
     >
       {children}
     </div>,

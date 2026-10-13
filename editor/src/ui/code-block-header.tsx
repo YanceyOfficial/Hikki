@@ -4,12 +4,12 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { cn } from '@/lib/utils'
 
 import { filterLanguages, findLanguage } from '../extensions/code-languages'
 import { t } from '../i18n'
-import { cn } from './cn'
-import { handleListKey } from './CommandList'
-import { GlidingHighlight } from './GlidingHighlight'
+import { handleListKey } from './command-list'
+import { GlidingHighlight } from './gliding-highlight'
 
 type Props = {
   language: string

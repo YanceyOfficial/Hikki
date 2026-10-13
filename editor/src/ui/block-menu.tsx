@@ -12,6 +12,7 @@ import { TextSelection } from '@tiptap/pm/state'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
 import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 
 import { BLOCK_TYPES } from '../blocks'
 import { setBlockHighlight } from '../extensions/block-highlight'
@@ -20,9 +21,8 @@ import { BLOCK_COLOR_TYPES, colorLabel, PALETTE, type PaletteColor } from '../ex
 import { blockLabel, copyLink } from '../extensions/page-links'
 import { t } from '../i18n'
 import { shortcutLabel } from '../shortcuts'
-import { cn } from './cn'
 import { FloatingLayer, usePresence } from './floating'
-import { GlidingHighlight } from './GlidingHighlight'
+import { GlidingHighlight } from './gliding-highlight'
 import { IconProvider } from './icons'
 
 const TURN_INTO = BLOCK_TYPES.filter((b) => b.turnInto)

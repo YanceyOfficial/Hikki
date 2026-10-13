@@ -3,7 +3,7 @@ import { useEffect, useState, type ReactElement, type RefObject } from 'react'
 import { flushSync } from 'react-dom'
 import { createRoot, type Root } from 'react-dom/client'
 
-import { cn, ui } from './cn'
+import { cn } from '@/lib/utils'
 
 /**
  * A React tree rendered into a body-level layer and positioned next to a caret rect.
@@ -22,7 +22,11 @@ export class FloatingLayer {
   constructor(className: string, { bare = false }: { bare?: boolean } = {}) {
     this.bare = bare
     this.element = document.createElement('div')
-    this.element.className = cn('hk-pop', bare ? 'fixed top-0 left-0 z-50' : ui.floating, className)
+    this.element.className = cn(
+      'hk-pop',
+      bare ? 'fixed top-0 left-0 z-50' : 'hk-floating',
+      className
+    )
     document.body.append(this.element)
     this.root = createRoot(this.element)
   }

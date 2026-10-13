@@ -620,7 +620,7 @@
   visibility: hidden;
   transition-duration: var(--motion-pop-out);
 }
-/* The gliding selection surface of a list (ui/GlidingHighlight.tsx). */
+/* The gliding selection surface of a list (ui/gliding-highlight.tsx). */
 .hk-glide {
   @apply pointer-events-none absolute top-0 left-0 rounded-md bg-accent opacity-0;
   transition:
@@ -663,6 +663,15 @@
   select {
     font-size: max(16px, 1em);
   }
+}
+
+/* A floating surface (ui/floating.tsx, ui/anchored-popover.tsx): positioned by floating-ui, scrolls inside. */
+.hk-floating {
+  @apply fixed top-0 left-0 z-50 overflow-y-auto overscroll-contain rounded-xl bg-popover text-popover-foreground shadow-popover;
+}
+/* The page column: the header and the editor share its width and gutters. */
+.hk-column {
+  @apply mx-auto box-border max-w-[calc(var(--size-column)+96px)] px-12 max-sm:px-5;
 }
 
 /* The outline rail (right edge) gives way to the find panel, which sits in the same corner. */

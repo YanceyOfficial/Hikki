@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-import { cn } from './cn'
+import { cn } from '@/lib/utils'
 
 /** A placeholder line of text: language-neutral, so previews need no sample copy. */
 function Line({ w, className }: { w: string; className?: string }) {

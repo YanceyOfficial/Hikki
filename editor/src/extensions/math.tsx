@@ -5,7 +5,7 @@ import 'katex/dist/katex.min.css'
 
 import { FloatingLayer } from '../ui/floating'
 import { IconProvider } from '../ui/icons'
-import { MathEditor } from '../ui/MathEditor'
+import { MathEditor } from '../ui/math-editor'
 
 export type MathKind = 'inline' | 'block'
 

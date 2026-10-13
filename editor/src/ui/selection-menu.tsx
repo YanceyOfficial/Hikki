@@ -23,13 +23,13 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { Kbd } from '@/components/ui/kbd'
 import { Toggle } from '@/components/ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
 
 import { BLOCK_TYPES } from '../blocks'
 import { colorLabel, PALETTE, type PaletteColor } from '../extensions/colors'
 import { t } from '../i18n'
 import { isSafeHref, normalizeHref } from '../links'
 import { shortcutLabel } from '../shortcuts'
-import { cn } from './cn'
 import { usePresence } from './floating'
 import { useEditorSnapshot } from './use-editor-snapshot'
 

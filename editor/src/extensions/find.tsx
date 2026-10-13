@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
 import { matchesShortcut } from '../shortcuts'
-import { FindPanel } from '../ui/FindPanel'
+import { FindPanel } from '../ui/find-panel'
 import { IconProvider } from '../ui/icons'
 
 export type FindMode = 'find' | 'replace' | 'next' | 'previous' | 'close'
@@ -87,6 +87,27 @@ function renderFind(editor: Editor) {
       </TooltipProvider>
     </IconProvider>
   )
+}
+
+/** The current match, brought to the middle of the view (stepping, or a new term's first match). */
+export function revealCurrentMatch(editor: Editor): void {
+  const { results, currentIndex } = editor.storage.findAndReplace as {
+    results: { from: number }[]
+    currentIndex: number | null
+  }
+  const match = results[currentIndex ?? 0]
+  if (!match) return
+  let node: Node | null = null
+  try {
+    node = editor.view.domAtPos(match.from).node
+  } catch {
+    return
+  }
+  const element = node instanceof Element ? node : node?.parentElement
+  element?.scrollIntoView?.({
+    block: 'center',
+    behavior: matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+  })
 }
 
 /** Opens, steps through or closes find (keyboard, native menu, bridge). */

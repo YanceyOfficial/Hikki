@@ -53,8 +53,8 @@ let project = Project(
             settings: .settings(base: [
                 "SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor",
                 "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
-                // No asset catalog yet, so no AccentColor: silence actool's warning (the app keeps the system tint).
-                "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "",
+                // The tone (design/tokens.json → make tokens → AccentColor.colorset): menus and selection follow it.
+                "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor",
             ])
         ),
         .target(

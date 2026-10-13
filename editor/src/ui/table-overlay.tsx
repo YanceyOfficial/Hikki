@@ -31,6 +31,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
 
 import { colorLabel, PALETTE, type PaletteColor } from '../extensions/colors'
 import {
@@ -44,7 +45,6 @@ import {
   sortColumn
 } from '../extensions/table-ops'
 import { t } from '../i18n'
-import { cn } from './cn'
 
 export type TableHover = {
   tablePos: number

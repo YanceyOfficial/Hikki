@@ -3,7 +3,7 @@ import { useRef } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { FloatingLayer, leave, usePresence } from '../src/ui/floating'
-import { GlidingHighlight } from '../src/ui/GlidingHighlight'
+import { GlidingHighlight } from '../src/ui/gliding-highlight'
 
 /** An element whose only animation finishes when the returned function is called. */
 function animating(element: HTMLElement): () => Promise<void> {

@@ -7,7 +7,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 
 import { BLOCK_TYPES } from '../src/blocks'
 import { createEditor } from '../src/editor'
-import { SelectionMenu } from '../src/ui/SelectionMenu'
+import { SelectionMenu } from '../src/ui/selection-menu'
 import { doc, settle, stripIds } from './helpers'
 
 let host: HTMLElement

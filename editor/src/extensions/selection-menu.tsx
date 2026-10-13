@@ -6,7 +6,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
 import { IconProvider } from '../ui/icons'
-import { SelectionMenu } from '../ui/SelectionMenu'
+import { SelectionMenu } from '../ui/selection-menu'
 import { SlashCommandKey } from './slash-command'
 
 export const SelectionMenuKey = new PluginKey('selectionMenu')

@@ -14,12 +14,12 @@ import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { Popover as CoverPopover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Textarea } from '@/components/ui/textarea'
+import { cn } from '@/lib/utils'
 
 import type { EditorBridge } from '../bridge'
-import { cn, ui } from '../ui/cn'
-import { EmojiPickerPanel } from '../ui/EmojiPickerPanel'
-import { Popover } from '../ui/Popover'
-import { CoverPicker } from './CoverPicker'
+import { AnchoredPopover } from '../ui/anchored-popover'
+import { EmojiPickerPanel } from '../ui/emoji-picker-panel'
+import { CoverPicker } from './cover-picker'
 import { coverBackground, randomGradient, randomIcon } from './covers'
 
 /** Notion-style page header: cover, icon, hover actions and the page title (a page property, not body content). */
@@ -87,7 +87,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
           )}
         </div>
       )}
-      <div className={cn(ui.column, background ? 'pt-0' : 'pt-18')}>
+      <div className={cn('hk-column', background ? 'pt-0' : 'pt-18')}>
         {page.icon && (
           <button
             type="button"
@@ -144,7 +144,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
         />
       </div>
 
-      <Popover
+      <AnchoredPopover
         anchor={iconAnchor}
         open={iconOpen && !!page.icon}
         onClose={closeIcon}
@@ -162,7 +162,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
             setIconOpen(false)
           }}
         />
-      </Popover>
+      </AnchoredPopover>
     </header>
   )
 }

@@ -48,9 +48,15 @@ describe('find and replace', () => {
     act(() => void fireEvent.change(input, { target: { value: 'apple' } }))
     await waitFor(() => expect(screen.getByText('1 / 2')).toBeTruthy())
     expect(host.querySelectorAll('.find-and-replace-result')).toHaveLength(2)
+    const scrolled = vi.fn()
+    Element.prototype.scrollIntoView = scrolled
     act(() => void fireEvent.keyDown(input, { key: 'Enter' }))
     expect(screen.getByText('2 / 2')).toBeTruthy()
     expect(onUpdate).not.toHaveBeenCalled()
+    // The page follows the match: the second "apple" (its paragraph) is scrolled to the middle.
+    await waitFor(() => expect(scrolled).toHaveBeenCalled())
+    expect((scrolled.mock.contexts[0] as HTMLElement).textContent).toContain('Apple tart')
+    expect(scrolled.mock.calls[0][0]).toMatchObject({ block: 'center' })
 
     act(() => screen.getByRole('button', { name: 'Match case' }).click())
     await waitFor(() => expect(screen.getByText('1 / 1')).toBeTruthy())
@@ -125,7 +131,7 @@ describe('table of contents block', () => {
 
 describe('outline rail', () => {
   it('samples long heading lists evenly, keeping the first and last', async () => {
-    const { sampleEvenly } = await import('../src/page/Outline')
+    const { sampleEvenly } = await import('../src/page/outline')
     const items = Array.from({ length: 60 }, (_, i) => i)
     const bars = sampleEvenly(items, 20)
     expect(bars).toHaveLength(20)

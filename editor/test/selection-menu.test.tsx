@@ -6,7 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 
 import { createEditor } from '../src/editor'
 import { isSafeHref, normalizeHref } from '../src/links'
-import { SelectionMenu } from '../src/ui/SelectionMenu'
+import { SelectionMenu } from '../src/ui/selection-menu'
 import { doc } from './helpers'
 
 let host: HTMLElement

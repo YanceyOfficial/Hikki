@@ -6,7 +6,7 @@ import { EditorBridge } from '../src/bridge'
 import i18n, { resolveLocale, setLocale } from '../src/i18n'
 import en from '../src/locales/en.json'
 import zhHans from '../src/locales/zh-Hans.json'
-import { PageHeader } from '../src/page/PageHeader'
+import { PageHeader } from '../src/page/page-header'
 import { page } from './helpers'
 
 const keys = (obj: object, prefix = ''): string[] =>

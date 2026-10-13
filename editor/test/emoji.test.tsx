@@ -8,7 +8,7 @@ import {
   searchEmoji,
   type RawEmoji
 } from '../src/ui/emoji-data'
-import { EmojiPickerPanel } from '../src/ui/EmojiPickerPanel'
+import { EmojiPickerPanel } from '../src/ui/emoji-picker-panel'
 
 const messages = {
   groups: [

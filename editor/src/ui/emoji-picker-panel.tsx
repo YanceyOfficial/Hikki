@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 
-import { cn } from './cn'
 import {
   loadEmojiCategories,
   recentEmoji,

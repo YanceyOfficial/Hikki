@@ -20,10 +20,11 @@ import { Kbd } from '@/components/ui/kbd'
 import { Separator } from '@/components/ui/separator'
 import { Toggle } from '@/components/ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
 
+import { revealCurrentMatch } from '../extensions/find'
 import { t } from '../i18n'
 import { shortcutLabel } from '../shortcuts'
-import { cn } from './cn'
 import { usePresence } from './floating'
 import { useEditorSnapshot } from './use-editor-snapshot'
 
@@ -45,7 +46,9 @@ function snapshot(editor: Editor) {
     wholeWord: s.wholeWord,
     useRegex: s.useRegex,
     count: s.results.length,
-    current: s.currentIndex
+    current: s.currentIndex,
+    /** Where the current match is: stepping or a new term moves it, and the page follows. */
+    currentFrom: (s.results[s.currentIndex ?? 0]?.from as number | undefined) ?? null
   }
 }
 
@@ -65,6 +68,20 @@ export function FindPanel({ editor, open, replace, initialText, onReplaceToggle,
   // The field owns its text: the extension applies the term after a short debounce, so its storage lags
   // behind typing. The panel is remounted per Find request (keyed), so this starts from the prefill.
   const [text, setText] = useState(initialText)
+
+  // The page follows the current match whenever it moves (stepping, or a new term's first match).
+  const revealed = useRef<number | null>(null)
+  useEffect(() => {
+    if (
+      !open ||
+      text === '' ||
+      state.currentFrom === null ||
+      state.currentFrom === revealed.current
+    )
+      return
+    revealed.current = state.currentFrom
+    revealCurrentMatch(editor)
+  }, [open, text, state.currentFrom, editor])
 
   useEffect(() => {
     if (!open) return

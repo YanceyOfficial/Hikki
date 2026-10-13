@@ -18,7 +18,7 @@ import {
   type Snapshot,
   type ToNativeMessage
 } from './protocol'
-import { setBlockLinkBuilder } from './ui/BlockMenu'
+import { setBlockLinkBuilder } from './ui/block-menu'
 
 export interface Transport {
   post(message: ToNativeMessage): Promise<unknown>

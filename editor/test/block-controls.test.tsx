@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createEditor } from '../src/editor'
 import { BlockHighlightKey, setBlockHighlight } from '../src/extensions/block-highlight'
 import { deleteUnit, duplicateUnit, moveUnit, unitAtPos } from '../src/extensions/block-units'
-import { openBlockMenu } from '../src/ui/BlockMenu'
+import { openBlockMenu } from '../src/ui/block-menu'
 import { doc, settle, stripIds } from './helpers'
 
 let host: HTMLElement

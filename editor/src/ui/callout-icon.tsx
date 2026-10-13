@@ -1,12 +1,12 @@
 import { useState } from 'react'
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { cn } from '@/lib/utils'
 
 import { DEFAULT_CALLOUT_ICON } from '../extensions/callout'
 import { colorLabel, PALETTE, type PaletteColor } from '../extensions/colors'
 import { t } from '../i18n'
-import { cn } from './cn'
-import { EmojiPickerPanel } from './EmojiPickerPanel'
+import { EmojiPickerPanel } from './emoji-picker-panel'
 
 type Props = {
   icon: string

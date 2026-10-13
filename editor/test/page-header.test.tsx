@@ -2,8 +2,8 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { EditorBridge } from '../src/bridge'
-import { Outline } from '../src/page/Outline'
-import { PageHeader } from '../src/page/PageHeader'
+import { Outline } from '../src/page/outline'
+import { PageHeader } from '../src/page/page-header'
 import type { ToNativeMessage } from '../src/protocol'
 import { page, settle } from './helpers'
 

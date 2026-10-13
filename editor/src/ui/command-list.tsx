@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 
-import { cn } from './cn'
-import { GlidingHighlight } from './GlidingHighlight'
+import { cn } from '@/lib/utils'
+
+import { GlidingHighlight } from './gliding-highlight'
 
 export type CommandListItem = {
   id: string

@@ -6,7 +6,7 @@ import type { NodeView } from '@tiptap/pm/view'
 import { tiptapShortcut } from '../shortcuts'
 import { FloatingLayer } from '../ui/floating'
 import { IconProvider } from '../ui/icons'
-import { RubyPanel } from '../ui/RubyPanel'
+import { RubyPanel } from '../ui/ruby-panel'
 
 /** A run of the selection: kanji with their reading, or kana/punctuation left bare. */
 export type RubySegment = { text: string; reading?: string }
