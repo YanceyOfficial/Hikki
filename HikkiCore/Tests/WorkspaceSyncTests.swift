@@ -33,6 +33,49 @@ struct WorkspaceSyncTests {
         #expect(try store.activity(since: t0.addingTimeInterval(-86_400)).allSatisfy { $0.edits == 0 })  // imports aren't edits
     }
 
+    @Test func importsChildrenAfterTheirParentsWhateverTheFileOrder() throws {
+        let files = try folder()
+        let other = try DocumentStore.inMemory()
+        try other.create(id: "zzz-parent", now: t0)
+        try other.create(id: "aaa-child", parentId: "zzz-parent", now: t0)  // sorts before its parent
+        try other.create(id: "mmm-grandchild", parentId: "aaa-child", now: t0)
+        for id in ["zzz-parent", "aaa-child", "mmm-grandchild"] {
+            try files.write(try PageFile(record: try #require(try other.document(id: id))))
+        }
+        let store = try DocumentStore.inMemory()  // a phone's empty store (foreign keys on)
+        let report = try WorkspaceSync(store: store, files: files).reconcile()
+        #expect(report.imported == 3)
+        #expect(try store.document(id: "aaa-child")?.parentId == "zzz-parent")
+        #expect(try store.document(id: "mmm-grandchild")?.parentId == "aaa-child")
+    }
+
+    @Test func aChildWaitsForAParentStillDownloadingButAnOrphanLandsAtTheTop() throws {
+        let files = try folder()
+        let other = try DocumentStore.inMemory()
+        try other.create(id: "parent", now: t0)
+        try other.create(id: "child", parentId: "parent", now: t0)
+        try other.create(id: "orphan", now: t0)
+        try files.write(try PageFile(record: try #require(try other.document(id: "child"))))
+        // Written by a device whose parent page "gone" never reached this folder.
+        var orphan = try PageFile(record: try #require(try other.document(id: "orphan")))
+        orphan.parentId = "gone"
+        try files.write(orphan)
+        try Data().write(to: files.directory.appending(path: ".parent.json.icloud"))  // iCloud hasn't delivered it
+
+        let store = try DocumentStore.inMemory()
+        let sync = WorkspaceSync(store: store, files: files)
+        let first = try sync.reconcile()
+        #expect(first.imported == 1 && first.waitingForDownload == 2)  // the placeholder, and the child behind it
+        #expect(try store.document(id: "orphan")?.parentId == nil)
+        #expect(try store.document(id: "child") == nil)
+
+        try FileManager.default.removeItem(at: files.directory.appending(path: ".parent.json.icloud"))
+        try files.write(try PageFile(record: try #require(try other.document(id: "parent"))))
+        let second = try sync.reconcile()
+        #expect(second.imported == 2)
+        #expect(try store.document(id: "child")?.parentId == "parent")
+    }
+
     @Test func newerSideWinsBothWays() throws {
         let files = try folder()
         let store = try DocumentStore.inMemory()

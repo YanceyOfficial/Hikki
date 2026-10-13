@@ -100,6 +100,9 @@ public final class WorkspaceSync: @unchecked Sendable {
         let rows = Dictionary(try store.allDocuments().map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         let synced = try store.syncedIDs()
         let read = Dictionary(listing.pages.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        // Imports are collected and written parents-first at the end: a row's parent is a foreign key, and
+        // the folder lists children before their parents as often as not.
+        var imports: [PageFile] = []
         for (id, stamp) in listing.stamps.sorted(by: { $0.key < $1.key }) {
             let row = rows[id]
             if row == nil, synced.contains(id) {
@@ -120,9 +123,7 @@ public final class WorkspaceSync: @unchecked Sendable {
             }
             if let row {
                 if page.updatedAt > row.updatedAt.addingTimeInterval(0.001) {
-                    try store.importPage(try page.record())
-                    report.imported += 1
-                    report.importedIDs.append(id)
+                    imports.append(page)
                 } else if row.updatedAt > page.updatedAt.addingTimeInterval(0.001) {
                     try write(row)
                     report.exported += 1
@@ -130,10 +131,18 @@ public final class WorkspaceSync: @unchecked Sendable {
                     try store.markSynced([id])
                 }
             } else {
-                try store.importPage(try page.record())
-                report.imported += 1
-                report.importedIDs.append(id)
+                imports.append(page)
             }
+        }
+        let ordered = Self.parentsFirst(imports, inStore: Set(rows.keys), inFolder: listing.present)
+        for page in ordered.ready {
+            try store.importPage(try page.record())
+            report.imported += 1
+            report.importedIDs.append(page.id)
+        }
+        if ordered.waiting > 0 {
+            // Their parents are still on their way (placeholders, half-written files): next pass.
+            report.waitingForDownload += ordered.waiting
         }
         // Rows the folder has no trace of: deleted elsewhere if they were synced, otherwise never written.
         let missing = rows.keys.filter { !listing.present.contains($0) }
@@ -158,6 +167,44 @@ public final class WorkspaceSync: @unchecked Sendable {
         scheduleDownloadRetry(after: report)
         onReconcile?(report)
         return report
+    }
+
+    /// The pages to import, parents before children, so every row's parent exists when it is written. A page
+    /// whose parent the folder still has to deliver waits for a later pass; one whose parent exists nowhere
+    /// (not in the store, no trace in the folder) goes to the top level rather than never arriving.
+    static func parentsFirst(_ pages: [PageFile], inStore: Set<String>, inFolder: Set<String>) -> (ready: [PageFile], waiting: Int) {
+        let byID = Dictionary(pages.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        var depth: [String: Int] = [:]
+        var waiting = 0
+        var ready: [PageFile] = []
+        /// Levels above the store's rows: 0 for a top-level page or one whose parent is already a row.
+        func level(of page: PageFile, seen: Set<String>) -> Int? {
+            if let known = depth[page.id] { return known }
+            guard let parentID = page.parentId else { return 0 }
+            if inStore.contains(parentID) && byID[parentID] == nil { return 0 }
+            if let parent = byID[parentID], !seen.contains(parentID) {
+                guard let above = level(of: parent, seen: seen.union([page.id])) else { return nil }
+                depth[page.id] = above + 1
+                return above + 1
+            }
+            // Not a row, not in this import: nil while the folder still has a trace of it (downloading, unreadable).
+            return inFolder.contains(parentID) ? nil : 0
+        }
+        var levelled: [(PageFile, Int)] = []
+        for page in pages {
+            if let n = level(of: page, seen: []) {
+                var page = page
+                if n == 0, let parentID = page.parentId, !inStore.contains(parentID), byID[parentID] == nil {
+                    Log.warn("imported page's parent is missing; placed at the top level", category: "workspace", context: ["id": page.id])
+                    page.parentId = nil
+                }
+                levelled.append((page, n))
+            } else {
+                waiting += 1
+            }
+        }
+        ready = levelled.sorted { ($0.1, $0.0.id) < ($1.1, $1.0.id) }.map(\.0)
+        return (ready, waiting)
     }
 
     /// iCloud fills placeholders in later, and a half-downloaded file reads as corrupt: while any are left,
