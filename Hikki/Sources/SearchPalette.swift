@@ -81,6 +81,10 @@ struct SearchPalette: View {
             #endif
         }
         .background(Theme.popover)
+        #if os(iOS)
+            // A phone sheet: the field at the top, not floating mid-way above the keyboard.
+            .frame(maxHeight: .infinity, alignment: .top)
+        #endif
         .onAppear { fieldFocused = true }
         .onChange(of: query) { _, q in
             results = model.search(q)
