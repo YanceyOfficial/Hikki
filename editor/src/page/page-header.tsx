@@ -13,8 +13,8 @@ import { useTranslation } from 'react-i18next'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { ButtonGroup } from '@/components/ui/button-group'
 import { Popover as CoverPopover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 
 import { AnchoredPopover } from '../components/anchored-popover'
@@ -58,29 +58,26 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
       {background && (
         <Cover background={background} repositioning={draftY !== null} onDrag={setDraftY}>
           {draftY !== null ? (
-            <ButtonGroup className="absolute top-3 right-3">
-              <Button
-                variant="outline"
-                size="sm"
+            <CoverActions>
+              <CoverAction
                 onClick={() => {
                   if (page.cover) bridge.setCover(withCoverPosition(page.cover, draftY))
                   setDraftY(null)
                 }}
               >
                 {t('page.savePosition')}
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setDraftY(null)}>
+              </CoverAction>
+              <Separator orientation="vertical" className="h-4" />
+              <CoverAction onClick={() => setDraftY(null)}>
                 {t('page.cancelReposition')}
-              </Button>
-            </ButtonGroup>
+              </CoverAction>
+            </CoverActions>
           ) : (
-            // Notion-style button group, top right; visible on hover (always on touch / while open).
+            // Visible on hover (always on touch / while open).
             !frozen && (
-              <ButtonGroup className="absolute top-3 right-3 opacity-0 transition-opacity group-focus-within/cover:opacity-100 group-hover/cover:opacity-100 has-aria-expanded:opacity-100 touch:opacity-100">
+              <CoverActions className="opacity-0 transition-opacity group-focus-within/cover:opacity-100 group-hover/cover:opacity-100 has-aria-expanded:opacity-100 touch:opacity-100">
                 <CoverPopover>
-                  <PopoverTrigger render={<Button variant="outline" size="sm" />}>
-                    {t('page.changeCover')}
-                  </PopoverTrigger>
+                  <PopoverTrigger render={<CoverAction />}>{t('page.changeCover')}</PopoverTrigger>
                   <PopoverContent
                     align="end"
                     className="w-[440px] max-w-[calc(100vw-16px)] gap-0 p-0"
@@ -94,15 +91,14 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
                   </PopoverContent>
                 </CoverPopover>
                 {isImageCover(page.cover) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setDraftY(coverPosition(page.cover))}
-                  >
-                    {t('page.reposition')}
-                  </Button>
+                  <>
+                    <Separator orientation="vertical" className="h-4" />
+                    <CoverAction onClick={() => setDraftY(coverPosition(page.cover))}>
+                      {t('page.reposition')}
+                    </CoverAction>
+                  </>
                 )}
-              </ButtonGroup>
+              </CoverActions>
             )
           )}
         </Cover>
@@ -288,6 +284,8 @@ function Cover({
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!repositioning || event.button !== 0) return
+    // A press on the controls is theirs: capturing the pointer here would steal their click.
+    if ((event.target as HTMLElement).closest('[data-slot="cover-actions"]')) return
     const match = /(\d+(?:\.\d+)?)% \/ cover/u.exec(background)
     drag.current = {
       pointerId: event.pointerId,
@@ -366,4 +364,37 @@ function useCoverOverflow(
     }
   }, [src, ref])
   return measured?.src === src ? measured.overflow : null
+}
+
+/**
+ * Notion's cover controls: one white pill at the top right, the actions inside separated by hairlines, a
+ * soft tint on the hovered one (no per-button borders).
+ */
+function CoverActions({ className, children }: { className?: string; children: ReactNode }) {
+  return (
+    <div
+      role="group"
+      data-slot="cover-actions"
+      className={cn(
+        'absolute top-3 right-3 flex items-center gap-0.5 rounded-md bg-popover p-0.5 text-popover-foreground shadow-sm ring-1 ring-foreground/10',
+        className
+      )}
+    >
+      {children}
+    </div>
+  )
+}
+
+function CoverAction(props: React.ComponentProps<typeof Button>) {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      {...props}
+      className={cn(
+        'h-7 rounded-sm px-2 font-normal text-subtle-foreground hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground',
+        props.className
+      )}
+    />
+  )
 }

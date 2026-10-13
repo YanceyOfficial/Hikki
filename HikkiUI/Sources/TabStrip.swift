@@ -120,6 +120,9 @@ public struct TabStrip<Leading: View>: View {
             SidebarIconButton("app:tabs.new", symbol: .plus, action: onNew)
         }
         .coordinateSpace(name: tabStripSpace)
+        // The toolbar's glass group is a point taller than this row and hangs it from its top, so the capsules
+        // and "+" sat a point above the group's middle (measured on 2x captures); down by that point.
+        .offset(y: Spacing.s0_5 / 2)
         .overlay {
             // The line sits on the strip's own middle (the toolbar bar is taller than the tabs).
             GeometryReader { strip in
@@ -233,9 +236,6 @@ private struct TabButton: View {
             }
         }
         .padding(.horizontal, Spacing.s3)
-        // The capsule's glass shading is heavier along its bottom edge, so content centred on the frame reads a
-        // touch high; a point down lands it on the capsule's visual middle (measured on a 2x capture).
-        .offset(y: Spacing.s0_5 / 2)
         .frame(minWidth: 60, idealWidth: 200, maxWidth: 220, minHeight: 30, maxHeight: 30)
         // Capsules inside the toolbar's glass capsule, like a segmented control (App Store's sidebar).
         .background(

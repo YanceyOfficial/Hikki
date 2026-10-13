@@ -117,6 +117,14 @@ describe('PageHeader', () => {
     expect(cover.style.background).toContain('50% 25%')
     // The page itself is untouched until Save.
     expect(bridge.page.get().cover).toBe('hikki-editor://assets/a.png')
+    // A press on the controls is not a drag.
+    fireEvent.pointerDown(screen.getByText('Save position'), {
+      pointerId: 3,
+      button: 0,
+      clientY: 10
+    })
+    fireEvent.pointerMove(cover, { pointerId: 3, clientY: 110 })
+    expect(cover.style.background).toContain('50% 25%')
     fireEvent.click(screen.getByText('Save position'))
     expect(bridge.page.get().cover).toBe('hikki-editor://assets/a.png#y=25')
     expect(sent.at(-1)).toMatchObject({
