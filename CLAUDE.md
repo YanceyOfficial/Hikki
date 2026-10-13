@@ -182,12 +182,13 @@ HikkiUITests/                 XCUITest flows
   an attribute); ⇧⌘R or Format → More → Ruby opens the reading panel, prefilled from the native tokenizer
   (`HikkiCore/Sources/Search/JapaneseReading.swift`, `suggestReading` message): a phrase comes back as kanji runs with
   readings and bare kana (役に立ちます → 役(やく)に立(た)ちます), one ruby per run; "Whole" puts one reading over all of it.
-- **Full screen (macOS)**: Chrome's way, in `Hikki/Sources/FullScreenChrome.swift` — the menu bar stays (a proxy window
-  delegate drops `autoHideMenuBar` from the presentation options and forwards everything else to SwiftUI's delegate),
-  the traffic lights are un-hidden on entering, the toolbar stays, and it gets a background while in full screen so the
-  columns sit below the row instead of under it. Photos' hide-and-slide-in bar (`windowToolbarFullScreenVisibility(.onHover)`)
-  was tried and dropped: without scrolled content under it the bar came back transparent, over the sidebar's search
-  field. `HIKKI_DEBUG_FULLSCREEN` forces the full-screen layout on in a window.
+- **Full screen (macOS)**: Chrome's way, in `Hikki/Sources/FullScreenChrome.swift` — the toolbar stays and gets its
+  background while in full screen (that is what puts the columns below the toolbar row instead of under it), and the
+  traffic lights stay: AppKit keeps them in the title bar but fades them to alpha 0 until the menu bar comes down, so
+  they are held at alpha 1 (KVO puts them back whenever AppKit fades them). Dropping `autoHideMenuBar` from the
+  presentation options only makes AppKit hide the menu bar for good, and Photos' hide-and-slide-in bar
+  (`windowToolbarFullScreenVisibility(.onHover)`) came back transparent over the sidebar's search field — both tried
+  and dropped. `HIKKI_DEBUG_FULLSCREEN` forces the full-screen layout on in a window.
 - **Find, spelling, insets**: find and replace is `editor/src/extensions/find.ts` (Tiptap's extension, RE2 regex) with
   `editor/src/components/find-panel.tsx`; the page handles ⌘F/⌥⌘F/⌘G itself, the native Edit menu and the page ⋯ menu ("Find
   in Page", the only way on a phone) call `window.hikki.find`. Spellcheck is WebKit's (Settings → Editor,

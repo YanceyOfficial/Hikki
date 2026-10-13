@@ -1,11 +1,10 @@
 import SwiftUI
 
 extension View {
-    /// Full screen (macOS), Chrome's way: the menu bar stays, and with it the traffic lights and the toolbar
-    /// row; the columns start below that row exactly as they do in a window. AppKit decides the menu bar
-    /// through the window delegate's full-screen presentation options — SwiftUI owns that delegate, so a
-    /// proxy answers that one question and forwards everything else. (Photos' hide-and-slide-in bar kept
-    /// landing on the sidebar's search field without a background; the user gave up on it.)
+    /// Full screen (macOS), Chrome's way: the toolbar row and the traffic lights stay, and the columns start
+    /// below that row exactly as they do in a window. AppKit keeps the window buttons in place in full
+    /// screen but fades them to alpha 0 until the menu bar comes down; here they are held visible. (Photos'
+    /// hide-and-slide-in bar kept landing on the sidebar's search field without a background; given up.)
     func fullScreenChrome() -> some View {
         #if os(macOS)
             modifier(FullScreenChrome())
@@ -35,8 +34,8 @@ extension View {
         }
     }
 
-    /// Installs the delegate proxy, keeps the traffic lights shown in full screen, and reports whether the
-    /// hosting window is in full screen (now, and as it enters or leaves).
+    /// Keeps the traffic lights shown in full screen and reports whether the hosting window is in full
+    /// screen (now, and as it enters or leaves).
     private struct FullScreenObserver: NSViewRepresentable {
         @Binding var isFullScreen: Bool
 
@@ -69,22 +68,16 @@ extension View {
 
         final class Coordinator {
             private let isFullScreen: Binding<Bool>
-            private let proxy = FullScreenDelegateProxy()
             private weak var window: NSWindow?
             private var observers: [any NSObjectProtocol] = []
+            private var buttonWatchers: [NSKeyValueObservation] = []
 
             init(isFullScreen: Binding<Bool>) {
                 self.isFullScreen = isFullScreen
             }
 
             func attach(to window: NSWindow?) {
-                guard let window else { return }
-                // SwiftUI may put its own delegate back; ours wraps whatever is there.
-                if window.delegate !== proxy {
-                    proxy.original = window.delegate
-                    window.delegate = proxy
-                }
-                guard window !== self.window else { return }
+                guard let window, window !== self.window else { return }
                 detach()
                 self.window = window
                 let center = NotificationCenter.default
@@ -92,9 +85,13 @@ extension View {
                     center.addObserver(forName: NSWindow.didEnterFullScreenNotification, object: window, queue: .main) {
                         [weak self] _ in
                         MainActor.assumeIsolated {
-                            self?.showWindowButtons()
+                            self?.holdWindowButtons()
                             self?.update(true)
                         }
+                    },
+                    center.addObserver(forName: NSWindow.willExitFullScreenNotification, object: window, queue: .main) {
+                        [weak self] _ in
+                        MainActor.assumeIsolated { self?.releaseWindowButtons() }
                     },
                     center.addObserver(forName: NSWindow.didExitFullScreenNotification, object: window, queue: .main) {
                         [weak self] _ in
@@ -102,47 +99,48 @@ extension View {
                     },
                 ]
                 let fullScreen = window.styleMask.contains(.fullScreen)
-                if fullScreen { showWindowButtons() }
+                if fullScreen { holdWindowButtons() }
                 update(fullScreen)
             }
 
             func detach() {
+                releaseWindowButtons()
                 observers.forEach(NotificationCenter.default.removeObserver)
                 observers = []
                 window = nil
             }
 
-            /// AppKit hides the traffic lights on entering full screen; they come back (Chrome keeps them).
-            private func showWindowButtons() {
-                for kind in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
-                    window?.standardWindowButton(kind)?.isHidden = false
+            private var buttons: [NSButton] {
+                [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].compactMap { window?.standardWindowButton($0) }
+            }
+
+            /// In full screen AppKit keeps the traffic lights in the title bar but fades them out until the
+            /// menu bar comes down; they stay opaque here, as Chrome's do, and are put back whenever AppKit
+            /// fades them again.
+            private func holdWindowButtons() {
+                releaseWindowButtons()
+                for button in buttons {
+                    button.alphaValue = 1
+                    buttonWatchers.append(
+                        button.observe(\.alphaValue, options: [.new]) { button, _ in
+                            MainActor.assumeIsolated {
+                                if button.alphaValue < 1 { button.alphaValue = 1 }
+                            }
+                        })
                 }
+            }
+
+            /// Leaving full screen: AppKit owns them again.
+            private func releaseWindowButtons() {
+                buttonWatchers.forEach { $0.invalidate() }
+                buttonWatchers = []
             }
 
             private func update(_ value: Bool) {
                 if debugFullScreen { return }
                 if isFullScreen.wrappedValue != value { isFullScreen.wrappedValue = value }
             }
-        }
-    }
 
-    /// Answers the full-screen presentation options — keep the menu bar — and forwards every other delegate
-    /// call to SwiftUI's own window delegate.
-    // Message forwarding is answered on whatever thread AppKit asks from, so the class steps out of the
-    // app's main-actor default; the delegate call itself is main-actor, as AppKit promises.
-    nonisolated private final class FullScreenDelegateProxy: NSObject, NSWindowDelegate {
-        weak var original: NSWindowDelegate?
-
-        override func responds(to aSelector: Selector!) -> Bool {
-            super.responds(to: aSelector) || original?.responds(to: aSelector) == true
-        }
-
-        override func forwardingTarget(for aSelector: Selector!) -> Any? { original }
-
-        @MainActor func window(
-            _ window: NSWindow, willUseFullScreenPresentationOptions proposedOptions: NSApplication.PresentationOptions
-        ) -> NSApplication.PresentationOptions {
-            proposedOptions.subtracting(.autoHideMenuBar)
         }
     }
 #endif
