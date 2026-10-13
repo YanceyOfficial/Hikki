@@ -53,6 +53,7 @@ public struct HoverHighlightStyle: ButtonStyle {
                         .fill(configuration.isPressed ? Theme.accentStrong : hovering ? hoverFill : .clear)
                 )
                 .onHover { hovering = $0 }
+                .animation(Motion.easeOut(Motion.popOut), value: hovering)
         }
     }
 }

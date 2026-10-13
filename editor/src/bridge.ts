@@ -39,6 +39,8 @@ export type PageState = {
    * as far as possible but never saved, so the original stays intact on disk.
    */
   readOnly: boolean
+  /** Locked by the user (Page → Lock): read-only until unlocked, unlike `readOnly` it can be lifted live. */
+  locked: boolean
 }
 
 type Options = {
@@ -70,7 +72,8 @@ export class EditorBridge {
     headings: [],
     focusTitleRequest: 0,
     selectTitle: false,
-    readOnly: false
+    readOnly: false,
+    locked: false
   })
   private editor: Editor | null = null
   private timer: ReturnType<typeof setTimeout> | null = null
@@ -115,11 +118,11 @@ export class EditorBridge {
         contentError = error
       }
     })
-    if (contentError) {
-      editor.setEditable(false)
-      // IDs and the reason only — never page content.
+    const locked = payload.locked === true
+    if (contentError || locked) editor.setEditable(false)
+    // IDs and the reason only — never page content.
+    if (contentError)
       console.warn(`page opened read-only: content doesn't fit the schema (${payload.id})`)
-    }
     editor.on('update', ({ transaction }) => {
       this.page.set({ headings: collectHeadings(editor) })
       if (isUserEdit(transaction)) this.scheduleChanged()
@@ -133,8 +136,21 @@ export class EditorBridge {
       icon: payload.icon,
       cover: payload.cover,
       headings: collectHeadings(editor),
-      readOnly: contentError !== null
+      readOnly: contentError !== null,
+      locked
     })
+  }
+
+  /** Page → Lock / Unlock while the page is open. */
+  setLocked(locked: boolean): void {
+    this.page.set({ locked })
+    this.editor?.setEditable(!locked && !this.page.get().readOnly)
+  }
+
+  /** Nothing about the page may change: its content doesn't fit the schema, or the user locked it. */
+  private get frozen(): boolean {
+    const { readOnly, locked } = this.page.get()
+    return readOnly || locked
   }
 
   /**
@@ -177,7 +193,7 @@ export class EditorBridge {
   // MARK: header
 
   setTitle(title: string): void {
-    if (this.page.get().readOnly) return
+    if (this.frozen) return
     const clean = title.replace(/[\r\n]+/g, ' ').slice(0, MAX_TITLE_LENGTH)
     if (clean === this.page.get().title) return
     this.page.set({ title: clean })
@@ -186,14 +202,14 @@ export class EditorBridge {
 
   setIcon(icon: string | null): void {
     const { docId } = this.page.get()
-    if (!docId) return
+    if (!docId || this.frozen) return
     this.page.set({ icon })
     void this.send({ type: 'setIcon', docId, icon })
   }
 
   setCover(cover: string | null): void {
     const { docId } = this.page.get()
-    if (!docId) return
+    if (!docId || this.frozen) return
     this.page.set({ cover })
     void this.send({ type: 'setCover', docId, cover })
   }
@@ -269,7 +285,9 @@ export class EditorBridge {
   // MARK: editor
 
   exec(command: string): boolean {
-    if (!this.editor || !(COMMANDS as readonly string[]).includes(command)) return false
+    // Commands run on a non-editable editor too, so a locked page refuses them here.
+    if (!this.editor || this.frozen || !(COMMANDS as readonly string[]).includes(command))
+      return false
     return runCommand(this.editor, command as Command)
   }
 
@@ -351,7 +369,7 @@ export class EditorBridge {
   }
 
   private scheduleChanged(): void {
-    if (this.page.get().readOnly) return
+    if (this.frozen) return
     this.dirty = true
     const now = Date.now()
     this.pendingSince ??= now

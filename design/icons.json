@@ -172,6 +172,12 @@
     },
     "calendar-dots": {
       "sf": "calendar"
+    },
+    "lock-simple": {
+      "sf": "lock"
+    },
+    "lock-simple-open": {
+      "sf": "lock.open"
     }
   }
 }

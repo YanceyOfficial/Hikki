@@ -30,7 +30,8 @@ struct EditorView: PlatformViewRepresentable {
     #else
         func makeNSView(context: Context) -> HikkiWebView { controller.webView }
         func updateNSView(_ view: HikkiWebView, context: Context) {
-            controller.setTopInset(topInset)
+            // The obscured inset alone: WebKit already lays fixed-position content (the find panel) out
+            // below it, so telling the page the height as well pushed the panel down twice.
             if view.obscuredContentInsets.top != topInset {
                 view.obscuredContentInsets = NSEdgeInsets(top: topInset, left: 0, bottom: 0, right: 0)
             }

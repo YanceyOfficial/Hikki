@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 10
+export const PROTOCOL_VERSION = 11
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -11,6 +11,8 @@ export type PagePayload = {
   title: string
   icon: string | null
   cover: string | null
+  /** Locked pages are read-only (title, body, icon, cover) until unlocked natively. */
+  locked?: boolean
   content: JSONContent | null
 }
 

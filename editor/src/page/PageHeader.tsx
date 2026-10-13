@@ -1,4 +1,4 @@
-import { Image as ImageIcon, LockSimple, Smiley } from '@phosphor-icons/react'
+import { ImageIcon, LockSimpleIcon, SmileyIcon } from '@phosphor-icons/react'
 import {
   useCallback,
   useEffect,
@@ -28,6 +28,8 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
   const [iconAnchor, setIconAnchor] = useState<HTMLElement | null>(null)
   const [iconOpen, setIconOpen] = useState(false)
   const background = coverBackground(page.cover)
+  // Nothing in the header may change on a locked (or unreadable) page.
+  const frozen = page.readOnly || page.locked
   const closeIcon = useCallback(() => setIconOpen(false), [])
 
   if (!page.docId) return null
@@ -46,37 +48,42 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
           data-testid="cover"
         >
           {/* Notion-style button group, top right; visible on hover (always on touch / while open). */}
-          <ButtonGroup className="absolute top-3 right-3 opacity-0 transition-opacity group-focus-within/cover:opacity-100 group-hover/cover:opacity-100 has-aria-expanded:opacity-100 touch:opacity-100">
-            <CoverPopover>
-              <PopoverTrigger
-                render={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-popover text-popover-foreground shadow-sm dark:bg-popover"
+          {!frozen && (
+            <ButtonGroup className="absolute top-3 right-3 opacity-0 transition-opacity group-focus-within/cover:opacity-100 group-hover/cover:opacity-100 has-aria-expanded:opacity-100 touch:opacity-100">
+              <CoverPopover>
+                <PopoverTrigger
+                  render={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-popover text-popover-foreground shadow-sm dark:bg-popover"
+                    />
+                  }
+                >
+                  {t('page.changeCover')}
+                </PopoverTrigger>
+                <PopoverContent
+                  align="end"
+                  className="w-[440px] max-w-[calc(100vw-16px)] gap-0 p-0"
+                >
+                  <CoverPicker
+                    current={page.cover}
+                    onSelect={(cover) => bridge.setCover(cover)}
+                    onRemove={() => bridge.setCover(null)}
+                    onUpload={uploadCover}
                   />
-                }
+                </PopoverContent>
+              </CoverPopover>
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-popover text-popover-foreground shadow-sm dark:bg-popover"
+                onClick={() => bridge.setCover(null)}
               >
-                {t('page.changeCover')}
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-[440px] max-w-[calc(100vw-16px)] gap-0 p-0">
-                <CoverPicker
-                  current={page.cover}
-                  onSelect={(cover) => bridge.setCover(cover)}
-                  onRemove={() => bridge.setCover(null)}
-                  onUpload={uploadCover}
-                />
-              </PopoverContent>
-            </CoverPopover>
-            <Button
-              variant="outline"
-              size="sm"
-              className="bg-popover text-popover-foreground shadow-sm dark:bg-popover"
-              onClick={() => bridge.setCover(null)}
-            >
-              {t('page.remove')}
-            </Button>
-          </ButtonGroup>
+                {t('page.remove')}
+              </Button>
+            </ButtonGroup>
+          )}
         </div>
       )}
       <div className={cn(ui.column, background ? 'pt-0' : 'pt-18')}>
@@ -84,28 +91,30 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
           <button
             type="button"
             className={cn(
-              '-ml-0.5 mb-1 block size-[78px] cursor-pointer rounded-lg font-emoji text-[78px] leading-none hover:bg-accent',
+              '-ml-0.5 mb-1 block size-[78px] rounded-lg font-emoji text-[78px] leading-none',
+              !frozen && 'cursor-pointer hover:bg-accent',
               background && 'relative -mt-[39px]'
             )}
             ref={setIconAnchor}
             aria-label={t('page.changeIcon')}
+            disabled={frozen}
             onClick={() => setIconOpen((o) => !o)}
           >
             {page.icon}
           </button>
         )}
         <div className="mt-2 mb-1 -ml-1.5 flex min-h-7 gap-1 opacity-0 transition-opacity group-hover/header:opacity-100 focus-within:opacity-100 touch:opacity-100">
-          {!page.icon && (
+          {!page.icon && !frozen && (
             <button
               type="button"
               className={ui.ghost}
               ref={setIconAnchor}
               onClick={() => bridge.setIcon(randomIcon())}
             >
-              <Smiley size={18} aria-hidden /> {t('page.addIcon')}
+              <SmileyIcon size={18} aria-hidden /> {t('page.addIcon')}
             </button>
           )}
-          {!background && (
+          {!background && !frozen && (
             <button
               type="button"
               className={ui.ghost}
@@ -117,14 +126,14 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
         </div>
         {page.readOnly && (
           <Alert className="mb-3" data-testid="read-only-notice">
-            <LockSimple aria-hidden />
+            <LockSimpleIcon aria-hidden />
             <AlertTitle>{t('page.readOnlyTitle')}</AlertTitle>
             <AlertDescription>{t('page.readOnlyDescription')}</AlertDescription>
           </Alert>
         )}
         <TitleField
           bridge={bridge}
-          readOnly={page.readOnly}
+          readOnly={frozen}
           title={page.title}
           focusRequest={page.focusTitleRequest}
           selectOnFocus={page.selectTitle}

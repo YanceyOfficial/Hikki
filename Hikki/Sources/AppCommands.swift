@@ -6,6 +6,7 @@ import SwiftUI
 struct AppCommands: Commands {
     @FocusedValue(\.editor) private var editor
     @FocusedValue(\.navigator) private var navigator
+    @FocusedValue(\.lockedPage) private var lockedPage
 
     var body: some Commands {
         #if os(iOS)
@@ -51,6 +52,11 @@ struct AppCommands: Commands {
             Button("app:page.copyLink") { navigator?.copyCurrentPageLink() }
                 .keyboardShortcut(Shortcut.copyPageLink.keyboardShortcut)
                 .disabled(navigator?.route.pageID == nil)
+            Button(lockedPage == true ? "app:page.unlock" : "app:page.lock") {
+                navigator?.toggleLockCurrentPage()
+            }
+            .keyboardShortcut(Shortcut.lockPage.keyboardShortcut)
+            .disabled(lockedPage == nil)
         }
         CommandMenu("app:menu.go") {
             Button("app:chrome.back") { navigator?.goBack() }

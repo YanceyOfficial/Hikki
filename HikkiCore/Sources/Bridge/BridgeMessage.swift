@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 10
+    public static let version = 11
 }
 
 public struct Snapshot: Codable, Sendable, Equatable {
@@ -63,6 +63,7 @@ public enum PagePayload {
             "title": record.title,
             "icon": record.icon ?? NSNull(),
             "cover": record.cover ?? NSNull(),
+            "locked": record.isLocked,
             "content": try record.contentValue()?.foundationObject() ?? NSNull(),
         ]
     }

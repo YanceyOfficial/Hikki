@@ -13,6 +13,13 @@ final class AppModel {
     private(set) var workspace: Workspace?
     private(set) var tree = PageTree([])
     private(set) var trash: [PageSummary] = []
+    /// What the last pass over the workspace folder found (Settings → Storage shows it).
+    private(set) var lastSync: SyncStatus?
+
+    struct SyncStatus: Equatable, Sendable {
+        var at: Date
+        var report: WorkspaceSync.Report
+    }
 
     init(store: DocumentStore, assets: AssetStore, crashReporter: CrashReporter, workspaceStore: WorkspaceStore) {
         self.store = store
@@ -53,17 +60,20 @@ final class AppModel {
             Task.detached(priority: .utility) { assets.copyLegacyAssets() }
             // Every pass — launch, activation, or the folder watcher noticing another device — tells open
             // editors which pages came from disk, so one showing such a page reloads it.
-            let sync = WorkspaceSync(store: store, files: PageFiles(root: folder)) { report in
-                guard !report.importedIDs.isEmpty else { return }
+            let sync = WorkspaceSync(store: store, files: PageFiles(root: folder)) { [weak self] report in
                 let ids = report.importedIDs
                 Task { @MainActor in
+                    self?.lastSync = SyncStatus(at: .now, report: report)
+                    guard !ids.isEmpty else { return }
                     NotificationCenter.default.post(name: .pagesChangedOnDisk, object: nil, userInfo: ["ids": ids])
                 }
             }
             self.sync = sync
-            Task.detached(priority: .utility) {
+            Task.detached(priority: .utility) { [weak self] in
                 do {
-                    Self.log("workspace sync started", try sync.start())
+                    let report = try sync.start()
+                    Self.log("workspace sync started", report)
+                    Task { @MainActor in self?.lastSync = SyncStatus(at: .now, report: report) }
                 } catch {
                     Log.error("workspace sync failed to start: \(error)", category: "workspace")
                 }
@@ -225,6 +235,10 @@ final class AppModel {
 
     func setFavorite(_ favorite: Bool, id: String) {
         perform("set favorite", id) { try store.setFavorite(favorite, for: id) }
+    }
+
+    func setLocked(_ locked: Bool, id: String) {
+        perform("set locked", id) { try store.setLocked(locked, for: id) }
     }
 
     func duplicate(id: String) {

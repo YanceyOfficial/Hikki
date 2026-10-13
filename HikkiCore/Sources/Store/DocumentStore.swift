@@ -22,8 +22,11 @@ public struct DocumentRecord: Codable, Sendable, Equatable, Identifiable, Fetcha
     public var sortKey: Double
     /// Derived from `title` on every save (see `Pinyin.searchKey`).
     public var titlePinyin: String = ""
+    /// Locked pages are read-only in the editor (title, body, icon, cover) until unlocked.
+    public var lockedAt: Date? = nil
 
     public var isFavorite: Bool { favoritedAt != nil }
+    public var isLocked: Bool { lockedAt != nil }
 
     public func contentValue() throws -> JSONValue? {
         try content.map { try JSONValue(jsonData: Data($0.utf8)) }
@@ -40,8 +43,25 @@ public struct PageSummary: Codable, Sendable, Equatable, Identifiable, Fetchable
     public var favoritedAt: Date?
     public var deletedAt: Date?
     public var sortKey: Double
+    public var lockedAt: Date?
 
     public var isFavorite: Bool { favoritedAt != nil }
+    public var isLocked: Bool { lockedAt != nil }
+
+    public init(
+        id: String, parentId: String?, title: String, icon: String?, updatedAt: Date, favoritedAt: Date?, deletedAt: Date?,
+        sortKey: Double, lockedAt: Date? = nil
+    ) {
+        self.id = id
+        self.parentId = parentId
+        self.title = title
+        self.icon = icon
+        self.updatedAt = updatedAt
+        self.favoritedAt = favoritedAt
+        self.deletedAt = deletedAt
+        self.sortKey = sortKey
+        self.lockedAt = lockedAt
+    }
 }
 
 public struct SearchHit: Sendable, Equatable, Identifiable {
@@ -63,7 +83,7 @@ public struct SearchHit: Sendable, Equatable, Identifiable {
 /// migrations and queries — no separate fake to drift out of sync.
 ///
 /// Write paths are split by owner so a late debounced editor save can never revert a metadata change:
-/// `saveContent` writes only editor-owned columns; icon/cover/favorite/trash have their own methods.
+/// `saveContent` writes only editor-owned columns; icon/cover/favorite/lock/trash have their own methods.
 public final class DocumentStore: Sendable {
     private let writer: any DatabaseWriter
 
@@ -159,6 +179,11 @@ public final class DocumentStore: Sendable {
                 t.primaryKey("id", .text)
             }
         }
+        migrator.registerMigration("v6-locked") { db in
+            try db.alter(table: "document") { t in
+                t.add(column: "lockedAt", .datetime)
+            }
+        }
         return migrator
     }
 
@@ -177,7 +202,7 @@ public final class DocumentStore: Sendable {
         }
     }
 
-    /// Copies a live page (title, icon, cover, body — not its subpages, favorite or trash state) and places
+    /// Copies a live page (title, icon, cover, body — not its subpages, favorite, lock or trash state) and places
     /// the copy right after it among its siblings. Returns the copy, or nil when the page doesn't exist.
     @discardableResult
     public func duplicate(id: String, newId: String = UUID().uuidString, now: Date = .now) throws -> DocumentRecord? {
@@ -192,6 +217,7 @@ public final class DocumentStore: Sendable {
             copy.createdAt = now
             copy.updatedAt = now
             copy.favoritedAt = nil
+            copy.lockedAt = nil
             try copy.insert(db)
             for (position, sibling) in siblings.enumerated() {
                 try db.execute(sql: "UPDATE document SET sortKey = ? WHERE id = ?", arguments: [Double(position), sibling])
@@ -292,6 +318,15 @@ public final class DocumentStore: Sendable {
     public func setFavorite(_ favorite: Bool, for id: String, now: Date = .now) throws {
         try writer.write { db in
             try db.execute(sql: "UPDATE document SET favoritedAt = ? WHERE id = ?", arguments: [favorite ? now : nil, id])
+        }
+    }
+
+    /// Locking is a page property every device must see, so like icon and cover it bumps `updatedAt`
+    /// (the workspace folder syncs the newer side).
+    public func setLocked(_ locked: Bool, for id: String, now: Date = .now) throws {
+        try writer.write { db in
+            try db.execute(
+                sql: "UPDATE document SET lockedAt = ?, updatedAt = ? WHERE id = ?", arguments: [locked ? now : nil, now, id])
         }
     }
 
@@ -521,7 +556,7 @@ public final class DocumentStore: Sendable {
     // MARK: - Helpers
 
     private static let summaryColumns =
-        "document.id, document.parentId, document.title, document.icon, document.updatedAt, document.favoritedAt, document.deletedAt, document.sortKey"
+        "document.id, document.parentId, document.title, document.icon, document.updatedAt, document.favoritedAt, document.deletedAt, document.sortKey, document.lockedAt"
 
     private static let pagesRequest = SQLRequest<PageSummary>(
         sql: "SELECT \(summaryColumns) FROM document WHERE deletedAt IS NULL ORDER BY sortKey, createdAt, id"

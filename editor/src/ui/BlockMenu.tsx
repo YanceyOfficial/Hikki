@@ -1,15 +1,15 @@
 import {
-  ArrowsClockwise,
-  CaretRight,
-  Check,
-  Copy,
-  LinkSimple,
-  PaintBrush,
-  Trash
+  ArrowsClockwiseIcon,
+  CaretRightIcon,
+  CheckIcon,
+  CopyIcon,
+  LinkSimpleIcon,
+  PaintBrushIcon,
+  TrashIcon
 } from '@phosphor-icons/react'
 import type { Editor } from '@tiptap/core'
 import { TextSelection } from '@tiptap/pm/state'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
 import { BLOCK_TYPES } from '../blocks'
 import { setBlockHighlight } from '../extensions/block-highlight'
@@ -20,6 +20,7 @@ import { t } from '../i18n'
 import { shortcutLabel } from '../shortcuts'
 import { cn } from './cn'
 import { FloatingLayer } from './floating'
+import { GlidingHighlight } from './GlidingHighlight'
 import { IconProvider } from './icons'
 
 const TURN_INTO = BLOCK_TYPES.filter((b) => b.turnInto)
@@ -82,6 +83,19 @@ function BlockMenu({
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState(0)
   const [submenu, setSubmenu] = useState<'turnInto' | 'color' | null>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const submenuRef = useRef<HTMLDivElement>(null)
+
+  // A long submenu opened near the bottom of the window moves up so all of it is reachable.
+  useLayoutEffect(() => {
+    const panel = submenuRef.current
+    if (!panel || !submenu) return
+    panel.style.top = '0px'
+    const rect = panel.getBoundingClientRect()
+    const limit = (window.visualViewport?.height ?? window.innerHeight) - 8
+    if (rect.bottom > limit)
+      panel.style.top = `${-Math.min(rect.bottom - limit, Math.max(0, rect.top - 8))}px`
+  }, [submenu])
   const inputRef = useRef<HTMLInputElement>(null)
   const typeName = TURN_INTO.find((b) => b.id === unitTypeId(editor, unit))?.label()
   const colorable = BLOCK_COLOR_TYPES.includes(unit.node.type.name)
@@ -102,7 +116,7 @@ function BlockMenu({
     {
       id: 'turnInto',
       label: t('blockMenu.turnInto'),
-      icon: <ArrowsClockwise size={18} />,
+      icon: <ArrowsClockwiseIcon size={18} />,
       submenu: 'turnInto'
     },
     ...(colorable
@@ -110,7 +124,7 @@ function BlockMenu({
           {
             id: 'color',
             label: t('blockMenu.color'),
-            icon: <PaintBrush size={18} />,
+            icon: <PaintBrushIcon size={18} />,
             submenu: 'color' as const
           }
         ]
@@ -120,7 +134,7 @@ function BlockMenu({
           {
             id: 'copyLink',
             label: t('blockMenu.copyLink'),
-            icon: <LinkSimple size={18} />,
+            icon: <LinkSimpleIcon size={18} />,
             // A ready hyperlink (the block's text) plus the URL: pasting it lands as a link.
             run: act(() => void copyLink(link.href, blockLabel(unit.node) ?? link.pageLabel))
           }
@@ -129,14 +143,14 @@ function BlockMenu({
     {
       id: 'duplicate',
       label: t('blockMenu.duplicate'),
-      icon: <Copy size={18} />,
+      icon: <CopyIcon size={18} />,
       keys: shortcutLabel('duplicateBlock'),
       run: act(() => editor.view.dispatch(duplicateUnit(editor.state, unit)))
     },
     {
       id: 'delete',
       label: t('blockMenu.delete'),
-      icon: <Trash size={18} />,
+      icon: <TrashIcon size={18} />,
       keys: 'Del',
       destructive: true,
       run: act(() => editor.view.dispatch(deleteUnit(editor.state, unit)))
@@ -209,7 +223,11 @@ function BlockMenu({
         {typeName && !query && (
           <div className="px-2 pt-1 pb-1 text-xs font-medium text-muted-foreground">{typeName}</div>
         )}
-        <div className="max-h-[min(420px,calc(100vh-160px))] overflow-y-auto overscroll-contain">
+        <div
+          ref={listRef}
+          className="relative max-h-[min(420px,calc(100vh-160px))] overflow-y-auto overscroll-contain"
+        >
+          <GlidingHighlight listRef={listRef} index={selected} />
           {visible.length === 0 && (
             <div className="px-2 py-1.5 text-sm text-muted-foreground">{t('editor.noResults')}</div>
           )}
@@ -220,9 +238,9 @@ function BlockMenu({
               role="menuitem"
               aria-haspopup={item.submenu ? 'menu' : undefined}
               aria-expanded={item.submenu ? submenu === item.submenu : undefined}
+              data-index={i}
               className={cn(
-                'flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 text-left text-sm select-none [&_svg]:text-subtle-foreground',
-                (i === selected || (item.submenu && submenu === item.submenu)) && 'bg-accent',
+                'relative flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 text-left text-sm select-none [&_svg]:text-subtle-foreground',
                 item.destructive && 'text-destructive [&_svg]:text-destructive'
               )}
               onMouseMove={() => {
@@ -237,13 +255,14 @@ function BlockMenu({
               </span>
               <span className="flex-1 truncate">{item.label}</span>
               {item.keys && <span className="text-xs text-placeholder">{item.keys}</span>}
-              {item.submenu && <CaretRight size={14} aria-hidden />}
+              {item.submenu && <CaretRightIcon size={14} aria-hidden />}
             </button>
           ))}
         </div>
       </div>
       {submenu && (
         <div
+          ref={submenuRef}
           role="menu"
           className="absolute top-0 left-full ml-1.5 flex max-h-[min(460px,calc(100vh-120px))] w-56 flex-col overflow-y-auto overscroll-contain rounded-xl bg-popover p-1 text-popover-foreground shadow-popover"
         >
@@ -323,7 +342,7 @@ function TurnIntoList({
           type="button"
           role="menuitemradio"
           aria-checked={block.id === current}
-          className="flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 text-left text-sm hover:bg-accent"
+          className="flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 text-left text-sm transition-colors duration-(--motion-pop-out) ease-out hover:bg-accent"
           onClick={() => {
             turnUnitInto(editor, unit, block.id)
             onDone()
@@ -331,7 +350,7 @@ function TurnIntoList({
         >
           <block.icon size={18} className="text-subtle-foreground" aria-hidden />
           <span className="flex-1 truncate">{block.label()}</span>
-          {block.id === current && <Check size={14} aria-hidden />}
+          {block.id === current && <CheckIcon size={14} aria-hidden />}
         </button>
       ))}
     </>
@@ -354,12 +373,12 @@ function ColorRow({
       type="button"
       role="menuitemradio"
       aria-checked={checked}
-      className="flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 text-left text-sm hover:bg-accent"
+      className="flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-1 text-left text-sm hover:bg-accent"
       onClick={onClick}
     >
       {children}
       <span className="flex-1 truncate">{label}</span>
-      {checked && <Check size={14} aria-hidden />}
+      {checked && <CheckIcon size={14} aria-hidden />}
     </button>
   )
 }

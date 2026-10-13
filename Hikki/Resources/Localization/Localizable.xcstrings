@@ -817,6 +817,40 @@
         }
       }
     },
+    "app:menubar.open": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Hikki"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开 Hikki"
+          }
+        }
+      }
+    },
+    "app:menubar.quit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit Hikki"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "退出 Hikki"
+          }
+        }
+      }
+    },
     "app:nav.home": {
       "extractionState": "manual",
       "localizations": {
@@ -1378,6 +1412,40 @@
         }
       }
     },
+    "app:page.lock": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lock page"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "锁定页面"
+          }
+        }
+      }
+    },
+    "app:page.locked": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Locked"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已锁定"
+          }
+        }
+      }
+    },
     "app:page.menuTitle": {
       "extractionState": "manual",
       "localizations": {
@@ -1527,6 +1595,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "从收藏中移除"
+          }
+        }
+      }
+    },
+    "app:page.unlock": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlock page"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "解锁页面"
           }
         }
       }
@@ -1973,6 +2058,57 @@
         }
       }
     },
+    "app:settings.menuBar": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Hikki in the menu bar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在菜单栏显示 Hikki"
+          }
+        }
+      }
+    },
+    "app:settings.menuBar.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Hikki, start a page or search from the menu bar while another app is in front."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在其它应用前面时，也能从菜单栏打开 Hikki、新建页面或搜索。"
+          }
+        }
+      }
+    },
+    "app:settings.menuBar.header": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menu Bar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "菜单栏"
+          }
+        }
+      }
+    },
     "app:settings.name": {
       "extractionState": "manual",
       "localizations": {
@@ -2109,6 +2245,57 @@
         }
       }
     },
+    "app:settings.storage.skipped %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ unreadable"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 个无法读取"
+          }
+        }
+      }
+    },
+    "app:settings.storage.synced %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synced %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已同步 %@"
+          }
+        }
+      }
+    },
+    "app:settings.storage.waiting %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ waiting for iCloud"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 个等待 iCloud 下载"
+          }
+        }
+      }
+    },
     "app:settings.theme": {
       "extractionState": "manual",
       "localizations": {
@@ -2207,40 +2394,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "设置"
-          }
-        }
-      }
-    },
-    "app:settings.tone": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Color tone"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "色调"
-          }
-        }
-      }
-    },
-    "app:settings.tone.detail": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The accent Hikki is painted in, from Japan’s traditional colours."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hikki 的主色，取自日本传统色。"
           }
         }
       }
@@ -2428,125 +2581,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "上一个标签页"
-          }
-        }
-      }
-    },
-    "app:tone.edomurasaki": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Edo murasaki · purple"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "江戸紫"
-          }
-        }
-      }
-    },
-    "app:tone.kohaku": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kohaku · amber"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "琥珀"
-          }
-        }
-      }
-    },
-    "app:tone.kurenai": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kurenai · crimson"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "紅"
-          }
-        }
-      }
-    },
-    "app:tone.seiheki": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Seiheki · blue-green"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "青碧"
-          }
-        }
-      }
-    },
-    "app:tone.sumi": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sumi · ink"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "墨"
-          }
-        }
-      }
-    },
-    "app:tone.terigaki": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Terigaki · persimmon"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "照柿"
-          }
-        }
-      }
-    },
-    "app:tone.wakatake": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wakatake · young bamboo"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "若竹"
           }
         }
       }

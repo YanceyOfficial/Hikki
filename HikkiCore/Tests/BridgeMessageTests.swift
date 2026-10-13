@@ -69,8 +69,12 @@ struct BridgeMessageTests {
         #expect(payload["title"] as? String == "Plan")
         #expect(payload["icon"] as? String == "🌊")
         #expect(payload["cover"] is NSNull)
+        #expect(payload["locked"] as? Bool == false)
         #expect((payload["content"] as? [String: Any])?["type"] as? String == "doc")
         #expect(JSONSerialization.isValidJSONObject(payload))
+        var locked = record
+        locked.lockedAt = .now
+        #expect(try PagePayload.make(from: locked)["locked"] as? Bool == true)
     }
 
     @Test func rejectsUnknownTypesAndNonJSON() {

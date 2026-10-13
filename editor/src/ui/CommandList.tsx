@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 
 import { cn } from './cn'
+import { GlidingHighlight } from './GlidingHighlight'
 
 export type CommandListItem = {
   id: string
@@ -33,7 +34,12 @@ export function CommandList({ items, selectedIndex, emptyText, onSelect, onHover
   }, [selectedIndex, items])
 
   return (
-    <div className="hk-command-list flex flex-col gap-px p-1.5" role="listbox" ref={listRef}>
+    <div
+      className="hk-command-list relative flex flex-col gap-px p-1.5"
+      role="listbox"
+      ref={listRef}
+    >
+      <GlidingHighlight listRef={listRef} index={selectedIndex} />
       {items.length === 0 ? (
         <div className="hk-command-empty p-2 text-md text-muted-foreground">{emptyText}</div>
       ) : (
@@ -46,8 +52,7 @@ export function CommandList({ items, selectedIndex, emptyText, onSelect, onHover
             aria-label={item.title}
             data-index={index}
             className={cn(
-              'hk-command-item flex min-h-10 cursor-pointer select-none items-center gap-2.5 rounded-md px-2 py-1 text-left coarse:min-h-12',
-              index === selectedIndex && 'bg-accent'
+              'hk-command-item relative flex min-h-10 cursor-pointer select-none items-center gap-2.5 rounded-md px-2 py-1 text-left coarse:min-h-12'
             )}
             // Keep editor focus (and the iOS keyboard) when tapping an item.
             onMouseDown={(e) => e.preventDefault()}

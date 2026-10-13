@@ -34,6 +34,31 @@ struct PageFileTests {
         #expect(back.titlePinyin == Pinyin.searchKey(for: record.title))
     }
 
+    @Test func lockStateRoundTripsAndOlderFilesReadAsUnlocked() throws {
+        let files = PageFiles(root: try tempFolder())
+        var record = try sampleRecord()
+        record.lockedAt = t0.addingTimeInterval(7)
+        try files.write(try PageFile(record: record))
+        let back = try #require(try files.read(record.id))
+        #expect(abs(try #require(back.record().lockedAt).timeIntervalSince(t0.addingTimeInterval(7))) < 0.001)
+        // A file written before locking existed has no such key: it reads as unlocked.
+        let url = try files.url(for: record.id)
+        let older = try String(contentsOf: url, encoding: .utf8).split(separator: "\n").filter { !$0.contains("\"lockedAt\"") }
+        try older.joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)
+        let legacy = try #require(try files.read(record.id))
+        #expect(legacy.lockedAt == nil && legacy.title == record.title)
+    }
+
+    @Test func placeholdersAreReportedByThePageTheyStandFor() throws {
+        let files = PageFiles(root: try tempFolder())
+        try FileManager.default.createDirectory(at: files.directory, withIntermediateDirectories: true)
+        try Data().write(to: files.directory.appending(path: ".page-1.json.icloud"))
+        let listing = try files.scan()
+        // iCloud downloads the page's own URL; the ".icloud" file is only how the folder lists it.
+        #expect(listing.placeholders == [files.directory.appending(path: "page-1.json")])
+        #expect(listing.present == ["page-1"] && listing.pages.isEmpty)
+    }
+
     @Test func contentIsRealJSONAndOutputIsStable() throws {
         let files = PageFiles(root: try tempFolder())
         let page = try PageFile(record: try sampleRecord())

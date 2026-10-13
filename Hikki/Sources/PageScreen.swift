@@ -37,6 +37,9 @@ struct PageScreen: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if phoneToolbar, let page {
+                    if page.isLocked {
+                        ToolbarItem(placement: .primaryAction) { LockIndicator(page: page) }
+                    }
                     ToolbarItemGroup(placement: .primaryAction) {
                         FavoriteButton(page: page)
                         PageMoreMenu(page: page, navigator: navigator, editor: editor)
@@ -58,6 +61,33 @@ struct PageScreen: View {
 
     private static func title(_ page: PageSummary) -> String {
         page.title.isEmpty ? String(localized: "app:page.untitled") : page.title
+    }
+}
+
+/// A lock in the toolbar while the page is locked; pressing it unlocks (the page is read-only meanwhile).
+/// Placed conditionally by the toolbar (a toolbar item that draws nothing made macOS lay the toolbar out
+/// without end).
+struct LockIndicator: View {
+    @Environment(AppModel.self) private var model
+    let page: PageSummary
+    /// In a window toolbar: a plain button, so the system draws it inside the group's glass.
+    var toolbar = false
+
+    var body: some View {
+        if toolbar {
+            Button {
+                model.setLocked(false, id: page.id)
+            } label: {
+                IconLabel("app:page.locked", icon: .lockSimple)
+            }
+            .help("app:page.unlock")
+            .accessibilityIdentifier("lock-indicator")
+        } else {
+            BarIconButton("app:page.locked", symbol: .lockSimple, tint: nil) {
+                model.setLocked(false, id: page.id)
+            }
+            .accessibilityIdentifier("lock-indicator")
+        }
     }
 }
 

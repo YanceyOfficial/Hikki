@@ -1,9 +1,9 @@
 import {
-  ArrowsOut,
-  TextAlignCenter,
-  TextAlignLeft,
-  TextAlignRight,
-  Trash
+  ArrowsOutIcon,
+  TextAlignCenterIcon,
+  TextAlignLeftIcon,
+  TextAlignRightIcon,
+  TrashIcon
 } from '@phosphor-icons/react'
 import { Extension, type Editor } from '@tiptap/core'
 import { BubbleMenuPlugin } from '@tiptap/extension-bubble-menu'
@@ -56,7 +56,7 @@ function MediaToolbar({ editor, host }: { editor: Editor; host: MediaHost | null
         className={button(state.align === 'left')}
         onClick={() => align('left')}
       >
-        <TextAlignLeft size={16} aria-hidden />
+        <TextAlignLeftIcon size={16} aria-hidden />
       </button>
       <button
         type="button"
@@ -65,7 +65,7 @@ function MediaToolbar({ editor, host }: { editor: Editor; host: MediaHost | null
         className={button(state.align === 'center')}
         onClick={() => align('center')}
       >
-        <TextAlignCenter size={16} aria-hidden />
+        <TextAlignCenterIcon size={16} aria-hidden />
       </button>
       <button
         type="button"
@@ -74,7 +74,7 @@ function MediaToolbar({ editor, host }: { editor: Editor; host: MediaHost | null
         className={button(state.align === 'right')}
         onClick={() => align('right')}
       >
-        <TextAlignRight size={16} aria-hidden />
+        <TextAlignRightIcon size={16} aria-hidden />
       </button>
       {state.src?.startsWith('hikki-editor://assets/') && host && (
         <button
@@ -83,7 +83,7 @@ function MediaToolbar({ editor, host }: { editor: Editor; host: MediaHost | null
           className={button(false)}
           onClick={() => host.openAsset(state.src!)}
         >
-          <ArrowsOut size={16} aria-hidden />
+          <ArrowsOutIcon size={16} aria-hidden />
         </button>
       )}
       <div className="mx-0.5 h-5 w-px bg-border" />
@@ -93,7 +93,7 @@ function MediaToolbar({ editor, host }: { editor: Editor; host: MediaHost | null
         className={button(false)}
         onClick={() => editor.chain().focus().deleteSelection().run()}
       >
-        <Trash size={16} aria-hidden />
+        <TrashIcon size={16} aria-hidden />
       </button>
     </div>
   )

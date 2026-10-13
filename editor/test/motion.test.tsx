@@ -3,6 +3,7 @@ import { useRef } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { FloatingLayer, leave, usePresence } from '../src/ui/floating'
+import { GlidingHighlight } from '../src/ui/GlidingHighlight'
 
 /** An element whose only animation finishes when the returned function is called. */
 function animating(element: HTMLElement): () => Promise<void> {
@@ -17,6 +18,22 @@ function animating(element: HTMLElement): () => Promise<void> {
     // allSettled resolves a tick after the animation's promise.
     await new Promise((resolve) => setTimeout(resolve, 0))
   }
+}
+
+/** A list whose selected row is marked by the gliding surface. */
+function List({ index }: { index: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  return (
+    <div ref={ref} className="relative">
+      <GlidingHighlight listRef={ref} index={index} />
+      <button type="button" data-index={0} className="relative">
+        one
+      </button>
+      <button type="button" data-index={1} className="relative">
+        two
+      </button>
+    </div>
+  )
 }
 
 /** A React-owned surface that leaves with the shared motion. */
@@ -60,6 +77,20 @@ describe('shared motion', () => {
     await finish()
     expect(remove).not.toHaveBeenCalled()
     element.remove()
+  })
+
+  it('the gliding highlight lands instantly first, then moves with the selection', () => {
+    const { rerender } = render(<List index={0} />)
+    const glide = screen.getByTestId('glide')
+    expect(glide.hasAttribute('data-instant')).toBe(true)
+    expect(glide.style.opacity).toBe('1')
+    rerender(<List index={1} />)
+    expect(glide.hasAttribute('data-instant')).toBe(false)
+    // No row to sit on: the surface fades out, and the next placement is instant again.
+    rerender(<List index={5} />)
+    expect(glide.style.opacity).toBe('0')
+    rerender(<List index={0} />)
+    expect(glide.hasAttribute('data-instant')).toBe(true)
   })
 
   it('usePresence keeps a panel rendered through its leave, then drops it', async () => {

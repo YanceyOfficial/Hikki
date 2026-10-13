@@ -1,4 +1,4 @@
-import { CaretDown, Check, Copy } from '@phosphor-icons/react'
+import { CaretDownIcon, CheckIcon, CopyIcon } from '@phosphor-icons/react'
 import { useEffect, useRef, useState } from 'react'
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -7,9 +7,12 @@ import { filterLanguages, findLanguage } from '../extensions/code-languages'
 import { t } from '../i18n'
 import { cn } from './cn'
 import { handleListKey } from './CommandList'
+import { GlidingHighlight } from './GlidingHighlight'
 
 type Props = {
   language: string
+  /** In "auto": lowlight's current guess (a catalog id), or null. */
+  detected?: string | null
   editable: boolean
   onLanguage: (id: string) => void
   getText: () => string
@@ -22,11 +25,26 @@ const COPIED_MS = 1500
  * The bar inside a code block: the language (a searchable picker) on the left, copy on the right. The
  * copy button shows on hover (always on touch); the language stays visible, quietly.
  */
-export function CodeBlockHeader({ language, editable, onLanguage, getText }: Props) {
+/** The picker's label for a catalog id; in "auto" the guess follows ("Auto-detect · Swift"). */
+function languageLabel(id: string, detected: string | null = null): string {
+  if (id === 'plaintext') return t('code.plainText')
+  if (id === 'auto') {
+    const auto = t('code.autoDetect')
+    return detected ? `${auto} · ${findLanguage(detected)?.name ?? detected}` : auto
+  }
+  return findLanguage(id)?.name ?? id
+}
+
+export function CodeBlockHeader({
+  language,
+  detected = null,
+  editable,
+  onLanguage,
+  getText
+}: Props) {
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
-  const label =
-    language === 'plaintext' ? t('code.plainText') : (findLanguage(language)?.name ?? language)
+  const label = languageLabel(language, detected)
 
   useEffect(() => {
     if (!copied) return
@@ -48,7 +66,7 @@ export function CodeBlockHeader({ language, editable, onLanguage, getText }: Pro
             }
           >
             {label}
-            <CaretDown size={10} aria-hidden />
+            <CaretDownIcon size={10} aria-hidden />
           </PopoverTrigger>
           <PopoverContent align="start" className="w-56 gap-0 p-0">
             <LanguageList
@@ -73,7 +91,7 @@ export function CodeBlockHeader({ language, editable, onLanguage, getText }: Pro
           void navigator.clipboard?.writeText(getText()).then(() => setCopied(true))
         }}
       >
-        {copied ? <Check size={12} aria-hidden /> : <Copy size={12} aria-hidden />}
+        {copied ? <CheckIcon size={12} aria-hidden /> : <CopyIcon size={12} aria-hidden />}
         {copied ? t('code.copied') : t('code.copy')}
       </button>
     </div>
@@ -118,7 +136,8 @@ function LanguageList({ current, onPick }: { current: string; onPick: (id: strin
           if (handled) e.preventDefault()
         }}
       />
-      <div ref={listRef} role="listbox" className="max-h-64 overflow-y-auto p-1">
+      <div ref={listRef} role="listbox" className="relative max-h-64 overflow-y-auto p-1">
+        <GlidingHighlight listRef={listRef} index={selected} />
         {items.length === 0 && (
           <div className="px-2 py-1.5 text-sm text-muted-foreground">{t('editor.noResults')}</div>
         )}
@@ -129,15 +148,12 @@ function LanguageList({ current, onPick }: { current: string; onPick: (id: strin
             role="option"
             aria-selected={i === selected}
             data-index={i}
-            className={cn(
-              'flex h-8 w-full cursor-pointer items-center justify-between rounded-md px-2 text-left text-sm',
-              i === selected && 'bg-accent'
-            )}
+            className="relative flex h-8 w-full cursor-pointer items-center justify-between rounded-md px-2 text-left text-sm"
             onMouseMove={() => i !== selected && setSelected(i)}
             onClick={() => onPick(language.id)}
           >
-            {language.id === 'plaintext' ? t('code.plainText') : language.name}
-            {language.id === current && <Check size={14} aria-hidden />}
+            {languageLabel(language.id)}
+            {language.id === current && <CheckIcon size={14} aria-hidden />}
           </button>
         ))}
       </div>

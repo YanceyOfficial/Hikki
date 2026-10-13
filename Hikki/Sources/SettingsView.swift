@@ -56,12 +56,11 @@ enum AppearancePreference: String, CaseIterable, Identifiable {
 /// (like Safari or Notes, opened with ⌘,); iPhone and iPad get an inset-grouped form in a sheet.
 struct SettingsView: View {
     @AppStorage(AppearancePreference.storageKey) private var appearance = AppearancePreference.system
-    @AppStorage(ColorTone.storageKey) private var tone = ColorTone.standard
 
     var body: some View {
         content
-            .environment(\.colorTone, tone)
-            .tint(tone.fill)
+            .environment(\.colorTone, ColorTone.standard)
+            .tint(ColorTone.standard.fill)
     }
 
     #if os(macOS)
@@ -84,7 +83,6 @@ struct SettingsView: View {
                 Tab {
                     Form {
                         AppearanceSection()
-                        ColorToneSection()
                     }
                     .formStyle(.grouped)
                 } label: {
@@ -116,7 +114,6 @@ struct SettingsView: View {
                 Form {
                     WorkspaceSection()
                     AppearanceSection()
-                    ColorToneSection()
                     EditorSection()
                     LanguageSection()
                     AboutSection()
@@ -164,6 +161,9 @@ private struct WorkspaceSection: View {
                 Text(storageFailed ? "app:settings.storage.error" : "app:settings.storage.detail")
                     .font(.caption)
                     .foregroundStyle(storageFailed ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+                if let status = syncStatus {
+                    status.font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("settings-sync-status")
+                }
             }
         } header: {
             Text("app:settings.group.workspace")
@@ -186,6 +186,18 @@ private struct WorkspaceSection: View {
         }
     }
 
+    /// When the folder was last reconciled, and what's still on its way ("2 waiting for iCloud").
+    private var syncStatus: Text? {
+        guard let sync = model.lastSync else { return nil }
+        var text = Text("app:settings.storage.synced \(sync.at, format: .relative(presentation: .named))")
+        if sync.report.waitingForDownload > 0 {
+            text = text + Text(verbatim: " · ") + Text("app:settings.storage.waiting \(sync.report.waitingForDownload.formatted())")
+        }
+        if sync.report.skippedFiles > 0 {
+            text = text + Text(verbatim: " · ") + Text("app:settings.storage.skipped \(sync.report.skippedFiles.formatted())")
+        }
+        return text
+    }
     @ViewBuilder private var storage: some View {
         switch model.workspace?.location {
         case .folder(_, let displayName): Text(verbatim: displayName)  // the folder path, as-is
@@ -274,38 +286,6 @@ private struct AppearanceSection: View {
             Text("app:settings.appearance")
         } footer: {
             Text("app:settings.theme.detail")
-        }
-    }
-}
-
-/// exodus's colour tone: each preset as a row with its swatch and a checkmark on the chosen one.
-private struct ColorToneSection: View {
-    @AppStorage(ColorTone.storageKey) private var selected = ColorTone.standard
-
-    var body: some View {
-        Section {
-            ForEach(ColorTone.allCases) { tone in
-                Button {
-                    selected = tone
-                } label: {
-                    HStack(spacing: Spacing.s3) {
-                        ColorToneSwatch(tone)
-                        Text(tone.title).foregroundStyle(.primary)
-                        Spacer()
-                        if tone == selected {
-                            IconView(.check, size: TextSize.sm.rawValue).foregroundStyle(tone.ink)
-                        }
-                    }
-                    .contentShape(.rect)
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(tone == selected ? [.isButton, .isSelected] : .isButton)
-                .accessibilityIdentifier("settings-tone-\(tone.rawValue)")
-            }
-        } header: {
-            Text("app:settings.tone")
-        } footer: {
-            Text("app:settings.tone.detail")
         }
     }
 }

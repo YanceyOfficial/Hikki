@@ -21,9 +21,11 @@ These rules are mandatory. Automated ones are noted.
 - **Motion.** Everything that appears, leaves or reacts moves the same way, from the `motion` tokens. Web surfaces
   (menus, popovers, tooltips, panels, the outline list) take `hk-pop` — mounted when shown: `FloatingLayer` adds it,
   the Base UI popups in `editor/src/components/ui/` carry it, a React panel stays mounted through its leave with
-  `usePresence` (`editor/src/ui/floating.tsx`) — or `hk-pop-toggle` + `data-open` when they stay mounted; hover and
-  press transitions use `duration-(--motion-pop-in)` / `ease-out`; Swift uses `Motion.easeOut()`. No per-component
-  durations, easings or tw-animate classes. _Enforced by `make lint-design`._
+  `usePresence` (`editor/src/ui/floating.tsx`) — or `hk-pop-toggle` + `data-open` when they stay mounted. Lists
+  mark the selected row with one gliding surface (`editor/src/ui/GlidingHighlight.tsx`, rows `relative` +
+  `data-index`), block tints fade (`.tiptap [data-id]`), anything clickable takes `ui.press` / the `ui.button`
+  recipes (hover fade + 97 % press); Swift uses `Motion.easeOut()`. No per-component durations, easings or
+  tw-animate classes. _Enforced by `make lint-design`._
 - **Reusable UI lives in `HikkiUI`** (no app state: plain values + closures, a `#Preview` each, listed in the DEBUG
   gallery `Hikki/Sources/ComponentGallery.swift`, launch argument `-HikkiGallery`). Native components follow the same
   look as the web's shadcn style (`base-vega`: `Radius.md` controls, `Theme.*` colors).
@@ -58,7 +60,7 @@ These rules are mandatory. Automated ones are noted.
   `HikkiCore/Sources/Bridge/BridgeMessage.swift` — and versioned by `PROTOCOL_VERSION` / `BridgeProtocol.version`.
   Change both together and bump both.
 - **Split write paths.** `DocumentStore.saveContent` writes only editor-owned columns; metadata (icon, cover,
-  favorite, trash) has its own methods, so a late debounced autosave can never revert it. The editor's `flush()`
+  favorite, lock, trash) has its own methods, so a late debounced autosave can never revert it. The editor's `flush()`
   returns nothing when the page wasn't edited — viewing a page must never bump its edited time.
 - **Concurrency.** The app and `HikkiUI` default to MainActor isolation. Anything AppKit/UIKit may call off the main
   thread (dynamic color providers, KVO callbacks) must be `nonisolated` / `@Sendable`.
@@ -114,7 +116,7 @@ HikkiUITests/                 XCUITest flows
   paints selection in the system accent (not the colour tone) and swallowed row drops on iPad; iPhone keeps a `List`.
   Fills on the sidebar use resolved colours (dynamic ones picked up the active window's vibrancy).
 - **Data directory**: `HIKKI_DATA_DIR` overrides it (UI tests, demos). DEBUG hooks: `HIKKI_OPEN_TABS=a,b`,
-  `HIKKI_OPEN_SEARCH`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SIDEBAR` (hide + show the split view sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_ACTIVATE`, `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
+  `HIKKI_OPEN_SEARCH`, `HIKKI_OPEN_FIND`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SIDEBAR` (hide + show the split view sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_ACTIVATE`, `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
   UI tests set it by default — pass `workspace: nil` to `launch()` to test onboarding).
 - **Storage (option C)**: the workspace folder is the source of truth — one JSON file per page
   (`HikkiCore/Sources/Store/PageFile.swift`: `pages/<id>.json`, format-versioned, content as JSON); SQLite is a
@@ -136,8 +138,10 @@ HikkiUITests/                 XCUITest flows
   or BubbleMenu hides on blur). Text/background colors are stored as palette names (`editor/src/extensions/colors.ts`) and
   styled from the `ink-*` / `wash-*` tokens — never raw CSS colors in the document.
 - **Code blocks** (`editor/src/extensions/code-block.tsx`): lowlight with the `common` grammars, colored by the
-  `syntax-*` tokens (Xcode's Default Light/Dark); no auto-detection — new blocks use the last picked language
-  (`editor/src/extensions/code-languages.ts`). Node views are plain DOM with small React roots for controls (the editor
+  `syntax-*` tokens (Xcode's Default Light/Dark); new blocks use the last picked language
+  (`editor/src/extensions/code-languages.ts`). "Auto-detect" (`language: auto`) guesses with our own signatures
+  (`editor/src/extensions/code-detect.ts` — highlight.js's guess ties CSS/JS/Python on short snippets) and names the
+  guess in the header; the same guess feeds lowlight, so colours and label agree. Node views are plain DOM with small React roots for controls (the editor
   is the core `Editor`, not `@tiptap/react`).
 - **Block controls** (`editor/src/extensions/block-controls.tsx`, units in `editor/src/extensions/block-units.ts`): our
   own + / ⋮⋮ handle on pointer events (HTML5 drag-and-drop is unreliable in WebKit), centred on the block's first line;
@@ -169,6 +173,10 @@ HikkiUITests/                 XCUITest flows
 - **Editor content safety**: content that doesn't fit the schema (corrupt, or from a newer Hikki) opens read-only and
   is never saved (`enableContentCheck`); housekeeping transactions (`addToHistory: false` — UniqueID stamping
   block ids, remote reloads) never count as edits; continuous typing still saves every 2 s (`maxWaitMs`).
+- **Lock page** (Page menu ⇧⌘L, the page ⋯ menu, the sidebar context menu): `lockedAt` on the page
+  (`DocumentStore.setLocked`; it bumps `updatedAt` like icon/cover so other devices pick it up). The load payload
+  carries `locked`, `window.hikki.setLocked` flips it while open; title, body, icon and cover refuse changes meanwhile
+  (`EditorBridge.frozen`) and a toolbar lock (`LockIndicator`) unlocks.
 - **Workspace**: first launch shows `Hikki/Sources/OnboardingView.swift` until the workspace file (`AppPaths.workspace`) exists
   (`HikkiCore/Sources/Store/Workspace.swift`). A folder location stores a security-scoped bookmark
   (`HikkiCore/Sources/Store/FolderBookmark.swift`); page data does not live in that folder yet.

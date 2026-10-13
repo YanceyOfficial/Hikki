@@ -130,6 +130,17 @@ final class Navigator {
         if let id = route.pageID { PageLink.copyToPasteboard(id) }
     }
 
+    /// The open page's summary (nil on Home / Trash).
+    var currentPage: PageSummary? {
+        route.pageID.flatMap { model?.tree.page($0) }
+    }
+
+    /// Page → Lock / Unlock (⇧⌘L).
+    func toggleLockCurrentPage() {
+        guard let page = currentPage else { return }
+        model?.setLocked(!page.isLocked, id: page.id)
+    }
+
     /// Expands the sidebar path to the open page (switching tabs, back/forward, the tree loading after launch).
     func revealCurrent() {
         if let id = route.pageID { reveal(id) }
@@ -148,4 +159,8 @@ final class Navigator {
 extension FocusedValues {
     @Entry var editor: EditorController?
     @Entry var navigator: Navigator?
+    /// Whether the open page is locked (nil on Home / Trash) — a plain value for the menu bar: reading the
+    /// model's tree from `Commands` through the navigator made the main menu and the scene rebuild each
+    /// other without end.
+    @Entry var lockedPage: Bool?
 }

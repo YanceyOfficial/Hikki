@@ -1,19 +1,19 @@
 import {
-  CaretRight,
-  Check,
-  Code,
-  DotsThree,
-  Eraser,
-  type Icon,
-  LinkSimple,
-  MathOperations,
-  TextB,
-  TextItalic,
-  TextStrikethrough,
-  TextAa,
-  TextSubscript,
-  TextSuperscript,
-  TextUnderline
+  CaretRightIcon,
+  CheckIcon,
+  CodeIcon,
+  DotsThreeIcon,
+  EraserIcon,
+  LinkSimpleIcon,
+  MathOperationsIcon,
+  TextAaIcon,
+  TextBIcon,
+  TextItalicIcon,
+  TextStrikethroughIcon,
+  TextSubscriptIcon,
+  TextSuperscriptIcon,
+  TextUnderlineIcon,
+  type Icon
 } from '@phosphor-icons/react'
 import type { Editor } from '@tiptap/core'
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
@@ -98,7 +98,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
         >
           <CurrentIcon size={18} className="text-subtle-foreground" aria-hidden />
           <span className="flex-1 truncate">{current.label()}</span>
-          <CaretRight size={14} className="text-muted-foreground" aria-hidden />
+          <CaretRightIcon size={14} className="text-muted-foreground" aria-hidden />
         </button>
         <div className="mx-1 my-1 h-px bg-border" />
         <div className="grid grid-cols-5 gap-0.5">
@@ -109,54 +109,54 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
             onClick={() => toggle('color')}
           />
           <MarkButton
-            icon={TextB}
+            icon={TextBIcon}
             label={t('format.bold')}
             keys={shortcutLabel('bold')}
             active={state.bold}
             onClick={() => run((c) => c.toggleBold())}
           />
           <MarkButton
-            icon={TextItalic}
+            icon={TextItalicIcon}
             label={t('format.italic')}
             keys={shortcutLabel('italic')}
             active={state.italic}
             onClick={() => run((c) => c.toggleItalic())}
           />
           <MarkButton
-            icon={TextUnderline}
+            icon={TextUnderlineIcon}
             label={t('format.underline')}
             keys={shortcutLabel('underline')}
             active={state.underline}
             onClick={() => run((c) => c.toggleUnderline())}
           />
           <MarkButton
-            icon={Eraser}
+            icon={EraserIcon}
             label={t('format.clear')}
             active={false}
             onClick={() => run((c) => c.unsetAllMarks())}
           />
           <MarkButton
-            icon={LinkSimple}
+            icon={LinkSimpleIcon}
             label={t('format.link')}
             active={!!state.link || panel === 'link'}
             onClick={() => toggle('link')}
           />
           <MarkButton
-            icon={TextStrikethrough}
+            icon={TextStrikethroughIcon}
             label={t('format.strike')}
             keys={shortcutLabel('strikethrough')}
             active={state.strike}
             onClick={() => run((c) => c.toggleStrike())}
           />
           <MarkButton
-            icon={Code}
+            icon={CodeIcon}
             label={t('format.code')}
             keys={shortcutLabel('inlineCode')}
             active={state.code}
             onClick={() => run((c) => c.toggleCode())}
           />
           <MarkButton
-            icon={MathOperations}
+            icon={MathOperationsIcon}
             label={t('format.math')}
             active={false}
             onClick={() => {
@@ -166,7 +166,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
             }}
           />
           <MarkButton
-            icon={DotsThree}
+            icon={DotsThreeIcon}
             label={t('format.more')}
             active={panel === 'more' || state.superscript || state.subscript}
             onClick={() => toggle('more')}
@@ -204,7 +204,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
                   >
                     <BlockIcon size={18} className="text-subtle-foreground" aria-hidden />
                     <span className="flex-1 truncate">{block.label()}</span>
-                    {active && <Check size={14} aria-hidden />}
+                    {active && <CheckIcon size={14} aria-hidden />}
                   </button>
                 )
               })}
@@ -219,7 +219,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
                 className={rowClass}
                 onClick={() => run((c) => c.toggleSuperscript())}
               >
-                <TextSuperscript size={18} className="text-subtle-foreground" aria-hidden />
+                <TextSuperscriptIcon size={18} className="text-subtle-foreground" aria-hidden />
                 <span className="flex-1 truncate">{t('format.superscript')}</span>
                 <span className="text-xs text-placeholder">{shortcutLabel('superscript')}</span>
               </button>
@@ -230,7 +230,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
                 className={rowClass}
                 onClick={() => run((c) => c.toggleSubscript())}
               >
-                <TextSubscript size={18} className="text-subtle-foreground" aria-hidden />
+                <TextSubscriptIcon size={18} className="text-subtle-foreground" aria-hidden />
                 <span className="flex-1 truncate">{t('format.subscript')}</span>
                 <span className="text-xs text-placeholder">{shortcutLabel('subscript')}</span>
               </button>
@@ -243,7 +243,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
                   editor.commands.editRuby()
                 }}
               >
-                <TextAa size={18} className="text-subtle-foreground" aria-hidden />
+                <TextAaIcon size={18} className="text-subtle-foreground" aria-hidden />
                 <span className="flex-1 truncate">{t('format.ruby')}</span>
                 <span className="text-xs text-placeholder">{shortcutLabel('ruby')}</span>
               </button>
@@ -281,7 +281,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
 }
 
 const rowClass =
-  'flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 text-left text-sm select-none hover:bg-accent coarse:h-10'
+  'flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 text-left text-sm select-none transition-colors duration-(--motion-pop-out) ease-out hover:bg-accent coarse:h-10'
 
 /** Buttons keep the editor's selection: no focus change on press (inputs are exempt). */
 function keepEditorFocus(event: React.MouseEvent) {
@@ -409,7 +409,7 @@ function ColorRow({
     >
       {children}
       <span className="flex-1 truncate">{color ? colorLabel(color) : t('color.default')}</span>
-      {selected && <Check size={14} aria-hidden />}
+      {selected && <CheckIcon size={14} aria-hidden />}
     </button>
   )
 }
@@ -474,7 +474,7 @@ function LinkPanel({
   return (
     <div className="flex flex-col gap-1 p-1">
       <div className="flex items-center gap-1.5">
-        <LinkSimple size={16} className="flex-none text-muted-foreground" aria-hidden />
+        <LinkSimpleIcon size={16} className="flex-none text-muted-foreground" aria-hidden />
         <input
           // oxlint-disable-next-line jsx-a11y/no-autofocus -- the panel exists to type a link
           autoFocus

@@ -88,6 +88,18 @@ describe('PageHeader', () => {
     expect(screen.getByTestId('cover')).toBeTruthy()
   })
 
+  it('a locked page shows no icon/cover controls and a read-only title until unlocked', () => {
+    render(<PageHeader bridge={bridge} />)
+    load({ icon: '🌊', cover: 'gradient:ocean', locked: true })
+    expect(screen.queryByText('Change cover')).toBeNull()
+    expect((screen.getByLabelText('Page title') as HTMLTextAreaElement).readOnly).toBe(true)
+    expect((screen.getByLabelText('Change icon') as HTMLButtonElement).disabled).toBe(true)
+    act(() => bridge.setLocked(false))
+    expect((screen.getByLabelText('Page title') as HTMLTextAreaElement).readOnly).toBe(false)
+    expect((screen.getByLabelText('Change icon') as HTMLButtonElement).disabled).toBe(false)
+    expect(screen.getByText('Change cover')).toBeTruthy()
+  })
+
   it('cover picker swaps the gradient and Remove clears it', () => {
     render(<PageHeader bridge={bridge} />)
     load({ cover: 'gradient:dusk' })

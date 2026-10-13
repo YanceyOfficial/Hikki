@@ -4,6 +4,7 @@ import { BLOCK_GROUPS, type BlockGroup, type BlockType } from '../blocks'
 import { t } from '../i18n'
 import { BlockPreview } from './BlockPreview'
 import { cn } from './cn'
+import { GlidingHighlight } from './GlidingHighlight'
 
 type Props = {
   items: BlockType[]
@@ -76,10 +77,7 @@ export function SlashMenu({ items, query, selectedIndex, onSelect, onHover, onCl
         aria-selected={i === selectedIndex}
         aria-label={item.label()}
         data-index={i}
-        className={cn(
-          'flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 text-left text-sm select-none coarse:h-11',
-          i === selectedIndex && 'bg-accent'
-        )}
+        className="relative flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 text-left text-sm select-none coarse:h-11"
         // Keep editor focus (and the iOS keyboard) when tapping an item.
         onMouseDown={(e) => e.preventDefault()}
         onMouseMove={() => i !== selectedIndex && onHover(i)}
@@ -104,8 +102,9 @@ export function SlashMenu({ items, query, selectedIndex, onSelect, onHover, onCl
         <div
           ref={listRef}
           role="listbox"
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-1"
+          className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain p-1"
         >
+          <GlidingHighlight listRef={listRef} index={selectedIndex} />
           {items.length === 0 ? (
             <div className="px-2 py-1.5 text-sm text-muted-foreground">{t('editor.noResults')}</div>
           ) : grouped ? (
@@ -127,7 +126,7 @@ export function SlashMenu({ items, query, selectedIndex, onSelect, onHover, onCl
         </div>
         <button
           type="button"
-          className="flex h-9 flex-none cursor-pointer items-center justify-between border-t border-border px-3 text-sm text-muted-foreground hover:bg-accent coarse:hidden"
+          className="flex h-9 flex-none cursor-pointer items-center justify-between border-t border-border px-3 text-sm text-muted-foreground transition-colors duration-(--motion-pop-out) ease-out hover:bg-accent coarse:hidden"
           onMouseDown={(e) => e.preventDefault()}
           onClick={onClose}
         >

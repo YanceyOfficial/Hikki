@@ -180,7 +180,10 @@ final class EditorController {
     enum FindMode: String { case find, replace, next, previous }
 
     func find(_ mode: FindMode) {
-        guard isReady else { return }
+        guard isReady else {
+            Log.warn("find before the editor was ready", category: "bridge", context: ["mode": mode.rawValue])
+            return
+        }
         Task {
             do {
                 _ = try await webView.callAsyncJavaScript(
@@ -206,6 +209,19 @@ final class EditorController {
                 "window.hikki.setSpellcheck(on)", arguments: ["on": spellcheck], contentWorld: .page)
         } catch {
             Log.warn("setSpellcheck failed: \(error)", category: "bridge")
+        }
+    }
+
+    /// The open page was locked or unlocked while shown (`window.hikki.setLocked`; a page load carries its own).
+    func setLocked(_ locked: Bool) {
+        guard isReady else { return }
+        Task {
+            do {
+                _ = try await webView.callAsyncJavaScript(
+                    "window.hikki.setLocked(locked)", arguments: ["locked": locked], contentWorld: .page)
+            } catch {
+                Log.warn("setLocked failed: \(error)", category: "bridge")
+            }
         }
     }
 

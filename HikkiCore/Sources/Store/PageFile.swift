@@ -21,6 +21,8 @@ public struct PageFile: Codable, Equatable, Sendable {
     public var updatedAt: Date
     public var favoritedAt: Date?
     public var deletedAt: Date?
+    /// Set while the page is locked (read-only everywhere); absent in files from before locking existed.
+    public var lockedAt: Date?
     /// Derived from `content`, stored so another device can index the page without parsing the editor schema.
     public var plainText: String
     public var wordCount: Int
@@ -39,6 +41,7 @@ public struct PageFile: Codable, Equatable, Sendable {
         updatedAt = record.updatedAt
         favoritedAt = record.favoritedAt
         deletedAt = record.deletedAt
+        lockedAt = record.lockedAt
         plainText = record.plainText
         wordCount = record.wordCount
         content = try record.contentValue()
@@ -50,7 +53,7 @@ public struct PageFile: Codable, Equatable, Sendable {
             id: id, title: title, content: try content.map { String(decoding: try $0.jsonData(), as: UTF8.self) },
             plainText: plainText, wordCount: wordCount, createdAt: createdAt, updatedAt: updatedAt, parentId: parentId,
             icon: icon, cover: cover, favoritedAt: favoritedAt, deletedAt: deletedAt, sortKey: sortKey,
-            titlePinyin: Pinyin.searchKey(for: title))
+            titlePinyin: Pinyin.searchKey(for: title), lockedAt: lockedAt)
     }
 }
 
@@ -116,6 +119,8 @@ public struct PageFiles: Sendable {
         /// Pages read in this scan: every readable file, minus those `known` already describes.
         public var pages: [PageFile]
         public var skipped: [URL]
+        /// Pages iCloud hasn't delivered yet, by the URL they will have — what `startDownloadingUbiquitousItem`
+        /// takes (asking it to download the `.<id>.json.icloud` stand-in itself does nothing).
         public var placeholders: [URL]
         public var present: Set<String>
         /// Every readable page file, whether read now or reused from `known`.
@@ -133,7 +138,7 @@ public struct PageFiles: Sendable {
             let name = url.lastPathComponent
             if let id = Self.placeholderID(name) {
                 // ".<id>.json.icloud": in iCloud, not on this device yet.
-                listing.placeholders.append(url)
+                listing.placeholders.append(directory.appending(path: "\(id).json"))
                 listing.present.insert(id)
             } else if url.pathExtension == "json" {
                 let id = String(name.dropLast(".json".count))

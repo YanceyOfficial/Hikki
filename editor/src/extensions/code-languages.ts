@@ -1,10 +1,12 @@
 /**
- * Languages the code block offers (all registered with lowlight's `common` grammar set). Names are the
- * languages' own names, not translated; `plaintext` gets its label from the catalog.
+ * Languages the code block offers (all registered with lowlight's `common` grammar set, plus `auto`,
+ * which lets lowlight guess). Names are the languages' own names, not translated; `plaintext` and `auto`
+ * get their labels from the catalog.
  */
 export type CodeLanguage = { id: string; name: string; aliases?: string[] }
 
 export const CODE_LANGUAGES: CodeLanguage[] = [
+  { id: 'auto', name: 'Auto-detect', aliases: ['detect'] },
   { id: 'plaintext', name: 'Plain text', aliases: ['text', 'txt'] },
   { id: 'bash', name: 'Bash', aliases: ['sh', 'zsh'] },
   { id: 'c', name: 'C', aliases: ['h'] },

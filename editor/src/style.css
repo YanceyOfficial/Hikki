@@ -179,6 +179,10 @@
   .tiptap .hk-toggle:not(.is-open) > div > [data-type='detailsContent'] {
     @apply hidden;
   }
+  /* Opening a toggle: its content rises in (display goes none → block, so the animation replays). */
+  .tiptap .hk-toggle.is-open > div > [data-type='detailsContent'] {
+    animation: hk-fade-in var(--motion-pop-in) var(--ease-out);
+  }
 
   /* Callout (extensions/callout.tsx): emoji + content on a wash background (gray by default). */
   .tiptap .hk-callout {
@@ -200,7 +204,8 @@
   }
   .tiptap td,
   .tiptap th {
-    @apply relative border border-border px-2 py-1.5 text-left align-top;
+    /* An opaque border: the translucent one doubles up where collapsed borders meet (dots at the corners). */
+    @apply relative border border-table-border px-2 py-1.5 text-left align-top;
     min-width: 6rem;
   }
   .tiptap th {
@@ -494,6 +499,11 @@
     @apply rounded-sm outline-2 outline-selection;
   }
 
+  /* Block-level tints (menu open, drag source, block colours) fade in and out. */
+  .tiptap [data-id] {
+    transition: background-color var(--motion-pop-in) var(--ease-out);
+  }
+
   /* Block controls (extensions/block-controls.tsx): + and ⋮⋮ beside the hovered block. */
   .hk-block-handle {
     @apply fixed z-30 flex items-center gap-0.5 transition-opacity duration-(--motion-pop-in);
@@ -503,7 +513,7 @@
   }
   .hk-block-plus,
   .hk-block-grip {
-    @apply grid h-6 w-6 cursor-pointer place-items-center rounded-md text-placeholder hover:bg-accent hover:text-muted-foreground;
+    @apply grid h-6 w-6 cursor-pointer place-items-center rounded-md text-placeholder transition-colors duration-(--motion-pop-out) ease-out hover:bg-accent hover:text-muted-foreground;
   }
   .hk-block-grip {
     @apply w-5 cursor-grab active:cursor-grabbing;
@@ -544,6 +554,13 @@
     opacity: 0;
     scale: 0.97;
     translate: var(--hk-pop-dx, 0px) var(--hk-pop-dy, -2px);
+  }
+}
+/* Content that appears in place (a toggle's body): no scale, only a short rise. */
+@keyframes hk-fade-in {
+  from {
+    opacity: 0;
+    translate: 0 -2px;
   }
 }
 @keyframes hk-pop-out {
@@ -596,13 +613,27 @@
   visibility: hidden;
   transition-duration: var(--motion-pop-out);
 }
+/* The gliding selection surface of a list (ui/GlidingHighlight.tsx). */
+.hk-glide {
+  @apply pointer-events-none absolute top-0 left-0 rounded-md bg-accent opacity-0;
+  transition:
+    translate var(--motion-pop-in) var(--ease-out),
+    width var(--motion-pop-in) var(--ease-out),
+    height var(--motion-pop-in) var(--ease-out),
+    opacity var(--motion-pop-out) var(--ease-out);
+}
+.hk-glide[data-instant] {
+  transition: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .hk-pop,
   .hk-pop[data-closing],
-  .hk-pop[data-ending-style] {
+  .hk-pop[data-ending-style],
+  .tiptap .hk-toggle.is-open > div > [data-type='detailsContent'] {
     animation: none;
   }
-  .hk-pop-toggle {
+  .hk-pop-toggle,
+  .hk-glide {
     transition: none;
   }
 }

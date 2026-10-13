@@ -64,6 +64,8 @@ public nonisolated enum Icon: String, CaseIterable, Sendable {
     case flame = "flame"
     case pencilLine = "pencil-line"
     case calendarDots = "calendar-dots"
+    case lockSimple = "lock-simple"
+    case lockSimpleOpen = "lock-simple-open"
 
     /// The SF Symbol drawn for this icon, if any.
     public var systemName: String? {
@@ -122,6 +124,8 @@ public nonisolated enum Icon: String, CaseIterable, Sendable {
         case .flame: "flame"
         case .pencilLine: "pencil.line"
         case .calendarDots: "calendar"
+        case .lockSimple: "lock"
+        case .lockSimpleOpen: "lock.open"
         default: nil
         }
     }

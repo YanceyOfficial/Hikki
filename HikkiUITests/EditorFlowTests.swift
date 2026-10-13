@@ -128,11 +128,6 @@ final class EditorFlowTests: XCTestCase {
 
         let name = app.textFields["settings-name"].firstMatch
         XCTAssertTrue(waitOrDumpTree(name, in: app))
-        // Color tone: picking one moves the checkmark (selected trait) to it.
-        let kurenai = app.buttons["settings-tone-kurenai"].firstMatch
-        XCTAssertTrue(waitOrDumpTree(kurenai, in: app))
-        kurenai.tap()
-        XCTAssertTrue(kurenai.isSelected, "tone not selected")
         attachScreenshot(app, "settings")
         // The field is trailing-aligned: tap its right edge so the caret lands after the text.
         name.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()
@@ -248,6 +243,41 @@ final class EditorFlowTests: XCTestCase {
         shot.name = "find-panel"
         shot.lifetime = .keepAlways
         add(shot)
+    }
+
+    /// Page ⋯ → Lock page: a lock appears in the toolbar and the page is read-only; the lock unlocks it again.
+    func testLockPageFromPageMenu() throws {
+        continueAfterFailure = false
+        let app = launch()
+        let newPage = app.buttons["new-page"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+        newPage.tap()
+        let title = app.webViews.textViews["Page title"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+        title.tap()
+        title.typeText("Keep")
+
+        let more = app.buttons["page-more"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(more, in: app))
+        more.tap()
+        let lock = app.buttons["lock-toggle"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(lock, in: app), "no Lock page item")
+        lock.tap()
+        let indicator = app.buttons["lock-indicator"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(indicator, in: app), "no lock in the toolbar")
+        // The menu now offers to unlock; the toolbar lock does the same.
+        more.tap()
+        XCTAssertTrue(waitOrDumpTree(app.buttons["lock-toggle"].firstMatch, in: app))
+        XCTAssertEqual(app.buttons["lock-toggle"].firstMatch.label, "Unlock page")
+        app.buttons["lock-toggle"].firstMatch.tap()
+        XCTAssertTrue(indicator.waitForNonExistence(timeout: 5), "lock stayed after unlocking")
+        // Editable again (the caret may land at either end; typing getting through is the point).
+        title.tap()
+        title.typeText(" going")
+        XCTAssertTrue(waitOrDumpTree(app.webViews.textViews["Page title"].firstMatch, in: app))
+        XCTAssertTrue(
+            (title.value as? String)?.contains("going") == true,
+            "title not editable after unlocking: \(String(describing: title.value))")
     }
 
     /// Regression: on iPhone, tag-based List selection didn't navigate; rows must be NavigationLinks.

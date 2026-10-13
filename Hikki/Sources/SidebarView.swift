@@ -341,6 +341,7 @@ private struct SidebarDestination<Label: View>: View {
                             : hovering ? Color(Theme.sidebarAccent.resolve(in: environment)).opacity(0.55) : .clear)
             }
             .onHover { hovering = $0 }
+            .animation(Motion.easeOut(Motion.popOut), value: hovering)
             // The padding moved inside the button for the pill; pull it back so content keeps its place.
             .padding(.horizontal, -Spacing.s2)
             .listRowBackground(Color.clear)
@@ -572,6 +573,13 @@ struct PageActions: View {
             } label: {
                 IconLabel(page.isFavorite ? "app:page.unfavorite" : "app:page.favorite", icon: page.isFavorite ? .starFill : .star)
             }
+            // Locked: read-only everywhere until unlocked (⇧⌘L in the Page menu binds the key).
+            Button {
+                model.setLocked(!page.isLocked, id: page.id)
+            } label: {
+                IconLabel(page.isLocked ? "app:page.unlock" : "app:page.lock", icon: page.isLocked ? .lockSimpleOpen : .lockSimple)
+            }
+            .accessibilityIdentifier("lock-toggle")
         }
         Section {
             Button {

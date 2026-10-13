@@ -211,7 +211,8 @@
     "language": "Language",
     "copy": "Copy",
     "copied": "Copied",
-    "searchLanguage": "Search languages"
+    "searchLanguage": "Search languages",
+    "autoDetect": "Auto-detect"
   },
   "callout": {
     "icon": "Change icon",
@@ -251,9 +252,8 @@
   "find": {
     "label": "Find in page",
     "placeholder": "Find",
-    "replacePlaceholder": "Replace with",
-    "noResults": "No results",
-    "count": "{{current}} of {{total}}",
+    "replacePlaceholder": "Replace by…",
+    "count": "{{current}} / {{total}}",
     "previous": "Previous match",
     "next": "Next match",
     "close": "Close",

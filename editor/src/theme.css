@@ -17,6 +17,7 @@
   --accent-foreground: #37352f;
   --destructive: #e03e3e;
   --border: rgba(55, 53, 47, 0.09);
+  --table-border: #ededec;
   --input: rgba(55, 53, 47, 0.16);
   --ring: rgba(28, 28, 28, 0.3);
   --sidebar: #f8f8f7;
@@ -99,6 +100,7 @@
     --accent-foreground: rgba(255, 255, 255, 0.81);
     --destructive: #ff7369;
     --border: rgba(255, 255, 255, 0.094);
+    --table-border: #2f2f2f;
     --input: rgba(255, 255, 255, 0.14);
     --ring: rgba(230, 228, 223, 0.4);
     --sidebar: #202020;
@@ -284,6 +286,7 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-border: var(--border);
+  --color-table-border: var(--table-border);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-sidebar: var(--sidebar);

@@ -1,18 +1,18 @@
 import {
-  ArrowsInLineHorizontal,
-  ColumnsPlusLeft,
-  ColumnsPlusRight,
-  DotsSix,
-  DotsSixVertical,
-  Eraser,
-  PaintBucket,
-  Plus,
-  RowsPlusBottom,
-  RowsPlusTop,
-  SortAscending,
-  SortDescending,
-  SquareSplitHorizontal,
-  Trash
+  ArrowsInLineHorizontalIcon,
+  ColumnsPlusLeftIcon,
+  ColumnsPlusRightIcon,
+  DotsSixIcon,
+  DotsSixVerticalIcon,
+  EraserIcon,
+  PaintBucketIcon,
+  PlusIcon,
+  RowsPlusBottomIcon,
+  RowsPlusTopIcon,
+  SortAscendingIcon,
+  SortDescendingIcon,
+  SquareSplitHorizontalIcon,
+  TrashIcon
 } from '@phosphor-icons/react'
 import type { Editor } from '@tiptap/core'
 import type { CellSelection } from '@tiptap/pm/tables'
@@ -170,7 +170,7 @@ function RowGrip({
           />
         }
       >
-        <DotsSixVertical size={12} weight="bold" aria-hidden />
+        <DotsSixVerticalIcon size={12} weight="bold" aria-hidden />
       </DropdownMenuTrigger>
       <DropdownMenuContent side="right" align="start" className="w-52">
         {children}
@@ -209,7 +209,7 @@ function ColumnGrip({
           />
         }
       >
-        <DotsSix size={12} weight="bold" aria-hidden />
+        <DotsSixIcon size={12} weight="bold" aria-hidden />
       </DropdownMenuTrigger>
       <DropdownMenuContent side="bottom" align="start" className="w-52">
         {children}
@@ -222,7 +222,7 @@ function ColorItems({ editor, onDone }: { editor: Editor; onDone: () => void }) 
   return (
     <DropdownMenuSub>
       <DropdownMenuSubTrigger>
-        <PaintBucket aria-hidden />
+        <PaintBucketIcon aria-hidden />
         {t('table.color')}
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent className="w-44">
@@ -264,11 +264,11 @@ function RowMenu({
   return (
     <>
       <DropdownMenuItem onClick={act(() => chain().addRowBefore().run())}>
-        <RowsPlusTop aria-hidden />
+        <RowsPlusTopIcon aria-hidden />
         {t('table.insertAbove')}
       </DropdownMenuItem>
       <DropdownMenuItem onClick={act(() => chain().addRowAfter().run())}>
-        <RowsPlusBottom aria-hidden />
+        <RowsPlusBottomIcon aria-hidden />
         {t('table.insertBelow')}
       </DropdownMenuItem>
       {hover.row === 0 && (
@@ -282,12 +282,12 @@ function RowMenu({
       <DropdownMenuSeparator />
       <ColorItems editor={editor} onDone={onDone} />
       <DropdownMenuItem onClick={act(() => clearCells(editor))}>
-        <Eraser aria-hidden />
+        <EraserIcon aria-hidden />
         {t('table.clear')}
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem variant="destructive" onClick={act(() => chain().deleteRow().run())}>
-        <Trash aria-hidden />
+        <TrashIcon aria-hidden />
         {t('table.deleteRow')}
       </DropdownMenuItem>
     </>
@@ -313,11 +313,11 @@ function ColumnMenu({
   return (
     <>
       <DropdownMenuItem onClick={act(() => chain().addColumnBefore().run())}>
-        <ColumnsPlusLeft aria-hidden />
+        <ColumnsPlusLeftIcon aria-hidden />
         {t('table.insertLeft')}
       </DropdownMenuItem>
       <DropdownMenuItem onClick={act(() => chain().addColumnAfter().run())}>
-        <ColumnsPlusRight aria-hidden />
+        <ColumnsPlusRightIcon aria-hidden />
         {t('table.insertRight')}
       </DropdownMenuItem>
       {hover.col === 0 && (
@@ -333,25 +333,25 @@ function ColumnMenu({
         disabled={!sortable}
         onClick={act(() => sortColumn(editor, hover.tablePos, hover.col, 'asc'))}
       >
-        <SortAscending aria-hidden />
+        <SortAscendingIcon aria-hidden />
         {t('table.sortAscending')}
       </DropdownMenuItem>
       <DropdownMenuItem
         disabled={!sortable}
         onClick={act(() => sortColumn(editor, hover.tablePos, hover.col, 'desc'))}
       >
-        <SortDescending aria-hidden />
+        <SortDescendingIcon aria-hidden />
         {t('table.sortDescending')}
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <ColorItems editor={editor} onDone={onDone} />
       <DropdownMenuItem onClick={act(() => clearCells(editor))}>
-        <Eraser aria-hidden />
+        <EraserIcon aria-hidden />
         {t('table.clear')}
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem variant="destructive" onClick={act(() => chain().deleteColumn().run())}>
-        <Trash aria-hidden />
+        <TrashIcon aria-hidden />
         {t('table.deleteColumn')}
       </DropdownMenuItem>
     </>
@@ -418,7 +418,7 @@ function EdgeButton({
           />
         }
       >
-        <Plus size={12} weight="bold" aria-hidden />
+        <PlusIcon size={12} weight="bold" aria-hidden />
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
@@ -459,7 +459,7 @@ function CellBar({ editor, selection }: { editor: Editor; selection: CellSelecti
         disabled={!editor.can().mergeCells()}
         onClick={() => editor.chain().focus().mergeCells().run()}
       >
-        <ArrowsInLineHorizontal size={14} aria-hidden />
+        <ArrowsInLineHorizontalIcon size={14} aria-hidden />
         {t('table.merge')}
       </button>
       <button
@@ -468,12 +468,12 @@ function CellBar({ editor, selection }: { editor: Editor; selection: CellSelecti
         disabled={!editor.can().splitCell()}
         onClick={() => editor.chain().focus().splitCell().run()}
       >
-        <SquareSplitHorizontal size={14} aria-hidden />
+        <SquareSplitHorizontalIcon size={14} aria-hidden />
         {t('table.split')}
       </button>
       <DropdownMenu>
         <DropdownMenuTrigger render={<button type="button" className={button} />}>
-          <PaintBucket size={14} aria-hidden />
+          <PaintBucketIcon size={14} aria-hidden />
           {t('table.color')}
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-44">
@@ -493,7 +493,7 @@ function CellBar({ editor, selection }: { editor: Editor; selection: CellSelecti
         </DropdownMenuContent>
       </DropdownMenu>
       <button type="button" className={button} onClick={() => clearCells(editor)}>
-        <Eraser size={14} aria-hidden />
+        <EraserIcon size={14} aria-hidden />
         {t('table.clear')}
       </button>
     </div>

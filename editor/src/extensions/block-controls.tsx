@@ -202,7 +202,9 @@ class BlockControlsView {
       }
     }
     const listItem = unit.node.type.name === 'listItem' || unit.node.type.name === 'taskItem'
-    const left = rect.left - (listItem ? 22 : 0) - this.handle.offsetWidth - 4
+    // A table draws its own row grips at its left edge (ui/TableOverlay.tsx); the handle keeps clear.
+    const table = unit.node.type.name === 'table'
+    const left = rect.left - (listItem ? 22 : 0) - (table ? 22 : 0) - this.handle.offsetWidth - 4
     Object.assign(this.handle.style, {
       left: `${left}px`,
       top: `${centre - this.handle.offsetHeight / 2}px`

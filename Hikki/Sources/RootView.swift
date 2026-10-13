@@ -6,7 +6,8 @@ struct RootView: View {
     var initialPageID: String?
     @Environment(AppModel.self) private var model
     @AppStorage(AppearancePreference.storageKey) private var appearance = AppearancePreference.system
-    @AppStorage(ColorTone.storageKey) private var tone = ColorTone.standard
+    /// One tone for now (Kurenai); the palettes stay in the tokens for later.
+    private let tone = ColorTone.standard
 
     var body: some View {
         Group {

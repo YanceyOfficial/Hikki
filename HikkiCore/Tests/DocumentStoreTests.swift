@@ -63,6 +63,24 @@ struct DocumentStoreTests {
         #expect(try store.document(id: "a")?.isFavorite == false)
     }
 
+    @Test func lockingIsAPagePropertyThatSurvivesAutosave() throws {
+        let store = try DocumentStore.inMemory()
+        try store.create(id: "a", now: t0)
+        try store.setLocked(true, for: "a", now: t0.addingTimeInterval(5))
+        let doc = try #require(try store.document(id: "a"))
+        #expect(doc.isLocked && doc.lockedAt == t0.addingTimeInterval(5))
+        // Other devices must see a lock, so unlike favoriting it counts as an update for sync.
+        #expect(doc.updatedAt == t0.addingTimeInterval(5))
+        #expect(try store.pages().first { $0.id == "a" }?.isLocked == true)
+        // A late autosave writes editor columns only: it can't unlock the page.
+        #expect(try store.saveContent(snapshot("a", "Hello"), now: t0.addingTimeInterval(60)))
+        #expect(try store.document(id: "a")?.isLocked == true)
+        // A copy starts unlocked, like it starts unfavorited.
+        #expect(try store.duplicate(id: "a", newId: "b")?.isLocked == false)
+        try store.setLocked(false, for: "a", now: t0.addingTimeInterval(90))
+        #expect(try store.document(id: "a")?.isLocked == false)
+    }
+
     @Test func iconAndCoverRoundTrip() throws {
         let store = try DocumentStore.inMemory()
         try store.create(id: "a", now: t0)

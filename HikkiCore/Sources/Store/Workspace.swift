@@ -157,7 +157,8 @@ public enum WorkspaceFolder {
     public static func identityIsDownloading(in root: URL) -> Bool {
         let placeholder = root.appending(path: ".workspace.json.icloud")
         guard FileManager.default.fileExists(atPath: placeholder.path) else { return false }
-        try? FileManager.default.startDownloadingUbiquitousItem(at: placeholder)
+        // The item to download is the file itself, not its stand-in.
+        try? FileManager.default.startDownloadingUbiquitousItem(at: identityURL(in: root))
         return true
     }
 

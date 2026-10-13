@@ -1,3 +1,4 @@
+import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { EditorBridge, type Transport } from '../src/bridge'
@@ -263,6 +264,29 @@ describe('EditorBridge', () => {
       bridge.loadDocument(page('b'))
       expect(bridge.page.get().readOnly).toBe(false)
       expect(editor().isEditable).toBe(true)
+    })
+
+    it('a locked page refuses edits, commands and header changes until it is unlocked', () => {
+      bridge.loadDocument(page('a', { title: 'Plan', locked: true }))
+      expect(bridge.page.get()).toMatchObject({ locked: true, readOnly: false })
+      expect(editor().isEditable).toBe(false)
+      expect(bridge.exec('bold')).toBe(false)
+      bridge.setTitle('Renamed')
+      bridge.setIcon('🔒')
+      bridge.setCover('gradient:dusk')
+      vi.advanceTimersByTime(5000)
+      expect(changed()).toHaveLength(0)
+      expect(sent.filter((m) => m.type === 'setIcon' || m.type === 'setCover')).toHaveLength(0)
+      expect(bridge.page.get().title).toBe('Plan')
+      // Unlocked while open (Page → Unlock): editable again, and edits save. (act: the menus' React roots
+      // re-render on editability; flushed here rather than after the test's DOM is gone.)
+      act(() => bridge.setLocked(false))
+      expect(editor().isEditable).toBe(true)
+      bridge.setTitle('Renamed')
+      vi.advanceTimersByTime(1000)
+      expect(changed()).toHaveLength(1)
+      act(() => bridge.setLocked(true))
+      expect(editor().isEditable).toBe(false)
     })
   })
 

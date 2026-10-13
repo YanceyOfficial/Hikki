@@ -16,7 +16,7 @@ struct ContentView: View {
     @State private var navigator = Navigator()
     @State private var columns: NavigationSplitViewVisibility = .all
     @SceneStorage("tabs") private var storedTabs: Data?
-    @AppStorage(ColorTone.storageKey) private var tone = ColorTone.standard
+    private let tone = ColorTone.standard
     @AppStorage(EditorPreferences.spellcheckKey) private var spellcheck = true
     #if os(macOS)
         @Environment(\.openSettings) private var openSettings
@@ -27,6 +27,7 @@ struct ContentView: View {
         sceneEvents(layout)
             .focusedSceneValue(\.editor, editor)
             .focusedSceneValue(\.navigator, navigator)
+            .focusedSceneValue(\.lockedPage, navigator.currentPage?.isLocked)
     }
 
     /// The system split view and window toolbar (the sidebar is native rows, see SidebarView), sheets.
@@ -62,8 +63,9 @@ struct ContentView: View {
                 editor.open(documentID: route.pageID)
                 navigator.revealCurrent()
             }
-            .onChange(of: tone) { _, tone in editor.setTone(tone) }
             .onChange(of: spellcheck) { _, on in editor.setSpellcheck(on) }
+            // Lock / unlock while the page is open (the load payload carries it otherwise).
+            .onChange(of: navigator.currentPage?.isLocked) { _, locked in editor.setLocked(locked ?? false) }
             .onChange(of: navigator.titleFocusRequest) { _, request in
                 if let request { editor.focusTitle(of: request.pageID) }
             }
@@ -99,6 +101,10 @@ struct ContentView: View {
         #if DEBUG
             // Screenshot/test hooks: HIKKI_OPEN_TABS=pageA,pageB opens those pages as tabs; HIKKI_OPEN_SEARCH opens ⌘K.
             if ProcessInfo.processInfo.environment["HIKKI_OPEN_SEARCH"] != nil { navigator.isSearching = true }
+            // HIKKI_OPEN_FIND opens find in page once the page is up (screenshots of its place under the toolbar).
+            if ProcessInfo.processInfo.environment["HIKKI_OPEN_FIND"] != nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) { editor.find(.find) }
+            }
             // HIKKI_ACTIVATE brings the window to the front (screenshots of the active-window look).
             #if os(macOS)
                 if ProcessInfo.processInfo.environment["HIKKI_ACTIVATE"] != nil { NSApp.activate() }
@@ -230,6 +236,9 @@ private struct NativeDetailToolbar: ToolbarContent {
             .frame(minWidth: 240, idealWidth: 480, maxWidth: 640)  // design-lint: allow (toolbar item width)
         }
         if let id = navigator.route.pageID, let page = model.tree.page(id) {
+            if page.isLocked {
+                ToolbarItem(placement: .primaryAction) { LockIndicator(page: page, toolbar: true) }
+            }
             ToolbarItemGroup(placement: .primaryAction) {
                 FavoriteButton(page: page, toolbar: true)
                 PageMoreMenu(page: page, navigator: navigator, editor: editor, toolbar: true)

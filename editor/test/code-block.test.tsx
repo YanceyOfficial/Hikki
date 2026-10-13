@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { BLOCK_TYPES } from '../src/blocks'
 import { createEditor } from '../src/editor'
+import { detectLanguage } from '../src/extensions/code-block'
 import { filterLanguages, findLanguage, lastCodeLanguage } from '../src/extensions/code-languages'
 import { settle } from './helpers'
 
@@ -33,6 +34,56 @@ describe('code block', () => {
     expect(host.querySelector('.hljs-keyword')?.textContent).toBe('const')
     expect(host.querySelector('.hljs-number')?.textContent).toBe('42')
     expect(host.querySelector('.hljs-comment')?.textContent).toBe('// why')
+  })
+
+  it('"Auto-detect" highlights by guessing and names the guess in the header', async () => {
+    editor = createEditor(
+      host,
+      codeDoc(
+        'auto',
+        'function add(a, b) {\n  return a + b\n}\nexport const total = [1, 2, 3].reduce(add, 0)'
+      )
+    )
+    await settle()
+    expect(host.querySelector('.hljs-keyword')).not.toBeNull()
+    await waitFor(
+      () =>
+        expect(host.querySelector('.hk-code-header')?.textContent).toContain(
+          'Auto-detect · JavaScript'
+        ),
+      { timeout: 2000 }
+    )
+  })
+
+  it('detectLanguage tells the catalog languages apart by their signatures, and stays quiet otherwise', () => {
+    expect(detectLanguage('x = 1')).toBeNull()
+    expect(
+      detectLanguage('hello there, this is a sentence of prose with no code in it at all')
+    ).toBeNull()
+    const samples: Record<string, string> = {
+      javascript:
+        'function add(a, b) {\n  return a + b\n}\nconsole.log(add(1, 2))\nexport default add',
+      typescript:
+        'interface Page {\n  id: string\n  title: string\n}\nexport const empty: Page = { id: "", title: "" }',
+      python:
+        'def add(a, b):\n    return a + b\n\nprint(add(1, 2))\nfor i in range(3):\n    print(i)',
+      swift:
+        'import Foundation\n\nstruct Page: Codable {\n    let id: String\n    var title: String\n}\nfunc open(_ page: Page) {}',
+      rust: 'fn main() {\n    let mut total = 0;\n    for n in 1..4 { total += n; }\n    println!("{}", total);\n}',
+      go: 'package main\n\nimport "fmt"\n\nfunc main() {\n\tx := 1\n\tfmt.Println(x)\n}',
+      css: '.hk-pop {\n  transform-origin: top left;\n  animation: hk-pop-in 150ms ease-out;\n}\n.row:hover { color: red; }',
+      json: '{\n  "id": "a",\n  "title": "Plan",\n  "tags": ["x", "y"],\n  "locked": false\n}',
+      sql: 'SELECT id, title FROM document WHERE deletedAt IS NULL ORDER BY sortKey',
+      bash: '#!/bin/bash\nfor f in *.json; do\n  echo "$f"\ndone',
+      yaml: 'name: hikki\nversion: 1\nscripts:\n  - build\n  - test',
+      xml: '<!DOCTYPE html>\n<html>\n  <body><p class="x">Hi</p></body>\n</html>',
+      java: 'import java.util.List;\n\npublic class Main {\n  public static void main(String[] args) {\n    System.out.println("hi");\n  }\n}',
+      diff: '--- a/x.ts\n+++ b/x.ts\n@@ -1,2 +1,2 @@\n-const a = 1\n+const a = 2',
+      markdown: '# Title\n\nSome **bold** text and a [link](https://example.com).\n\n- one\n- two'
+    }
+    for (const [language, code] of Object.entries(samples)) {
+      expect(detectLanguage(code), language).toBe(language)
+    }
   })
 
   it('plain text is not auto-detected', async () => {

@@ -1,4 +1,4 @@
-import { Shuffle } from '@phosphor-icons/react'
+import { ShuffleIcon } from '@phosphor-icons/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -94,7 +94,7 @@ export function EmojiPickerPanel({ onSelect, onRemove, onRandom, locale: localeP
             title={text.random}
             aria-label={text.random}
           >
-            <Shuffle size={16} aria-hidden />
+            <ShuffleIcon size={16} aria-hidden />
           </button>
         )}
         {onRemove && (

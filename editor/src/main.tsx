@@ -52,6 +52,8 @@ window.hikki = {
   find: (mode: FindMode) => bridge.find(mode),
   // Settings → Editor → Check spelling.
   setSpellcheck: (on: boolean) => bridge.setSpellcheck(on),
+  // Page → Lock / Unlock while the page is open.
+  setLocked: (locked: boolean) => bridge.setLocked(locked),
   // Height of the native toolbar over the page: fixed panels (find) sit below it.
   setInsets: (insets: { top: number }) => {
     document.documentElement.style.setProperty('--hk-inset-top', `${Math.max(0, insets.top)}px`)
