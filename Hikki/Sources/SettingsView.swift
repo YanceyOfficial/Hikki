@@ -162,8 +162,11 @@ private struct WorkspaceSection: View {
                 Text(storageFailed ? "app:settings.storage.error" : "app:settings.storage.detail")
                     .font(.caption)
                     .foregroundStyle(storageFailed ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
-                if let status = syncStatus {
-                    status.font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("settings-sync-status")
+                if case .folder = model.workspace?.location {
+                    syncStatus
+                        .font(.caption)
+                        .foregroundStyle(model.syncError == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
+                        .accessibilityIdentifier("settings-sync-status")
                 }
             }
         } header: {
@@ -188,8 +191,10 @@ private struct WorkspaceSection: View {
     }
 
     /// When the folder was last reconciled, and what's still on its way ("2 waiting for iCloud").
-    private var syncStatus: Text? {
-        guard let sync = model.lastSync else { return nil }
+    /// Always says something for a folder: not yet, why not, or when and what is still on its way.
+    private var syncStatus: Text {
+        if let error = model.syncError { return Text("app:settings.storage.syncError \(error)") }
+        guard let sync = model.lastSync else { return Text("app:settings.storage.notSynced") }
         var text = Text("app:settings.storage.synced \(sync.at, format: .relative(presentation: .named))")
         if sync.report.waitingForDownload > 0 {
             text = text + Text(verbatim: " · ") + Text("app:settings.storage.waiting \(sync.report.waitingForDownload.formatted())")

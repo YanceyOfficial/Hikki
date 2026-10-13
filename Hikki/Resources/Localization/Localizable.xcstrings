@@ -2245,6 +2245,23 @@
         }
       }
     },
+    "app:settings.storage.notSynced": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not synced yet"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未同步"
+          }
+        }
+      }
+    },
     "app:settings.storage.skipped %@": {
       "extractionState": "manual",
       "localizations": {
@@ -2258,6 +2275,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ 个无法读取"
+          }
+        }
+      }
+    },
+    "app:settings.storage.syncError %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync unavailable: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法同步：%@"
           }
         }
       }

@@ -15,6 +15,8 @@ final class AppModel {
     private(set) var trash: [PageSummary] = []
     /// What the last pass over the workspace folder found (Settings → Storage shows it).
     private(set) var lastSync: SyncStatus?
+    /// Why the folder isn't being synced at all (unresolvable bookmark, a failed first pass); nil while it works.
+    private(set) var syncError: String?
 
     struct SyncStatus: Equatable, Sendable {
         var at: Date
@@ -73,13 +75,18 @@ final class AppModel {
                 do {
                     let report = try sync.start()
                     Self.log("workspace sync started", report)
-                    Task { @MainActor in self?.lastSync = SyncStatus(at: .now, report: report) }
+                    Task { @MainActor in
+                        self?.lastSync = SyncStatus(at: .now, report: report)
+                        self?.syncError = nil
+                    }
                 } catch {
                     Log.error("workspace sync failed to start: \(error)", category: "workspace")
+                    Task { @MainActor in self?.syncError = error.localizedDescription }
                 }
             }
         } catch {
             Log.error("workspace folder unavailable: \(error)", category: "workspace")
+            syncError = error.localizedDescription
         }
     }
 
