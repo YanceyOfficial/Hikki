@@ -45,6 +45,8 @@ public final class AssetStore: @unchecked Sendable {
     /// workspace folder is set.
     private let legacy: URL
     private var workspaceAssets: URL?
+    /// Workspace folders used earlier in this session (the workspace moved): still read, copied from.
+    private var previous: [URL] = []
 
     public init(directory: URL) {
         self.legacy = directory
@@ -57,19 +59,26 @@ public final class AssetStore: @unchecked Sendable {
 
     /// From now on, assets live in `<workspace>/assets`.
     public func useWorkspaceFolder(_ root: URL) {
-        lock.withLock { workspaceAssets = root.appending(path: "assets", directoryHint: .isDirectory) }
+        lock.withLock {
+            if let current = workspaceAssets { previous.append(current) }
+            workspaceAssets = root.appending(path: "assets", directoryHint: .isDirectory)
+        }
     }
 
-    /// Copies files only in the old directory into the workspace folder (not moved: nothing is deleted), so
-    /// pages referencing them work on other devices too. Run off the main thread.
+    /// Copies files only in earlier directories (app data, a previous workspace folder) into the workspace
+    /// folder — not moved: nothing is deleted — so pages referencing them work on other devices too. Run off
+    /// the main thread.
     public func copyLegacyAssets() {
-        guard let assets = lock.withLock({ workspaceAssets }) else { return }
+        let (assets, sources): (URL?, [URL]) = lock.withLock { (workspaceAssets, [legacy] + previous) }
+        guard let assets else { return }
         let fm = FileManager.default
-        guard let names = try? fm.contentsOfDirectory(atPath: legacy.path), !names.isEmpty else { return }
-        try? fm.createDirectory(at: assets, withIntermediateDirectories: true)
-        for name in names where Self.isValidName(name) {
-            let target = assets.appending(path: name)
-            if !fm.fileExists(atPath: target.path) { try? fm.copyItem(at: legacy.appending(path: name), to: target) }
+        for source in sources where source.standardizedFileURL != assets.standardizedFileURL {
+            guard let names = try? fm.contentsOfDirectory(atPath: source.path), !names.isEmpty else { continue }
+            try? fm.createDirectory(at: assets, withIntermediateDirectories: true)
+            for name in names where Self.isValidName(name) {
+                let target = assets.appending(path: name)
+                if !fm.fileExists(atPath: target.path) { try? fm.copyItem(at: source.appending(path: name), to: target) }
+            }
         }
     }
 
@@ -98,7 +107,7 @@ public final class AssetStore: @unchecked Sendable {
     public func file(named name: String) -> URL? {
         guard Self.isValidName(name) else { return nil }
         let fm = FileManager.default
-        let candidates = lock.withLock { [workspaceAssets, legacy].compactMap { $0 } }
+        let candidates = lock.withLock { [workspaceAssets].compactMap { $0 } + previous + [legacy] }
         return candidates.map { $0.appending(path: name) }.first { fm.fileExists(atPath: $0.path) }
     }
 

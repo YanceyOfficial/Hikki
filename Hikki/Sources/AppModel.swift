@@ -31,14 +31,23 @@ final class AppModel {
 
     @ObservationIgnored private var sync: WorkspaceSync?
 
+    /// The folder the workspace lives in (access held for the session).
+    @ObservationIgnored private var workspaceFolder: URL?
+    /// `updatedAt` of the identity last read from or written to the folder: a newer one (another device
+    /// renamed the workspace) replaces ours.
+    @ObservationIgnored private var identityUpdatedAt: Date?
+
     /// The workspace folder is the source of truth: reconcile with it, then write every page change through.
-    /// Access to a picked folder is held for the session. Runs once per launch (and after onboarding).
+    /// Access to a picked folder is held for the session. Runs once per launch (and after onboarding, or when
+    /// the folder changes).
     func startWorkspaceSync() {
         guard let workspace, sync == nil else { return }
         let appRoot = workspaceStore.url.deletingLastPathComponent()
         do {
             let folder = try WorkspaceFolder.url(for: workspace, appRoot: appRoot)
-            _ = folder.startAccessingSecurityScopedResource()  // released when the app quits
+            _ = folder.startAccessingSecurityScopedResource()  // released when the app quits or the folder changes
+            workspaceFolder = folder
+            syncIdentity()
             assets.useWorkspaceFolder(folder)
             let assets = assets
             Task.detached(priority: .utility) { assets.copyLegacyAssets() }
@@ -64,9 +73,60 @@ final class AppModel {
         }
     }
 
+    /// Settings → Storage → Change folder: the workspace moves to (or joins) another folder. Local pages are
+    /// written there and the folder's pages imported; nothing is deleted on either side. A folder that already
+    /// holds a workspace lends its name and icon.
+    func changeLocation(to url: URL) throws {
+        guard var workspace else { return }
+        let bookmark = try FolderBookmark.make(for: url)
+        workspace.location = .folder(bookmark: bookmark, displayName: FolderBookmark.displayName(for: url))
+        sync?.stop()
+        sync = nil
+        workspaceFolder?.stopAccessingSecurityScopedResource()
+        workspaceFolder = nil
+        identityUpdatedAt = nil
+        // Pages synced with the old folder aren't synced with this one: write them all out, import its own.
+        try store.unmarkAllSynced()
+        try workspaceStore.save(workspace)
+        self.workspace = workspace
+        Log.info("workspace location changed", category: "workspace")
+        startWorkspaceSync()
+    }
+
+    /// Keeps the identity in the folder (`workspace.json`) and this device's record in step: a folder without
+    /// one gets ours; a newer one — renamed or re-iconed on another device — replaces ours. Nothing is written
+    /// while iCloud still has to deliver the folder's own.
+    private func syncIdentity() {
+        guard let workspace, let folder = workspaceFolder else { return }
+        do {
+            if let identity = try WorkspaceFolder.readIdentity(in: folder) {
+                guard identity.updatedAt > (identityUpdatedAt ?? .distantPast) else { return }
+                identityUpdatedAt = identity.updatedAt
+                let joined = identity.applied(to: workspace)
+                if joined != workspace {
+                    try workspaceStore.save(joined)
+                    self.workspace = joined
+                    Log.info("workspace identity adopted from folder", category: "workspace")
+                }
+            } else if !WorkspaceFolder.identityIsDownloading(in: folder) {
+                try writeIdentity()
+            }
+        } catch {
+            Log.error("workspace identity sync failed: \(error)", category: "workspace")
+        }
+    }
+
+    private func writeIdentity() throws {
+        guard let workspace, let folder = workspaceFolder else { return }
+        let identity = WorkspaceIdentity(workspace)
+        try WorkspaceFolder.writeIdentity(identity, in: folder)
+        identityUpdatedAt = identity.updatedAt
+    }
+
     /// Picks up what other devices changed (app activation). Cheap when nothing did.
     func reconcileWorkspace() {
         guard let sync else { return }
+        syncIdentity()
         Task.detached(priority: .utility) {
             do {
                 Self.log("workspace reconciled", try sync.reconcile())
@@ -110,6 +170,7 @@ final class AppModel {
         do {
             try workspaceStore.save(workspace)
             self.workspace = workspace
+            try writeIdentity()
             Log.info("workspace renamed", category: "workspace")
         } catch {
             Log.error("workspace save failed: \(error)", category: "workspace")
@@ -123,6 +184,7 @@ final class AppModel {
         do {
             try workspaceStore.save(workspace)
             self.workspace = workspace
+            try writeIdentity()
             Log.info(
                 "workspace icon set", category: "workspace",
                 context: ["kind": icon.map { if case .image = $0 { "image" } else { "emoji" } } ?? "none"])

@@ -280,6 +280,78 @@ extension WorkspaceSyncTests {
     }
 }
 
+extension WorkspaceSyncTests {
+    /// A file still downloading reads as corrupt (skipped); it must be imported once whole, without anyone
+    /// calling reconcile() — and without a directory event (the content is overwritten in place).
+    @Test func filesStillDownloadingAreImportedOnALaterPassOnTheirOwn() async throws {
+        let files = try folder()
+        try FileManager.default.createDirectory(at: files.directory, withIntermediateDirectories: true)
+        let late = files.directory.appending(path: "late.json")
+        try Data("{\"half".utf8).write(to: late, options: [])
+
+        let store = try DocumentStore.inMemory()
+        let seen = ImportedIDs()
+        let sync = WorkspaceSync(store: store, files: files, watchDelay: 10, retryDelays: [0.05]) { seen.add($0.importedIDs) }
+        let first = try sync.start()
+        #expect(first.skippedFiles == 1 && first.imported == 0)
+
+        let other = try DocumentStore.inMemory()
+        try other.create(id: "late", now: t0)
+        let page = try PageFile(record: try #require(try other.document(id: "late")))
+        try PageFiles.encoder.encode(page).write(to: late, options: [])  // in place: no directory event
+        for _ in 0..<100 where !seen.all.contains("late") {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        #expect(seen.all.contains("late"))
+        #expect(try store.document(id: "late") != nil)
+        withExtendedLifetime(sync) {}
+    }
+
+    @Test func stopEndsWatchingAndWriteThrough() async throws {
+        let files = try folder()
+        let store = try DocumentStore.inMemory()
+        let seen = ImportedIDs()
+        let sync = WorkspaceSync(store: store, files: files, watchDelay: 0.05) { seen.add($0.importedIDs) }
+        _ = try sync.start()
+        try store.create(id: "before", now: t0)
+        sync.flush()
+        #expect(files.exists("before"))
+
+        sync.stop()
+        try store.create(id: "after", now: t0)
+        sync.flush()
+        #expect(!files.exists("after"))
+        let other = try DocumentStore.inMemory()
+        try other.create(id: "theirs", now: t0)
+        try files.write(try PageFile(record: try #require(try other.document(id: "theirs"))))
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(!seen.all.contains("theirs"))
+        withExtendedLifetime(sync) {}
+    }
+
+    /// Moving the workspace to another folder: forgetting the synced marks makes the next pass write every
+    /// local page out and import the folder's, instead of taking the folder's missing files for deletions.
+    @Test func forgettingSyncedMarksJoinsAnotherFolderWithoutLosingPages() throws {
+        let oldFolder = try folder()
+        let store = try DocumentStore.inMemory()
+        try store.create(id: "local", now: t0)
+        try WorkspaceSync(store: store, files: oldFolder).reconcile()
+
+        let newFolder = try folder()
+        let other = try DocumentStore.inMemory()
+        try other.create(id: "remote", now: t0)
+        try newFolder.write(try PageFile(record: try #require(try other.document(id: "remote"))))
+
+        try store.unmarkAllSynced()
+        let report = try WorkspaceSync(store: store, files: newFolder).reconcile()
+        #expect(report.deletedHere == 0 && report.deletionsHeldBack == 0)
+        #expect(report.exported == 1 && report.imported == 1)
+        #expect(newFolder.exists("local"))
+        #expect(try store.document(id: "remote") != nil)
+        #expect(try store.document(id: "local") != nil)
+    }
+}
+
 /// Collects `importedIDs` from the sync queue's callbacks.
 private final class ImportedIDs: @unchecked Sendable {
     private let lock = NSLock()

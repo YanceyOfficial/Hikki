@@ -139,6 +139,8 @@ struct SettingsView: View {
 private struct WorkspaceSection: View {
     @Environment(AppModel.self) private var model
     @State private var name = ""
+    @State private var choosingFolder = false
+    @State private var storageFailed = false
 
     var body: some View {
         Section {
@@ -150,11 +152,31 @@ private struct WorkspaceSection: View {
                     .accessibilityIdentifier("settings-name")
             }
             WorkspaceIconRow()
-            LabeledContent("app:settings.storage") {
-                storage
+            LabeledContent {
+                HStack(spacing: Spacing.s2) {
+                    storage
+                    Button("app:settings.storage.change") { choosingFolder = true }
+                        .buttonStyle(.borderless)
+                        .accessibilityIdentifier("settings-change-folder")
+                }
+            } label: {
+                Text("app:settings.storage")
+                Text(storageFailed ? "app:settings.storage.error" : "app:settings.storage.detail")
+                    .font(.caption)
+                    .foregroundStyle(storageFailed ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
             }
         } header: {
             Text("app:settings.group.workspace")
+        }
+        // Moving to (or joining) a folder — put it in iCloud Drive to use the workspace on other devices.
+        .fileImporter(isPresented: $choosingFolder, allowedContentTypes: [.folder]) { result in
+            do {
+                try model.changeLocation(to: try result.get())
+                storageFailed = false
+            } catch {
+                Log.error("settings: change folder failed: \(error)", category: "workspace")
+                storageFailed = true
+            }
         }
         .onAppear { name = model.workspace?.name ?? "" }
         // Saved when Settings closes too, not only on Return.

@@ -372,6 +372,12 @@ public final class DocumentStore: Sendable {
         }
     }
 
+    /// Forgets which pages have files (the workspace moved to another folder): the next reconcile writes every
+    /// page out and imports the folder's, instead of taking the new folder's missing files for deletions.
+    public func unmarkAllSynced() throws {
+        try writer.write { try $0.execute(sql: "DELETE FROM pageFileState") }
+    }
+
     public func syncedIDs() throws -> Set<String> {
         try writer.read { Set(try String.fetchAll($0, sql: "SELECT id FROM pageFileState")) }
     }

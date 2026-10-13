@@ -15,6 +15,8 @@ struct OnboardingView: View {
     @State private var selectedSuggestion = false
     @State private var choice: Choice = .iCloud
     @State private var folder: (bookmark: Data, displayName: String)?
+    /// A workspace the picked folder already holds: joined instead of created.
+    @State private var existing: (name: String, pages: Int)?
     @State private var importing = false
     @State private var errorMessage: String?
 
@@ -129,6 +131,14 @@ struct OnboardingView: View {
                     .accessibilityIdentifier("onboarding-choose-folder")
                 }
                 .padding(.horizontal, Spacing.s1)
+                if let existing {
+                    // The folder's workspace name and page count, as they are.
+                    Text("app:onboarding.location.existing \(existing.name) \(existing.pages.formatted())")
+                        .font(.hk(.md))
+                        .foregroundStyle(Theme.mutedForeground)
+                        .padding(.horizontal, Spacing.s1)
+                        .accessibilityIdentifier("onboarding-existing")
+                }
             }
             SelectableCard(
                 "app:onboarding.location.device", detail: "app:onboarding.location.deviceDetail", icon: .laptop,
@@ -138,8 +148,10 @@ struct OnboardingView: View {
             if let errorMessage {
                 Text(LocalizedStringKey(errorMessage)).font(.hk(.md)).foregroundStyle(Theme.destructive)
             }
-            navigation(next: "app:onboarding.create", id: "onboarding-create", enabled: choice == .device || folder != nil, action: create)
-            {
+            navigation(
+                next: choice == .iCloud && existing != nil ? "app:onboarding.open" : "app:onboarding.create", id: "onboarding-create",
+                enabled: choice == .device || folder != nil, action: create
+            ) {
                 step = .name
             }
         }
@@ -181,6 +193,7 @@ struct OnboardingView: View {
         do {
             let url = try result.get()
             folder = (try FolderBookmark.make(for: url), FolderBookmark.displayName(for: url))
+            existing = WorkspaceFolder.existingWorkspace(at: url)
             errorMessage = nil
         } catch {
             Log.error("onboarding: folder pick failed: \(error)", category: "workspace")

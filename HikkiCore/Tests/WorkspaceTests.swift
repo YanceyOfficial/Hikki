@@ -104,4 +104,31 @@ struct FolderBookmarkTests {
         }
         #expect(written)
     }
+
+    @Test func identityTravelsWithTheFolder() throws {
+        let root = try makeTempDirectory()
+        #expect(try WorkspaceFolder.readIdentity(in: root) == nil)
+        var mine = Workspace(name: "Yancey’s Space", location: .device)
+        mine.icon = .emoji("🏔️")
+        try WorkspaceFolder.writeIdentity(WorkspaceIdentity(mine), in: root)
+
+        let identity = try #require(try WorkspaceFolder.readIdentity(in: root))
+        #expect(identity.name == "Yancey’s Space" && identity.icon == .emoji("🏔️") && identity.id == mine.id)
+        // Another device opening the folder keeps its own location, takes the identity.
+        let theirs = Workspace(name: "My Space", location: .folder(bookmark: Data([1]), displayName: "iCloud Drive › Hikki"))
+        let joined = identity.applied(to: theirs)
+        #expect(joined.name == "Yancey’s Space" && joined.id == mine.id && joined.icon == .emoji("🏔️"))
+        #expect(joined.location == theirs.location)
+    }
+
+    @Test func identityFromANewerHikkiIsLeftAlone() throws {
+        let root = try makeTempDirectory()
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try Data(
+            #"{"format":99,"id":"00000000-0000-0000-0000-000000000000","name":"Future","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"}"#
+                .utf8
+        )
+        .write(to: WorkspaceFolder.identityURL(in: root))
+        #expect(try WorkspaceFolder.readIdentity(in: root) == nil)
+    }
 }

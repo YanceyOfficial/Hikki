@@ -783,6 +783,23 @@
         }
       }
     },
+    "app:menu.page": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Page"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "页面"
+          }
+        }
+      }
+    },
     "app:menu.search": {
       "extractionState": "manual",
       "localizations": {
@@ -966,6 +983,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "所有内容只保存在这台设备上。"
+          }
+        }
+      }
+    },
+    "app:onboarding.location.existing %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This folder already holds “%@” (%@ pages). You’ll open it on this device."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此文件夹已有工作区“%@”（%@ 个页面），将在此设备上打开它。"
           }
         }
       }
@@ -1170,6 +1204,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "为工作区命名"
+          }
+        }
+      }
+    },
+    "app:onboarding.open": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open workspace"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开工作区"
           }
         }
       }
@@ -2003,6 +2054,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "存储位置"
+          }
+        }
+      }
+    },
+    "app:settings.storage.change": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change folder…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改文件夹…"
+          }
+        }
+      }
+    },
+    "app:settings.storage.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pages, files and the workspace name live in this folder. Put it in iCloud Drive to use the workspace on your other devices."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "页面、文件和工作区名称都保存在此文件夹中。放在 iCloud 云盘里即可在其他设备上使用。"
+          }
+        }
+      }
+    },
+    "app:settings.storage.error": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t use that folder. Try another one."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法使用该文件夹，请换一个。"
           }
         }
       }

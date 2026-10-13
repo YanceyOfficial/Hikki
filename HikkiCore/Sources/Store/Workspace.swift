@@ -88,14 +88,99 @@ public struct WorkspaceStore: Sendable {
     }
 }
 
-/// Where a workspace's files live (`pages/`, later `assets/`): the folder picked at onboarding, or — for
-/// "this device only" — `Workspace/` next to the app's database.
+/// The workspace as every device sees it inside its folder (`workspace.json` next to `pages/`): the shared
+/// identity. The per-device `Workspace` (its location, the bookmark) stays in app data, so a second device
+/// picking the folder *opens* this workspace — same name, icon and id — instead of creating another.
+public struct WorkspaceIdentity: Codable, Equatable, Sendable {
+    public static let currentFormat = 1
+
+    public var format: Int
+    public var id: UUID
+    public var name: String
+    public var icon: WorkspaceIcon?
+    public var createdAt: Date
+    public var updatedAt: Date
+
+    public init(_ workspace: Workspace, updatedAt: Date = .now) {
+        format = Self.currentFormat
+        id = workspace.id
+        name = workspace.name
+        icon = workspace.icon
+        createdAt = workspace.createdAt
+        self.updatedAt = updatedAt
+    }
+
+    /// The device's workspace record with this identity (its location is untouched).
+    public func applied(to workspace: Workspace) -> Workspace {
+        var result = workspace
+        result.id = id
+        result.name = name
+        result.icon = icon
+        result.createdAt = createdAt
+        return result
+    }
+}
+
+/// Where a workspace's files live (`pages/`, `assets/`, `workspace.json`): the folder picked at onboarding, or —
+/// for "this device only" — `Workspace/` next to the app's database.
 public enum WorkspaceFolder {
     public static func url(for workspace: Workspace, appRoot: URL) throws -> URL {
         switch workspace.location {
         case .device: appRoot.appending(path: "Workspace", directoryHint: .isDirectory)
         case .folder(let bookmark, _): try FolderBookmark.resolve(bookmark)
         }
+    }
+
+    public static func identityURL(in root: URL) -> URL { root.appending(path: "workspace.json") }
+
+    /// The identity a folder carries, nil for a folder no Hikki has used yet. Call with access to the folder.
+    public static func readIdentity(in root: URL) throws -> WorkspaceIdentity? {
+        let url = identityURL(in: root)
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let identity = try decoder.decode(WorkspaceIdentity.self, from: Data(contentsOf: url))
+        guard identity.format <= WorkspaceIdentity.currentFormat else { return nil }  // a newer Hikki's: leave it
+        return identity
+    }
+
+    public static func writeIdentity(_ identity: WorkspaceIdentity, in root: URL) throws {
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(identity).write(to: identityURL(in: root), options: .atomic)
+    }
+
+    /// True while iCloud still has to deliver the folder's `workspace.json` (a `.workspace.json.icloud`
+    /// placeholder): asks for the download. Nothing may be written over it meanwhile.
+    public static func identityIsDownloading(in root: URL) -> Bool {
+        let placeholder = root.appending(path: ".workspace.json.icloud")
+        guard FileManager.default.fileExists(atPath: placeholder.path) else { return false }
+        try? FileManager.default.startDownloadingUbiquitousItem(at: placeholder)
+        return true
+    }
+
+    /// Runs `body` with security-scoped access to a picked folder (a no-op for other folders).
+    public static func withAccess<T>(to url: URL, _ body: (URL) throws -> T) rethrows -> T {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        return try body(url)
+    }
+
+    /// What a picked folder already holds, for onboarding's "Opens ‘Yancey’s Space’ (12 pages)"; nil for an
+    /// unused folder (or one whose identity is still downloading — then it reads as new; joining still
+    /// adopts the identity once it arrives).
+    public static func existingWorkspace(at url: URL) -> (name: String, pages: Int)? {
+        withAccess(to: url) { root in
+            guard let identity = try? readIdentity(in: root) else { return nil }
+            return (identity.name, pageCount(in: root))
+        }
+    }
+
+    /// How many pages a folder holds (downloaded or not) — "Open ‘Yancey’s Space’ (12 pages)".
+    public static func pageCount(in root: URL) -> Int {
+        (try? PageFiles(root: root).scan().present.count) ?? 0
     }
 
     /// Runs `body` with the folder's page files, holding security-scoped access to a picked folder meanwhile.

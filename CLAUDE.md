@@ -109,8 +109,14 @@ HikkiUITests/                 XCUITest flows
   (newer side wins; a missing file deletes the page only if it was synced before — `pageFileState`) and writes every
   committed page change through (a GRDB transaction observer). It also watches `pages/` (a dispatch source;
   unchanged files are skipped by modification date + size) and posts `pagesChangedOnDisk`, so an open editor
-  reloads a page another device changed (`window.hikki.reload`, declined while it has unsaved edits). Not yet:
-  conflict copies, assets.
+  reloads a page another device changed (`window.hikki.reload`, declined while it has unsaved edits). While files
+  are still downloading (iCloud placeholders / half-written files) it passes again with backoff — kqueue events are
+  unreliable in iOS file-provider folders. Assets live in `<folder>/assets`. Not yet: conflict copies.
+- **Workspace identity** lives in the folder (a workspace.json next to `pages/`: id, name, icon — `WorkspaceIdentity`); the per-device
+  record (`AppPaths.workspace`) only adds the location. A device picking a folder that has one _opens_ that workspace
+  (onboarding says so), and a newer identity from another device replaces the local name/icon on activation. Settings →
+  Storage → Change folder re-points a workspace (`AppModel.changeLocation`: synced marks cleared, local pages written
+  out, the folder's imported — nothing deleted).
 - **Editor menus**: `editor/src/blocks.ts` is the one block catalog (groups, Markdown shortcuts, `turnInto`, `isActive`)
   behind the "/" menu (`editor/src/ui/SlashMenu.tsx`) and the selection menu's "Turn into"
   (`editor/src/ui/SelectionMenu.tsx`, positioned by Tiptap's BubbleMenu; its side panels stay inside the menu element

@@ -24,22 +24,42 @@ public final class WorkspaceSync: @unchecked Sendable {
     private let watchDelay: TimeInterval
     /// Called (on the sync queue) after every reconcile, including those the folder watcher runs.
     private let onReconcile: (@Sendable (Report) -> Void)?
+    /// Backoff between follow-up passes while files are still downloading or unreadable.
+    private let retryDelays: [TimeInterval]
 
     // Confined to `queue`.
     private var stamps: [String: PageFiles.Stamp] = [:]
     private var watcher: DispatchSourceFileSystemObject?
     private var pendingWatchPass: DispatchWorkItem?
+    private var retry: DispatchWorkItem?
+    private var retryIndex = 0
     private var started = false
+    private var stopped = false
 
     /// `watchDelay`: how long the folder must be quiet before a watched change is reconciled (a burst of
-    /// iCloud downloads becomes one pass).
+    /// iCloud downloads becomes one pass). `retryDelays`: follow-up passes while downloads are pending.
     public init(
-        store: DocumentStore, files: PageFiles, watchDelay: TimeInterval = 0.3, onReconcile: (@Sendable (Report) -> Void)? = nil
+        store: DocumentStore, files: PageFiles, watchDelay: TimeInterval = 0.3,
+        retryDelays: [TimeInterval] = [1, 2, 5, 10, 30, 60], onReconcile: (@Sendable (Report) -> Void)? = nil
     ) {
         self.store = store
         self.files = files
         self.watchDelay = watchDelay
+        self.retryDelays = retryDelays
         self.onReconcile = onReconcile
+    }
+
+    /// Ends watching and write-through (the workspace moved to another folder; a new sync takes over).
+    public func stop() {
+        queue.sync {
+            stopped = true
+            watcher?.cancel()
+            watcher = nil
+            pendingWatchPass?.cancel()
+            pendingWatchPass = nil
+            retry?.cancel()
+            retry = nil
+        }
     }
 
     deinit {
@@ -135,8 +155,35 @@ public final class WorkspaceSync: @unchecked Sendable {
                 context: ["count": "\(deletedElsewhere.count)", "synced": "\(synced.count)"])
         }
         ensureWatching()
+        scheduleDownloadRetry(after: report)
         onReconcile?(report)
         return report
+    }
+
+    /// iCloud fills placeholders in later, and a half-downloaded file reads as corrupt: while any are left,
+    /// pass again after a while (backing off). The folder watcher usually gets there first, but kqueue
+    /// events don't arrive reliably from iOS file-provider folders; this doesn't depend on them.
+    private func scheduleDownloadRetry(after report: Report) {
+        retry?.cancel()
+        retry = nil
+        guard started, !stopped, report.waitingForDownload > 0 || report.skippedFiles > 0 else {
+            retryIndex = 0
+            return
+        }
+        if report.imported > 0 { retryIndex = 0 }  // progress: start the backoff over
+        let delay = retryDelays[min(retryIndex, retryDelays.count - 1)]
+        retryIndex += 1
+        let pass = DispatchWorkItem { [weak self] in
+            guard let self, !stopped else { return }
+            retry = nil
+            do {
+                _ = try reconcileOnQueue()
+            } catch {
+                Log.error("workspace download retry failed: \(error)", category: "workspace")
+            }
+        }
+        retry = pass
+        queue.asyncAfter(deadline: .now() + delay, execute: pass)
     }
 
     /// Remote deletions are applied only when the folder exists and they're a small part of what was synced —
@@ -154,6 +201,7 @@ public final class WorkspaceSync: @unchecked Sendable {
     // MARK: - Write-through
 
     private func writeThrough(changed: [DocumentRecord], deletions: Bool, live: Set<String>?) {
+        guard !stopped else { return }
         do {
             for record in changed { try write(record) }
             if deletions, let live {
@@ -188,7 +236,7 @@ public final class WorkspaceSync: @unchecked Sendable {
     /// entry change — an iCloud download, another device's atomic write, a deletion, this device's own
     /// writes — schedules a pass; unchanged files cost a stat, not a read.
     private func ensureWatching() {
-        guard started, watcher == nil else { return }
+        guard started, !stopped, watcher == nil else { return }
         let descriptor = open(files.directory.path, O_EVTONLY)
         guard descriptor >= 0 else { return }
         let source = DispatchSource.makeFileSystemObjectSource(
