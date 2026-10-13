@@ -28,11 +28,17 @@ struct EditorNavigationPolicyTests {
         #expect(decide("https://example.com/", isMainFrame: true) == .cancel)
     }
 
-    @Test func clickedLinksGoToTheSystem() {
+    @Test func clickedWebAndMailLinksGoToTheSystemOnly() {
         #expect(decide("https://example.com/", isMainFrame: true, isLinkClick: true) == .openOutside)
+        #expect(decide("http://example.com/", isMainFrame: true, isLinkClick: true) == .openOutside)
         #expect(decide("mailto:someone@example.com", isMainFrame: true, isLinkClick: true) == .openOutside)
         #expect(decide("https://example.com/", isMainFrame: nil, isLinkClick: true) == .openOutside)
         #expect(decide("https://example.com/", isMainFrame: true, isLinkClick: false) == .cancel)
+        // A link in an embedded page must not launch other apps.
+        #expect(decide("file:///Applications", isMainFrame: false, isLinkClick: true) == .cancel)
+        #expect(decide("x-apple.systempreferences:com.apple.preference", isMainFrame: false, isLinkClick: true) == .cancel)
+        #expect(decide("ssh://host", isMainFrame: true, isLinkClick: true) == .cancel)
+        #expect(decide("javascript:alert(1)", isMainFrame: true, isLinkClick: true) == .cancel)
         #expect(EditorNavigationPolicy.decide(url: nil, isMainFrame: true, isLinkClick: true, editorScheme: "hikki-editor") == .cancel)
     }
 }
