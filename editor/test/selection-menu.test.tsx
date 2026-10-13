@@ -4,9 +4,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { TooltipProvider } from '@/components/ui/tooltip'
 
+import { SelectionMenu } from '../src/components/selection-menu'
 import { createEditor } from '../src/editor'
 import { isSafeHref, normalizeHref } from '../src/links'
-import { SelectionMenu } from '../src/ui/selection-menu'
 import { doc } from './helpers'
 
 let host: HTMLElement

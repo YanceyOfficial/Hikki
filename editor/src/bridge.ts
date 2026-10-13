@@ -1,6 +1,7 @@
 import type { Editor } from '@tiptap/core'
 import type { Transaction } from '@tiptap/pm/state'
 
+import { setBlockLinkBuilder } from './components/block-menu'
 import { activeCommands, createEditor, runCommand } from './editor'
 import { runFind, type FindMode } from './extensions/find'
 import type { MediaHost } from './extensions/media'
@@ -18,7 +19,6 @@ import {
   type Snapshot,
   type ToNativeMessage
 } from './protocol'
-import { setBlockLinkBuilder } from './ui/block-menu'
 
 export interface Transport {
   post(message: ToNativeMessage): Promise<unknown>

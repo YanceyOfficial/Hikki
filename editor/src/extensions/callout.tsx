@@ -3,8 +3,8 @@ import type { Node as PMNode } from '@tiptap/pm/model'
 import type { NodeView } from '@tiptap/pm/view'
 import { createRoot, type Root } from 'react-dom/client'
 
-import { CalloutIcon } from '../ui/callout-icon'
-import { IconProvider } from '../ui/icons'
+import { CalloutIcon } from '../components/callout-icon'
+import { IconProvider } from '../components/icons'
 import { PALETTE, type PaletteColor } from './colors'
 
 declare module '@tiptap/core' {

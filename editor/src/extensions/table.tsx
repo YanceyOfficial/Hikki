@@ -7,8 +7,8 @@ import { createRoot, type Root } from 'react-dom/client'
 
 import { TooltipProvider } from '@/components/ui/tooltip'
 
-import { IconProvider } from '../ui/icons'
-import { TableOverlay, type TableHover } from '../ui/table-overlay'
+import { IconProvider } from '../components/icons'
+import { TableOverlay, type TableHover } from '../components/table-overlay'
 import { PALETTE } from './colors'
 
 const isPaletteColor = (value: unknown) =>

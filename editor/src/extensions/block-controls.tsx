@@ -4,9 +4,9 @@ import { Extension, type Editor } from '@tiptap/core'
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 
+import { openBlockMenu } from '../components/block-menu'
 import { t } from '../i18n'
 import { tiptapShortcut } from '../shortcuts'
-import { openBlockMenu } from '../ui/block-menu'
 import { BlockHighlight, BlockHighlightKey, setBlockHighlight } from './block-highlight'
 import { duplicateUnit, firstTextPos, moveUnit, unitAtPos, type BlockUnit } from './block-units'
 import { dropBeside, MAX_COLUMNS } from './columns'
@@ -206,7 +206,7 @@ class BlockControlsView {
       }
     }
     const listItem = unit.node.type.name === 'listItem' || unit.node.type.name === 'taskItem'
-    // A table draws its own row grips at its left edge (ui/table-overlay.tsx); the handle keeps clear.
+    // A table draws its own row grips at its left edge (components/table-overlay.tsx); the handle keeps clear.
     const table = unit.node.type.name === 'table'
     const left = rect.left - (listItem ? 22 : 0) - (table ? 22 : 0) - this.handle.offsetWidth - 4
     Object.assign(this.handle.style, {

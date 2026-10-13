@@ -4,9 +4,9 @@ import { createRoot, type Root } from 'react-dom/client'
 
 import { TooltipProvider } from '@/components/ui/tooltip'
 
+import { FindPanel } from '../components/find-panel'
+import { IconProvider } from '../components/icons'
 import { matchesShortcut } from '../shortcuts'
-import { FindPanel } from '../ui/find-panel'
-import { IconProvider } from '../ui/icons'
 
 export type FindMode = 'find' | 'replace' | 'next' | 'previous' | 'close'
 

@@ -3,10 +3,10 @@ import type { Node as PMNode } from '@tiptap/pm/model'
 import { TextSelection } from '@tiptap/pm/state'
 import type { NodeView } from '@tiptap/pm/view'
 
+import { FloatingLayer } from '../components/floating'
+import { IconProvider } from '../components/icons'
+import { RubyPanel } from '../components/ruby-panel'
 import { tiptapShortcut } from '../shortcuts'
-import { FloatingLayer } from '../ui/floating'
-import { IconProvider } from '../ui/icons'
-import { RubyPanel } from '../ui/ruby-panel'
 
 /** A run of the selection: kanji with their reading, or kana/punctuation left bare. */
 export type RubySegment = { text: string; reading?: string }

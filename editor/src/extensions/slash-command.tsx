@@ -3,9 +3,9 @@ import { PluginKey } from '@tiptap/pm/state'
 import Suggestion, { exitSuggestion, type SuggestionProps } from '@tiptap/suggestion'
 
 import { BLOCK_GROUPS, filterBlockTypes, type BlockType } from '../blocks'
-import { handleListKey } from '../ui/command-list'
-import { FloatingLayer } from '../ui/floating'
-import { SlashMenu } from '../ui/slash-menu'
+import { handleListKey } from '../components/command-list'
+import { FloatingLayer } from '../components/floating'
+import { SlashMenu } from '../components/slash-menu'
 
 /** The menu's items: grouped (catalog sections in order) without a query, ranked with one. */
 export function slashItems(query: string): BlockType[] {

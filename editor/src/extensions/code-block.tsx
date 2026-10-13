@@ -5,8 +5,8 @@ import type { NodeView } from '@tiptap/pm/view'
 import { common, createLowlight } from 'lowlight'
 import { createRoot, type Root } from 'react-dom/client'
 
-import { CodeBlockHeader } from '../ui/code-block-header'
-import { IconProvider } from '../ui/icons'
+import { CodeBlockHeader } from '../components/code-block-header'
+import { IconProvider } from '../components/icons'
 import { detectLanguage as guessLanguage } from './code-detect'
 import { findLanguage, lastCodeLanguage, rememberCodeLanguage } from './code-languages'
 

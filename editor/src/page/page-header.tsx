@@ -17,8 +17,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 
 import type { EditorBridge } from '../bridge'
-import { AnchoredPopover } from '../ui/anchored-popover'
-import { EmojiPickerPanel } from '../ui/emoji-picker-panel'
+import { AnchoredPopover } from '../components/anchored-popover'
+import { EmojiPickerPanel } from '../components/emoji-picker-panel'
 import { CoverPicker } from './cover-picker'
 import { coverBackground, randomGradient, randomIcon } from './covers'
 

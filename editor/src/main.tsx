@@ -2,6 +2,7 @@ import './style.css'
 import { createRoot } from 'react-dom/client'
 
 import { EditorBridge } from './bridge'
+import { IconProvider } from './components/icons'
 import { installErrorForwarding } from './errors'
 import { findShortcut, type FindMode } from './extensions/find'
 import type { PageIndexEntry } from './extensions/page-links'
@@ -10,7 +11,6 @@ import { Outline } from './page/outline'
 import { PageHeader } from './page/page-header'
 import { PROTOCOL_VERSION, type PagePayload } from './protocol'
 import { devTransport, webkitTransport } from './transport'
-import { IconProvider } from './ui/icons'
 
 const native = webkitTransport()
 const transport = native ?? devTransport()

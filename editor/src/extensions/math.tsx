@@ -3,9 +3,9 @@ import Mathematics, { BlockMath, InlineMath } from '@tiptap/extension-mathematic
 
 import 'katex/dist/katex.min.css'
 
-import { FloatingLayer } from '../ui/floating'
-import { IconProvider } from '../ui/icons'
-import { MathEditor } from '../ui/math-editor'
+import { FloatingLayer } from '../components/floating'
+import { IconProvider } from '../components/icons'
+import { MathEditor } from '../components/math-editor'
 
 export type MathKind = 'inline' | 'block'
 

@@ -14,9 +14,9 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Toggle } from '@/components/ui/toggle'
 
+import { IconProvider } from '../components/icons'
+import { useEditorSnapshot } from '../components/use-editor-snapshot'
 import { t } from '../i18n'
-import { IconProvider } from '../ui/icons'
-import { useEditorSnapshot } from '../ui/use-editor-snapshot'
 import type { MediaHost } from './media'
 import { safeMediaSrc } from './media'
 
