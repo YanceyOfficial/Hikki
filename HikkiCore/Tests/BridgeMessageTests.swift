@@ -4,6 +4,16 @@ import Testing
 @testable import HikkiCore
 
 struct BridgeMessageTests {
+    @Test func onlyTheEditorsOwnMainFrameMayPostMessages() {
+        #expect(BridgeProtocol.trustsFrame(isMainFrame: true, scheme: "hikki-editor", editorScheme: "hikki-editor"))
+        // An embed's frame, whatever it was loaded from.
+        #expect(!BridgeProtocol.trustsFrame(isMainFrame: false, scheme: "hikki-editor", editorScheme: "hikki-editor"))
+        #expect(!BridgeProtocol.trustsFrame(isMainFrame: false, scheme: "https", editorScheme: "hikki-editor"))
+        // The main frame navigated away (it never should).
+        #expect(!BridgeProtocol.trustsFrame(isMainFrame: true, scheme: "https", editorScheme: "hikki-editor"))
+        #expect(!BridgeProtocol.trustsFrame(isMainFrame: true, scheme: nil, editorScheme: "hikki-editor"))
+    }
+
     /// Shapes exactly as WebKit bridges a JS object literal (NSDictionary / NSNumber).
     @Test func decodesReady() throws {
         let body: NSDictionary = ["type": "ready", "protocolVersion": NSNumber(value: BridgeProtocol.version)]

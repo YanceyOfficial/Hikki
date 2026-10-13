@@ -30,6 +30,15 @@ afterEach(() => {
 })
 
 const frame = () => host.querySelector('.hk-embed iframe') as HTMLIFrameElement
+/** A document with one embed as another device (or a paste) might have stored it. */
+const stored = (src: string, original: string) => {
+  editor.commands.setContent({
+    type: 'doc',
+    content: [
+      { type: 'embed', attrs: { src, provider: 'generic', original, height: 300, html: null } }
+    ]
+  })
+}
 
 describe('embed block', () => {
   it('a link becomes a sandboxed frame on the provider page; Open sends the original outside', () => {
@@ -51,6 +60,19 @@ describe('embed block', () => {
     expect(iframe.title).toBe('Embedded content')
     fireEvent.click(host.querySelector('.hk-embed-open')!)
     expect(links.openExternal).toHaveBeenCalledWith('https://youtu.be/dQw4w9WgXcQ')
+  })
+
+  it('a stored src that is not an https page never loads, and an unsafe original gets no Open button', () => {
+    stored('javascript:alert(1)', 'javascript:alert(1)')
+    expect(frame().hasAttribute('src')).toBe(false)
+    expect(host.querySelector('.hk-embed-open')).toBeNull()
+    stored('hikki-editor://app/index.html', 'https://example.com/')
+    expect(frame().hasAttribute('src')).toBe(false)
+    stored('data:text/html,<script>alert(1)</script>', 'https://example.com/')
+    expect(frame().hasAttribute('src')).toBe(false)
+    stored('https://example.com/page', 'file:///etc/passwd')
+    expect(frame().src).toBe('https://example.com/page')
+    expect(host.querySelector('.hk-embed-open')).toBeNull()
   })
 
   it('HTML goes into a frame of its own with no origin', () => {

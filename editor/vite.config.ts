@@ -18,5 +18,10 @@ export default defineConfig({
     // measured cold start is ~310ms WebView-to-ready of which ~95ms is our JS. Splitting Tiptap/React buys little.
     chunkSizeWarningLimit: 1500
   },
-  test: { environment: 'happy-dom', setupFiles: ['./test/setup.ts'] }
+  test: {
+    environment: 'happy-dom',
+    setupFiles: ['./test/setup.ts'],
+    // An <iframe src> (embeds) would make happy-dom fetch the page: no network in tests.
+    environmentOptions: { happyDOM: { settings: { disableIframePageLoading: true } } }
+  }
 })

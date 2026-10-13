@@ -9,6 +9,8 @@ import {
   clampEmbedHeight,
   frameSrc,
   htmlEmbedDocument,
+  isWebURL,
+  safeFrameSrc,
   themedEmbedSrc,
   type EmbedProvider,
   type EmbedSource
@@ -146,7 +148,7 @@ class EmbedView implements NodeView {
 
     // The hover bar: the original page, opened outside.
     const original = node.attrs.original as string | null
-    if (original && this.host) {
+    if (isWebURL(original) && this.host) {
       const { openExternal } = this.host
       const bar = document.createElement('div')
       bar.className = 'hk-embed-bar'
@@ -176,13 +178,19 @@ class EmbedView implements NodeView {
     if (html !== null) {
       this.frame.setAttribute('sandbox', HTML_SANDBOX)
       this.frame.srcdoc = htmlEmbedDocument(html, dark())
-    } else if (src) {
+      return
+    }
+    const safe = safeFrameSrc(src)
+    if (safe) {
       this.frame.setAttribute('sandbox', PAGE_SANDBOX)
       this.frame.src = themedEmbedSrc(
         provider,
-        frameSrc(provider, src, this.host?.bff ?? null),
+        frameSrc(provider, safe, this.host?.bff ?? null),
         dark()
       )
+    } else {
+      // Nothing loads for a src that isn't an https page (a corrupt or hostile document).
+      this.frame.removeAttribute('src')
     }
   }
 

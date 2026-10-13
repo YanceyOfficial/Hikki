@@ -6,6 +6,8 @@ import {
   embedFromURL,
   frameSrc,
   htmlEmbedDocument,
+  isWebURL,
+  safeFrameSrc,
   themedEmbedSrc
 } from '../src/lib/embeds'
 
@@ -117,6 +119,28 @@ describe('embedFromHTML and friends', () => {
     expect(frameSrc('vimeo', 'https://player.vimeo.com/video/1', 'https://bff.example')).toBe(
       'https://player.vimeo.com/video/1'
     )
+  })
+
+  it('only https pages may load in a frame; only web pages open outside', () => {
+    expect(safeFrameSrc('https://player.vimeo.com/video/1')).toBe(
+      'https://player.vimeo.com/video/1'
+    )
+    for (const bad of [
+      'javascript:alert(1)',
+      'data:text/html,<script>alert(1)</script>',
+      'hikki-editor://app/index.html',
+      'http://example.com/',
+      'blob:hikki-editor://app/abc',
+      'not a url',
+      '',
+      null
+    ])
+      expect(safeFrameSrc(bad)).toBeNull()
+    expect(isWebURL('http://example.com/x')).toBe(true)
+    expect(isWebURL('https://example.com/x')).toBe(true)
+    expect(isWebURL('javascript:alert(1)')).toBe(false)
+    expect(isWebURL('file:///etc/passwd')).toBe(false)
+    expect(isWebURL(null)).toBe(false)
   })
 
   it('heights stay within the range', () => {

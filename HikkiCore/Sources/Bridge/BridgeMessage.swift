@@ -3,6 +3,13 @@ import Foundation
 /// Mirror of editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
     public static let version = 11
+
+    /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
+    /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
+    /// scheme, is listened to.
+    public static func trustsFrame(isMainFrame: Bool, scheme: String?, editorScheme: String) -> Bool {
+        isMainFrame && scheme?.lowercased() == editorScheme.lowercased()
+    }
 }
 
 public struct Snapshot: Codable, Sendable, Equatable {

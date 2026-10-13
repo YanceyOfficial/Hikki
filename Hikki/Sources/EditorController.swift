@@ -444,6 +444,16 @@ private final class ScriptMessageProxy: NSObject, WKScriptMessageHandlerWithRepl
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) async -> (
         Any?, String?
     ) {
+        // Embedded pages get `window.webkit.messageHandlers` too: only the editor's own page is listened to.
+        let frame = message.frameInfo
+        guard
+            BridgeProtocol.trustsFrame(
+                isMainFrame: frame.isMainFrame, scheme: frame.securityOrigin.protocol,
+                editorScheme: EditorSchemeHandler.scheme)
+        else {
+            Log.warn("bridge message from an untrusted frame dropped", category: "bridge")
+            return (nil, "untrusted frame")
+        }
         do {
             let reply = try owner?.handle(try BridgeMessage.decode(scriptMessageBody: message.body))
             return (reply, nil)

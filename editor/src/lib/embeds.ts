@@ -184,5 +184,30 @@ export function frameSrc(provider: EmbedProvider, src: string, bff: string | nul
   return `${bff}/embed/youtube/${id}${start ? `?start=${start}` : ''}`
 }
 
+/**
+ * A frame `src` as stored in a document is untrusted (a synced page, a paste): only an https page may load,
+ * never `javascript:`, `data:` or the editor's own scheme, which would run inside this page's origin.
+ */
+export function safeFrameSrc(src: string | null | undefined): string | null {
+  if (!src) return null
+  try {
+    const url = new URL(src)
+    return url.protocol === 'https:' ? url.href : null
+  } catch {
+    return null
+  }
+}
+
+/** Whether `href` is a web page the system browser can be handed. */
+export function isWebURL(href: string | null | undefined): href is string {
+  if (!href) return false
+  try {
+    const { protocol } = new URL(href)
+    return protocol === 'https:' || protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
 export const clampEmbedHeight = (height: number): number =>
   Math.round(Math.min(MAX_EMBED_HEIGHT, Math.max(MIN_EMBED_HEIGHT, height)))
