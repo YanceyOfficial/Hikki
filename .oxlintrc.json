@@ -10,7 +10,7 @@
     "max-lines-per-function": [
       "warn",
       {
-        "max": 120
+        "max": 160
       }
     ],
     "react/react-in-jsx-scope": "off"

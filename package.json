@@ -16,6 +16,7 @@
   },
   "devDependencies": {
     "@phosphor-icons/core": "^2.1.1",
+    "fontkit": "2.0.4",
     "husky": "9.1.7",
     "lint-staged": "17.6.0",
     "oxfmt": "0.72.0",

@@ -1,0 +1,39 @@
+{
+  "fill": {
+    "automatic-gradient": "extended-srgb:0.00000,0.53333,1.00000,1.00000"
+  },
+  "groups": [
+    {
+      "layers": [
+        {
+          "image-name": "03-star.svg",
+          "name": "03-star"
+        },
+        {
+          "image-name": "02-arch.svg",
+          "name": "02-arch"
+        },
+        {
+          "image-name": "01-stem.svg",
+          "name": "01-stem"
+        },
+        {
+          "image-name": "00-background.svg",
+          "name": "00-background"
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.3
+      }
+    }
+  ],
+  "supported-platforms": {
+    "circles": ["watchOS"],
+    "squares": "shared"
+  }
+}

@@ -17,6 +17,16 @@
             }
         }
 
+        /// Menu bar: bring Hikki forward with its main window (the hidden one if the last was closed).
+        @MainActor static func showMain() {
+            NSApp.activate()
+            if let window = visibleMain().first(where: \.isKeyWindow) ?? visibleMain().first {
+                window.makeKeyAndOrderFront(nil)
+            } else {
+                _ = showHidden()
+            }
+        }
+
         @MainActor static func showHidden() -> Bool {
             guard let window = NSApp.windows.first(where: { isMain($0) && !$0.isVisible }) else { return false }
             window.makeKeyAndOrderFront(nil)

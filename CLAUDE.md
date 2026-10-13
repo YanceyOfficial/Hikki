@@ -88,12 +88,14 @@ cd bff && bun run dev      # the BFF locally (needs UNSPLASH_ACCESS_KEY); the ed
 
 ```
 design/tokens.json            design tokens (single source)
-design/icon/                  app icon concepts: layered SVGs for Icon Composer (generate.mjs → <concept>/)
+design/icon/                  app icon (Hi✦): layered SVGs for Icon Composer (generate.mjs → hi-star/, --all for alternatives)
+design/logo/                  wordmark + lockups (generate.mjs: text → outlines with fontkit, sparkle i-dot)
 scripts/gen-tokens.mjs        tokens → Swift + Tailwind theme
 scripts/lint-design.sh        no literal colors/fonts/spacing/radii in view code
 Configs/Version.xcconfig      MARKETING_VERSION / CURRENT_PROJECT_VERSION
 Project.swift                 Tuist manifest (targets: Hikki, HikkiCore, HikkiUI, HikkiCoreTests, HikkiUITests)
 Hikki/Sources/                app: SwiftUI shell, navigation (tabs), sidebar, page bar, search, editor host
+Hikki/Resources/AppIcon.icon  Icon Composer document (merged from design/icon/hi-star; actool renders all sizes)
 HikkiCore/Sources/            framework: Store (GRDB/SQLite, page tree, assets, tabs model), Search (pinyin, fuzzy),
                               Bridge (protocol, JSONValue), Logging (file log, MetricKit crash collection)
 HikkiUI/Sources/              framework: reusable SwiftUI components + Theme
@@ -189,8 +191,14 @@ HikkiUITests/                 XCUITest flows
 - **Demo recordings** (macOS): `HikkiUITests/UnsplashDemoRecording.swift` drives a flow at a watchable pace when run
   with `TEST_RUNNER_HIKKI_RECORD=1`; record with `screencapture -v -V <s>` meanwhile. UI tests paste text rather than
   type it on macOS when spaces matter — synthesized keys go through the active input method (a Chinese IME eats them).
+- **Colour tone**: one for now — `ColorTone.standard` (Kurenai, `design/tokens.json` `tone.default`); the other
+  palettes stay in the tokens and `[data-tone]` CSS for when a picker returns.
 - **Appearance** (Settings → Theme) is applied app-wide (`NSApp.appearance` / window `overrideUserInterfaceStyle`),
   not with `preferredColorScheme`, which left parts of windows in the old scheme after switching back.
 - **macOS windows**: closing the last main window only hides it (Dock click restores it) and closes Settings —
   `Hikki/Sources/WindowLifecycle.swift`.
+- **Menu bar extra** (`Hikki/Sources/MenuBarExtra.swift`, macOS, Settings → General → Menu bar): its menu has no
+  focused window, so New Page / Search post `MenuBarRequests.shared.pending` and the key window's ContentView
+  performs it. The glyph is `Hikki/Resources/Assets.xcassets` → MenuBarIcon (template, from
+  `design/icon/hi-star/menubar.svg`).
 - Simulators sometimes fail with "Busy (Application failed preflight checks)": `xcrun simctl shutdown all`, boot again.

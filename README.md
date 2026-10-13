@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="design/logo/lockup-hi-star-dark.svg">
+    <img src="design/logo/lockup-hi-star-light.svg" alt="hikki" height="56">
+  </picture>
+</p>
+
 # Hikki
 
 Notion-like editor for macOS, iPhone and iPad: SwiftUI shell + Tiptap editor in a WKWebView.

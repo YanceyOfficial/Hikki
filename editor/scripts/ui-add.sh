@@ -5,6 +5,6 @@
 set -e
 cd "$(dirname "$0")/.."
 bunx --bun shadcn@latest add "$@" -y
-sed -i '' 's|from "cn"|from "@/lib/utils"|' src/components/ui/*.tsx
+sed -i '' -e 's|from "cn"|from "@/lib/utils"|' -e "s|from 'cn'|from '@/lib/utils'|" src/components/ui/*.tsx
 if grep -q '"cn":' package.json; then bun remove cn >/dev/null; fi
 bunx oxfmt src/components/ui >/dev/null

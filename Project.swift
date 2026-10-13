@@ -44,9 +44,18 @@ let project = Project(
             resources: [
                 .folderReference(path: "Hikki/Resources/Editor"),
                 "Hikki/Resources/Localization/**",
+                // Icon Composer document (sources: design/icon/hi-star); actool renders every size and appearance.
+                "Hikki/Resources/AppIcon.icon",
+                // MenuBarIcon (template image for the menu bar extra).
+                "Hikki/Resources/Assets.xcassets",
             ],
             dependencies: [.target(name: "HikkiCore"), .target(name: "HikkiUI")],
-            settings: .settings(base: ["SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor"])
+            settings: .settings(base: [
+                "SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor",
+                "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+                // No asset catalog yet, so no AccentColor: silence actool's warning (the app keeps the system tint).
+                "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "",
+            ])
         ),
         .target(
             name: "HikkiCore",

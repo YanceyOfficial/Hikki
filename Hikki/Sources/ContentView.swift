@@ -75,6 +75,8 @@ struct ContentView: View {
                 navigator.open(id)
                 if let block = PageLink.blockID(from: url) { editor.scrollToBlock(block, in: id) }
             }
+            // Menu bar extra: New Page / Search land in the key window (MenuBarExtra.swift).
+            .menuBarRequests(navigator: navigator)
             .onChange(of: navigator.tabs) { _, _ in storedTabs = navigator.encodedTabs() }
             .onChange(of: model.tree) { _, tree in
                 // Pages trashed here or in another window disappear from every tab's history.

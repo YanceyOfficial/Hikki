@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -123.85 395.46 173.70">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF6478"/><stop offset="1" stop-color="#D7003A"/></linearGradient>
+<clipPath id="icon"><rect width="1024" height="1024" rx="229"/></clipPath>
+</defs>
+<g clip-path="url(#icon)">
+<rect width="1024" height="1024" fill="url(#bg)"/>
+<path fill="none" stroke="#FFFFFF" stroke-width="140" stroke-linecap="round" d="M 312 250 L 312 790"/>
+<path fill="none" stroke="#FFD6DB" stroke-width="140" stroke-linecap="round" stroke-linejoin="round" d="M 312 525 A 150 150 0 0 1 612 525 L 612 790"/>
+<path fill="#FFFFFF" d="M 764 184 Q 791.84 272.16 880 300 Q 791.84 327.84 764 416 Q 736.16 327.84 648 300 Q 736.16 272.16 764 184 Z"/><path fill="#FFFFFF" d="M 866 388 Q 876.56 421.44 910 432 Q 876.56 442.56 866 476 Q 855.44 442.56 822 432 Q 855.44 421.44 866 388 Z"/>
+</g>
+</svg>
+
+<g transform="translate(166.41 0)">
+<g fill="#1C1C1C">
+<path transform="translate(0.00 0) scale(0.1 -0.1)" d="M383 0L383 277Q383 320 355.5 347Q328 374 286 374Q258 374 236 362Q214 350 201.5 327.5Q189 305 189 277L138 304Q138 360 162 402.5Q186 445 229 469Q272 493 327 493Q382 493 424 469.5Q466 446 490 404Q514 362 514 307L514 0ZM58 0L58 723L189 723L189 0Z"/>
+<path transform="translate(54.95 0) scale(0.1 -0.1)" d="M57 0L57 483L190 483L190 0ZM124 561Q92 561 71 582.5Q50 604 50 636Q50 667 71 689Q92 711 124 711Q157 711 177.5 689Q198 667 198 636Q198 604 177.5 582.5Q157 561 124 561Z"/>
+<path transform="translate(78.50 0) scale(0.1 -0.1)" d="M365 0L179 249L364 483L516 483L298 219L303 283L525 0ZM58 0L58 723L189 723L189 0Z"/>
+<path transform="translate(130.13 0) scale(0.1 -0.1)" d="M365 0L179 249L364 483L516 483L298 219L303 283L525 0ZM58 0L58 723L189 723L189 0Z"/>
+<path transform="translate(181.75 0) scale(0.1 -0.1)" d="M58 0L58 483L189 483L189 0Z"/>
+</g>
+<path fill="#D7003A" d="M 194.08 -84.41 Q 199.804 -66.284 217.93 -60.56 Q 199.804 -54.836 194.08 -36.71 Q 188.35600000000002 -54.836 170.23000000000002 -60.56 Q 188.35600000000002 -66.284 194.08 -84.41 Z"/>
+</g>
+</svg>

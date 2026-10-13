@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-<defs><clipPath id="icon"><rect width="1024" height="1024" rx="229"/></clipPath></defs>
-<g clip-path="url(#icon)">
-<defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#F1F3F8"/></linearGradient></defs><rect width="1024" height="1024" fill="url(#bg)"/>
-<path fill="#3350E0" d="M 228 522 C 298 436 428 476 556 460 C 672 446 744 410 806 428 C 862 444 858 516 812 548 C 736 600 614 578 512 590 C 410 602 304 648 240 610 C 190 582 186 548 228 522 Z"/>
-</g>
-</svg>

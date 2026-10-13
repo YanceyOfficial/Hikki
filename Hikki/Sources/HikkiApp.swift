@@ -77,6 +77,8 @@ struct HikkiApp: App {
             }
             .defaultSize(width: 1180, height: 780)
             .windowToolbarStyle(.unified)
+            // The status item (Settings → General → Menu bar); see MenuBarExtra.swift.
+            MenuBarScene()
         #endif
     }
 }

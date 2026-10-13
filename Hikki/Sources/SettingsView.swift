@@ -70,6 +70,7 @@ struct SettingsView: View {
                     Form {
                         WorkspaceSection()
                         EditorSection()
+                        MenuBarSection()
                         LanguageSection()
                     }
                     .formStyle(.grouped)
@@ -309,6 +310,24 @@ private struct EditorSection: View {
         }
     }
 }
+
+#if os(macOS)
+    /// Settings → General → Menu bar: the status item is optional (MenuBarExtra.swift).
+    private struct MenuBarSection: View {
+        @Bindable private var preferences = MenuBarPreferences.shared
+
+        var body: some View {
+            Section {
+                Toggle("app:settings.menuBar", isOn: $preferences.show)
+                    .accessibilityIdentifier("settings-menubar")
+            } header: {
+                Text("app:settings.menuBar.header")
+            } footer: {
+                Text("app:settings.menuBar.detail")
+            }
+        }
+    }
+#endif
 
 private struct LanguageSection: View {
     var body: some View {
