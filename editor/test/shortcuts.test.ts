@@ -1,14 +1,14 @@
 import type { Editor } from '@tiptap/core'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { createEditor } from '../src/editor'
+import { createEditor } from '../src/core/editor'
 import {
   codeFor,
   matchesShortcut,
   SHORTCUTS,
   shortcutLabel,
   tiptapShortcut
-} from '../src/shortcuts'
+} from '../src/core/shortcuts'
 import { doc } from './helpers'
 
 const key = (init: KeyboardEventInit) => new KeyboardEvent('keydown', init)

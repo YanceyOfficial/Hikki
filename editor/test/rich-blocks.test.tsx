@@ -5,9 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TooltipProvider } from '@/components/ui/tooltip'
 
-import { BLOCK_TYPES } from '../src/blocks'
 import { SelectionMenu } from '../src/components/selection-menu'
-import { createEditor } from '../src/editor'
+import { BLOCK_TYPES } from '../src/core/blocks'
+import { createEditor } from '../src/core/editor'
 import { doc, settle, stripIds } from './helpers'
 
 let host: HTMLElement

@@ -4,8 +4,7 @@ import Mathematics, { BlockMath, InlineMath } from '@tiptap/extension-mathematic
 import 'katex/dist/katex.min.css'
 
 import { FloatingLayer } from '../components/floating'
-import { IconProvider } from '../components/icons'
-import { MathEditor } from '../components/math-editor'
+import { renderMathEditor } from '../components/math-editor'
 
 export type MathKind = 'inline' | 'block'
 
@@ -35,20 +34,19 @@ export function openMathEditor(editor: Editor, pos: number, kind: MathKind): voi
     else editor.commands.updateBlockMath({ latex, pos })
     close(editor)
   }
-  layer.render(
-    <IconProvider>
-      <MathEditor
-        initial={node.attrs.latex as string}
-        multiline={kind === 'block'}
-        onDone={commit}
-        onCancel={() => {
-          // A formula that was never written (just inserted) goes away again.
-          if (!(node.attrs.latex as string).trim())
-            editor.chain().setNodeSelection(pos).deleteSelection().run()
-          close(editor)
-        }}
-      />
-    </IconProvider>,
+  renderMathEditor(
+    layer,
+    {
+      initial: node.attrs.latex as string,
+      multiline: kind === 'block',
+      onDone: commit,
+      onCancel: () => {
+        // A formula that was never written (just inserted) goes away again.
+        if (!(node.attrs.latex as string).trim())
+          editor.chain().setNodeSelection(pos).deleteSelection().run()
+        close(editor)
+      }
+    },
     () => dom.getBoundingClientRect()
   )
 }

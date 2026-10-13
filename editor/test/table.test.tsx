@@ -3,8 +3,8 @@ import type { Editor } from '@tiptap/core'
 import { CellSelection } from '@tiptap/pm/tables'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { BLOCK_TYPES } from '../src/blocks'
-import { createEditor } from '../src/editor'
+import { BLOCK_TYPES } from '../src/core/blocks'
+import { createEditor } from '../src/core/editor'
 import {
   addColumnAtEnd,
   addRowAtEnd,

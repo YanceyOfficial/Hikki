@@ -1,4 +1,4 @@
-import { SHORTCUTS, type ShortcutId } from './generated/shortcuts'
+import { SHORTCUTS, type ShortcutId } from '../generated/shortcuts'
 
 export { SHORTCUTS, type ShortcutId }
 

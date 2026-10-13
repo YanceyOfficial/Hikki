@@ -12,7 +12,7 @@ import {
   rememberEmoji,
   searchEmoji,
   type EmojiCategory
-} from './emoji-data'
+} from '../lib/emoji-data'
 
 type Props = {
   onSelect: (emoji: string) => void

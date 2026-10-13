@@ -17,21 +17,23 @@ import {
 } from '@phosphor-icons/react'
 import type { Editor } from '@tiptap/core'
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import type { Root } from 'react-dom/client'
 
 import { Button } from '@/components/ui/button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Kbd } from '@/components/ui/kbd'
 import { Toggle } from '@/components/ui/toggle'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
-import { BLOCK_TYPES } from '../blocks'
+import { BLOCK_TYPES } from '../core/blocks'
+import { t } from '../core/i18n'
+import { isSafeHref, normalizeHref } from '../core/links'
+import { shortcutLabel } from '../core/shortcuts'
 import { colorLabel, PALETTE, type PaletteColor } from '../extensions/colors'
-import { t } from '../i18n'
-import { isSafeHref, normalizeHref } from '../links'
-import { shortcutLabel } from '../shortcuts'
+import { useEditorSnapshot } from '../hooks/use-editor-snapshot'
 import { usePresence } from './floating'
-import { useEditorSnapshot } from './use-editor-snapshot'
+import { IconProvider } from './icons'
 
 type Panel = 'turnInto' | 'color' | 'link' | 'more' | null
 
@@ -527,5 +529,16 @@ function LinkPanel({
         </Button>
       </div>
     </div>
+  )
+}
+
+/** Draws the menu into the extension's React root (the BubbleMenu element; the extension holds no JSX). */
+export function renderSelectionMenu(root: Root, editor: Editor): void {
+  root.render(
+    <IconProvider>
+      <TooltipProvider delay={500}>
+        <SelectionMenu editor={editor} />
+      </TooltipProvider>
+    </IconProvider>
   )
 }

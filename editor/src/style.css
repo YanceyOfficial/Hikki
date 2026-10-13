@@ -184,7 +184,7 @@
     animation: hk-fade-in var(--motion-pop-in) var(--ease-out);
   }
 
-  /* Callout (extensions/callout.tsx): emoji + content on a wash background (gray by default). */
+  /* Callout (extensions/callout.ts): emoji + content on a wash background (gray by default). */
   .tiptap .hk-callout {
     @apply my-1 flex gap-2 rounded-md px-3 py-3;
   }
@@ -199,7 +199,7 @@
     @apply min-w-0 flex-1 pt-px;
   }
 
-  /* Tables (extensions/table.tsx): TableKit with column resizing; controls are an overlay. */
+  /* Tables (extensions/table.ts): TableKit with column resizing; controls are an overlay. */
   .tiptap .tableWrapper {
     @apply my-2 overflow-x-auto pt-2.5 pb-1;
   }
@@ -258,7 +258,7 @@
     @apply bg-primary/50;
   }
 
-  /* Find (extensions/find.tsx): every match, the current one stronger. */
+  /* Find (extensions/find.ts): every match, the current one stronger. */
   .tiptap .find-and-replace-result {
     @apply rounded-[2px] bg-wash-yellow;
     box-shadow: 0 0 0 1px var(--color-wash-yellow);
@@ -279,7 +279,7 @@
     @apply text-placeholder;
   }
 
-  /* Media (extensions/media.tsx). */
+  /* Media (extensions/media.ts). */
   .tiptap [data-resize-container] {
     @apply my-2;
   }
@@ -347,7 +347,7 @@
     @apply block h-full origin-left bg-primary transition-transform duration-(--motion-pop-in) ease-out;
   }
 
-  /* Ruby / furigana (extensions/ruby.tsx): the reading above the base text, clickable to edit. */
+  /* Ruby / furigana (extensions/ruby.ts): the reading above the base text, clickable to edit. */
   .tiptap ruby.hk-ruby {
     ruby-position: over;
   }
@@ -360,7 +360,7 @@
     @apply text-foreground;
   }
 
-  /* Formulas (extensions/math.tsx). */
+  /* Formulas (extensions/math.ts). */
   .tiptap [data-type='block-math'] {
     @apply my-1 cursor-pointer overflow-x-auto rounded-md px-2 py-3 text-center hover:bg-accent;
   }
@@ -377,7 +377,7 @@
     @apply font-mono text-destructive;
   }
 
-  /* Code block (extensions/code-block.tsx): header bar + pre; Xcode's Default themes via syntax-* tokens. */
+  /* Code block (extensions/code-block.ts): header bar + pre; Xcode's Default themes via syntax-* tokens. */
   .tiptap .hk-code-block {
     @apply my-1 rounded-md bg-code/50;
   }
@@ -511,7 +511,7 @@
     transition: background-color var(--motion-pop-in) var(--ease-out);
   }
 
-  /* Block controls (extensions/block-controls.tsx): + and ⋮⋮ beside the hovered block. */
+  /* Block controls (extensions/block-controls.ts): + and ⋮⋮ beside the hovered block. */
   .hk-block-handle {
     @apply fixed z-30 flex items-center gap-0.5 transition-opacity duration-(--motion-pop-in);
   }

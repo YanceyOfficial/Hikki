@@ -4,7 +4,9 @@ import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 
-import { t } from '../i18n'
+import { t } from '../core/i18n'
+import type { FloatingAnchor, FloatingLayer } from './floating'
+import { IconProvider } from './icons'
 
 type Props = {
   initial: string
@@ -64,5 +66,15 @@ export function MathEditor({ initial, multiline, onDone, onCancel }: Props) {
         </Button>
       </div>
     </div>
+  )
+}
+
+/** Shows the editor in its floating layer beside the formula (the extension holds no JSX). */
+export function renderMathEditor(layer: FloatingLayer, props: Props, anchor: FloatingAnchor): void {
+  layer.render(
+    <IconProvider>
+      <MathEditor {...props} />
+    </IconProvider>,
+    anchor
   )
 }

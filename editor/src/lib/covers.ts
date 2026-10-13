@@ -1,4 +1,4 @@
-import { t } from '../i18n'
+import { t } from '../core/i18n'
 
 // design-lint: allow-file — cover artwork (gradients), not UI chrome colors.
 

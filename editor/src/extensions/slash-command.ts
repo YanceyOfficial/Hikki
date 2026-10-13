@@ -2,10 +2,10 @@ import { Extension } from '@tiptap/core'
 import { PluginKey } from '@tiptap/pm/state'
 import Suggestion, { exitSuggestion, type SuggestionProps } from '@tiptap/suggestion'
 
-import { BLOCK_GROUPS, filterBlockTypes, type BlockType } from '../blocks'
 import { handleListKey } from '../components/command-list'
 import { FloatingLayer } from '../components/floating'
-import { SlashMenu } from '../components/slash-menu'
+import { renderSlashMenu } from '../components/slash-menu'
+import { BLOCK_GROUPS, filterBlockTypes, type BlockType } from '../core/blocks'
 
 /** The menu's items: grouped (catalog sections in order) without a query, ranked with one. */
 export function slashItems(query: string): BlockType[] {
@@ -55,18 +55,21 @@ export const SlashCommand = Extension.create({
             const props = current
             // Items load asynchronously; don't flash "No results" while the first batch is in flight.
             if (props.loading && props.items.length === 0) return
-            layer.render(
-              <SlashMenu
-                items={props.items}
-                query={props.query}
-                selectedIndex={selected}
-                onHover={(i) => {
+            renderSlashMenu(
+              layer,
+              {
+                items: props.items,
+                query: props.query,
+                selectedIndex: selected,
+                onHover: (i) => {
                   selected = i
                   draw()
-                }}
-                onSelect={(i) => props.items[i] && props.command(props.items[i])}
-                onClose={() => exitSuggestion(props.editor.view, SlashCommandKey)}
-              />,
+                },
+                onSelect: (i) => {
+                  if (props.items[i]) props.command(props.items[i])
+                },
+                onClose: () => exitSuggestion(props.editor.view, SlashCommandKey)
+              },
               props.clientRect
             )
           }

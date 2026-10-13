@@ -1,8 +1,8 @@
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { EditorBridge, type Transport } from '../src/bridge'
-import type { ToNativeMessage } from '../src/protocol'
+import { EditorBridge, type Transport } from '../src/core/bridge'
+import type { ToNativeMessage } from '../src/core/protocol'
 import { doc, page, stripIds } from './helpers'
 
 describe('EditorBridge', () => {

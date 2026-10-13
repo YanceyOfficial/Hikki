@@ -2,11 +2,8 @@ import { Extension, type Editor } from '@tiptap/core'
 import FindAndReplace from '@tiptap/extension-find-and-replace'
 import { createRoot, type Root } from 'react-dom/client'
 
-import { TooltipProvider } from '@/components/ui/tooltip'
-
-import { FindPanel } from '../components/find-panel'
-import { IconProvider } from '../components/icons'
-import { matchesShortcut } from '../shortcuts'
+import { renderFindPanel } from '../components/find-panel'
+import { matchesShortcut } from '../core/shortcuts'
 
 export type FindMode = 'find' | 'replace' | 'next' | 'previous' | 'close'
 
@@ -68,25 +65,19 @@ export const Find = Extension.create<Record<string, never>, FindStorage>({
 
 function renderFind(editor: Editor) {
   const storage = editor.storage.find
-  storage.root?.render(
-    <IconProvider>
-      <TooltipProvider delay={500}>
-        <FindPanel
-          // A fresh panel per Find request: it refocuses and starts from the prefill.
-          key={storage.focusRequest}
-          editor={editor}
-          open={storage.open}
-          replace={storage.replace}
-          initialText={storage.prefill ?? editor.storage.findAndReplace.searchTerm}
-          onReplaceToggle={() => {
-            storage.replace = !storage.replace
-            renderFind(editor)
-          }}
-          onClose={() => runFind(editor, 'close')}
-        />
-      </TooltipProvider>
-    </IconProvider>
-  )
+  if (!storage.root) return
+  // A fresh panel per Find request: it refocuses and starts from the prefill.
+  renderFindPanel(storage.root, storage.focusRequest, {
+    editor,
+    open: storage.open,
+    replace: storage.replace,
+    initialText: storage.prefill ?? editor.storage.findAndReplace.searchTerm,
+    onReplaceToggle: () => {
+      storage.replace = !storage.replace
+      renderFind(editor)
+    },
+    onClose: () => runFind(editor, 'close')
+  })
 }
 
 /** The current match, brought to the middle of the view (stepping, or a new term's first match). */

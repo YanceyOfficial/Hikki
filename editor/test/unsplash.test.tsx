@@ -1,14 +1,14 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { CoverPicker, PhotoCredit } from '../src/page/cover-picker'
 import {
   searchUnsplash,
   trackUnsplashDownload,
   UNSPLASH_HOME,
   UnsplashError,
   type UnsplashPhoto
-} from '../src/page/unsplash'
+} from '../src/lib/unsplash'
+import { CoverPicker, PhotoCredit } from '../src/page/cover-picker'
 
 const photo: UnsplashPhoto = {
   id: 'abc',

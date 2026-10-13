@@ -17,6 +17,7 @@ import {
 import type { Editor } from '@tiptap/core'
 import type { CellSelection } from '@tiptap/pm/tables'
 import { useState, type ReactNode } from 'react'
+import type { Root } from 'react-dom/client'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -30,9 +31,10 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
+import { t } from '../core/i18n'
 import { colorLabel, PALETTE, type PaletteColor } from '../extensions/colors'
 import {
   addColumnAtEnd,
@@ -44,7 +46,7 @@ import {
   setCellBackground,
   sortColumn
 } from '../extensions/table-ops'
-import { t } from '../i18n'
+import { IconProvider } from './icons'
 
 export type TableHover = {
   tablePos: number
@@ -498,5 +500,16 @@ function CellBar({ editor, selection }: { editor: Editor; selection: CellSelecti
         {t('table.clear')}
       </Button>
     </div>
+  )
+}
+
+/** Draws the controls into the table plugin's React root over the editor (the extension holds no JSX). */
+export function renderTableOverlay(root: Root, props: Props): void {
+  root.render(
+    <IconProvider>
+      <TooltipProvider delay={500}>
+        <TableOverlay {...props} />
+      </TooltipProvider>
+    </IconProvider>
   )
 }

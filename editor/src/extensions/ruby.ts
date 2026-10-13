@@ -4,9 +4,8 @@ import { TextSelection } from '@tiptap/pm/state'
 import type { NodeView } from '@tiptap/pm/view'
 
 import { FloatingLayer } from '../components/floating'
-import { IconProvider } from '../components/icons'
-import { RubyPanel } from '../components/ruby-panel'
-import { tiptapShortcut } from '../shortcuts'
+import { renderRubyPanel } from '../components/ruby-panel'
+import { tiptapShortcut } from '../core/shortcuts'
 
 /** A run of the selection: kanji with their reading, or kana/punctuation left bare. */
 export type RubySegment = { text: string; reading?: string }
@@ -299,20 +298,19 @@ export function openRubyPanel(editor: Editor, host: RubyHost | null): void {
     finish()
   }
   const render = (segments: RubySegment[] | null, suggesting: boolean) =>
-    layer.render(
-      <IconProvider>
-        <RubyPanel
-          base={base}
-          initial={(existing?.node.attrs.reading as string) ?? ''}
-          segments={segments}
-          suggesting={suggesting}
-          canRemove={existing !== null}
-          onDone={done}
-          onDoneSegments={doneSegments}
-          onRemove={() => done('')}
-          onCancel={finish}
-        />
-      </IconProvider>,
+    renderRubyPanel(
+      layer,
+      {
+        base,
+        initial: (existing?.node.attrs.reading as string) ?? '',
+        segments,
+        suggesting,
+        canRemove: existing !== null,
+        onDone: done,
+        onDoneSegments: doneSegments,
+        onRemove: () => done(''),
+        onCancel: finish
+      },
       anchor
     )
   const wantsSuggestion = host !== null && !existing

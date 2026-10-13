@@ -5,7 +5,7 @@ import type { Node as PMNode } from '@tiptap/pm/model'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet, type NodeView } from '@tiptap/pm/view'
 
-import { t } from '../i18n'
+import { t } from '../core/i18n'
 import { mediaToolbarExtension } from './media-toolbar'
 
 export type MediaKind = 'image' | 'video' | 'audio' | 'file'

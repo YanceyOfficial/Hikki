@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/lib/utils'
 
-import type { EditorBridge } from '../bridge'
+import type { EditorBridge } from '../core/bridge'
 
 /** The closed rail never shows more bars than this (Notion's stays a loose stack on long pages too). */
 const MAX_BARS = 20

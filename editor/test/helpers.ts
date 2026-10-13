@@ -1,4 +1,4 @@
-import type { PagePayload } from '../src/protocol'
+import type { PagePayload } from '../src/core/protocol'
 
 export const doc = (...paragraphs: string[]) => ({
   type: 'doc',

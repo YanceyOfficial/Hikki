@@ -16,11 +16,11 @@ import { Popover as CoverPopover, PopoverContent, PopoverTrigger } from '@/compo
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 
-import type { EditorBridge } from '../bridge'
 import { AnchoredPopover } from '../components/anchored-popover'
 import { EmojiPickerPanel } from '../components/emoji-picker-panel'
+import type { EditorBridge } from '../core/bridge'
+import { coverBackground, randomGradient, randomIcon } from '../lib/covers'
 import { CoverPicker } from './cover-picker'
-import { coverBackground, randomGradient, randomIcon } from './covers'
 
 /** Notion-style page header: cover, icon, hover actions and the page title (a page property, not body content). */
 export function PageHeader({ bridge }: { bridge: EditorBridge }) {

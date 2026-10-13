@@ -2,8 +2,8 @@ import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react
 import type { Editor } from '@tiptap/core'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { EditorBridge } from '../src/bridge'
-import { createEditor } from '../src/editor'
+import { EditorBridge } from '../src/core/bridge'
+import { createEditor } from '../src/core/editor'
 import { findShortcut, runFind } from '../src/extensions/find'
 import { doc, page, settle } from './helpers'
 

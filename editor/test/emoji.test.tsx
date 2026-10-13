@@ -1,14 +1,14 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { EmojiPickerPanel } from '../src/components/emoji-picker-panel'
 import {
   buildCategories,
   rememberEmoji,
   recentEmoji,
   searchEmoji,
   type RawEmoji
-} from '../src/components/emoji-data'
-import { EmojiPickerPanel } from '../src/components/emoji-picker-panel'
+} from '../src/lib/emoji-data'
 
 const messages = {
   groups: [

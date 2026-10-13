@@ -5,8 +5,7 @@ import type { NodeView } from '@tiptap/pm/view'
 import { common, createLowlight } from 'lowlight'
 import { createRoot, type Root } from 'react-dom/client'
 
-import { CodeBlockHeader } from '../components/code-block-header'
-import { IconProvider } from '../components/icons'
+import { renderCodeBlockHeader } from '../components/code-block-header'
 import { detectLanguage as guessLanguage } from './code-detect'
 import { findLanguage, lastCodeLanguage, rememberCodeLanguage } from './code-languages'
 
@@ -96,17 +95,13 @@ class CodeBlockView implements NodeView {
     // mutation ProseMirror would answer by rebuilding the node view (and forgetting the guess).
     const className = `language-${language}`
     if (this.contentDOM.className !== className) this.contentDOM.className = className
-    this.root.render(
-      <IconProvider>
-        <CodeBlockHeader
-          language={language}
-          detected={language === 'auto' ? this.detected : null}
-          editable={this.editor.isEditable}
-          onLanguage={(id) => this.setLanguage(id)}
-          getText={() => this.node.textContent}
-        />
-      </IconProvider>
-    )
+    renderCodeBlockHeader(this.root, {
+      language,
+      detected: language === 'auto' ? this.detected : null,
+      editable: this.editor.isEditable,
+      onLanguage: (id) => this.setLanguage(id),
+      getText: () => this.node.textContent
+    })
   }
 
   private setLanguage(id: string) {

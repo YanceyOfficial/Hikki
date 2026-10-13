@@ -35,7 +35,11 @@ These rules are mandatory. Automated ones are noted.
   editor-specific pieces live in `editor/src/components/`. Fields, buttons, toggles, tooltips and popovers are always the shadcn
   components (`Input`, `InputGroup`, `Textarea`, `Button`, `Toggle`, `Kbd`…) restyled with classes — never a bare
   `<input>` / `<button>`; Phosphor icons are imported by their `…Icon` names. Files under `editor/src` are
-  kebab-case (`editor/src/components/find-panel.tsx`; the component inside stays PascalCase); class recipes that aren't a component
+  kebab-case (`editor/src/components/find-panel.tsx`; the component inside stays PascalCase), and a folder holds either
+  `.tsx` or `.ts`, never both: React lives in `editor/src/components/` and `editor/src/page/`; `editor/src/core/`
+  (bridge, protocol, editor setup, catalogs), `editor/src/extensions/`, `editor/src/lib/` and `editor/src/hooks/` are
+  plain TypeScript — an extension that shows a React panel calls the component file's `render*` helper
+  (`renderFindPanel`, `renderTableOverlay`…) instead of holding JSX. Class recipes that aren't a component
   (`.hk-floating`, `.hk-column`) live in `editor/src/style.css`, and `cn` comes from `@/lib/utils`.
 - **Icons go through one list** (`design/icons.json`, `make icons`). The native shell draws SF Symbols (each icon's
   `"sf"` name; the generated `Icon` enum, `IconView` / `IconLabel`, `Icon.glyph` for system-sized spots), falling
@@ -44,7 +48,7 @@ These rules are mandatory. Automated ones are noted.
 - **Keyboard shortcuts come from one registry.** `design/shortcuts.json` → `make shortcuts` generates
   `Hikki/Sources/Generated/Shortcuts.swift` (`Shortcut.x.keyboardShortcut` / `.display`) and
   `editor/src/generated/shortcuts.ts` (`matchesShortcut`, `shortcutLabel`, `tiptapShortcut` in
-  `editor/src/shortcuts.ts`). Each entry says who binds it: `app` (native menu), `editor` (the page; menus only
+  `editor/src/core/shortcuts.ts`). Each entry says who binds it: `app` (native menu), `editor` (the page; menus only
   display it) or `both`. No literal key equivalents or "⌘X" labels in code; the generator refuses two shortcuts on
   the same keys. _Checked by `make lint-design`._
 - **Copy language.** User-facing strings are keys, never literals: native `app:<area>.<element>` keys in
@@ -60,7 +64,7 @@ These rules are mandatory. Automated ones are noted.
 - **Tests with every change.** Web logic: vitest in `editor/test/`. Swift data/logic: Swift Testing in
   `HikkiCore/Tests/`. User-visible flows: XCUITest in `HikkiUITests/` (look elements up by accessibility identifier).
   A bug fix comes with a test that fails without the fix — check that it does.
-- **Bridge protocol.** Messages are defined twice — `editor/src/protocol.ts` and
+- **Bridge protocol.** Messages are defined twice — `editor/src/core/protocol.ts` and
   `HikkiCore/Sources/Bridge/BridgeMessage.swift` — and versioned by `PROTOCOL_VERSION` / `BridgeProtocol.version`.
   Change both together and bump both.
 - **Split write paths.** `DocumentStore.saveContent` writes only editor-owned columns; metadata (icon, cover,
@@ -103,9 +107,14 @@ Hikki/Resources/AppIcon.icon  Icon Composer document (merged from design/icon/hi
 HikkiCore/Sources/            framework: Store (GRDB/SQLite, page tree, assets, tabs model), Search (pinyin, fuzzy),
                               Bridge (protocol, JSONValue), Logging (file log, MetricKit crash collection)
 HikkiUI/Sources/              framework: reusable SwiftUI components + Theme
-editor/src/                   web editor: bridge, Tiptap extensions, page header, ui primitives
-editor/src/components/        editor UI: menus, panels, the floating layer, icons (kebab-case files)
+editor/src/                   web editor: main.tsx + style.css; each folder below holds only .tsx or only .ts
+editor/src/core/              bridge, protocol, transport, editor setup, block catalog, i18n, shortcuts, links, page store
+editor/src/extensions/        Tiptap extensions (.ts; React panels are drawn through the components' render* helpers)
+editor/src/components/        editor UI (.tsx): menus, panels, the floating layer, icons (kebab-case files)
 editor/src/components/ui/     shadcn components (generated via `bun run ui:add`)
+editor/src/page/              page header, cover picker, outline (.tsx)
+editor/src/hooks/             React hooks (useEditorSnapshot)
+editor/src/lib/               data helpers: cn, cover catalog, Unsplash client, emoji data
 editor/test/                  vitest
 bff/                          backend-for-frontend (Hono, Vercel): Unsplash proxy; tests with `bun test`
 HikkiUITests/                 XCUITest flows
@@ -139,39 +148,39 @@ HikkiUITests/                 XCUITest flows
   (onboarding says so), and a newer identity from another device replaces the local name/icon on activation. Settings →
   Storage → Change folder re-points a workspace (`AppModel.changeLocation`: synced marks cleared, local pages written
   out, the folder's imported — nothing deleted).
-- **Editor menus**: `editor/src/blocks.ts` is the one block catalog (groups, Markdown shortcuts, `turnInto`, `isActive`)
+- **Editor menus**: `editor/src/core/blocks.ts` is the one block catalog (groups, Markdown shortcuts, `turnInto`, `isActive`)
   behind the "/" menu (`editor/src/components/slash-menu.tsx`) and the selection menu's "Turn into"
   (`editor/src/components/selection-menu.tsx`, positioned by Tiptap's BubbleMenu; its side panels stay inside the menu element
   or BubbleMenu hides on blur). Text/background colors are stored as palette names (`editor/src/extensions/colors.ts`) and
   styled from the `ink-*` / `wash-*` tokens — never raw CSS colors in the document.
-- **Code blocks** (`editor/src/extensions/code-block.tsx`): lowlight with the `common` grammars, colored by the
+- **Code blocks** (`editor/src/extensions/code-block.ts`): lowlight with the `common` grammars, colored by the
   `syntax-*` tokens (Xcode's Default Light/Dark); new blocks use the last picked language
   (`editor/src/extensions/code-languages.ts`). "Auto-detect" (`language: auto`) guesses with our own signatures
   (`editor/src/extensions/code-detect.ts` — highlight.js's guess ties CSS/JS/Python on short snippets) and names the
   guess in the header; the same guess feeds lowlight, so colours and label agree. Node views are plain DOM with small React roots for controls (the editor
   is the core `Editor`, not `@tiptap/react`).
-- **Block controls** (`editor/src/extensions/block-controls.tsx`, units in `editor/src/extensions/block-units.ts`): our
+- **Block controls** (`editor/src/extensions/block-controls.ts`, units in `editor/src/extensions/block-units.ts`): our
   own + / ⋮⋮ handle on pointer events (HTML5 drag-and-drop is unreliable in WebKit), centred on the block's first line;
   drag shows a ghost and a drop line (side edges make columns); a click opens `editor/src/components/block-menu.tsx`. Fine
   pointers only. Block colours are `blockColor` / `blockBackground` attributes. Block-level highlights (drag
   source, the block a menu is open for) are node decorations from `editor/src/extensions/block-highlight.ts` —
   never classes on the node's DOM, which ProseMirror drops on redraw.
 - **Rich blocks**: toggles (`editor/src/extensions/toggle.ts`; open/closed is not stored, so opening never saves),
-  callouts, KaTeX formulas (`editor/src/extensions/math.tsx`; our panel replaces Tiptap's `prompt()`), tables
-  (`editor/src/extensions/table.tsx` + `editor/src/extensions/table-ops.ts`, controls drawn by
+  callouts, KaTeX formulas (`editor/src/extensions/math.ts`; our panel replaces Tiptap's `prompt()`), tables
+  (`editor/src/extensions/table.ts` + `editor/src/extensions/table-ops.ts`, controls drawn by
   `editor/src/components/table-overlay.tsx`) and columns (`editor/src/extensions/columns.ts`: schema needs 2–5 columns, so
   removing one of two replaces the row; dragging a block onto another's side edge makes a row).
 - **Page links** (`editor/src/extensions/page-links.ts`): `hikki://page/<id>#<block>`. The native side feeds the editor
   the page index (`window.hikki.setPages`) so pasted links get titles; "Copy link to block" puts a ready `<a>` plus the
   URL on the clipboard; a plain-text paste of a link becomes a labelled hyperlink; clicks go through the bridge
   (`openPage` with the block, `openLink` for the web) and `window.hikki.scrollToBlock` lands on the block.
-- **Ruby / furigana** (`editor/src/extensions/ruby.tsx`): an inline node (`<ruby><rb>…</rb><rt>…</rt></ruby>`, reading as
+- **Ruby / furigana** (`editor/src/extensions/ruby.ts`): an inline node (`<ruby><rb>…</rb><rt>…</rt></ruby>`, reading as
   an attribute); ⇧⌘R or Format → More → Ruby opens the reading panel, prefilled from the native tokenizer
   (`HikkiCore/Sources/Search/JapaneseReading.swift`, `suggestReading` message): a phrase comes back as kanji runs with
   readings and bare kana (役に立ちます → 役(やく)に立(た)ちます), one ruby per run; "Whole" puts one reading over all of it.
 - **Full screen (macOS)**: `Hikki/Sources/FullScreenScrim.swift` fades the top of each column while the window is in full
   screen, where the auto-hidden toolbar slides down over the content (Photos). `HIKKI_DEBUG_SCRIM` forces it on.
-- **Find, spelling, insets**: find and replace is `editor/src/extensions/find.tsx` (Tiptap's extension, RE2 regex) with
+- **Find, spelling, insets**: find and replace is `editor/src/extensions/find.ts` (Tiptap's extension, RE2 regex) with
   `editor/src/components/find-panel.tsx`; the page handles ⌘F/⌥⌘F/⌘G itself, the native Edit menu and the page ⋯ menu ("Find
   in Page", the only way on a phone) call `window.hikki.find`. Spellcheck is WebKit's (Settings → Editor,
   `window.hikki.setSpellcheck`). `window.hikki.setInsets` gives the page the toolbar height for fixed panels.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { blockTexts, deriveTitle, plainText, wordCount } from '../src/extract'
+import { blockTexts, deriveTitle, plainText, wordCount } from '../src/core/extract'
 
 const doc = {
   type: 'doc',

@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
+import { t } from '../core/i18n'
 import { wholeReading, type RubySegment } from '../extensions/ruby'
-import { t } from '../i18n'
+import type { FloatingAnchor, FloatingLayer } from './floating'
+import { IconProvider } from './icons'
 
 type Props = {
   base: string
@@ -136,5 +138,15 @@ export function RubyPanel({
         </div>
       </div>
     </div>
+  )
+}
+
+/** Shows the panel in its floating layer under the selection (the extension holds no JSX). */
+export function renderRubyPanel(layer: FloatingLayer, props: Props, anchor: FloatingAnchor): void {
+  layer.render(
+    <IconProvider>
+      <RubyPanel {...props} />
+    </IconProvider>,
+    anchor
   )
 }

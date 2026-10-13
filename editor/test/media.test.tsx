@@ -1,10 +1,10 @@
 import type { Editor } from '@tiptap/core'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { EditorBridge, extensionOf } from '../src/bridge'
-import { createEditor } from '../src/editor'
+import { EditorBridge, extensionOf } from '../src/core/bridge'
+import { createEditor } from '../src/core/editor'
+import type { ToNativeMessage } from '../src/core/protocol'
 import { insertFiles, mediaKindOf, safeMediaSrc, type MediaHost } from '../src/extensions/media'
-import type { ToNativeMessage } from '../src/protocol'
 import { doc, settle, stripIds } from './helpers'
 
 let host: HTMLElement

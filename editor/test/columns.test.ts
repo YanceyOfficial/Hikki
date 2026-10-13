@@ -2,8 +2,8 @@ import type { Editor, JSONContent } from '@tiptap/core'
 import { NodeSelection } from '@tiptap/pm/state'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { BLOCK_TYPES } from '../src/blocks'
-import { createEditor } from '../src/editor'
+import { BLOCK_TYPES } from '../src/core/blocks'
+import { createEditor } from '../src/core/editor'
 import { dropBeside } from '../src/extensions/columns'
 import { doc, stripIds } from './helpers'
 

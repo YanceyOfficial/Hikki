@@ -3,10 +3,7 @@ import { BubbleMenuPlugin } from '@tiptap/extension-bubble-menu'
 import { PluginKey } from '@tiptap/pm/state'
 import { createRoot, type Root } from 'react-dom/client'
 
-import { TooltipProvider } from '@/components/ui/tooltip'
-
-import { IconProvider } from '../components/icons'
-import { SelectionMenu } from '../components/selection-menu'
+import { renderSelectionMenu } from '../components/selection-menu'
 import { SlashCommandKey } from './slash-command'
 
 export const SelectionMenuKey = new PluginKey('selectionMenu')
@@ -68,13 +65,7 @@ export const SelectionMenuExtension = Extension.create<
     const element = this.storage.element
     if (!element) return
     const root = createRoot(element)
-    root.render(
-      <IconProvider>
-        <TooltipProvider delay={500}>
-          <SelectionMenu editor={this.editor} />
-        </TooltipProvider>
-      </IconProvider>
-    )
+    renderSelectionMenu(root, this.editor)
     this.storage.root = root
   },
 

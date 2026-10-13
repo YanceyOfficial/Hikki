@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { normalizeBody } from '../src/normalize'
+import { normalizeBody } from '../src/core/normalize'
 
 const p = (text: string) => ({ type: 'paragraph', content: [{ type: 'text', text }] })
 

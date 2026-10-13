@@ -2,7 +2,7 @@ import { type Editor, InputRule, wrappingInputRule } from '@tiptap/core'
 import Blockquote from '@tiptap/extension-blockquote'
 import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details'
 
-import { t } from '../i18n'
+import { t } from '../core/i18n'
 
 /**
  * Toggle list (Notion's "> " shortcut). Open/closed is view state, not content: it isn't stored, so

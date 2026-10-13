@@ -1,16 +1,16 @@
 import './style.css'
 import { createRoot } from 'react-dom/client'
 
-import { EditorBridge } from './bridge'
 import { IconProvider } from './components/icons'
-import { installErrorForwarding } from './errors'
+import { EditorBridge } from './core/bridge'
+import { installErrorForwarding } from './core/errors'
+import { setLocale } from './core/i18n'
+import { PROTOCOL_VERSION, type PagePayload } from './core/protocol'
+import { devTransport, webkitTransport } from './core/transport'
 import { findShortcut, type FindMode } from './extensions/find'
 import type { PageIndexEntry } from './extensions/page-links'
-import { setLocale } from './i18n'
 import { Outline } from './page/outline'
 import { PageHeader } from './page/page-header'
-import { PROTOCOL_VERSION, type PagePayload } from './protocol'
-import { devTransport, webkitTransport } from './transport'
 
 const native = webkitTransport()
 const transport = native ?? devTransport()

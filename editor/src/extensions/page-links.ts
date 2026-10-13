@@ -3,7 +3,7 @@ import type { Node as PMNode } from '@tiptap/pm/model'
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 
-import { isSafeHref } from '../links'
+import { isSafeHref } from '../core/links'
 import { setBlockHighlight } from './block-highlight'
 
 /** A page as the sidebar knows it, for naming links (`window.hikki.setPages`). */

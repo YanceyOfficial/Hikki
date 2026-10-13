@@ -5,10 +5,7 @@ import { CellSelection, TableMap, cellAround } from '@tiptap/pm/tables'
 import type { EditorView } from '@tiptap/pm/view'
 import { createRoot, type Root } from 'react-dom/client'
 
-import { TooltipProvider } from '@/components/ui/tooltip'
-
-import { IconProvider } from '../components/icons'
-import { TableOverlay, type TableHover } from '../components/table-overlay'
+import { renderTableOverlay, type TableHover } from '../components/table-overlay'
 import { PALETTE } from './colors'
 
 const isPaletteColor = (value: unknown) =>
@@ -154,22 +151,16 @@ class TableControlsView {
 
   private render = () => {
     const selection = this.view.state.selection
-    this.root.render(
-      <IconProvider>
-        <TooltipProvider delay={500}>
-          <TableOverlay
-            editor={this.editor}
-            hover={this.hover}
-            cellSelection={selection instanceof CellSelection ? selection : null}
-            onPointerEnter={this.cancelHide}
-            onPointerLeave={this.scheduleHide}
-            onMenuChange={(open) => {
-              this.menuOpen = open
-              if (!open) this.scheduleHide()
-            }}
-          />
-        </TooltipProvider>
-      </IconProvider>
-    )
+    renderTableOverlay(this.root, {
+      editor: this.editor,
+      hover: this.hover,
+      cellSelection: selection instanceof CellSelection ? selection : null,
+      onPointerEnter: this.cancelHide,
+      onPointerLeave: this.scheduleHide,
+      onMenuChange: (open) => {
+        this.menuOpen = open
+        if (!open) this.scheduleHide()
+      }
+    })
   }
 }

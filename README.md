@@ -53,5 +53,5 @@ Web editor UI (`editor/src`) follows the same idea: `ui/` holds generic React pi
 
 - Tuist must use Xcode's Swift, not swiftly's; the Makefile strips swiftly from `PATH`.
 - `HIKKI_DATA_DIR` overrides the data directory (UI tests use a fresh one per run).
-- Bridge protocol lives in `editor/src/protocol.ts` and `HikkiCore/Sources/Bridge/BridgeMessage.swift`;
+- Bridge protocol lives in `editor/src/core/protocol.ts` and `HikkiCore/Sources/Bridge/BridgeMessage.swift`;
   bump `PROTOCOL_VERSION` on both sides together.

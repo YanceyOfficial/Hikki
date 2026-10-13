@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { installErrorForwarding } from '../src/errors'
-import type { ToNativeMessage } from '../src/protocol'
+import { installErrorForwarding } from '../src/core/errors'
+import type { ToNativeMessage } from '../src/core/protocol'
 
 describe('installErrorForwarding', () => {
   it('forwards console.error, uncaught errors and unhandled rejections as log messages', async () => {

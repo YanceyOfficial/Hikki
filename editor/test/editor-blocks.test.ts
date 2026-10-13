@@ -1,7 +1,7 @@
 import type { Editor } from '@tiptap/core'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { createEditor } from '../src/editor'
+import { createEditor } from '../src/core/editor'
 import { settle } from './helpers'
 
 const key = (editor: Editor, k: string) => {

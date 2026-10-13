@@ -1,17 +1,16 @@
 import type { Editor } from '@tiptap/core'
 import type { Transaction } from '@tiptap/pm/state'
 
-import { setBlockLinkBuilder } from './components/block-menu'
+import { setBlockLinkBuilder } from '../components/block-menu'
+import { runFind, type FindMode } from '../extensions/find'
+import type { MediaHost } from '../extensions/media'
+import { pageLinkHref, type PageIndexEntry, type PageLinksHost } from '../extensions/page-links'
+import { rubySegmentsFrom, type RubyHost } from '../extensions/ruby'
 import { activeCommands, createEditor, runCommand } from './editor'
-import { runFind, type FindMode } from './extensions/find'
-import type { MediaHost } from './extensions/media'
-import { pageLinkHref, type PageIndexEntry, type PageLinksHost } from './extensions/page-links'
-import { rubySegmentsFrom, type RubyHost } from './extensions/ruby'
 import { plainText, wordCount } from './extract'
+import { collectHeadings, type HeadingItem } from './headings'
 import { t } from './i18n'
 import { normalizeBody } from './normalize'
-import { collectHeadings, type HeadingItem } from './page/headings'
-import { Store } from './page/store'
 import {
   COMMANDS,
   type Command,
@@ -19,6 +18,7 @@ import {
   type Snapshot,
   type ToNativeMessage
 } from './protocol'
+import { Store } from './store'
 
 export interface Transport {
   post(message: ToNativeMessage): Promise<unknown>

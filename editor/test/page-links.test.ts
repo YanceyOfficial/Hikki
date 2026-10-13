@@ -3,6 +3,7 @@ import UniqueID from '@tiptap/extension-unique-id'
 import StarterKit from '@tiptap/starter-kit'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { isSafeHref } from '../src/core/links'
 import { BlockControls } from '../src/extensions/block-controls'
 import {
   blockLabel,
@@ -14,7 +15,6 @@ import {
   parsePageLink,
   type PageLinksHost
 } from '../src/extensions/page-links'
-import { isSafeHref } from '../src/links'
 
 let host: HTMLElement
 let editor: Editor

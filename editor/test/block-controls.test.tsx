@@ -3,7 +3,7 @@ import type { Editor, JSONContent } from '@tiptap/core'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { openBlockMenu } from '../src/components/block-menu'
-import { createEditor } from '../src/editor'
+import { createEditor } from '../src/core/editor'
 import { BlockHighlightKey, setBlockHighlight } from '../src/extensions/block-highlight'
 import { deleteUnit, duplicateUnit, moveUnit, unitAtPos } from '../src/extensions/block-units'
 import { doc, settle, stripIds } from './helpers'

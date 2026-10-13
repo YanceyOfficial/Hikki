@@ -2,9 +2,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { cn } from '@/lib/utils'
 
-import { BLOCK_GROUPS, type BlockGroup, type BlockType } from '../blocks'
-import { t } from '../i18n'
+import { BLOCK_GROUPS, type BlockGroup, type BlockType } from '../core/blocks'
+import { t } from '../core/i18n'
 import { BlockPreview } from './block-preview'
+import type { FloatingAnchor, FloatingLayer } from './floating'
 import { GlidingHighlight } from './gliding-highlight'
 
 type Props = {
@@ -155,4 +156,9 @@ export function SlashMenu({ items, query, selectedIndex, onSelect, onHover, onCl
       )}
     </div>
   )
+}
+
+/** Draws the menu into its floating layer at the caret (the extension holds no JSX). */
+export function renderSlashMenu(layer: FloatingLayer, props: Props, anchor: FloatingAnchor): void {
+  layer.render(<SlashMenu {...props} />, anchor)
 }

@@ -1,8 +1,8 @@
 import { mergeAttributes, Node, type Editor } from '@tiptap/core'
 import type { NodeView } from '@tiptap/pm/view'
 
-import { t } from '../i18n'
-import { collectHeadings } from '../page/headings'
+import { collectHeadings } from '../core/headings'
+import { t } from '../core/i18n'
 
 /**
  * Table of contents block (Notion): lists the page's headings, indented by level, and jumps to one on click.

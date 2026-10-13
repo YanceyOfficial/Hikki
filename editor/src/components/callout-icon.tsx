@@ -1,12 +1,14 @@
 import { useState } from 'react'
+import type { Root } from 'react-dom/client'
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 
+import { t } from '../core/i18n'
 import { DEFAULT_CALLOUT_ICON } from '../extensions/callout'
 import { colorLabel, PALETTE, type PaletteColor } from '../extensions/colors'
-import { t } from '../i18n'
 import { EmojiPickerPanel } from './emoji-picker-panel'
+import { IconProvider } from './icons'
 
 type Props = {
   icon: string
@@ -64,5 +66,14 @@ export function CalloutIcon({ icon, color, editable, onIcon, onColor }: Props) {
         </div>
       </PopoverContent>
     </Popover>
+  )
+}
+
+/** Draws the icon into the callout node view's React root (the extension holds no JSX). */
+export function renderCalloutIcon(root: Root, props: Props): void {
+  root.render(
+    <IconProvider>
+      <CalloutIcon {...props} />
+    </IconProvider>
   )
 }

@@ -6,14 +6,14 @@ import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 
-import { GRADIENTS, gradientCover } from './covers'
+import { GRADIENTS, gradientCover } from '../lib/covers'
 import {
   bffURL,
   searchUnsplash,
   trackUnsplashDownload,
   UNSPLASH_HOME,
   type UnsplashPhoto
-} from './unsplash'
+} from '../lib/unsplash'
 
 type Props = {
   current: string | null

@@ -6,7 +6,7 @@ import {
   randomGradient,
   randomIcon,
   STARTER_ICONS
-} from '../src/page/covers'
+} from '../src/lib/covers'
 
 describe('covers', () => {
   it('resolves gradients and image URLs, rejects junk', () => {

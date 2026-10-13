@@ -1,9 +1,9 @@
 import { act, cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { filterBlockTypes } from '../src/blocks'
-import { EditorBridge } from '../src/bridge'
-import i18n, { resolveLocale, setLocale } from '../src/i18n'
+import { filterBlockTypes } from '../src/core/blocks'
+import { EditorBridge } from '../src/core/bridge'
+import i18n, { resolveLocale, setLocale } from '../src/core/i18n'
 import en from '../src/locales/en.json'
 import zhHans from '../src/locales/zh-Hans.json'
 import { PageHeader } from '../src/page/page-header'

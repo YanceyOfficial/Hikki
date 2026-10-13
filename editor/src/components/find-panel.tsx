@@ -8,6 +8,7 @@ import {
 } from '@phosphor-icons/react'
 import type { Editor } from '@tiptap/core'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import type { Root } from 'react-dom/client'
 
 import {
   InputGroup,
@@ -19,14 +20,15 @@ import {
 import { Kbd } from '@/components/ui/kbd'
 import { Separator } from '@/components/ui/separator'
 import { Toggle } from '@/components/ui/toggle'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
+import { t } from '../core/i18n'
+import { shortcutLabel } from '../core/shortcuts'
 import { revealCurrentMatch } from '../extensions/find'
-import { t } from '../i18n'
-import { shortcutLabel } from '../shortcuts'
+import { useEditorSnapshot } from '../hooks/use-editor-snapshot'
 import { usePresence } from './floating'
-import { useEditorSnapshot } from './use-editor-snapshot'
+import { IconProvider } from './icons'
 
 type Props = {
   editor: Editor
@@ -290,5 +292,16 @@ function Option({
       </TooltipTrigger>
       <TooltipContent side="bottom">{label}</TooltipContent>
     </Tooltip>
+  )
+}
+
+/** Draws the panel into the find extension's React root; a new `request` remounts it (refocus, prefill). */
+export function renderFindPanel(root: Root, request: number, props: Props): void {
+  root.render(
+    <IconProvider>
+      <TooltipProvider delay={500}>
+        <FindPanel key={request} {...props} />
+      </TooltipProvider>
+    </IconProvider>
   )
 }

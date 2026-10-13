@@ -5,6 +5,9 @@ import { createRoot, type Root } from 'react-dom/client'
 
 import { cn } from '@/lib/utils'
 
+/** Where a layer sits: a function giving the anchor's rect (null while it has none); nothing leaves it in place. */
+export type FloatingAnchor = (() => DOMRect | null) | null | undefined
+
 /**
  * A React tree rendered into a body-level layer and positioned next to a caret rect.
  * Reusable for every editor popup (slash menu, mentions, link editor…). It enters and leaves with the
@@ -31,7 +34,7 @@ export class FloatingLayer {
     this.root = createRoot(this.element)
   }
 
-  render(node: ReactElement, anchor: (() => DOMRect | null) | null | undefined): void {
+  render(node: ReactElement, anchor: FloatingAnchor): void {
     flushSync(() => this.root.render(node))
     void this.position(anchor)
   }
@@ -44,7 +47,7 @@ export class FloatingLayer {
     })
   }
 
-  private async position(anchor: (() => DOMRect | null) | null | undefined): Promise<void> {
+  private async position(anchor: FloatingAnchor): Promise<void> {
     const rect = anchor?.()
     if (!rect) return
     const reference: VirtualElement = { getBoundingClientRect: () => rect }

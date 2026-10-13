@@ -1,7 +1,7 @@
 import { Extension } from '@tiptap/core'
 import { TextStyle } from '@tiptap/extension-text-style'
 
-import { t } from '../i18n'
+import { t } from '../core/i18n'
 
 /** Notion's palette. Names, not CSS colors, are stored, so pages re-theme (light/dark, future palettes). */
 export const PALETTE = [

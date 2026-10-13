@@ -1,8 +1,8 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
-import en from './locales/en.json'
-import zhHans from './locales/zh-Hans.json'
+import en from '../locales/en.json'
+import zhHans from '../locales/zh-Hans.json'
 
 /** Languages the editor ships (en is the source catalog; `bun scripts/l10n-audit.mjs` gates parity). */
 export const LOCALES = ['en', 'zh-Hans'] as const

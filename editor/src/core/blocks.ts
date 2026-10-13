@@ -25,10 +25,10 @@ import {
 } from '@phosphor-icons/react'
 import type { ChainedCommands, Editor } from '@tiptap/core'
 
-import { lastCodeLanguage } from './extensions/code-languages'
-import { openMathEditor } from './extensions/math'
-import { pickFiles, type MediaHost } from './extensions/media'
-import { openToggleAtSelection } from './extensions/toggle'
+import { lastCodeLanguage } from '../extensions/code-languages'
+import { openMathEditor } from '../extensions/math'
+import { pickFiles, type MediaHost } from '../extensions/media'
+import { openToggleAtSelection } from '../extensions/toggle'
 import { t } from './i18n'
 
 /** Sections of the "/" menu, in display order. */

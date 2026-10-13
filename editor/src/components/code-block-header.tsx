@@ -1,15 +1,17 @@
 import { CaretDownIcon, CheckIcon, CopyIcon } from '@phosphor-icons/react'
 import { useEffect, useRef, useState } from 'react'
+import type { Root } from 'react-dom/client'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 
+import { t } from '../core/i18n'
 import { filterLanguages, findLanguage } from '../extensions/code-languages'
-import { t } from '../i18n'
 import { handleListKey } from './command-list'
 import { GlidingHighlight } from './gliding-highlight'
+import { IconProvider } from './icons'
 
 type Props = {
   language: string
@@ -162,5 +164,14 @@ function LanguageList({ current, onPick }: { current: string; onPick: (id: strin
         ))}
       </div>
     </div>
+  )
+}
+
+/** Draws the header into the code block node view's React root (the extension holds no JSX). */
+export function renderCodeBlockHeader(root: Root, props: Props): void {
+  root.render(
+    <IconProvider>
+      <CodeBlockHeader {...props} />
+    </IconProvider>
   )
 }

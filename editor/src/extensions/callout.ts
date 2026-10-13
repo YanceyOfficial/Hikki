@@ -3,8 +3,7 @@ import type { Node as PMNode } from '@tiptap/pm/model'
 import type { NodeView } from '@tiptap/pm/view'
 import { createRoot, type Root } from 'react-dom/client'
 
-import { CalloutIcon } from '../components/callout-icon'
-import { IconProvider } from '../components/icons'
+import { renderCalloutIcon } from '../components/callout-icon'
 import { PALETTE, type PaletteColor } from './colors'
 
 declare module '@tiptap/core' {
@@ -121,17 +120,13 @@ class CalloutView implements NodeView {
     const color = this.node.attrs.color as PaletteColor | null
     if (color) this.dom.dataset.bgColor = color
     else delete this.dom.dataset.bgColor
-    this.root.render(
-      <IconProvider>
-        <CalloutIcon
-          icon={this.node.attrs.icon as string}
-          color={color}
-          editable={this.editor.isEditable}
-          onIcon={(icon) => this.setAttrs({ icon })}
-          onColor={(next) => this.setAttrs({ color: next })}
-        />
-      </IconProvider>
-    )
+    renderCalloutIcon(this.root, {
+      icon: this.node.attrs.icon as string,
+      color,
+      editable: this.editor.isEditable,
+      onIcon: (icon) => this.setAttrs({ icon }),
+      onColor: (next) => this.setAttrs({ color: next })
+    })
   }
 
   private setAttrs(attrs: Record<string, unknown>) {
