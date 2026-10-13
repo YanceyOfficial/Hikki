@@ -737,8 +737,9 @@ private struct NativeSidebarChrome: ViewModifier {
                         .accessibilityIdentifier("sidebar-search")
                         .padding(.horizontal, Spacing.s3)
                         .padding(.bottom, Spacing.s1)
-                        // Full screen: room for the toolbar row to slide down with the menu bar (FullScreenChrome.swift).
-                        .padding(.top, fullScreenSlack)
+                        // Full screen: room for the toolbar row to slide down with the menu bar (FullScreenChrome.swift),
+                        // plus a breath so the field never touches the row once it has come down.
+                        .padding(.top, fullScreenSlack > 0 ? fullScreenSlack + Spacing.s3 : 0)
                 }
                 .safeAreaBar(edge: .bottom) {
                     WorkspaceSwitcher(navigator: navigator)
