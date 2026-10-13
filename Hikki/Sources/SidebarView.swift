@@ -725,6 +725,7 @@ private struct SettingsMenuItem: View {
 private struct NativeSidebarChrome: ViewModifier {
     let navigator: Navigator
     let isWide: Bool
+    @Environment(\.fullScreenSlack) private var fullScreenSlack
 
     func body(content: Content) -> some View {
         if isWide {
@@ -736,6 +737,8 @@ private struct NativeSidebarChrome: ViewModifier {
                         .accessibilityIdentifier("sidebar-search")
                         .padding(.horizontal, Spacing.s3)
                         .padding(.bottom, Spacing.s1)
+                        // Full screen: room for the toolbar row to slide down with the menu bar (FullScreenChrome.swift).
+                        .padding(.top, fullScreenSlack)
                 }
                 .safeAreaBar(edge: .bottom) {
                     WorkspaceSwitcher(navigator: navigator)

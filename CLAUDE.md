@@ -188,9 +188,12 @@ HikkiUITests/                 XCUITest flows
   toolbar into its own window and does not draw the window buttons there until the menu bar shows (alpha / hidden
   changes draw nothing); dropping `autoHideMenuBar` from the presentation options makes AppKit hide the menu bar for
   good; Photos' hide-and-slide-in bar (`windowToolbarFullScreenVisibility(.onHover)`) came back transparent over the
-  sidebar's search field. The state is re-read on enter/exit/resize/key (restored windows) and logged (category
-  `fullscreen`). DEBUG: `HIKKI_DEBUG_FULLSCREEN` forces the layout on in a window, `HIKKI_DEBUG_ENTER_FULLSCREEN`
-  enters full screen 1.5 s after launch, `HIKKI_DEBUG_QUIT_AFTER=<s>` quits — own-instance checks.
+  sidebar's search field. When the menu bar comes in, the toolbar row slides down with it by the menu bar's height,
+  so the columns keep that much free under the row in full screen (`fullScreenSlack` in the environment; the sidebar's
+  search bar and the detail column pad by it — a padding on the split view itself doesn't reach the columns). The
+  state is re-read on enter/exit/resize/key (restored windows) and logged (category `fullscreen`). DEBUG:
+  `HIKKI_DEBUG_FULLSCREEN` forces the layout on in a window, `HIKKI_DEBUG_ENTER_FULLSCREEN` enters full screen 1.5 s
+  after launch, `HIKKI_DEBUG_QUIT_AFTER=<s>` quits — own-instance checks.
 - **Find, spelling, insets**: find and replace is `editor/src/extensions/find.ts` (Tiptap's extension, RE2 regex) with
   `editor/src/components/find-panel.tsx`; the page handles ⌘F/⌥⌘F/⌘G itself, the native Edit menu and the page ⋯ menu ("Find
   in Page", the only way on a phone) call `window.hikki.find`. Spellcheck is WebKit's (Settings → Editor,

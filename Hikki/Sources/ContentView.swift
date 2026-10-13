@@ -180,11 +180,14 @@ private struct DetailView: View {
     let editor: EditorController
     /// iPhone: the page's actions live in its navigation bar.
     var phoneToolbar = true
+    @Environment(\.fullScreenSlack) private var fullScreenSlack
 
     var body: some View {
         content
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.background)
+            // Full screen (macOS): room for the toolbar row to slide down with the menu bar (FullScreenChrome.swift).
+            .safeAreaPadding(.top, fullScreenSlack)
     }
 
     @ViewBuilder private var content: some View {

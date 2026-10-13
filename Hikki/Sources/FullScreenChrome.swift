@@ -1,6 +1,12 @@
 import HikkiCore
 import SwiftUI
 
+extension EnvironmentValues {
+    /// How much the columns keep free under the toolbar row while the window is in full screen: the menu
+    /// bar's height, which is how far the toolbar row slides down when the menu bar comes in (0 otherwise).
+    @Entry var fullScreenSlack: CGFloat = 0
+}
+
 extension View {
     /// Full screen (macOS), Xcode's and Safari's way: the toolbar row stays, and the columns start below it
     /// exactly as they do in a window; the traffic lights come down with the menu bar into that row. AppKit
@@ -33,6 +39,10 @@ extension View {
                 // window's own title bar inset is gone, and a transparent toolbar put the sidebar's search
                 // field in the toolbar row.
                 .toolbarBackgroundVisibility(isFullScreen ? .visible : .automatic, for: .windowToolbar)
+                // When the menu bar comes down, the toolbar row slides down with it by the menu bar's height
+                // and covers whatever sits right under it — the sidebar's search field. Xcode has slack there;
+                // the columns take theirs from this value (a padding on the split view itself doesn't reach them).
+                .environment(\.fullScreenSlack, isFullScreen ? NSStatusBar.system.thickness : 0)
                 .background(FullScreenObserver(isFullScreen: $isFullScreen))
         }
     }
