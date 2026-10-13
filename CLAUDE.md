@@ -182,13 +182,15 @@ HikkiUITests/                 XCUITest flows
   an attribute); ⇧⌘R or Format → More → Ruby opens the reading panel, prefilled from the native tokenizer
   (`HikkiCore/Sources/Search/JapaneseReading.swift`, `suggestReading` message): a phrase comes back as kanji runs with
   readings and bare kana (役に立ちます → 役(やく)に立(た)ちます), one ruby per run; "Whole" puts one reading over all of it.
-- **Full screen (macOS)**: Chrome's way, in `Hikki/Sources/FullScreenChrome.swift` — the toolbar stays and gets its
-  background while in full screen (that is what puts the columns below the toolbar row instead of under it), and the
-  traffic lights stay: AppKit keeps them in the title bar but fades them to alpha 0 until the menu bar comes down, so
-  they are held at alpha 1 (KVO puts them back whenever AppKit fades them). Dropping `autoHideMenuBar` from the
-  presentation options only makes AppKit hide the menu bar for good, and Photos' hide-and-slide-in bar
-  (`windowToolbarFullScreenVisibility(.onHover)`) came back transparent over the sidebar's search field — both tried
-  and dropped. `HIKKI_DEBUG_FULLSCREEN` forces the full-screen layout on in a window.
+- **Full screen (macOS)**: Xcode's way, in `Hikki/Sources/FullScreenChrome.swift` — the toolbar stays and gets its
+  background while in full screen (that is what puts the columns below the toolbar row instead of under it); the
+  traffic lights come down with the menu bar into that row. Measured, not guessed: in full screen AppKit moves the
+  toolbar into its own window and does not draw the window buttons there until the menu bar shows (alpha / hidden
+  changes draw nothing); dropping `autoHideMenuBar` from the presentation options makes AppKit hide the menu bar for
+  good; Photos' hide-and-slide-in bar (`windowToolbarFullScreenVisibility(.onHover)`) came back transparent over the
+  sidebar's search field. The state is re-read on enter/exit/resize/key (restored windows) and logged (category
+  `fullscreen`). DEBUG: `HIKKI_DEBUG_FULLSCREEN` forces the layout on in a window, `HIKKI_DEBUG_ENTER_FULLSCREEN`
+  enters full screen 1.5 s after launch, `HIKKI_DEBUG_QUIT_AFTER=<s>` quits — own-instance checks.
 - **Find, spelling, insets**: find and replace is `editor/src/extensions/find.ts` (Tiptap's extension, RE2 regex) with
   `editor/src/components/find-panel.tsx`; the page handles ⌘F/⌥⌘F/⌘G itself, the native Edit menu and the page ⋯ menu ("Find
   in Page", the only way on a phone) call `window.hikki.find`. Spellcheck is WebKit's (Settings → Editor,

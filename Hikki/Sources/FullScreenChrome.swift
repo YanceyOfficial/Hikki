@@ -1,10 +1,13 @@
+import HikkiCore
 import SwiftUI
 
 extension View {
-    /// Full screen (macOS), Chrome's way: the toolbar row and the traffic lights stay, and the columns start
-    /// below that row exactly as they do in a window. AppKit keeps the window buttons in place in full
-    /// screen but fades them to alpha 0 until the menu bar comes down; here they are held visible. (Photos'
-    /// hide-and-slide-in bar kept landing on the sidebar's search field without a background; given up.)
+    /// Full screen (macOS), Xcode's and Safari's way: the toolbar row stays, and the columns start below it
+    /// exactly as they do in a window; the traffic lights come down with the menu bar into that row. AppKit
+    /// moves the toolbar into its own full-screen window and does not draw the window buttons there until
+    /// the menu bar shows — holding their alpha or hidden state changes nothing — so Chrome's always-visible
+    /// lights would have to be drawn by hand. (Photos' hide-and-slide-in bar kept landing on the sidebar's
+    /// search field without a background; given up.)
     func fullScreenChrome() -> some View {
         #if os(macOS)
             modifier(FullScreenChrome())
@@ -34,8 +37,9 @@ extension View {
         }
     }
 
-    /// Keeps the traffic lights shown in full screen and reports whether the hosting window is in full
-    /// screen (now, and as it enters or leaves).
+    /// Reports whether the hosting window is in full screen — read from the window's style mask whenever it
+    /// could have changed (entering, leaving, a resize, becoming key), so a window restored straight into
+    /// full screen counts too.
     private struct FullScreenObserver: NSViewRepresentable {
         @Binding var isFullScreen: Bool
 
@@ -70,7 +74,6 @@ extension View {
             private let isFullScreen: Binding<Bool>
             private weak var window: NSWindow?
             private var observers: [any NSObjectProtocol] = []
-            private var buttonWatchers: [NSKeyValueObservation] = []
 
             init(isFullScreen: Binding<Bool>) {
                 self.isFullScreen = isFullScreen
@@ -81,66 +84,60 @@ extension View {
                 detach()
                 self.window = window
                 let center = NotificationCenter.default
-                observers = [
-                    center.addObserver(forName: NSWindow.didEnterFullScreenNotification, object: window, queue: .main) {
-                        [weak self] _ in
-                        MainActor.assumeIsolated {
-                            self?.holdWindowButtons()
-                            self?.update(true)
-                        }
-                    },
-                    center.addObserver(forName: NSWindow.willExitFullScreenNotification, object: window, queue: .main) {
-                        [weak self] _ in
-                        MainActor.assumeIsolated { self?.releaseWindowButtons() }
-                    },
-                    center.addObserver(forName: NSWindow.didExitFullScreenNotification, object: window, queue: .main) {
-                        [weak self] _ in
-                        MainActor.assumeIsolated { self?.update(false) }
-                    },
+                let names: [Notification.Name] = [
+                    NSWindow.didEnterFullScreenNotification, NSWindow.didExitFullScreenNotification,
+                    NSWindow.didResizeNotification, NSWindow.didBecomeKeyNotification,
                 ]
-                let fullScreen = window.styleMask.contains(.fullScreen)
-                if fullScreen { holdWindowButtons() }
-                update(fullScreen)
+                observers = names.map { name in
+                    center.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
+                        MainActor.assumeIsolated { self?.sync() }
+                    }
+                }
+                sync()
+                #if DEBUG
+                    debugHooks()
+                #endif
             }
 
             func detach() {
-                releaseWindowButtons()
                 observers.forEach(NotificationCenter.default.removeObserver)
                 observers = []
                 window = nil
             }
 
-            private var buttons: [NSButton] {
-                [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].compactMap { window?.standardWindowButton($0) }
+            /// Reads the window's state and applies it; safe to call as often as the window changes.
+            private func sync() {
+                guard let window else { return }
+                let fullScreen = window.styleMask.contains(.fullScreen)
+                guard !debugFullScreen, isFullScreen.wrappedValue != fullScreen else { return }
+                isFullScreen.wrappedValue = fullScreen
+                Log.info(
+                    "full screen changed", category: "fullscreen",
+                    context: [
+                        "fullScreen": "\(fullScreen)",
+                        "titlebarHeight": "\(window.frame.height - window.contentLayoutRect.height)",
+                    ])
             }
 
-            /// In full screen AppKit keeps the traffic lights in the title bar but fades them out until the
-            /// menu bar comes down; they stay opaque here, as Chrome's do, and are put back whenever AppKit
-            /// fades them again.
-            private func holdWindowButtons() {
-                releaseWindowButtons()
-                for button in buttons {
-                    button.alphaValue = 1
-                    buttonWatchers.append(
-                        button.observe(\.alphaValue, options: [.new]) { button, _ in
-                            MainActor.assumeIsolated {
-                                if button.alphaValue < 1 { button.alphaValue = 1 }
-                            }
-                        })
+            #if DEBUG
+                private var hooksArmed = false
+
+                /// `HIKKI_DEBUG_ENTER_FULLSCREEN` enters full screen shortly after launch; `HIKKI_DEBUG_QUIT_AFTER=<s>`
+                /// quits after that many seconds (own-instance checks of the full-screen chrome).
+                private func debugHooks() {
+                    guard !hooksArmed else { return }
+                    hooksArmed = true
+                    let env = ProcessInfo.processInfo.environment
+                    if env["HIKKI_DEBUG_ENTER_FULLSCREEN"] != nil {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                            if let window = self?.window, !window.styleMask.contains(.fullScreen) { window.toggleFullScreen(nil) }
+                        }
+                    }
+                    if let seconds = env["HIKKI_DEBUG_QUIT_AFTER"].flatMap(Double.init) {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { NSApp.terminate(nil) }
+                    }
                 }
-            }
-
-            /// Leaving full screen: AppKit owns them again.
-            private func releaseWindowButtons() {
-                buttonWatchers.forEach { $0.invalidate() }
-                buttonWatchers = []
-            }
-
-            private func update(_ value: Bool) {
-                if debugFullScreen { return }
-                if isFullScreen.wrappedValue != value { isFullScreen.wrappedValue = value }
-            }
-
+            #endif
         }
     }
 #endif
