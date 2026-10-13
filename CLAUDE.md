@@ -185,9 +185,11 @@ HikkiUITests/                 XCUITest flows
   pasted link into the provider's embeddable URL (YouTube, Vimeo, Figma, Maps, Drive/Docs, gists as a script snippet,
   tweets via platform.twitter.com, CodePen; anything else as it is). The height is an attribute, set by the handle
   under the frame. The native navigation delegate lets https / about: load in subframes only, and popups from a frame
-  open in the system browser. Embedded pages are hostile by default: the bridge drops script messages from any frame but
-  the editor's own main frame (`BridgeProtocol.trustsFrame` — WebKit hands `messageHandlers` to every frame), and a
-  stored embed `src` loads only when it is an https page (`safeFrameSrc`). YouTube's player refuses to play (error 153) without an HTTP Referer, which a page on
+  open in the system browser (`HikkiCore/Sources/Bridge/EditorNavigationPolicy.swift` decides; the editor's own scheme
+  loads as the page only — in a frame it would be same-origin with the page). Embedded pages are hostile by default:
+  the bridge drops script messages from any frame but the editor's own main frame (`BridgeProtocol.trustsFrame` —
+  WebKit hands `messageHandlers` to every frame), and a stored embed `src` loads only when it is an https page
+  (`safeFrameSrc`). YouTube's player refuses to play (error 153) without an HTTP Referer, which a page on
   the app's own scheme never sends, so with `VITE_HIKKI_BFF_URL` set the frame loads the BFF's shim page
   (`/embed/youtube/<id>`, `bff/src/index.ts`) and the player sees that as its referrer.
 - **Page links** (`editor/src/extensions/page-links.ts`): `hikki://page/<id>#<block>`. The native side feeds the editor

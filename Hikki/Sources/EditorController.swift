@@ -509,26 +509,27 @@ private final class NavigationDelegate: NSObject, WKNavigationDelegate {
     }
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction) async -> WKNavigationActionPolicy {
-        // Only the bundled editor may load in the web view (not an asset: an uploaded HTML file must never
-        // become the page); links open in the system browser.
-        if let url = navigationAction.request.url, url.scheme == EditorSchemeHandler.scheme {
-            return url.host == "app" ? .allow : .cancel
-        }
-        // Embeds: a third-party page (https) or a sandboxed snippet (about:srcdoc) may load in a frame of the
-        // page, never as the page itself.
-        if let frame = navigationAction.targetFrame, !frame.isMainFrame, let url = navigationAction.request.url,
-            url.scheme == "https" || url.scheme == "about"
+        // The rules live in EditorNavigationPolicy (HikkiCore, tested): the bundled editor as the page, https /
+        // about: in an embed's frame, clicked links to the system, nothing else.
+        let url = navigationAction.request.url
+        switch EditorNavigationPolicy.decide(
+            url: url, isMainFrame: navigationAction.targetFrame?.isMainFrame,
+            isLinkClick: navigationAction.navigationType == .linkActivated, editorScheme: EditorSchemeHandler.scheme)
         {
+        case .load:
             return .allow
+        case .openOutside:
+            if let url {
+                #if os(iOS)
+                    await UIApplication.shared.open(url)
+                #else
+                    NSWorkspace.shared.open(url)
+                #endif
+            }
+            return .cancel
+        case .cancel:
+            return .cancel
         }
-        if let url = navigationAction.request.url, navigationAction.navigationType == .linkActivated {
-            #if os(iOS)
-                await UIApplication.shared.open(url)
-            #else
-                NSWorkspace.shared.open(url)
-            #endif
-        }
-        return .cancel
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
