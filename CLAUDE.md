@@ -203,6 +203,12 @@ HikkiUITests/                 XCUITest flows
   an attribute); ⇧⌘R or Format → More → Ruby opens the reading panel, prefilled from the native tokenizer
   (`HikkiCore/Sources/Search/JapaneseReading.swift`, `suggestReading` message): a phrase comes back as kanji runs with
   readings and bare kana (役に立ちます → 役(やく)に立(た)ちます), one ruby per run; "Whole" puts one reading over all of it.
+- **Search** (⌘K, `Hikki/Sources/SearchPalette.swift`): `DocumentStore.search` gathers candidates — every live title,
+  page text through the trigram FTS for terms of 3+ characters and LIKE below — and
+  `HikkiCore/Sources/Search/SearchRanker.swift` orders them (whole title, its start, every term at a word start /
+  anywhere, the pinyin keys, then fzf-style subsequences; page text below titles; recent pages ahead on ties) and cuts
+  the excerpt. One ranked list ("Best matches"); a row shows the parent path, the excerpt with the terms emphasized
+  (`HighlightedText`) and the edited time.
 - **Full screen (macOS)**: Xcode's way, in `Hikki/Sources/FullScreenChrome.swift` — the toolbar stays and gets its
   background while in full screen (that is what puts the columns below the toolbar row instead of under it); the
   traffic lights come down with the menu bar into that row. Measured, not guessed: in full screen AppKit moves the

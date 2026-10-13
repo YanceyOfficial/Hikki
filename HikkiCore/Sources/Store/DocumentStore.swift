@@ -68,14 +68,19 @@ public struct SearchHit: Sendable, Equatable, Identifiable {
     public var id: String
     public var title: String
     public var icon: String?
-    /// Body excerpt around the match, empty when only the title matched.
+    /// The page text around the first matching term; empty when only the title matched.
     public var snippet: String
+    public var updatedAt: Date
+    /// The query's terms, for emphasizing them in the title and the excerpt.
+    public var terms: [String]
 
-    public init(id: String, title: String, icon: String?, snippet: String) {
+    public init(id: String, title: String, icon: String?, snippet: String, updatedAt: Date, terms: [String]) {
         self.id = id
         self.title = title
         self.icon = icon
         self.snippet = snippet
+        self.updatedAt = updatedAt
+        self.terms = terms
     }
 }
 
@@ -489,68 +494,72 @@ public final class DocumentStore: Sendable {
 
     // MARK: - Search
 
-    /// Quick-switcher search over live pages, best first:
-    /// 1. fuzzy title matches (also against pinyin, so "lxt" finds 路线图),
-    /// 2. body/title full-text matches (trigram FTS for 3+ characters, LIKE below that).
-    public func search(_ query: String, limit: Int = 30) throws -> [SearchHit] {
-        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !q.isEmpty else { return [] }
+    /// How many pages the text index offers the ranker per query.
+    private static let candidateLimit = 200
+
+    /// Search over live pages, best first (`SearchRanker`): titles — also by pinyin, so "lxt" finds 路线图 — then
+    /// page text. Every title is looked at; text comes through the trigram index for terms of three characters or
+    /// more and LIKE for shorter ones. A hit carries an excerpt around the first matching term.
+    public func search(_ query: String, limit: Int = 30, now: Date = .now) throws -> [SearchHit] {
+        let parsed = SearchQuery(query)
+        guard !parsed.isEmpty else { return [] }
         return try writer.read { db in
-            var hits: [SearchHit] = []
-            var seen = Set<String>()
-            for hit in try Self.titleMatches(db, q) where seen.insert(hit.id).inserted { hits.append(hit) }
-            for hit in try Self.textMatches(db, q, limit: limit) where seen.insert(hit.id).inserted { hits.append(hit) }
-            return Array(hits.prefix(limit))
-        }
-    }
-
-    private static func titleMatches(_ db: Database, _ q: String) throws -> [SearchHit] {
-        let rows = try Row.fetchAll(db, sql: "SELECT id, title, icon, titlePinyin, updatedAt FROM document WHERE deletedAt IS NULL")
-        let asciiQuery = q.allSatisfy { $0.isASCII }
-        return
-            rows
-            .compactMap { row -> (SearchHit, Int, Date)? in
-                let title: String = row["title"]
-                var best = FuzzyMatch.score(q, in: title)
-                if asciiQuery, let pinyinScore = FuzzyMatch.score(q, in: row["titlePinyin"] as String) {
-                    best = max(best ?? .min, pinyinScore - 1)
+            let texts = try Self.candidateTexts(db, parsed)
+            let pages = try Row.fetchAll(
+                db, sql: "SELECT id, title, icon, titlePinyin, updatedAt FROM document WHERE deletedAt IS NULL")
+            let scored: [(row: Row, text: String, score: Int)] = pages.compactMap { row in
+                let text = texts[row["id"]] ?? ""
+                let page = SearchRanker.Page(
+                    title: row["title"], titlePinyin: row["titlePinyin"], text: text, updatedAt: row["updatedAt"])
+                guard let score = SearchRanker.score(parsed, page, now: now) else { return nil }
+                return (row, text, score)
+            }
+            return
+                scored
+                .sorted {
+                    $0.score != $1.score ? $0.score > $1.score : ($0.row["updatedAt"] as Date) > ($1.row["updatedAt"] as Date)
                 }
-                guard let score = best else { return nil }
-                return (SearchHit(id: row["id"], title: title, icon: row["icon"], snippet: ""), score, row["updatedAt"])
-            }
-            .sorted { $0.1 != $1.1 ? $0.1 > $1.1 : $0.2 > $1.2 }
-            .map(\.0)
+                .prefix(limit)
+                .map { hit in
+                    SearchHit(
+                        id: hit.row["id"], title: hit.row["title"], icon: hit.row["icon"],
+                        snippet: SearchRanker.snippet(of: hit.text, terms: parsed.terms), updatedAt: hit.row["updatedAt"],
+                        terms: parsed.terms)
+                }
+        }
     }
 
-    private static func textMatches(_ db: Database, _ q: String, limit: Int) throws -> [SearchHit] {
-        if q.count >= 3 {
-            let phrase = "\"" + q.replacingOccurrences(of: "\"", with: "\"\"") + "\""
-            let rows = try Row.fetchAll(
-                db,
-                sql: """
-                    SELECT d.id, d.title, d.icon, snippet(documentFts, 1, '', '', '…', 16) AS snippet
-                    FROM documentFts JOIN document d ON d.rowid = documentFts.rowid
-                    WHERE documentFts MATCH ? AND d.deletedAt IS NULL
-                    ORDER BY rank LIMIT ?
-                    """, arguments: [phrase, limit])
-            return rows.map { row in
-                let snippet: String = row["snippet"] ?? ""
-                return SearchHit(
-                    id: row["id"], title: row["title"], icon: row["icon"],
-                    snippet: snippet.localizedCaseInsensitiveContains(q) ? snippet : "")
-            }
+    /// The text of the pages whose title or text holds any term, by id. The trigram index answers terms of three
+    /// characters or more (CJK included — there are no spaces for a word tokenizer), LIKE the shorter ones.
+    private static func candidateTexts(_ db: Database, _ query: SearchQuery) throws -> [String: String] {
+        var ids = Set<String>()
+        let long = query.terms.filter { $0.count >= 3 }
+        if !long.isEmpty {
+            let match = long.map { "\"" + $0.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }.joined(separator: " OR ")
+            ids.formUnion(
+                try String.fetchAll(
+                    db,
+                    sql: """
+                        SELECT d.id FROM documentFts JOIN document d ON d.rowid = documentFts.rowid
+                        WHERE documentFts MATCH ? AND d.deletedAt IS NULL
+                        ORDER BY rank LIMIT ?
+                        """, arguments: [match, candidateLimit]))
         }
-        let pattern = likePattern(q)
+        let short = query.terms.filter { $0.count < 3 }
+        if !short.isEmpty {
+            let clauses = short.map { _ in "plainText LIKE ? ESCAPE '\\'" }.joined(separator: " OR ")
+            let arguments: [DatabaseValueConvertible] = short.map(likePattern) + [candidateLimit]
+            ids.formUnion(
+                try String.fetchAll(
+                    db,
+                    sql: "SELECT id FROM document WHERE deletedAt IS NULL AND (\(clauses)) ORDER BY updatedAt DESC LIMIT ?",
+                    arguments: StatementArguments(arguments)))
+        }
+        guard !ids.isEmpty else { return [:] }
+        let marks = Array(repeating: "?", count: ids.count).joined(separator: ",")
         let rows = try Row.fetchAll(
-            db,
-            sql: """
-                SELECT id, title, icon, plainText FROM document
-                WHERE deletedAt IS NULL AND (title LIKE ? ESCAPE '\\' OR plainText LIKE ? ESCAPE '\\')
-                ORDER BY updatedAt DESC LIMIT ?
-                """, arguments: [pattern, pattern, limit])
-        return rows.map { row in
-            SearchHit(id: row["id"], title: row["title"], icon: row["icon"], snippet: excerpt(of: row["plainText"], around: q))
-        }
+            db, sql: "SELECT id, plainText FROM document WHERE id IN (\(marks))", arguments: StatementArguments(Array(ids)))
+        return Dictionary(uniqueKeysWithValues: rows.map { ($0["id"] as String, $0["plainText"] as String) })
     }
 
     // MARK: - Helpers
@@ -579,14 +588,6 @@ public final class DocumentStore: Sendable {
         "%"
             + q.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "%", with: "\\%").replacingOccurrences(
                 of: "_", with: "\\_") + "%"
-    }
-
-    static func excerpt(of text: String, around query: String, radius: Int = 24) -> String {
-        guard let range = text.range(of: query, options: .caseInsensitive) else { return "" }
-        let start = text.index(range.lowerBound, offsetBy: -radius, limitedBy: text.startIndex) ?? text.startIndex
-        let end = text.index(range.upperBound, offsetBy: radius, limitedBy: text.endIndex) ?? text.endIndex
-        let body = text[start..<end].replacingOccurrences(of: "\n", with: " ")
-        return (start > text.startIndex ? "…" : "") + body + (end < text.endIndex ? "…" : "")
     }
 }
 

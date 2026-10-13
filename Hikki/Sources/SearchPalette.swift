@@ -2,8 +2,9 @@ import HikkiCore
 import HikkiUI
 import SwiftUI
 
-/// ⌘K quick switcher: fuzzy/pinyin title matches first, then full-text body matches.
-/// Mac/iPad show it as a centered overlay card (Notion-style); iPhone as a sheet.
+/// ⌘K search (Notion's): one list of best matches — titles, also by pinyin, ahead of page text (`SearchRanker`) —
+/// each with its path, an excerpt around the match and the edited time; recent pages while the field is empty.
+/// Mac/iPad show it as a centered overlay card; iPhone as a sheet.
 struct SearchPalette: View {
     @Environment(AppModel.self) private var model
     let navigator: Navigator
@@ -51,7 +52,7 @@ struct SearchPalette: View {
                             ForEach(section.items, id: \.offset) { index, hit in
                                 SearchResultRow(
                                     title: hit.title, icon: hit.icon, snippet: hit.snippet, path: path(of: hit.id),
-                                    query: query, isSelected: index == selection
+                                    terms: hit.terms, updatedAt: hit.updatedAt, isSelected: index == selection
                                 )
                                 .id(index)
                                 .onTapGesture { open(hit.id) }
@@ -104,17 +105,14 @@ struct SearchPalette: View {
         if query.trimmingCharacters(in: .whitespaces).isEmpty {
             return indexed.isEmpty ? [] : [Section(title: String(localized: "app:search.recent"), items: indexed)]
         }
-        let titles = indexed.filter { $0.element.snippet.isEmpty }
-        let content = indexed.filter { !$0.element.snippet.isEmpty }
-        return [
-            titles.isEmpty ? nil : Section(title: String(localized: "app:search.pages"), items: titles),
-            content.isEmpty ? nil : Section(title: String(localized: "app:search.inContent"), items: content),
-        ].compactMap(\.self)
+        return indexed.isEmpty ? [] : [Section(title: String(localized: "app:search.bestMatches"), items: indexed)]
     }
 
     private var rows: [SearchHit] {
         query.trimmingCharacters(in: .whitespaces).isEmpty
-            ? model.tree.recent(limit: 8).map { SearchHit(id: $0.id, title: $0.title, icon: $0.icon, snippet: "") }
+            ? model.tree.recent(limit: 10).map {
+                SearchHit(id: $0.id, title: $0.title, icon: $0.icon, snippet: "", updatedAt: $0.updatedAt, terms: [])
+            }
             : results
     }
 

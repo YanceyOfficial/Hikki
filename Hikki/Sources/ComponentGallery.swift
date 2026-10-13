@@ -42,6 +42,14 @@
                         }
                         .listRowInsets(EdgeInsets())
                     }
+                    Section("SearchResultRow") {
+                        SearchResultRow(
+                            title: "Weekly sync", icon: "🗓️", path: "Work / Meetings", terms: ["week"], updatedAt: .now,
+                            isSelected: true)
+                        SearchResultRow(
+                            title: "Roadmap", icon: nil, snippet: "…the roadmap is due Friday, after the review…",
+                            path: "Projects", terms: ["roadmap", "friday"], updatedAt: .now.addingTimeInterval(-3 * 86_400))
+                    }
                 }
                 .navigationTitle("HikkiUI Gallery")
             }

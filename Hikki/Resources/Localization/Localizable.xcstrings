@@ -1633,6 +1633,23 @@
         }
       }
     },
+    "app:search.bestMatches": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Best matches"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最佳匹配"
+          }
+        }
+      }
+    },
     "app:search.hintClose": {
       "extractionState": "manual",
       "localizations": {
@@ -1684,23 +1701,6 @@
         }
       }
     },
-    "app:search.inContent": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "In page content"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "页面内容"
-          }
-        }
-      }
-    },
     "app:search.noPages": {
       "extractionState": "manual",
       "localizations": {
@@ -1735,36 +1735,19 @@
         }
       }
     },
-    "app:search.pages": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pages"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "页面"
-          }
-        }
-      }
-    },
     "app:search.placeholder": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Search pages…"
+            "value": "Search pages and content…"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "搜索页面…"
+            "value": "搜索页面和内容…"
           }
         }
       }
