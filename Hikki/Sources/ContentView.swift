@@ -77,9 +77,8 @@ struct ContentView: View {
             }
             // Menu bar extra: New Page / Search land in the key window (MenuBarExtra.swift).
             .menuBarRequests(navigator: navigator)
-            // Full screen (macOS): the toolbar hides and slides back in over the content with its band
-            // (FullScreenToolbar.swift).
-            .fullScreenToolbarBackground()
+            // Full screen (macOS): menu bar, traffic lights and toolbar stay, as in a window (FullScreenChrome.swift).
+            .fullScreenChrome()
             .onChange(of: navigator.tabs) { _, _ in storedTabs = navigator.encodedTabs() }
             .onChange(of: model.tree) { _, tree in
                 // Pages trashed here or in another window disappear from every tab's history.
