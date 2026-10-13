@@ -100,6 +100,40 @@ describe('PageHeader', () => {
     expect(screen.getByText('Change cover')).toBeTruthy()
   })
 
+  it('Reposition drags an image cover up and down, Save keeps it, Cancel drops it', () => {
+    render(<PageHeader bridge={bridge} />)
+    load({ cover: 'gradient:dusk' })
+    // Gradients have nothing to reposition.
+    expect(screen.queryByText('Reposition')).toBeNull()
+    load({ cover: 'hikki-editor://assets/a.png' })
+    fireEvent.click(screen.getByText('Reposition'))
+    const cover = screen.getByTestId('cover')
+    expect(screen.getByText('Drag image to reposition')).toBeTruthy()
+    expect(screen.queryByText('Change cover')).toBeNull()
+    // Nothing is measured in this DOM, so 200 px of drag span the whole range: 50 px down = a quarter.
+    fireEvent.pointerDown(cover, { pointerId: 1, button: 0, clientY: 100 })
+    fireEvent.pointerMove(cover, { pointerId: 1, clientY: 150 })
+    fireEvent.pointerUp(cover, { pointerId: 1 })
+    expect(cover.style.background).toContain('50% 25%')
+    // The page itself is untouched until Save.
+    expect(bridge.page.get().cover).toBe('hikki-editor://assets/a.png')
+    fireEvent.click(screen.getByText('Save position'))
+    expect(bridge.page.get().cover).toBe('hikki-editor://assets/a.png#y=25')
+    expect(sent.at(-1)).toMatchObject({
+      type: 'setCover',
+      cover: 'hikki-editor://assets/a.png#y=25'
+    })
+    expect(screen.queryByText('Drag image to reposition')).toBeNull()
+    // Cancel: the drag shows, then goes.
+    fireEvent.click(screen.getByText('Reposition'))
+    fireEvent.pointerDown(cover, { pointerId: 2, button: 0, clientY: 100 })
+    fireEvent.pointerMove(cover, { pointerId: 2, clientY: 0 })
+    expect(screen.getByTestId('cover').style.background).toContain('50% 75%')
+    fireEvent.click(screen.getByText('Cancel'))
+    expect(screen.getByTestId('cover').style.background).toContain('50% 25%')
+    expect(bridge.page.get().cover).toBe('hikki-editor://assets/a.png#y=25')
+  })
+
   it('cover picker swaps the gradient and Remove clears it', () => {
     render(<PageHeader bridge={bridge} />)
     load({ cover: 'gradient:dusk' })

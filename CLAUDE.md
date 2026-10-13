@@ -171,6 +171,11 @@ HikkiUITests/                 XCUITest flows
   (`editor/src/extensions/table.ts` + `editor/src/extensions/table-ops.ts`, controls drawn by
   `editor/src/components/table-overlay.tsx`) and columns (`editor/src/extensions/columns.ts`: schema needs 2–5 columns, so
   removing one of two replaces the row; dragging a block onto another's side edge makes a row).
+- **Covers**: the stored value is `gradient:<id>` or an image URL, and an image's vertical position rides along
+  as a `#y=<0-100>` fragment (`editor/src/lib/covers.ts`: `coverPosition`, `withCoverPosition`), so the store and
+  the protocol keep a plain string. "Reposition" on the cover (`editor/src/page/page-header.tsx`) drags the picture
+  one pixel per pixel over its overflow and saves or cancels; the buttons over a cover use the solid `coverButton`
+  look (the outline hover's translucent `muted` let the picture through).
 - **Page links** (`editor/src/extensions/page-links.ts`): `hikki://page/<id>#<block>`. The native side feeds the editor
   the page index (`window.hikki.setPages`) so pasted links get titles; "Copy link to block" puts a ready `<a>` plus the
   URL on the clipboard; a plain-text paste of a link becomes a labelled hyperlink, and so does a dropped one: a

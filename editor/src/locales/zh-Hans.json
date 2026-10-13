@@ -12,10 +12,13 @@
     "addCover": "添加封面",
     "changeIcon": "更换图标",
     "changeCover": "更换封面",
-    "remove": "移除",
     "outline": "目录",
     "readOnlyTitle": "此页面暂时无法编辑",
-    "readOnlyDescription": "它的内容来自更新版本的 Hikki，或未能完整读取。这里尽量显示并保持原样不做改动——更新 Hikki 后即可编辑。"
+    "readOnlyDescription": "它的内容来自更新版本的 Hikki，或未能完整读取。这里尽量显示并保持原样不做改动——更新 Hikki 后即可编辑。",
+    "reposition": "调整位置",
+    "savePosition": "保存位置",
+    "cancelReposition": "取消",
+    "repositionHint": "拖动图片调整位置"
   },
   "blocks": {
     "paragraph": {

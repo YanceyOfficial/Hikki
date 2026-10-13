@@ -6,7 +6,8 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  useSyncExternalStore
+  useSyncExternalStore,
+  type ReactNode
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -19,8 +20,24 @@ import { Textarea } from '@/components/ui/textarea'
 import { AnchoredPopover } from '../components/anchored-popover'
 import { EmojiPickerPanel } from '../components/emoji-picker-panel'
 import type { EditorBridge } from '../core/bridge'
-import { coverBackground, randomGradient, randomIcon } from '../lib/covers'
+import {
+  coverBackground,
+  coverImageURL,
+  coverPosition,
+  isImageCover,
+  randomGradient,
+  randomIcon,
+  repositionedCover,
+  withCoverPosition
+} from '../lib/covers'
 import { CoverPicker } from './cover-picker'
+
+/**
+ * The buttons over a cover: a solid popover surface whatever is behind them, and a hover that tints the
+ * surface instead of swapping it for the translucent `muted` (which let the picture through).
+ */
+const coverButton =
+  'bg-popover text-popover-foreground shadow-sm hover:bg-[color-mix(in_oklch,var(--popover),var(--foreground)_6%)] hover:text-popover-foreground aria-expanded:bg-[color-mix(in_oklch,var(--popover),var(--foreground)_6%)] aria-expanded:text-popover-foreground dark:bg-popover dark:hover:bg-[color-mix(in_oklch,var(--popover),var(--foreground)_10%)]'
 
 /** Notion-style page header: cover, icon, hover actions and the page title (a page property, not body content). */
 export function PageHeader({ bridge }: { bridge: EditorBridge }) {
@@ -28,7 +45,10 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
   const page = useSyncExternalStore(bridge.page.subscribe, bridge.page.get)
   const [iconAnchor, setIconAnchor] = useState<HTMLElement | null>(null)
   const [iconOpen, setIconOpen] = useState(false)
-  const background = coverBackground(page.cover)
+  // Reposition: the position being dragged (null when not repositioning).
+  const [draftY, setDraftY] = useState<number | null>(null)
+  const cover = draftY !== null && page.cover ? withCoverPosition(page.cover, draftY) : page.cover
+  const background = coverBackground(cover)
   // Nothing in the header may change on a locked (or unreadable) page.
   const frozen = page.readOnly || page.locked
   const closeIcon = useCallback(() => setIconOpen(false), [])
@@ -43,49 +63,65 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
   return (
     <header className="group/header relative">
       {background && (
-        <div
-          className="group/cover relative h-[30vh] max-h-[280px] min-h-[140px]"
-          style={{ background }}
-          data-testid="cover"
-        >
-          {/* Notion-style button group, top right; visible on hover (always on touch / while open). */}
-          {!frozen && (
-            <ButtonGroup className="absolute top-3 right-3 opacity-0 transition-opacity group-focus-within/cover:opacity-100 group-hover/cover:opacity-100 has-aria-expanded:opacity-100 touch:opacity-100">
-              <CoverPopover>
-                <PopoverTrigger
-                  render={
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="bg-popover text-popover-foreground shadow-sm dark:bg-popover"
-                    />
-                  }
-                >
-                  {t('page.changeCover')}
-                </PopoverTrigger>
-                <PopoverContent
-                  align="end"
-                  className="w-[440px] max-w-[calc(100vw-16px)] gap-0 p-0"
-                >
-                  <CoverPicker
-                    current={page.cover}
-                    onSelect={(cover) => bridge.setCover(cover)}
-                    onRemove={() => bridge.setCover(null)}
-                    onUpload={uploadCover}
-                  />
-                </PopoverContent>
-              </CoverPopover>
+        <Cover background={background} repositioning={draftY !== null} onDrag={setDraftY}>
+          {draftY !== null ? (
+            <ButtonGroup className="absolute top-3 right-3">
               <Button
                 variant="outline"
                 size="sm"
-                className="bg-popover text-popover-foreground shadow-sm dark:bg-popover"
-                onClick={() => bridge.setCover(null)}
+                className={coverButton}
+                onClick={() => {
+                  if (page.cover) bridge.setCover(withCoverPosition(page.cover, draftY))
+                  setDraftY(null)
+                }}
               >
-                {t('page.remove')}
+                {t('page.savePosition')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className={coverButton}
+                onClick={() => setDraftY(null)}
+              >
+                {t('page.cancelReposition')}
               </Button>
             </ButtonGroup>
+          ) : (
+            // Notion-style button group, top right; visible on hover (always on touch / while open).
+            !frozen && (
+              <ButtonGroup className="absolute top-3 right-3 opacity-0 transition-opacity group-focus-within/cover:opacity-100 group-hover/cover:opacity-100 has-aria-expanded:opacity-100 touch:opacity-100">
+                <CoverPopover>
+                  <PopoverTrigger
+                    render={<Button variant="outline" size="sm" className={coverButton} />}
+                  >
+                    {t('page.changeCover')}
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="end"
+                    className="w-[440px] max-w-[calc(100vw-16px)] gap-0 p-0"
+                  >
+                    <CoverPicker
+                      current={page.cover}
+                      onSelect={(next) => bridge.setCover(next)}
+                      onRemove={() => bridge.setCover(null)}
+                      onUpload={uploadCover}
+                    />
+                  </PopoverContent>
+                </CoverPopover>
+                {isImageCover(page.cover) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={coverButton}
+                    onClick={() => setDraftY(coverPosition(page.cover))}
+                  >
+                    {t('page.reposition')}
+                  </Button>
+                )}
+              </ButtonGroup>
+            )
           )}
-        </div>
+        </Cover>
       )}
       <div className={cn('hk-column', background ? 'pt-0' : 'pt-18')}>
         {page.icon && (
@@ -243,4 +279,107 @@ function TitleField({
       }}
     />
   )
+}
+
+/**
+ * The cover picture (or gradient) with the controls over it. While repositioning, dragging it moves the
+ * picture vertically, one pixel per pixel of drag (the image's overflow beyond the cover is measured once
+ * the image has loaded); the position is reported in percent through `onDrag`.
+ */
+function Cover({
+  background,
+  repositioning,
+  onDrag,
+  children
+}: {
+  background: string
+  repositioning: boolean
+  onDrag: (y: number) => void
+  children: ReactNode
+}) {
+  const { t } = useTranslation()
+  const ref = useRef<HTMLDivElement>(null)
+  const drag = useRef<{ pointerId: number; startY: number; startClientY: number } | null>(null)
+  const overflow = useCoverOverflow(ref, background)
+
+  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!repositioning || event.button !== 0) return
+    const match = /(\d+(?:\.\d+)?)% \/ cover/u.exec(background)
+    drag.current = {
+      pointerId: event.pointerId,
+      startY: match ? Number(match[1]) : 50,
+      startClientY: event.clientY
+    }
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+    event.preventDefault()
+  }
+  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const d = drag.current
+    if (!d || d.pointerId !== event.pointerId) return
+    const height = event.currentTarget.getBoundingClientRect().height
+    onDrag(repositionedCover(d.startY, event.clientY - d.startClientY, height, overflow))
+  }
+  const onPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (drag.current?.pointerId === event.pointerId) drag.current = null
+  }
+
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        'group/cover relative h-[30vh] max-h-[280px] min-h-[140px]',
+        repositioning && 'cursor-grab touch-none select-none active:cursor-grabbing'
+      )}
+      style={{ background }}
+      data-testid="cover"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+    >
+      {repositioning && (
+        <div className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center">
+          <span className="hk-pop rounded-md bg-popover/90 px-3 py-1.5 text-sm text-popover-foreground shadow-sm">
+            {t('page.repositionHint')}
+          </span>
+        </div>
+      )}
+      {children}
+    </div>
+  )
+}
+
+/**
+ * How many pixels of the cover's image lie beyond the cover vertically (null until the image has loaded, or
+ * for a gradient): what a reposition drag can travel.
+ */
+function useCoverOverflow(
+  ref: React.RefObject<HTMLDivElement | null>,
+  background: string
+): number | null {
+  // Measured for one picture; another picture's cover reads as unmeasured until its own load lands.
+  const [measured, setMeasured] = useState<{ src: string; overflow: number } | null>(null)
+  const url = /url\("([^"]+)"\)/u.exec(background)?.[1]?.replaceAll('%22', '"') ?? null
+  const src = coverImageURL(url)
+  useEffect(() => {
+    if (!src || typeof Image === 'undefined') return
+    let cancelled = false
+    const image = new Image()
+    image.addEventListener(
+      'load',
+      () => {
+        if (cancelled || !ref.current || !image.naturalWidth) return
+        const { width, height } = ref.current.getBoundingClientRect()
+        // `background-size: cover`: the image fills the width (or the height, when it is the taller one).
+        const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight)
+        setMeasured({ src, overflow: image.naturalHeight * scale - height })
+      },
+      { once: true }
+    )
+    image.src = src
+    return () => {
+      cancelled = true
+    }
+  }, [src, ref])
+  return measured?.src === src ? measured.overflow : null
 }

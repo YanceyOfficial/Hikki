@@ -63,15 +63,63 @@ export const GRADIENTS: GradientCover[] = [
 
 export const gradientCover = (id: string) => `gradient:${id}`
 
+const IMAGE_COVER = /^(hikki-editor|https?|blob|data):/u
+/** An image cover's vertical position rides along as a fragment: `…#y=35` (0 = top of the image, 100 = bottom). */
+const POSITION = /#y=(\d{1,3})$/u
+
+/** A cover that is a picture (uploaded, linked, Unsplash), as opposed to a gradient. */
+export const isImageCover = (cover: string | null): cover is string =>
+  !!cover && IMAGE_COVER.test(cover)
+
+/** Where the image sits vertically, in percent (50 = centred, the default). */
+export function coverPosition(cover: string | null): number {
+  const match = cover ? POSITION.exec(cover) : null
+  return match ? Math.min(100, Number(match[1])) : 50
+}
+
+/** The same cover at another vertical position (gradients have none and come back unchanged). */
+export function withCoverPosition(cover: string, y: number): string {
+  if (!isImageCover(cover)) return cover
+  const base = cover.replace(POSITION, '')
+  const rounded = Math.round(Math.min(100, Math.max(0, y)))
+  return rounded === 50 ? base : `${base}#y=${rounded}`
+}
+
+/** The image to load for a cover (its URL without our position fragment), or null for a gradient. */
+export function coverImageURL(cover: string | null): string | null {
+  return isImageCover(cover) ? cover.replace(POSITION, '') : null
+}
+
 /** CSS `background` for a stored cover value, or null if it is unusable. */
 export function coverBackground(cover: string | null): string | null {
   if (!cover) return null
   if (cover.startsWith('gradient:')) {
     return GRADIENTS.find((g) => `gradient:${g.id}` === cover)?.css ?? null
   }
-  if (/^(hikki-editor|https?|blob|data):/.test(cover))
-    return `center / cover no-repeat url("${cover.replace(/"/g, '%22')}")`
+  if (isImageCover(cover))
+    return `50% ${coverPosition(cover)}% / cover no-repeat url("${cover.replaceAll('"', '%22')}")`
   return null
+}
+
+/** When neither the image's overflow nor the cover's height is known, this many pixels of drag span the range. */
+const FALLBACK_EXTENT = 200
+
+/**
+ * The position after dragging the image by `dy` pixels (down is positive, which reveals more of the top):
+ * one pixel of drag moves the image one pixel, so the whole range spans the image's overflow beyond the
+ * cover — or the cover's height when the overflow isn't known, or a fixed stretch when nothing is.
+ */
+export function repositionedCover(
+  y: number,
+  dy: number,
+  coverHeight: number,
+  imageOverflow: number | null
+): number {
+  const extent =
+    imageOverflow !== null && imageOverflow > 0
+      ? imageOverflow
+      : Math.max(coverHeight, FALLBACK_EXTENT)
+  return Math.min(100, Math.max(0, y - (dy / extent) * 100))
 }
 
 export function randomGradient(random: () => number = Math.random): string {

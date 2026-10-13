@@ -12,10 +12,13 @@
     "addCover": "Add cover",
     "changeIcon": "Change icon",
     "changeCover": "Change cover",
-    "remove": "Remove",
     "outline": "Outline",
     "readOnlyTitle": "Can't edit this page here",
-    "readOnlyDescription": "Its content was made with a newer version of Hikki or couldn't be read completely. It's shown as far as possible and left unchanged — update Hikki to edit it."
+    "readOnlyDescription": "Its content was made with a newer version of Hikki or couldn't be read completely. It's shown as far as possible and left unchanged — update Hikki to edit it.",
+    "reposition": "Reposition",
+    "savePosition": "Save position",
+    "cancelReposition": "Cancel",
+    "repositionHint": "Drag image to reposition"
   },
   "blocks": {
     "paragraph": {
