@@ -121,13 +121,18 @@ public struct TabStrip<Leading: View>: View {
         }
         .coordinateSpace(name: tabStripSpace)
         .overlay {
-            if case .between(let index) = dropTarget, let x = gapX(before: index) {
-                colorTone.fill.frame(width: 2, height: 22).clipShape(.capsule)
-                    .position(x: x, y: metrics.barHeight / 2)
-                    .allowsHitTesting(false)
+            // The line sits on the strip's own middle (the toolbar bar is taller than the tabs).
+            GeometryReader { strip in
+                if case .between(let index) = dropTarget, let x = gapX(before: index) {
+                    colorTone.fill.frame(width: 2, height: 22).clipShape(.capsule)
+                        .position(x: x, y: strip.size.height / 2)
+                }
             }
+            .allowsHitTesting(false)
         }
         .modifier(DropArea(drop: drop, target: target(at:), indicator: $dropTarget))
+        // A drop that changed the tabs is over, whatever the drag session still reports.
+        .onChange(of: items) { _, _ in dropTarget = nil }
     }
 
     /// The gap before the tab at `index` (after the last one for `items.count`), in the strip's space.
@@ -179,7 +184,8 @@ private struct TabStripDropDelegate: DropDelegate {
     func validateDrop(info: DropInfo) -> Bool { drop.accepts() }
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
-        let next = target(info.location)
+        // Updates can still arrive after the drop (the session winding down): nothing to show then.
+        let next = drop.accepts() ? target(info.location) : nil
         if indicator != next { indicator = next }
         return DropProposal(operation: next == nil ? .forbidden : .copy)
     }
@@ -187,7 +193,7 @@ private struct TabStripDropDelegate: DropDelegate {
     func dropExited(info: DropInfo) { indicator = nil }
 
     func performDrop(info: DropInfo) -> Bool {
-        defer { indicator = nil }
+        indicator = nil
         guard let target = target(info.location) else { return false }
         return drop.perform(target)
     }

@@ -182,10 +182,11 @@ HikkiUITests/                 XCUITest flows
   an attribute); ⇧⌘R or Format → More → Ruby opens the reading panel, prefilled from the native tokenizer
   (`HikkiCore/Sources/Search/JapaneseReading.swift`, `suggestReading` message): a phrase comes back as kanji runs with
   readings and bare kana (役に立ちます → 役(やく)に立(た)ちます), one ruby per run; "Whole" puts one reading over all of it.
-- **Full screen (macOS)**: `windowToolbarFullScreenVisibility(.onHover)` on the root (`Hikki/Sources/ContentView.swift`):
-  the toolbar hides with the menu bar and slides back in with it as a detached bar over the content (Photos). Without
-  it the toolbar stayed, transparent, and the traffic lights landed on the sidebar's search field; a hand-drawn scrim
-  or pushing the sidebar down were the wrong tools.
+- **Full screen (macOS)**: Photos' way, in `Hikki/Sources/FullScreenToolbar.swift` — `windowToolbarFullScreenVisibility(.onHover)`
+  hides the toolbar with the menu bar and slides it back in over the content, and `toolbarBackgroundVisibility(.visible)`
+  while in full screen gives that bar its translucent band every time (on its own the bar only got one when scrolled
+  content lay under it, so the traffic lights sometimes sat bare on the sidebar's search field). In a window the toolbar
+  stays transparent. `HIKKI_DEBUG_FULLSCREEN` forces the full-screen look on.
 - **Find, spelling, insets**: find and replace is `editor/src/extensions/find.ts` (Tiptap's extension, RE2 regex) with
   `editor/src/components/find-panel.tsx`; the page handles ⌘F/⌥⌘F/⌘G itself, the native Edit menu and the page ⋯ menu ("Find
   in Page", the only way on a phone) call `window.hikki.find`. Spellcheck is WebKit's (Settings → Editor,
