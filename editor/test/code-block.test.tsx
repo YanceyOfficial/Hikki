@@ -124,8 +124,9 @@ describe('code block', () => {
     const writeText = vi.fn(async () => {})
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
     editor = createEditor(host, codeDoc('json', '{"a": 1}'))
-    await settle()
-    act(() => screen.getByRole('button', { name: 'Copy' }).click())
+    // The header is a React root rendered after the node view mounts: wait for it rather than one tick.
+    const copy = await screen.findByRole('button', { name: 'Copy' })
+    act(() => copy.click())
     expect(writeText).toHaveBeenCalledWith('{"a": 1}')
     expect(await screen.findByRole('button', { name: 'Copied' })).toBeTruthy()
   })
