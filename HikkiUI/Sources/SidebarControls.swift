@@ -2,24 +2,19 @@ import SwiftUI
 
 public struct SidebarFooterLabel<Badge: View>: View {
     private let title: String
-    private let subtitle: String
     private let badge: Badge
 
-    /// `title` / `subtitle` are shown as-is (a workspace name, a folder path): pass already-localized text.
-    public init(title: String, subtitle: String, @ViewBuilder badge: () -> Badge) {
+    /// `title` is shown as-is (a workspace name): pass already-localized text.
+    public init(title: String, @ViewBuilder badge: () -> Badge) {
         self.title = title
-        self.subtitle = subtitle
         self.badge = badge()
     }
 
     public var body: some View {
         HStack(spacing: Spacing.s2) {
             badge
-            VStack(alignment: .leading, spacing: Spacing.px) {
-                Text(verbatim: title).font(.hk(.sm, .medium)).foregroundStyle(Theme.foreground)
-                Text(verbatim: subtitle).font(.hk(.xs)).foregroundStyle(Theme.mutedForeground)
-            }
-            .lineLimit(1)
+            Text(verbatim: title).font(.hk(.sm, .medium)).foregroundStyle(Theme.foreground)
+                .lineLimit(1)
             Spacer(minLength: Spacing.s1)
             IconView(.caretUpDown, size: TextSize.base.rawValue).foregroundStyle(Theme.mutedForeground)
         }
@@ -65,7 +60,7 @@ public struct GlassSearchField: View {
         GlassSearchField("Search", shortcut: "⌘K") {}
         Button {
         } label: {
-            SidebarFooterLabel(title: "Yancey’s Space", subtitle: "This device only") {
+            SidebarFooterLabel(title: "Yancey’s Space") {
                 Text(verbatim: "Y").frame(width: 32, height: 32).background(ColorTone.standard.fill, in: .rect(cornerRadius: Radius.lg))
             }
         }

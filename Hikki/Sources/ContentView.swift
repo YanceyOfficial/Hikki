@@ -58,7 +58,10 @@ struct ContentView: View {
         content
             .task { await model.observe() }
             .onAppear(perform: setUp)
-            .onChange(of: navigator.route) { _, route in editor.open(documentID: route.pageID) }
+            .onChange(of: navigator.route) { _, route in
+                editor.open(documentID: route.pageID)
+                navigator.revealCurrent()
+            }
             .onChange(of: tone) { _, tone in editor.setTone(tone) }
             .onChange(of: spellcheck) { _, on in editor.setSpellcheck(on) }
             .onChange(of: navigator.titleFocusRequest) { _, request in
@@ -72,6 +75,7 @@ struct ContentView: View {
             .onChange(of: model.tree) { _, tree in
                 // Pages trashed here or in another window disappear from every tab's history.
                 navigator.prune { tree.page($0) != nil }
+                navigator.revealCurrent()
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {

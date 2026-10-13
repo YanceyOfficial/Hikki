@@ -125,6 +125,11 @@ final class Navigator {
         tabs = restored
     }
 
+    /// Expands the sidebar path to the open page (switching tabs, back/forward, the tree loading after launch).
+    func revealCurrent() {
+        if let id = route.pageID { reveal(id) }
+    }
+
     private func reveal(_ id: String) {
         guard let model else { return }
         for ancestor in model.tree.path(to: id).dropLast() { expanded.insert(ancestor.id) }

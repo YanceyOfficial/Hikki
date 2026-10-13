@@ -94,11 +94,14 @@ private struct WorkspaceSwitcher: View {
                     .accessibilityIdentifier("workspace-rename")
                 ShareLink("app:workspace.exportLogs", items: model.exportableFiles)
             } header: {
-                Text(verbatim: model.workspace?.name ?? "Hikki")  // the user's workspace name
+                // The user's workspace name and where it lives.
+                Text(verbatim: "\(model.workspace?.name ?? "Hikki") · \(location)")
             }
         } label: {
-            SidebarFooterLabel(title: model.workspace?.name ?? "Hikki", subtitle: location) {
-                WorkspaceBadge(initial: model.workspace?.initial ?? "H", icon: model.workspace?.icon, size: Size.iconButton + Spacing.s1)
+            // Compact, like Apple Music's account row: badge and name; the folder shows in the menu.
+            SidebarFooterLabel(title: model.workspace?.name ?? "Hikki") {
+                WorkspaceBadge(
+                    initial: model.workspace?.initial ?? "H", icon: model.workspace?.icon, size: Size.iconButtonSm + Spacing.s0_5)
             }
         }
         .menuStyle(.button)
@@ -187,6 +190,18 @@ private struct PhoneSidebar: View {
                 NativeSymbolLabel("app:nav.home", icon: .house)
             }
             .accessibilityIdentifier("nav-home")
+            // Trash sits with Home (as in the first design), not at the end of the tree.
+            SidebarDestination(route: .trash, navigator: navigator, wide: wideSidebar) {
+                HStack {
+                    NativeSymbolLabel("app:nav.trash", icon: .trash)
+                    // List's .badge doesn't exist in the stack; the same count, drawn here.
+                    if wideSidebar, !model.trash.isEmpty {
+                        Spacer()
+                        Text(model.trash.count, format: .number).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .badge(wideSidebar ? 0 : model.trash.count)
         }
 
         if !model.tree.favorites.isEmpty {
@@ -220,22 +235,6 @@ private struct PhoneSidebar: View {
                 .background(privateTargeted ? colorTone.selectionFill : .clear, in: .rect(cornerRadius: Radius.md))
                 .onDrop(
                     of: [.plainText], delegate: SectionDropDelegate(navigator: navigator, model: model, isTargeted: $privateTargeted))
-        }
-
-        Section {
-            SidebarDestination(route: .trash, navigator: navigator, wide: wideSidebar) {
-                HStack {
-                    NativeSymbolLabel("app:nav.trash", icon: .trash)
-                    // List's .badge doesn't exist in the stack; the same count, drawn here.
-                    if wideSidebar, !model.trash.isEmpty {
-                        Spacer()
-                        Text(model.trash.count, format: .number).font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-            }
-            .badge(wideSidebar ? 0 : model.trash.count)
-            // A section's worth of space above it in the stack (the List adds its own).
-            .padding(.top, wideSidebar ? Spacing.s3 : 0)
         }
     }
 
@@ -278,15 +277,10 @@ private struct PhoneTree: View {
     }
 
     private func destination(_ node: PageNode, chevron: Binding<Bool>?) -> some View {
-        SidebarDestination(route: .page(node.id), navigator: navigator, wide: wide, reservesChevron: false) {
+        SidebarDestination(route: .page(node.id), navigator: navigator, wide: wide) {
             if wide {
-                // The chevron's slot comes first; other rows reserve the same slot (SidebarDestination), so every
-                // icon lines up and the chevron stays inside the selection.
-                HStack(spacing: Spacing.s0) {
-                    DisclosureChevron(isExpanded: chevron)
-                    NativePageLabel(page: node.page)
-                }
-                .padding(.leading, CGFloat(depth) * Spacing.s3_5)
+                HoverPageRow(page: node.page, isExpanded: chevron, navigator: navigator)
+                    .padding(.leading, CGFloat(depth) * Spacing.s4)
             } else {
                 NativePageLabel(page: node.page)
             }
@@ -310,8 +304,6 @@ private struct SidebarDestination<Label: View>: View {
     let navigator: Navigator
     let wide: Bool
     var showsSelection = true
-    /// Rows without their own chevron leave its slot empty, so icons line up with tree rows.
-    var reservesChevron = true
     @ViewBuilder let label: Label
     @Environment(\.colorTone) private var colorTone
     @Environment(\.self) private var environment
@@ -323,25 +315,21 @@ private struct SidebarDestination<Label: View>: View {
                 if let id = route.pageID { navigator.open(id) } else { navigator.go(route) }
             } label: {
                 label
-                    .padding(.leading, reservesChevron ? Spacing.s3_5 : 0)
                     // ~32pt rows, like Apple Music.
                     .padding(.vertical, Spacing.s1_5)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, Spacing.s2)
                     .contentShape(.rect)
-                    // On the tone's fill: title and symbol switch to its on-fill colour.
                     .environment(\.sidebarRowSelected, selected)
-                    .foregroundStyle(selected ? colorTone.onFill : Theme.foreground)
-                    .fontWeight(selected ? .semibold : nil)
+                    .foregroundStyle(Theme.foreground)
             }
             .buttonStyle(.plain)
-            // The selection in the colour tone, drawn behind the row's content and flat: as a list row
-            // background the sidebar rendered it raised, with a shadow.
+            // A grey selection pill, as in Apple Music (icons keep the colour tone), drawn flat behind the row:
+            // as a list row background the sidebar rendered it raised, with a shadow.
             .background {
-                // Resolved to a concrete colour: the tone's dynamic (light/dark) colour got the active sidebar's
-                // vibrancy — a lighter band on top, like a raised button. A resolved colour draws flat.
+                // Resolved to a concrete colour: a dynamic one picked up the active sidebar's vibrancy.
                 RoundedRectangle(cornerRadius: Radius.lg)
-                    .fill(selected ? Color(colorTone.fill.resolve(in: environment)) : .clear)
+                    .fill(selected ? Color(Theme.sidebarAccent.resolve(in: environment)) : .clear)
             }
             // The padding moved inside the button for the pill; pull it back so content keeps its place.
             .padding(.horizontal, -Spacing.s2)
@@ -419,14 +407,14 @@ private struct DisclosureChevron: View {
                 } label: {
                     IconView(.caretRight, size: TextSize.xs.rawValue)
                         .rotationEffect(.degrees(isExpanded.wrappedValue ? 90 : 0))
-                        .foregroundStyle(selected ? AnyShapeStyle(colorTone.onFill) : AnyShapeStyle(.secondary))
-                        .frame(width: Spacing.s3_5, height: Size.iconButtonSm)
+                        .foregroundStyle(.secondary)
+                        .frame(width: Size.sidebarIcon + Spacing.s1, height: Size.iconButtonSm)
                         .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(isExpanded.wrappedValue ? "app:sidebar.collapse" : "app:sidebar.expand")
             } else {
-                Color.clear.frame(width: Spacing.s3_5, height: Size.iconButtonSm)
+                Color.clear.frame(width: Size.sidebarIcon + Spacing.s1, height: Size.iconButtonSm)
             }
         }
     }
@@ -452,7 +440,7 @@ private struct NativeSymbolLabel: View {
             icon.glyph.imageScale(.large).frame(width: Size.sidebarIcon + Spacing.s1)
                 // Explicit, so neither the system accent nor list tinting replaces the colour tone; on the
                 // selection it takes the row's on-fill colour.
-                .foregroundStyle(selected ? colorTone.onFill : colorTone.fill)
+                .foregroundStyle(colorTone.fill)
         }
     }
 }
@@ -466,21 +454,73 @@ private struct NativePageLabel: View {
     var body: some View {
         Label {
             if page.title.isEmpty {
-                Text("app:page.untitled").foregroundStyle(selected ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+                Text("app:page.untitled").foregroundStyle(.secondary)
             } else {
                 Text(verbatim: page.title)  // the page's own title
             }
         } icon: {
+            PageIcon(page.icon, size: TextSize.base.rawValue)
+                .frame(width: Size.sidebarIcon + Spacing.s1)
+        }
+    }
+}
+
+/// A page row's content in the Mac/iPad tree (Notion): icon and title; on hover the icon becomes the expand
+/// chevron (for pages with subpages), and "+" (new subpage) and ⋯ (page actions) appear at the end.
+private struct HoverPageRow: View {
+    let page: PageSummary
+    let isExpanded: Binding<Bool>?
+    let navigator: Navigator
+    @State private var hovering = false
+
+    var body: some View {
+        HStack(spacing: Spacing.s2) {
             Group {
-                if page.icon == nil, selected {
-                    // The default page glyph is a muted grey; on the tone's fill it takes the row's white.
-                    IconView(.fileText, size: TextSize.base.rawValue * 0.95).foregroundStyle(colorTone.onFill)
+                if hovering, isExpanded != nil {
+                    DisclosureChevron(isExpanded: isExpanded)
                 } else {
                     PageIcon(page.icon, size: TextSize.base.rawValue)
+                        .frame(width: Size.sidebarIcon + Spacing.s1, height: Size.iconButtonSm)
                 }
             }
-            .frame(width: Size.sidebarIcon + Spacing.s1)
+            Group {
+                if page.title.isEmpty {
+                    Text("app:page.untitled").foregroundStyle(.secondary)
+                } else {
+                    Text(verbatim: page.title)  // the page's own title
+                }
+            }
+            .lineLimit(1)
+            Spacer(minLength: Spacing.s1)
+            if hovering {
+                HStack(spacing: Spacing.px) {
+                    Menu {
+                        PageActions(page: page, navigator: navigator)
+                    } label: {
+                        IconView(.dotsThree, size: TextSize.sm.rawValue)
+                            .frame(width: Size.iconButtonSm, height: Size.iconButtonSm)
+                            .contentShape(.rect)
+                    }
+                    .menuStyle(.button)
+                    .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.md, hoverFill: Theme.sidebarAccent))
+                    .menuIndicator(.hidden)
+                    .fixedSize()
+                    .accessibilityLabel("app:common.more")
+                    Button {
+                        navigator.newPage(parentId: page.id)
+                    } label: {
+                        IconView(.plus, size: TextSize.sm.rawValue)
+                            .frame(width: Size.iconButtonSm, height: Size.iconButtonSm)
+                            .contentShape(.rect)
+                    }
+                    .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.md, hoverFill: Theme.sidebarAccent))
+                    .help("app:page.addInside")
+                    .accessibilityLabel("app:page.addInside")
+                }
+                .foregroundStyle(.secondary)
+            }
         }
+        .onHover { hovering = $0 }
     }
 }
 
@@ -665,13 +705,15 @@ private struct NativeSidebarChrome: ViewModifier {
     func body(content: Content) -> some View {
         if isWide {
             content
-                .safeAreaInset(edge: .top) {
+                // Bars (not plain insets): rows scrolling under them fade out (the scroll edge effect) instead
+                // of running into their content.
+                .safeAreaBar(edge: .top) {
                     GlassSearchField("app:nav.search", shortcut: "⌘K") { navigator.isSearching = true }
                         .accessibilityIdentifier("sidebar-search")
                         .padding(.horizontal, Spacing.s3)
                         .padding(.bottom, Spacing.s1)
                 }
-                .safeAreaInset(edge: .bottom) {
+                .safeAreaBar(edge: .bottom) {
                     WorkspaceSwitcher(navigator: navigator)
                         .padding(.horizontal, Spacing.s2)
                         .padding(.bottom, Spacing.s2)
