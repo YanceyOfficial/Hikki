@@ -80,6 +80,7 @@
   --size-fullscreen-scrim: 72px;
   --motion-pop-in: 150ms;
   --motion-pop-out: 100ms;
+  --radius: 8px;
 }
 
 @media (prefers-color-scheme: dark) {

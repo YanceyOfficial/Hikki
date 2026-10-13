@@ -200,6 +200,8 @@ function css() {
   L.push(':root {', ...colorVars('light', '  '))
   for (const [k, v] of entries(tokens.size)) L.push(`  --size-${k}: ${v}px;`)
   for (const k of ['pop-in', 'pop-out']) L.push(`  --motion-${k}: ${tokens.motion[k]}ms;`)
+  // shadcn's base radius: its components derive odd sizes from it (`calc(var(--radius) - 5px)` for xs).
+  L.push(`  --radius: ${tokens.radius.lg}px;`)
   L.push(
     '}',
     '',
