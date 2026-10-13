@@ -175,7 +175,8 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
       {panel && (
         <div
           className={cn(
-            'absolute top-0 w-[224px] rounded-xl bg-popover p-1 text-popover-foreground shadow-popover',
+            // Scrolls on its own (wheel and trackpad stay inside, the page doesn't move).
+            'absolute top-0 max-h-[min(440px,calc(100vh-96px))] w-[224px] overflow-y-auto overscroll-contain rounded-xl bg-popover p-1 text-popover-foreground shadow-popover',
             panelLeft ? 'right-full mr-1.5' : 'left-full ml-1.5'
           )}
           data-testid={`selection-menu-${panel}`}
@@ -410,7 +411,7 @@ function ColorPanel({
   onBackground: (color: PaletteColor | null) => void
 }) {
   return (
-    <div role="menu" aria-label={t('format.color')} className="max-h-[360px] overflow-y-auto">
+    <div role="menu" aria-label={t('format.color')}>
       <PanelTitle>{t('color.text')}</PanelTitle>
       {[null, ...PALETTE].map((color) => (
         <ColorRow

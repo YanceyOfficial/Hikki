@@ -87,8 +87,40 @@
   [data-text-color='red'] {
     color: var(--color-ink-red);
   }
-  [data-bg-color] {
+  /* Inline highlight padding: spans only (callouts and table cells carry data-bg-color too). */
+  span[data-bg-color] {
     @apply -mx-[1px] rounded-[3px] box-decoration-clone px-[1px] py-[1px];
+  }
+  /* Whole-block background (block menu → Color). */
+  .tiptap [data-block-bg] {
+    @apply -mx-1 rounded-sm px-1;
+  }
+  [data-block-bg='gray'] {
+    background: var(--color-wash-gray);
+  }
+  [data-block-bg='brown'] {
+    background: var(--color-wash-brown);
+  }
+  [data-block-bg='orange'] {
+    background: var(--color-wash-orange);
+  }
+  [data-block-bg='yellow'] {
+    background: var(--color-wash-yellow);
+  }
+  [data-block-bg='green'] {
+    background: var(--color-wash-green);
+  }
+  [data-block-bg='blue'] {
+    background: var(--color-wash-blue);
+  }
+  [data-block-bg='purple'] {
+    background: var(--color-wash-purple);
+  }
+  [data-block-bg='pink'] {
+    background: var(--color-wash-pink);
+  }
+  [data-block-bg='red'] {
+    background: var(--color-wash-red);
   }
   [data-bg-color='gray'] {
     background: var(--color-wash-gray);
@@ -449,12 +481,40 @@
     @apply rounded-sm outline-2 outline-selection;
   }
 
-  /* Drag handle (created by the Tiptap extension, not React). */
-  .hk-drag-handle {
-    @apply mr-1 grid h-6 w-5 cursor-grab place-items-center rounded-sm text-placeholder hover:bg-accent hover:text-muted-foreground;
+  /* Block controls (extensions/block-controls.tsx): + and ⋮⋮ beside the hovered block. */
+  .hk-block-handle {
+    @apply fixed z-30 flex items-center gap-0.5 transition-opacity duration-150;
   }
-  .hk-drag-handle.hk-hidden {
-    @apply pointer-events-none invisible;
+  .hk-block-handle[data-hidden='true'] {
+    @apply pointer-events-none opacity-0;
+  }
+  .hk-block-plus,
+  .hk-block-grip {
+    @apply grid h-6 w-6 cursor-pointer place-items-center rounded-md text-placeholder hover:bg-accent hover:text-muted-foreground;
+  }
+  .hk-block-grip {
+    @apply w-5 cursor-grab active:cursor-grabbing;
+  }
+  /* While dragging a block: a ghost under the pointer, the source dimmed, a line where it lands. */
+  .hk-drag-ghost {
+    @apply pointer-events-none fixed top-0 left-0 z-50 max-h-60 overflow-hidden rounded-md bg-background/80 opacity-70 shadow-popover;
+  }
+  .hk-dragging-source {
+    @apply opacity-40;
+  }
+  .hk-drop-line {
+    @apply pointer-events-none fixed z-40 rounded-full bg-primary/70;
+  }
+  .hk-drop-line[data-hidden='true'] {
+    @apply hidden;
+  }
+  .hk-block-dragging,
+  .hk-block-dragging * {
+    @apply cursor-grabbing select-none;
+  }
+  /* The block a menu is open for. */
+  .tiptap .hk-block-selected {
+    @apply rounded-sm bg-selection;
   }
 }
 

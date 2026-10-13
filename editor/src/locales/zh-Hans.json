@@ -276,5 +276,15 @@
     "alignRight": "右对齐",
     "view": "查看原图",
     "delete": "删除"
+  },
+  "blockMenu": {
+    "label": "块",
+    "search": "搜索操作…",
+    "turnInto": "转换为",
+    "color": "颜色",
+    "copyLink": "复制块链接",
+    "duplicate": "创建副本",
+    "delete": "删除",
+    "add": "在下方添加块"
   }
 }

@@ -7,7 +7,7 @@ import { Placeholder } from '@tiptap/extensions'
 import StarterKit from '@tiptap/starter-kit'
 
 import { setMediaHost } from './blocks'
-import { blockHandleExtensions } from './extensions/block-handle'
+import { BlockControls } from './extensions/block-controls'
 import { Callout } from './extensions/callout'
 import { CodeBlock } from './extensions/code-block'
 import { Colors, ColorTextStyle } from './extensions/colors'
@@ -117,7 +117,7 @@ export function createEditor(
       SlashCommand,
       SelectionMenuExtension,
       UniqueID.configure({ types: BLOCK_ID_TYPES }),
-      ...blockHandleExtensions()
+      BlockControls
     ]
   })
 }

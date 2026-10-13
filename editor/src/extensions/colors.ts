@@ -37,6 +37,16 @@ export const colorLabel = (color: PaletteColor | null) =>
 const isPaletteColor = (value: unknown): value is PaletteColor =>
   typeof value === 'string' && (PALETTE as readonly string[]).includes(value)
 
+/** Blocks that can be coloured as a whole (the block menu's Color), like Notion. */
+export const BLOCK_COLOR_TYPES = [
+  'paragraph',
+  'heading',
+  'blockquote',
+  'listItem',
+  'taskItem',
+  'details'
+]
+
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     colors: {
@@ -58,6 +68,32 @@ export const Colors = Extension.create({
 
   addGlobalAttributes() {
     return [
+      {
+        // Whole-block colours: text (data-text-color, as for spans) and a background wash (data-block-bg).
+        types: BLOCK_COLOR_TYPES,
+        attributes: {
+          blockColor: {
+            default: null,
+            parseHTML: (el) => {
+              const value = el.getAttribute('data-text-color')
+              return isPaletteColor(value) ? value : null
+            },
+            renderHTML: (attrs) =>
+              isPaletteColor(attrs.blockColor) ? { 'data-text-color': attrs.blockColor } : {}
+          },
+          blockBackground: {
+            default: null,
+            parseHTML: (el) => {
+              const value = el.getAttribute('data-block-bg')
+              return isPaletteColor(value) ? value : null
+            },
+            renderHTML: (attrs) =>
+              isPaletteColor(attrs.blockBackground)
+                ? { 'data-block-bg': attrs.blockBackground }
+                : {}
+          }
+        }
+      },
       {
         types: ['textStyle'],
         attributes: {

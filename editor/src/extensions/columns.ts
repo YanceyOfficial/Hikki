@@ -248,9 +248,14 @@ function topLevelBlock($pos: ResolvedPos): { pos: number; node: PMNode } | null 
   return { pos: $pos.before(1), node: $pos.node(1) }
 }
 
-export function dropBeside(view: EditorView, target: SideTarget): boolean {
+/** Makes a row of the blocks in `range` (default: the dragged selection) and the target, side by side. */
+export function dropBeside(
+  view: EditorView,
+  target: SideTarget,
+  range: { from: number; to: number } = view.state.selection
+): boolean {
   const { state } = view
-  const { from, to } = state.selection
+  const { from, to } = range
   const { column, columns } = state.schema.nodes
   const content = state.doc.slice(from, to).content
   // A row can't go inside a column of another row.

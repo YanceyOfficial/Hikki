@@ -15,6 +15,7 @@ import {
   type Snapshot,
   type ToNativeMessage
 } from './protocol'
+import { setBlockLinkBuilder } from './ui/BlockMenu'
 
 export interface Transport {
   post(message: ToNativeMessage): Promise<unknown>
@@ -93,6 +94,9 @@ export class EditorBridge {
     this.markSaved()
     const { body, title } = normalizeBody(payload.content, payload.title ?? '')
     let contentError: Error | null = null
+    setBlockLinkBuilder((blockId) =>
+      this.page.get().docId ? `hikki://page/${this.page.get().docId}#${blockId}` : null
+    )
     const editor = createEditor(this.host, body, {
       spellcheck: this.spellcheck,
       media: this.media,

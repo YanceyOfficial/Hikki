@@ -120,6 +120,10 @@ HikkiUITests/                 XCUITest flows
   `syntax-*` tokens (Xcode's Default Light/Dark); no auto-detection — new blocks use the last picked language
   (`editor/src/extensions/code-languages.ts`). Node views are plain DOM with small React roots for controls (the editor
   is the core `Editor`, not `@tiptap/react`).
+- **Block controls** (`editor/src/extensions/block-controls.tsx`, units in `editor/src/extensions/block-units.ts`): our
+  own + / ⋮⋮ handle on pointer events (HTML5 drag-and-drop is unreliable in WebKit), centred on the block's first line;
+  drag shows a ghost and a drop line (side edges make columns); a click opens `editor/src/ui/BlockMenu.tsx`. Fine
+  pointers only. Block colours are `blockColor` / `blockBackground` attributes.
 - **Rich blocks**: toggles (`editor/src/extensions/toggle.ts`; open/closed is not stored, so opening never saves),
   callouts, KaTeX formulas (`editor/src/extensions/math.tsx`; our panel replaces Tiptap's `prompt()`), tables
   (`editor/src/extensions/table.tsx` + `editor/src/extensions/table-ops.ts`, controls drawn by

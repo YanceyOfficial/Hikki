@@ -276,5 +276,15 @@
     "alignRight": "Align right",
     "view": "View full size",
     "delete": "Delete"
+  },
+  "blockMenu": {
+    "label": "Block",
+    "search": "Search actions…",
+    "turnInto": "Turn into",
+    "color": "Color",
+    "copyLink": "Copy link to block",
+    "duplicate": "Duplicate",
+    "delete": "Delete",
+    "add": "Add a block below"
   }
 }
