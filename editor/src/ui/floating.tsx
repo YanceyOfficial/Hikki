@@ -1,5 +1,5 @@
 import { computePosition, flip, offset, shift, size, type VirtualElement } from '@floating-ui/dom'
-import type { ReactElement } from 'react'
+import { useEffect, useState, type ReactElement, type RefObject } from 'react'
 import { flushSync } from 'react-dom'
 import { createRoot, type Root } from 'react-dom/client'
 
@@ -7,7 +7,8 @@ import { cn, ui } from './cn'
 
 /**
  * A React tree rendered into a body-level layer and positioned next to a caret rect.
- * Reusable for every editor popup (slash menu, mentions, link editor…).
+ * Reusable for every editor popup (slash menu, mentions, link editor…). It enters and leaves with the
+ * shared motion (`hk-pop`, style.css).
  */
 export class FloatingLayer {
   readonly element: HTMLDivElement
@@ -21,7 +22,7 @@ export class FloatingLayer {
   constructor(className: string, { bare = false }: { bare?: boolean } = {}) {
     this.bare = bare
     this.element = document.createElement('div')
-    this.element.className = cn(bare ? 'fixed top-0 left-0 z-50' : ui.floating, className)
+    this.element.className = cn('hk-pop', bare ? 'fixed top-0 left-0 z-50' : ui.floating, className)
     document.body.append(this.element)
     this.root = createRoot(this.element)
   }
@@ -31,9 +32,12 @@ export class FloatingLayer {
     void this.position(anchor)
   }
 
+  /** Plays the leave motion, then takes the layer down. */
   destroy(): void {
-    this.root.unmount()
-    this.element.remove()
+    leave(this.element, () => {
+      this.root.unmount()
+      this.element.remove()
+    })
   }
 
   private async position(anchor: (() => DOMRect | null) | null | undefined): Promise<void> {
@@ -47,8 +51,9 @@ export class FloatingLayer {
       : undefined
     let x: number
     let y: number
+    let placement: string
     try {
-      ;({ x, y } = await computePosition(reference, this.element, {
+      ;({ x, y, placement } = await computePosition(reference, this.element, {
         placement: 'bottom-start',
         strategy: 'fixed',
         middleware: [
@@ -72,5 +77,56 @@ export class FloatingLayer {
     }
     if (!this.element.isConnected) return
     Object.assign(this.element.style, { left: `${x}px`, top: `${y}px` })
+    // Flipped above the anchor: the motion comes from below instead.
+    this.element.toggleAttribute('data-above', placement.startsWith('top'))
   }
+}
+
+/**
+ * Plays the shared leave motion on a surface (`.hk-pop[data-closing]`, style.css) and then calls `remove`
+ * — at once when nothing animates (reduced motion, tests). The returned function cancels: the surface
+ * stays, as if it had never been closing.
+ */
+export function leave(element: HTMLElement | null, remove: () => void): () => void {
+  if (!element) {
+    remove()
+    return () => {}
+  }
+  element.dataset.closing = ''
+  // The attribute's animation exists only once styles are recalculated.
+  void element.offsetWidth
+  const animations = element.getAnimations?.() ?? []
+  let settled = false
+  const finish = () => {
+    if (settled) return
+    settled = true
+    remove()
+  }
+  if (animations.length === 0) {
+    finish()
+    return () => {}
+  }
+  void Promise.allSettled(animations.map((a) => a.finished)).then(finish)
+  // Should the animation never report (a hidden tab pauses them), the surface still goes.
+  const fallback = setTimeout(finish, 1000)
+  return () => {
+    settled = true
+    clearTimeout(fallback)
+    delete element.dataset.closing
+  }
+}
+
+/**
+ * Keeps a React-owned surface rendered after `open` turns false until its leave motion ends (`leave`).
+ * Returns whether to render it; the element at `ref` carries `hk-pop`.
+ */
+export function usePresence(open: boolean, ref: RefObject<HTMLElement | null>): boolean {
+  const [present, setPresent] = useState(open)
+  // Reopened: back at once (a leave in progress is cancelled by the effect's cleanup).
+  if (open && !present) setPresent(true)
+  useEffect(() => {
+    if (open || !present) return
+    return leave(ref.current, () => setPresent(false))
+  }, [open, present, ref])
+  return open || present
 }

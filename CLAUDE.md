@@ -18,6 +18,12 @@ These rules are mandatory. Automated ones are noted.
   `Radius.*`, `Size.*`, `.font(.hk(.sm))`; the web uses Tailwind classes (`bg-background`, `text-muted-foreground`,
   `rounded-md`, `p-2.5`). _Enforced by `make lint-design` (`scripts/lint-design.sh`)._ A justified exception carries
   a `design-lint: allow` comment on the same line.
+- **Motion.** Everything that appears, leaves or reacts moves the same way, from the `motion` tokens. Web surfaces
+  (menus, popovers, tooltips, panels, the outline list) take `hk-pop` — mounted when shown: `FloatingLayer` adds it,
+  the Base UI popups in `editor/src/components/ui/` carry it, a React panel stays mounted through its leave with
+  `usePresence` (`editor/src/ui/floating.tsx`) — or `hk-pop-toggle` + `data-open` when they stay mounted; hover and
+  press transitions use `duration-(--motion-pop-in)` / `ease-out`; Swift uses `Motion.easeOut()`. No per-component
+  durations, easings or tw-animate classes. _Enforced by `make lint-design`._
 - **Reusable UI lives in `HikkiUI`** (no app state: plain values + closures, a `#Preview` each, listed in the DEBUG
   gallery `Hikki/Sources/ComponentGallery.swift`, launch argument `-HikkiGallery`). Native components follow the same
   look as the web's shadcn style (`base-vega`: `Radius.md` controls, `Theme.*` colors).
@@ -150,7 +156,10 @@ HikkiUITests/                 XCUITest flows
   (`openPage` with the block, `openLink` for the web) and `window.hikki.scrollToBlock` lands on the block.
 - **Ruby / furigana** (`editor/src/extensions/ruby.tsx`): an inline node (`<ruby><rb>…</rb><rt>…</rt></ruby>`, reading as
   an attribute); ⇧⌘R or Format → More → Ruby opens the reading panel, prefilled from the native tokenizer
-  (`HikkiCore/Sources/Search/JapaneseReading.swift`, `suggestReading` message).
+  (`HikkiCore/Sources/Search/JapaneseReading.swift`, `suggestReading` message): a phrase comes back as kanji runs with
+  readings and bare kana (役に立ちます → 役(やく)に立(た)ちます), one ruby per run; "Whole" puts one reading over all of it.
+- **Full screen (macOS)**: `Hikki/Sources/FullScreenScrim.swift` fades the top of each column while the window is in full
+  screen, where the auto-hidden toolbar slides down over the content (Photos). `HIKKI_DEBUG_SCRIM` forces it on.
 - **Find, spelling, insets**: find and replace is `editor/src/extensions/find.tsx` (Tiptap's extension, RE2 regex) with
   `editor/src/ui/FindPanel.tsx`; the page handles ⌘F/⌥⌘F/⌘G itself, the native Edit menu and the page ⋯ menu ("Find
   in Page", the only way on a phone) call `window.hikki.find`. Spellcheck is WebKit's (Settings → Editor,

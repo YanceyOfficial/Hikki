@@ -354,7 +354,8 @@ final class EditorController {
             #endif
         case .suggestReading(let text):
             // Short selections only: a reading is for a word or phrase, and the tokenizer runs on the main thread.
-            return text.count <= 80 ? JapaneseReading.hiragana(for: text) : nil
+            guard text.count <= 80, let segments = JapaneseReading.segments(for: text) else { return nil }
+            return segments.map { ["text": $0.text, "reading": $0.reading ?? NSNull()] as [String: Any] }
         }
         return nil
     }

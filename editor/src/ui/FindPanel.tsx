@@ -7,6 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { t } from '../i18n'
 import { shortcutLabel } from '../shortcuts'
 import { cn } from './cn'
+import { usePresence } from './floating'
 import { useEditorSnapshot } from './use-editor-snapshot'
 
 type Props = {
@@ -38,6 +39,8 @@ function snapshot(editor: Editor) {
 export function FindPanel({ editor, open, replace, initialText, onReplaceToggle, onClose }: Props) {
   const state = useEditorSnapshot(editor, snapshot)
   const searchRef = useRef<HTMLInputElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const present = usePresence(open, panelRef)
   // The field owns its text: the extension applies the term after a short debounce, so its storage lags
   // behind typing. The panel is remounted per Find request (keyed), so this starts from the prefill.
   const [text, setText] = useState(initialText)
@@ -51,7 +54,7 @@ export function FindPanel({ editor, open, replace, initialText, onReplaceToggle,
     })
   }, [open])
 
-  if (!open) return null
+  if (!present) return null
   const label =
     text === ''
       ? ''
@@ -74,8 +77,9 @@ export function FindPanel({ editor, open, replace, initialText, onReplaceToggle,
     <div
       role="search"
       aria-label={t('find.label')}
+      ref={panelRef}
       data-testid="find-panel"
-      className="fixed right-4 left-4 z-40 flex flex-col gap-1.5 rounded-xl bg-popover p-1.5 text-popover-foreground shadow-popover sm:left-auto sm:w-[380px]"
+      className="hk-pop fixed right-4 left-4 z-40 flex flex-col gap-1.5 rounded-xl bg-popover p-1.5 text-popover-foreground shadow-popover [--hk-pop-origin:top_right] sm:left-auto sm:w-[380px]"
       style={{ top: 'calc(var(--hk-inset-top, 0px) + 8px)' }}
     >
       <div className="flex items-center gap-1">

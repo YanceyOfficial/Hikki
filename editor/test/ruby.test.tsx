@@ -3,18 +3,37 @@ import { Editor } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { Ruby, rubyAt, type RubyHost } from '../src/extensions/ruby'
+import {
+  Ruby,
+  rubyAt,
+  rubySegmentsFrom,
+  type RubyHost,
+  type RubySegment
+} from '../src/extensions/ruby'
+import { stripIds } from './helpers'
 
 let host: HTMLElement
 let editor: Editor
 let readings: RubyHost
+
+/** What the native tokenizer would answer: a reading per kanji run, the kana left bare. */
+const SUGGESTIONS: Record<string, RubySegment[]> = {
+  漢字: [{ text: '漢字', reading: 'かんじ' }],
+  この漢字を読む: [
+    { text: 'この' },
+    { text: '漢字', reading: 'かんじ' },
+    { text: 'を' },
+    { text: '読', reading: 'よ' },
+    { text: 'む' }
+  ]
+}
 
 const para = (text: string) => ({ type: 'paragraph', content: [{ type: 'text', text }] })
 
 beforeEach(() => {
   host = document.createElement('div')
   document.body.append(host)
-  readings = { suggestReading: vi.fn(async (text: string) => (text === '漢字' ? 'かんじ' : null)) }
+  readings = { suggestReading: vi.fn(async (text: string) => SUGGESTIONS[text] ?? null) }
   editor = new Editor({
     element: host,
     content: { type: 'doc', content: [para('この漢字を読む')] },
@@ -103,5 +122,67 @@ describe('ruby (furigana)', () => {
     act(() => screen.getByRole('button', { name: 'Remove' }).click())
     expect(editor.getHTML()).not.toContain('<ruby')
     expect(editor.getText()).toBe('この漢字を読む')
+  })
+
+  it('a phrase is read kanji by kanji: one ruby per kanji run, the kana left bare', async () => {
+    editor.commands.setTextSelection({ from: 1, to: 8 }) // この漢字を読む
+    act(() => void editor.commands.editRuby())
+    const kanji = (await screen.findByLabelText('Reading for 漢字')) as HTMLInputElement
+    const yomu = screen.getByLabelText('Reading for 読') as HTMLInputElement
+    expect([kanji.value, yomu.value]).toEqual(['かんじ', 'よ'])
+    fireEvent.change(yomu, { target: { value: 'よみ' } })
+    fireEvent.keyDown(yomu, { key: 'Enter' })
+    expect(stripIds(editor.getJSON().content?.[0].content)).toEqual([
+      { type: 'text', text: 'この' },
+      { type: 'ruby', attrs: { reading: 'かんじ' }, content: [{ type: 'text', text: '漢字' }] },
+      { type: 'text', text: 'を' },
+      { type: 'ruby', attrs: { reading: 'よみ' }, content: [{ type: 'text', text: '読' }] },
+      { type: 'text', text: 'む' }
+    ])
+    expect(editor.getText()).toBe('この漢字を読む')
+    expect(document.querySelector('.hk-ruby-panel')).toBeNull()
+  })
+
+  it('"Whole" puts one reading over the phrase instead', async () => {
+    editor.commands.setTextSelection({ from: 1, to: 8 })
+    act(() => void editor.commands.editRuby())
+    await screen.findByLabelText('Reading for 漢字')
+    act(() => screen.getByRole('radio', { name: 'Whole' }).click())
+    const input = screen.getByLabelText('Reading') as HTMLInputElement
+    expect(input.value).toBe('このかんじをよむ')
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(editor.getJSON().content?.[0].content).toHaveLength(1)
+    expect(editor.getJSON().content?.[0].content?.[0]).toMatchObject({
+      type: 'ruby',
+      attrs: { reading: 'このかんじをよむ' },
+      content: [{ type: 'text', text: 'この漢字を読む' }]
+    })
+  })
+
+  it('reads the native reply: null readings mean none, anything else is no suggestion', () => {
+    expect(
+      rubySegmentsFrom([
+        { text: '役', reading: 'やく' },
+        { text: 'に', reading: null },
+        { text: '立', reading: 'た' },
+        { text: 'ちます' }
+      ])
+    ).toEqual([
+      { text: '役', reading: 'やく' },
+      { text: 'に' },
+      { text: '立', reading: 'た' },
+      { text: 'ちます' }
+    ])
+    expect(rubySegmentsFrom('かんじ')).toBeNull()
+    expect(rubySegmentsFrom([])).toBeNull()
+    expect(rubySegmentsFrom([{ text: '', reading: 'x' }])).toBeNull()
+    expect(rubySegmentsFrom([{ text: '役', reading: 1 }])).toBeNull()
+  })
+
+  it('setRubySegments refuses segments that do not spell the selection', () => {
+    editor.commands.setTextSelection({ from: 3, to: 5 })
+    expect(editor.commands.setRubySegments([{ text: '漢', reading: 'かん' }])).toBe(false)
+    expect(editor.commands.setRubySegments([{ text: '漢字' }])).toBe(false)
+    expect(editor.getHTML()).not.toContain('<ruby')
   })
 })

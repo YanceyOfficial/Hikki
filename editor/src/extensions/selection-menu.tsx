@@ -33,8 +33,9 @@ export const SelectionMenuExtension = Extension.create<
     element.className = 'hk-selection-menu fixed top-0 left-0 z-40 w-max'
     this.storage.element = element
     const below = coarsePointer()
+    // The menu (hk-pop, inside) pops from the selection's side.
     element.style.setProperty('--hk-pop-origin', below ? 'top left' : 'bottom left')
-    element.style.setProperty('--hk-pop-shift', below ? '-2px' : '2px')
+    element.style.setProperty('--hk-pop-dy', below ? '-2px' : '2px')
     return [
       BubbleMenuPlugin({
         pluginKey: SelectionMenuKey,

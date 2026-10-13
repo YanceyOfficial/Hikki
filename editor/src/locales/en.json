@@ -295,6 +295,10 @@
     "suggesting": "Looking up…",
     "hint": "Enter to save · Esc to cancel",
     "done": "Done",
-    "remove": "Remove"
+    "remove": "Remove",
+    "mode": "Reading mode",
+    "perKanji": "Per kanji",
+    "whole": "Whole",
+    "readingFor": "Reading for {{text}}"
   }
 }

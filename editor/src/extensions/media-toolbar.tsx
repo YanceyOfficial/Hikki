@@ -46,7 +46,7 @@ function MediaToolbar({ editor, host }: { editor: Editor; host: MediaHost | null
     <div
       role="toolbar"
       aria-label={t('media.imageToolbar')}
-      className="hk-pop-in flex items-center gap-0.5 rounded-lg bg-popover p-1 shadow-popover"
+      className="hk-pop flex items-center gap-0.5 rounded-lg bg-popover p-1 shadow-popover"
       onMouseDown={(e) => e.preventDefault()}
     >
       <button

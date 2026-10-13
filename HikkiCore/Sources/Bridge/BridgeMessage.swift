@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 9
+    public static let version = 10
 }
 
 public struct Snapshot: Codable, Sendable, Equatable {
@@ -44,7 +44,8 @@ public enum BridgeMessage: Sendable, Equatable {
     case openPage(id: String, block: String?)
     /// Any other link was clicked: the system opens it.
     case openLink(url: String)
-    /// Furigana: expects the hiragana reading of `text` as the reply (nil when there is none).
+    /// Furigana: expects `text` split into runs — `[{text, reading?}]`, a reading per kanji run — as the reply (nil
+    /// when there is none).
     case suggestReading(text: String)
 }
 

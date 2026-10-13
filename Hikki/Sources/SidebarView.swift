@@ -310,6 +310,7 @@ private struct SidebarDestination<Label: View>: View {
     @ViewBuilder let label: Label
     @Environment(\.colorTone) private var colorTone
     @Environment(\.self) private var environment
+    @State private var hovering = false
 
     var body: some View {
         if wide {
@@ -332,9 +333,14 @@ private struct SidebarDestination<Label: View>: View {
             // as a list row background the sidebar rendered it raised, with a shadow.
             .background {
                 // Resolved to a concrete colour: a dynamic one picked up the active sidebar's vibrancy.
+                // Hover: the same grey, lighter.
                 RoundedRectangle(cornerRadius: Radius.lg)
-                    .fill(selected ? Color(Theme.sidebarAccent.resolve(in: environment)) : .clear)
+                    .fill(
+                        selected
+                            ? Color(Theme.sidebarAccent.resolve(in: environment))
+                            : hovering ? Color(Theme.sidebarAccent.resolve(in: environment)).opacity(0.55) : .clear)
             }
+            .onHover { hovering = $0 }
             // The padding moved inside the button for the pill; pull it back so content keeps its place.
             .padding(.horizontal, -Spacing.s2)
             .listRowBackground(Color.clear)
@@ -721,6 +727,8 @@ private struct NativeSidebarChrome: ViewModifier {
                         .padding(.horizontal, Spacing.s3)
                         .padding(.bottom, Spacing.s1)
                 }
+                // Full screen: the auto-hidden toolbar slides down over the rows (Photos fades them under it).
+                .fullScreenScrim(Theme.sidebar)
                 .safeAreaBar(edge: .bottom) {
                     WorkspaceSwitcher(navigator: navigator)
                         .padding(.horizontal, Spacing.s2)

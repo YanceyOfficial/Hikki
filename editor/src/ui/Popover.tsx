@@ -11,6 +11,7 @@ import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 import { cn, ui } from './cn'
+import { usePresence } from './floating'
 
 type Props = {
   anchor: HTMLElement | null
@@ -60,7 +61,10 @@ export function Popover({
             }
           })
         ]
-      }).then(({ x, y }) => Object.assign(floating.style, { left: `${x}px`, top: `${y}px` }))
+      }).then(({ x, y, placement: placed }) => {
+        Object.assign(floating.style, { left: `${x}px`, top: `${y}px` })
+        floating.toggleAttribute('data-above', placed.startsWith('top'))
+      })
     })
   }, [open, anchor, placement])
 
@@ -85,13 +89,15 @@ export function Popover({
     }
   }, [open, anchor, onClose])
 
-  if (!open) return null
+  const present = usePresence(open, ref)
+
+  if (!present) return null
   return createPortal(
     <div
       ref={ref}
       role="dialog"
       aria-label={label}
-      className={cn(ui.floating, 'max-w-[calc(100vw-16px)]', className)}
+      className={cn('hk-pop', ui.floating, 'max-w-[calc(100vw-16px)]', className)}
     >
       {children}
     </div>,

@@ -369,7 +369,7 @@ function EdgeBars({
 }) {
   const table = visibleRect(hover.table)
   const bar =
-    'fixed z-30 grid cursor-pointer place-items-center rounded-sm bg-accent text-muted-foreground opacity-60 transition-opacity duration-150 hover:opacity-100 hover:text-foreground'
+    'fixed z-30 grid cursor-pointer place-items-center rounded-sm bg-accent text-muted-foreground opacity-60 transition-opacity duration-(--motion-pop-in) hover:opacity-100 hover:text-foreground'
   return (
     <>
       <EdgeButton
@@ -447,7 +447,7 @@ function CellBar({ editor, selection }: { editor: Editor; selection: CellSelecti
     'inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-2 text-xs text-foreground hover:bg-accent disabled:cursor-default disabled:opacity-40'
   return (
     <div
-      className="hk-pop-in fixed z-30 flex items-center gap-0.5 rounded-lg bg-popover p-1 shadow-popover"
+      className="hk-pop fixed z-30 flex items-center gap-0.5 rounded-lg bg-popover p-1 shadow-popover"
       // Clear of the column grip that sits on the table's top edge.
       style={{ left, top: Math.max(8, top - 50) }}
       data-testid="table-cell-bar"

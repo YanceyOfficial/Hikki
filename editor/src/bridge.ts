@@ -5,7 +5,7 @@ import { activeCommands, createEditor, runCommand } from './editor'
 import { runFind, type FindMode } from './extensions/find'
 import type { MediaHost } from './extensions/media'
 import { pageLinkHref, type PageIndexEntry, type PageLinksHost } from './extensions/page-links'
-import type { RubyHost } from './extensions/ruby'
+import { rubySegmentsFrom, type RubyHost } from './extensions/ruby'
 import { plainText, wordCount } from './extract'
 import { t } from './i18n'
 import { normalizeBody } from './normalize'
@@ -217,10 +217,8 @@ export class EditorBridge {
 
   /** Furigana suggestions from the native tokenizer (Settings has nothing to configure: it's offline). */
   readonly ruby: RubyHost = {
-    suggestReading: async (text) => {
-      const reading = await this.transport.post({ type: 'suggestReading', text })
-      return typeof reading === 'string' && reading ? reading : null
-    }
+    suggestReading: async (text) =>
+      rubySegmentsFrom(await this.transport.post({ type: 'suggestReading', text }))
   }
 
   /** Arrived by a link to a block: scroll there (false when the block isn't in this page). */

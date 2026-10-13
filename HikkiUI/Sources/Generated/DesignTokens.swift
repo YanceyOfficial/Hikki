@@ -194,4 +194,17 @@ public nonisolated enum Size {
     public static let sidebarIcon: CGFloat = 18
     public static let onboardingBadge: CGFloat = 64
     public static let heatmapCell: CGFloat = 12
+    public static let fullscreenScrim: CGFloat = 72
+}
+
+/// Motion: one timing for everything that appears, leaves or reacts (popovers, hover states, scrims).
+public nonisolated enum Motion {
+    /// Entering, in seconds.
+    public static let popIn: TimeInterval = 0.15
+    /// Leaving, in seconds.
+    public static let popOut: TimeInterval = 0.1
+    /// Strong ease-out: moves at once, settles softly — for anything entering, leaving or reacting.
+    public static func easeOut(_ duration: TimeInterval = popIn) -> Animation { .timingCurve(0.23, 1, 0.32, 1, duration: duration) }
+    /// Strong ease-in-out — for something already on screen moving to a new place.
+    public static func easeInOut(_ duration: TimeInterval = popIn) -> Animation { .timingCurve(0.77, 0, 0.175, 1, duration: duration) }
 }

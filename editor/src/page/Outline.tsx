@@ -42,7 +42,10 @@ export function Outline({ bridge }: { bridge: EditorBridge }) {
       {/* The rail keeps its size while the list is open: the nav is vertically centred, so swapping the
           bars for the (taller) list would move the nav under the pointer and flip it closed again. */}
       <div
-        className={cn('flex flex-col items-end gap-2.5 px-1 py-2', open && 'invisible')}
+        className={cn(
+          'flex flex-col items-end gap-2.5 px-1 py-2 transition-opacity duration-(--motion-pop-in) ease-out',
+          open && 'opacity-0'
+        )}
         aria-hidden
       >
         {bars.map((h) => (
@@ -53,24 +56,25 @@ export function Outline({ bridge }: { bridge: EditorBridge }) {
           />
         ))}
       </div>
-      <ol
-        className={cn(
-          'absolute top-1/2 right-0 m-0 max-h-[60vh] w-60 -translate-y-1/2 list-none overflow-y-auto rounded-xl bg-popover p-2 shadow-popover',
-          !open && 'hidden'
-        )}
-      >
-        {headings.map((h) => (
-          <li key={h.pos} style={{ paddingLeft: `${(h.level - minLevel) * 12}px` }}>
-            <button
-              type="button"
-              className="block w-full cursor-pointer truncate rounded-md px-2 py-1 text-left text-md text-subtle-foreground hover:bg-accent hover:text-foreground"
-              onClick={() => bridge.scrollToHeading(h.pos)}
-            >
-              {h.text}
-            </button>
-          </li>
-        ))}
-      </ol>
+      {/* The list stays mounted and shows/hides with the shared motion, from the rail's edge. */}
+      <div className="absolute top-1/2 right-0 -translate-y-1/2">
+        <ol
+          data-open={open}
+          className="hk-pop-toggle m-0 max-h-[60vh] w-60 list-none overflow-y-auto rounded-xl bg-popover p-2 shadow-popover [--hk-pop-dx:2px] [--hk-pop-dy:0px] [--hk-pop-origin:right_center]"
+        >
+          {headings.map((h) => (
+            <li key={h.pos} style={{ paddingLeft: `${(h.level - minLevel) * 12}px` }}>
+              <button
+                type="button"
+                className="block w-full cursor-pointer truncate rounded-md px-2 py-1 text-left text-md text-subtle-foreground hover:bg-accent hover:text-foreground"
+                onClick={() => bridge.scrollToHeading(h.pos)}
+              >
+                {h.text}
+              </button>
+            </li>
+          ))}
+        </ol>
+      </div>
     </nav>
   )
 }

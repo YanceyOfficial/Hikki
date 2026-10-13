@@ -142,8 +142,30 @@ function swift() {
   for (const [k, v] of entries(tokens.size))
     lines.push(`    public static let ${camel(k)}: CGFloat = ${v}`)
   lines.push('}', '')
+  lines.push(
+    '/// Motion: one timing for everything that appears, leaves or reacts (popovers, hover states, scrims).'
+  )
+  lines.push('public nonisolated enum Motion {')
+  lines.push('    /// Entering, in seconds.')
+  lines.push(`    public static let popIn: TimeInterval = ${tokens.motion['pop-in'] / 1000}`)
+  lines.push('    /// Leaving, in seconds.')
+  lines.push(`    public static let popOut: TimeInterval = ${tokens.motion['pop-out'] / 1000}`)
+  lines.push(
+    '    /// Strong ease-out: moves at once, settles softly — for anything entering, leaving or reacting.'
+  )
+  lines.push(
+    `    public static func easeOut(_ duration: TimeInterval = popIn) -> Animation { .timingCurve(${curve('ease-out')}, duration: duration) }`
+  )
+  lines.push('    /// Strong ease-in-out — for something already on screen moving to a new place.')
+  lines.push(
+    `    public static func easeInOut(_ duration: TimeInterval = popIn) -> Animation { .timingCurve(${curve('ease-in-out')}, duration: duration) }`
+  )
+  lines.push('}', '')
   return lines.join('\n')
 }
+
+/** The four control points of a motion easing, comma-separated. */
+const curve = (name) => tokens.motion[name].join(', ')
 
 /** Color + shadow CSS variables for one color scheme. */
 const colorVars = (mode, indent) => [
@@ -177,6 +199,7 @@ function css() {
   L.push(header('/*') + ' */', '')
   L.push(':root {', ...colorVars('light', '  '))
   for (const [k, v] of entries(tokens.size)) L.push(`  --size-${k}: ${v}px;`)
+  for (const k of ['pop-in', 'pop-out']) L.push(`  --motion-${k}: ${tokens.motion[k]}ms;`)
   L.push(
     '}',
     '',
@@ -207,6 +230,9 @@ function css() {
   for (const [k, v] of entries(tokens.font)) L.push(`  --font-${k}: ${v};`)
   L.push('  --text-*: initial;')
   for (const [k, v] of entries(tokens.text)) L.push(`  --text-${k}: ${v}px;`)
+  // Only the strong curves exist (`ease-out`, `ease-in-out`); Tailwind's defaults are too soft for UI.
+  L.push('  --ease-*: initial;')
+  for (const k of ['ease-out', 'ease-in-out']) L.push(`  --${k}: cubic-bezier(${curve(k)});`)
   L.push('}', '')
   return L.join('\n')
 }

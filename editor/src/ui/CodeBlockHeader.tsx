@@ -66,7 +66,7 @@ export function CodeBlockHeader({ language, editable, onLanguage, getText }: Pro
       <button
         type="button"
         className={cn(
-          'inline-flex h-6 cursor-pointer items-center gap-1 rounded-md px-1.5 text-xs text-muted-foreground opacity-0 transition-opacity duration-150 group-hover/code:opacity-100 hover:bg-accent hover:text-subtle-foreground focus-visible:opacity-100 touch:opacity-100',
+          'inline-flex h-6 cursor-pointer items-center gap-1 rounded-md px-1.5 text-xs text-muted-foreground opacity-0 transition-opacity duration-(--motion-pop-in) group-hover/code:opacity-100 hover:bg-accent hover:text-subtle-foreground focus-visible:opacity-100 touch:opacity-100',
           copied && 'opacity-100'
         )}
         onClick={() => {

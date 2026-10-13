@@ -87,7 +87,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
         ref={cardRef}
         role="toolbar"
         aria-label={t('format.menu')}
-        className="hk-pop-in w-[224px] rounded-xl bg-popover p-1 text-popover-foreground shadow-popover"
+        className="hk-pop w-[224px] rounded-xl bg-popover p-1 text-popover-foreground shadow-popover"
       >
         <button
           type="button"
@@ -317,7 +317,7 @@ function MarkButton({
             aria-label={label}
             aria-pressed={active}
             className={cn(
-              'grid h-8 cursor-pointer place-items-center rounded-md text-foreground transition-transform duration-100 hover:bg-accent active:scale-[0.97] coarse:h-10',
+              'grid h-8 cursor-pointer place-items-center rounded-md text-foreground transition-transform duration-(--motion-pop-out) ease-out hover:bg-accent active:scale-[0.97] coarse:h-10',
               active && 'bg-accent text-accent-strong'
             )}
             onClick={onClick}

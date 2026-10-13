@@ -295,6 +295,10 @@
     "suggesting": "正在查找…",
     "hint": "Enter 保存 · Esc 取消",
     "done": "完成",
-    "remove": "移除"
+    "remove": "移除",
+    "mode": "标注方式",
+    "perKanji": "逐字",
+    "whole": "整体",
+    "readingFor": "{{text}} 的读音"
   }
 }

@@ -175,6 +175,9 @@ private struct DetailView: View {
         content
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.background)
+            #if os(macOS)
+                .fullScreenScrim(Theme.background)
+            #endif
     }
 
     @ViewBuilder private var content: some View {

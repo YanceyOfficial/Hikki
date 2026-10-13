@@ -165,7 +165,7 @@
     @apply mt-[5px] grid size-5 flex-none cursor-pointer place-items-center rounded-sm text-subtle-foreground hover:bg-accent;
   }
   .tiptap .hk-toggle > button svg {
-    @apply size-3 transition-transform duration-150 ease-out;
+    @apply size-3 transition-transform duration-(--motion-pop-in) ease-out;
   }
   .tiptap .hk-toggle.is-open > button svg {
     @apply rotate-90;
@@ -238,7 +238,7 @@
     @apply pointer-events-auto absolute top-0 bottom-0 w-3 -translate-x-1/2 cursor-col-resize;
   }
   .tiptap .hk-col-gutter::after {
-    @apply absolute top-0 bottom-0 left-1/2 w-0.5 -translate-x-1/2 rounded-full bg-transparent transition-colors duration-150;
+    @apply absolute top-0 bottom-0 left-1/2 w-0.5 -translate-x-1/2 rounded-full bg-transparent transition-colors duration-(--motion-pop-in);
     content: '';
   }
   .tiptap .hk-col-gutter:hover::after,
@@ -290,7 +290,7 @@
   /* Handles are full-height hit areas (inline top/bottom 0); the visible pill is centred inside. */
   .tiptap [data-resize-handle='left'],
   .tiptap [data-resize-handle='right'] {
-    @apply w-4 cursor-ew-resize opacity-0 transition-opacity duration-150;
+    @apply w-4 cursor-ew-resize opacity-0 transition-opacity duration-(--motion-pop-in);
   }
   .tiptap [data-resize-handle]::after {
     @apply absolute top-1/2 left-1/2 h-10 max-h-[60%] w-1.5 -translate-1/2 rounded-full border border-border bg-background shadow-popover;
@@ -332,7 +332,7 @@
     @apply block h-1 overflow-hidden rounded-full bg-muted;
   }
   .tiptap .hk-upload-bar > span {
-    @apply block h-full origin-left bg-primary transition-transform duration-200 ease-out;
+    @apply block h-full origin-left bg-primary transition-transform duration-(--motion-pop-in) ease-out;
   }
 
   /* Ruby / furigana (extensions/ruby.tsx): the reading above the base text, clickable to edit. */
@@ -496,7 +496,7 @@
 
   /* Block controls (extensions/block-controls.tsx): + and ⋮⋮ beside the hovered block. */
   .hk-block-handle {
-    @apply fixed z-30 flex items-center gap-0.5 transition-opacity duration-150;
+    @apply fixed z-30 flex items-center gap-0.5 transition-opacity duration-(--motion-pop-in);
   }
   .hk-block-handle[data-hidden='true'] {
     @apply pointer-events-none opacity-0;
@@ -532,23 +532,78 @@
 }
 
 /*
- * Selection menu entrance: re-attached each time it shows, so the animation replays. Short and from
- * slightly smaller, origin at the selection; none with reduced motion. (The "/" menu is opened by typing
- * and so never animates.)
+ * Motion (CLAUDE.md "Motion"). Every floating surface — menus, popovers, tooltips, panels, the outline list —
+ * enters and leaves the same way: from/to 97% and 2px on the anchor's side, the strong ease-out,
+ * --motion-pop-in in and --motion-pop-out out (design/tokens.json). `hk-pop` is for a surface that is
+ * mounted when shown (FloatingLayer, Base UI popups, usePresence); `hk-pop-toggle` + data-open for one
+ * that stays mounted and shows/hides (a transition, so a hover that leaves mid-way turns around).
+ * Nothing moves under reduced motion.
  */
 @keyframes hk-pop-in {
   from {
     opacity: 0;
-    transform: scale(0.97) translateY(var(--hk-pop-shift, 2px));
+    scale: 0.97;
+    translate: var(--hk-pop-dx, 0px) var(--hk-pop-dy, -2px);
   }
 }
-.hk-pop-in {
-  animation: hk-pop-in 150ms cubic-bezier(0.23, 1, 0.32, 1);
+@keyframes hk-pop-out {
+  to {
+    opacity: 0;
+    scale: 0.97;
+    translate: var(--hk-pop-dx, 0px) var(--hk-pop-dy, -2px);
+  }
+}
+.hk-pop {
+  transform-origin: var(--hk-pop-origin, var(--transform-origin, top left));
+  animation: hk-pop-in var(--motion-pop-in) var(--ease-out);
+}
+/* Leaving: FloatingLayer / usePresence set data-closing; Base UI sets data-ending-style. */
+.hk-pop[data-closing],
+.hk-pop[data-ending-style] {
+  animation: hk-pop-out var(--motion-pop-out) var(--ease-out) forwards;
+  pointer-events: none;
+}
+/* Opening upward or sideways: the surface comes from the anchor's side (Base UI tells with data-side). */
+.hk-pop[data-above] {
+  --hk-pop-dy: 2px;
+  --hk-pop-origin: bottom left;
+}
+.hk-pop[data-side^='top'] {
+  --hk-pop-dy: 2px;
+}
+.hk-pop[data-side='left'],
+.hk-pop[data-side='inline-start'] {
+  --hk-pop-dx: 2px;
+  --hk-pop-dy: 0px;
+}
+.hk-pop[data-side='right'],
+.hk-pop[data-side='inline-end'] {
+  --hk-pop-dx: -2px;
+  --hk-pop-dy: 0px;
+}
+.hk-pop-toggle {
   transform-origin: var(--hk-pop-origin, top left);
+  transition:
+    opacity var(--motion-pop-in) var(--ease-out),
+    scale var(--motion-pop-in) var(--ease-out),
+    translate var(--motion-pop-in) var(--ease-out),
+    visibility var(--motion-pop-in) allow-discrete;
+}
+.hk-pop-toggle[data-open='false'] {
+  opacity: 0;
+  scale: 0.97;
+  translate: var(--hk-pop-dx, 0px) var(--hk-pop-dy, -2px);
+  visibility: hidden;
+  transition-duration: var(--motion-pop-out);
 }
 @media (prefers-reduced-motion: reduce) {
-  .hk-pop-in {
+  .hk-pop,
+  .hk-pop[data-closing],
+  .hk-pop[data-ending-style] {
     animation: none;
+  }
+  .hk-pop-toggle {
+    transition: none;
   }
 }
 
