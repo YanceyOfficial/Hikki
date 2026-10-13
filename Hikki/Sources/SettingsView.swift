@@ -314,11 +314,11 @@ private struct EditorSection: View {
 #if os(macOS)
     /// Settings → General → Menu bar: the status item is optional (MenuBarExtra.swift).
     private struct MenuBarSection: View {
-        @Bindable private var preferences = MenuBarPreferences.shared
+        @AppStorage(MenuBarPreferences.showKey) private var show = true
 
         var body: some View {
             Section {
-                Toggle("app:settings.menuBar", isOn: $preferences.show)
+                Toggle("app:settings.menuBar", isOn: $show)
                     .accessibilityIdentifier("settings-menubar")
             } header: {
                 Text("app:settings.menuBar.header")

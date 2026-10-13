@@ -1,26 +1,15 @@
 import HikkiCore
 import SwiftUI
 
+/// Settings → General → Menu bar (stored in UserDefaults; macOS only, the key is shared so Settings compiles once).
+/// No dot in the key: `@AppStorage` observes UserDefaults through KVO, which reads "menuBar.show" as a key path,
+/// and bound to `MenuBarExtra(isInserted:)` that made SwiftUI rebuild the main menu and every scene without end.
+enum MenuBarPreferences {
+    static let showKey = "menuBarExtra"
+}
+
 #if os(macOS)
     import AppKit
-
-    /// Settings → General → Menu bar. Kept in UserDefaults by hand, observed as a plain object: an `@AppStorage`
-    /// binding handed to `MenuBarExtra(isInserted:)` made SwiftUI rebuild the main menu and every scene without
-    /// end (the window stayed blank, the main thread at 100 %) whenever the app was launched by Launch Services.
-    @Observable
-    @MainActor
-    final class MenuBarPreferences {
-        static let showKey = "menuBar.show"
-        static let shared = MenuBarPreferences()
-
-        var show: Bool {
-            didSet { UserDefaults.standard.set(show, forKey: Self.showKey) }
-        }
-
-        private init() {
-            show = UserDefaults.standard.object(forKey: Self.showKey) as? Bool ?? true
-        }
-    }
 
     /// What the menu bar menu asked the main window to do.
     struct MenuBarRequest: Equatable, Identifiable {
@@ -40,10 +29,10 @@ import SwiftUI
     /// The status item: Hikki's glyph (a template image, design/icon/hi-star/menubar.svg) and a short menu that
     /// works while another app is in front. Optional — Settings → General → Menu bar.
     struct MenuBarScene: Scene {
-        @Bindable private var preferences = MenuBarPreferences.shared
+        @AppStorage(MenuBarPreferences.showKey) private var show = true
 
         var body: some Scene {
-            MenuBarExtra(isInserted: $preferences.show) {
+            MenuBarExtra(isInserted: $show) {
                 MenuBarMenu()
             } label: {
                 Image("MenuBarIcon")

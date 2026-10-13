@@ -199,6 +199,7 @@ HikkiUITests/                 XCUITest flows
   `Hikki/Sources/WindowLifecycle.swift`.
 - **Menu bar extra** (`Hikki/Sources/MenuBarExtra.swift`, macOS, Settings → General → Menu bar): its menu has no
   focused window, so New Page / Search post `MenuBarRequests.shared.pending` and the key window's ContentView
-  performs it. The glyph is `Hikki/Resources/Assets.xcassets` → MenuBarIcon (template, from
-  `design/icon/hi-star/menubar.svg`).
+  performs it. The glyph is `Hikki/Resources/Assets.xcassets` → MenuBarIcon (template PNGs at 1x/2x rasterized from
+  `design/icon/hi-star/menubar.svg` — as an SVG asset the label rendered empty). The preference key has no dot (a
+  dotted `@AppStorage` key on `MenuBarExtra(isInserted:)` looped the main menu).
 - Simulators sometimes fail with "Busy (Application failed preflight checks)": `xcrun simctl shutdown all`, boot again.
