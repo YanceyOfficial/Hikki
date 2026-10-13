@@ -29,6 +29,12 @@ These rules are mandatory. Automated ones are noted.
   `"sf"` name; the generated `Icon` enum, `IconView` / `IconLabel`, `Icon.glyph` for system-sized spots), falling
   back to the bundled Phosphor asset where there is no symbol; the web editor uses `@phosphor-icons/react`. No raw
   `Image(systemName:)` / `systemImage:` — _enforced by `make lint-design`_.
+- **Keyboard shortcuts come from one registry.** `design/shortcuts.json` → `make shortcuts` generates
+  `Hikki/Sources/Generated/Shortcuts.swift` (`Shortcut.x.keyboardShortcut` / `.display`) and
+  `editor/src/generated/shortcuts.ts` (`matchesShortcut`, `shortcutLabel`, `tiptapShortcut` in
+  `editor/src/shortcuts.ts`). Each entry says who binds it: `app` (native menu), `editor` (the page; menus only
+  display it) or `both`. No literal key equivalents or "⌘X" labels in code; the generator refuses two shortcuts on
+  the same keys. _Checked by `make lint-design`._
 - **Copy language.** User-facing strings are keys, never literals: native `app:<area>.<element>` keys in
   `Hikki/Resources/Localization/Localizable.xcstrings` (interpolations become `%@`, e.g. `app:page.edited %@`); web
   `t('area.key')` with catalogs in `editor/src/locales/`. English is the source; zh-Hans must be complete. The native
@@ -129,7 +135,9 @@ HikkiUITests/                 XCUITest flows
 - **Block controls** (`editor/src/extensions/block-controls.tsx`, units in `editor/src/extensions/block-units.ts`): our
   own + / ⋮⋮ handle on pointer events (HTML5 drag-and-drop is unreliable in WebKit), centred on the block's first line;
   drag shows a ghost and a drop line (side edges make columns); a click opens `editor/src/ui/BlockMenu.tsx`. Fine
-  pointers only. Block colours are `blockColor` / `blockBackground` attributes.
+  pointers only. Block colours are `blockColor` / `blockBackground` attributes. Block-level highlights (drag
+  source, the block a menu is open for) are node decorations from `editor/src/extensions/block-highlight.ts` —
+  never classes on the node's DOM, which ProseMirror drops on redraw.
 - **Rich blocks**: toggles (`editor/src/extensions/toggle.ts`; open/closed is not stored, so opening never saves),
   callouts, KaTeX formulas (`editor/src/extensions/math.tsx`; our panel replaces Tiptap's `prompt()`), tables
   (`editor/src/extensions/table.tsx` + `editor/src/extensions/table-ops.ts`, controls drawn by

@@ -512,9 +512,9 @@
   .hk-block-dragging * {
     @apply cursor-grabbing select-none;
   }
-  /* The block a menu is open for. */
+  /* The block a menu is open for: a soft tint, the same for a line and a whole table. */
   .tiptap .hk-block-selected {
-    @apply rounded-sm bg-selection;
+    @apply rounded-sm bg-selection/60;
   }
 }
 
@@ -557,4 +557,9 @@
   select {
     font-size: max(16px, 1em);
   }
+}
+
+/* The outline rail (right edge) gives way to the find panel, which sits in the same corner. */
+body:has(.hk-find [data-testid='find-panel']) #outline {
+  display: none;
 }

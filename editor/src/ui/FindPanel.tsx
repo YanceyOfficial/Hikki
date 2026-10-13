@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 import { t } from '../i18n'
+import { shortcutLabel } from '../shortcuts'
 import { cn } from './cn'
 import { useEditorSnapshot } from './use-editor-snapshot'
 
@@ -102,14 +103,14 @@ export function FindPanel({ editor, open, replace, initialText, onReplaceToggle,
         </span>
         <IconButton
           label={t('find.previous')}
-          keys="⇧⌘G"
+          keys={shortcutLabel('findPrevious')}
           onClick={() => editor.commands.goToPreviousResult()}
         >
           <ArrowUp size={14} aria-hidden />
         </IconButton>
         <IconButton
           label={t('find.next')}
-          keys="⌘G"
+          keys={shortcutLabel('findNext')}
           onClick={() => editor.commands.goToNextResult()}
         >
           <ArrowDown size={14} aria-hidden />

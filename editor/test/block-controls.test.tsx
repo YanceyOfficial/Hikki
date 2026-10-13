@@ -3,7 +3,7 @@ import type { Editor, JSONContent } from '@tiptap/core'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createEditor } from '../src/editor'
-import { BlockControlsKey } from '../src/extensions/block-controls'
+import { BlockHighlightKey, setBlockHighlight } from '../src/extensions/block-highlight'
 import { deleteUnit, duplicateUnit, moveUnit, unitAtPos } from '../src/extensions/block-units'
 import { openBlockMenu } from '../src/ui/BlockMenu'
 import { doc, settle, stripIds } from './helpers'
@@ -176,6 +176,29 @@ describe('block menu', () => {
     expect(editor.getJSON().content?.[0].type).toBe('blockquote')
   })
 
+  it('tints the block while open — any block type, via a decoration — and clears it after', () => {
+    editor = createEditor(host, {
+      type: 'doc',
+      content: [
+        {
+          type: 'table',
+          content: [{ type: 'tableRow', content: [{ type: 'tableCell', content: [para('cell')] }] }]
+        }
+      ]
+    })
+    openMenu('cell')
+    expect(
+      host.querySelector(
+        'table.hk-block-selected, .tableWrapper.hk-block-selected, .hk-block-selected'
+      )
+    ).not.toBeNull()
+    // A redraw (an edit elsewhere) keeps the tint: it isn't a class on the DOM node.
+    editor.view.dispatch(editor.state.tr.insertText('!', editor.state.doc.content.size - 3))
+    expect(host.querySelector('.hk-block-selected')).not.toBeNull()
+    act(() => void fireEvent.pointerDown(document.body))
+    expect(host.querySelector('.hk-block-selected')).toBeNull()
+  })
+
   it('a press outside closes it', () => {
     editor = createEditor(host, doc('x'))
     openMenu('x')
@@ -206,19 +229,13 @@ describe('drag source decoration', () => {
       ({ matches: q.includes('fine'), media: q }) as MediaQueryList) as typeof window.matchMedia
     editor = createEditor(host, doc('a', 'b'))
     window.matchMedia = original
-    expect(BlockControlsKey.getState(editor.state)).toBeNull()
+    expect(BlockHighlightKey.getState(editor.state)?.source).toBeNull()
     const end = editor.state.doc.content.size
     expect(() =>
-      editor.view.dispatch(
-        editor.state.tr.setMeta(BlockControlsKey, { source: { from: end, to: end + 3 } })
-      )
+      setBlockHighlight(editor.view, { source: { from: end, to: end + 3 } })
     ).not.toThrow()
-    expect(() =>
-      editor.view.dispatch(
-        editor.state.tr.setMeta(BlockControlsKey, { source: { from: 0, to: 3 } })
-      )
-    ).not.toThrow()
-    editor.view.dispatch(editor.state.tr.setMeta(BlockControlsKey, { source: { from: 0, to: 3 } }))
+    expect(() => setBlockHighlight(editor.view, { source: { from: 0, to: 3 } })).not.toThrow()
+    setBlockHighlight(editor.view, { source: { from: 0, to: 3 } })
     editor.view.dispatch(editor.state.tr.delete(0, 3))
     expect(() => editor.view.dispatch(editor.state.tr.insertText('x', 1))).not.toThrow()
   })

@@ -125,6 +125,11 @@ final class Navigator {
         tabs = restored
     }
 
+    /// Page → Copy Link (⌥⌘C): the open page's hikki://page/<id>.
+    func copyCurrentPageLink() {
+        if let id = route.pageID { PageLink.copyToPasteboard(id) }
+    }
+
     /// Expands the sidebar path to the open page (switching tabs, back/forward, the tree loading after launch).
     func revealCurrent() {
         if let id = route.pageID { reveal(id) }

@@ -12,9 +12,11 @@ import { TextSelection } from '@tiptap/pm/state'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { BLOCK_TYPES } from '../blocks'
+import { setBlockHighlight } from '../extensions/block-highlight'
 import { deleteUnit, duplicateUnit, firstTextPos, type BlockUnit } from '../extensions/block-units'
 import { BLOCK_COLOR_TYPES, colorLabel, PALETTE, type PaletteColor } from '../extensions/colors'
 import { t } from '../i18n'
+import { shortcutLabel } from '../shortcuts'
 import { cn } from './cn'
 import { FloatingLayer } from './floating'
 import { IconProvider } from './icons'
@@ -33,11 +35,11 @@ export function setBlockLinkBuilder(builder: ((blockId: string) => string | null
 export function openBlockMenu(editor: Editor, unit: BlockUnit, anchor: DOMRect): void {
   open?.close()
   const layer = new FloatingLayer('hk-block-menu', { bare: true })
-  const dom = editor.view.nodeDOM(unit.pos)
-  if (dom instanceof HTMLElement) dom.classList.add('hk-block-selected')
+  // The block is tinted while its menu is open (a decoration: the same for every block type).
+  setBlockHighlight(editor.view, { menu: { from: unit.pos, to: unit.pos + unit.node.nodeSize } })
   const close = () => {
     document.removeEventListener('pointerdown', onOutside, true)
-    if (dom instanceof HTMLElement) dom.classList.remove('hk-block-selected')
+    if (!editor.isDestroyed) setBlockHighlight(editor.view, { menu: null })
     layer.destroy()
     if (open?.layer === layer) open = null
   }
@@ -124,7 +126,7 @@ function BlockMenu({
       id: 'duplicate',
       label: t('blockMenu.duplicate'),
       icon: <Copy size={18} />,
-      keys: '⌘D',
+      keys: shortcutLabel('duplicateBlock'),
       run: act(() => editor.view.dispatch(duplicateUnit(editor.state, unit)))
     },
     {

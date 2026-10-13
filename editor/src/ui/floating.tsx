@@ -45,24 +45,32 @@ export class FloatingLayer {
     const rootBoundary = vv
       ? { x: vv.offsetLeft, y: vv.offsetTop, width: vv.width, height: vv.height }
       : undefined
-    const { x, y } = await computePosition(reference, this.element, {
-      placement: 'bottom-start',
-      strategy: 'fixed',
-      middleware: [
-        offset(6),
-        flip({ rootBoundary, padding: 8 }),
-        shift({ rootBoundary, padding: 8 }),
-        size({
-          rootBoundary,
-          padding: 8,
-          apply: ({ availableHeight, elements }) => {
-            const height = `${Math.max(120, Math.min(this.bare ? 420 : 360, availableHeight))}px`
-            if (this.bare) elements.floating.style.setProperty('--hk-available-height', height)
-            else elements.floating.style.maxHeight = height
-          }
-        })
-      ]
-    })
+    let x: number
+    let y: number
+    try {
+      ;({ x, y } = await computePosition(reference, this.element, {
+        placement: 'bottom-start',
+        strategy: 'fixed',
+        middleware: [
+          offset(6),
+          flip({ rootBoundary, padding: 8 }),
+          shift({ rootBoundary, padding: 8 }),
+          size({
+            rootBoundary,
+            padding: 8,
+            apply: ({ availableHeight, elements }) => {
+              const height = `${Math.max(120, Math.min(this.bare ? 420 : 360, availableHeight))}px`
+              if (this.bare) elements.floating.style.setProperty('--hk-available-height', height)
+              else elements.floating.style.maxHeight = height
+            }
+          })
+        ]
+      }))
+    } catch {
+      // The layer was destroyed (or the document torn down) before the position came back.
+      return
+    }
+    if (!this.element.isConnected) return
     Object.assign(this.element.style, { left: `${x}px`, top: `${y}px` })
   }
 }

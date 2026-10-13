@@ -23,6 +23,7 @@ import { BLOCK_TYPES } from '../blocks'
 import { colorLabel, PALETTE, type PaletteColor } from '../extensions/colors'
 import { t } from '../i18n'
 import { isSafeHref, normalizeHref } from '../links'
+import { shortcutLabel } from '../shortcuts'
 import { cn } from './cn'
 import { useEditorSnapshot } from './use-editor-snapshot'
 
@@ -109,21 +110,21 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
           <MarkButton
             icon={TextB}
             label={t('format.bold')}
-            keys="⌘B"
+            keys={shortcutLabel('bold')}
             active={state.bold}
             onClick={() => run((c) => c.toggleBold())}
           />
           <MarkButton
             icon={TextItalic}
             label={t('format.italic')}
-            keys="⌘I"
+            keys={shortcutLabel('italic')}
             active={state.italic}
             onClick={() => run((c) => c.toggleItalic())}
           />
           <MarkButton
             icon={TextUnderline}
             label={t('format.underline')}
-            keys="⌘U"
+            keys={shortcutLabel('underline')}
             active={state.underline}
             onClick={() => run((c) => c.toggleUnderline())}
           />
@@ -142,14 +143,14 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
           <MarkButton
             icon={TextStrikethrough}
             label={t('format.strike')}
-            keys="⌘⇧S"
+            keys={shortcutLabel('strikethrough')}
             active={state.strike}
             onClick={() => run((c) => c.toggleStrike())}
           />
           <MarkButton
             icon={Code}
             label={t('format.code')}
-            keys="⌘E"
+            keys={shortcutLabel('inlineCode')}
             active={state.code}
             onClick={() => run((c) => c.toggleCode())}
           />
@@ -219,7 +220,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
               >
                 <TextSuperscript size={18} className="text-subtle-foreground" aria-hidden />
                 <span className="flex-1 truncate">{t('format.superscript')}</span>
-                <span className="text-xs text-placeholder">⌘.</span>
+                <span className="text-xs text-placeholder">{shortcutLabel('superscript')}</span>
               </button>
               <button
                 type="button"
@@ -230,7 +231,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
               >
                 <TextSubscript size={18} className="text-subtle-foreground" aria-hidden />
                 <span className="flex-1 truncate">{t('format.subscript')}</span>
-                <span className="text-xs text-placeholder">⌘,</span>
+                <span className="text-xs text-placeholder">{shortcutLabel('subscript')}</span>
               </button>
             </div>
           )}

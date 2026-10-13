@@ -638,7 +638,14 @@ struct PageActions: View {
     }
 
     private func copyLink() {
-        let url = PageLink.url(for: page.id)
+        PageLink.copyToPasteboard(page.id)
+    }
+}
+
+extension PageLink {
+    /// Puts the page's hikki:// link on the pasteboard (Copy link, in menus and on ⌥⌘C).
+    static func copyToPasteboard(_ id: String) {
+        let url = PageLink.url(for: id)
         #if os(macOS)
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(url.absoluteString, forType: .string)
@@ -716,6 +723,7 @@ private struct NativeSidebarChrome: ViewModifier {
                 .safeAreaBar(edge: .bottom) {
                     WorkspaceSwitcher(navigator: navigator)
                         .padding(.horizontal, Spacing.s2)
+                        .padding(.top, Spacing.s1_5)
                         .padding(.bottom, Spacing.s2)
                 }
         } else {

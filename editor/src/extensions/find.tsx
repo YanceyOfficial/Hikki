@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 
 import { TooltipProvider } from '@/components/ui/tooltip'
 
+import { matchesShortcut } from '../shortcuts'
 import { FindPanel } from '../ui/FindPanel'
 import { IconProvider } from '../ui/icons'
 
@@ -128,12 +129,11 @@ export function runFind(editor: Editor, mode: FindMode): void {
   renderFind(editor)
 }
 
-/** ⌘F / ⌥⌘F / ⌘G / ⇧⌘G (Ctrl elsewhere): the page sees these before the native menu does. */
+/** ⌘F / ⌥⌘F / ⌘G / ⇧⌘G (from the registry): the page sees these before the native menu does. */
 export function findShortcut(event: KeyboardEvent): FindMode | null {
-  const mod = event.metaKey || event.ctrlKey
-  if (!mod || event.isComposing) return null
-  // `code`, not `key`: with ⌥ held, macOS reports key "ƒ".
-  if (event.code === 'KeyF') return event.altKey ? 'replace' : 'find'
-  if (event.code === 'KeyG') return event.shiftKey ? 'previous' : 'next'
+  if (matchesShortcut(event, 'findReplace')) return 'replace'
+  if (matchesShortcut(event, 'find')) return 'find'
+  if (matchesShortcut(event, 'findPrevious')) return 'previous'
+  if (matchesShortcut(event, 'findNext')) return 'next'
   return null
 }

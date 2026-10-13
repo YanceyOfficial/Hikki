@@ -2,10 +2,12 @@ import gripSvg from '@phosphor-icons/core/assets/bold/dots-six-vertical-bold.svg
 import plusSvg from '@phosphor-icons/core/assets/regular/plus.svg?raw'
 import { Extension, type Editor } from '@tiptap/core'
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
-import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
+import type { EditorView } from '@tiptap/pm/view'
 
 import { t } from '../i18n'
+import { tiptapShortcut } from '../shortcuts'
 import { openBlockMenu } from '../ui/BlockMenu'
+import { BlockHighlight, BlockHighlightKey, setBlockHighlight } from './block-highlight'
 import { duplicateUnit, firstTextPos, moveUnit, unitAtPos, type BlockUnit } from './block-units'
 import { dropBeside, MAX_COLUMNS } from './columns'
 
@@ -56,51 +58,26 @@ export const BlockControls = Extension.create<{ enabled: boolean | null }>({
   addKeyboardShortcuts() {
     return {
       // Duplicate the block (Notion ⌘D), move it up/down (⌘⇧↑ / ⌘⇧↓).
-      'Mod-d': ({ editor }) => {
+      [tiptapShortcut('duplicateBlock')]: ({ editor }) => {
         const unit = atCaret(editor)
         if (!unit) return false
         editor.view.dispatch(duplicateUnit(editor.state, unit))
         return true
       },
-      'Mod-Shift-ArrowUp': ({ editor }) => moveAtCaret(editor, -1),
-      'Mod-Shift-ArrowDown': ({ editor }) => moveAtCaret(editor, 1)
+      [tiptapShortcut('moveBlockUp')]: ({ editor }) => moveAtCaret(editor, -1),
+      [tiptapShortcut('moveBlockDown')]: ({ editor }) => moveAtCaret(editor, 1)
     }
   },
 
   addProseMirrorPlugins() {
+    // The highlights serve every pointer (the block menu may open from touch later); the handle itself
+    // needs a mouse or trackpad.
     const enabled = this.options.enabled ?? window.matchMedia?.('(pointer: fine)').matches ?? false
-    if (!enabled) return []
+    if (!enabled) return [BlockHighlight]
     const editor = this.editor
     return [
-      new Plugin({
-        key: BlockControlsKey,
-        // The block being dragged, dimmed (a decoration: ProseMirror redraws nodes, dropping DOM classes).
-        state: {
-          init: () => null as { from: number; to: number } | null,
-          apply(tr, value) {
-            const meta = tr.getMeta(BlockControlsKey) as
-              | { source: { from: number; to: number } | null }
-              | undefined
-            if (meta) return meta.source
-            if (!value || !tr.docChanged) return value
-            const from = tr.mapping.mapResult(value.from, 1)
-            const to = tr.mapping.mapResult(value.to, -1)
-            return from.deleted || to.deleted ? null : { from: from.pos, to: to.pos }
-          }
-        },
-        props: {
-          decorations(state) {
-            const source = BlockControlsKey.getState(state) as { from: number; to: number } | null
-            // Only when the range is still exactly one node (a node decoration must cover one).
-            const node = source ? state.doc.nodeAt(source.from) : null
-            if (!source || !node || source.from + node.nodeSize !== source.to) return null
-            return DecorationSet.create(state.doc, [
-              Decoration.node(source.from, source.to, { class: 'hk-dragging-source' })
-            ])
-          }
-        },
-        view: (view) => new BlockControlsView(view, editor)
-      })
+      BlockHighlight,
+      new Plugin({ key: BlockControlsKey, view: (view) => new BlockControlsView(view, editor) })
     ]
   }
 })
@@ -289,11 +266,7 @@ class BlockControlsView {
     this.ghost = ghost
     this.ghostOffset = { x: event.clientX - rect.left, y: event.clientY - rect.top }
     document.body.classList.add('hk-block-dragging')
-    this.view.dispatch(
-      this.view.state.tr.setMeta(BlockControlsKey, {
-        source: { from: unit.pos, to: unit.pos + unit.node.nodeSize }
-      })
-    )
+    setBlockHighlight(this.view, { source: { from: unit.pos, to: unit.pos + unit.node.nodeSize } })
     this.handle.dataset.hidden = 'true'
   }
 
@@ -420,9 +393,8 @@ class BlockControlsView {
     this.drop = null
     this.line.dataset.hidden = 'true'
     document.body.classList.remove('hk-block-dragging')
-    this.view.dom
-      .querySelectorAll('.hk-dragging-source')
-      .forEach((el) => el.classList.remove('hk-dragging-source'))
+    if (BlockHighlightKey.getState(this.view.state)?.source)
+      setBlockHighlight(this.view, { source: null })
     this.press = null
   }
 }

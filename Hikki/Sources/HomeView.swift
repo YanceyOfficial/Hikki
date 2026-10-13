@@ -13,6 +13,18 @@ struct HomeView: View {
     private static let weeks = 53
     @State private var activity: [DailyActivity] = []
     @State private var stats = WorkspaceStats(pages: 0, words: 0)
+    #if os(iOS)
+        @Environment(\.horizontalSizeClass) private var sizeClass
+    #endif
+
+    /// Four tiles across on a wide window, two by two on an iPhone (four wrapped every label).
+    private var statColumns: Int {
+        #if os(iOS)
+            sizeClass == .compact ? 2 : 4
+        #else
+            4
+        #endif
+    }
 
     var body: some View {
         ScrollView {
@@ -89,7 +101,7 @@ struct HomeView: View {
     // MARK: Totals
 
     private var statTiles: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Spacing.s3), count: 4), spacing: Spacing.s3) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Spacing.s3), count: statColumns), spacing: Spacing.s3) {
             StatTile(value: stats.pages, title: "app:home.stat.pages", icon: .files)
             StatTile(value: stats.words, title: "app:home.stat.words", icon: .textAa)
             StatTile(value: ActivitySummary.editsThisWeek(activity, today: .now), title: "app:home.stat.week", icon: .pencilLine)

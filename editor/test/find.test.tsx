@@ -122,3 +122,16 @@ describe('table of contents block', () => {
     expect(editor.state.selection.$from.parent.textContent).toBe('Details')
   })
 })
+
+describe('outline rail', () => {
+  it('samples long heading lists evenly, keeping the first and last', async () => {
+    const { sampleEvenly } = await import('../src/page/Outline')
+    const items = Array.from({ length: 60 }, (_, i) => i)
+    const bars = sampleEvenly(items, 20)
+    expect(bars).toHaveLength(20)
+    expect(bars[0]).toBe(0)
+    expect(bars.at(-1)).toBe(59)
+    expect(new Set(bars).size).toBe(20)
+    expect(sampleEvenly([1, 2, 3], 20)).toEqual([1, 2, 3])
+  })
+})

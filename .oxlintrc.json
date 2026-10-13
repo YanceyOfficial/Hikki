@@ -17,6 +17,7 @@
   },
   "ignorePatterns": [
     "editor/src/theme.css",
+    "editor/src/generated/",
     "Hikki/Resources/**",
     "**/node_modules/**",
     "**/dist/**"

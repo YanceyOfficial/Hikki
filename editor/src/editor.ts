@@ -17,6 +17,7 @@ import { Find } from './extensions/find'
 import { mathExtension } from './extensions/math'
 import { mediaExtensions, type MediaHost } from './extensions/media'
 import { SelectionMenuExtension } from './extensions/selection-menu'
+import { BlockShortcuts } from './extensions/shortcuts'
 import { SlashCommand } from './extensions/slash-command'
 import { tableExtensions } from './extensions/table'
 import { TableOfContents } from './extensions/toc'
@@ -24,6 +25,7 @@ import { Quote, toggleExtensions } from './extensions/toggle'
 import { t } from './i18n'
 import { isSafeHref } from './links'
 import type { Command } from './protocol'
+import { tiptapShortcut } from './shortcuts'
 
 type EditorOptions = {
   onExitTop?: () => void
@@ -106,8 +108,18 @@ export function createEditor(
       TaskItem.configure({ nested: true }),
       ColorTextStyle,
       Colors,
-      Subscript,
-      Superscript,
+      // Keys from the registry: Tiptap's own ⌘, for subscript is Settings on iPad.
+      Subscript.extend({
+        addKeyboardShortcuts() {
+          return { [tiptapShortcut('subscript')]: () => this.editor.commands.toggleSubscript() }
+        }
+      }),
+      Superscript.extend({
+        addKeyboardShortcuts() {
+          return { [tiptapShortcut('superscript')]: () => this.editor.commands.toggleSuperscript() }
+        }
+      }),
+      BlockShortcuts,
       Placeholder.configure({
         includeChildren: false,
         placeholder: ({ node }) =>

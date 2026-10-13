@@ -17,10 +17,15 @@ tokens:
 icons:
 	node scripts/gen-icons.mjs
 
+# Keyboard shortcuts for both sides: edit design/shortcuts.json, then regenerate the Swift enum + TS table.
+shortcuts:
+	node scripts/gen-shortcuts.mjs
+
 # Fails on stale generated tokens or on literal colors/fonts/spacing in view code.
 lint-design:
 	node scripts/gen-tokens.mjs --check
 	node scripts/gen-icons.mjs --check
+	node scripts/gen-shortcuts.mjs --check
 	scripts/lint-design.sh
 
 SWIFT_DIRS := Hikki HikkiCore HikkiUI HikkiUITests Project.swift Tuist.swift
