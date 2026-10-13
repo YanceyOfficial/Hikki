@@ -202,11 +202,11 @@ public nonisolated enum Size {
 /// Motion: one timing for everything that appears, leaves or reacts (popovers, hover states, scrims).
 public nonisolated enum Motion {
     /// Entering, in seconds.
-    public static let popIn: TimeInterval = 0.15
+    public static let popIn: TimeInterval = 0.2
     /// Leaving, in seconds.
-    public static let popOut: TimeInterval = 0.1
+    public static let popOut: TimeInterval = 0.15
     /// Strong ease-out: moves at once, settles softly — for anything entering, leaving or reacting.
-    public static func easeOut(_ duration: TimeInterval = popIn) -> Animation { .timingCurve(0.23, 1, 0.32, 1, duration: duration) }
+    public static func easeOut(_ duration: TimeInterval = popIn) -> Animation { .timingCurve(0.25, 1, 0.5, 1, duration: duration) }
     /// Strong ease-in-out — for something already on screen moving to a new place.
     public static func easeInOut(_ duration: TimeInterval = popIn) -> Animation { .timingCurve(0.77, 0, 0.175, 1, duration: duration) }
 }

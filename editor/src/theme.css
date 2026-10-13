@@ -78,8 +78,8 @@
   --size-onboarding-badge: 64px;
   --size-heatmap-cell: 12px;
   --size-fullscreen-scrim: 72px;
-  --motion-pop-in: 150ms;
-  --motion-pop-out: 100ms;
+  --motion-pop-in: 200ms;
+  --motion-pop-out: 150ms;
   --radius: 8px;
 }
 
@@ -356,6 +356,6 @@
   --text-3xl: 30px;
   --text-4xl: 40px;
   --ease-*: initial;
-  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }

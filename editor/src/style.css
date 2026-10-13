@@ -42,6 +42,9 @@
   .tiptap p {
     @apply m-0 py-[3px];
   }
+  .tiptap a {
+    @apply cursor-pointer;
+  }
   .tiptap h1 {
     @apply mt-[1.4em] mb-[0.2em] leading-tight font-semibold;
     font-size: 1.875em;
@@ -550,7 +553,7 @@
 
 /*
  * Motion (CLAUDE.md "Motion"). Every floating surface — menus, popovers, tooltips, panels, the outline list —
- * enters and leaves the same way: from/to 97% and 2px on the anchor's side, the strong ease-out,
+ * enters and leaves the same way: from/to 96% and 4px on the anchor's side, the strong ease-out,
  * --motion-pop-in in and --motion-pop-out out (design/tokens.json). `hk-pop` is for a surface that is
  * mounted when shown (FloatingLayer, Base UI popups, usePresence); `hk-pop-toggle` + data-open for one
  * that stays mounted and shows/hides (a transition, so a hover that leaves mid-way turns around).
@@ -559,22 +562,22 @@
 @keyframes hk-pop-in {
   from {
     opacity: 0;
-    scale: 0.97;
-    translate: var(--hk-pop-dx, 0px) var(--hk-pop-dy, -2px);
+    scale: 0.96;
+    translate: var(--hk-pop-dx, 0px) var(--hk-pop-dy, -4px);
   }
 }
 /* Content that appears in place (a toggle's body): no scale, only a short rise. */
 @keyframes hk-fade-in {
   from {
     opacity: 0;
-    translate: 0 -2px;
+    translate: 0 -4px;
   }
 }
 @keyframes hk-pop-out {
   to {
     opacity: 0;
-    scale: 0.97;
-    translate: var(--hk-pop-dx, 0px) var(--hk-pop-dy, -2px);
+    scale: 0.96;
+    translate: var(--hk-pop-dx, 0px) var(--hk-pop-dy, -4px);
   }
 }
 .hk-pop {
@@ -589,20 +592,20 @@
 }
 /* Opening upward or sideways: the surface comes from the anchor's side (Base UI tells with data-side). */
 .hk-pop[data-above] {
-  --hk-pop-dy: 2px;
+  --hk-pop-dy: 4px;
   --hk-pop-origin: bottom left;
 }
 .hk-pop[data-side^='top'] {
-  --hk-pop-dy: 2px;
+  --hk-pop-dy: 4px;
 }
 .hk-pop[data-side='left'],
 .hk-pop[data-side='inline-start'] {
-  --hk-pop-dx: 2px;
+  --hk-pop-dx: 4px;
   --hk-pop-dy: 0px;
 }
 .hk-pop[data-side='right'],
 .hk-pop[data-side='inline-end'] {
-  --hk-pop-dx: -2px;
+  --hk-pop-dx: -4px;
   --hk-pop-dy: 0px;
 }
 .hk-pop-toggle {
@@ -615,8 +618,8 @@
 }
 .hk-pop-toggle[data-open='false'] {
   opacity: 0;
-  scale: 0.97;
-  translate: var(--hk-pop-dx, 0px) var(--hk-pop-dy, -2px);
+  scale: 0.96;
+  translate: var(--hk-pop-dx, 0px) var(--hk-pop-dy, -4px);
   visibility: hidden;
   transition-duration: var(--motion-pop-out);
 }
