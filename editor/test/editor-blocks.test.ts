@@ -76,7 +76,7 @@ describe('slash menu', () => {
     const groups = [...document.querySelectorAll('.hk-slash-menu [role=group]')].map((g) =>
       g.getAttribute('aria-label')
     )
-    expect(groups).toEqual(['Basic blocks', 'Lists', 'Media', 'Other', 'Advanced'])
+    expect(groups).toEqual(['Basic blocks', 'Lists', 'Media', 'Embeds', 'Other', 'Advanced'])
     const todo = document.querySelector('.hk-slash-menu [aria-label="To-do list"]')
     expect(todo?.textContent).toContain('[]')
   })

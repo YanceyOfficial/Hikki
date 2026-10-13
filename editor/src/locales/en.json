@@ -116,6 +116,34 @@
     "file": {
       "title": "File",
       "hint": "Attach a file"
+    },
+    "embed": {
+      "title": "Embed",
+      "hint": "A link, shown on the page"
+    },
+    "html": {
+      "title": "HTML",
+      "hint": "A snippet of HTML, in a sandbox"
+    },
+    "googleDrive": {
+      "title": "Google Drive",
+      "hint": "A Drive file, Doc, Sheet or Slides"
+    },
+    "tweet": {
+      "title": "Tweet",
+      "hint": "A post from X"
+    },
+    "gist": {
+      "title": "GitHub Gist",
+      "hint": "A gist, with its syntax colours"
+    },
+    "googleMaps": {
+      "title": "Google Maps",
+      "hint": "A place on the map"
+    },
+    "figma": {
+      "title": "Figma",
+      "hint": "A Figma file or prototype"
     }
   },
   "cover": {
@@ -168,7 +196,8 @@
       "lists": "Lists",
       "other": "Other",
       "advanced": "Advanced",
-      "media": "Media"
+      "media": "Media",
+      "embeds": "Embeds"
     },
     "close": "Close menu"
   },
@@ -303,5 +332,30 @@
     "perKanji": "Per kanji",
     "whole": "Whole",
     "readingFor": "Reading for {{text}}"
+  },
+  "embed": {
+    "placeholder": {
+      "generic": "Paste a link to embed…",
+      "html": "Paste HTML…",
+      "googleDrive": "Paste a Google Drive, Docs, Sheets or Slides link…",
+      "tweet": "Paste a link to a post on X…",
+      "gist": "Paste a gist link…",
+      "googleMaps": "Paste a Google Maps link…",
+      "figma": "Paste a Figma link…",
+      "youtube": "Paste a YouTube link…",
+      "vimeo": "Paste a Vimeo link…",
+      "codepen": "Paste a CodePen link…"
+    },
+    "label": {
+      "link": "Link to embed",
+      "html": "HTML to embed"
+    },
+    "hintLink": "Enter to embed · Esc to cancel",
+    "hintHtml": "⌘Enter to embed · Esc to cancel",
+    "invalid": "That link can’t be embedded.",
+    "insert": "Embed",
+    "open": "Open",
+    "frameTitle": "Embedded content",
+    "resize": "Resize"
   }
 }

@@ -457,6 +457,21 @@ private final class ScriptMessageProxy: NSObject, WKScriptMessageHandlerWithRepl
 /// `<input type="file">` (covers, media, attachments): iOS presents the system picker itself, but a macOS WKWebView
 /// does nothing unless the UI delegate shows an open panel.
 private final class EditorUIDelegate: NSObject, WKUIDelegate {
+    /// A link inside an embed that wants a new window (target=_blank, window.open): the system browser gets it.
+    func webView(
+        _ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
+        for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures
+    ) -> WKWebView? {
+        if let url = navigationAction.request.url, url.scheme == "https" || url.scheme == "http" {
+            #if os(iOS)
+                UIApplication.shared.open(url)
+            #else
+                NSWorkspace.shared.open(url)
+            #endif
+        }
+        return nil
+    }
+
     #if os(macOS)
         func webView(
             _ webView: WKWebView, runOpenPanelWith parameters: WKOpenPanelParameters, initiatedByFrame frame: WKFrameInfo
@@ -488,6 +503,13 @@ private final class NavigationDelegate: NSObject, WKNavigationDelegate {
         // become the page); links open in the system browser.
         if let url = navigationAction.request.url, url.scheme == EditorSchemeHandler.scheme {
             return url.host == "app" ? .allow : .cancel
+        }
+        // Embeds: a third-party page (https) or a sandboxed snippet (about:srcdoc) may load in a frame of the
+        // page, never as the page itself.
+        if let frame = navigationAction.targetFrame, !frame.isMainFrame, let url = navigationAction.request.url,
+            url.scheme == "https" || url.scheme == "about"
+        {
+            return .allow
         }
         if let url = navigationAction.request.url, navigationAction.navigationType == .linkActivated {
             #if os(iOS)

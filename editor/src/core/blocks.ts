@@ -1,12 +1,19 @@
 import {
+  BrowserIcon,
   CaretCircleRightIcon,
   CheckSquareIcon,
+  CodeBlockIcon,
   CodeIcon,
   ColumnsIcon,
+  FigmaLogoIcon,
   FilmStripIcon,
   FunctionIcon,
+  GithubLogoIcon,
+  GoogleDriveLogoIcon,
   ImageSquareIcon,
   InfoIcon,
+  MapTrifoldIcon,
+  XLogoIcon,
   ListBulletsIcon,
   ListMagnifyingGlassIcon,
   ListNumbersIcon,
@@ -26,13 +33,14 @@ import {
 import type { ChainedCommands, Editor } from '@tiptap/core'
 
 import { lastCodeLanguage } from '../extensions/code-languages'
+import { openEmbedPanel } from '../extensions/embed'
 import { openMathEditor } from '../extensions/math'
 import { pickFiles, type MediaHost } from '../extensions/media'
 import { openToggleAtSelection } from '../extensions/toggle'
 import { t } from './i18n'
 
 /** Sections of the "/" menu, in display order. */
-export const BLOCK_GROUPS = ['basic', 'lists', 'media', 'other', 'advanced'] as const
+export const BLOCK_GROUPS = ['basic', 'lists', 'media', 'embeds', 'other', 'advanced'] as const
 export type BlockGroup = (typeof BLOCK_GROUPS)[number]
 
 /**
@@ -269,6 +277,91 @@ export const BLOCK_TYPES: BlockType[] = [
     after: (editor) => {
       if (mediaHost) pickFiles(editor, mediaHost, 'file')
     }
+  },
+  // Embeds (Notion's): each opens the link panel for its service; the block itself is the same frame.
+  {
+    id: 'embed',
+    title: 'Embed',
+    hint: 'A link, shown on the page',
+    label: () => t('blocks.embed.title'),
+    description: () => t('blocks.embed.hint'),
+    icon: BrowserIcon,
+    group: 'embeds',
+    aliases: ['embed', 'iframe', 'website', 'youtube', 'vimeo', 'codepen', '嵌入', 'qianru', 'qr'],
+    apply: (c) => c,
+    after: (editor) => openEmbedPanel(editor, 'generic')
+  },
+  {
+    id: 'html',
+    title: 'HTML',
+    hint: 'A snippet of HTML, in a sandbox',
+    label: () => t('blocks.html.title'),
+    description: () => t('blocks.html.hint'),
+    icon: CodeBlockIcon,
+    group: 'embeds',
+    aliases: ['html', 'snippet', '网页', 'wangye', 'wy'],
+    apply: (c) => c,
+    after: (editor) => openEmbedPanel(editor, 'html')
+  },
+  {
+    id: 'googleDrive',
+    title: 'Google Drive',
+    hint: 'A Drive file, Doc, Sheet or Slides',
+    label: () => t('blocks.googleDrive.title'),
+    description: () => t('blocks.googleDrive.hint'),
+    icon: GoogleDriveLogoIcon,
+    group: 'embeds',
+    aliases: ['google drive', 'drive', 'docs', 'sheets', 'slides', '谷歌云盘', 'guge', 'gg'],
+    apply: (c) => c,
+    after: (editor) => openEmbedPanel(editor, 'googleDrive')
+  },
+  {
+    id: 'tweet',
+    title: 'Tweet',
+    hint: 'A post from X',
+    label: () => t('blocks.tweet.title'),
+    description: () => t('blocks.tweet.hint'),
+    icon: XLogoIcon,
+    group: 'embeds',
+    aliases: ['tweet', 'twitter', 'x', '推文', 'tuiwen', 'tw'],
+    apply: (c) => c,
+    after: (editor) => openEmbedPanel(editor, 'tweet')
+  },
+  {
+    id: 'gist',
+    title: 'GitHub Gist',
+    hint: 'A gist, with its syntax colours',
+    label: () => t('blocks.gist.title'),
+    description: () => t('blocks.gist.hint'),
+    icon: GithubLogoIcon,
+    group: 'embeds',
+    aliases: ['gist', 'github', '片段', 'pianduan', 'pd'],
+    apply: (c) => c,
+    after: (editor) => openEmbedPanel(editor, 'gist')
+  },
+  {
+    id: 'googleMaps',
+    title: 'Google Maps',
+    hint: 'A place on the map',
+    label: () => t('blocks.googleMaps.title'),
+    description: () => t('blocks.googleMaps.hint'),
+    icon: MapTrifoldIcon,
+    group: 'embeds',
+    aliases: ['google maps', 'maps', 'map', '地图', 'ditu', 'dt'],
+    apply: (c) => c,
+    after: (editor) => openEmbedPanel(editor, 'googleMaps')
+  },
+  {
+    id: 'figma',
+    title: 'Figma',
+    hint: 'A Figma file or prototype',
+    label: () => t('blocks.figma.title'),
+    description: () => t('blocks.figma.hint'),
+    icon: FigmaLogoIcon,
+    group: 'embeds',
+    aliases: ['figma', 'design', '设计稿', 'shejigao', 'sjg'],
+    apply: (c) => c,
+    after: (editor) => openEmbedPanel(editor, 'figma')
   },
   {
     id: 'blockquote',

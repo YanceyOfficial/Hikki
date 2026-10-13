@@ -12,6 +12,7 @@ import { CodeBlock } from '../extensions/code-block'
 import { Colors, ColorTextStyle } from '../extensions/colors'
 import { Column, Columns, ColumnsKeymap } from '../extensions/columns'
 import { EdgeNavigation } from '../extensions/edge-navigation'
+import { Embed } from '../extensions/embed'
 import { Find } from '../extensions/find'
 import { mathExtension } from '../extensions/math'
 import { mediaExtensions, type MediaHost } from '../extensions/media'
@@ -23,6 +24,7 @@ import { SlashCommand } from '../extensions/slash-command'
 import { tableExtensions } from '../extensions/table'
 import { TableOfContents } from '../extensions/toc'
 import { Quote, toggleExtensions } from '../extensions/toggle'
+import { bffURL } from '../lib/bff'
 import { setMediaHost } from './blocks'
 import { t } from './i18n'
 import { isSafeHref } from './links'
@@ -75,7 +77,8 @@ export const BLOCK_ID_TYPES = [
   'image',
   'video',
   'audio',
-  'fileAttachment'
+  'fileAttachment',
+  'embed'
 ]
 
 /** The page body editor. `content` must already be normalized (see normalizeBody). */
@@ -109,6 +112,13 @@ export function createEditor(
       }),
       CodeBlock,
       Quote,
+      // The original page opens where page links send other links.
+      Embed.configure({
+        host: {
+          openExternal: (href) => (options.pageLinks ?? noPageLinks).openExternal(href),
+          bff: bffURL()
+        }
+      }),
       ...toggleExtensions,
       Callout,
       mathExtension(),

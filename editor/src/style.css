@@ -349,6 +349,26 @@
   .tiptap .hk-file-size {
     @apply flex-none text-xs text-muted-foreground;
   }
+  /* Embed (extensions/embed.ts): the frame fills the column; a handle under it sets the height; the
+     original page opens from a bar that shows on hover. */
+  .tiptap .hk-embed {
+    @apply relative my-2 rounded-md bg-muted;
+  }
+  .tiptap .hk-embed-frame {
+    @apply block w-full rounded-md border-0 bg-background;
+  }
+  .tiptap .hk-embed[data-resizing] .hk-embed-frame {
+    @apply pointer-events-none;
+  }
+  .tiptap .hk-embed-bar {
+    @apply absolute top-2 right-2 opacity-0 transition-opacity group-hover/embed:opacity-100 focus-within:opacity-100 touch:opacity-100;
+  }
+  .tiptap .hk-embed-open {
+    @apply cursor-pointer rounded-md bg-popover px-2 py-1 text-xs text-popover-foreground shadow-sm ring-1 ring-foreground/10 hover:bg-muted;
+  }
+  .tiptap .hk-embed-resize {
+    @apply relative mx-auto -mt-3 mb-1.5 h-1.5 w-12 cursor-row-resize touch-none rounded-full bg-muted-foreground/30 opacity-0 transition-opacity group-hover/embed:opacity-100 hover:bg-muted-foreground/60 touch:opacity-100;
+  }
   .tiptap .hk-upload {
     @apply my-2 flex flex-col gap-2 rounded-md border border-dashed border-border px-3 py-2.5 text-sm text-muted-foreground;
   }

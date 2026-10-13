@@ -116,6 +116,34 @@
     "file": {
       "title": "文件",
       "hint": "添加附件"
+    },
+    "embed": {
+      "title": "嵌入",
+      "hint": "把一个链接显示在页面里"
+    },
+    "html": {
+      "title": "HTML",
+      "hint": "一段 HTML，在沙盒中运行"
+    },
+    "googleDrive": {
+      "title": "Google Drive",
+      "hint": "Drive 文件、文档、表格或幻灯片"
+    },
+    "tweet": {
+      "title": "推文",
+      "hint": "X 上的一条帖子"
+    },
+    "gist": {
+      "title": "GitHub Gist",
+      "hint": "一段 Gist，带语法着色"
+    },
+    "googleMaps": {
+      "title": "Google 地图",
+      "hint": "地图上的一个地点"
+    },
+    "figma": {
+      "title": "Figma",
+      "hint": "Figma 文件或原型"
     }
   },
   "cover": {
@@ -168,7 +196,8 @@
       "lists": "列表",
       "other": "其他",
       "advanced": "高级",
-      "media": "媒体"
+      "media": "媒体",
+      "embeds": "嵌入"
     },
     "close": "关闭菜单"
   },
@@ -303,5 +332,30 @@
     "perKanji": "逐字",
     "whole": "整体",
     "readingFor": "{{text}} 的读音"
+  },
+  "embed": {
+    "placeholder": {
+      "generic": "粘贴要嵌入的链接…",
+      "html": "粘贴 HTML…",
+      "googleDrive": "粘贴 Google Drive、文档、表格或幻灯片链接…",
+      "tweet": "粘贴 X 帖子链接…",
+      "gist": "粘贴 Gist 链接…",
+      "googleMaps": "粘贴 Google 地图链接…",
+      "figma": "粘贴 Figma 链接…",
+      "youtube": "粘贴 YouTube 链接…",
+      "vimeo": "粘贴 Vimeo 链接…",
+      "codepen": "粘贴 CodePen 链接…"
+    },
+    "label": {
+      "link": "要嵌入的链接",
+      "html": "要嵌入的 HTML"
+    },
+    "hintLink": "Enter 嵌入 · Esc 取消",
+    "hintHtml": "⌘Enter 嵌入 · Esc 取消",
+    "invalid": "这个链接无法嵌入。",
+    "insert": "嵌入",
+    "open": "打开",
+    "frameTitle": "嵌入内容",
+    "resize": "调整高度"
   }
 }

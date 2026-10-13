@@ -29,10 +29,9 @@ export class UnsplashError extends Error {
   }
 }
 
-export function bffURL(): string | null {
-  const url = import.meta.env.VITE_HIKKI_BFF_URL as string | undefined
-  return url ? url.replace(/\/$/u, '') : null
-}
+import { bffURL } from './bff'
+
+export { bffURL }
 
 export async function searchUnsplash(
   query: string,

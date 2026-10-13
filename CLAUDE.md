@@ -117,7 +117,7 @@ editor/src/page/              page header, cover picker, outline (.tsx)
 editor/src/hooks/             React hooks (useEditorSnapshot)
 editor/src/lib/               data helpers: cover catalog, Unsplash client, emoji data; shadcn's utils re-export
 editor/test/                  vitest
-bff/                          backend-for-frontend (Hono, Vercel): Unsplash proxy; tests with `bun test`
+bff/                          backend-for-frontend (Hono, Vercel): Unsplash proxy, YouTube embed shim; tests with `bun test`
 HikkiUITests/                 XCUITest flows
 ```
 
@@ -179,6 +179,15 @@ HikkiUITests/                 XCUITest flows
   as a `#y=<0-100>` fragment (`editor/src/lib/covers.ts`: `coverPosition`, `withCoverPosition`), so the store and
   the protocol keep a plain string. "Reposition" on the cover (`editor/src/page/page-header.tsx`) drags the picture
   one pixel per pixel over its overflow and saves or cancels.
+- **Embeds** (`editor/src/extensions/embed.ts`, transforms in `editor/src/lib/embeds.ts`): one `embed` block — an
+  `<iframe>` on a third-party page (sandboxed, keeps its origin) or on a snippet of HTML (`srcdoc`, no origin) — behind
+  the "/" menu's Embeds group (Embed, HTML, Google Drive, Tweet, Gist, Google Maps, Figma). `embedFromURL` turns a
+  pasted link into the provider's embeddable URL (YouTube, Vimeo, Figma, Maps, Drive/Docs, gists as a script snippet,
+  tweets via platform.twitter.com, CodePen; anything else as it is). The height is an attribute, set by the handle
+  under the frame. The native navigation delegate lets https / about: load in subframes only, and popups from a frame
+  open in the system browser. YouTube's player refuses to play (error 153) without an HTTP Referer, which a page on
+  the app's own scheme never sends, so with `VITE_HIKKI_BFF_URL` set the frame loads the BFF's shim page
+  (`/embed/youtube/<id>`, `bff/src/index.ts`) and the player sees that as its referrer.
 - **Page links** (`editor/src/extensions/page-links.ts`): `hikki://page/<id>#<block>`. The native side feeds the editor
   the page index (`window.hikki.setPages`) so pasted links get titles; "Copy link to block" puts a ready `<a>` plus the
   URL on the clipboard; a plain-text paste of a link becomes a labelled hyperlink, and so does a dropped one: a

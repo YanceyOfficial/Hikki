@@ -19,6 +19,26 @@ app.use(
 
 app.get('/', (c) => c.text('hikki-bff'))
 
+// Embed shim: YouTube's player refuses to play (error 153) without an HTTP Referer, and the editor's page
+// — on the app's own scheme — sends none. This page, on https, holds the player, so the player sees a
+// referrer. The id is checked, so it is the only thing that varies in the markup.
+const YOUTUBE_ID = /^[\w-]{6,20}$/u
+
+app.get('/embed/youtube/:id', (c) => {
+  const id = c.req.param('id')
+  if (!YOUTUBE_ID.test(id)) return c.text('bad id', 400)
+  const start = Number.parseInt(c.req.query('start') ?? '', 10)
+  const src = `https://www.youtube-nocookie.com/embed/${id}${start > 0 ? `?start=${start}` : ''}`
+  c.header('Cache-Control', 'public, max-age=86400')
+  c.header(
+    'Content-Security-Policy',
+    "default-src 'none'; frame-src https://www.youtube-nocookie.com; style-src 'unsafe-inline'"
+  )
+  return c.html(
+    `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>YouTube</title><style>html,body{margin:0;height:100%;background:#000}iframe{display:block;width:100%;height:100%;border:0}</style></head><body><iframe src="${src}" allow="autoplay; fullscreen; picture-in-picture; encrypted-media; clipboard-write" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></body></html>`
+  )
+})
+
 // Read through Hono's adapter (not `process.env`) so the source needs no Node/Bun ambient types:
 // Vercel type-checks src/ with its own compiler and doesn't see bun's isolated @types.
 function accessKey(c: Context): string | null {
