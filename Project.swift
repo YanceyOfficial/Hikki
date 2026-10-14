@@ -38,6 +38,8 @@ let project = Project(
                 // hikki://page/<id> — "Copy link" (HikkiCore/Sources/Store/PageLink.swift).
                 "CFBundleURLTypes": [["CFBundleURLName": "app.yancey.hikki", "CFBundleURLSchemes": ["hikki"]]],
                 "UIApplicationSceneManifest": ["UIApplicationSupportsMultipleScenes": true],
+                // Pages picked in Spotlight arrive as this activity (SpotlightIndex.swift).
+                "NSUserActivityTypes": ["com.apple.corespotlightitem"],
             ]),
             sources: ["Hikki/Sources/**"],
             // Built by `make editor` (vite). A folder reference keeps the bundle's relative layout intact.

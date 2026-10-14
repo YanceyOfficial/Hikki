@@ -1,3 +1,4 @@
+import CoreSpotlight
 import HikkiCore
 import HikkiUI
 import QuickLook
@@ -69,6 +70,12 @@ struct ContentView: View {
             .onChange(of: navigator.titleFocusRequest) { _, request in
                 if let request { editor.focusTitle(of: request.pageID) }
             }
+            // A page picked in Spotlight (SpotlightIndex.swift).
+            .onContinueUserActivity(CSSearchableItemActionType) { activity in
+                guard let id = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String, model.tree.page(id) != nil
+                else { return }
+                navigator.open(id)
+            }
             // hikki://page/<id> (Copy link).
             .onOpenURL { url in
                 guard let id = PageLink.pageID(from: url), model.tree.page(id) != nil else { return }
@@ -120,6 +127,14 @@ struct ContentView: View {
                 #else
                     navigator.isShowingSettings = true
                 #endif
+            }
+            // HIKKI_DEBUG_SPOTLIGHT_QUERY=<text> asks Spotlight for pages once indexing settled and logs the ids it
+            // ranks (judging its semantic matching).
+            if let text = ProcessInfo.processInfo.environment["HIKKI_DEBUG_SPOTLIGHT_QUERY"] {
+                Task {
+                    try? await Task.sleep(for: .seconds(8))
+                    await model.searchIndexer.debugSpotlightQuery(text)
+                }
             }
             // HIKKI_DEBUG_NAV=a,b,c visits those pages one per second (reproduces page-switch bugs).
             if let ids = ProcessInfo.processInfo.environment["HIKKI_DEBUG_NAV"]?.split(separator: ",") {

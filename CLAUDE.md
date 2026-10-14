@@ -135,7 +135,7 @@ HikkiUITests/                 XCUITest flows
   paints selection in the system accent (not the colour tone) and swallowed row drops on iPad; iPhone keeps a `List`.
   Fills on the sidebar use resolved colours (dynamic ones picked up the active window's vibrancy).
 - **Data directory**: `HIKKI_DATA_DIR` overrides it (UI tests, demos). DEBUG hooks: `HIKKI_OPEN_TABS=a,b`,
-  `HIKKI_OPEN_SEARCH`, `HIKKI_OPEN_FIND`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SIDEBAR` (hide + show the split view sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_ACTIVATE`, `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
+  `HIKKI_OPEN_SEARCH`, `HIKKI_OPEN_FIND`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SPOTLIGHT_QUERY=<text>` (logs the page ids Spotlight ranks), `HIKKI_DEBUG_SIDEBAR` (hide + show the split view sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_ACTIVATE`, `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
   UI tests set it by default — pass `workspace: nil` to `launch()` to test onboarding).
 - **Storage (option C)**: the workspace folder is the source of truth — one JSON file per page
   (`HikkiCore/Sources/Store/PageFile.swift`: `pages/<id>.json`, format-versioned, content as JSON); SQLite is a
@@ -218,7 +218,11 @@ HikkiUITests/                 XCUITest flows
   PDFs through PDFKit, images through Vision's text recognition (`HikkiSearch/Sources/AttachmentText.swift`) — one
   file at a time at low priority after the page is indexed, once per file; a hit whose only match is in a file names
   it. The store has no search left in it. One ranked list ("Best matches"); a row shows the parent path, the excerpt
-  with the terms emphasized (`HighlightedText`) and the edited time.
+  with the terms emphasized (`HighlightedText`) and the edited time. Pages also go into the device's Spotlight index
+  (Core Spotlight: `Hikki/Sources/SpotlightIndex.swift`, items shaped by `SpotlightItems` in HikkiSearch; Settings →
+  Spotlight, default on, off empties it); a Spotlight result opens the page through `onContinueUserActivity`.
+  On-device embeddings (`NLContextualEmbedding`) were measured and rejected for a "related" tier: related and
+  unrelated sentence pairs overlap too much (2026-10-14).
 - **Full screen (macOS)**: Xcode's way, in `Hikki/Sources/FullScreenChrome.swift` — the toolbar stays and gets its
   background while in full screen (that is what puts the columns below the toolbar row instead of under it); the
   traffic lights come down with the menu bar into that row. Measured, not guessed: in full screen AppKit moves the

@@ -2177,6 +2177,57 @@
         }
       }
     },
+    "app:settings.spotlight": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show pages in Spotlight"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在聚焦搜索中显示页面"
+          }
+        }
+      }
+    },
+    "app:settings.spotlight.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Page titles and text join this device's private Spotlight index, so system search finds them. Nothing leaves the device."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "页面标题和正文会加入本设备的私有聚焦索引，系统搜索就能找到它们。数据不会离开设备。"
+          }
+        }
+      }
+    },
+    "app:settings.spotlight.header": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotlight"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聚焦搜索"
+          }
+        }
+      }
+    },
     "app:settings.storage": {
       "extractionState": "manual",
       "localizations": {

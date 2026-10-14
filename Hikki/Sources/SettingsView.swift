@@ -70,6 +70,7 @@ struct SettingsView: View {
                     Form {
                         WorkspaceSection()
                         EditorSection()
+                        SpotlightSection()
                         MenuBarSection()
                         LanguageSection()
                     }
@@ -116,6 +117,7 @@ struct SettingsView: View {
                     WorkspaceSection()
                     AppearanceSection()
                     EditorSection()
+                    SpotlightSection()
                     LanguageSection()
                     AboutSection()
                 }
@@ -312,6 +314,24 @@ private struct EditorSection: View {
             Text("app:settings.editor")
         } footer: {
             Text("app:settings.spellcheck.detail")
+        }
+    }
+}
+
+/// Settings → Spotlight: pages in the device's Spotlight index (SpotlightIndex.swift).
+private struct SpotlightSection: View {
+    @Environment(AppModel.self) private var model
+    @AppStorage(SpotlightPreferences.enabledKey) private var enabled = true
+
+    var body: some View {
+        Section {
+            Toggle("app:settings.spotlight", isOn: $enabled)
+                .accessibilityIdentifier("settings-spotlight")
+                .onChange(of: enabled) { _, on in model.searchIndexer.setSpotlight(enabled: on) }
+        } header: {
+            Text("app:settings.spotlight.header")
+        } footer: {
+            Text("app:settings.spotlight.detail")
         }
     }
 }

@@ -5,14 +5,15 @@ import HikkiSearch
 /// Feeds the search index from the store: every committed page change as it happens, and a reconcile at launch —
 /// pages whose edited time differs from the index's are indexed again, pages gone from the store (deleted, or in
 /// the trash) are dropped. The files a page attaches (PDFs, images) have their text read afterwards, one at a
-/// time at low priority, and only once per file. Work runs off the main thread; the store's observer only hands
-/// it over.
+/// time at low priority, and only once per file. The device's Spotlight index gets the same pages (`SpotlightIndex`).
+/// Work runs off the main thread; the store's observer only hands it over.
 nonisolated final class SearchIndexer: Sendable {
     private let index: SearchIndex
     private let store: DocumentStore
     private let assets: AssetStore
     private let queue = DispatchQueue(label: "app.yancey.hikki.search-index", qos: .utility)
     private let attachments: AttachmentReader
+    private let spotlight = SpotlightIndex()
 
     init(index: SearchIndex, store: DocumentStore, assets: AssetStore) {
         self.index = index
@@ -37,6 +38,28 @@ nonisolated final class SearchIndexer: Sendable {
         try index.search(query)
     }
 
+    /// Settings → Spotlight: on pushes every page, off empties Spotlight.
+    func setSpotlight(enabled: Bool) {
+        queue.async { [self] in
+            if enabled {
+                do {
+                    spotlight.index(try store.allDocuments().filter { $0.deletedAt == nil }.map(Self.document))
+                    spotlight.isSeeded = true
+                } catch {
+                    Log.error("spotlight seeding failed: \(error)", category: "search")
+                }
+            } else {
+                spotlight.removeAll()
+            }
+        }
+    }
+
+    #if DEBUG
+        func debugSpotlightQuery(_ text: String) async {
+            await spotlight.debugQuery(text)
+        }
+    #endif
+
     private func reconcile() {
         do {
             let stamps = try index.stamps()
@@ -49,6 +72,12 @@ nonisolated final class SearchIndexer: Sendable {
             let gone = stamps.keys.filter { !liveIDs.contains($0) }
             try index.index(stale.map(Self.document))
             try index.remove(gone)
+            // Spotlight follows: every page once per format, then only what changed.
+            if spotlight.isEnabled {
+                spotlight.index((spotlight.isSeeded ? stale : live).map(Self.document))
+                spotlight.remove(gone)
+                spotlight.isSeeded = true
+            }
             Log.info(
                 "search index reconciled", category: "search",
                 context: ["indexed": "\(stale.count)", "removed": "\(gone.count)", "total": "\(index.count)"])
@@ -68,6 +97,8 @@ nonisolated final class SearchIndexer: Sendable {
                 gone.formUnion(try index.stamps().keys.filter { !live.contains($0) })
             }
             try index.remove(gone)
+            spotlight.index(kept.map(Self.document))
+            spotlight.remove(Array(gone))
             readAttachments(of: kept)
         } catch {
             Log.error("search index update failed: \(error)", category: "search")
