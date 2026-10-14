@@ -78,6 +78,9 @@
     "paperclip": {
       "sf": "paperclip"
     },
+    "columns-plus-right": {
+      "sf": "sidebar.trailing"
+    },
     "clock": {
       "sf": "clock"
     },

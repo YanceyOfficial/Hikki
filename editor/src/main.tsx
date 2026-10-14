@@ -54,6 +54,7 @@ window.hikki = {
   setSpellcheck: (on: boolean) => bridge.setSpellcheck(on),
   // Page → Lock / Unlock while the page is open.
   setLocked: (locked: boolean) => bridge.setLocked(locked),
+  setOutlineRail: (visible: boolean) => bridge.setOutlineRail(visible),
   // Height of the native toolbar over the page: fixed panels (find) sit below it.
   setInsets: (insets: { top: number }) => {
     document.documentElement.style.setProperty('--hk-inset-top', `${Math.max(0, insets.top)}px`)

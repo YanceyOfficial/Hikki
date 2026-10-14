@@ -5,6 +5,14 @@ import { EditorBridge, type Transport } from '../src/core/bridge'
 import type { ToNativeMessage } from '../src/core/protocol'
 import { doc, page, stripIds } from './helpers'
 
+const heading = (level: number, text: string) => ({
+  type: 'heading',
+  attrs: { level },
+  content: [{ type: 'text', text }]
+})
+const pageInfo = (sent: ToNativeMessage[]) =>
+  sent.filter((m) => m.type === 'pageInfo') as Extract<ToNativeMessage, { type: 'pageInfo' }>[]
+
 describe('EditorBridge', () => {
   let sent: ToNativeMessage[]
   let bridge: EditorBridge
@@ -145,6 +153,41 @@ describe('EditorBridge', () => {
       [2, 'Goals'],
       [3, 'Risks']
     ])
+  })
+
+  it('reports the page info — outline with block ids, words, characters — on load, then throttled', () => {
+    bridge.loadDocument(
+      page('a', {
+        title: 'Plan',
+        content: {
+          type: 'doc',
+          content: [
+            heading(1, 'One'),
+            { type: 'paragraph', content: [{ type: 'text', text: 'hello world' }] }
+          ]
+        }
+      })
+    )
+    expect(pageInfo(sent)).toHaveLength(1)
+    expect(pageInfo(sent)[0]).toMatchObject({ docId: 'a', words: 4 })
+    expect(pageInfo(sent)[0].characters).toBe(
+      editor().storage.characterCount.characters() + 'Plan'.length
+    )
+    expect(pageInfo(sent)[0].headings).toMatchObject([{ level: 1, text: 'One' }])
+    // UniqueID stamps the block ids right after load; the throttled follow-up carries them.
+    vi.advanceTimersByTime(300)
+    expect(pageInfo(sent)).toHaveLength(2)
+    expect(typeof pageInfo(sent)[1].headings[0].id).toBe('string')
+    editor().commands.insertContentAt(editor().state.doc.content.size, heading(2, 'Two'))
+    bridge.setTitle('Plan B')
+    expect(pageInfo(sent)).toHaveLength(2)
+    vi.advanceTimersByTime(300)
+    expect(pageInfo(sent)).toHaveLength(3)
+    expect(pageInfo(sent)[2].headings.map((h) => h.text)).toEqual(['One', 'Two'])
+    expect(pageInfo(sent)[2].words).toBe(6)
+    // Hiding the rail is state the outline reads; it never reaches the native side.
+    bridge.setOutlineRail(false)
+    expect(bridge.page.get().railHidden).toBe(true)
   })
 
   it('Backspace at the start of the body asks the header to focus the title', () => {

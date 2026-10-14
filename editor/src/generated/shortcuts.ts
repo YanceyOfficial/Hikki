@@ -5,6 +5,7 @@ export type ShortcutId =
   | 'newTab'
   | 'closeTab'
   | 'search'
+  | 'toggleInspector'
   | 'settings'
   | 'back'
   | 'forward'
@@ -56,6 +57,7 @@ export const SHORTCUTS: Record<ShortcutId, Shortcut> = {
   newTab: { key: 't', command: true, shift: false, option: false, control: false, bound: 'app', display: '⌘T' },
   closeTab: { key: 'w', command: true, shift: false, option: false, control: false, bound: 'app', display: '⌘W' },
   search: { key: 'k', command: true, shift: false, option: false, control: false, bound: 'app', display: '⌘K' },
+  toggleInspector: { key: 'i', command: true, shift: false, option: true, control: false, bound: 'app', display: '⌥⌘I' },
   settings: { key: ',', command: true, shift: false, option: false, control: false, bound: 'app', display: '⌘,' },
   back: { key: '[', command: true, shift: false, option: false, control: false, bound: 'app', display: '⌘[' },
   forward: { key: ']', command: true, shift: false, option: false, control: false, bound: 'app', display: '⌘]' },

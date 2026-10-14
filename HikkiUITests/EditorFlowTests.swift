@@ -10,6 +10,8 @@ final class EditorFlowTests: XCTestCase {
         let app = XCUIApplication()
         app.launchEnvironment["HIKKI_DATA_DIR"] = dataDir
         if let workspace { app.launchEnvironment["HIKKI_WORKSPACE"] = workspace }
+        // Preferences outlive the data directory (UserDefaults): every test starts with the inspector closed.
+        app.launchArguments += ["-inspector.visible", "NO"]
         if let language { app.launchArguments += ["-AppleLanguages", "(\(language))", "-AppleLocale", language] }
         app.launch()
         return app
@@ -446,6 +448,35 @@ final class EditorFlowTests: XCTestCase {
     }
 
     // MARK: - Helpers
+
+    /// iPad / Mac (window toolbar): the inspector lists the page's headings, one jumps there, Info shows the counts.
+    func testInspectorShowsOutlineAndCounts() throws {
+        continueAfterFailure = false
+        let app = launch()
+        guard app.buttons["nav-home"].waitForExistence(timeout: 10) else {
+            throw XCTSkip("needs the window toolbar — run on iPad or Mac")
+        }
+        createPage(app, title: "Outline page")
+        // Return leaves the title for the body; "# " and "## " are the Markdown shortcuts for headings.
+        app.webViews.textViews["Page title"].firstMatch.typeText("\n")
+        app.typeText("# First section\nSome words here.\n## Second section\nMore words.")
+        sleep(1)
+        let toggle = app.buttons["inspector-toggle"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(toggle, in: app))
+        toggle.tap()
+        let row = app.buttons["outline-Second section"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(row, in: app), "the inspector did not list the headings")
+        attachScreenshot(app, "inspector-outline")
+        row.tap()
+        // The tabs are HikkiUI buttons inside a container: look them up by identifier, whatever their type.
+        app.descendants(matching: .any)["inspector-tab-info"].firstMatch.tap()
+        XCTAssertTrue(
+            waitOrDumpTree(app.descendants(matching: .any)["inspector-words"].firstMatch, in: app), "Info shows no word count")
+        attachScreenshot(app, "inspector-info")
+        app.descendants(matching: .any)["inspector-tab-calendar"].firstMatch.tap()
+        attachScreenshot(app, "inspector-calendar")
+        toggle.tap()
+    }
 
     private func createPage(_ app: XCUIApplication, title: String) {
         let newPage = app.buttons["new-page"].firstMatch

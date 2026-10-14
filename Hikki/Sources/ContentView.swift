@@ -41,6 +41,10 @@ struct ContentView: View {
         } detail: {
             DetailView(navigator: navigator, editor: editor, phoneToolbar: !wide)
                 .toolbar { if wide { NativeDetailToolbar(navigator: navigator, editor: editor) } }
+                // Xcode's inspector: a column beside the page (a sheet on iPhone).
+                .inspector(isPresented: $navigator.isShowingInspector) {
+                    InspectorView(navigator: navigator, editor: editor)
+                }
         }
         #if os(iOS)
             .sheet(isPresented: $navigator.isShowingSettings) { SettingsView() }
@@ -65,6 +69,16 @@ struct ContentView: View {
                 navigator.revealCurrent()
             }
             .onChange(of: spellcheck) { _, on in editor.setSpellcheck(on) }
+            // The inspector's state outlives the window; the page's own outline rail steps aside while the
+            // inspector shows the outline.
+            .onChange(of: navigator.isShowingInspector) { _, on in
+                UserDefaults.standard.set(on, forKey: InspectorPreferences.visibleKey)
+                editor.setOutlineRail(!(on && navigator.inspectorTab == .outline))
+            }
+            .onChange(of: navigator.inspectorTab) { _, tab in
+                UserDefaults.standard.set(tab.rawValue, forKey: InspectorPreferences.tabKey)
+                editor.setOutlineRail(!(navigator.isShowingInspector && tab == .outline))
+            }
             // Lock / unlock while the page is open (the load payload carries it otherwise).
             .onChange(of: navigator.currentPage?.isLocked) { _, locked in editor.setLocked(locked ?? false) }
             .onChange(of: navigator.titleFocusRequest) { _, request in
@@ -109,6 +123,11 @@ struct ContentView: View {
     private func setUp() {
         navigator.attach(model)
         navigator.restoreTabs(from: storedTabs)
+        navigator.isShowingInspector = UserDefaults.standard.bool(forKey: InspectorPreferences.visibleKey)
+        if let raw = UserDefaults.standard.string(forKey: InspectorPreferences.tabKey), let tab = InspectorTab(rawValue: raw) {
+            navigator.inspectorTab = tab
+        }
+        editor.setOutlineRail(!(navigator.isShowingInspector && navigator.inspectorTab == .outline))
         #if DEBUG
             // Screenshot/test hooks: HIKKI_OPEN_TABS=pageA,pageB opens those pages as tabs; HIKKI_OPEN_SEARCH opens ⌘K.
             if ProcessInfo.processInfo.environment["HIKKI_OPEN_SEARCH"] != nil { navigator.isSearching = true }
@@ -269,6 +288,16 @@ private struct NativeDetailToolbar: ToolbarContent {
                 FavoriteButton(page: page, toolbar: true)
                 PageMoreMenu(page: page, navigator: navigator, editor: editor, toolbar: true)
             }
+        }
+        // The inspector toggle, at the trailing end as in Xcode.
+        ToolbarItem(placement: .primaryAction) {
+            Button {
+                navigator.isShowingInspector.toggle()
+            } label: {
+                IconLabel("app:inspector.toggle", icon: .columnsPlusRight)
+            }
+            .help("app:inspector.toggle")
+            .accessibilityIdentifier("inspector-toggle")
         }
     }
 

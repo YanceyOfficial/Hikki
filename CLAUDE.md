@@ -235,6 +235,14 @@ HikkiUITests/                 XCUITest flows
   state is re-read on enter/exit/resize/key (restored windows) and logged (category `fullscreen`). DEBUG:
   `HIKKI_DEBUG_FULLSCREEN` forces the layout on in a window, `HIKKI_DEBUG_ENTER_FULLSCREEN` enters full screen 1.5 s
   after launch, `HIKKI_DEBUG_QUIT_AFTER=<s>` quits — own-instance checks.
+- **Inspector** (Mac/iPad: Xcode-style trailing column, `.inspector`; iPhone: a sheet from the page ⋯ menu):
+  `Hikki/Sources/InspectorView.swift` — icon tabs Outline / Info / Calendar; toggled by the toolbar button, View →
+  Show Inspector (⌥⌘I) and remembered in UserDefaults (`InspectorPreferences`). The editor reports the open page's
+  outline and size with the `pageInfo` bridge message (headings with block ids, words — CJK characters count one
+  each — and characters from Tiptap's CharacterCount): at once on load, then throttled at 300 ms; a heading in the
+  inspector jumps there through `scrollToBlock`. While the inspector shows the outline the page's own hover rail
+  hides (`window.hikki.setOutlineRail`). Info shows the page's facts with live counts and favorite/lock toggles;
+  Calendar lists the pages last edited on a day. The page ⋯ menu ends with the live word and character count.
 - **Find, spelling, insets**: find and replace is `editor/src/extensions/find.ts` (Tiptap's extension, RE2 regex) with
   `editor/src/components/find-panel.tsx`; the page handles ⌘F/⌥⌘F/⌘G itself, the native Edit menu and the page ⋯ menu ("Find
   in Page", the only way on a phone) call `window.hikki.find`. Spellcheck is WebKit's (Settings → Editor,

@@ -196,8 +196,8 @@ describe('Outline', () => {
     act(() =>
       bridge.page.set({
         headings: [
-          { pos: 0, level: 2, text: 'Goals' },
-          { pos: 7, level: 3, text: 'Risks' }
+          { id: null, pos: 0, level: 2, text: 'Goals' },
+          { id: null, pos: 7, level: 3, text: 'Risks' }
         ]
       })
     )

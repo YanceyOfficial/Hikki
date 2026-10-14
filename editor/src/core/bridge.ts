@@ -41,6 +41,8 @@ export type PageState = {
   readOnly: boolean
   /** Locked by the user (Page → Lock): read-only until unlocked, unlike `readOnly` it can be lifted live. */
   locked: boolean
+  /** The native inspector shows the outline: the page's own hover rail steps aside. */
+  railHidden: boolean
 }
 
 type Options = {
@@ -73,7 +75,8 @@ export class EditorBridge {
     focusTitleRequest: 0,
     selectTitle: false,
     readOnly: false,
-    locked: false
+    locked: false,
+    railHidden: false
   })
   private editor: Editor | null = null
   private timer: ReturnType<typeof setTimeout> | null = null
@@ -82,6 +85,7 @@ export class EditorBridge {
   /** True between a user edit and the snapshot that reports it. Viewing a page must never save it. */
   private dirty = false
   private lastActive = ''
+  private pageInfoTimer: ReturnType<typeof setTimeout> | null = null
   /** Settings → Editor → Check spelling; applied to every page's editor. */
   private spellcheck = true
 
@@ -125,6 +129,7 @@ export class EditorBridge {
       console.warn(`page opened read-only: content doesn't fit the schema (${payload.id})`)
     editor.on('update', ({ transaction }) => {
       this.page.set({ headings: collectHeadings(editor) })
+      this.reportPageInfo()
       if (isUserEdit(transaction)) this.scheduleChanged()
     })
     editor.on('selectionUpdate', () => this.reportActive())
@@ -139,6 +144,7 @@ export class EditorBridge {
       readOnly: contentError !== null,
       locked
     })
+    this.reportPageInfo(true)
   }
 
   /** Page → Lock / Unlock while the page is open. */
@@ -198,6 +204,7 @@ export class EditorBridge {
     if (clean === this.page.get().title) return
     this.page.set({ title: clean })
     this.scheduleChanged()
+    this.reportPageInfo()
   }
 
   setIcon(icon: string | null): void {
@@ -357,6 +364,40 @@ export class EditorBridge {
     const dom = this.editor.view.nodeDOM(pos)
     if (dom instanceof HTMLElement) dom.scrollIntoView({ behavior: 'smooth', block: 'start' })
     this.editor.commands.setTextSelection(pos + 1)
+  }
+
+  /** The native inspector shows the outline itself: the page's hover rail steps aside meanwhile. */
+  setOutlineRail(visible: boolean): void {
+    this.page.set({ railHidden: !visible })
+  }
+
+  /**
+   * The outline and size of the open page for the native inspector: at once on load (`now`), otherwise at
+   * most every 300 ms while it changes. Words count CJK characters one each (as the saved word count does);
+   * characters come from Tiptap's CharacterCount, the title added.
+   */
+  private reportPageInfo(now = false): void {
+    if (this.pageInfoTimer) {
+      if (!now) return
+      clearTimeout(this.pageInfoTimer)
+      this.pageInfoTimer = null
+    }
+    const send = () => {
+      this.pageInfoTimer = null
+      const editor = this.editor
+      const { docId, title, headings } = this.page.get()
+      if (!editor || !docId) return
+      const storage = editor.storage.characterCount as { characters: () => number }
+      void this.send({
+        type: 'pageInfo',
+        docId,
+        headings: headings.map(({ id, level, text }) => ({ id, level, text })),
+        words: wordCount(`${title}\n${plainText(editor.getJSON())}`),
+        characters: storage.characters() + title.length
+      })
+    }
+    if (now) send()
+    else this.pageInfoTimer = setTimeout(send, 300)
   }
 
   private requestTitleFocus(select = false): void {

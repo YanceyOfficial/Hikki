@@ -159,7 +159,22 @@ struct PageMoreMenu: View {
         }
         PageActions(page: page, navigator: navigator)
         Divider()
+        #if os(iOS)
+            // iPhone: the inspector (outline, info, calendar) is a sheet, opened from here.
+            if !toolbar {
+                Button {
+                    navigator.isShowingInspector = true
+                } label: {
+                    IconLabel("app:inspector.toggle", icon: .columnsPlusRight)
+                }
+                .accessibilityIdentifier("open-inspector")
+                Divider()
+            }
+        #endif
         Text("app:page.edited \(page.updatedAt, format: .relative(presentation: .named))")
+        if let info = editor?.pageInfo, info.docId == page.id {
+            Text("app:page.stats \(info.words.formatted()) \(info.characters.formatted())")
+        }
     }
 
     private var barMenu: some View {

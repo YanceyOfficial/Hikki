@@ -79,6 +79,9 @@
   --size-heatmap-cell: 12px;
   --size-search-width: 760px;
   --size-search-results: 480px;
+  --size-inspector-min: 260px;
+  --size-inspector-ideal: 300px;
+  --size-inspector-max: 480px;
   --motion-pop-in: 200ms;
   --motion-pop-out: 150ms;
   --radius: 8px;

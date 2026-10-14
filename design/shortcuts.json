@@ -21,6 +21,11 @@
       "modifiers": ["command"],
       "bound": "app"
     },
+    "toggleInspector": {
+      "key": "i",
+      "modifiers": ["command", "option"],
+      "bound": "app"
+    },
     "settings": {
       "key": ",",
       "modifiers": ["command"],

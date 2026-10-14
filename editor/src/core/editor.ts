@@ -3,7 +3,7 @@ import { TaskItem, TaskList } from '@tiptap/extension-list'
 import Subscript from '@tiptap/extension-subscript'
 import Superscript from '@tiptap/extension-superscript'
 import UniqueID from '@tiptap/extension-unique-id'
-import { Placeholder } from '@tiptap/extensions'
+import { CharacterCount, Placeholder } from '@tiptap/extensions'
 import StarterKit from '@tiptap/starter-kit'
 
 import { BlockControls } from '../extensions/block-controls'
@@ -147,6 +147,8 @@ export function createEditor(
         }
       }),
       BlockShortcuts,
+      // Words and characters for the inspector (`pageInfo`).
+      CharacterCount,
       Placeholder.configure({
         includeChildren: false,
         placeholder: ({ node }) =>

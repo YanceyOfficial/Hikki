@@ -20,6 +20,20 @@ struct BridgeMessageTests {
         #expect(try BridgeMessage.decode(scriptMessageBody: body) == .ready(protocolVersion: BridgeProtocol.version))
     }
 
+    @Test func decodesPageInfoWithOptionalBlockIds() throws {
+        let body: NSDictionary = [
+            "type": "pageInfo", "docId": "a",
+            "headings": [["id": "h1", "level": 1, "text": "One"], ["id": NSNull(), "level": 2, "text": "Two"]],
+            "words": 4, "characters": 19,
+        ]
+        #expect(
+            try BridgeMessage.decode(scriptMessageBody: body)
+                == .pageInfo(
+                    docId: "a",
+                    headings: [OutlineHeading(id: "h1", level: 1, text: "One"), OutlineHeading(id: nil, level: 2, text: "Two")],
+                    words: 4, characters: 19))
+    }
+
     @Test func decodesChangedWithOpaqueContent() throws {
         let content: NSDictionary = ["type": "doc", "content": [["type": "paragraph", "attrs": ["level": 1, "checked": true]]]]
         let body: NSDictionary = [

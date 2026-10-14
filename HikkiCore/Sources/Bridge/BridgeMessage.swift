@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 11
+    public static let version = 12
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -29,11 +29,27 @@ public struct Snapshot: Codable, Sendable, Equatable {
     }
 }
 
+/// A heading of the open page, for the inspector's outline (`id` is the block to scroll to; nil before the
+/// editor stamped ids).
+public struct OutlineHeading: Codable, Sendable, Equatable {
+    public var id: String?
+    public var level: Int
+    public var text: String
+
+    public init(id: String?, level: Int, text: String) {
+        self.id = id
+        self.level = level
+        self.text = text
+    }
+}
+
 /// Messages posted by the web editor to the native shell.
 public enum BridgeMessage: Sendable, Equatable {
     case ready(protocolVersion: Int)
     case changed(Snapshot)
     case activeFormats([String])
+    /// The open page's outline and size for the inspector: on load, then throttled as it changes.
+    case pageInfo(docId: String, headings: [OutlineHeading], words: Int, characters: Int)
     case log(level: LogLevel, message: String, context: [String: String]?)
     case setIcon(docId: String, icon: String?)
     case setCover(docId: String, cover: String?)
@@ -79,7 +95,7 @@ public enum PagePayload {
 extension BridgeMessage: Decodable {
     private enum CodingKeys: String, CodingKey {
         case type, protocolVersion, snapshot, active, level, message, context, docId, icon, cover, fileExtension, dataBase64
-        case size, id, url, block, text
+        case size, id, url, block, text, headings, words, characters
     }
 
     public init(from decoder: Decoder) throws {
@@ -89,6 +105,10 @@ extension BridgeMessage: Decodable {
         case "ready": self = .ready(protocolVersion: try c.decode(Int.self, forKey: .protocolVersion))
         case "changed": self = .changed(try c.decode(Snapshot.self, forKey: .snapshot))
         case "activeFormats": self = .activeFormats(try c.decode([String].self, forKey: .active))
+        case "pageInfo":
+            self = .pageInfo(
+                docId: try c.decode(String.self, forKey: .docId), headings: try c.decode([OutlineHeading].self, forKey: .headings),
+                words: try c.decode(Int.self, forKey: .words), characters: try c.decode(Int.self, forKey: .characters))
         case "log":
             self = .log(
                 level: try c.decode(LogLevel.self, forKey: .level),

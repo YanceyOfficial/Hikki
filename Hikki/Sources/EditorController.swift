@@ -10,6 +10,15 @@ import WebKit
 final class EditorController {
     private(set) var isReady = false
     private(set) var activeFormats: Set<String> = []
+    /// The open page's outline and size as the editor last reported them (`pageInfo`), for the inspector.
+    private(set) var pageInfo: PageInfo?
+
+    struct PageInfo: Equatable {
+        var docId: String
+        var headings: [OutlineHeading]
+        var words: Int
+        var characters: Int
+    }
     @ObservationIgnored private(set) var webView: HikkiWebView!
     @ObservationIgnored private var store: DocumentStore?
     @ObservationIgnored private var assets: AssetStore?
@@ -87,6 +96,31 @@ final class EditorController {
             Task { await callScrollToBlock(blockID) }
         } else {
             pendingBlock = (pageID, blockID)
+        }
+    }
+
+    /// The inspector's outline: a heading of the open page.
+    func scrollToHeading(_ blockID: String) {
+        guard let id = currentDocumentID else { return }
+        scrollToBlock(blockID, in: id)
+    }
+
+    /// Whether the page draws its own hover outline rail (off while the inspector shows the outline).
+    @ObservationIgnored private var outlineRailVisible = true
+
+    func setOutlineRail(_ visible: Bool) {
+        guard visible != outlineRailVisible else { return }
+        outlineRailVisible = visible
+        guard isReady else { return }
+        Task { await applyOutlineRail() }
+    }
+
+    private func applyOutlineRail() async {
+        do {
+            _ = try await webView.callAsyncJavaScript(
+                "window.hikki.setOutlineRail(visible)", arguments: ["visible": outlineRailVisible], contentWorld: .page)
+        } catch {
+            Log.warn("setOutlineRail failed: \(error)", category: "bridge")
         }
     }
 
@@ -309,6 +343,7 @@ final class EditorController {
                 return nil
             }
             isReady = true
+            if !outlineRailVisible { Task { await applyOutlineRail() } }
             // Cold start of the bundle (web content process + parse + first render); IDs/timings only.
             let elapsed = loadStartedAt.map { Int(Date.now.timeIntervalSince($0) * 1000) } ?? -1
             Log.info("editor ready", category: "bridge", context: ["ms": "\(elapsed)"])
@@ -327,6 +362,8 @@ final class EditorController {
             save(snapshot)
         case .activeFormats(let active):
             activeFormats = Set(active)
+        case .pageInfo(let docId, let headings, let words, let characters):
+            pageInfo = PageInfo(docId: docId, headings: headings, words: words, characters: characters)
         case .log(let level, let message, let context):
             Log.write(level, message, category: "web", context: context)
         case .setIcon(let docId, let icon):

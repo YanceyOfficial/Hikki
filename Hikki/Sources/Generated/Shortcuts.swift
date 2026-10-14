@@ -7,6 +7,7 @@ enum Shortcut: String, CaseIterable {
     case newTab
     case closeTab
     case search
+    case toggleInspector
     case settings
     case back
     case forward
@@ -50,6 +51,7 @@ enum Shortcut: String, CaseIterable {
         case .newTab: .app
         case .closeTab: .app
         case .search: .app
+        case .toggleInspector: .app
         case .settings: .app
         case .back: .app
         case .forward: .app
@@ -91,6 +93,7 @@ enum Shortcut: String, CaseIterable {
         case .newTab: KeyboardShortcut("t", modifiers: [.command])
         case .closeTab: KeyboardShortcut("w", modifiers: [.command])
         case .search: KeyboardShortcut("k", modifiers: [.command])
+        case .toggleInspector: KeyboardShortcut("i", modifiers: [.option, .command])
         case .settings: KeyboardShortcut(",", modifiers: [.command])
         case .back: KeyboardShortcut("[", modifiers: [.command])
         case .forward: KeyboardShortcut("]", modifiers: [.command])
@@ -133,6 +136,7 @@ enum Shortcut: String, CaseIterable {
         case .newTab: "⌘T"
         case .closeTab: "⌘W"
         case .search: "⌘K"
+        case .toggleInspector: "⌥⌘I"
         case .settings: "⌘,"
         case .back: "⌘["
         case .forward: "⌘]"

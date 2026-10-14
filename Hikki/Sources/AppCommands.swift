@@ -48,6 +48,14 @@ struct AppCommands: Commands {
             Button("app:find.previous") { editor?.find(.previous) }
                 .keyboardShortcut(Shortcut.findPrevious.keyboardShortcut)
         }
+        // View → Show/Hide Inspector (⌥⌘0, Xcode's).
+        CommandGroup(after: .sidebar) {
+            Button(navigator?.isShowingInspector == true ? "app:menu.hideInspector" : "app:menu.showInspector") {
+                navigator?.isShowingInspector.toggle()
+            }
+            .keyboardShortcut(Shortcut.toggleInspector.keyboardShortcut)
+            .disabled(navigator == nil)
+        }
         CommandMenu("app:menu.page") {
             Button("app:page.copyLink") { navigator?.copyCurrentPageLink() }
                 .keyboardShortcut(Shortcut.copyPageLink.keyboardShortcut)

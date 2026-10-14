@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 11
+export const PROTOCOL_VERSION = 12
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -46,10 +46,21 @@ export type Command = (typeof COMMANDS)[number]
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
+/** A heading of the open page, for the native inspector's outline (`id` is the block id to scroll to). */
+export type OutlineHeading = { id: string | null; level: number; text: string }
+
 export type ToNativeMessage =
   | { type: 'ready'; protocolVersion: number }
   | { type: 'changed'; snapshot: Snapshot }
   | { type: 'activeFormats'; active: Command[] }
+  /** The open page's outline and size, for the native inspector: on load, then throttled as it changes. */
+  | {
+      type: 'pageInfo'
+      docId: string
+      headings: OutlineHeading[]
+      words: number
+      characters: number
+    }
   | { type: 'log'; level: LogLevel; message: string; context?: Record<string, string> }
   /** Saved immediately (not debounced) — metadata has its own write path. */
   | { type: 'setIcon'; docId: string; icon: string | null }

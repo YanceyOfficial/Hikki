@@ -21,9 +21,9 @@ export function sampleEvenly<T>(items: T[], limit: number): T[] {
  */
 export function Outline({ bridge }: { bridge: EditorBridge }) {
   const { t } = useTranslation()
-  const { headings } = useSyncExternalStore(bridge.page.subscribe, bridge.page.get)
+  const { headings, railHidden } = useSyncExternalStore(bridge.page.subscribe, bridge.page.get)
   const [open, setOpen] = useState(false)
-  if (headings.length < 2) return null
+  if (railHidden || headings.length < 2) return null
   const minLevel = Math.min(...headings.map((h) => h.level))
   // Long pages have dozens of headings; the closed rail shows a sample of them, not a solid bar.
   const bars = sampleEvenly(headings, MAX_BARS)
