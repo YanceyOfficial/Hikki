@@ -396,12 +396,15 @@ private struct NativeDetailToolbar: ToolbarContent {
         }
         .sharedBackgroundVisibility(.hidden)
         if let id = navigator.route.pageID, let page = model.tree.page(id) {
+            // While split they would act on the left page only, from the right end of the window: off until it closes.
             if page.isLocked {
-                ToolbarItem(placement: .primaryAction) { LockIndicator(page: page, toolbar: true) }
+                ToolbarItem(placement: .primaryAction) {
+                    LockIndicator(page: page, toolbar: true).disabled(navigator.isSplit)
+                }
             }
             ToolbarItemGroup(placement: .primaryAction) {
-                FavoriteButton(page: page, toolbar: true)
-                PageMoreMenu(page: page, navigator: navigator, editor: editor, toolbar: true)
+                FavoriteButton(page: page, toolbar: true).disabled(navigator.isSplit)
+                PageMoreMenu(page: page, navigator: navigator, editor: editor, toolbar: true).disabled(navigator.isSplit)
             }
         }
         // The inspector toggle, at the trailing end as in Xcode — in a glass group of its own, apart from the page's;
@@ -427,6 +430,7 @@ private struct NativeDetailToolbar: ToolbarContent {
                     IconLabel("app:inspector.toggle", icon: .columnsPlusRight)
                 }
                 .help("app:inspector.toggle")
+                .disabled(navigator.isSplit)
                 .accessibilityIdentifier("inspector-toggle")
             }
         }

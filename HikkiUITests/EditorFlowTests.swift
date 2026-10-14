@@ -513,9 +513,16 @@ final class EditorFlowTests: XCTestCase {
         }
         createPage(app, title: "Notes")
         createPage(app, title: "Textbook")
+        // The inspector (the left page's) closes with a split, and can't open while it lasts.
+        let inspectorToggle = app.descendants(matching: .any)["inspector-toggle"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(inspectorToggle, in: app))
+        inspectorToggle.tap()
+        XCTAssertTrue(waitOrDumpTree(app.descendants(matching: .any)["inspector-tabs"].firstMatch, in: app))
         let toggle = app.descendants(matching: .any)["split-toggle"].firstMatch
         XCTAssertTrue(waitOrDumpTree(toggle, in: app))
         toggle.tap()
+        XCTAssertFalse(app.descendants(matching: .any)["inspector-tabs"].waitForExistence(timeout: 2))
+        XCTAssertFalse(inspectorToggle.isEnabled)
         let pick = app.descendants(matching: .any)["split-pick-Notes"].firstMatch
         XCTAssertTrue(waitOrDumpTree(pick, in: app), "the empty pane offers no recent pages")
         pick.tap()

@@ -127,6 +127,7 @@ final class Navigator {
     func openInSplit(_ route: Route) {
         guard route.canSplit else { return }
         isSplit = true
+        isShowingInspector = false
         // The same page may be on both sides (write on the left, read on the right): the editors reload each
         // other's saves (`EditorController.pageSavedInEditor`).
         split = route
@@ -136,6 +137,8 @@ final class Navigator {
     /// The split pane with nothing in it yet: it offers recent pages and PDFs to pick from.
     func showSplitPicker() {
         isSplit = true
+        // The inspector belongs to the left page but would sit beside the right one: it closes with a split.
+        isShowingInspector = false
         split = nil
     }
 
