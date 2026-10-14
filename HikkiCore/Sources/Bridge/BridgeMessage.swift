@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 16
+    public static let version = 17
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -95,6 +95,47 @@ public enum PagePayload {
             "locked": record.isLocked,
             "content": try record.contentValue()?.foundationObject() ?? NSNull(),
         ]
+    }
+}
+
+/// `window.hikki.exportPage(page, format)`: the formats the editor writes a page in (mirror of `ExportFormat`).
+public enum ExportFormat: String, Sendable, CaseIterable {
+    case markdown, html
+}
+
+/// `window.hikki.importDocument(text, format, fallbackTitle)`: the files it reads (mirror of `ImportFormat`).
+public enum ImportFormat: String, Sendable, CaseIterable {
+    case markdown, html, text
+
+    /// By file extension (`md`, `markdown`, `html`, `htm`, `txt`…); nil for anything else.
+    public init?(fileExtension: String) {
+        switch fileExtension.lowercased() {
+        case "md", "markdown", "mdown", "mkd": self = .markdown
+        case "html", "htm", "xhtml": self = .html
+        case "txt", "text": self = .text
+        default: return nil
+        }
+    }
+}
+
+/// What `importDocument` returns (mirror of `ImportedPage`): the new page's title and body.
+public struct ImportedPage: Decodable, Sendable, Equatable {
+    public var title: String
+    public var content: JSONValue
+    /// Plain text and word count, as a save computes them.
+    public var text: String
+    public var wordCount: Int
+
+    public init(title: String, content: JSONValue, text: String, wordCount: Int) {
+        self.title = title
+        self.content = content
+        self.text = text
+        self.wordCount = wordCount
+    }
+
+    /// Decodes the return value of `window.hikki.importDocument(…)`.
+    public static func decode(scriptResult body: Any) throws -> ImportedPage {
+        try JSONDecoder().decode(ImportedPage.self, from: jsonData(from: body))
     }
 }
 

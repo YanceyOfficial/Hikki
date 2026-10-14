@@ -142,4 +142,17 @@ struct BridgeMessageTests {
             try decode(["type": "uploadChunk", "id": "u1", "dataBase64": "%%%"])
         }
     }
+
+    @Test func decodesAnImportedPageAndKnowsWhichFilesImport() throws {
+        let body: [String: Any] = [
+            "title": "Trip", "content": ["type": "doc", "content": [["type": "paragraph"]]], "text": "", "wordCount": 1,
+        ]
+        let page = try ImportedPage.decode(scriptResult: body as NSDictionary)
+        #expect(page.title == "Trip" && page.wordCount == 1)
+        #expect(page.content == .object(["type": .string("doc"), "content": .array([.object(["type": .string("paragraph")])])]))
+        #expect(ImportFormat(fileExtension: "MD") == .markdown)
+        #expect(ImportFormat(fileExtension: "htm") == .html)
+        #expect(ImportFormat(fileExtension: "txt") == .text)
+        #expect(ImportFormat(fileExtension: "pdf") == nil)
+    }
 }

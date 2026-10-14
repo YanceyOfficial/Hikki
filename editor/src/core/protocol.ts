@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 16
+export const PROTOCOL_VERSION = 17
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -24,6 +24,15 @@ export type Snapshot = {
   text: string
   wordCount: number
 }
+
+/** `window.hikki.exportPage(page, format)`: a page as a Markdown or HTML document (a string). */
+export type ExportFormat = 'markdown' | 'html'
+
+/** `window.hikki.importDocument(text, format, fallbackTitle)`: a file's text as a new page. */
+export type ImportFormat = 'markdown' | 'html' | 'text'
+
+/** What `importDocument` returns: the new page's title and body (always fits the schema). */
+export type ImportedPage = { title: string; content: JSONContent; text: string; wordCount: number }
 
 export const COMMANDS = [
   'bold',
