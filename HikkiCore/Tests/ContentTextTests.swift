@@ -24,6 +24,14 @@ struct ContentTextTests {
         #expect(ContentText.headings(in: .string("not a document")).isEmpty)
     }
 
+    @Test func aPageMentionInAHeadingReadsAsItsLabel() {
+        let mention: JSONValue = .object([
+            "type": .string("mention"), "attrs": .object(["id": .string("p1"), "label": .string("Roadmap")]),
+        ])
+        let doc = node("doc", [node("heading", [text("See "), mention, text(" first")])])
+        #expect(ContentText.headings(in: doc) == ["See @Roadmap first"])
+    }
+
     @Test func collectsAttachedAssetsOnceEachWithFileNames() {
         let image: JSONValue = .object([
             "type": .string("image"), "attrs": .object(["src": .string("hikki-editor://assets/a1.png"), "alt": .string("")]),

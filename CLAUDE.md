@@ -222,6 +222,14 @@ HikkiUITests/                 XCUITest flows
   lands, and the toolbar's `TabStrip` (`TabStripDrop`, `HikkiUI/Sources/TabStrip.swift`) opens it — between tabs
   as a new tab (or that page's tab is focused), onto a tab in that tab. Clicks go through the bridge
   (`openPage` with the block, `openLink` for the web) and `window.hikki.scrollToBlock` lands on the block.
+- **Mentions, emoji, typography**: "@" mentions a page (`editor/src/extensions/page-mention.ts`, Tiptap's Mention: a
+  `mention` node with the page id and its title at the time as `label`; the chip is a `hikki://page/<id>` link drawn
+  with the page's current icon and title from the index, the label only a fallback). ":" suggests emoji
+  (`editor/src/extensions/emoji-suggestion.ts`, Tiptap's Suggestion over the icon picker's emojibase data) and inserts
+  the plain character — not Tiptap's Emoji node, whose plugin rewrites every emoji in a page into nodes. Both menus
+  are `suggestionMenu` (`editor/src/extensions/suggestion-menu.ts`) over the shared `CommandList`. Typography turns
+  -- … -> (c) into their characters; quotes, fractions and × stay as typed. Text extraction (search, word counts)
+  treats mentions, ruby and inline math as part of the line.
 - **Ruby / furigana** (`editor/src/extensions/ruby.ts`): an inline node (`<ruby><rb>…</rb><rt>…</rt></ruby>`, reading as
   an attribute); ⇧⌘R or Format → More → Ruby opens the reading panel, prefilled from the native tokenizer
   (`HikkiCore/Sources/Text/JapaneseReading.swift`, `suggestReading` message): a phrase comes back as kanji runs with

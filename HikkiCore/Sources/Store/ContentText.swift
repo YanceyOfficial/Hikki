@@ -48,11 +48,16 @@ public enum ContentText {
         }
     }
 
-    /// The text of a node and everything in it (a hard break counts as a space).
+    /// The text of a node and everything in it (a hard break counts as a space, a page mention as "@title").
     static func plainText(of node: JSONValue) -> String {
         guard case .object(let fields) = node else { return "" }
         if case .string(let text)? = fields["text"] { return text }
         if case .string("hardBreak")? = fields["type"] { return " " }
+        // A page mention ("@" in the editor) reads as its label.
+        if case .string("mention")? = fields["type"] {
+            if case .object(let attrs)? = fields["attrs"], case .string(let label)? = attrs["label"] { return "@\(label)" }
+            return ""
+        }
         guard case .array(let children)? = fields["content"] else { return "" }
         return children.map(plainText).joined()
     }

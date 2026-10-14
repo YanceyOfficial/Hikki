@@ -5,9 +5,14 @@ const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hang
 // Letters+digits as one run; deliberately not \b, which treats "abc123" oddly across scripts.
 const WORD = /[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu
 
+/** Inline nodes: text and the atoms that sit in a line (a page mention, a ruby, an inline formula). */
+const INLINE = new Set(['text', 'hardBreak', 'mention', 'ruby', 'inlineMath'])
+
 function textOf(node: JSONContent): string {
   if (node.type === 'text') return node.text ?? ''
   if (node.type === 'hardBreak') return '\n'
+  if (node.type === 'mention') return `@${node.attrs?.label ?? ''}`
+  if (node.type === 'inlineMath') return node.attrs?.latex ?? ''
   return (node.content ?? []).map(textOf).join('')
 }
 
@@ -16,8 +21,7 @@ export function blockTexts(doc: JSONContent): string[] {
   const out: string[] = []
   const walk = (node: JSONContent) => {
     const children = node.content ?? []
-    const isTextblock =
-      children.length > 0 && children.every((c) => c.type === 'text' || c.type === 'hardBreak')
+    const isTextblock = children.length > 0 && children.every((c) => INLINE.has(c.type ?? ''))
     if (isTextblock || node.type === 'codeBlock') {
       out.push(textOf(node))
       return

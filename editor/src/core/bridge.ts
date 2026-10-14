@@ -5,6 +5,7 @@ import { setBlockLinkBuilder } from '../components/block-menu'
 import { runFind, type FindMode } from '../extensions/find'
 import type { MediaHost } from '../extensions/media'
 import { pageLinkHref, type PageIndexEntry, type PageLinksHost } from '../extensions/page-links'
+import { notifyPageIndexChanged } from '../extensions/page-mention'
 import { rubySegmentsFrom, type RubyHost } from '../extensions/ruby'
 import { linkCardFrom } from '../lib/embeds'
 import { activeCommands, createEditor, runCommand } from './editor'
@@ -229,6 +230,8 @@ export class EditorBridge {
 
   setPages(pages: PageIndexEntry[]): void {
     this.pageIndex = pages
+    // "@" mention chips show the pages' current titles and icons.
+    notifyPageIndexChanged()
   }
 
   /** Page links in the body: labels from the index, clicks routed to the native side. */

@@ -1,6 +1,7 @@
 import { cn } from 'cn'
 import { useEffect, useRef } from 'react'
 
+import type { FloatingAnchor, FloatingLayer } from './floating'
 import { GlidingHighlight } from './gliding-highlight'
 
 export type CommandListItem = {
@@ -19,7 +20,7 @@ type Props = {
 }
 
 /**
- * Generic keyboard/touch command list (slash menu today; mentions, emoji, "turn into" later).
+ * Generic keyboard/touch command list: the "@" page mentions and ":" emoji suggestions.
  * Purely presentational: selection state and key handling live in the caller.
  */
 export function CommandList({ items, selectedIndex, emptyText, onSelect, onHover }: Props) {
@@ -102,4 +103,13 @@ export function handleListKey(
     return true
   }
   return false
+}
+
+/** Draws a CommandList in a floating layer (extensions/suggestion-menu.ts drives it). */
+export function renderCommandList(
+  layer: FloatingLayer,
+  props: Props,
+  anchor: FloatingAnchor
+): void {
+  layer.render(<CommandList {...props} />, anchor)
 }

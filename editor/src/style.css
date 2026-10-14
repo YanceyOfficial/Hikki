@@ -168,6 +168,19 @@
     @apply underline decoration-muted-foreground underline-offset-2;
     color: inherit;
   }
+  /* "@" page mention (extensions/page-mention.ts): the page's icon and current title, a link without the line. */
+  .tiptap a.hk-mention {
+    @apply rounded-sm px-0.5 font-medium no-underline transition-colors duration-(--motion-pop-in) hover:bg-accent;
+  }
+  .tiptap .hk-mention-icon {
+    @apply mr-0.5;
+  }
+  .tiptap .hk-mention-title {
+    @apply underline decoration-muted-foreground underline-offset-2;
+  }
+  .tiptap a.hk-mention[data-missing='true'] {
+    @apply text-muted-foreground;
+  }
   .tiptap code {
     @apply rounded-sm bg-code px-1.5 py-0.5 font-mono text-code-foreground;
     font-size: 85%;

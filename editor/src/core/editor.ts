@@ -2,6 +2,7 @@ import { Editor, type JSONContent } from '@tiptap/core'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
 import Subscript from '@tiptap/extension-subscript'
 import Superscript from '@tiptap/extension-superscript'
+import Typography from '@tiptap/extension-typography'
 import UniqueID from '@tiptap/extension-unique-id'
 import { CharacterCount, Placeholder } from '@tiptap/extensions'
 import StarterKit from '@tiptap/starter-kit'
@@ -13,11 +14,13 @@ import { Colors, ColorTextStyle } from '../extensions/colors'
 import { Column, Columns, ColumnsKeymap } from '../extensions/columns'
 import { EdgeNavigation } from '../extensions/edge-navigation'
 import { Embed } from '../extensions/embed'
+import { EmojiSuggestion } from '../extensions/emoji-suggestion'
 import { Find } from '../extensions/find'
 import { ImageLoading } from '../extensions/image-loading'
 import { mathExtension } from '../extensions/math'
 import { mediaExtensions, type MediaHost } from '../extensions/media'
 import { PageLinks, type PageLinksHost } from '../extensions/page-links'
+import { PageMention } from '../extensions/page-mention'
 import { Ruby, type RubyHost } from '../extensions/ruby'
 import { SelectionMenuExtension } from '../extensions/selection-menu'
 import { BlockShortcuts, ShortcutOverrides } from '../extensions/shortcuts'
@@ -135,6 +138,26 @@ export function createEditor(
       TableOfContents,
       ...mediaExtensions(options.media ?? null),
       PageLinks(options.pageLinks ?? noPageLinks),
+      // "@" mentions a page; ":" suggests emoji.
+      PageMention(options.pageLinks ?? noPageLinks),
+      EmojiSuggestion,
+      // "--" → —, "..." → …, "->" → →, "(c)" → ©… Quotes stay straight and fractions stay typed (notes, code-ish text, CJK).
+      Typography.configure({
+        openDoubleQuote: false,
+        closeDoubleQuote: false,
+        openSingleQuote: false,
+        closeSingleQuote: false,
+        laquo: false,
+        raquo: false,
+        oneHalf: false,
+        oneQuarter: false,
+        threeQuarters: false,
+        multiplication: false,
+        superscriptTwo: false,
+        superscriptThree: false,
+        plusMinus: false,
+        servicemark: false
+      }),
       Ruby(options.ruby ?? null),
       TaskList,
       TaskItem.configure({ nested: true }),

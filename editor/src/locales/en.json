@@ -357,5 +357,8 @@
     "open": "Open",
     "frameTitle": "Embedded content",
     "resize": "Resize"
+  },
+  "mention": {
+    "empty": "No pages"
   }
 }
