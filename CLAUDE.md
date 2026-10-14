@@ -234,6 +234,19 @@ HikkiUITests/                 XCUITest flows
   an attribute); ⇧⌘R or Format → More → Ruby opens the reading panel, prefilled from the native tokenizer
   (`HikkiCore/Sources/Text/JapaneseReading.swift`, `suggestReading` message): a phrase comes back as kanji runs with
   readings and bare kana (役に立ちます → 役(やく)に立(た)ちます), one ruby per run; "Whole" puts one reading over all of it.
+- **Semantic search** (Settings → Search, off by default): Hikki only reads and writes vectors; the model runs
+  outside it behind `EmbeddingProvider` (`HikkiSearch/Sources/Embeddings.swift`) — one implementation, the
+  OpenAI-compatible embeddings API (Ollama at `http://localhost:11434/v1` by default, LM Studio, llama.cpp, OpenAI with
+  a key in the Keychain), so a better model is a setting, not code. Model-specific prefixes (e5's "query: "/"passage: ")
+  come from the model name; loopback requests skip the proxy. Pages are cut into passages with the title in front
+  (`Chunker`), stored with their vectors in `search.sqlite` under the model's identity (a new model starts over;
+  `HikkiSearch/Sources/SemanticIndex.swift`, brute-force cosine with vDSP). `SemanticIndexer`
+  (`Hikki/Sources/SemanticSearch.swift`) embeds a page once it has been quiet for 30 s, backfills at launch and after a
+  settings change by edited time, re-sends only changed passages, and retries in 5 min when the model is unreachable.
+  ⌘K shows word matches at once and, a quarter second later, pages related only by meaning under "Related" — only
+  those that stand out from the median page (similarities sit in a narrow band for small models); word matches keep
+  their order. The qllama build of multilingual-e5-small on Ollama tokenizes many single words to the same vector (measured
+  2026-10-14: "money" = "cooking"); sentences work.
 - **Search** (⌘K, `Hikki/Sources/SearchPalette.swift`) is the `HikkiSearch` package: `SearchIndex`
   (`HikkiSearch/Sources/SearchIndex.swift`) keeps its own SQLite file (`search.sqlite` next to the database) with every
   page's title, pinyin keys, headings and text under a trigram FTS5 index; `Hikki/Sources/SearchIndexer.swift` feeds it

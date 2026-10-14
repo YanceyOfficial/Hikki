@@ -8,6 +8,8 @@ import Observation
 final class AppModel {
     let store: DocumentStore
     let searchIndexer: SearchIndexer
+    /// Search by meaning (Settings → Search): the query's vector and the indexer's status.
+    let semantic: SemanticSearch
     let assets: AssetStore
     let crashReporter: CrashReporter
     let workspaceStore: WorkspaceStore
@@ -31,6 +33,7 @@ final class AppModel {
     ) {
         self.store = store
         self.searchIndexer = SearchIndexer(index: searchIndex, store: store, assets: assets)
+        semantic = SemanticSearch(indexer: searchIndexer.semantic)
         self.assets = assets
         self.crashReporter = crashReporter
         self.workspaceStore = workspaceStore
@@ -299,8 +302,9 @@ final class AppModel {
         perform("empty trash") { try store.emptyTrash() }
     }
 
-    func search(_ query: String) -> [SearchHit] {
-        perform("search") { try searchIndexer.search(query) } ?? []
+    /// Word search, and search by meaning too when given the query's vector (`semantic.queryVector`).
+    func search(_ query: String, queryVector: [Float]? = nil) -> [SearchHit] {
+        perform("search") { try searchIndexer.search(query, queryVector: queryVector) } ?? []
     }
 
     /// Home: this device's writing activity over the last `days` days, and the workspace's totals.

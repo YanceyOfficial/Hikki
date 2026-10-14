@@ -175,7 +175,8 @@ struct ContentView: View {
         }
         editor.setOutlineRail(!(navigator.isShowingInspector && navigator.inspectorTab == .outline))
         #if DEBUG
-            // Screenshot/test hooks: HIKKI_OPEN_TABS=pageA,pageB opens those pages as tabs; HIKKI_OPEN_SEARCH opens ⌘K.
+            // Screenshot/test hooks: HIKKI_OPEN_TABS=pageA,pageB opens those pages as tabs; HIKKI_OPEN_SEARCH opens ⌘K
+            // (with its value as the query).
             if ProcessInfo.processInfo.environment["HIKKI_OPEN_SEARCH"] != nil { navigator.isSearching = true }
             // HIKKI_OPEN_FIND opens find in page once the page is up (screenshots of its place under the toolbar).
             if ProcessInfo.processInfo.environment["HIKKI_OPEN_FIND"] != nil {

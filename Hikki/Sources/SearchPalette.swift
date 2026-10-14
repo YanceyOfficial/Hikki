@@ -4,7 +4,8 @@ import HikkiUI
 import SwiftUI
 
 /// ⌘K search (Notion's): one list of best matches — titles, also by pinyin, ahead of page text (`SearchRanker`) —
-/// each with its path, an excerpt around the match and the edited time; recent pages while the field is empty.
+/// each with its path, an excerpt around the match and the edited time; recent pages while the field is empty. With
+/// semantic search on, pages related by meaning follow under "Related".
 /// Mac/iPad show it as a centered overlay card; iPhone as a sheet.
 struct SearchPalette: View {
     @Environment(AppModel.self) private var model
@@ -103,10 +104,30 @@ struct SearchPalette: View {
         #else
             .frame(width: Size.searchWidth)
         #endif
-        .onAppear { fieldFocused = true }
+        .onAppear {
+            fieldFocused = true
+            #if DEBUG
+                // HIKKI_OPEN_SEARCH=<text> opens ⌘K with that query (screenshots).
+                if let text = ProcessInfo.processInfo.environment["HIKKI_OPEN_SEARCH"], !text.isEmpty, query.isEmpty {
+                    query = text
+                }
+            #endif
+        }
         .onChange(of: query) { _, q in
             results = model.search(q)
             selection = 0
+        }
+        // Then by meaning too (Settings → Search → Semantic search), once typing pauses: the matches are reordered
+        // and pages related only by meaning follow under their own heading.
+        .task(id: query) {
+            let text = query
+            guard model.semantic.isEnabled, !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled, let vector = await model.semantic.queryVector(text), !Task.isCancelled,
+                text == query
+            else { return }
+            results = model.search(text, queryVector: vector)
+            selection = min(selection, max(results.count - 1, 0))
         }
         .onKeyPress(.downArrow) { move(1) }
         .onKeyPress(.upArrow) { move(-1) }
@@ -127,7 +148,12 @@ struct SearchPalette: View {
         if query.trimmingCharacters(in: .whitespaces).isEmpty {
             return indexed.isEmpty ? [] : [Section(title: String(localized: "app:search.recent"), items: indexed)]
         }
-        return indexed.isEmpty ? [] : [Section(title: String(localized: "app:search.bestMatches"), items: indexed)]
+        let matches = indexed.filter { !$0.element.related }
+        let related = indexed.filter { $0.element.related }
+        var out: [Section] = []
+        if !matches.isEmpty { out.append(Section(title: String(localized: "app:search.bestMatches"), items: matches)) }
+        if !related.isEmpty { out.append(Section(title: String(localized: "app:search.related"), items: related)) }
+        return out
     }
 
     private var rows: [SearchHit] {
