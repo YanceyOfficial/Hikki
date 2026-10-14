@@ -13,6 +13,14 @@ nonisolated enum Route: Hashable, Codable, Sendable {
     var pageID: String? {
         if case .page(let id) = self { id } else { nil }
     }
+
+    /// A page or a file: what a split pane can show (Home and Trash stay in tabs).
+    var canSplit: Bool {
+        switch self {
+        case .page, .file: true
+        case .home, .trash: false
+        }
+    }
 }
 
 struct TitleFocusRequest: Equatable {
@@ -34,6 +42,10 @@ final class Navigator {
     }
     var isSearching = false
     var isShowingSettings = false
+    /// Split view (Mac/iPad): the window shows a second pane beside the current tab.
+    private(set) var isSplit = false
+    /// What the second pane shows — a page or a file; nil while it offers a picker.
+    private(set) var split: Route?
     /// The trailing inspector (outline, info, calendar) — remembered across launches by ContentView.
     var isShowingInspector = false
     var inspectorTab: InspectorTab = .outline
@@ -107,6 +119,46 @@ final class Navigator {
 
     /// How many tabs sidebar picks keep in the strip (the least recently used one closes past this).
     static let recentTabLimit = 6
+
+    // MARK: Split view
+
+    /// Opens (or replaces) the pane beside the current tab. The same page can't be on both sides (two editors on one page
+    /// would overwrite each other), so asking for the left side's page swaps nothing and shows the picker instead.
+    func openInSplit(_ route: Route) {
+        guard route.canSplit else { return }
+        isSplit = true
+        split = route == tabs.route ? nil : route
+        if let id = route.pageID { reveal(id) }
+    }
+
+    /// The split pane with nothing in it yet: it offers recent pages and PDFs to pick from.
+    func showSplitPicker() {
+        isSplit = true
+        split = nil
+    }
+
+    func closeSplit() {
+        isSplit = false
+        split = nil
+    }
+
+    func toggleSplit() {
+        if isSplit { closeSplit() } else { showSplitPicker() }
+    }
+
+    /// The two sides trade places: the pane's route becomes the tab's and the tab's goes into the pane (when it can).
+    func swapSplit() {
+        guard let right = split else { return }
+        let left = tabs.route
+        tabs.navigate(to: right)
+        split = left.canSplit ? left : nil
+        syncSelection()
+    }
+
+    /// The pane's page left the workspace (trashed, deleted): the pane closes.
+    func pruneSplit(existing: (String) -> Bool) {
+        if let id = split?.pageID, !existing(id) { closeSplit() }
+    }
 
     /// A sidebar row: its tab gets focus, or it joins the strip as a new tab (the oldest leaves past the limit).
     func openFromSidebar(_ route: Route) {

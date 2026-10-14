@@ -460,6 +460,30 @@ final class EditorFlowTests: XCTestCase {
         toggle.tap()
     }
 
+    /// iPad / Mac: split view puts a second page beside the first, each in its own editor; the pane closes again.
+    func testSplitViewShowsTwoPages() throws {
+        continueAfterFailure = false
+        let app = launch()
+        guard app.buttons["nav-home"].waitForExistence(timeout: 10) else {
+            throw XCTSkip("needs a wide window — run on iPad or Mac")
+        }
+        createPage(app, title: "Notes")
+        createPage(app, title: "Textbook")
+        let toggle = app.descendants(matching: .any)["split-toggle"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(toggle, in: app))
+        toggle.tap()
+        let pick = app.descendants(matching: .any)["split-pick-Notes"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(pick, in: app), "the empty pane offers no recent pages")
+        pick.tap()
+        // Two editors: the tab's page and the pane's.
+        let second = app.webViews.element(boundBy: 1)
+        XCTAssertTrue(second.waitForExistence(timeout: 10), "no second editor in the pane")
+        XCTAssertTrue(waitOrDumpTree(app.webViews.textViews.matching(NSPredicate(format: "value == %@", "Notes")).firstMatch, in: app))
+        attachScreenshot(app, "split-view")
+        app.descendants(matching: .any)["split-close"].firstMatch.tap()
+        XCTAssertFalse(app.descendants(matching: .any)["split-pane"].waitForExistence(timeout: 2))
+    }
+
     private func createPage(_ app: XCUIApplication, title: String) {
         let newPage = app.buttons["new-page"].firstMatch
         XCTAssertTrue(waitOrDumpTree(newPage, in: app))

@@ -1,0 +1,219 @@
+import HikkiCore
+import HikkiUI
+import SwiftUI
+
+enum SplitPreferences {
+    /// The left side's share of the width, remembered.
+    static let fractionKey = "split.fraction"
+}
+
+/// The current tab and, beside it, a second pane — a page (with an editor of its own) or a PDF — split by a divider
+/// that drags. Without a split it is just the tab. Mac and iPad.
+struct SplitDetail<Leading: View>: View {
+    let navigator: Navigator
+    let splitEditor: EditorController?
+    @ViewBuilder let leading: Leading
+    @AppStorage(SplitPreferences.fractionKey) private var fraction = 0.5
+    @State private var dragStart: Double?
+
+    var body: some View {
+        if navigator.isSplit {
+            GeometryReader { proxy in
+                let width = proxy.size.width
+                let minFraction = min(0.5, Size.splitMin / max(width, 1))
+                let left = width * min(max(fraction, minFraction), 1 - minFraction)
+                HStack(spacing: Spacing.s0) {
+                    leading.frame(width: left)
+                    divider(width: width)
+                    SplitPane(navigator: navigator, editor: splitEditor)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .transition(.opacity)
+        } else {
+            leading
+        }
+    }
+
+    /// A hairline with a wider grip over it; dragging moves the boundary (each side keeps at least `Size.splitMin`).
+    private func divider(width: CGFloat) -> some View {
+        Theme.border
+            .frame(width: 1)
+            .frame(maxHeight: .infinity)
+            .ignoresSafeArea(edges: .top)
+            .overlay {
+                Color.clear
+                    .frame(width: Spacing.s2)
+                    .contentShape(.rect)
+                    #if os(macOS)
+                        .onHover { inside in
+                            if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+                        }
+                    #endif
+                    .gesture(
+                        DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                            .onChanged { drag in
+                                let start = dragStart ?? fraction
+                                dragStart = start
+                                fraction = min(max(start + drag.translation.width / max(width, 1), 0.2), 0.8)
+                            }
+                            .onEnded { _ in dragStart = nil }
+                    )
+                    .accessibilityIdentifier("split-divider")
+            }
+    }
+}
+
+/// The second pane: a small bar (what it shows, swap, close) over the page, the PDF, or a picker when it's empty.
+private struct SplitPane: View {
+    @Environment(AppModel.self) private var model
+    let navigator: Navigator
+    let editor: EditorController?
+
+    var body: some View {
+        VStack(spacing: Spacing.s0) {
+            bar
+            Divider()
+            content.frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .background(Theme.background)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("split-pane")
+    }
+
+    private var bar: some View {
+        HStack(spacing: Spacing.s2) {
+            switch navigator.split {
+            case .page(let id):
+                PageIcon(model.tree.page(id)?.icon, size: 16)
+                Text(Self.title(model.tree.page(id))).font(.hk(.md, .medium)).lineLimit(1)
+            case .file(_, let label):
+                IconView(.fileText, size: TextSize.sm.rawValue).foregroundStyle(Theme.subtleForeground)
+                Text(label).font(.hk(.md, .medium)).lineLimit(1)
+            default:
+                Text("app:split.pickTitle").font(.hk(.md, .medium)).foregroundStyle(Theme.subtleForeground)
+            }
+            Spacer(minLength: Spacing.s2)
+            if navigator.split != nil {
+                ToolbarIconButton("app:split.swap", symbol: .arrowsLeftRight) { navigator.swapSplit() }
+                    .accessibilityIdentifier("split-swap")
+            }
+            ToolbarIconButton("app:split.close", symbol: .x) { navigator.closeSplit() }
+                .accessibilityIdentifier("split-close")
+        }
+        .padding(.horizontal, Spacing.s3)
+        .frame(height: Size.pageBar)
+    }
+
+    @ViewBuilder private var content: some View {
+        switch navigator.split {
+        case .page(let id) where navigator.route.pageID == id:
+            notice("app:split.samePage")
+        case .page:
+            if let editor {
+                EditorView(controller: editor)
+            }
+        case .file(let name, _):
+            if let url = model.assets.file(named: name) {
+                PDFViewer(url: url) {
+                    #if os(macOS)
+                        NSWorkspace.shared.open(url)
+                    #endif
+                }
+            } else {
+                notice("app:pdf.missing")
+            }
+        default:
+            SplitPicker(navigator: navigator)
+        }
+    }
+
+    private func notice(_ text: LocalizedStringKey) -> some View {
+        Text(text).font(.hk(.md)).foregroundStyle(Theme.mutedForeground).frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    static func title(_ page: PageSummary?) -> String {
+        guard let page, !page.title.isEmpty else { return String(localized: "app:page.untitled") }
+        return page.title
+    }
+}
+
+/// What an empty pane offers: the PDFs at hand (attached to the page on the left, open in tabs) and recent pages.
+private struct SplitPicker: View {
+    @Environment(AppModel.self) private var model
+    let navigator: Navigator
+    @State private var attachedPDFs: [AssetReference] = []
+
+    var body: some View {
+        let recent = model.tree.recent(limit: 12).filter { $0.id != navigator.route.pageID }
+        let pdfs = self.pdfs
+        ScrollView {
+            VStack(alignment: .leading, spacing: Spacing.s1) {
+                if !pdfs.isEmpty {
+                    header("app:split.pdfs")
+                    ForEach(pdfs, id: \.name) { pdf in
+                        row(title: pdf.label, icon: AnyView(IconView(.fileText, size: TextSize.base.rawValue))) {
+                            navigator.openInSplit(.file(name: pdf.name, label: pdf.label))
+                        }
+                        .accessibilityIdentifier("split-pick-\(pdf.label)")
+                    }
+                }
+                header("app:split.recent")
+                if recent.isEmpty && pdfs.isEmpty {
+                    Text("app:split.empty").font(.hk(.md)).foregroundStyle(Theme.mutedForeground).padding(Spacing.s2)
+                }
+                ForEach(recent) { page in
+                    row(title: SplitPane.title(page), icon: AnyView(PageIcon(page.icon, size: 16))) {
+                        navigator.openInSplit(.page(page.id))
+                    }
+                    .accessibilityIdentifier("split-pick-\(SplitPane.title(page))")
+                }
+            }
+            .padding(Spacing.s3)
+        }
+        .task(id: navigator.route) {
+            guard let id = navigator.route.pageID, let record = try? model.store.document(id: id) else {
+                attachedPDFs = []
+                return
+            }
+            attachedPDFs = record.assetReferences.filter { ($0.name as NSString).pathExtension.lowercased() == "pdf" }
+        }
+    }
+
+    /// PDFs attached to the left page, then PDFs open in tabs — each once.
+    private var pdfs: [(name: String, label: String)] {
+        var seen = Set<String>()
+        var out: [(name: String, label: String)] = []
+        for reference in attachedPDFs where seen.insert(reference.name).inserted {
+            out.append((reference.name, reference.label ?? reference.name))
+        }
+        for tab in navigator.tabs.tabs {
+            if case .file(let name, let label) = tab.route, navigator.route != tab.route, seen.insert(name).inserted {
+                out.append((name, label))
+            }
+        }
+        return out
+    }
+
+    private func header(_ title: LocalizedStringKey) -> some View {
+        Text(title)
+            .font(.hk(.xs, .medium))
+            .foregroundStyle(Theme.mutedForeground)
+            .padding(.horizontal, Spacing.s2)
+            .padding(.top, Spacing.s3)
+    }
+
+    private func row(title: String, icon: AnyView, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: Spacing.s2) {
+                icon.foregroundStyle(Theme.subtleForeground)
+                Text(title).font(.hk(.md)).foregroundStyle(Theme.foreground).lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, Spacing.s2)
+            .padding(.vertical, Spacing.s1_5)
+            .contentShape(.rect)
+        }
+        .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.md))
+    }
+}

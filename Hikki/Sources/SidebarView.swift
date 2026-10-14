@@ -567,6 +567,17 @@ struct PageRowMenu: View {
 /// Shared page actions for the ⋯ menu, context menus and the page bar.
 struct PageActions: View {
     @Environment(AppModel.self) private var model
+    #if os(iOS)
+        @Environment(\.horizontalSizeClass) private var sizeClass
+    #endif
+    /// Split view needs a wide window (Mac, a regular-width iPad).
+    private var splitAvailable: Bool {
+        #if os(macOS)
+            true
+        #else
+            sizeClass == .regular
+        #endif
+    }
     #if os(macOS)
         @Environment(\.openWindow) private var openWindow
     #endif
@@ -622,6 +633,14 @@ struct PageActions: View {
                 navigator.openInNewTab(.page(page.id))
             } label: {
                 IconLabel("app:page.openInNewTab", icon: .browsers)
+            }
+            if splitAvailable {
+                Button {
+                    navigator.openInSplit(.page(page.id))
+                } label: {
+                    IconLabel("app:split.openPage", icon: .squareSplitHorizontal)
+                }
+                .accessibilityIdentifier("open-in-split")
             }
             #if os(macOS)
                 Button {

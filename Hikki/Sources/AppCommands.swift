@@ -55,6 +55,11 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut(Shortcut.toggleInspector.keyboardShortcut)
             .disabled(navigator == nil)
+            Button(navigator?.isSplit == true ? "app:menu.hideSplit" : "app:menu.showSplit") {
+                navigator?.toggleSplit()
+            }
+            .keyboardShortcut(Shortcut.toggleSplit.keyboardShortcut)
+            .disabled(navigator == nil)
         }
         CommandMenu("app:menu.page") {
             Button("app:page.copyLink") { navigator?.copyCurrentPageLink() }

@@ -81,6 +81,12 @@
     "minus": {
       "sf": "minus"
     },
+    "square-split-horizontal": {
+      "sf": "rectangle.split.2x1"
+    },
+    "arrows-left-right": {
+      "sf": "arrow.left.arrow.right"
+    },
     "columns-plus-right": {
       "sf": "sidebar.trailing"
     },

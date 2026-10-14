@@ -14,6 +14,8 @@ struct ContentView: View {
     #endif
     // One editor (and one WKWebView) per window, reused across pages and tabs.
     @State private var editor = EditorController()
+    /// The split pane's editor (a second web view), made the first time a page opens in the pane.
+    @State private var splitEditor: EditorController?
     @State private var navigator = Navigator()
     @State private var columns: NavigationSplitViewVisibility = .all
     @SceneStorage("tabs") private var storedTabs: Data?
@@ -42,13 +44,16 @@ struct ContentView: View {
             // The inspector takes its room from the page, never from the screen: a panel inside the detail column
             // (SwiftUI's `.inspector` widened the window instead). A sheet on iPhone.
             HStack(spacing: Spacing.s0) {
-                DetailView(navigator: navigator, editor: editor, phoneToolbar: !wide)
+                SplitDetail(navigator: navigator, splitEditor: splitEditor) {
+                    DetailView(navigator: navigator, editor: editor, phoneToolbar: !wide)
+                }
                 if wide && navigator.isShowingInspector && navigator.route.pageID != nil {
                     InspectorPanel(navigator: navigator, editor: editor)
                         .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
             }
             .animation(Motion.easeOut(), value: navigator.isShowingInspector)
+            .animation(Motion.easeOut(), value: navigator.isSplit)
             .background(Theme.background)
             #if os(macOS)
                 // Photos' way: with the inspector open the page title and subtitle leave the toolbar, so the tabs keep
@@ -87,7 +92,15 @@ struct ContentView: View {
                 editor.open(documentID: route.pageID)
                 navigator.revealCurrent()
             }
-            .onChange(of: spellcheck) { _, on in editor.setSpellcheck(on) }
+            .onChange(of: spellcheck) { _, on in
+                editor.setSpellcheck(on)
+                splitEditor?.setSpellcheck(on)
+            }
+            // The split pane's page: its own editor, made on first use and wired like the main one.
+            .onChange(of: navigator.split) { _, split in
+                guard let id = split?.pageID else { return }
+                splitPaneEditor().open(documentID: id)
+            }
             // The inspector's state outlives the window; the page's own outline rail steps aside while the
             // inspector shows the outline.
             .onChange(of: navigator.isShowingInspector) { _, on in
@@ -122,6 +135,8 @@ struct ContentView: View {
             .onChange(of: model.tree) { _, tree in
                 // Pages trashed here or in another window disappear from every tab's history.
                 navigator.prune { tree.page($0) != nil }
+                navigator.pruneSplit { tree.page($0) != nil }
+                splitEditor?.setPages(tree.all)
                 navigator.revealCurrent()
                 editor.setPages(tree.all)
             }
@@ -132,6 +147,7 @@ struct ContentView: View {
                 } else {
                     Task {
                         await editor.flush(reason: "scenePhase-\(phase)")
+                        await splitEditor?.flush(reason: "scenePhase-\(phase)")
                         model.flushWorkspace()
                     }
                 }
@@ -181,6 +197,17 @@ struct ContentView: View {
                     await model.searchIndexer.debugSpotlightQuery(text)
                 }
             }
+            // HIKKI_OPEN_SPLIT=<page id> | file:<asset name> | picker opens the split pane on it (screenshots).
+            if let value = ProcessInfo.processInfo.environment["HIKKI_OPEN_SPLIT"] {
+                if value == "picker" {
+                    navigator.showSplitPicker()
+                } else if value.hasPrefix("file:") {
+                    let name = String(value.dropFirst(5))
+                    navigator.openInSplit(.file(name: name, label: name))
+                } else {
+                    navigator.openInSplit(.page(value))
+                }
+            }
             // HIKKI_OPEN_FILE=<asset name> opens that attachment in the viewer pane (screenshots of the PDF viewer).
             if let name = ProcessInfo.processInfo.environment["HIKKI_OPEN_FILE"] {
                 navigator.openDocument(name: name, label: name)
@@ -225,6 +252,25 @@ struct ContentView: View {
         }
         editor.setPages(model.tree.all)
         editor.open(documentID: navigator.route.pageID)
+    }
+
+    /// The split pane's editor, made and wired on first use: same store, assets, pages and settings as the main one; a
+    /// link clicked in it opens in the pane, a PDF attachment in a tab.
+    private func splitPaneEditor() -> EditorController {
+        if let splitEditor { return splitEditor }
+        let pane = EditorController()
+        pane.setTone(tone)
+        pane.setSpellcheck(spellcheck)
+        pane.attach(store: model.store, assets: model.assets)
+        pane.onOpenPage = { [navigator] id, block in
+            guard model.tree.page(id) != nil else { return }
+            navigator.openInSplit(.page(id))
+            if let block { pane.scrollToBlock(block, in: id) }
+        }
+        pane.onOpenDocument = { [navigator] name, label in navigator.openInSplit(.file(name: name, label: label)) }
+        pane.setPages(model.tree.all)
+        splitEditor = pane
+        return pane
     }
 
     /// A wide window (Mac, regular-width iPad): tabs and page actions in the window toolbar, the workspace
@@ -332,9 +378,18 @@ private struct NativeDetailToolbar: ToolbarContent {
             }
         }
         // The inspector toggle, at the trailing end as in Xcode — in a glass group of its own, apart from the page's;
-        // only where there is a page to inspect.
+        // only where there is a page to inspect. Split view sits in the same group.
         if navigator.route.pageID != nil {
             ToolbarSpacer(.fixed, placement: .primaryAction)
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    navigator.toggleSplit()
+                } label: {
+                    IconLabel("app:split.toggle", icon: .squareSplitHorizontal)
+                }
+                .help("app:split.toggle")
+                .accessibilityIdentifier("split-toggle")
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     navigator.isShowingInspector.toggle()

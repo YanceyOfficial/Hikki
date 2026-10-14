@@ -135,7 +135,7 @@ HikkiUITests/                 XCUITest flows
   paints selection in the system accent (not the colour tone) and swallowed row drops on iPad; iPhone keeps a `List`.
   Fills on the sidebar use resolved colours (dynamic ones picked up the active window's vibrancy).
 - **Data directory**: `HIKKI_DATA_DIR` overrides it (UI tests, demos). DEBUG hooks: `HIKKI_OPEN_TABS=a,b`,
-  `HIKKI_OPEN_SEARCH`, `HIKKI_OPEN_FIND`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SPOTLIGHT_QUERY=<text>` (logs the page ids Spotlight ranks), `HIKKI_OPEN_FILE=<asset>` (the PDF viewer), `HIKKI_DEBUG_SIDEBAR` (hide + show the split view sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_ACTIVATE`, `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
+  `HIKKI_OPEN_SEARCH`, `HIKKI_OPEN_FIND`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SPOTLIGHT_QUERY=<text>` (logs the page ids Spotlight ranks), `HIKKI_OPEN_FILE=<asset>` (the PDF viewer), `HIKKI_OPEN_SPLIT=<page id>|file:<asset>|picker` (split view), `HIKKI_DEBUG_SIDEBAR` (hide + show the split view sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_ACTIVATE`, `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
   UI tests set it by default — pass `workspace: nil` to `launch()` to test onboarding).
 - **Storage (option C)**: the workspace folder is the source of truth — one JSON file per page
   (`HikkiCore/Sources/Store/PageFile.swift`: `pages/<id>.json`, format-versioned, content as JSON); SQLite is a
@@ -252,6 +252,12 @@ HikkiUITests/                 XCUITest flows
   state is re-read on enter/exit/resize/key (restored windows) and logged (category `fullscreen`). DEBUG:
   `HIKKI_DEBUG_FULLSCREEN` forces the layout on in a window, `HIKKI_DEBUG_ENTER_FULLSCREEN` enters full screen 1.5 s
   after launch, `HIKKI_DEBUG_QUIT_AFTER=<s>` quits — own-instance checks.
+- **Split view** (Mac/iPad, `Hikki/Sources/SplitView.swift`): the current tab and a second pane side by side, either
+  holding a page or a PDF (`Navigator.split`, `isSplit`). The pane's page has its own editor (a second web view, made
+  on first use and wired like the main one in `ContentView`); the same page can't be on both sides. Opened from the
+  toolbar's split button or View → Show Split View (⌘\\) — an empty pane offers the left page's PDF attachments, PDFs
+  open in tabs and recent pages — or a page's "Open in Split View". The divider drags (fraction remembered); the pane's
+  bar swaps the sides or closes it. Menus and the inspector act on the left side.
 - **PDF viewer**: a PDF attachment opens in a pane of its own in a tab (`Route.file`), drawn natively by
   `HikkiUI/Sources/PDFViewer.swift` (PDFKit: continuous pages, zoom/fit, page number, find, thumbnails, an unlock prompt
   for password-protected files — the password is never stored); other attachments still open in Quick Look. Panes are
