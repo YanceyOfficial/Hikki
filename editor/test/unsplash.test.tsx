@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
@@ -83,6 +83,32 @@ describe('CoverPicker tabs', () => {
     fireEvent.change(input, { target: { value: 'https://example.com/a.jpg' } })
     fireEvent.click(submit)
     expect(onSelect).toHaveBeenCalledWith('https://example.com/a.jpg')
+  })
+
+  it('Unsplash shows skeletons while a search is on its way, then the photos', async () => {
+    vi.stubEnv('VITE_HIKKI_BFF_URL', 'https://bff.example')
+    // Held until the test answers.
+    const answers: Array<(r: Response) => void> = []
+    const pending = new Promise<Response>((resolve) => answers.push(resolve))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => pending)
+    )
+    try {
+      renderPicker()
+      fireEvent.click(screen.getByRole('tab', { name: 'Unsplash' }))
+      expect(screen.getAllByTestId('unsplash-skeleton')).toHaveLength(9)
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 350))
+        answers[0]?.(new Response(JSON.stringify({ photos: [photo], totalPages: 1 })))
+        await new Promise((r) => setTimeout(r, 0))
+      })
+      expect(screen.queryAllByTestId('unsplash-skeleton')).toHaveLength(0)
+      expect(screen.getByRole('link', { name: 'Jeremy Bishop' })).toBeTruthy()
+    } finally {
+      vi.unstubAllGlobals()
+      vi.unstubAllEnvs()
+    }
   })
 
   it('Unsplash explains when the build has no BFF configured', () => {

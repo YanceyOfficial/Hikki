@@ -4,6 +4,7 @@ import { Trans, useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 import { LazyLoadImage } from '../components/lazy-load-image'
@@ -145,8 +146,13 @@ function LinkPane({ onSelect }: { onSelect: Props['onSelect'] }) {
 function UnsplashPane({ onSelect }: { onSelect: Props['onSelect'] }) {
   const { t } = useTranslation()
   const [query, setQuery] = useState('')
-  const [photos, setPhotos] = useState<UnsplashPhoto[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // Each answer remembers the query it is for: while the current one is still on its way (or the search waits out its
+  // debounce) the grid shows skeletons, not the previous results.
+  const [results, setResults] = useState<{ query: string; photos: UnsplashPhoto[] } | null>(null)
+  const [failure, setFailure] = useState<{ query: string; message: string } | null>(null)
+  const error = failure?.query === query ? failure.message : null
+  const loading = error === null && results?.query !== query
+  const photos = loading ? null : (results?.photos ?? null)
   const configured = bffURL() !== null
 
   useEffect(() => {
@@ -154,15 +160,17 @@ function UnsplashPane({ onSelect }: { onSelect: Props['onSelect'] }) {
     let alive = true
     const timer = setTimeout(() => {
       searchUnsplash(query)
-        .then((page) => alive && (setPhotos(page.photos), setError(null)))
+        .then((page) => alive && setResults({ query, photos: page.photos }))
         .catch(
           (e: unknown) =>
             alive &&
-            setError(
-              e instanceof Error && e.message === 'rate_limited'
-                ? t('cover.unsplashBusy')
-                : t('cover.unsplashFailed')
-            )
+            setFailure({
+              query,
+              message:
+                e instanceof Error && e.message === 'rate_limited'
+                  ? t('cover.unsplashBusy')
+                  : t('cover.unsplashFailed')
+            })
         )
     }, 300)
     return () => {
@@ -188,6 +196,14 @@ function UnsplashPane({ onSelect }: { onSelect: Props['onSelect'] }) {
       />
       {error && <p className="m-0 text-xs text-destructive">{error}</p>}
       <div className="grid max-h-80 grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3 overflow-y-auto">
+        {loading &&
+          Array.from({ length: 9 }, (_, i) => (
+            <div key={i} className="flex min-w-0 flex-col gap-1.5" data-testid="unsplash-skeleton">
+              <Skeleton className="aspect-[16/10] w-full rounded-sm" />
+              <Skeleton className="h-3 w-full rounded-sm" />
+              <Skeleton className="h-3 w-2/3 rounded-sm" />
+            </div>
+          ))}
         {photos?.map((photo) => (
           <figure key={photo.id} className="m-0 flex min-w-0 flex-col gap-1">
             <button
