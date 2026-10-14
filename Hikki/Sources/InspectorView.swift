@@ -28,28 +28,72 @@ enum InspectorTab: String, CaseIterable, Identifiable {
 enum InspectorPreferences {
     static let visibleKey = "inspector.visible"
     static let tabKey = "inspector.tab"
+    static let widthKey = "inspector.width"
 }
 
-/// The trailing inspector (Xcode's): icon tabs on top, then the open page's outline — a table of contents that
-/// stays put, unlike the page's hover rail — its facts and size, or a calendar of edits. A column on Mac and iPad,
-/// a sheet on iPhone (the page's ⋯ menu opens it there).
+/// The inspector beside the page on Mac and iPad: a hairline, a handle on it to drag the width (remembered), then the
+/// inspector. It lives inside the detail column, so opening it narrows the page rather than the screen growing.
+struct InspectorPanel: View {
+    let navigator: Navigator
+    let editor: EditorController
+    @AppStorage(InspectorPreferences.widthKey) private var width = Double(Size.inspectorIdeal)
+    @State private var dragStart: Double?
+
+    var body: some View {
+        InspectorView(navigator: navigator, editor: editor)
+            .frame(width: CGFloat(width))
+            .overlay(alignment: .leading) {
+                Theme.border.frame(width: 1)
+                    .frame(maxHeight: .infinity)
+                    .overlay {
+                        // A wider, invisible grip over the hairline.
+                        Color.clear
+                            .frame(width: Spacing.s2)
+                            .contentShape(.rect)
+                            #if os(macOS)
+                                .onHover { inside in
+                                    if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+                                }
+                            #endif
+                            .gesture(
+                                DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                                    .onChanged { drag in
+                                        let start = dragStart ?? width
+                                        dragStart = start
+                                        width = min(
+                                            Double(Size.inspectorMax),
+                                            max(Double(Size.inspectorMin), start - drag.translation.width))
+                                    }
+                                    .onEnded { _ in dragStart = nil }
+                            )
+                    }
+            }
+    }
+}
+
+/// The trailing inspector (Xcode's): a segmented control of tabs on top, then the open page's outline — a table of
+/// contents that stays put, unlike the page's hover rail — its facts and size, or a calendar of edits.
 struct InspectorView: View {
     let navigator: Navigator
     let editor: EditorController
 
     var body: some View {
+        @Bindable var navigator = navigator
         VStack(spacing: Spacing.s0) {
-            HStack(spacing: Spacing.s1) {
+            Picker("app:inspector.toggle", selection: $navigator.inspectorTab) {
                 ForEach(InspectorTab.allCases) { tab in
-                    ToolbarIconButton(tab.title, symbol: tab.icon, isActive: navigator.inspectorTab == tab) {
-                        navigator.inspectorTab = tab
-                    }
-                    .help(tab.title)
-                    .accessibilityIdentifier("inspector-tab-\(tab.rawValue)")
+                    IconLabel(tab.title, icon: tab.icon)
+                        .labelStyle(.iconOnly)
+                        .help(tab.title)
+                        .tag(tab)
+                        .accessibilityIdentifier("inspector-tab-\(tab.rawValue)")
                 }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, Spacing.s1_5)
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .padding(.horizontal, Spacing.s3)
+            .padding(.vertical, Spacing.s2)
+            .accessibilityIdentifier("inspector-tabs")
             Divider()
             Group {
                 switch navigator.inspectorTab {
@@ -61,7 +105,6 @@ struct InspectorView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .background(Theme.background)
-        .inspectorColumnWidth(min: Size.inspectorMin, ideal: Size.inspectorIdeal, max: Size.inspectorMax)
     }
 }
 

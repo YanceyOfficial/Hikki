@@ -39,12 +39,24 @@ struct ContentView: View {
             SidebarView(navigator: navigator, wide: wide)
                 .navigationSplitViewColumnWidth(min: Size.sidebarMin, ideal: Size.sidebarIdeal, max: Size.sidebarMax)
         } detail: {
-            DetailView(navigator: navigator, editor: editor, phoneToolbar: !wide)
-                .toolbar { if wide { NativeDetailToolbar(navigator: navigator, editor: editor) } }
-                // Xcode's inspector: a column beside the page (a sheet on iPhone).
-                .inspector(isPresented: $navigator.isShowingInspector) {
-                    InspectorView(navigator: navigator, editor: editor)
+            // The inspector takes its room from the page, never from the screen: a panel inside the detail column
+            // (SwiftUI's `.inspector` widened the window instead). A sheet on iPhone.
+            HStack(spacing: Spacing.s0) {
+                DetailView(navigator: navigator, editor: editor, phoneToolbar: !wide)
+                if wide && navigator.isShowingInspector {
+                    InspectorPanel(navigator: navigator, editor: editor)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
+            }
+            .animation(Motion.easeOut(), value: navigator.isShowingInspector)
+            .toolbar { if wide { NativeDetailToolbar(navigator: navigator, editor: editor) } }
+            .sheet(
+                isPresented: Binding(
+                    get: { !wide && navigator.isShowingInspector }, set: { navigator.isShowingInspector = $0 })
+            ) {
+                InspectorView(navigator: navigator, editor: editor)
+                    .presentationDetents([.medium, .large])
+            }
         }
         #if os(iOS)
             .sheet(isPresented: $navigator.isShowingSettings) { SettingsView() }
@@ -139,8 +151,9 @@ struct ContentView: View {
             #if os(macOS)
                 if ProcessInfo.processInfo.environment["HIKKI_ACTIVATE"] != nil { NSApp.activate() }
             #endif
-            // HIKKI_OPEN_SETTINGS opens Settings (screenshots).
-            if ProcessInfo.processInfo.environment["HIKKI_OPEN_SETTINGS"] != nil {
+            // HIKKI_OPEN_SETTINGS opens Settings (screenshots); a page name (`SettingsPage`) as its value opens that page.
+            if let value = ProcessInfo.processInfo.environment["HIKKI_OPEN_SETTINGS"] {
+                if SettingsPage(rawValue: value) != nil { UserDefaults.standard.set(value, forKey: SettingsPage.storageKey) }
                 #if os(macOS)
                     openSettings()
                 #else
@@ -289,7 +302,8 @@ private struct NativeDetailToolbar: ToolbarContent {
                 PageMoreMenu(page: page, navigator: navigator, editor: editor, toolbar: true)
             }
         }
-        // The inspector toggle, at the trailing end as in Xcode.
+        // The inspector toggle, at the trailing end as in Xcode — in a glass group of its own, apart from the page's.
+        ToolbarSpacer(.fixed, placement: .primaryAction)
         ToolbarItem(placement: .primaryAction) {
             Button {
                 navigator.isShowingInspector.toggle()

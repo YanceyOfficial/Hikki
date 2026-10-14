@@ -198,9 +198,12 @@ public nonisolated enum Size {
     public static let heatmapCell: CGFloat = 12
     public static let searchWidth: CGFloat = 760
     public static let searchResults: CGFloat = 480
-    public static let inspectorMin: CGFloat = 260
-    public static let inspectorIdeal: CGFloat = 300
-    public static let inspectorMax: CGFloat = 480
+    public static let inspectorMin: CGFloat = 280
+    public static let inspectorIdeal: CGFloat = 360
+    public static let inspectorMax: CGFloat = 560
+    public static let settingsWidth: CGFloat = 820
+    public static let settingsHeight: CGFloat = 560
+    public static let settingsSidebar: CGFloat = 210
 }
 
 /// Motion: one timing for everything that appears, leaves or reacts (popovers, hover states, scrims).

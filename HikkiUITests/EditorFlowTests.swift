@@ -11,7 +11,7 @@ final class EditorFlowTests: XCTestCase {
         app.launchEnvironment["HIKKI_DATA_DIR"] = dataDir
         if let workspace { app.launchEnvironment["HIKKI_WORKSPACE"] = workspace }
         // Preferences outlive the data directory (UserDefaults): every test starts with the inspector closed.
-        app.launchArguments += ["-inspector.visible", "NO"]
+        app.launchArguments += ["-inspector.visible", "NO", "-inspector.tab", "outline", "-settings.page", "workspace"]
         if let language { app.launchArguments += ["-AppleLanguages", "(\(language))", "-AppleLocale", language] }
         app.launch()
         return app
@@ -128,6 +128,7 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(waitOrDumpTree(open, in: app))
         open.tap()
 
+        app.descendants(matching: .any)["settings-page-workspace"].firstMatch.tap()
         let name = app.textFields["settings-name"].firstMatch
         XCTAssertTrue(waitOrDumpTree(name, in: app))
         attachScreenshot(app, "settings")

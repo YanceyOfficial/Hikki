@@ -272,6 +272,11 @@ HikkiUITests/                 XCUITest flows
   palettes stay in the tokens and `[data-tone]` CSS for when a picker returns. `make tokens` also writes the app's
   `AccentColor.colorset` from it, so system menus, selection and controls take the tone (where the user's system
   accent is "Multicolor" — a chosen system accent overrides every app's).
+- **Settings** (`Hikki/Sources/SettingsView.swift`): pages (`SettingsPage`: Workspace, General, Appearance, Editor,
+  Search, About) in a sidebar on the Mac (`NavigationSplitView`, like Notion's and exodus's settings) and a hub list
+  on iPhone/iPad; each page is a grouped form of sections, the last page opened is remembered.
+  `HIKKI_OPEN_SETTINGS=<page>` opens that page (screenshots). Optional integrations (a local Ollama for semantic
+  search, later) get pages here with a detected/not-detected status, exodus's way.
 - **Appearance** (Settings → Theme) is applied app-wide (`NSApp.appearance` / window `overrideUserInterfaceStyle`),
   not with `preferredColorScheme`, which left parts of windows in the old scheme after switching back.
 - **macOS windows**: closing the last main window only hides it (Dock click restores it) and closes Settings —

@@ -52,10 +52,50 @@ enum AppearancePreference: String, CaseIterable, Identifiable {
     }
 }
 
-/// Settings in Apple's own style: native grouped forms. macOS gets a Settings window with toolbar tabs
-/// (like Safari or Notes, opened with ⌘,); iPhone and iPad get an inset-grouped form in a sheet.
+/// The pages of Settings: the sidebar on the Mac, the hub list on iPhone and iPad (Notion's settings, exodus's).
+enum SettingsPage: String, CaseIterable, Identifiable {
+    case workspace, general, appearance, editor, search, about
+
+    /// The page Settings opens on, remembered; `HIKKI_OPEN_SETTINGS=<page>` sets it (screenshots).
+    static let storageKey = "settings.page"
+
+    var id: String { rawValue }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .workspace: "app:settings.workspace"
+        case .general: "app:settings.general"
+        case .appearance: "app:settings.appearance"
+        case .editor: "app:settings.editor"
+        case .search: "app:settings.search"
+        case .about: "app:settings.about"
+        }
+    }
+
+    var icon: Icon {
+        switch self {
+        case .workspace: .house
+        case .general: .gearSix
+        case .appearance: .slidersHorizontal
+        case .editor: .pencilSimple
+        case .search: .magnifyingGlass
+        case .about: .info
+        }
+    }
+
+    /// The groups the sidebar shows: the workspace, then the app, then About on its own.
+    static let groups: [(title: LocalizedStringKey?, pages: [SettingsPage])] = [
+        ("app:settings.group.workspace", [.workspace]),
+        ("app:settings.group.app", [.general, .appearance, .editor, .search]),
+        (nil, [.about]),
+    ]
+}
+
+/// Settings: pages in a sidebar (Mac) or a hub list (iPhone, iPad), each a grouped form of sections.
 struct SettingsView: View {
-    @AppStorage(AppearancePreference.storageKey) private var appearance = AppearancePreference.system
+    @AppStorage(SettingsPage.storageKey) private var pageID = SettingsPage.workspace.rawValue
+
+    private var page: SettingsPage { SettingsPage(rawValue: pageID) ?? .workspace }
 
     var body: some View {
         content
@@ -65,73 +105,97 @@ struct SettingsView: View {
 
     #if os(macOS)
         private var content: some View {
-            TabView {
-                Tab {
-                    Form {
-                        WorkspaceSection()
-                        EditorSection()
-                        SpotlightSection()
-                        MenuBarSection()
-                        LanguageSection()
-                    }
-                    .formStyle(.grouped)
-                } label: {
-                    Label {
-                        Text("app:settings.general")
-                    } icon: {
-                        Icon.gearSix.glyph
+            NavigationSplitView {
+                List(selection: Binding(get: { Optional(page) }, set: { if let next = $0 { pageID = next.rawValue } })) {
+                    ForEach(Array(SettingsPage.groups.enumerated()), id: \.offset) { _, group in
+                        Section {
+                            ForEach(group.pages) { page in
+                                IconLabel(page.title, icon: page.icon)
+                                    .tag(page)
+                                    .accessibilityIdentifier("settings-page-\(page.rawValue)")
+                            }
+                        } header: {
+                            if let title = group.title { Text(title) }
+                        }
                     }
                 }
-                Tab {
-                    Form {
-                        AppearanceSection()
-                    }
-                    .formStyle(.grouped)
-                } label: {
-                    Label {
-                        Text("app:settings.appearance")
-                    } icon: {
-                        Icon.slidersHorizontal.glyph
-                    }
+                .listStyle(.sidebar)
+                .navigationSplitViewColumnWidth(Size.settingsSidebar)
+                .toolbar(removing: .sidebarToggle)
+            } detail: {
+                Form {
+                    SettingsPageContent(page: page)
                 }
-                Tab {
-                    Form { AboutSection() }.formStyle(.grouped)
-                } label: {
-                    Label {
-                        Text("app:settings.about")
-                    } icon: {
-                        Icon.info.glyph
-                    }
-                }
+                .formStyle(.grouped)
+                .navigationTitle(page.title)
             }
-            .scenePadding()
-            .frame(width: 520)  // design-lint: allow (Settings window width, like Apple's apps)
-            .frame(minHeight: 280)  // design-lint: allow
+            .frame(minWidth: Size.settingsWidth, minHeight: Size.settingsHeight)
         }
     #else
         @Environment(\.dismiss) private var dismiss
 
         private var content: some View {
             NavigationStack {
-                Form {
-                    WorkspaceSection()
-                    AppearanceSection()
-                    EditorSection()
-                    SpotlightSection()
-                    LanguageSection()
-                    AboutSection()
+                List {
+                    ForEach(Array(SettingsPage.groups.enumerated()), id: \.offset) { _, group in
+                        Section {
+                            ForEach(group.pages) { page in
+                                NavigationLink(value: page) {
+                                    IconLabel(page.title, icon: page.icon)
+                                }
+                                .accessibilityIdentifier("settings-page-\(page.rawValue)")
+                            }
+                        } header: {
+                            if let title = group.title { Text(title) }
+                        }
+                    }
                 }
                 .navigationTitle(Text("app:settings.title"))
                 .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("app:settings.done") { dismiss() }
-                            .accessibilityIdentifier("settings-close")
+                .navigationDestination(for: SettingsPage.self) { page in
+                    Form {
+                        SettingsPageContent(page: page)
                     }
+                    .navigationTitle(page.title)
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar { done }
                 }
+                .toolbar { done }
+            }
+        }
+
+        private var done: some ToolbarContent {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("app:settings.done") { dismiss() }
+                    .accessibilityIdentifier("settings-close")
             }
         }
     #endif
+}
+
+/// One page's sections.
+private struct SettingsPageContent: View {
+    let page: SettingsPage
+
+    var body: some View {
+        switch page {
+        case .workspace:
+            WorkspaceSection()
+        case .general:
+            LanguageSection()
+            #if os(macOS)
+                MenuBarSection()
+            #endif
+        case .appearance:
+            AppearanceSection()
+        case .editor:
+            EditorSection()
+        case .search:
+            SpotlightSection()
+        case .about:
+            AboutSection()
+        }
+    }
 }
 
 // MARK: - Sections
@@ -361,6 +425,8 @@ private struct LanguageSection: View {
                 Text(verbatim: Self.currentLanguage)
             }
             Button("app:settings.language.open", action: openLanguageSettings)
+        } header: {
+            Text("app:settings.language")
         } footer: {
             Text("app:settings.language.detail")
         }
