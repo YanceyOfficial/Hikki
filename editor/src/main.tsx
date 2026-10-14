@@ -3,9 +3,16 @@ import { createRoot } from 'react-dom/client'
 
 import { IconProvider } from './components/icons'
 import { EditorBridge } from './core/bridge'
+import { exportPage, importDocument } from './core/convert'
 import { installErrorForwarding } from './core/errors'
 import { setLocale } from './core/i18n'
-import { PROTOCOL_VERSION, type AIStreamEvent, type PagePayload } from './core/protocol'
+import {
+  PROTOCOL_VERSION,
+  type AIStreamEvent,
+  type ExportFormat,
+  type ImportFormat,
+  type PagePayload
+} from './core/protocol'
 import { applyShortcutOverrides, type ShortcutOverride } from './core/shortcuts'
 import { devTransport, webkitTransport } from './core/transport'
 import { findShortcut, type FindMode } from './extensions/find'
@@ -51,6 +58,10 @@ window.hikki = {
   restoreScroll: (top: number) => bridge.restoreScroll(top),
   // The inspector's outline: a heading to the top of the page, marked as the one being read.
   jumpToHeading: (id: string) => bridge.jumpToHeading(id),
+  // Page ⋯ → Export / File → Import: a page as Markdown or HTML, and a file's text as a new page (convert.ts).
+  exportPage: (page: PagePayload, format: ExportFormat) => exportPage(page, format),
+  importDocument: (text: string, format: ImportFormat, fallbackTitle: string) =>
+    importDocument(text, format, fallbackTitle),
   exec: (command: string) => bridge.exec(command),
   flush: () => bridge.flush(),
   focus: () => bridge.focus(),

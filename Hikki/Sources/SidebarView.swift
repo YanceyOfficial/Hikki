@@ -88,6 +88,7 @@ private struct WorkspaceSwitcher: View {
     var body: some View {
         Menu {
             Section {
+                ImportMenuItem(navigator: navigator)
                 SettingsMenuItem(navigator: navigator)
             } header: {
                 // The user's workspace name and where it lives.
@@ -154,6 +155,7 @@ private struct PhoneSidebar: View {
                 // The workspace menu (iPhone has no sidebar header; Mac/iPad have the footer switcher).
                 if !wideSidebar {
                     Menu {
+                        ImportMenuItem(navigator: navigator)
                         SettingsMenuItem(navigator: navigator)
                     } label: {
                         IconLabel("app:common.more", icon: .dotsThreeCircle).labelStyle(.iconOnly)
@@ -700,6 +702,20 @@ extension PageLink {
         #else
             UIPasteboard.general.url = url
         #endif
+    }
+}
+
+/// "Import…" in the workspace menus (File → Import… on Mac/iPad): Markdown, HTML or text files as new pages.
+private struct ImportMenuItem: View {
+    let navigator: Navigator
+
+    var body: some View {
+        Button {
+            navigator.isImporting = true
+        } label: {
+            IconLabel("app:import.menu", icon: .downloadSimple)
+        }
+        .accessibilityIdentifier("import-files")
     }
 }
 

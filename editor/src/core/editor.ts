@@ -1,4 +1,4 @@
-import { Editor, type JSONContent } from '@tiptap/core'
+import { Editor, type AnyExtension, type JSONContent } from '@tiptap/core'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
 import Subscript from '@tiptap/extension-subscript'
 import Superscript from '@tiptap/extension-superscript'
@@ -114,92 +114,99 @@ export function createEditor(
       }
     },
     onContentError: ({ error }) => options.onContentError?.(error),
-    extensions: [
-      StarterKit.configure({
-        // Only allowlisted targets are stored or rendered (links.ts); hikki:// links open pages.
-        link: { openOnClick: false, protocols: ['hikki'], isAllowedUri: (url) => isSafeHref(url) },
-        codeBlock: false,
-        blockquote: false,
-        // Hidden while a block is dragged to another block's side (columns.ts draws a vertical line).
-        dropcursor: { class: 'hk-dropcursor', width: 2 }
-      }),
-      CodeBlock,
-      Quote,
-      // The original page opens where page links send other links.
-      Embed.configure({
-        host: {
-          openExternal: (href) => (options.pageLinks ?? noPageLinks).openExternal(href),
-          bff: bffURL(),
-          linkPreview: options.linkPreview ?? (async () => null)
-        }
-      }),
-      ...toggleExtensions,
-      Callout,
-      mathExtension(),
-      ...tableExtensions,
-      Columns,
-      Column,
-      ColumnsKeymap,
-      Find,
-      TableOfContents,
-      ...mediaExtensions(options.media ?? null),
-      PageLinks(options.pageLinks ?? noPageLinks),
-      // "@" mentions a page; ":" suggests emoji.
-      PageMention(options.pageLinks ?? noPageLinks),
-      SplitDrop(options.splitDrop ?? { mode: () => 'off', open: () => {} }),
-      AIReview(options.ai ?? { request: () => {}, cancel: () => {}, title: () => '' }),
-      EmojiSuggestion,
-      // "--" → —, "..." → …, "->" → →, "(c)" → ©… Quotes stay straight and fractions stay typed (notes, code-ish text, CJK).
-      Typography.configure({
-        openDoubleQuote: false,
-        closeDoubleQuote: false,
-        openSingleQuote: false,
-        closeSingleQuote: false,
-        laquo: false,
-        raquo: false,
-        oneHalf: false,
-        oneQuarter: false,
-        threeQuarters: false,
-        multiplication: false,
-        superscriptTwo: false,
-        superscriptThree: false,
-        plusMinus: false,
-        servicemark: false
-      }),
-      Ruby(options.ruby ?? null),
-      TaskList,
-      TaskItem.configure({ nested: true }),
-      ColorTextStyle,
-      Colors,
-      // Keys from the registry: Tiptap's own ⌘, for subscript is Settings on iPad.
-      Subscript.extend({
-        addKeyboardShortcuts() {
-          return { [tiptapShortcut('subscript')]: () => this.editor.commands.toggleSubscript() }
-        }
-      }),
-      Superscript.extend({
-        addKeyboardShortcuts() {
-          return { [tiptapShortcut('superscript')]: () => this.editor.commands.toggleSuperscript() }
-        }
-      }),
-      BlockShortcuts,
-      // Settings → Shortcuts: rebound keys, ahead of every keymap.
-      ShortcutOverrides,
-      // Words and characters for the inspector (`pageInfo`).
-      ImageLoading,
-      CharacterCount,
-      Placeholder.configure({
-        includeChildren: false,
-        placeholder: ({ node }) =>
-          node.type.name === 'paragraph' ? t('editor.bodyPlaceholder') : ''
-      }),
-      EdgeNavigation.configure({ onExitTop: options.onExitTop ?? (() => {}) }),
-      SlashCommand,
-      SelectionMenuExtension,
-      UniqueID.configure({ types: BLOCK_ID_TYPES }),
-      BlockControls
-    ]
+    extensions: editorExtensions(options)
   })
+}
+
+/**
+ * Every extension of the page editor — the schema pages are stored in. Import and export (convert.ts) build the
+ * same schema from it without an editor.
+ */
+export function editorExtensions(options: EditorOptions = {}): AnyExtension[] {
+  return [
+    StarterKit.configure({
+      // Only allowlisted targets are stored or rendered (links.ts); hikki:// links open pages.
+      link: { openOnClick: false, protocols: ['hikki'], isAllowedUri: (url) => isSafeHref(url) },
+      codeBlock: false,
+      blockquote: false,
+      // Hidden while a block is dragged to another block's side (columns.ts draws a vertical line).
+      dropcursor: { class: 'hk-dropcursor', width: 2 }
+    }),
+    CodeBlock,
+    Quote,
+    // The original page opens where page links send other links.
+    Embed.configure({
+      host: {
+        openExternal: (href) => (options.pageLinks ?? noPageLinks).openExternal(href),
+        bff: bffURL(),
+        linkPreview: options.linkPreview ?? (async () => null)
+      }
+    }),
+    ...toggleExtensions,
+    Callout,
+    mathExtension(),
+    ...tableExtensions,
+    Columns,
+    Column,
+    ColumnsKeymap,
+    Find,
+    TableOfContents,
+    ...mediaExtensions(options.media ?? null),
+    PageLinks(options.pageLinks ?? noPageLinks),
+    // "@" mentions a page; ":" suggests emoji.
+    PageMention(options.pageLinks ?? noPageLinks),
+    SplitDrop(options.splitDrop ?? { mode: () => 'off', open: () => {} }),
+    AIReview(options.ai ?? { request: () => {}, cancel: () => {}, title: () => '' }),
+    EmojiSuggestion,
+    // "--" → —, "..." → …, "->" → →, "(c)" → ©… Quotes stay straight and fractions stay typed (notes, code-ish text, CJK).
+    Typography.configure({
+      openDoubleQuote: false,
+      closeDoubleQuote: false,
+      openSingleQuote: false,
+      closeSingleQuote: false,
+      laquo: false,
+      raquo: false,
+      oneHalf: false,
+      oneQuarter: false,
+      threeQuarters: false,
+      multiplication: false,
+      superscriptTwo: false,
+      superscriptThree: false,
+      plusMinus: false,
+      servicemark: false
+    }),
+    Ruby(options.ruby ?? null),
+    TaskList,
+    TaskItem.configure({ nested: true }),
+    ColorTextStyle,
+    Colors,
+    // Keys from the registry: Tiptap's own ⌘, for subscript is Settings on iPad.
+    Subscript.extend({
+      addKeyboardShortcuts() {
+        return { [tiptapShortcut('subscript')]: () => this.editor.commands.toggleSubscript() }
+      }
+    }),
+    Superscript.extend({
+      addKeyboardShortcuts() {
+        return { [tiptapShortcut('superscript')]: () => this.editor.commands.toggleSuperscript() }
+      }
+    }),
+    BlockShortcuts,
+    // Settings → Shortcuts: rebound keys, ahead of every keymap.
+    ShortcutOverrides,
+    // Words and characters for the inspector (`pageInfo`).
+    ImageLoading,
+    CharacterCount,
+    Placeholder.configure({
+      includeChildren: false,
+      placeholder: ({ node }) => (node.type.name === 'paragraph' ? t('editor.bodyPlaceholder') : '')
+    }),
+    EdgeNavigation.configure({ onExitTop: options.onExitTop ?? (() => {}) }),
+    SlashCommand,
+    SelectionMenuExtension,
+    UniqueID.configure({ types: BLOCK_ID_TYPES }),
+    BlockControls
+  ]
 }
 
 export function runCommand(editor: Editor, command: Command): boolean {

@@ -3,6 +3,7 @@ import HikkiCore
 import HikkiUI
 import QuickLook
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ContentView: View {
     /// A page to show on open (a window opened with "Open in new window").
@@ -24,6 +25,9 @@ struct ContentView: View {
     @State private var navigator = Navigator()
     @State private var columns: NavigationSplitViewVisibility = .all
     @SceneStorage("tabs") private var storedTabs: Data?
+    /// A finished export waiting for the save panel / exporter.
+    @State private var exportFile: ExportFile?
+    @State private var isExporting = false
     private let tone = ColorTone.standard
     @AppStorage(EditorPreferences.spellcheckKey) private var spellcheck = true
     #if os(macOS)
@@ -32,7 +36,7 @@ struct ContentView: View {
 
     var body: some View {
         // Split in two so the type checker copes: the layout, then the scene's events.
-        sceneEvents(layout)
+        transfers(sceneEvents(layout))
             .focusedSceneValue(\.editor, editor)
             .focusedSceneValue(\.navigator, navigator)
             .focusedSceneValue(\.lockedPage, navigator.currentPage?.isLocked)
@@ -88,6 +92,76 @@ struct ContentView: View {
         .quickLookPreview($editor.previewURL)
         // "Open in Split View" wherever page actions are (sidebar, Home, ⋯): by the window's width, not a column's.
         .environment(\.splitAvailable, wide)
+    }
+
+    /// Page history, export and import (PageTransfer.swift): the history sheet, the save panel / exporter and the
+    /// file picker.
+    private func transfers(_ content: some View) -> some View {
+        @Bindable var navigator = navigator
+        return
+            content
+            .sheet(
+                isPresented: Binding(
+                    get: { navigator.historyPageID != nil },
+                    set: { if !$0 { navigator.historyPageID = nil } })
+            ) {
+                if let id = navigator.historyPageID {
+                    PageHistoryView(pageID: id) { version in
+                        await model.restore(version, editors: [editor] + (splitEditor.map { [$0] } ?? []))
+                    }
+                    // Room for the list beside the preview on iPad.
+                    .presentationSizing(.page)
+                }
+            }
+            // An export is made first (the editor converts, attachments are packed), then offered to save.
+            .task(id: navigator.exportRequest) {
+                guard let request = navigator.exportRequest else { return }
+                do {
+                    let file = try await model.exportPackage(request, editor: editor)
+                    Log.info("page exported", category: "export", context: ["docId": request.pageID, "format": request.format.rawValue])
+                    #if DEBUG
+                        // HIKKI_EXPORT_DIR=<folder>: written there without the save panel (UI tests).
+                        if let folder = ProcessInfo.processInfo.environment["HIKKI_EXPORT_DIR"] {
+                            let name = file.wrapper.preferredFilename ?? "export"
+                            try file.wrapper.write(
+                                to: URL(filePath: folder).appending(path: name), options: .atomic, originalContentsURL: nil)
+                            navigator.exportRequest = nil
+                            return
+                        }
+                    #endif
+                    exportFile = file
+                    isExporting = true
+                } catch {
+                    Log.error("export failed: \(error)", category: "export", context: ["docId": request.pageID])
+                    navigator.exportRequest = nil
+                }
+            }
+            .fileExporter(
+                isPresented: $isExporting, document: exportFile, contentType: exportFile?.contentType ?? .data,
+                defaultFilename: exportFile?.defaultFilename
+            ) { result in
+                if case .failure(let error) = result { Log.warn("export not saved: \(error)", category: "export") }
+            }
+            // Saved or cancelled: the export is done with.
+            .onChange(of: isExporting) { _, presented in
+                guard !presented else { return }
+                navigator.exportRequest = nil
+                exportFile = nil
+            }
+            .fileImporter(isPresented: $navigator.isImporting, allowedContentTypes: Self.importTypes, allowsMultipleSelection: true) {
+                result in
+                guard case .success(let urls) = result else { return }
+                Task { await importFiles(urls) }
+            }
+    }
+
+    /// Markdown, HTML and plain text.
+    private static let importTypes: [UTType] = [UTType("net.daringfireball.markdown"), .html, .plainText].compactMap { $0 }
+
+    /// Imported files become pages; the last one opens.
+    private func importFiles(_ urls: [URL]) async {
+        let ids = await model.importFiles(urls, editor: editor)
+        if let last = ids.last { navigator.open(last) }
     }
 
     /// Setup, routing to the editor, settings, deep links, tab persistence, backgrounding.
@@ -239,6 +313,14 @@ struct ContentView: View {
                     navigator.openInSplit(.page(value))
                 }
             }
+            // HIKKI_IMPORT_FILE=<path> imports that file once the editor is up (UI tests: the file picker runs out of
+            // process).
+            if let path = ProcessInfo.processInfo.environment["HIKKI_IMPORT_FILE"] {
+                Task {
+                    for _ in 0..<100 where !editor.isReady { try? await Task.sleep(for: .milliseconds(100)) }
+                    await importFiles([URL(filePath: path)])
+                }
+            }
             // HIKKI_OPEN_FILE=<asset name> opens that attachment in the viewer pane (screenshots of the PDF viewer).
             if let name = ProcessInfo.processInfo.environment["HIKKI_OPEN_FILE"] {
                 navigator.openDocument(name: name, label: name)
@@ -275,7 +357,7 @@ struct ContentView: View {
         if let initialPageID, model.tree.page(initialPageID) != nil { navigator.open(initialPageID) }
         editor.setTone(tone)
         editor.setSpellcheck(spellcheck)
-        editor.attach(store: model.store, assets: model.assets)
+        editor.attach(store: model.store, assets: model.assets) { [weak model] in model?.history }
         editor.onOpenPage = { id, block in
             guard model.tree.page(id) != nil else { return }
             navigator.open(id)
@@ -293,7 +375,7 @@ struct ContentView: View {
         let pane = EditorController()
         pane.setTone(tone)
         pane.setSpellcheck(spellcheck)
-        pane.attach(store: model.store, assets: model.assets)
+        pane.attach(store: model.store, assets: model.assets) { [weak model] in model?.history }
         pane.onOpenPage = { [navigator] id, block in
             guard model.tree.page(id) != nil else { return }
             navigator.openInSplit(.page(id))

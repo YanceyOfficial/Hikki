@@ -3,6 +3,10 @@ import HikkiCore
 import HikkiSearch
 import Observation
 
+#if os(iOS)
+    import UIKit
+#endif
+
 /// App-wide data shared by every window: the page tree, the trash, and page operations.
 @Observable
 final class AppModel {
@@ -50,6 +54,20 @@ final class AppModel {
     // MARK: Workspace folder (storage option C)
 
     @ObservationIgnored private var sync: WorkspaceSync?
+    /// Versions of pages (Page ⋯ → Page History…), in the workspace folder; nil until the folder is known.
+    @ObservationIgnored private(set) var history: PageHistory?
+
+    /// Notion-like: a version per editing session (10 quiet minutes apart), all of the last day, then one a day for
+    /// 30 days. DEBUG: `HIKKI_HISTORY_INTERVAL=<seconds>` shortens the session (UI tests).
+    static var historyPolicy: PageHistoryPolicy {
+        var policy = PageHistoryPolicy()
+        #if DEBUG
+            if let value = ProcessInfo.processInfo.environment["HIKKI_HISTORY_INTERVAL"], let seconds = TimeInterval(value) {
+                policy.interval = seconds
+            }
+        #endif
+        return policy
+    }
 
     /// The folder the workspace lives in (access held for the session).
     @ObservationIgnored private var workspaceFolder: URL?
@@ -71,9 +89,30 @@ final class AppModel {
             assets.useWorkspaceFolder(folder)
             let assets = assets
             Task.detached(priority: .utility) { assets.copyLegacyAssets() }
+            // Page history lives in the folder too (`history/<page id>/`), so versions sync with the pages.
+            let history = PageHistory(root: folder, policy: Self.historyPolicy, device: Self.deviceName)
+            self.history = history
             // Every pass — launch, activation, or the folder watcher noticing another device — tells open
             // editors which pages came from disk, so one showing such a page reloads it.
-            let sync = WorkspaceSync(store: store, files: PageFiles(root: folder)) { [weak self] report in
+            // The losing side of a conflict becomes a page of its own, titled in the app's language; a page
+            // another device replaces is kept in its history first; a page deleted here takes its history along.
+            let options = WorkspaceSync.Options(
+                device: Self.deviceName,
+                conflictTitle: { title, source in
+                    let title = title.isEmpty ? String(localized: "app:page.untitled") : title
+                    return String(localized: "app:sync.conflictedCopy \(title) \(source)")
+                },
+                willReplace: { row in
+                    do {
+                        try history.recordBeforeReplace(row)
+                    } catch {
+                        Log.warn("page version not kept: \(error)", category: "history", context: ["docId": row.id])
+                    }
+                },
+                onDeleted: { ids in
+                    for id in ids { try? history.forget(pageID: id) }
+                })
+            let sync = WorkspaceSync(store: store, files: PageFiles(root: folder), options: options) { [weak self] report in
                 let ids = report.importedIDs
                 Task { @MainActor in
                     self?.lastSync = SyncStatus(at: .now, report: report)
@@ -174,8 +213,17 @@ final class AppModel {
             message, category: "workspace",
             context: [
                 "imported": "\(report.imported)", "exported": "\(report.exported)", "deletedHere": "\(report.deletedHere)",
-                "skippedFiles": "\(report.skippedFiles)",
+                "skippedFiles": "\(report.skippedFiles)", "conflictCopies": "\(report.conflictCopies)",
             ])
+    }
+
+    /// This device's user-visible name (conflicted copies and page versions say where they came from).
+    static var deviceName: String? {
+        #if os(macOS)
+            Host.current().localizedName
+        #else
+            UIDevice.current.name
+        #endif
     }
 
     func createWorkspace(name: String, location: Workspace.Location) {

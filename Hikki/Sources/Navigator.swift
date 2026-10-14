@@ -23,6 +23,13 @@ nonisolated enum Route: Hashable, Codable, Sendable {
     }
 }
 
+/// A page to export in a format.
+struct ExportRequest: Equatable, Identifiable {
+    let pageID: String
+    let format: PageExport.Format
+    var id: String { "\(pageID).\(format.rawValue)" }
+}
+
 struct TitleFocusRequest: Equatable {
     let pageID: String
     let serial: Int
@@ -42,6 +49,12 @@ final class Navigator {
     }
     var isSearching = false
     var isShowingSettings = false
+    /// Page ⋯ → Page History…: the page whose versions the history sheet shows.
+    var historyPageID: String?
+    /// Page ⋯ → Export: the page and format being exported (ContentView presents the save panel / exporter).
+    var exportRequest: ExportRequest?
+    /// File → Import… / the workspace menu: the file picker is up.
+    var isImporting = false
     /// Split view (Mac/iPad): the window shows a second pane beside the current tab.
     private(set) var isSplit = false
     /// What the second pane shows — a page or a file; nil while it offers a picker.
