@@ -4540,6 +4540,23 @@
         }
       }
     },
+    "app:sync.conflictedCopy %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ (conflicted copy %2$@)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@（冲突副本 %2$@）"
+          }
+        }
+      }
+    },
     "app:tabs.close": {
       "extractionState": "manual",
       "localizations": {

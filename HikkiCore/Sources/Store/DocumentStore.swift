@@ -179,6 +179,13 @@ public final class DocumentStore: Sendable {
                 t.drop(column: "titlePinyin")
             }
         }
+        migrator.registerMigration("v8-sync-base") { db in
+            // The `updatedAt` row and file last agreed on: a page changed on both sides since then is a conflict
+            // (WorkspaceSync keeps the loser as a conflicted copy), not a plain "newer wins".
+            try db.alter(table: "pageFileState") { t in
+                t.add(column: "baseUpdatedAt", .datetime)
+            }
+        }
         return migrator
     }
 
@@ -377,7 +384,7 @@ public final class DocumentStore: Sendable {
     public func importPage(_ record: DocumentRecord) throws {
         try writer.write { db in
             try record.save(db)
-            try db.execute(sql: "INSERT OR IGNORE INTO pageFileState (id) VALUES (?)", arguments: [record.id])
+            try Self.setSyncBase(db, record.id, record.updatedAt)
         }
     }
 
@@ -392,6 +399,30 @@ public final class DocumentStore: Sendable {
         try writer.write { db in
             for id in ids { try db.execute(sql: "INSERT OR IGNORE INTO pageFileState (id) VALUES (?)", arguments: [id]) }
         }
+    }
+
+    /// Marks the page synced with its file holding exactly the row as of `updatedAt` (written or read just now).
+    public func markSynced(_ id: String, at updatedAt: Date) throws {
+        try writer.write { try Self.setSyncBase($0, id, updatedAt) }
+    }
+
+    /// Per synced page, the `updatedAt` the row and its file last agreed on (absent until a page is next synced).
+    public func syncBases() throws -> [String: Date] {
+        try writer.read { db in
+            var bases: [String: Date] = [:]
+            for row in try Row.fetchAll(db, sql: "SELECT id, baseUpdatedAt FROM pageFileState WHERE baseUpdatedAt IS NOT NULL") {
+                bases[row["id"]] = row["baseUpdatedAt"]
+            }
+            return bases
+        }
+    }
+
+    private static func setSyncBase(_ db: Database, _ id: String, _ updatedAt: Date) throws {
+        try db.execute(
+            sql: """
+                INSERT INTO pageFileState (id, baseUpdatedAt) VALUES (?, ?)
+                ON CONFLICT(id) DO UPDATE SET baseUpdatedAt = excluded.baseUpdatedAt
+                """, arguments: [id, updatedAt])
     }
 
     public func unmarkSynced(_ ids: some Sequence<String>) throws {

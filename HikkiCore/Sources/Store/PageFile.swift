@@ -193,7 +193,7 @@ public struct PageFiles: Sendable {
         !id.isEmpty && !id.hasPrefix(".") && id.allSatisfy { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" }
     }
 
-    private static func decode(_ data: Data) throws -> PageFile {
+    static func decode(_ data: Data) throws -> PageFile {
         let page = try decoder.decode(PageFile.self, from: data)
         guard page.format <= PageFile.currentFormat else {
             throw PageFileError.unsupportedFormat(id: page.id, format: page.format)

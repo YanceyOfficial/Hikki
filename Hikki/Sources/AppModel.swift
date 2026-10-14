@@ -3,6 +3,10 @@ import HikkiCore
 import HikkiSearch
 import Observation
 
+#if os(iOS)
+    import UIKit
+#endif
+
 /// App-wide data shared by every window: the page tree, the trash, and page operations.
 @Observable
 final class AppModel {
@@ -73,7 +77,14 @@ final class AppModel {
             Task.detached(priority: .utility) { assets.copyLegacyAssets() }
             // Every pass — launch, activation, or the folder watcher noticing another device — tells open
             // editors which pages came from disk, so one showing such a page reloads it.
-            let sync = WorkspaceSync(store: store, files: PageFiles(root: folder)) { [weak self] report in
+            // The losing side of a conflict becomes a page of its own, titled in the app's language.
+            let options = WorkspaceSync.Options(
+                device: Self.deviceName,
+                conflictTitle: { title, source in
+                    let title = title.isEmpty ? String(localized: "app:page.untitled") : title
+                    return String(localized: "app:sync.conflictedCopy \(title) \(source)")
+                })
+            let sync = WorkspaceSync(store: store, files: PageFiles(root: folder), options: options) { [weak self] report in
                 let ids = report.importedIDs
                 Task { @MainActor in
                     self?.lastSync = SyncStatus(at: .now, report: report)
@@ -174,8 +185,17 @@ final class AppModel {
             message, category: "workspace",
             context: [
                 "imported": "\(report.imported)", "exported": "\(report.exported)", "deletedHere": "\(report.deletedHere)",
-                "skippedFiles": "\(report.skippedFiles)",
+                "skippedFiles": "\(report.skippedFiles)", "conflictCopies": "\(report.conflictCopies)",
             ])
+    }
+
+    /// This device's user-visible name (conflicted copies and page versions say where they came from).
+    static var deviceName: String? {
+        #if os(macOS)
+            Host.current().localizedName
+        #else
+            UIDevice.current.name
+        #endif
     }
 
     func createWorkspace(name: String, location: Workspace.Location) {

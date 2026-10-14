@@ -15,6 +15,8 @@ public final class WorkspaceSync: @unchecked Sendable {
         public var deletionsHeldBack = 0
         /// Pages taken from the folder this pass — an open editor showing one of them reloads it.
         public var importedIDs: [String] = []
+        /// Conflicted copies made this pass: the losing side of a page two devices changed at once, kept as a page.
+        public var conflictCopies = 0
     }
 
     private let store: DocumentStore
@@ -26,6 +28,36 @@ public final class WorkspaceSync: @unchecked Sendable {
     private let onReconcile: (@Sendable (Report) -> Void)?
     /// Backoff between follow-up passes while files are still downloading or unreadable.
     private let retryDelays: [TimeInterval]
+    private let fileVersions: any FileVersionStore
+    private let device: String?
+    private let conflictTitle: ConflictCopy.Title
+    private let willReplace: (@Sendable (DocumentRecord) -> Void)?
+    private let onDeleted: (@Sendable ([String]) -> Void)?
+
+    /// How conflicts are resolved and who hears about replaced and deleted pages.
+    public struct Options: Sendable {
+        /// iCloud's conflict versions of page files.
+        public var fileVersions: any FileVersionStore
+        /// This device's name, for the title of a conflicted copy of an edit made here.
+        public var device: String?
+        public var conflictTitle: ConflictCopy.Title
+        /// Called (on the sync queue) before a page from the folder replaces a different row (page history keeps it).
+        public var willReplace: (@Sendable (DocumentRecord) -> Void)?
+        /// Called (on the sync queue) with the pages deleted here whose files were removed (their history goes too).
+        public var onDeleted: (@Sendable ([String]) -> Void)?
+
+        public init(
+            fileVersions: any FileVersionStore = UbiquitousFileVersions(), device: String? = nil,
+            conflictTitle: @escaping ConflictCopy.Title = ConflictCopy.defaultTitle,
+            willReplace: (@Sendable (DocumentRecord) -> Void)? = nil, onDeleted: (@Sendable ([String]) -> Void)? = nil
+        ) {
+            self.fileVersions = fileVersions
+            self.device = device
+            self.conflictTitle = conflictTitle
+            self.willReplace = willReplace
+            self.onDeleted = onDeleted
+        }
+    }
 
     // Confined to `queue`.
     private var stamps: [String: PageFiles.Stamp] = [:]
@@ -40,12 +72,18 @@ public final class WorkspaceSync: @unchecked Sendable {
     /// iCloud downloads becomes one pass). `retryDelays`: follow-up passes while downloads are pending.
     public init(
         store: DocumentStore, files: PageFiles, watchDelay: TimeInterval = 0.3,
-        retryDelays: [TimeInterval] = [1, 2, 5, 10, 30, 60], onReconcile: (@Sendable (Report) -> Void)? = nil
+        retryDelays: [TimeInterval] = [1, 2, 5, 10, 30, 60], options: Options = Options(),
+        onReconcile: (@Sendable (Report) -> Void)? = nil
     ) {
         self.store = store
         self.files = files
         self.watchDelay = watchDelay
         self.retryDelays = retryDelays
+        fileVersions = options.fileVersions
+        device = options.device
+        conflictTitle = options.conflictTitle
+        willReplace = options.willReplace
+        onDeleted = options.onDeleted
         self.onReconcile = onReconcile
     }
 
@@ -81,7 +119,9 @@ public final class WorkspaceSync: @unchecked Sendable {
 
     /// Makes the store match the folder. Per page: a file without a row is imported; the newer of file and row
     /// wins; a row without a file is either deleted here (its file existed before — another device deleted
-    /// it) or written out (it never had one). Same-page edits on two devices resolve to the newer for now.
+    /// it) or written out (it never had one). Conflicts lose nothing: when iCloud kept several versions of a page
+    /// file, or the row and the file both changed since they last agreed, the newest wins as the page and every
+    /// other version becomes a sibling page, a "conflicted copy".
     @discardableResult
     public func reconcile() throws -> Report {
         try queue.sync { try reconcileOnQueue() }
@@ -99,10 +139,15 @@ public final class WorkspaceSync: @unchecked Sendable {
         }
         let rows = Dictionary(try store.allDocuments().map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         let synced = try store.syncedIDs()
-        let read = Dictionary(listing.pages.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        let bases = try store.syncBases()
+        var read = Dictionary(listing.pages.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         // Imports are collected and written parents-first at the end: a row's parent is a foreign key, and
         // the folder lists children before their parents as often as not.
         var imports: [PageFile] = []
+        // iCloud's conflicts, for every file read this pass (a conflict arrives as a change to the file).
+        for page in listing.pages {
+            if let winner = try resolveFileConflicts(of: page, report: &report, copies: &imports) { read[page.id] = winner }
+        }
         for (id, stamp) in listing.stamps.sorted(by: { $0.key < $1.key }) {
             let row = rows[id]
             if row == nil, synced.contains(id) {
@@ -122,13 +167,27 @@ public final class WorkspaceSync: @unchecked Sendable {
                 continue
             }
             if let row {
-                if page.updatedAt > row.updatedAt.addingTimeInterval(0.001) {
+                let fileNewer = page.updatedAt > row.updatedAt.addingTimeInterval(0.001)
+                let rowNewer = row.updatedAt > page.updatedAt.addingTimeInterval(0.001)
+                if fileNewer || rowNewer, let base = bases[id], row.updatedAt > base.addingTimeInterval(0.001),
+                    page.updatedAt > base.addingTimeInterval(0.001), let local = try? PageFile(record: row),
+                    ConflictCopy.differ(local, page)
+                {
+                    // Both sides changed since they last agreed (this device's edit never reached the file): the
+                    // newer wins, the other is kept as a conflicted copy.
+                    let loser = fileNewer ? local : page
+                    let url = try files.url(for: id)
+                    let source = fileNewer ? device : fileVersions.currentDevice(at: url)
+                    imports.append(try conflictCopy(of: loser, device: source, report: &report))
+                    Log.warn("page changed here and in the folder; conflicted copy kept", category: "workspace", context: ["id": id])
+                }
+                if fileNewer {
                     imports.append(page)
-                } else if row.updatedAt > page.updatedAt.addingTimeInterval(0.001) {
+                } else if rowNewer {
                     try write(row)
                     report.exported += 1
                 } else {
-                    try store.markSynced([id])
+                    try store.markSynced(id, at: row.updatedAt)
                 }
             } else {
                 imports.append(page)
@@ -136,6 +195,9 @@ public final class WorkspaceSync: @unchecked Sendable {
         }
         let ordered = Self.parentsFirst(imports, inStore: Set(rows.keys), inFolder: listing.present)
         for page in ordered.ready {
+            if let willReplace, let row = rows[page.id], let local = try? PageFile(record: row), ConflictCopy.differ(local, page) {
+                willReplace(row)
+            }
             try store.importPage(try page.record())
             report.imported += 1
             report.importedIDs.append(page.id)
@@ -167,6 +229,53 @@ public final class WorkspaceSync: @unchecked Sendable {
         scheduleDownloadRetry(after: report)
         onReconcile?(report)
         return report
+    }
+
+    /// iCloud kept other versions of the page's file (two devices saved it at once): the newest (by its edited
+    /// time) becomes the file, every other version that says something different becomes a conflicted copy,
+    /// and the conflicts are marked resolved. Returns the winner, or nil when the file had no conflicts.
+    private func resolveFileConflicts(of page: PageFile, report: inout Report, copies: inout [PageFile]) throws -> PageFile? {
+        let url = try files.url(for: page.id)
+        let others = fileVersions.conflicts(at: url)
+        guard !others.isEmpty else { return nil }
+        var candidates: [(page: PageFile, device: String?, modified: Date)] = [
+            (page, fileVersions.currentDevice(at: url), .distantFuture)
+        ]
+        for version in others {
+            guard let data = version.contents, let other = try? PageFiles.decode(data), other.id == page.id else { continue }
+            candidates.append((other, version.device, version.modified ?? .distantPast))
+        }
+        // Newest edit wins; on a tie, the current file.
+        let winnerIndex =
+            candidates.indices.max { a, b in
+                (candidates[a].page.updatedAt, candidates[a].modified) < (candidates[b].page.updatedAt, candidates[b].modified)
+            } ?? 0
+        let winner = candidates[winnerIndex].page
+        var kept = [winner]
+        for (index, candidate) in candidates.enumerated() where index != winnerIndex {
+            guard kept.allSatisfy({ ConflictCopy.differ($0, candidate.page) }) else { continue }  // same words: nothing to keep
+            copies.append(try conflictCopy(of: candidate.page, device: candidate.device, report: &report))
+            kept.append(candidate.page)
+        }
+        if winnerIndex != 0 {
+            try files.write(winner)
+            stamps[winner.id] = files.stamp(of: winner.id, updatedAt: winner.updatedAt)
+        }
+        try fileVersions.resolveConflicts(at: url)
+        Log.warn(
+            "page file had conflicting versions; resolved", category: "workspace",
+            context: ["id": page.id, "versions": "\(candidates.count)", "copies": "\(kept.count - 1)"])
+        return winner
+    }
+
+    /// Writes the losing version of a page as a page of its own and returns it, to import.
+    private func conflictCopy(of loser: PageFile, device: String?, report: inout Report) throws -> PageFile {
+        let copy = ConflictCopy.make(
+            from: loser, source: ConflictCopy.source(device: device, date: loser.updatedAt), title: conflictTitle)
+        try files.write(copy)
+        stamps[copy.id] = files.stamp(of: copy.id, updatedAt: copy.updatedAt)
+        report.conflictCopies += 1
+        return copy
     }
 
     /// The pages to import, parents before children, so every row's parent exists when it is written. A page
@@ -261,6 +370,7 @@ public final class WorkspaceSync: @unchecked Sendable {
                     stamps[id] = nil
                 }
                 try store.unmarkSynced(gone)
+                if !gone.isEmpty { onDeleted?(Array(gone)) }
             }
             ensureWatching()  // the first page written may have just created the folder
         } catch {
@@ -274,7 +384,7 @@ public final class WorkspaceSync: @unchecked Sendable {
         let page = try PageFile(record: record)
         if try files.read(record.id) != page { try files.write(page) }
         stamps[record.id] = files.stamp(of: record.id, updatedAt: record.updatedAt)
-        try store.markSynced([record.id])
+        try store.markSynced(record.id, at: record.updatedAt)
     }
 
     // MARK: - Watching the folder

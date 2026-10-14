@@ -150,7 +150,12 @@ HikkiUITests/                 XCUITest flows
   unchanged files are skipped by modification date + size) and posts `pagesChangedOnDisk`, so an open editor
   reloads a page another device changed (`window.hikki.reload`, declined while it has unsaved edits). While files
   are still downloading (iCloud placeholders / half-written files) it passes again with backoff — kqueue events are
-  unreliable in iOS file-provider folders. Assets live in `<folder>/assets`. Not yet: conflict copies.
+  unreliable in iOS file-provider folders. Assets live in `<folder>/assets`. **Conflict copies**: nothing two devices
+  wrote is lost. When iCloud kept several versions of a page file (`NSFileVersion`, behind the `FileVersionStore`
+  protocol in `HikkiCore/Sources/Store/FileConflicts.swift`; tests fake it), the newest edit wins as the page and every
+  other version that says something different becomes a sibling page titled "<title> (conflicted copy <device>,
+  <date>)" (`ConflictCopy`), then the conflicts are marked resolved. The same happens when the row and the file both
+  changed since they last agreed — `pageFileState.baseUpdatedAt`, set on every write and import (`syncBases`).
 - **Workspace identity** lives in the folder (a workspace.json next to `pages/`: id, name, icon — `WorkspaceIdentity`); the per-device
   record (`AppPaths.workspace`) only adds the location. A device picking a folder that has one _opens_ that workspace
   (onboarding says so), and a newer identity from another device replaces the local name/icon on activation. Settings →
