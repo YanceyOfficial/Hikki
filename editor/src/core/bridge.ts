@@ -255,7 +255,7 @@ export class EditorBridge {
   /** Uploads and attachments for the editor's media blocks. */
   readonly media: MediaHost = {
     upload: (file, onProgress) => this.uploadFile(file, onProgress),
-    openAsset: (url) => void this.send({ type: 'openAsset', url })
+    openAsset: (url, name) => void this.send({ type: 'openAsset', url, name: name ?? null })
   }
 
   /**

@@ -7,6 +7,8 @@ nonisolated enum Route: Hashable, Codable, Sendable {
     case home
     case trash
     case page(String)
+    /// An attached file shown in a pane of its own (a PDF): the asset's name and the file's own name.
+    case file(name: String, label: String)
 
     var pageID: String? {
         if case .page(let id) = self { id } else { nil }
@@ -110,6 +112,12 @@ final class Navigator {
     func openFromSidebar(_ route: Route) {
         if let id = route.pageID { reveal(id) }
         tabs.openRecent(route, limit: Self.recentTabLimit)
+        syncSelection()
+    }
+
+    /// An attached PDF clicked in a page: it opens in a viewer pane in a tab of its own (or its tab gets focus).
+    func openDocument(name: String, label: String) {
+        tabs.openRecent(.file(name: name, label: label), limit: Self.recentTabLimit)
         syncSelection()
     }
 

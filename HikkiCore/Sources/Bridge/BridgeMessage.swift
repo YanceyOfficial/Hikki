@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 13
+    public static let version = 14
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -62,7 +62,7 @@ public enum BridgeMessage: Sendable, Equatable {
     case finishUpload(id: String)
     case cancelUpload(id: String)
     /// Open an attachment with the system (Quick Look / default app), never inside the web view.
-    case openAsset(url: String)
+    case openAsset(url: String, name: String?)
     /// A page link was clicked (with the block to scroll to, for a link to a block).
     case openPage(id: String, block: String?)
     /// Any other link was clicked: the system opens it.
@@ -97,7 +97,7 @@ public enum PagePayload {
 extension BridgeMessage: Decodable {
     private enum CodingKeys: String, CodingKey {
         case type, protocolVersion, snapshot, active, level, message, context, docId, icon, cover, fileExtension, dataBase64
-        case size, id, url, block, text, headings, words, characters
+        case size, id, url, block, text, headings, words, characters, name
     }
 
     public init(from decoder: Decoder) throws {
@@ -136,7 +136,8 @@ extension BridgeMessage: Decodable {
             self = .uploadChunk(id: try c.decode(String.self, forKey: .id), data: data)
         case "finishUpload": self = .finishUpload(id: try c.decode(String.self, forKey: .id))
         case "cancelUpload": self = .cancelUpload(id: try c.decode(String.self, forKey: .id))
-        case "openAsset": self = .openAsset(url: try c.decode(String.self, forKey: .url))
+        case "openAsset":
+            self = .openAsset(url: try c.decode(String.self, forKey: .url), name: try c.decodeIfPresent(String.self, forKey: .name))
         case "openPage":
             self = .openPage(id: try c.decode(String.self, forKey: .id), block: try c.decodeIfPresent(String.self, forKey: .block))
         case "openLink": self = .openLink(url: try c.decode(String.self, forKey: .url))

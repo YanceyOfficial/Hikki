@@ -125,7 +125,12 @@ struct BridgeMessageTests {
         #expect(try decode(["type": "uploadChunk", "id": "u1", "dataBase64": "AQID"]) == .uploadChunk(id: "u1", data: Data([1, 2, 3])))
         #expect(try decode(["type": "finishUpload", "id": "u1"]) == .finishUpload(id: "u1"))
         #expect(try decode(["type": "cancelUpload", "id": "u1"]) == .cancelUpload(id: "u1"))
-        #expect(try decode(["type": "openAsset", "url": "hikki-editor://assets/a.pdf"]) == .openAsset(url: "hikki-editor://assets/a.pdf"))
+        #expect(
+            try decode(["type": "openAsset", "url": "hikki-editor://assets/a.pdf"])
+                == .openAsset(url: "hikki-editor://assets/a.pdf", name: nil))
+        #expect(
+            try decode(["type": "openAsset", "url": "hikki-editor://assets/a.pdf", "name": "Book.pdf"])
+                == .openAsset(url: "hikki-editor://assets/a.pdf", name: "Book.pdf"))
         #expect(try decode(["type": "openPage", "id": "p1"]) == .openPage(id: "p1", block: nil))
         #expect(try decode(["type": "openPage", "id": "p1", "block": "b2"]) == .openPage(id: "p1", block: "b2"))
         #expect(try decode(["type": "openLink", "url": "https://example.com"]) == .openLink(url: "https://example.com"))

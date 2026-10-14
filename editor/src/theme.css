@@ -84,6 +84,9 @@
   --size-inspector-max: 560px;
   --size-settings-width: 620px;
   --size-settings-height: 420px;
+  --size-pdf-thumbnails: 150px;
+  --size-pdf-password: 220px;
+  --size-pdf-find: 160px;
   --motion-pop-in: 200ms;
   --motion-pop-out: 150ms;
   --radius: 8px;

@@ -141,6 +141,7 @@ struct ContentView: View {
     private func setUp() {
         navigator.attach(model)
         navigator.restoreTabs(from: storedTabs)
+        editor.onOpenDocument = { [navigator] name, label in navigator.openDocument(name: name, label: label) }
         // The inspector starts closed in every window (its tab is remembered); `-inspector.visible YES` opens it
         // (screenshots).
         // Only the launch argument counts; a value saved by earlier builds (which remembered it) is dropped.
@@ -178,6 +179,10 @@ struct ContentView: View {
                     try? await Task.sleep(for: .seconds(8))
                     await model.searchIndexer.debugSpotlightQuery(text)
                 }
+            }
+            // HIKKI_OPEN_FILE=<asset name> opens that attachment in the viewer pane (screenshots of the PDF viewer).
+            if let name = ProcessInfo.processInfo.environment["HIKKI_OPEN_FILE"] {
+                navigator.openDocument(name: name, label: name)
             }
             // HIKKI_DEBUG_NAV=a,b,c visits those pages one per second (reproduces page-switch bugs).
             if let ids = ProcessInfo.processInfo.environment["HIKKI_DEBUG_NAV"]?.split(separator: ",") {
@@ -251,6 +256,8 @@ private struct DetailView: View {
             PageScreen(pageID: id, editor: editor, navigator: navigator, phoneToolbar: phoneToolbar)
         case .trash:
             TrashView()
+        case .file(let name, let label):
+            DocumentPane(name: name, label: label, editor: editor)
         case .home:
             HomeView(navigator: navigator)
         }
@@ -343,8 +350,36 @@ private struct NativeDetailToolbar: ToolbarContent {
         switch route {
         case .home: TabStripItem(id: id, title: String(localized: "app:nav.home"), symbol: .house)
         case .trash: TabStripItem(id: id, title: String(localized: "app:nav.trash"), symbol: .trash)
+        case .file(_, let label): TabStripItem(id: id, title: label, symbol: .fileText)
         case .page(let pageID):
             TabStripItem(id: id, title: model.tree.page(pageID)?.title ?? "", icon: model.tree.page(pageID)?.icon)
         }
+    }
+}
+
+/// An attached file in a pane of its own (a PDF, natively): the file's name as the window title, "open in Preview".
+private struct DocumentPane: View {
+    let name: String
+    let label: String
+    let editor: EditorController
+
+    var body: some View {
+        Group {
+            if let url = editor.assetFile(named: name) {
+                PDFViewer(url: url) {
+                    #if os(macOS)
+                        NSWorkspace.shared.open(url)
+                    #else
+                        editor.previewURL = url
+                    #endif
+                }
+            } else {
+                Text("app:pdf.missing")
+                    .font(.hk(.md))
+                    .foregroundStyle(Theme.mutedForeground)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .navigationTitle(label)
     }
 }

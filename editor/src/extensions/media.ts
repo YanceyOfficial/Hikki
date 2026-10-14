@@ -15,7 +15,8 @@ export type MediaHost = {
   /** Stores a file; resolves to its URL (`hikki-editor://assets/<name>`). */
   upload: (file: File, onProgress: (fraction: number) => void) => Promise<string>
   /** Opens an attachment with the system (Quick Look). */
-  openAsset: (url: string) => void
+  /** `name`: the file's own name, for the viewer's tab. */
+  openAsset: (url: string, name?: string | null) => void
 }
 
 const ASSET = /^hikki-editor:\/\/assets\/[^/\\?#]+$/u
@@ -201,7 +202,7 @@ export const FileAttachment = Node.create<{ host: MediaHost | null }>({
       button.append(icon, name, size)
       const src = safeMediaSrc(node.attrs.src, 'file')
       button.addEventListener('click', () => {
-        if (src) this.options.host?.openAsset(src)
+        if (src) this.options.host?.openAsset(src, node.attrs.name as string | null)
       })
       return new MediaView(button)
     }

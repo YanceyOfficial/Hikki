@@ -78,6 +78,9 @@
     "paperclip": {
       "sf": "paperclip"
     },
+    "minus": {
+      "sf": "minus"
+    },
     "columns-plus-right": {
       "sf": "sidebar.trailing"
     },

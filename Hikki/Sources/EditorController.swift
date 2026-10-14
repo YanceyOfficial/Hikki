@@ -67,6 +67,12 @@ final class EditorController {
     /// An attachment to show in Quick Look (ContentView's `.quickLookPreview`), opened from the editor.
     var previewURL: URL?
 
+    /// A PDF attachment was clicked (ContentView opens it in a viewer pane): the asset's name and the file's own name.
+    @ObservationIgnored var onOpenDocument: ((String, String) -> Void)?
+
+    /// The file behind an asset name (the viewer pane reads it).
+    func assetFile(named name: String) -> URL? { assets?.file(named: name) }
+
     /// A page link was clicked in the editor (ContentView routes it); the block to land on, if any.
     @ObservationIgnored var onOpenPage: ((String, String?) -> Void)?
 
@@ -387,12 +393,17 @@ final class EditorController {
             return url
         case .cancelUpload(let id):
             uploads?.cancel(id)
-        case .openAsset(let url):
-            // Attachments open in Quick Look, never inside the web view (an HTML file must not run there).
+        case .openAsset(let url, let label):
+            // Attachments open natively, never inside the web view (an HTML file must not run there): a PDF in the
+            // viewer pane, anything else in Quick Look.
             guard let name = AssetStore.name(fromURL: url), let file = assets?.file(named: name) else {
                 throw BridgeError.invalidPayload("openAsset: unknown asset")
             }
-            previewURL = file
+            if file.pathExtension.lowercased() == "pdf", let onOpenDocument {
+                onOpenDocument(name, label ?? file.lastPathComponent)
+            } else {
+                previewURL = file
+            }
         case .openPage(let id, let block):
             onOpenPage?(id, block)
         case .openLink(let url):

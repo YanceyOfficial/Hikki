@@ -161,7 +161,7 @@ describe('inserting files', () => {
     ours.click()
     theirs.click()
     expect(media.openAsset).toHaveBeenCalledTimes(1)
-    expect(media.openAsset).toHaveBeenCalledWith('hikki-editor://assets/r.pdf')
+    expect(media.openAsset).toHaveBeenCalledWith('hikki-editor://assets/r.pdf', 'r.pdf')
   })
 })
 
