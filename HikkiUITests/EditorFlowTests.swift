@@ -558,9 +558,43 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(waitOrDumpTree(pageTitle("Textbook"), in: app, timeout: 10), "the pane did not switch pages")
         attachScreenshot(app, "split-dropped")
 
-        // The title offers the others to switch to.
+        // The title is a chooser: recent pages, and "More…" for the whole picker.
         change.tap()
+        let more = app.descendants(matching: .any)["split-more"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(more, in: app))
+        more.tap()
         XCTAssertTrue(waitOrDumpTree(app.descendants(matching: .any)["split-pick-Notes"].firstMatch, in: app))
+    }
+
+    /// The same page on both sides (write on the left, read on the right): an edit on one side shows on the other.
+    func testSamePageOnBothSidesShowsEdits() throws {
+        continueAfterFailure = false
+        let app = launch()
+        guard app.buttons["nav-home"].waitForExistence(timeout: 10) else {
+            throw XCTSkip("needs a wide window — run on iPad or Mac")
+        }
+        createPage(app, title: "Shared")
+        app.descendants(matching: .any)["split-toggle"].firstMatch.tap()
+        let pick = app.descendants(matching: .any)["split-pick-Shared"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(pick, in: app), "the open page isn't offered for the right side")
+        pick.tap()
+        let titles = app.webViews.textViews.matching(NSPredicate(format: "label == %@", "Page title"))
+        let shared = titles.matching(NSPredicate(format: "value == %@", "Shared"))
+        XCTAssertTrue(waitOrDumpTree(shared.element(boundBy: 1), in: app, timeout: 10), "not on both sides")
+        // Typed into one side's body, it shows on the other once saved. (The right side: in the simulator the pane's
+        // web view keeps the keyboard after it loads.)
+        let bodies = app.webViews.textViews.matching(NSPredicate(format: "label == %@", "Page content"))
+        let right = bodies.allElementsBoundByIndex.max { $0.frame.minX < $1.frame.minX }!
+        right.tap()
+        sleep(1)
+        app.typeText("written on one side")
+        attachScreenshot(app, "split-same-page-typed")
+        let copies = app.webViews.staticTexts.matching(
+            NSPredicate(format: "value CONTAINS %@ OR label CONTAINS %@", "written on one side", "written on one side"))
+        let deadline = Date().addingTimeInterval(10)
+        while copies.count < 2 && Date() < deadline { usleep(250_000) }
+        XCTAssertGreaterThanOrEqual(copies.count, 2, "the other side didn't show the edit")
+        attachScreenshot(app, "split-same-page")
     }
 
     /// A sidebar page dropped on the right edge of the open page opens beside it. (Not at the screen's very edge: iPadOS

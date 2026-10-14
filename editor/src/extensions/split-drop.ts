@@ -4,12 +4,25 @@ import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { t } from '../core/i18n'
 import { parsePageLink } from './page-links'
 
+/**
+ * What a page dropped on this editor's right edge does (`window.hikki.setSplitDrop`): `open` it beside (no split yet),
+ * `replace` what the right side shows (the left page, while split), show it `here` (the right side's own editor), or
+ * nothing (`off`: no split view on this device).
+ */
+export type SplitDropMode = 'off' | 'open' | 'replace' | 'here'
+
 /** What the right-edge drop needs from the host (the bridge). */
 export type SplitDropHost = {
-  /** Split view exists here (Mac, a wide iPad; `window.hikki.setSplitDrop`). */
-  enabled: () => boolean
+  mode: () => SplitDropMode
   /** Open this page in the pane on the right. */
   open: (pageId: string) => void
+}
+
+/** The zone's label, spelled out per mode so the l10n audit sees every key. */
+const HINT: Record<Exclude<SplitDropMode, 'off'>, () => string> = {
+  open: () => t('split.drop.open'),
+  replace: () => t('split.drop.replace'),
+  here: () => t('split.drop.here')
 }
 
 /** Only drags that carry a URL (a page's link) — dragged text and blocks never show the zone. */
@@ -47,7 +60,7 @@ export function draggedPage(data: DataTransfer | null): string | null {
  */
 export function SplitDrop(host: SplitDropHost) {
   const inZone = (event: DragEvent) =>
-    host.enabled() && carriesURL(event) && inSplitZone(event.clientX, window.innerWidth)
+    host.mode() !== 'off' && carriesURL(event) && inSplitZone(event.clientX, window.innerWidth)
 
   return Extension.create({
     name: 'splitDrop',
@@ -66,7 +79,8 @@ export function SplitDrop(host: SplitDropHost) {
             document.body.append(hint)
 
             const show = (open: boolean) => {
-              if (open) label.textContent = t('split.dropHint')
+              const mode = host.mode()
+              if (open && mode !== 'off') label.textContent = HINT[mode]()
               if (hint.dataset.open !== String(open)) hint.dataset.open = String(open)
             }
 

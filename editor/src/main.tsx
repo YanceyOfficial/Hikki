@@ -10,6 +10,7 @@ import { applyShortcutOverrides, type ShortcutOverride } from './core/shortcuts'
 import { devTransport, webkitTransport } from './core/transport'
 import { findShortcut, type FindMode } from './extensions/find'
 import type { PageIndexEntry } from './extensions/page-links'
+import type { SplitDropMode } from './extensions/split-drop'
 import { Outline } from './page/outline'
 import { PageHeader } from './page/page-header'
 
@@ -53,8 +54,8 @@ window.hikki = {
   find: (mode: FindMode) => bridge.find(mode),
   // Settings → Editor → Check spelling.
   setSpellcheck: (on: boolean) => bridge.setSpellcheck(on),
-  // Split view exists in this window (Mac, a wide iPad): the right edge takes dropped pages.
-  setSplitDrop: (on: boolean) => bridge.setSplitDrop(on),
+  // Split view (Mac, a wide iPad): what a page dropped on the right edge does — open / replace / here / off.
+  setSplitDrop: (mode: SplitDropMode) => bridge.setSplitDrop(mode),
   // Page → Lock / Unlock while the page is open.
   setLocked: (locked: boolean) => bridge.setLocked(locked),
   setOutlineRail: (visible: boolean) => bridge.setOutlineRail(visible),

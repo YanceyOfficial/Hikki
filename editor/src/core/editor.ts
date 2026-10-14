@@ -143,7 +143,7 @@ export function createEditor(
       PageLinks(options.pageLinks ?? noPageLinks),
       // "@" mentions a page; ":" suggests emoji.
       PageMention(options.pageLinks ?? noPageLinks),
-      SplitDrop(options.splitDrop ?? { enabled: () => false, open: () => {} }),
+      SplitDrop(options.splitDrop ?? { mode: () => 'off', open: () => {} }),
       EmojiSuggestion,
       // "--" → —, "..." → …, "->" → →, "(c)" → ©… Quotes stay straight and fractions stay typed (notes, code-ish text, CJK).
       Typography.configure({

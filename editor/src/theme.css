@@ -83,6 +83,8 @@
   --size-inspector-ideal: 360px;
   --size-inspector-max: 560px;
   --size-settings-width: 620px;
+  --size-split-drop-area: 96px;
+  --size-split-grip: 14px;
   --size-shortcut-cap: 64px;
   --size-settings-height: 420px;
   --size-pdf-thumbnails: 150px;

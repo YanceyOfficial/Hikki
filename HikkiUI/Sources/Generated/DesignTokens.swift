@@ -202,6 +202,8 @@ public nonisolated enum Size {
     public static let inspectorIdeal: CGFloat = 360
     public static let inspectorMax: CGFloat = 560
     public static let settingsWidth: CGFloat = 620
+    public static let splitDropArea: CGFloat = 96
+    public static let splitGrip: CGFloat = 14
     public static let shortcutCap: CGFloat = 64
     public static let settingsHeight: CGFloat = 420
     public static let pdfThumbnails: CGFloat = 150

@@ -721,7 +721,7 @@
 }
 /* Where a dragged page opens in split view (extensions/split-drop.ts): the right half, tinted, while it's over the edge. */
 .hk-split-drop {
-  @apply pointer-events-none fixed right-2 bottom-2 z-50 flex w-1/2 items-center justify-center rounded-lg border border-tone-ink/40 bg-selection/70 text-sm font-medium text-tone-ink;
+  @apply pointer-events-none fixed right-2 bottom-2 z-50 flex w-1/2 items-center justify-center rounded-lg border-2 border-dotted border-tone-ink/50 bg-selection/50 text-sm font-medium text-tone-ink;
   top: calc(var(--hk-inset-top, 0px) + 0.5rem);
   --hk-pop-origin: right center;
   --hk-pop-dx: 8px;

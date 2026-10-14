@@ -34,9 +34,20 @@ final class EditorController {
             let ids = note.userInfo?["ids"] as? [String] ?? []
             MainActor.assumeIsolated { self?.reloadIfShowing(ids) }
         }
+        // The same page open in another editor (split view's other side) was saved: show it here too.
+        siblingSaves = NotificationCenter.default.addObserver(forName: .pageSavedInEditor, object: nil, queue: .main) {
+            [weak self] note in
+            let id = note.userInfo?["id"] as? String
+            let sender = (note.object as AnyObject?).map(ObjectIdentifier.init)
+            MainActor.assumeIsolated {
+                guard let self, let id, sender != ObjectIdentifier(self) else { return }
+                self.reloadIfShowing([id])
+            }
+        }
     }
 
     @ObservationIgnored private var diskChanges: (any NSObjectProtocol)?
+    @ObservationIgnored private var siblingSaves: (any NSObjectProtocol)?
 
     /// Another device changed the open page (the workspace folder): show the new version in place. The editor
     /// declines while it holds unsaved edits — those win and are saved over it.
@@ -254,12 +265,15 @@ final class EditorController {
         }
     }
 
-    /// Split view exists in this window (Mac, a wide iPad): a page dropped on the right edge opens there.
-    @ObservationIgnored private var splitDrop = false
+    /// What a page dropped on the page's right edge does (split view): open it beside, replace the right side, show it
+    /// here (the right side's own editor), or nothing (iPhone). `editor/src/extensions/split-drop.ts`.
+    enum SplitDropMode: String { case off, open, replace, here }
 
-    func setSplitDrop(_ on: Bool) {
-        guard splitDrop != on else { return }
-        splitDrop = on
+    @ObservationIgnored private var splitDrop = SplitDropMode.off
+
+    func setSplitDrop(_ mode: SplitDropMode) {
+        guard splitDrop != mode else { return }
+        splitDrop = mode
         guard isReady else { return }
         Task { await applySplitDrop() }
     }
@@ -267,7 +281,7 @@ final class EditorController {
     private func applySplitDrop() async {
         do {
             _ = try await webView.callAsyncJavaScript(
-                "window.hikki.setSplitDrop(on)", arguments: ["on": splitDrop], contentWorld: .page)
+                "window.hikki.setSplitDrop(mode)", arguments: ["mode": splitDrop.rawValue], contentWorld: .page)
         } catch {
             Log.warn("setSplitDrop failed: \(error)", category: "bridge")
         }
@@ -471,6 +485,8 @@ final class EditorController {
         do {
             if try store?.saveContent(snapshot) == false {
                 Log.warn("save skipped: document no longer exists", category: "store", context: ["docId": snapshot.docId])
+            } else {
+                NotificationCenter.default.post(name: .pageSavedInEditor, object: self, userInfo: ["id": snapshot.docId])
             }
         } catch {
             Log.error("save failed: \(error)", category: "store", context: ["docId": snapshot.docId])
@@ -640,4 +656,9 @@ private final class NavigationDelegate: NSObject, WKNavigationDelegate {
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         Log.error("editor provisional navigation failed: \(error)", category: "bridge")
     }
+}
+
+extension Notification.Name {
+    /// An editor saved a page (`userInfo["id"]`, the editor as `object`): another editor showing it reloads.
+    static let pageSavedInEditor = Notification.Name("app.yancey.hikki.pageSavedInEditor")
 }

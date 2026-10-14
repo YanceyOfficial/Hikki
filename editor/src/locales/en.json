@@ -362,6 +362,10 @@
     "empty": "No pages"
   },
   "split": {
-    "dropHint": "Open on the right"
+    "drop": {
+      "open": "Open on the right",
+      "replace": "Replace the right side",
+      "here": "Show here"
+    }
   }
 }

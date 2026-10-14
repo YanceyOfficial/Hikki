@@ -36,32 +36,35 @@ struct SplitDetail<Leading: View>: View {
         }
     }
 
-    /// A hairline with a wider grip over it; dragging moves the boundary (each side keeps at least `Size.splitMin`).
+    /// A column of its own between the sides with the hairline in its middle — a grip over the web views wouldn't get
+    /// the clicks (AppKit gives them to the web view under it), so it takes real width. Dragging moves the boundary
+    /// (each side keeps at least `Size.splitMin`); a double-click (double-tap) puts it back in the middle.
     private func divider(width: CGFloat) -> some View {
         Theme.border
             .frame(width: 1)
+            .frame(width: Size.splitGrip)
             .frame(maxHeight: .infinity)
+            .background(Theme.background)
             .ignoresSafeArea(edges: .top)
-            .overlay {
-                Color.clear
-                    .frame(width: Spacing.s2)
-                    .contentShape(.rect)
-                    #if os(macOS)
-                        .onHover { inside in
-                            if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
-                        }
-                    #endif
-                    .gesture(
-                        DragGesture(minimumDistance: 1, coordinateSpace: .global)
-                            .onChanged { drag in
-                                let start = dragStart ?? fraction
-                                dragStart = start
-                                fraction = min(max(start + drag.translation.width / max(width, 1), 0.2), 0.8)
-                            }
-                            .onEnded { _ in dragStart = nil }
-                    )
-                    .accessibilityIdentifier("split-divider")
+            .contentShape(.rect)
+            .onTapGesture(count: 2) {
+                withAnimation(Motion.easeOut()) { fraction = 0.5 }
             }
+            #if os(macOS)
+                .onHover { inside in
+                    if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+                }
+            #endif
+            .gesture(
+                DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                    .onChanged { drag in
+                        let start = dragStart ?? fraction
+                        dragStart = start
+                        fraction = min(max(start + drag.translation.width / max(width, 1), 0.2), 0.8)
+                    }
+                    .onEnded { _ in dragStart = nil }
+            )
+            .accessibilityIdentifier("split-divider")
     }
 }
 
@@ -71,7 +74,6 @@ private struct SplitPane: View {
     let navigator: Navigator
     let editor: EditorController?
     @State private var dropTargeted = false
-    @Environment(\.colorTone) private var colorTone
 
     var body: some View {
         VStack(spacing: Spacing.s0) {
@@ -86,12 +88,12 @@ private struct SplitPane: View {
             PageDrop.page(from: providers, navigator: navigator) { id in navigator.openInSplit(.page(id)) }
         }
         .overlay {
-            if dropTargeted {
-                RoundedRectangle(cornerRadius: Radius.lg)
-                    .fill(colorTone.selectionFill.opacity(0.6))
-                    .strokeBorder(colorTone.fill.opacity(0.5), lineWidth: 1)
+            // An empty pane's picker has a drop area of its own; a page or PDF gets one over it while a page is over.
+            if dropTargeted && navigator.split != nil {
+                DropTargetArea("app:split.drop.here", isTargeted: true)
                     .padding(Spacing.s2)
                     .allowsHitTesting(false)
+                    .transition(.opacity)
             }
         }
         .animation(Motion.easeOut(), value: dropTargeted)
@@ -102,27 +104,38 @@ private struct SplitPane: View {
     private var bar: some View {
         HStack(spacing: Spacing.s2) {
             if navigator.split != nil {
-                // What the pane shows; pressing it offers the others (recent pages, PDFs) to switch to.
-                Button(action: navigator.showSplitPicker) {
+                // What the pane shows, as a chooser (⌃⌄, a pop-up button's mark): recent pages to switch to, or the
+                // whole picker.
+                Menu {
+                    ForEach(model.tree.recent(limit: 8)) { page in
+                        Button {
+                            navigator.openInSplit(.page(page.id))
+                        } label: {
+                            Text(verbatim: "\(page.icon.map { $0 + "  " } ?? "")\(Self.title(page))")
+                        }
+                    }
+                    Divider()
+                    Button("app:split.more", action: navigator.showSplitPicker)
+                        .accessibilityIdentifier("split-more")
+                } label: {
                     HStack(spacing: Spacing.s2) {
                         current
-                        IconView(.caretDown, size: TextSize.xs.rawValue).foregroundStyle(Theme.mutedForeground)
+                        IconView(.caretUpDown, size: TextSize.xs.rawValue).foregroundStyle(Theme.mutedForeground)
                     }
                     .padding(.horizontal, Spacing.s1_5)
                     .padding(.vertical, Spacing.s1)
                     .contentShape(.rect)
                 }
+                .menuStyle(.button)
                 .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.md))
+                .menuIndicator(.hidden)
+                .fixedSize()
                 .help("app:split.change")
                 .accessibilityIdentifier("split-change")
             } else {
                 Text("app:split.pickTitle").font(.hk(.md, .medium)).foregroundStyle(Theme.subtleForeground)
             }
             Spacer(minLength: Spacing.s2)
-            if navigator.split != nil {
-                ToolbarIconButton("app:split.swap", symbol: .arrowsLeftRight) { navigator.swapSplit() }
-                    .accessibilityIdentifier("split-swap")
-            }
             ToolbarIconButton("app:split.close", symbol: .x) { navigator.closeSplit() }
                 .accessibilityIdentifier("split-close")
         }
@@ -145,8 +158,6 @@ private struct SplitPane: View {
 
     @ViewBuilder private var content: some View {
         switch navigator.split {
-        case .page(let id) where navigator.route.pageID == id:
-            notice("app:split.samePage")
         case .page:
             if let editor {
                 EditorView(controller: editor)
@@ -162,7 +173,7 @@ private struct SplitPane: View {
                 notice("app:pdf.missing")
             }
         default:
-            SplitPicker(navigator: navigator)
+            SplitPicker(navigator: navigator, dropTargeted: dropTargeted)
         }
     }
 
@@ -180,13 +191,21 @@ private struct SplitPane: View {
 private struct SplitPicker: View {
     @Environment(AppModel.self) private var model
     let navigator: Navigator
+    /// A page is being dragged over the pane: the drop area lights up.
+    let dropTargeted: Bool
     @State private var attachedPDFs: [AssetReference] = []
 
     var body: some View {
-        let recent = model.tree.recent(limit: 12).filter { $0.id != navigator.route.pageID }
+        // The left page too: it may be read on the right while written on the left.
+        let recent = model.tree.recent(limit: 12)
         let pdfs = self.pdfs
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.s1) {
+                // Pages come here by drag too: say so where the eye starts.
+                DropTargetArea("app:split.dropArea", icon: .trayArrowDown, isTargeted: dropTargeted)
+                    .frame(height: Size.splitDropArea)
+                    .padding(.bottom, Spacing.s2)
+                    .accessibilityIdentifier("split-drop-area")
                 if !pdfs.isEmpty {
                     header("app:split.pdfs")
                     ForEach(pdfs, id: \.name) { pdf in
@@ -291,7 +310,6 @@ enum PageDrop {
 private struct EdgeDrop: ViewModifier {
     let navigator: Navigator
     @State private var showing = false
-    @Environment(\.colorTone) private var colorTone
     #if os(iOS)
         @Environment(\.horizontalSizeClass) private var sizeClass
     #endif
@@ -311,10 +329,9 @@ private struct EdgeDrop: ViewModifier {
                     .onDrop(of: PageDrop.types, delegate: Delegate(width: proxy.size.width, navigator: navigator, showing: $showing))
                     .overlay(alignment: .trailing) {
                         if showing {
-                            RoundedRectangle(cornerRadius: Radius.lg)
-                                .fill(colorTone.selectionFill.opacity(0.7))
-                                .strokeBorder(colorTone.fill.opacity(0.4), lineWidth: 1)
-                                .overlay { Text("app:split.dropHint").font(.hk(.sm, .medium)).foregroundStyle(colorTone.fill) }
+                            // Opens beside it, or — split already — replaces what the right side shows.
+                            DropTargetArea(navigator.isSplit ? "app:split.drop.replace" : "app:split.drop.open", isTargeted: true)
+                                .background(Theme.background.opacity(0.6), in: .rect(cornerRadius: Radius.lg))
                                 .frame(width: proxy.size.width / 2)
                                 .padding(Spacing.s2)
                                 .allowsHitTesting(false)

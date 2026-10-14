@@ -4574,7 +4574,24 @@
         }
       }
     },
-    "app:split.dropHint": {
+    "app:split.drop.here": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show here"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在这里显示"
+          }
+        }
+      }
+    },
+    "app:split.drop.open": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -4587,6 +4604,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "在右侧打开"
+          }
+        }
+      }
+    },
+    "app:split.drop.replace": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replace the right side"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "替换右侧"
+          }
+        }
+      }
+    },
+    "app:split.dropArea": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drag a page from the sidebar or a tab here"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从侧边栏或标签页拖一个页面到这里"
           }
         }
       }
@@ -4604,6 +4655,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "暂时没有可打开的内容。"
+          }
+        }
+      }
+    },
+    "app:split.more": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "More…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更多…"
           }
         }
       }
@@ -4672,40 +4740,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "最近的页面"
-          }
-        }
-      }
-    },
-    "app:split.samePage": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This page is already open on the left."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "这个页面已经在左边打开了。"
-          }
-        }
-      }
-    },
-    "app:split.swap": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Swap Sides"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "交换左右"
           }
         }
       }

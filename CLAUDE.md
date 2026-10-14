@@ -279,10 +279,10 @@ HikkiUITests/                 XCUITest flows
   after launch, `HIKKI_DEBUG_QUIT_AFTER=<s>` quits — own-instance checks.
 - **Split view** (Mac/iPad, `Hikki/Sources/SplitView.swift`): the current tab and a second pane side by side, either
   holding a page or a PDF (`Navigator.split`, `isSplit`). The pane's page has its own editor (a second web view, made
-  on first use and wired like the main one in `ContentView`); the same page can't be on both sides. Opened from the
+  on first use and wired like the main one in `ContentView`). Opened from the
   toolbar's split button or View → Show Split View (⌘\\) — an empty pane offers the left page's PDF attachments, PDFs
   open in tabs and recent pages — or a page's "Open in Split View". The divider drags (fraction remembered); the pane's
-  bar swaps the sides or closes it, and its title offers the picker again to show another page. Menus and the inspector
+  bar closes it, and its title is a chooser (recent pages, More… for the picker) to show another page; the same page may be on both sides (write left, read right — each editor reloads the other's saves, `pageSavedInEditor`). Menus and the inspector
   act on the left side. By drag: a sidebar row or a page's tab dropped onto the pane shows there (`PageDrop`), and
   dropped on the right edge of the left side — the right quarter, 96–240 pt — opens beside it: native content
   (Home, a PDF) through `EdgeDrop` in `Hikki/Sources/SplitView.swift`, a page through the editor's own edge

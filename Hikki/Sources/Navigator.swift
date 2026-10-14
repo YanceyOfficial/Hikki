@@ -127,7 +127,9 @@ final class Navigator {
     func openInSplit(_ route: Route) {
         guard route.canSplit else { return }
         isSplit = true
-        split = route == tabs.route ? nil : route
+        // The same page may be on both sides (write on the left, read on the right): the editors reload each
+        // other's saves (`EditorController.pageSavedInEditor`).
+        split = route
         if let id = route.pageID { reveal(id) }
     }
 
@@ -144,15 +146,6 @@ final class Navigator {
 
     func toggleSplit() {
         if isSplit { closeSplit() } else { showSplitPicker() }
-    }
-
-    /// The two sides trade places: the pane's route becomes the tab's and the tab's goes into the pane (when it can).
-    func swapSplit() {
-        guard let right = split else { return }
-        let left = tabs.route
-        tabs.navigate(to: right)
-        split = left.canSplit ? left : nil
-        syncSelection()
     }
 
     /// The pane's page left the workspace (trashed, deleted): the pane closes.

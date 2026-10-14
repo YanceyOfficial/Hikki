@@ -92,7 +92,8 @@ struct ContentView: View {
                 editor.open(documentID: route.pageID)
                 navigator.revealCurrent()
             }
-            .onChange(of: wide) { _, on in editor.setSplitDrop(on) }
+            .onChange(of: wide) { editor.setSplitDrop(mainSplitDrop) }
+            .onChange(of: navigator.isSplit) { editor.setSplitDrop(mainSplitDrop) }
             .onChange(of: spellcheck) { _, on in
                 editor.setSpellcheck(on)
                 splitEditor?.setSpellcheck(on)
@@ -169,7 +170,7 @@ struct ContentView: View {
         editor.onOpenInSplit = { [navigator] id in
             if model.tree.page(id) != nil { navigator.openInSplit(.page(id)) }
         }
-        editor.setSplitDrop(wide)
+        editor.setSplitDrop(mainSplitDrop)
         // The inspector starts closed in every window (its tab is remembered); `-inspector.visible YES` opens it
         // (screenshots).
         // Only the launch argument counts; a value saved by earlier builds (which remembered it) is dropped.
@@ -284,10 +285,15 @@ struct ContentView: View {
         pane.onOpenInSplit = { [navigator] id in
             if model.tree.page(id) != nil { navigator.openInSplit(.page(id)) }
         }
-        pane.setSplitDrop(true)
+        pane.setSplitDrop(.here)
         pane.setPages(model.tree.all)
         splitEditor = pane
         return pane
+    }
+
+    /// What a page dropped on the left page's right edge does: opens beside it, or replaces the right side.
+    private var mainSplitDrop: EditorController.SplitDropMode {
+        wide ? (navigator.isSplit ? .replace : .open) : .off
     }
 
     /// A wide window (Mac, regular-width iPad): tabs and page actions in the window toolbar, the workspace
@@ -403,11 +409,14 @@ private struct NativeDetailToolbar: ToolbarContent {
         if navigator.route.pageID != nil {
             ToolbarSpacer(.fixed, placement: .primaryAction)
             ToolbarItem(placement: .primaryAction) {
-                Button {
-                    navigator.toggleSplit()
-                } label: {
+                // A toggle: it shows as on while the window is split.
+                Toggle(
+                    isOn: Binding(
+                        get: { navigator.isSplit }, set: { on in on ? navigator.showSplitPicker() : navigator.closeSplit() })
+                ) {
                     IconLabel("app:split.toggle", icon: .squareSplitHorizontal)
                 }
+                .toggleStyle(.button)
                 .help("app:split.toggle")
                 .accessibilityIdentifier("split-toggle")
             }

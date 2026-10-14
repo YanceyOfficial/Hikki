@@ -99,6 +99,9 @@
     "command": {
       "sf": "command"
     },
+    "tray-arrow-down": {
+      "sf": "tray.and.arrow.down"
+    },
     "browsers": {
       "sf": "plus.square.on.square"
     },

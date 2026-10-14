@@ -44,17 +44,17 @@ describe('split drop helpers', () => {
 describe('dropping a page on the right edge', () => {
   let element: HTMLElement
   let editor: Editor
-  let enabled: boolean
+  let mode: 'off' | 'open' | 'replace' | 'here'
   let opened: string[]
 
   beforeEach(() => {
-    enabled = true
+    mode = 'open'
     opened = []
     Object.defineProperty(window, 'innerWidth', { value: 800, configurable: true })
     element = document.createElement('div')
     document.body.append(element)
     editor = createEditor(element, doc('a page'), {
-      splitDrop: { enabled: () => enabled, open: (id) => void opened.push(id) }
+      splitDrop: { mode: () => mode, open: (id) => void opened.push(id) }
     })
   })
   afterEach(() => {
@@ -76,12 +76,23 @@ describe('dropping a page on the right edge', () => {
     expect(editor.getText()).toBe('a page')
   })
 
+  it('says what the drop does: replace the right side from the left page, show here on the right one', () => {
+    mode = 'replace'
+    editor.view.dom.dispatchEvent(drag('dragover', 700, link))
+    expect(hint().textContent).toBe('Replace the right side')
+    mode = 'here'
+    editor.view.dom.dispatchEvent(drag('dragover', 700, link))
+    expect(hint().textContent).toBe('Show here')
+    editor.view.dom.dispatchEvent(drag('drop', 700, link))
+    expect(opened).toEqual(['notes'])
+  })
+
   it('leaves drops elsewhere, text drags and phones alone', () => {
     editor.view.dom.dispatchEvent(drag('dragover', 300, link))
     expect(hint().dataset.open).toBe('false')
     editor.view.dom.dispatchEvent(drag('dragover', 700, { 'text/plain': 'some text' }))
     expect(hint().dataset.open).toBe('false')
-    enabled = false
+    mode = 'off'
     editor.view.dom.dispatchEvent(drag('dragover', 700, link))
     expect(hint().dataset.open).toBe('false')
     editor.view.dom.dispatchEvent(drag('drop', 700, link))

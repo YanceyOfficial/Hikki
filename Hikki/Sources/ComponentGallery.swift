@@ -53,6 +53,10 @@
                                 onReset: { recorded = "⌘B" })
                         }
                     }
+                    Section("DropTargetArea") {
+                        DropTargetArea("Drag a page here", icon: .trayArrowDown, isTargeted: false).frame(height: 80)
+                        DropTargetArea("Show here", isTargeted: true).frame(height: 80)
+                    }
                     Section("toolTip") {
                         HStack {
                             Text(verbatim: "Hover").padding(Spacing.s2).background(Theme.muted).toolTip("Its own tooltip")

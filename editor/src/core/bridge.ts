@@ -7,7 +7,7 @@ import type { MediaHost } from '../extensions/media'
 import { pageLinkHref, type PageIndexEntry, type PageLinksHost } from '../extensions/page-links'
 import { notifyPageIndexChanged } from '../extensions/page-mention'
 import { rubySegmentsFrom, type RubyHost } from '../extensions/ruby'
-import type { SplitDropHost } from '../extensions/split-drop'
+import type { SplitDropHost, SplitDropMode } from '../extensions/split-drop'
 import { linkCardFrom } from '../lib/embeds'
 import { activeCommands, createEditor, runCommand } from './editor'
 import { plainText, wordCount } from './extract'
@@ -236,15 +236,15 @@ export class EditorBridge {
     notifyPageIndexChanged()
   }
 
-  /** Split view exists in this window (`window.hikki.setSplitDrop`): a page dropped on the right edge opens there. */
-  private splitDrop = false
+  /** What a page dropped on the right edge does (`window.hikki.setSplitDrop`): open beside, replace the right side, show here. */
+  private splitDrop: SplitDropMode = 'off'
 
-  setSplitDrop(on: boolean): void {
-    this.splitDrop = on
+  setSplitDrop(mode: SplitDropMode): void {
+    this.splitDrop = mode
   }
 
   readonly splitDropHost: SplitDropHost = {
-    enabled: () => this.splitDrop,
+    mode: () => this.splitDrop,
     open: (pageId) => void this.send({ type: 'openInSplit', id: pageId })
   }
 
