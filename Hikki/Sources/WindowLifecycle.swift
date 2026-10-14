@@ -62,7 +62,8 @@
         }
     }
 
-    /// Routes the window's close button through `MainWindows.closeOrHide`.
+    /// Routes the window's close button through `MainWindows.closeOrHide`, and keeps the toolbar icons-only: the
+    /// "Icon and Text / Icon Only" menu a right click on it offers is switched off (the items have no text to show).
     struct HideOnClose: NSViewRepresentable {
         func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -80,6 +81,10 @@
             private weak var window: NSWindow?
 
             func attach(to window: NSWindow?) {
+                if let toolbar = window?.toolbar {
+                    toolbar.displayMode = .iconOnly
+                    toolbar.allowsDisplayModeCustomization = false
+                }
                 guard let window, let close = window.standardWindowButton(.closeButton) else { return }
                 self.window = window
                 close.target = self

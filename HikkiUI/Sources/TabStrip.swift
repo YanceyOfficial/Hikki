@@ -244,6 +244,8 @@ private struct TabButton: View {
         .contentShape(.capsule)
         .onTapGesture(perform: onSelect)
         .onHover { hovering = $0 }
+        // The whole title, for a tab narrowed down to "N1…".
+        .help(item.title.isEmpty ? String(localized: "app:page.untitled") : item.title)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isActive ? [.isButton, .isSelected] : .isButton)
         .accessibilityAction(named: "app:tabs.close", onClose)
