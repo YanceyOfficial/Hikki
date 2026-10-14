@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 16
+export const PROTOCOL_VERSION = 17
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -61,6 +61,25 @@ export type ToNativeMessage =
       words: number
       characters: number
     }
+  /**
+   * AI on the selection: `action` is a preset (`improve`, `fix`, `shorter`, `longer`, `tone:<tone>`,
+   * `translate:<language>`, `explain`, `summarize`) or `custom` with the user's `instruction`. `units` are the selected
+   * parts of each block as inline HTML; `answer` asks for prose (explain, summarize) rather than replacement blocks.
+   * Replies arrive through `window.hikki.aiEvent`.
+   */
+  | {
+      type: 'aiRequest'
+      id: string
+      action: string
+      instruction?: string
+      answer: boolean
+      units: { key: string; html: string }[]
+      context: { title: string; before: string; after: string; previous?: string }
+    }
+  /** Where the page is scrolled (throttled): each tab gets its place back when it is shown again. */
+  | { type: 'scroll'; docId: string; top: number }
+  /** Stop an AI request (the review was closed, or the page changed under it). */
+  | { type: 'aiCancel'; id: string }
   /** The heading the reader is in (scroll-spy) changed: the inspector's outline marks it; null above the first. */
   | { type: 'activeHeading'; docId: string; id: string | null }
   | { type: 'log'; level: LogLevel; message: string; context?: Record<string, string> }
@@ -86,3 +105,18 @@ export type ToNativeMessage =
   | { type: 'suggestReading'; text: string }
   /** A link card's details: replies `{title, description, icon}` (each may be null), or null when the page can't be read. */
   | { type: 'linkPreview'; url: string }
+
+/** What `window.hikki.aiEvent` delivers for an `aiRequest`: the answer as it is written, then done or an error. */
+export type AIStreamEvent =
+  | { id: string; type: 'text'; delta: string }
+  | { id: string; type: 'searching'; query?: string | null }
+  | { id: string; type: 'citation'; url: string; title?: string | null }
+  | { id: string; type: 'done' }
+  | {
+      id: string
+      type: 'error'
+      /** missingKey | unauthorized | rateLimited | unavailable | offline | rejected | invalidResponse */
+      code: string
+      provider?: string | null
+      message?: string | null
+    }

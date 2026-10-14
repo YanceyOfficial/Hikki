@@ -598,6 +598,38 @@ final class EditorFlowTests: XCTestCase {
         attachScreenshot(app, "split-same-page")
     }
 
+    /// Each tab keeps its place: a long page scrolled down, another tab shown, then back — still scrolled.
+    func testATabKeepsItsScrollPosition() throws {
+        continueAfterFailure = false
+        let app = launch()
+        guard app.buttons["nav-home"].waitForExistence(timeout: 10) else {
+            throw XCTSkip("needs the window toolbar's tabs — run on iPad or Mac")
+        }
+        createPage(app, title: "Other")
+        createPage(app, title: "Long")
+        app.webViews.textViews["Page title"].firstMatch.typeText("\n")
+        app.typeText((1...60).map { "Line \($0)" }.joined(separator: "\n"))
+        sleep(1)
+        let page = app.webViews.firstMatch
+        let title = app.webViews.textViews["Page title"].firstMatch
+        for _ in 0..<4 { page.swipeDown() }
+        XCTAssertTrue(title.isHittable, "the page should start at its top for this test")
+        for _ in 0..<3 { page.swipeUp(velocity: .slow) }
+        sleep(1)
+        XCTAssertFalse(title.isHittable, "the page did not scroll")
+
+        // Another page from the sidebar opens in a tab of its own; then back to Long's tab.
+        app.descendants(matching: .any)["page-row-Other"].firstMatch.tap()
+        XCTAssertTrue(waitOrDumpTree(app.descendants(matching: .any)["tab-Other"].firstMatch, in: app))
+        let longTab = app.descendants(matching: .any)["tab-Long"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(longTab, in: app))
+        sleep(1)
+        longTab.tap()
+        sleep(2)
+        XCTAssertFalse(app.webViews.textViews["Page title"].firstMatch.isHittable, "the tab came back at its top")
+        attachScreenshot(app, "tab-scroll-restored")
+    }
+
     /// A sidebar page dropped on the right edge of the open page opens beside it. (Not at the screen's very edge: iPadOS
     /// takes a link dropped there as "open in a new window".)
     func testDroppingAPageOnTheRightEdgeOpensSplitView() throws {

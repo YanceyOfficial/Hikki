@@ -162,8 +162,42 @@ final class EditorController {
         }
     }
 
-    func open(documentID: String?) {
-        Task { await load(documentID) }
+    func open(documentID: String?, scrollTop: Double? = nil) {
+        Task {
+            await load(documentID)
+            if let scrollTop, scrollTop > 0, let id = documentID, currentDocumentID == id {
+                await restoreScroll(scrollTop)
+            }
+        }
+    }
+
+    /// Where the open page was last scrolled (the editor reports it), for a tab to come back to.
+    @ObservationIgnored private(set) var lastScroll: (docId: String, top: Double)?
+
+    private func restoreScroll(_ top: Double) async {
+        do {
+            _ = try await webView.callAsyncJavaScript(
+                "window.hikki.restoreScroll(top)", arguments: ["top": top], contentWorld: .page)
+        } catch {
+            Log.warn("restoreScroll failed: \(error)", category: "bridge")
+        }
+    }
+
+    /// AI on the selection: the request goes to the app's AI service; its events come back through `sendAIEvent`.
+    @ObservationIgnored var onAIRequest: ((AIRequestPayload) -> Void)?
+    @ObservationIgnored var onAICancel: ((String) -> Void)?
+
+    /// One event of an AI request's answer, to the page (`window.hikki.aiEvent`).
+    func sendAIEvent(_ event: [String: Any]) {
+        guard isReady else { return }
+        Task {
+            do {
+                _ = try await webView.callAsyncJavaScript(
+                    "window.hikki.aiEvent(event)", arguments: ["event": event], contentWorld: .page)
+            } catch {
+                Log.warn("aiEvent failed: \(error)", category: "bridge")
+            }
+        }
     }
 
     /// Selects the page title for typing — now if that page is loaded, otherwise right after it loads.
@@ -435,6 +469,12 @@ final class EditorController {
             pageInfo = PageInfo(docId: docId, headings: headings, words: words, characters: characters)
         case .activeHeading(let docId, let id):
             activeHeading = (docId, id)
+        case .scroll(let docId, let top):
+            lastScroll = (docId, top)
+        case .aiRequest(let payload):
+            onAIRequest?(payload)
+        case .aiCancel(let id):
+            onAICancel?(id)
         case .log(let level, let message, let context):
             Log.write(level, message, category: "web", context: context)
         case .setIcon(let docId, let icon):

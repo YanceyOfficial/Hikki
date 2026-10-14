@@ -67,6 +67,7 @@ test-bff:
 test-core:
 	tuist test HikkiCore --platform macos
 	tuist test HikkiSearch --platform macos
+	tuist test HikkiAI --platform macos
 	tuist generate --no-open
 
 test-core-ios:

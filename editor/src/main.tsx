@@ -45,6 +45,8 @@ window.hikki = {
   // The sidebar's pages, for naming links to them; and a block to land on after a link.
   setPages: (pages: PageIndexEntry[]) => bridge.setPages(pages),
   scrollToBlock: (id: string) => bridge.scrollToBlock(id),
+  // A tab shown again scrolls back to where it was.
+  restoreScroll: (top: number) => bridge.restoreScroll(top),
   // The inspector's outline: a heading to the top of the page, marked as the one being read.
   jumpToHeading: (id: string) => bridge.jumpToHeading(id),
   exec: (command: string) => bridge.exec(command),

@@ -1,6 +1,210 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "app:ai.model.auto": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auto"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动"
+          }
+        }
+      }
+    },
+    "app:ai.settings.anthropic.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Used for Claude models (Opus, Sonnet, Haiku). Create a key at console.anthropic.com. It is kept in the Keychain on this device and sent only to Anthropic, together with the text you ask AI about."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用于 Claude 模型（Opus、Sonnet、Haiku）。可在 console.anthropic.com 创建密钥。密钥只保存在本设备的钥匙串中，只会和你让 AI 处理的文字一起发送给 Anthropic。"
+          }
+        }
+      }
+    },
+    "app:ai.settings.anthropic.prompt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sk-ant-…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sk-ant-…"
+          }
+        }
+      }
+    },
+    "app:ai.settings.key": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API key"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API 密钥"
+          }
+        }
+      }
+    },
+    "app:ai.settings.model": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default model"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "默认模型"
+          }
+        }
+      }
+    },
+    "app:ai.settings.models": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "模型"
+          }
+        }
+      }
+    },
+    "app:ai.settings.models.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auto balances speed, effort and cost among the providers you have a key for. You can pick another model for each request."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“自动”会在已填写密钥的服务商中兼顾速度、效果与成本。每次请求时也可以另选模型。"
+          }
+        }
+      }
+    },
+    "app:ai.settings.openai.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Used for GPT models. Create a key at platform.openai.com. It is kept in the Keychain on this device and sent only to OpenAI, together with the text you ask AI about."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用于 GPT 模型。可在 platform.openai.com 创建密钥。密钥只保存在本设备的钥匙串中，只会和你让 AI 处理的文字一起发送给 OpenAI。"
+          }
+        }
+      }
+    },
+    "app:ai.settings.openai.prompt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sk-…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sk-…"
+          }
+        }
+      }
+    },
+    "app:ai.settings.status": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Status"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "状态"
+          }
+        }
+      }
+    },
+    "app:ai.settings.status.none": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No key"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未填写"
+          }
+        }
+      }
+    },
+    "app:ai.settings.status.saved": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved in the Keychain"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已保存到钥匙串"
+          }
+        }
+      }
+    },
     "app:chrome.back": {
       "extractionState": "manual",
       "localizations": {
@@ -2479,6 +2683,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "关于"
+          }
+        }
+      }
+    },
+    "app:settings.ai": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI"
           }
         }
       }

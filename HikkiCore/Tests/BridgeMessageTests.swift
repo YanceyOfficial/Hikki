@@ -135,6 +135,18 @@ struct BridgeMessageTests {
         #expect(try decode(["type": "openPage", "id": "p1", "block": "b2"]) == .openPage(id: "p1", block: "b2"))
         #expect(try decode(["type": "openInSplit", "id": "p1"]) == .openInSplit(id: "p1"))
         #expect(try decode(["type": "activeHeading", "docId": "p1", "id": "h2"]) == .activeHeading(docId: "p1", id: "h2"))
+        #expect(try decode(["type": "scroll", "docId": "p1", "top": 840]) == .scroll(docId: "p1", top: 840))
+        #expect(try decode(["type": "aiCancel", "id": "r1"]) == .aiCancel(id: "r1"))
+        #expect(
+            try decode([
+                "type": "aiRequest", "id": "r1", "action": "tone:casual", "answer": false,
+                "units": [["key": "p1:0", "html": "Hello <strong>there</strong>"]],
+                "context": ["title": "Notes", "before": "", "after": "Bye"],
+            ])
+                == .aiRequest(
+                    AIRequestPayload(
+                        id: "r1", action: "tone:casual", answer: false, units: [.init(key: "p1:0", html: "Hello <strong>there</strong>")],
+                        context: .init(title: "Notes", before: "", after: "Bye"))))
         #expect(try decode(["type": "activeHeading", "docId": "p1", "id": NSNull()]) == .activeHeading(docId: "p1", id: nil))
         #expect(try decode(["type": "openLink", "url": "https://example.com"]) == .openLink(url: "https://example.com"))
         #expect(try decode(["type": "suggestReading", "text": "漢字"]) == .suggestReading(text: "漢字"))

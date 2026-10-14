@@ -54,7 +54,7 @@ enum AppearancePreference: String, CaseIterable, Identifiable {
 
 /// The pages of Settings: toolbar tabs on the Mac (the classic Settings window), the hub list on iPhone and iPad.
 enum SettingsPage: String, CaseIterable, Identifiable {
-    case workspace, general, appearance, editor, shortcuts, search, about
+    case workspace, general, appearance, editor, shortcuts, search, ai, about
 
     /// The page Settings opens on, remembered; `HIKKI_OPEN_SETTINGS=<page>` sets it (screenshots).
     static let storageKey = "settings.page"
@@ -69,6 +69,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
         case .editor: "app:settings.editor"
         case .shortcuts: "app:settings.shortcuts"
         case .search: "app:settings.search"
+        case .ai: "app:settings.ai"
         case .about: "app:settings.about"
         }
     }
@@ -81,6 +82,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
         case .editor: .pencilSimple
         case .shortcuts: .command
         case .search: .magnifyingGlass
+        case .ai: .chatCircleDots
         case .about: .info
         }
     }
@@ -88,7 +90,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
     /// The groups the iOS hub shows: the workspace, then the app, then About on its own.
     static let groups: [(title: LocalizedStringKey?, pages: [SettingsPage])] = [
         ("app:settings.group.workspace", [.workspace]),
-        ("app:settings.group.app", [.general, .appearance, .editor, .shortcuts, .search]),
+        ("app:settings.group.app", [.general, .appearance, .editor, .shortcuts, .search, .ai]),
         (nil, [.about]),
     ]
 }
@@ -190,6 +192,8 @@ private struct SettingsPageContent: View {
             EditorSection()
         case .shortcuts:
             ShortcutsSection()
+        case .ai:
+            AISettingsSection()
         case .search:
             SemanticSection()
             SpotlightSection()

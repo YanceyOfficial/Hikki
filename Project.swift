@@ -51,7 +51,9 @@ let project = Project(
                 // MenuBarIcon (template image for the menu bar extra).
                 "Hikki/Resources/Assets.xcassets",
             ],
-            dependencies: [.target(name: "HikkiCore"), .target(name: "HikkiUI"), .target(name: "HikkiSearch")],
+            dependencies: [
+                .target(name: "HikkiCore"), .target(name: "HikkiUI"), .target(name: "HikkiSearch"), .target(name: "HikkiAI"),
+            ],
             settings: .settings(base: [
                 "SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor",
                 "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
@@ -87,6 +89,25 @@ let project = Project(
             deploymentTargets: deploymentTargets,
             sources: ["HikkiSearch/Sources/**"],
             dependencies: [.external(name: "GRDB")]
+        ),
+        // AI: one streaming interface over OpenAI (Responses API) and Anthropic (Messages API), with their own web search
+        // and citations, and the model catalog. Plain URLSession + SSE: the Swift client packages tried dropped citations.
+        .target(
+            name: "HikkiAI",
+            destinations: destinations,
+            product: .framework,
+            bundleId: "app.yancey.hikki.ai",
+            deploymentTargets: deploymentTargets,
+            sources: ["HikkiAI/Sources/**"]
+        ),
+        .target(
+            name: "HikkiAITests",
+            destinations: destinations,
+            product: .unitTests,
+            bundleId: "app.yancey.hikki.ai.tests",
+            deploymentTargets: deploymentTargets,
+            sources: ["HikkiAI/Tests/**"],
+            dependencies: [.target(name: "HikkiAI")]
         ),
         .target(
             name: "HikkiCoreTests",

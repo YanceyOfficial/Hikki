@@ -14,6 +14,9 @@ struct ContentView: View {
     #endif
     // One editor (and one WKWebView) per window, reused across pages and tabs.
     @State private var editor = EditorController()
+    /// Where each tab's page was scrolled when another tab took over (session only), and the tab the editor shows.
+    @State private var tabScroll: [UUID: (docId: String, top: Double)] = [:]
+    @State private var shownTab: UUID?
     /// The split pane's editor (a second web view), made the first time a page opens in the pane.
     @State private var splitEditor: EditorController?
     @State private var navigator = Navigator()
@@ -91,8 +94,17 @@ struct ContentView: View {
             .task { await model.observe() }
             .onAppear(perform: setUp)
             .onChange(of: navigator.route) { _, route in
-                editor.open(documentID: route.pageID)
+                // Each tab keeps its place: the page leaving is remembered for its tab, and a tab shown again goes back
+                // to where it was — another page opened inside a tab starts at its top.
+                let tab = navigator.tabs.activeID
+                if let shown = shownTab, let last = editor.lastScroll { tabScroll[shown] = last }
+                let restore = tab != shownTab ? tabScroll[tab].flatMap { $0.docId == route.pageID ? $0.top : nil } : nil
+                shownTab = tab
+                editor.open(documentID: route.pageID, scrollTop: restore)
                 navigator.revealCurrent()
+            }
+            .onChange(of: navigator.tabs.tabs.map(\.id)) { _, ids in
+                tabScroll = tabScroll.filter { ids.contains($0.key) }
             }
             .onChange(of: wide) { editor.setSplitDrop(mainSplitDrop) }
             .onChange(of: navigator.isSplit) { editor.setSplitDrop(mainSplitDrop) }
@@ -267,6 +279,7 @@ struct ContentView: View {
             if let block { editor.scrollToBlock(block, in: id) }
         }
         editor.setPages(model.tree.all)
+        shownTab = navigator.tabs.activeID
         editor.open(documentID: navigator.route.pageID)
     }
 

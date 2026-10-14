@@ -220,6 +220,8 @@ public nonisolated enum Motion {
     public static let popIn: TimeInterval = 0.2
     /// Leaving, in seconds.
     public static let popOut: TimeInterval = 0.15
+    /// One period of the loading shimmer (AI at work), in seconds.
+    public static let loop: TimeInterval = 1.4
     /// Strong ease-out: moves at once, settles softly — for anything entering, leaving or reacting.
     public static func easeOut(_ duration: TimeInterval = popIn) -> Animation { .timingCurve(0.25, 1, 0.5, 1, duration: duration) }
     /// Strong ease-in-out — for something already on screen moving to a new place.

@@ -150,6 +150,8 @@ function swift() {
   lines.push(`    public static let popIn: TimeInterval = ${tokens.motion['pop-in'] / 1000}`)
   lines.push('    /// Leaving, in seconds.')
   lines.push(`    public static let popOut: TimeInterval = ${tokens.motion['pop-out'] / 1000}`)
+  lines.push('    /// One period of the loading shimmer (AI at work), in seconds.')
+  lines.push(`    public static let loop: TimeInterval = ${tokens.motion['loop'] / 1000}`)
   lines.push(
     '    /// Strong ease-out: moves at once, settles softly — for anything entering, leaving or reacting.'
   )
@@ -199,7 +201,7 @@ function css() {
   L.push(header('/*') + ' */', '')
   L.push(':root {', ...colorVars('light', '  '))
   for (const [k, v] of entries(tokens.size)) L.push(`  --size-${k}: ${v}px;`)
-  for (const k of ['pop-in', 'pop-out']) L.push(`  --motion-${k}: ${tokens.motion[k]}ms;`)
+  for (const k of ['pop-in', 'pop-out', 'loop']) L.push(`  --motion-${k}: ${tokens.motion[k]}ms;`)
   // shadcn's base radius: its components derive odd sizes from it (`calc(var(--radius) - 5px)` for xs).
   L.push(`  --radius: ${tokens.radius.lg}px;`)
   L.push(

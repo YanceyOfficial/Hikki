@@ -122,6 +122,7 @@ public struct TabStrip<Leading: View>: View {
             }
             SidebarIconButton("app:tabs.new", symbol: .plus, action: onNew)
                 .toolTip(String(localized: "app:tabs.new"))
+                .accessibilityIdentifier("tabs-new")
         }
         .coordinateSpace(name: tabStripSpace)
         .overlay {

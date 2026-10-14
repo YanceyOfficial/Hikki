@@ -112,6 +112,7 @@ export class EditorBridge {
         requestAnimationFrame(() => {
           queued = false
           this.updateActiveHeading()
+          this.reportScroll()
         })
       },
       { passive: true }
@@ -123,6 +124,29 @@ export class EditorBridge {
     for (const type of ['wheel', 'touchmove', 'keydown'] as const) {
       window.addEventListener(type, release, { passive: true, capture: true })
     }
+  }
+
+  private scrollTimer: ReturnType<typeof setTimeout> | null = null
+
+  /** Where the page is scrolled, at most every 250 ms (the last position always goes out). */
+  private reportScroll(): void {
+    if (this.scrollTimer) return
+    this.scrollTimer = setTimeout(() => {
+      this.scrollTimer = null
+      const { docId } = this.page.get()
+      if (!docId) return
+      const top = Math.round((document.scrollingElement ?? document.documentElement).scrollTop)
+      void this.send({ type: 'scroll', docId, top })
+    }, 250)
+  }
+
+  /** A tab shown again: back to where it was (after the page has laid out). */
+  restoreScroll(top: number): void {
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        window.scrollTo({ top: Math.max(0, top), left: 0, behavior: 'instant' })
+      )
+    )
   }
 
   /** A heading jumped to from an outline: marked until the reader scrolls (wheel, touch, keys) by themselves. */

@@ -95,6 +95,7 @@
   --size-split-min: 320px;
   --motion-pop-in: 200ms;
   --motion-pop-out: 150ms;
+  --motion-loop: 1400ms;
   --radius: 8px;
 }
 

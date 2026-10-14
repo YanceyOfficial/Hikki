@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 16
+    public static let version = 17
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -52,6 +52,12 @@ public enum BridgeMessage: Sendable, Equatable {
     case pageInfo(docId: String, headings: [OutlineHeading], words: Int, characters: Int)
     /// The heading the reader is in changed (the page's scroll-spy); nil above the first heading.
     case activeHeading(docId: String, id: String?)
+    /// Where the page is scrolled (throttled), so a tab shown again gets its place back.
+    case scroll(docId: String, top: Double)
+    /// AI on the selection (see `AIRequestPayload`); replies go back through `window.hikki.aiEvent`.
+    case aiRequest(AIRequestPayload)
+    /// Stop that AI request.
+    case aiCancel(id: String)
     case log(level: LogLevel, message: String, context: [String: String]?)
     case setIcon(docId: String, icon: String?)
     case setCover(docId: String, cover: String?)
@@ -101,7 +107,7 @@ public enum PagePayload {
 extension BridgeMessage: Decodable {
     private enum CodingKeys: String, CodingKey {
         case type, protocolVersion, snapshot, active, level, message, context, docId, icon, cover, fileExtension, dataBase64
-        case size, id, url, block, text, headings, words, characters, name
+        case size, id, url, block, text, headings, words, characters, name, top
     }
 
     public init(from decoder: Decoder) throws {
@@ -111,6 +117,12 @@ extension BridgeMessage: Decodable {
         case "ready": self = .ready(protocolVersion: try c.decode(Int.self, forKey: .protocolVersion))
         case "changed": self = .changed(try c.decode(Snapshot.self, forKey: .snapshot))
         case "activeFormats": self = .activeFormats(try c.decode([String].self, forKey: .active))
+        case "scroll":
+            self = .scroll(docId: try c.decode(String.self, forKey: .docId), top: try c.decode(Double.self, forKey: .top))
+        case "aiRequest":
+            self = .aiRequest(try AIRequestPayload(from: decoder))
+        case "aiCancel":
+            self = .aiCancel(id: try c.decode(String.self, forKey: .id))
         case "activeHeading":
             self = .activeHeading(docId: try c.decode(String.self, forKey: .docId), id: try c.decodeIfPresent(String.self, forKey: .id))
         case "pageInfo":
@@ -171,4 +183,52 @@ extension Snapshot {
 private func jsonData(from body: Any) throws -> Data {
     guard JSONSerialization.isValidJSONObject(body) else { throw BridgeError.notJSON }
     return try JSONSerialization.data(withJSONObject: body)
+}
+
+/// The editor's AI request: an `action` preset (`improve`, `fix`, `shorter`, `longer`, `tone:<tone>`,
+/// `translate:<language>`, `explain`, `summarize`) or `custom` with an `instruction`; the selected `units` as inline
+/// HTML; `answer` for prose instead of replacement blocks; nearby text as context. Page text: never logged.
+public struct AIRequestPayload: Decodable, Equatable, Sendable {
+    public struct Unit: Decodable, Equatable, Sendable {
+        public var key: String
+        public var html: String
+
+        public init(key: String, html: String) {
+            self.key = key
+            self.html = html
+        }
+    }
+
+    public struct Context: Decodable, Equatable, Sendable {
+        public var title: String
+        public var before: String
+        public var after: String
+        /// The suggestion being refined by a follow-up.
+        public var previous: String?
+
+        public init(title: String, before: String, after: String, previous: String? = nil) {
+            self.title = title
+            self.before = before
+            self.after = after
+            self.previous = previous
+        }
+    }
+
+    public var id: String
+    public var action: String
+    public var instruction: String?
+    public var answer: Bool
+    public var units: [Unit]
+    public var context: Context
+
+    public init(
+        id: String, action: String, instruction: String? = nil, answer: Bool, units: [Unit], context: Context
+    ) {
+        self.id = id
+        self.action = action
+        self.instruction = instruction
+        self.answer = answer
+        self.units = units
+        self.context = context
+    }
 }

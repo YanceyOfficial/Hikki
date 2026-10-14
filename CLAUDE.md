@@ -106,7 +106,7 @@ design/logo/                  wordmark + lockups (generate.mjs: text → outline
 scripts/gen-tokens.mjs        tokens → Swift + Tailwind theme
 scripts/lint-design.sh        no literal colors/fonts/spacing/radii in view code
 Configs/Version.xcconfig      MARKETING_VERSION / CURRENT_PROJECT_VERSION
-Project.swift                 Tuist manifest (targets: Hikki, HikkiCore, HikkiSearch, HikkiUI + their tests, HikkiUITests)
+Project.swift                 Tuist manifest (targets: Hikki, HikkiCore, HikkiSearch, HikkiAI, HikkiUI + their tests, HikkiUITests)
 Hikki/Sources/                app: SwiftUI shell, navigation (tabs), sidebar, page bar, search, editor host
 Hikki/Resources/AppIcon.icon  Icon Composer document (merged from design/icon/hi-star; actool renders all sizes)
 HikkiCore/Sources/            framework: Store (GRDB/SQLite, page tree, assets, tabs model), Text (Japanese readings),
@@ -114,6 +114,8 @@ HikkiCore/Sources/            framework: Store (GRDB/SQLite, page tree, assets, 
                               Layout (split view geometry), Shortcuts (KeyCombo)
 HikkiSearch/Sources/          framework: the search engine — its own SQLite index (trigram FTS5, BM25), query parsing,
                               ranking, pinyin keys, fuzzy titles; tests in HikkiSearch/Tests/
+HikkiAI/Sources/              framework: AI — one streaming client over OpenAI (Responses) and Anthropic (Messages) with
+                              their own web search + citations, the fixed model catalog; tests in HikkiAI/Tests/
 HikkiUI/Sources/              framework: reusable SwiftUI components + Theme
 editor/src/                   web editor: main.tsx + style.css; each folder below holds only .tsx or only .ts
 editor/src/core/              bridge, protocol, transport, editor setup, block catalog, i18n, shortcuts, links, page store
@@ -305,6 +307,17 @@ HikkiUITests/                 XCUITest flows
   The panel's outline puts it on a background that glides from row to row and keeps it in view; the page's own hover rail lights its bar, and its list opens on it (the shared `GlidingHighlight`, following the hovered row meanwhile). A heading
   picked in the outline lands at the top (`window.hikki.jumpToHeading`). While the inspector shows the outline the
   page's hover rail hides (`window.hikki.setOutlineRail`).
+- **Tabs keep their place**: the editor reports where the page is scrolled (`scroll` message, throttled); ContentView
+  remembers it per tab when another tab takes over and, when a tab is shown again, loads its page and scrolls back
+  (`window.hikki.restoreScroll`). Another page opened inside a tab starts at its top (`loadDocument`).
+- **AI** (Settings → AI; `HikkiAI/Sources/`): the provider HTTP APIs directly over URLSession with SSE — the Swift client
+  packages tried (SwiftOpenAI, SwiftAnthropic) dropped web-search citations and error bodies. `AIClients.client(for:keys:)`
+  streams `AIEvent`s (text, searching, citation, finished); `HikkiAI/Sources/StreamDecoders.swift` reads each provider's events
+  tolerantly (unknown events skipped, malformed lines ignored, only error events throw), `HTTPErrors` maps failures
+  to `AIError`. Models are a fixed list (`AIModelCatalog`; "Auto" picks a balanced one among the providers with a
+  key). Keys live in the Keychain per provider (`AIPreferences`, `Hikki/Sources/AISettings.swift`) and go only to
+  that provider. The editor asks through `aiRequest` / `aiCancel` (selected parts of blocks as inline HTML + nearby
+  text) and gets `window.hikki.aiEvent`s back.
 - **Find, spelling, insets**: find and replace is `editor/src/extensions/find.ts` (Tiptap's extension, RE2 regex) with
   `editor/src/components/find-panel.tsx`; the page handles ⌘F/⌥⌘F/⌘G itself, the native Edit menu and the page ⋯ menu ("Find
   in Page", the only way on a phone) call `window.hikki.find`. Spellcheck is WebKit's (Settings → Editor,

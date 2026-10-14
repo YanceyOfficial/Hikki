@@ -355,4 +355,35 @@ describe('Outline marks where the reader is', () => {
       host.remove()
     }
   })
+
+  it('reports where the page is scrolled, and scrolls back to a place it is given', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const sent: ToNativeMessage[] = []
+    const bridge = new EditorBridge(host, {
+      post: async (m) => {
+        sent.push(m)
+        return null
+      }
+    })
+    act(() => bridge.loadDocument(page('a')))
+    const scroller = document.scrollingElement ?? document.documentElement
+    scroller.scrollTop = 420
+    window.dispatchEvent(new Event('scroll'))
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    const reports = sent.filter((m) => m.type === 'scroll')
+    expect(reports.at(-1)).toEqual({ type: 'scroll', docId: 'a', top: scroller.scrollTop })
+
+    const scrolls: unknown[] = []
+    const original = window.scrollTo
+    window.scrollTo = ((options: unknown) => void scrolls.push(options)) as typeof window.scrollTo
+    try {
+      bridge.restoreScroll(840)
+      await new Promise((resolve) => setTimeout(resolve, 60))
+      expect(scrolls).toEqual([{ top: 840, left: 0, behavior: 'instant' }])
+    } finally {
+      window.scrollTo = original
+      host.remove()
+    }
+  })
 })
