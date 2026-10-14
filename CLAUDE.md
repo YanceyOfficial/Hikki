@@ -213,9 +213,12 @@ HikkiUITests/                 XCUITest flows
   natively (`ContentText.headings`, `HikkiCore/Sources/Store/ContentText.swift`), so synced pages count too.
   `SearchRanker` orders results: whole title, its start, every term at a word start / anywhere, the pinyin keys, then
   fzf-style subsequences; headings below titles, text below headings, the index's BM25 order (headings weighed 3×)
-  among text matches, recent pages ahead on ties; it also cuts the excerpt. The store has no search left in it. One
-  ranked list ("Best matches"); a row shows the parent path, the excerpt with the terms emphasized (`HighlightedText`)
-  and the edited time.
+  among text matches, attached files a step below the page's own text, recent pages ahead on ties; it also cuts the
+  excerpt. Attached files (`ContentText.assets`: inline images and file attachments) have their text read on device —
+  PDFs through PDFKit, images through Vision's text recognition (`HikkiSearch/Sources/AttachmentText.swift`) — one
+  file at a time at low priority after the page is indexed, once per file; a hit whose only match is in a file names
+  it. The store has no search left in it. One ranked list ("Best matches"); a row shows the parent path, the excerpt
+  with the terms emphasized (`HighlightedText`) and the edited time.
 - **Full screen (macOS)**: Xcode's way, in `Hikki/Sources/FullScreenChrome.swift` — the toolbar stays and gets its
   background while in full screen (that is what puts the columns below the toolbar row instead of under it); the
   traffic lights come down with the menu bar into that row. Measured, not guessed: in full screen AppKit moves the

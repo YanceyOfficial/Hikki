@@ -106,6 +106,46 @@ struct SearchIndexTests {
         #expect(try index.search("%").map(\.id) == ["a"])
     }
 
+    @Test func attachmentsAreSearchedAndNamedWhenOnlyTheyMatch() throws {
+        let index = try SearchIndex.inMemory()
+        try index.index([page("a", "Trip", text: "photos below"), page("b", "Roadmap notes", text: "the roadmap itself")])
+        try index.index(attachments: [
+            SearchAttachment(name: "p1.png", pageId: "a", label: nil, text: "ROADMAP\nQ4 milestones"),
+            SearchAttachment(name: "f1.pdf", pageId: "a", label: "Plan.pdf", text: "budget for the quarter"),
+        ])
+        let hits = try index.search("roadmap")
+        #expect(hits.map(\.id) == ["b", "a"])
+        // The page's own text matched: no attachment named.
+        #expect(hits[0].attachment == nil)
+        // Only the image matched: its excerpt, and the attachment it came from (an image has no file name).
+        #expect(hits[1].attachment == SearchHit.Attachment(name: "p1.png", label: nil))
+        #expect(hits[1].snippet.contains("ROADMAP"))
+        let budget = try index.search("budget")
+        #expect(budget.map(\.id) == ["a"])
+        #expect(budget[0].attachment?.label == "Plan.pdf")
+        // Short terms reach attachments too.
+        #expect(try index.search("Q4").map(\.id) == ["a"])
+    }
+
+    @Test func attachmentsFollowTheirPageAndAreSharedByName() throws {
+        let index = try SearchIndex.inMemory()
+        try index.index([page("a", "A"), page("b", "B")])
+        try index.index(attachments: [
+            SearchAttachment(name: "shared.pdf", pageId: "a", label: "s.pdf", text: "common words"),
+            SearchAttachment(name: "shared.pdf", pageId: "b", label: "s.pdf", text: "common words"),
+            SearchAttachment(name: "only-a.png", pageId: "a", text: "alpha"),
+        ])
+        #expect(try index.attachmentNames(of: "a") == ["shared.pdf", "only-a.png"])
+        #expect(try index.attachmentText(named: "shared.pdf") == "common words")
+        #expect(try index.attachmentText(named: "nope.pdf") == nil)
+        #expect(Set(try index.search("common").map(\.id)) == ["a", "b"])
+        try index.removeAttachments(["only-a.png"], of: "a")
+        #expect(try index.search("alpha").isEmpty)
+        try index.remove(["a"])
+        #expect(try index.search("common").map(\.id) == ["b"])
+        #expect(try index.attachmentNames(of: "a").isEmpty)
+    }
+
     @Test func emptyAndBlankQueriesFindNothing() throws {
         let index = try SearchIndex.inMemory()
         try index.index([page("a", "Roadmap")])

@@ -49,6 +49,9 @@
                         SearchResultRow(
                             title: "Roadmap", icon: nil, snippet: "…the roadmap is due Friday, after the review…",
                             path: "Projects", terms: ["roadmap", "friday"], updatedAt: .now.addingTimeInterval(-3 * 86_400))
+                        SearchResultRow(
+                            title: "Trip", icon: "🧭", snippet: "…BOARDING PASS · gate B12…", terms: ["gate"],
+                            attachment: "boarding-pass.pdf", updatedAt: .now.addingTimeInterval(-86_400))
                     }
                 }
                 .navigationTitle("HikkiUI Gallery")

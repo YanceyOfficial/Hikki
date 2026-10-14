@@ -53,7 +53,9 @@ struct SearchPalette: View {
                             ForEach(section.items, id: \.offset) { index, hit in
                                 SearchResultRow(
                                     title: hit.title, icon: hit.icon, snippet: hit.snippet, path: path(of: hit.id),
-                                    terms: hit.terms, updatedAt: hit.updatedAt, isSelected: index == selection
+                                    terms: hit.terms,
+                                    attachment: hit.attachment.map { $0.label ?? String(localized: "app:search.image") },
+                                    updatedAt: hit.updatedAt, isSelected: index == selection
                                 )
                                 .id(index)
                                 .onTapGesture { open(hit.id) }

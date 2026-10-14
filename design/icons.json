@@ -75,6 +75,9 @@
     "file-text": {
       "sf": "doc.text"
     },
+    "paperclip": {
+      "sf": "paperclip"
+    },
     "clock": {
       "sf": "clock"
     },

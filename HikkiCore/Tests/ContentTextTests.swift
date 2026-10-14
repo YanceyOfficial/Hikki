@@ -24,6 +24,26 @@ struct ContentTextTests {
         #expect(ContentText.headings(in: .string("not a document")).isEmpty)
     }
 
+    @Test func collectsAttachedAssetsOnceEachWithFileNames() {
+        let image: JSONValue = .object([
+            "type": .string("image"), "attrs": .object(["src": .string("hikki-editor://assets/a1.png"), "alt": .string("")]),
+        ])
+        let file: JSONValue = .object([
+            "type": .string("fileAttachment"),
+            "attrs": .object([
+                "src": .string("hikki-editor://assets/f1.pdf"), "name": .string("Plan.pdf"), "size": .number(10),
+            ]),
+        ])
+        let web: JSONValue = .object(["type": .string("image"), "attrs": .object(["src": .string("https://x/y.png")])])
+        let video: JSONValue = .object([
+            "type": .string("video"), "attrs": .object(["src": .string("hikki-editor://assets/v.mp4"), "name": .string("v.mp4")]),
+        ])
+        let doc = node("doc", [node("paragraph", [text("x")]), image, node("toggle", [file, image]), web, video])
+        #expect(
+            ContentText.assets(in: doc) == [AssetReference(name: "a1.png"), AssetReference(name: "f1.pdf", label: "Plan.pdf")])
+        #expect(ContentText.assets(in: nil).isEmpty)
+    }
+
     @Test func aRecordReadsItsHeadingsFromItsContent() throws {
         let t0 = Date(timeIntervalSince1970: 0)
         var record = DocumentRecord(

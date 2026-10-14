@@ -24,6 +24,30 @@ public enum ContentText {
         }
     }
 
+    /// The files a document attaches (inline images and file attachments stored as assets), in order, each once.
+    public static func assets(in content: JSONValue?) -> [AssetReference] {
+        guard let content else { return [] }
+        var out: [AssetReference] = []
+        var seen = Set<String>()
+        collectAssets(content, into: &out, seen: &seen)
+        return out
+    }
+
+    private static func collectAssets(_ node: JSONValue, into out: inout [AssetReference], seen: inout Set<String>) {
+        guard case .object(let fields) = node else { return }
+        if case .string(let type)? = fields["type"], type == "image" || type == "fileAttachment",
+            case .object(let attrs)? = fields["attrs"], case .string(let src)? = attrs["src"],
+            let name = AssetStore.name(fromURL: src), seen.insert(name).inserted
+        {
+            var label: String?
+            if type == "fileAttachment", case .string(let fileName)? = attrs["name"], !fileName.isEmpty { label = fileName }
+            out.append(AssetReference(name: name, label: label))
+        }
+        if case .array(let children)? = fields["content"] {
+            for child in children { collectAssets(child, into: &out, seen: &seen) }
+        }
+    }
+
     /// The text of a node and everything in it (a hard break counts as a space).
     static func plainText(of node: JSONValue) -> String {
         guard case .object(let fields) = node else { return "" }
@@ -34,7 +58,21 @@ public enum ContentText {
     }
 }
 
+/// A file a document attaches: the asset's name, and the file's own name when it was attached as a file.
+public struct AssetReference: Sendable, Equatable {
+    public var name: String
+    public var label: String?
+
+    public init(name: String, label: String? = nil) {
+        self.name = name
+        self.label = label
+    }
+}
+
 extension DocumentRecord {
     /// The page's headings, from its stored content.
     public var headings: [String] { ContentText.headings(in: try? contentValue()) }
+
+    /// The files the page attaches, from its stored content.
+    public var assetReferences: [AssetReference] { ContentText.assets(in: try? contentValue()) }
 }

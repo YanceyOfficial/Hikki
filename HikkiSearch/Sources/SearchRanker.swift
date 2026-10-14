@@ -11,24 +11,28 @@ public enum SearchRanker {
         /// The page's headings, one per line.
         public var headings: String
         public var text: String
+        /// The text of the attached file that matched best, "" without one.
+        public var attachmentText: String
         public var updatedAt: Date
         /// 0…40 from the index's BM25 order among the query's candidates (the best gets 40); 0 without an index.
         public var textRank: Int
 
         public init(
-            title: String, titlePinyin: String = "", headings: String = "", text: String = "",
+            title: String, titlePinyin: String = "", headings: String = "", text: String = "", attachmentText: String = "",
             updatedAt: Date = .distantPast, textRank: Int = 0
         ) {
             self.title = title
             self.titlePinyin = titlePinyin
             self.headings = headings
             self.text = text
+            self.attachmentText = attachmentText
             self.updatedAt = updatedAt
             self.textRank = textRank
         }
     }
 
-    /// nil when no term occurs in the title (also by pinyin), the headings or the text. Higher is better.
+    /// nil when no term occurs in the title (also by pinyin), the headings, the text or an attachment. Higher is
+    /// better.
     public static func score(_ query: SearchQuery, _ page: Page, now: Date = .now) -> Int? {
         guard !query.isEmpty else { return nil }
         let title = titleScore(query, page)
@@ -36,9 +40,13 @@ public enum SearchRanker {
             page.headings.isEmpty
             ? 0 : termsScore(query.terms, in: SearchQuery.fold(page.headings), wordStarts: 320, anywhere: 300, each: 80)
         let text = textScore(query, SearchQuery.fold(page.text))
-        guard title > 0 || headings > 0 || text > 0 else { return nil }
+        // Text inside an attached file: a step below the page's own.
+        let attachment =
+            page.attachmentText.isEmpty
+            ? 0 : termsScore(query.terms, in: SearchQuery.fold(page.attachmentText), wordStarts: 200, anywhere: 200, each: 40)
+        guard title > 0 || headings > 0 || text > 0 || attachment > 0 else { return nil }
         let rank = headings > 0 || text > 0 ? page.textRank : 0
-        return title + headings + text + rank + recency(page.updatedAt, now: now)
+        return title + headings + text + attachment + rank + recency(page.updatedAt, now: now)
     }
 
     /// The whole title (1000), its start (700), every term at a word start (500) or anywhere in it (400), some of

@@ -30,7 +30,7 @@ final class AppModel {
         workspaceStore: WorkspaceStore
     ) {
         self.store = store
-        self.searchIndexer = SearchIndexer(index: searchIndex, store: store)
+        self.searchIndexer = SearchIndexer(index: searchIndex, store: store, assets: assets)
         self.assets = assets
         self.crashReporter = crashReporter
         self.workspaceStore = workspaceStore

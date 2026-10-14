@@ -54,13 +54,13 @@ struct SearchRankerTests {
 
     private func score(
         _ query: String, title: String = "", pinyin: String = "", headings: String = "", text: String = "",
-        age: TimeInterval = 0, textRank: Int = 0
+        attachmentText: String = "", age: TimeInterval = 0, textRank: Int = 0
     ) -> Int? {
         SearchRanker.score(
             SearchQuery(query),
             SearchRanker.Page(
-                title: title, titlePinyin: pinyin, headings: headings, text: text, updatedAt: now.addingTimeInterval(-age),
-                textRank: textRank),
+                title: title, titlePinyin: pinyin, headings: headings, text: text, attachmentText: attachmentText,
+                updatedAt: now.addingTimeInterval(-age), textRank: textRank),
             now: now)
     }
 
@@ -74,11 +74,13 @@ struct SearchRankerTests {
         #expect(score("ylkw", title: "Weekly sync") == nil)
     }
 
-    @Test func titlesBeatHeadingsBeatText() throws {
+    @Test func titlesBeatHeadingsBeatTextBeatAttachments() throws {
         let title = try #require(score("roadmap", title: "Roadmap"))
         let heading = try #require(score("roadmap", title: "Notes", headings: "Roadmap\nRisks", text: "Roadmap\n…"))
         let text = try #require(score("roadmap", title: "Notes", text: "the roadmap is due friday"))
-        #expect(title > heading && heading > text)
+        let attachment = try #require(score("roadmap", title: "Notes", attachmentText: "the roadmap is due friday"))
+        #expect(title > heading && heading > text && text > attachment)
+        #expect(score("roadmap", title: "Notes", text: "nothing", attachmentText: "nothing") == nil)
     }
 
     @Test func everyTermCountsAndTheIndexOrderBreaksTies() throws {

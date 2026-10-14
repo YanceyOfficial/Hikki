@@ -20,35 +20,72 @@ public struct SearchDocument: Sendable, Equatable {
     }
 }
 
+/// The text read out of a file attached to a page (`AttachmentText`), as the index takes it.
+public struct SearchAttachment: Sendable, Equatable {
+    /// The asset's file name (unique in the workspace).
+    public var name: String
+    public var pageId: String
+    /// The file's own name as attached; nil for an inline image.
+    public var label: String?
+    public var text: String
+
+    public init(name: String, pageId: String, label: String? = nil, text: String) {
+        self.name = name
+        self.pageId = pageId
+        self.label = label
+        self.text = text
+    }
+}
+
 /// One result.
 public struct SearchHit: Sendable, Equatable, Identifiable {
+    /// The attachment a hit's excerpt came from.
+    public struct Attachment: Sendable, Equatable {
+        public var name: String
+        /// The file's own name; nil for an inline image.
+        public var label: String?
+
+        public init(name: String, label: String?) {
+            self.name = name
+            self.label = label
+        }
+    }
+
     public var id: String
     public var title: String
     public var icon: String?
-    /// The page text around the first matching term; empty when only the title matched.
+    /// Text around the first matching term — the page's, or an attachment's when only that matched; empty when
+    /// only the title matched.
     public var snippet: String
     public var updatedAt: Date
     /// The query's terms, for emphasizing them in the title and the excerpt.
     public var terms: [String]
+    /// Set when the excerpt is an attachment's text.
+    public var attachment: Attachment?
 
-    public init(id: String, title: String, icon: String?, snippet: String, updatedAt: Date, terms: [String]) {
+    public init(
+        id: String, title: String, icon: String?, snippet: String, updatedAt: Date, terms: [String],
+        attachment: Attachment? = nil
+    ) {
         self.id = id
         self.title = title
         self.icon = icon
         self.snippet = snippet
         self.updatedAt = updatedAt
         self.terms = terms
+        self.attachment = attachment
     }
 }
 
 /// The search engine: its own SQLite file holding what search needs of every page — title (with pinyin keys),
-/// headings, text — under a trigram FTS5 index (BM25, headings weighed above text; CJK needs no word breaks).
-/// The app feeds it (`index`, `remove`) and reconciles it against the store by `stamps`; nothing lives only here,
-/// so it can always be rebuilt. Titles are ranked in Swift (`SearchRanker`) over every page; the index names the
-/// candidates whose headings or text hold a term and orders them by BM25.
+/// headings, text — under a trigram FTS5 index (BM25, headings weighed above text; CJK needs no word breaks),
+/// and the text of attached files beside it. The app feeds it (`index`, `remove`) and reconciles it against the
+/// store by `stamps`; nothing lives only here, so it can always be rebuilt. Titles are ranked in Swift
+/// (`SearchRanker`) over every page; the index names the candidates whose headings, text or attachments hold a
+/// term and orders them by BM25.
 public final class SearchIndex: Sendable {
     /// Bump when what is indexed, or how, changes: an older index empties itself and the app feeds it again.
-    public static let version = 1
+    public static let version = 2
     /// How many pages the text index offers the ranker per query.
     static let candidateLimit = 200
 
@@ -66,6 +103,13 @@ public final class SearchIndex: Sendable {
     private init(queue: DatabaseQueue) throws {
         self.queue = queue
         try queue.write { db in
+            let version = try Int.fetchOne(db, sql: "PRAGMA user_version") ?? 0
+            if version != Self.version {
+                // Older layouts go whole: the app refills the index from the store.
+                for table in ["pageFts", "attachmentFts", "page", "attachment"] {
+                    try db.execute(sql: "DROP TABLE IF EXISTS \(table)")
+                }
+            }
             try db.create(table: "page", ifNotExists: true) { t in
                 t.primaryKey("id", .text)
                 t.column("title", .text).notNull().defaults(to: "")
@@ -84,13 +128,27 @@ public final class SearchIndex: Sendable {
                     t.column("text")
                 }
             }
-            let version = try Int.fetchOne(db, sql: "PRAGMA user_version") ?? 0
+            try db.create(table: "attachment", ifNotExists: true) { t in
+                t.column("name", .text).notNull()
+                t.column("pageId", .text).notNull().indexed()
+                t.column("label", .text)
+                t.column("text", .text).notNull().defaults(to: "")
+                t.primaryKey(["name", "pageId"])
+            }
+            if try !db.tableExists("attachmentFts") {
+                try db.create(virtualTable: "attachmentFts", using: FTS5()) { t in
+                    t.synchronize(withTable: "attachment")
+                    t.tokenizer = FTS5TokenizerDescriptor(components: ["trigram"])
+                    t.column("text")
+                }
+            }
             if version != Self.version {
-                try db.execute(sql: "DELETE FROM page")
                 try db.execute(sql: "PRAGMA user_version = \(Self.version)")
             }
         }
     }
+
+    // MARK: - Feeding
 
     /// Adds or replaces these pages.
     public func index(_ documents: [SearchDocument]) throws {
@@ -111,12 +169,54 @@ public final class SearchIndex: Sendable {
         }
     }
 
-    /// Forgets these pages (trashed, deleted).
+    /// Forgets these pages (trashed, deleted), their attachments with them.
     public func remove(_ ids: some Sequence<String>) throws {
         let ids = Array(ids)
         guard !ids.isEmpty else { return }
         try queue.write { db in
-            for id in ids { try db.execute(sql: "DELETE FROM page WHERE id = ?", arguments: [id]) }
+            for id in ids {
+                try db.execute(sql: "DELETE FROM attachment WHERE pageId = ?", arguments: [id])
+                try db.execute(sql: "DELETE FROM page WHERE id = ?", arguments: [id])
+            }
+        }
+    }
+
+    /// Adds or replaces the text of these attachments.
+    public func index(attachments: [SearchAttachment]) throws {
+        guard !attachments.isEmpty else { return }
+        try queue.write { db in
+            for attachment in attachments {
+                try db.execute(
+                    sql: """
+                        INSERT INTO attachment (name, pageId, label, text) VALUES (?, ?, ?, ?)
+                        ON CONFLICT(name, pageId) DO UPDATE SET label = excluded.label, text = excluded.text
+                        """, arguments: [attachment.name, attachment.pageId, attachment.label, attachment.text])
+            }
+        }
+    }
+
+    /// Forgets these attachments of a page (no longer in it).
+    public func removeAttachments(_ names: some Sequence<String>, of pageId: String) throws {
+        let names = Array(names)
+        guard !names.isEmpty else { return }
+        try queue.write { db in
+            for name in names {
+                try db.execute(sql: "DELETE FROM attachment WHERE name = ? AND pageId = ?", arguments: [name, pageId])
+            }
+        }
+    }
+
+    /// The attachments indexed for a page, by asset name.
+    public func attachmentNames(of pageId: String) throws -> Set<String> {
+        try queue.read { db in
+            Set(try String.fetchAll(db, sql: "SELECT name FROM attachment WHERE pageId = ?", arguments: [pageId]))
+        }
+    }
+
+    /// Text already read for this asset (attached to another page too), so it isn't read twice.
+    public func attachmentText(named name: String) throws -> String? {
+        try queue.read { db in
+            try String.fetchOne(db, sql: "SELECT text FROM attachment WHERE name = ? LIMIT 1", arguments: [name])
         }
     }
 
@@ -134,9 +234,12 @@ public final class SearchIndex: Sendable {
         (try? queue.read { db in try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM page") }) ?? 0
     }
 
-    /// Best first. Every title is ranked; headings and text come through the index — the trigram FTS (BM25,
-    /// headings weighed 3×) for terms of three characters or more, LIKE for shorter ones — and the BM25 order
-    /// among those candidates feeds the ranker. A hit carries an excerpt around the first matching term.
+    // MARK: - Searching
+
+    /// Best first. Every title is ranked; headings, text and attachments come through the index — the trigram
+    /// FTS (BM25, headings weighed 3×) for terms of three characters or more, LIKE for shorter ones — and the
+    /// BM25 order among those candidates feeds the ranker. A hit carries an excerpt around the first matching
+    /// term: the page's, or an attachment's when only that matched.
     public func search(_ query: String, limit: Int = 30, now: Date = .now) throws -> [SearchHit] {
         let parsed = SearchQuery(query)
         guard !parsed.isEmpty else { return [] }
@@ -153,15 +256,18 @@ public final class SearchIndex: Sendable {
                     bodies[row["id"]] = (row["headings"], row["text"])
                 }
             }
+            let attachments = try Self.attachmentCandidates(db, parsed)
             let pages = try Row.fetchAll(db, sql: "SELECT id, title, titlePinyin, icon, updatedAt FROM page")
-            let scored: [(row: Row, text: String, score: Int)] = pages.compactMap { row in
+            let scored: [(row: Row, text: String, attachment: AttachmentRow?, score: Int)] = pages.compactMap { row in
                 let id: String = row["id"]
                 let body = bodies[id]
+                let attachment = attachments[id]
                 let page = SearchRanker.Page(
                     title: row["title"], titlePinyin: row["titlePinyin"], headings: body?.headings ?? "",
-                    text: body?.text ?? "", updatedAt: row["updatedAt"], textRank: ranks[id] ?? 0)
+                    text: body?.text ?? "", attachmentText: attachment?.text ?? "", updatedAt: row["updatedAt"],
+                    textRank: ranks[id] ?? 0)
                 guard let score = SearchRanker.score(parsed, page, now: now) else { return nil }
-                return (row, body?.text ?? "", score)
+                return (row, body?.text ?? "", attachment, score)
             }
             return
                 scored
@@ -170,12 +276,30 @@ public final class SearchIndex: Sendable {
                 }
                 .prefix(limit)
                 .map { hit in
-                    SearchHit(
-                        id: hit.row["id"], title: hit.row["title"], icon: hit.row["icon"],
-                        snippet: SearchRanker.snippet(of: hit.text, terms: parsed.terms), updatedAt: hit.row["updatedAt"],
-                        terms: parsed.terms)
+                    var snippet = SearchRanker.snippet(of: hit.text, terms: parsed.terms)
+                    var attachment: SearchHit.Attachment?
+                    if snippet.isEmpty, let found = hit.attachment {
+                        snippet = SearchRanker.snippet(of: found.text, terms: parsed.terms)
+                        attachment = SearchHit.Attachment(name: found.name, label: found.label)
+                    }
+                    return SearchHit(
+                        id: hit.row["id"], title: hit.row["title"], icon: hit.row["icon"], snippet: snippet,
+                        updatedAt: hit.row["updatedAt"], terms: parsed.terms, attachment: attachment)
                 }
         }
+    }
+
+    private struct AttachmentRow {
+        var name: String
+        var label: String?
+        var text: String
+    }
+
+    /// The FTS MATCH expression for the terms of three characters or more: each one a phrase, any of them.
+    private static func matchExpression(_ query: SearchQuery) -> String? {
+        let long = query.terms.filter { $0.count >= 3 }
+        guard !long.isEmpty else { return nil }
+        return long.map { "\"" + $0.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }.joined(separator: " OR ")
     }
 
     /// Pages whose headings or text hold a term, best BM25 first (the LIKE ones after, newest first, as they
@@ -183,9 +307,7 @@ public final class SearchIndex: Sendable {
     private static func candidates(_ db: Database, _ query: SearchQuery) throws -> [(id: String, rank: Double)] {
         var out: [(id: String, rank: Double)] = []
         var seen = Set<String>()
-        let long = query.terms.filter { $0.count >= 3 }
-        if !long.isEmpty {
-            let match = long.map { "\"" + $0.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }.joined(separator: " OR ")
+        if let match = matchExpression(query) {
             for row in try Row.fetchAll(
                 db,
                 sql: """
@@ -211,6 +333,36 @@ public final class SearchIndex: Sendable {
                 arguments: StatementArguments(arguments))
             where seen.insert(id).inserted {
                 out.append((id, 0))
+            }
+        }
+        return out
+    }
+
+    /// The best-ranked attachment holding a term, per page.
+    private static func attachmentCandidates(_ db: Database, _ query: SearchQuery) throws -> [String: AttachmentRow] {
+        var out: [String: AttachmentRow] = [:]
+        if let match = matchExpression(query) {
+            for row in try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT a.name AS name, a.pageId AS pageId, a.label AS label, a.text AS text
+                    FROM attachmentFts JOIN attachment a ON a.rowid = attachmentFts.rowid
+                    WHERE attachmentFts MATCH ? ORDER BY rank LIMIT ?
+                    """, arguments: [match, candidateLimit])
+            where out[row["pageId"]] == nil {
+                out[row["pageId"]] = AttachmentRow(name: row["name"], label: row["label"], text: row["text"])
+            }
+        }
+        let short = query.terms.filter { $0.count < 3 }
+        if !short.isEmpty {
+            let clauses = short.map { _ in "text LIKE ? ESCAPE '\\'" }.joined(separator: " OR ")
+            var arguments: [DatabaseValueConvertible] = short.map(likePattern)
+            arguments.append(candidateLimit)
+            for row in try Row.fetchAll(
+                db, sql: "SELECT name, pageId, label, text FROM attachment WHERE \(clauses) LIMIT ?",
+                arguments: StatementArguments(arguments))
+            where out[row["pageId"]] == nil {
+                out[row["pageId"]] = AttachmentRow(name: row["name"], label: row["label"], text: row["text"])
             }
         }
         return out
