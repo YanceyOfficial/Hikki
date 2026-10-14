@@ -333,4 +333,26 @@ describe('Outline marks where the reader is', () => {
     expect(bridge.jumpToHeading('nope')).toBe(false)
     host.remove()
   })
+
+  it('another page opens at its top; the same page loaded again keeps its place', () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const bridge = new EditorBridge(host, { post: async () => null })
+    const scrolls: unknown[] = []
+    const original = window.scrollTo
+    window.scrollTo = ((options: unknown) => void scrolls.push(options)) as typeof window.scrollTo
+    try {
+      act(() => bridge.loadDocument(page('a')))
+      act(() => bridge.loadDocument(page('b')))
+      expect(scrolls).toEqual([
+        { top: 0, left: 0, behavior: 'instant' },
+        { top: 0, left: 0, behavior: 'instant' }
+      ])
+      act(() => bridge.loadDocument(page('b')))
+      expect(scrolls).toHaveLength(2)
+    } finally {
+      window.scrollTo = original
+      host.remove()
+    }
+  })
 })

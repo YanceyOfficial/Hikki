@@ -164,6 +164,9 @@ export class EditorBridge {
   loadDocument(payload: PagePayload): void {
     // Never drop a pending edit of the previous page.
     this.flushPending()
+    // Another page starts at its top (the web view's scroll would otherwise carry over from the last one).
+    if (payload.id !== this.page.get().docId)
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
     this.editor?.destroy()
     this.host.replaceChildren()
     this.lastActive = ''
