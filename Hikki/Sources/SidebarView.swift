@@ -306,7 +306,8 @@ private struct SidebarDestination<Label: View>: View {
         if wide {
             let selected = showsSelection && navigator.route == route
             Button {
-                if let id = route.pageID { navigator.open(id) } else { navigator.go(route) }
+                // Mac/iPad: the row's page joins the tab strip (or its tab gets focus).
+                navigator.openFromSidebar(route)
             } label: {
                 label
                     .padding(.leading, reservesChevron ? Size.sidebarIcon + Spacing.s1 + Spacing.s2 : 0)

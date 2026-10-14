@@ -212,27 +212,29 @@ private struct WorkspaceSection: View {
                     .accessibilityIdentifier("settings-name")
             }
             WorkspaceIconRow()
-            LabeledContent {
+        } footer: {
+            Text("app:settings.icon.detail")
+        }
+        Section {
+            LabeledContent("app:settings.storage.location") {
                 HStack(spacing: Spacing.s2) {
                     storage
-                    Button("app:settings.storage.change") { choosingFolder = true }
-                        .buttonStyle(.borderless)
+                    Button("app:settings.change") { choosingFolder = true }
                         .accessibilityIdentifier("settings-change-folder")
                 }
-            } label: {
-                Text("app:settings.storage")
-                Text(storageFailed ? "app:settings.storage.error" : "app:settings.storage.detail")
-                    .font(.caption)
-                    .foregroundStyle(storageFailed ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
-                if case .folder = model.workspace?.location {
+            }
+            if case .folder = model.workspace?.location {
+                LabeledContent("app:settings.storage.sync") {
                     syncStatus
-                        .font(.caption)
                         .foregroundStyle(model.syncError == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
                         .accessibilityIdentifier("settings-sync-status")
                 }
             }
         } header: {
-            Text("app:settings.group.workspace")
+            Text("app:settings.storage")
+        } footer: {
+            Text(storageFailed ? "app:settings.storage.error" : "app:settings.storage.detail")
+                .foregroundStyle(storageFailed ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
         }
         // Moving to (or joining) a folder — put it in iCloud Drive to use the workspace on other devices.
         .fileImporter(isPresented: $choosingFolder, allowedContentTypes: [.folder]) { result in
@@ -288,25 +290,24 @@ private struct WorkspaceIconRow: View {
 
     var body: some View {
         LabeledContent {
-            HStack(spacing: Spacing.s2) {
-                Button("app:settings.icon.upload") { importing = true }
-                Button("app:settings.icon.emoji") { pickingEmoji = true }
-                    .popover(isPresented: $pickingEmoji) { emojiGrid }
-                if model.workspace?.icon != nil {
-                    Button("app:settings.icon.remove", role: .destructive) { model.setWorkspaceIcon(nil) }
-                }
-            }
-            // Borderless: in an iOS form row, plain buttons would all fire on one tap.
-            .buttonStyle(.borderless)
-        } label: {
             HStack(spacing: Spacing.s3) {
-                WorkspaceBadge(initial: model.workspace?.initial ?? "H", icon: model.workspace?.icon, size: Size.iconButton + Spacing.s3)
-                VStack(alignment: .leading, spacing: Spacing.s0_5) {
-                    Text("app:settings.icon")
-                    Text(failed ? "app:settings.icon.error" : "app:settings.icon.detail")
-                        .font(.caption)
-                        .foregroundStyle(failed ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+                WorkspaceBadge(initial: model.workspace?.initial ?? "H", icon: model.workspace?.icon, size: Size.iconButton)
+                Menu("app:settings.change") {
+                    Button("app:settings.icon.upload") { importing = true }
+                    Button("app:settings.icon.emoji") { pickingEmoji = true }
+                    if model.workspace?.icon != nil {
+                        Divider()
+                        Button("app:settings.icon.remove", role: .destructive) { model.setWorkspaceIcon(nil) }
+                    }
                 }
+                .fixedSize()
+                .accessibilityIdentifier("settings-icon-menu")
+                .popover(isPresented: $pickingEmoji) { emojiGrid }
+            }
+        } label: {
+            Text("app:settings.icon")
+            if failed {
+                Text("app:settings.icon.error").font(.caption).foregroundStyle(.red)
             }
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.image]) { result in
@@ -418,11 +419,12 @@ private struct LanguageSection: View {
     var body: some View {
         Section {
             LabeledContent("app:settings.language") {
-                Text(verbatim: Self.currentLanguage)
+                HStack(spacing: Spacing.s2) {
+                    Text(verbatim: Self.currentLanguage)
+                    Button("app:settings.change", action: openLanguageSettings)
+                        .accessibilityIdentifier("settings-language-change")
+                }
             }
-            Button("app:settings.language.open", action: openLanguageSettings)
-        } header: {
-            Text("app:settings.language")
         } footer: {
             Text("app:settings.language.detail")
         }

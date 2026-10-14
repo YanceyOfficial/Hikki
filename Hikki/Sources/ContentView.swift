@@ -263,6 +263,9 @@ private struct NativeDetailToolbar: ToolbarContent {
     @Environment(AppModel.self) private var model
     let navigator: Navigator
     let editor: EditorController
+    @AppStorage(InspectorPreferences.widthKey) private var inspectorWidth = Double(Size.inspectorIdeal)
+
+    private var inspectorOpen: Bool { navigator.isShowingInspector && navigator.route.pageID != nil }
 
     // Photos' toolbar: each group is its own Liquid Glass capsule — back/forward, the tabs, the page's
     // actions. (Search lives in the sidebar's glass field.)
@@ -303,7 +306,14 @@ private struct NativeDetailToolbar: ToolbarContent {
                     })
             )
             .frame(minWidth: 240, idealWidth: 480, maxWidth: 640)  // design-lint: allow (toolbar item width)
+            // The toolbar centres it over the whole detail column; with the inspector open that is page + panel, so
+            // it moves left by half the panel to sit over the page.
+            // Its own glass (the toolbar's shared capsule is hidden below), so the capsule moves with it.
+            .glassEffect(.regular, in: .capsule)
+            .offset(x: inspectorOpen ? -CGFloat(inspectorWidth) / 2 : 0)
+            .animation(Motion.easeOut(), value: inspectorOpen)
         }
+        .sharedBackgroundVisibility(.hidden)
         if let id = navigator.route.pageID, let page = model.tree.page(id) {
             if page.isLocked {
                 ToolbarItem(placement: .primaryAction) { LockIndicator(page: page, toolbar: true) }

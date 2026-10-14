@@ -194,6 +194,9 @@ HikkiUITests/                 XCUITest flows
   (`safeFrameSrc`). YouTube's player refuses to play (error 153) without an HTTP Referer, which a page on
   the app's own scheme never sends, so with `VITE_HIKKI_BFF_URL` set the frame loads the BFF's shim page
   (`/embed/youtube/<id>`, `bff/src/index.ts`) and the player sees that as its referrer.
+- **Tabs from the sidebar** (Mac/iPad): a sidebar row focuses the tab already showing its page, or opens it as a new tab
+  at the end; past `Navigator.recentTabLimit` the least recently focused tab closes (`NavigationTabs.openRecent`,
+  recency kept in the saved tabs). Links and history still navigate inside the active tab.
 - **Page links** (`editor/src/extensions/page-links.ts`): `hikki://page/<id>#<block>`. The native side feeds the editor
   the page index (`window.hikki.setPages`) so pasted links get titles; "Copy link to block" puts a ready `<a>` plus the
   URL on the clipboard; a plain-text paste of a link becomes a labelled hyperlink, and so does a dropped one: a

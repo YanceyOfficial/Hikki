@@ -2194,6 +2194,23 @@
         }
       }
     },
+    "app:settings.change": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改"
+          }
+        }
+      }
+    },
     "app:settings.done": {
       "extractionState": "manual",
       "localizations": {
@@ -2319,13 +2336,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Emoji…"
+            "value": "Emoji"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "选择 Emoji…"
+            "value": "选择 Emoji"
           }
         }
       }
@@ -2370,13 +2387,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Upload Image…"
+            "value": "Upload Image"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "上传图片…"
+            "value": "上传图片"
           }
         }
       }
@@ -2404,30 +2421,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hikki follows your system language. You can choose a different one for Hikki in System Settings."
+            "value": "Hikki follows the system language unless you choose another one for it."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hikki 跟随系统语言，也可以在系统设置中为 Hikki 单独选择语言。"
-          }
-        }
-      }
-    },
-    "app:settings.language.open": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Open System Settings"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "打开系统设置"
+            "value": "Hikki 默认跟随系统语言，也可以单独为它选择。"
           }
         }
       }
@@ -2523,13 +2523,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Settings…"
+            "value": "Settings"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "设置…"
+            "value": "设置"
           }
         }
       }
@@ -2653,23 +2653,6 @@
         }
       }
     },
-    "app:settings.storage.change": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Change folder…"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "更改文件夹…"
-          }
-        }
-      }
-    },
     "app:settings.storage.detail": {
       "extractionState": "manual",
       "localizations": {
@@ -2704,6 +2687,23 @@
         }
       }
     },
+    "app:settings.storage.location": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Location"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "位置"
+          }
+        }
+      }
+    },
     "app:settings.storage.notSynced": {
       "extractionState": "manual",
       "localizations": {
@@ -2734,6 +2734,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ 个无法读取"
+          }
+        }
+      }
+    },
+    "app:settings.storage.sync": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同步"
           }
         }
       }

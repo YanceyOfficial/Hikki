@@ -72,7 +72,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
               >
                 {t('page.savePosition')}
               </CoverAction>
-              <Separator orientation="vertical" className="mx-0.5 h-4 self-center" />
+              <Separator orientation="vertical" className="mx-0.5 h-4 self-center!" />
               <CoverAction onClick={() => setDraftY(null)}>
                 {t('page.cancelReposition')}
               </CoverAction>
@@ -97,7 +97,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
                 </CoverPopover>
                 {isImageCover(page.cover) && (
                   <>
-                    <Separator orientation="vertical" className="mx-0.5 h-4 self-center" />
+                    <Separator orientation="vertical" className="mx-0.5 h-4 self-center!" />
                     <CoverAction onClick={() => setDraftY(coverPosition(page.cover))}>
                       {t('page.reposition')}
                     </CoverAction>

@@ -42,13 +42,29 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
     }
 
     public private(set) var tabs: [Tab]
-    public private(set) var activeID: UUID
+    public private(set) var activeID: UUID {
+        didSet { touch(activeID) }
+    }
     public var maxHistory = 50
+    /// Tab ids, most recently focused first — what `openRecent` evicts by.
+    public private(set) var recency: [UUID] = []
 
     public init(initial: Route) {
         let tab = Tab(route: initial)
         tabs = [tab]
         activeID = tab.id
+        recency = [tab.id]
+    }
+
+    private enum CodingKeys: String, CodingKey { case tabs, activeID, maxHistory, recency }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        tabs = try c.decode([Tab].self, forKey: .tabs)
+        activeID = try c.decode(UUID.self, forKey: .activeID)
+        maxHistory = try c.decodeIfPresent(Int.self, forKey: .maxHistory) ?? 50
+        // Saved before recency existed: the strip's order, the active tab first.
+        recency = try c.decodeIfPresent([UUID].self, forKey: .recency) ?? [activeID] + tabs.map(\.id).filter { $0 != activeID }
     }
 
     public var active: Tab { tabs.first { $0.id == activeID } ?? tabs[0] }
@@ -99,6 +115,25 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
         navigate(to: route)
     }
 
+    /// A page (or Home, Trash) picked in the sidebar: the tab already showing it gets focus; otherwise it opens in a new
+    /// tab at the end, and past `limit` tabs the least recently focused one closes (never the new one) — the strip keeps
+    /// the latest few, like a browser that tidies up after itself.
+    @discardableResult
+    public mutating func openRecent(_ route: Route, limit: Int) -> UUID {
+        if let existing = tabs.first(where: { $0.route == route }) {
+            activeID = existing.id
+            return existing.id
+        }
+        let tab = Tab(route: route)
+        tabs.append(tab)
+        activeID = tab.id
+        while tabs.count > max(limit, 1), let oldest = recency.last(where: { $0 != tab.id }) {
+            tabs.removeAll { $0.id == oldest }
+            recency.removeAll { $0 == oldest }
+        }
+        return tab.id
+    }
+
     /// Cycles focus (⌃Tab / ⌃⇧Tab).
     public mutating func selectNeighbor(_ delta: Int) {
         guard let index = tabs.firstIndex(where: { $0.id == activeID }) else { return }
@@ -111,6 +146,7 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
     public mutating func close(_ id: UUID) -> Bool {
         guard tabs.count > 1, let index = tabs.firstIndex(where: { $0.id == id }) else { return false }
         tabs.remove(at: index)
+        recency.removeAll { $0 == id }
         if activeID == id { activeID = tabs[min(index, tabs.count - 1)].id }
         return true
     }
@@ -121,6 +157,11 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
         for index in tabs.indices where !tabs[index].prune(isGone) {
             tabs[index] = Tab(id: tabs[index].id, route: fallback)
         }
+    }
+
+    private mutating func touch(_ id: UUID) {
+        recency.removeAll { $0 == id }
+        recency.insert(id, at: 0)
     }
 
     private mutating func update(_ id: UUID, _ body: (inout Tab) -> Void) {

@@ -137,6 +137,37 @@ struct NavigationTabsTests {
         #expect(tabs.route == "home")
     }
 
+    @Test func sidebarPicksFocusTheirTabOrOpenOneAndKeepTheLatestFew() {
+        var tabs = Tabs(initial: "home")
+        tabs.openRecent("a", limit: 3)
+        tabs.openRecent("b", limit: 3)
+        #expect(tabs.tabs.map(\.route) == ["home", "a", "b"])
+        // Already open: focused, nothing added.
+        tabs.openRecent("a", limit: 3)
+        #expect(tabs.tabs.map(\.route) == ["home", "a", "b"])
+        #expect(tabs.route == "a")
+        // A fourth closes the least recently focused (home), not the order's first by accident.
+        tabs.openRecent("c", limit: 3)
+        #expect(tabs.tabs.map(\.route) == ["a", "b", "c"])
+        tabs.select(tabs.tabs[0].id)  // a
+        tabs.openRecent("d", limit: 3)
+        #expect(tabs.tabs.map(\.route) == ["a", "c", "d"])
+        #expect(tabs.route == "d")
+    }
+
+    @Test func recencySurvivesJSONAndOlderDataWithoutIt() throws {
+        var tabs = Tabs(initial: "home")
+        tabs.openTab("a")
+        tabs.select(tabs.tabs[0].id)
+        let decoded = try JSONDecoder().decode(Tabs.self, from: JSONEncoder().encode(tabs))
+        #expect(decoded.recency == tabs.recency)
+        let old =
+            #"{"tabs":[{"id":"00000000-0000-0000-0000-000000000001","history":["x"],"position":0},{"id":"00000000-0000-0000-0000-000000000002","history":["y"],"position":0}],"activeID":"00000000-0000-0000-0000-000000000002","maxHistory":50}"#
+        let legacy = try JSONDecoder().decode(Tabs.self, from: Data(old.utf8))
+        #expect(legacy.recency.first == legacy.activeID)
+        #expect(legacy.recency.count == 2)
+    }
+
     @Test func roundTripsThroughJSON() throws {
         var tabs = Tabs(initial: "home")
         tabs.navigate(to: "a")

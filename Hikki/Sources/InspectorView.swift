@@ -83,16 +83,18 @@ struct InspectorView: View {
     var body: some View {
         @Bindable var navigator = navigator
         VStack(spacing: Spacing.s0) {
-            // Xcode's inspector tabs: plain icons in a row, the chosen one in the tone.
-            HStack(spacing: Spacing.s1) {
+            // A Liquid Glass capsule of tabs (the system tab bar's look): the chosen one on a pill, in the tone.
+            HStack(spacing: Spacing.s0_5) {
                 ForEach(InspectorTab.allCases) { tab in
                     InspectorTabButton(tab: tab, isSelected: navigator.inspectorTab == tab) {
-                        navigator.inspectorTab = tab
+                        withAnimation(Motion.easeOut()) { navigator.inspectorTab = tab }
                     }
                 }
             }
+            .padding(Spacing.s1)
+            .glassEffect(.regular, in: .capsule)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, Spacing.s1_5)
+            .padding(.vertical, Spacing.s2)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("inspector-tabs")
             Divider()
@@ -120,11 +122,14 @@ private struct InspectorTabButton: View {
     var body: some View {
         Button(action: action) {
             IconView(tab.icon, size: TextSize.base.rawValue)
-                .foregroundStyle(isSelected ? colorTone.ink : Theme.subtleForeground)
-                .frame(width: Size.iconButton + Spacing.s2, height: Size.iconButton)
-                .contentShape(.rect)
+                .foregroundStyle(isSelected ? colorTone.ink : Theme.foreground)
+                .frame(width: Size.iconButton + Spacing.s6, height: Size.iconButton + Spacing.s1)
+                .background {
+                    if isSelected { Capsule().fill(Theme.accentStrong) }
+                }
+                .contentShape(.capsule)
         }
-        .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.md))
+        .buttonStyle(.plain)
         .help(tab.title)
         .accessibilityLabel(tab.title)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)

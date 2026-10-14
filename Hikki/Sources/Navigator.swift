@@ -103,6 +103,16 @@ final class Navigator {
         syncSelection()
     }
 
+    /// How many tabs sidebar picks keep in the strip (the least recently used one closes past this).
+    static let recentTabLimit = 6
+
+    /// A sidebar row: its tab gets focus, or it joins the strip as a new tab (the oldest leaves past the limit).
+    func openFromSidebar(_ route: Route) {
+        if let id = route.pageID { reveal(id) }
+        tabs.openRecent(route, limit: Self.recentTabLimit)
+        syncSelection()
+    }
+
     func selectTab(_ id: UUID) {
         tabs.select(id)
         syncSelection()
