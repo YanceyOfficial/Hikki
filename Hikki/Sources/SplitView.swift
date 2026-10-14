@@ -51,9 +51,8 @@ struct SplitDetail<Leading: View>: View {
                 withAnimation(Motion.easeOut()) { fraction = 0.5 }
             }
             #if os(macOS)
-                .onHover { inside in
-                    if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
-                }
+                // The resize cursor over the whole grip (a pushed NSCursor was reset by the web views beside it).
+                .pointerStyle(.columnResize)
             #endif
             .gesture(
                 DragGesture(minimumDistance: 1, coordinateSpace: .global)
