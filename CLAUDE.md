@@ -197,6 +197,13 @@ HikkiUITests/                 XCUITest flows
   (`safeFrameSrc`). YouTube's player refuses to play (error 153) without an HTTP Referer, which a page on
   the app's own scheme never sends, so with `VITE_HIKKI_BFF_URL` set the frame loads the BFF's shim page
   (`/embed/youtube/<id>`, `bff/src/index.ts`) and the player sees that as its referrer.
+- **Home** (`Hikki/Sources/HomeView.swift`) is a database of every page (Notion's): a native `Table` (Name, Location,
+  Created, Edited, Words, Favorite — click a header to sort, double-click or Return opens) or a gallery of cards, with
+  a filter and New Page on top; iPhone gets a list. Sorting is `HomeSort` (Sendable, for Swift 6's table). The sidebar
+  shows Home and Trash as Notion's row of icons (the open one widens into a pill with its name) and no section title.
+  Trash has the same layout (table: deleted, deleted for good, Restore/Delete). Settings → Workspace → Keep deleted pages
+  (7/30/90 days or until emptied, default 30; `TrashPreferences`) purges older trash at launch and activation
+  (`DocumentStore.purgeTrash`); the deletion reaches other devices through the workspace folder.
 - **Tabs from the sidebar** (Mac/iPad): a sidebar row focuses the tab already showing its page, or opens it as a new tab
   at the end; past `Navigator.recentTabLimit` the least recently focused tab closes (`NavigationTabs.openRecent`,
   recency kept in the saved tabs). Links and history still navigate inside the active tab.

@@ -120,9 +120,6 @@ public struct TabStrip<Leading: View>: View {
             SidebarIconButton("app:tabs.new", symbol: .plus, action: onNew)
         }
         .coordinateSpace(name: tabStripSpace)
-        // The toolbar's glass group is a point taller than this row and hangs it from its top, so the capsules
-        // and "+" sat a point above the group's middle (measured on 2x captures); down by that point.
-        .offset(y: Spacing.s0_5 / 2)
         .overlay {
             // The line sits on the strip's own middle (the toolbar bar is taller than the tabs).
             GeometryReader { strip in

@@ -1,341 +1,349 @@
-import Charts
 import HikkiCore
 import HikkiUI
 import SwiftUI
 
-/// Home: a greeting, this workspace at a glance (totals, a writing heatmap, words over the last month) and
-/// the pages to jump back into. Native SwiftUI + Swift Charts, painted in the colour tone.
+/// How Home shows the workspace's pages.
+enum HomeLayout: String, CaseIterable, Identifiable {
+    case table, gallery
+
+    static let storageKey = "home.layout"
+
+    var id: String { rawValue }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .table: "app:home.layout.table"
+        case .gallery: "app:home.layout.gallery"
+        }
+    }
+
+    var icon: Icon {
+        switch self {
+        case .table: .listBullets
+        case .gallery: .browsers
+        }
+    }
+}
+
+/// One page as Home lists it: what the columns show, flattened so the table can sort on any of them.
+nonisolated struct HomeRow: Identifiable, Hashable, Sendable {
+    let id: String
+    let title: String
+    let icon: String?
+    let location: String
+    let createdAt: Date
+    let updatedAt: Date
+    let words: Int
+    let isFavorite: Bool
+}
+
+/// The order of Home's rows: a column and a direction (the table's headers set it; a menu does elsewhere).
+nonisolated struct HomeSort: SortComparator, Hashable, Sendable {
+    enum Field: String, Hashable, Sendable {
+        case name, location, created, edited, words, favorite
+    }
+
+    var field: Field
+    var order: SortOrder = .forward
+
+    func compare(_ a: HomeRow, _ b: HomeRow) -> ComparisonResult {
+        let result: ComparisonResult =
+            switch field {
+            case .name: a.title.localizedStandardCompare(b.title)
+            case .location: a.location.localizedStandardCompare(b.location)
+            case .created: Self.compare(a.createdAt, b.createdAt)
+            case .edited: Self.compare(a.updatedAt, b.updatedAt)
+            case .words: Self.compare(a.words, b.words)
+            case .favorite: Self.compare(a.isFavorite ? 1 : 0, b.isFavorite ? 1 : 0)
+            }
+        return order == .forward ? result : result.reversed
+    }
+
+    private static func compare<T: Comparable>(_ a: T, _ b: T) -> ComparisonResult {
+        a < b ? .orderedAscending : a > b ? .orderedDescending : .orderedSame
+    }
+}
+
+extension ComparisonResult {
+    nonisolated fileprivate var reversed: ComparisonResult {
+        switch self {
+        case .orderedAscending: .orderedDescending
+        case .orderedDescending: .orderedAscending
+        case .orderedSame: .orderedSame
+        }
+    }
+}
+
+/// Home: every page of the workspace as a database (Notion's) — a sortable table of names, places, dates and sizes,
+/// or a gallery of cards — with a filter and New Page on top. iPhone gets the same as a list.
 struct HomeView: View {
     @Environment(AppModel.self) private var model
     let navigator: Navigator
-
-    /// Activity loaded for up to a year; the heatmap shows as many weeks as fit its width.
-    private static let weeks = 53
-    @State private var activity: [DailyActivity] = []
-    @State private var stats = WorkspaceStats(pages: 0, words: 0)
+    @AppStorage(HomeLayout.storageKey) private var layout = HomeLayout.table
+    @State private var filter = ""
+    @State private var sortOrder = [HomeSort(field: .edited, order: .reverse)]
+    @State private var selection: Set<HomeRow.ID> = []
     #if os(iOS)
         @Environment(\.horizontalSizeClass) private var sizeClass
     #endif
 
-    /// Four tiles across on a wide window, two by two on an iPhone (four wrapped every label).
-    private var statColumns: Int {
+    private var compact: Bool {
         #if os(iOS)
-            sizeClass == .compact ? 2 : 4
+            sizeClass == .compact
         #else
-            4
+            false
         #endif
     }
 
     var body: some View {
-        ScrollView {
-            // One container so neighbouring glass shapes blend and render together.
-            GlassEffectContainer(spacing: Spacing.s3) {
-                VStack(alignment: .leading, spacing: Spacing.s8) {
-                    header
-                    statTiles
-                    HomeCard {
-                        ActivityHeatmap(activity: activity, weeks: Self.weeks)
-                    } title: {
-                        Text("app:home.activity")
-                    } subtitle: {
-                        Text("app:home.activity.summary \(String(activity.reduce(0) { $0 + $1.edits }))")
-                    }
-                    HomeCard {
-                        WritingChart(activity: activity)
-                    } title: {
-                        Text("app:home.writing")
-                    } subtitle: {
-                        Text("app:home.writing.subtitle")
-                    }
-                    recent
+        let rows = self.rows
+        VStack(alignment: .leading, spacing: Spacing.s0) {
+            header(count: rows.count)
+                .padding(.horizontal, Spacing.s6)
+                .padding(.top, Spacing.s6)
+                .padding(.bottom, Spacing.s3)
+            if model.tree.all.isEmpty {
+                empty("app:home.empty")
+            } else if rows.isEmpty {
+                empty("app:home.noMatches")
+            } else if compact {
+                list(rows)
+            } else {
+                switch layout {
+                case .table: table(rows)
+                case .gallery: gallery(rows)
                 }
             }
-            .frame(maxWidth: 920)  // design-lint: allow (reading width)
-            .padding(.horizontal, Spacing.s8)
-            .padding(.vertical, Spacing.s10)
-            .frame(maxWidth: .infinity)
         }
-        // Glass needs something to refract: a soft wash of the colour tone behind the page.
-        .background { HomeBackdrop() }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        // One surface with the table under the title (Music's): the table's own background, not the page's darker one.
+        .background(Theme.listSurface)
         .navigationTitle("app:nav.home")
         #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
         #endif
-        // Reload when pages change (an edit, a new page); cheap aggregate queries.
-        .task(id: model.tree) {
-            activity = model.activity(days: Self.weeks * 7)
-            stats = model.stats()
-        }
+    }
+
+    // MARK: Rows
+
+    private var rows: [HomeRow] {
+        let query = filter.trimmingCharacters(in: .whitespaces)
+        let untitled = String(localized: "app:page.untitled")
+        return model.tree.all
+            .map { page in
+                HomeRow(
+                    id: page.id, title: page.title.isEmpty ? untitled : page.title, icon: page.icon,
+                    location: model.tree.path(to: page.id).dropLast()
+                        .map { $0.title.isEmpty ? untitled : $0.title }
+                        .joined(separator: " › "),
+                    createdAt: page.createdAt, updatedAt: page.updatedAt, words: page.wordCount,
+                    isFavorite: page.isFavorite)
+            }
+            .filter { query.isEmpty || $0.title.localizedStandardContains(query) || $0.location.localizedStandardContains(query) }
+            .sorted(using: sortOrder)
     }
 
     // MARK: Header
 
-    private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: Spacing.s1) {
-                Text(greeting).font(.largeTitle.bold())
-                Text(Date.now, format: .dateTime.weekday(.wide).month(.wide).day())
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            Button {
-                navigator.newPage()
-            } label: {
-                IconLabel("app:page.new", icon: .notePencil)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .accessibilityIdentifier("home-new-page")
-        }
-    }
-
-    private var greeting: LocalizedStringKey {
-        switch Calendar.current.component(.hour, from: .now) {
-        case 5..<12: "app:home.goodMorning"
-        case 12..<18: "app:home.goodAfternoon"
-        default: "app:home.goodEvening"
-        }
-    }
-
-    // MARK: Totals
-
-    private var statTiles: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Spacing.s3), count: statColumns), spacing: Spacing.s3) {
-            StatTile(value: stats.pages, title: "app:home.stat.pages", icon: .files)
-            StatTile(value: stats.words, title: "app:home.stat.words", icon: .textAa)
-            StatTile(value: ActivitySummary.editsThisWeek(activity, today: .now), title: "app:home.stat.week", icon: .pencilLine)
-            StatTile(value: ActivitySummary.streak(activity, today: .now), title: "app:home.stat.streak", icon: .flame)
-        }
-    }
-
-    // MARK: Recently edited
-
-    @ViewBuilder private var recent: some View {
-        let pages = model.tree.recent(limit: 8)
+    private func header(count: Int) -> some View {
         VStack(alignment: .leading, spacing: Spacing.s3) {
-            Text("app:home.recentlyEdited").font(.title3.bold())
-            if pages.isEmpty {
-                Text("app:home.empty").foregroundStyle(.secondary)
-            } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: Spacing.s3)], spacing: Spacing.s3) {
-                    ForEach(pages) { page in
-                        Button {
-                            navigator.open(page.id)
-                        } label: {
-                            RecentPageCard(page: page, parent: model.tree.path(to: page.id).dropLast().last)
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.s2) {
+                Text("app:home.allPages").font(.hk(.x2l, .bold)).foregroundStyle(Theme.foreground)
+                Text(count, format: .number).font(.hk(.md)).foregroundStyle(Theme.mutedForeground)
+                Spacer()
+            }
+            HStack(spacing: Spacing.s2) {
+                if !compact {
+                    Picker("app:home.layout", selection: $layout) {
+                        ForEach(HomeLayout.allCases) { item in
+                            IconLabel(item.title, icon: item.icon).tag(item)
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("home-recent-\(page.title)")
                     }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                    .accessibilityIdentifier("home-layout")
+                }
+                Spacer()
+                HStack(spacing: Spacing.s1_5) {
+                    IconView(.magnifyingGlass, size: TextSize.sm.rawValue).foregroundStyle(Theme.mutedForeground)
+                    TextField("app:home.filter", text: $filter)
+                        .textFieldStyle(.plain)
+                        .font(.hk(.md))
+                        .accessibilityIdentifier("home-filter")
+                }
+                .padding(.horizontal, Spacing.s2_5)
+                .frame(width: Size.homeFilter, height: Size.searchField)
+                .background(Theme.muted, in: .rect(cornerRadius: Radius.md))
+                if compact || layout == .gallery {
+                    sortMenu
+                }
+                Button {
+                    navigator.newPage()
+                } label: {
+                    IconLabel("app:page.new", icon: .notePencil)
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("home-new-page")
+            }
+        }
+    }
+
+    /// The gallery and the phone list have no column headers to click: a menu picks the order.
+    private var sortMenu: some View {
+        Menu {
+            Picker("app:home.sort", selection: sortField) {
+                Text("app:home.column.edited").tag(HomeSort.Field.edited)
+                Text("app:home.column.created").tag(HomeSort.Field.created)
+                Text("app:home.column.name").tag(HomeSort.Field.name)
+                Text("app:home.column.words").tag(HomeSort.Field.words)
+            }
+        } label: {
+            IconLabel("app:home.sort", icon: .caretUpDown)
+        }
+        .fixedSize()
+        .accessibilityIdentifier("home-sort")
+    }
+
+    /// Names sort A→Z; dates and sizes newest/largest first.
+    private var sortField: Binding<HomeSort.Field> {
+        Binding {
+            sortOrder.first?.field ?? .edited
+        } set: { field in
+            sortOrder = [HomeSort(field: field, order: field == .name ? .forward : .reverse)]
+        }
+    }
+
+    private func empty(_ text: LocalizedStringKey) -> some View {
+        Text(text)
+            .font(.hk(.md))
+            .foregroundStyle(Theme.mutedForeground)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: Layouts
+
+    /// Notion's table view: click a header to sort, double-click (or Return) a row to open it.
+    private func table(_ rows: [HomeRow]) -> some View {
+        Table(rows, selection: $selection, sortOrder: $sortOrder) {
+            TableColumn("app:home.column.name", sortUsing: HomeSort(field: .name)) { row in
+                HStack(spacing: Spacing.s2) {
+                    PageIcon(row.icon, size: 16)
+                    Text(row.title).lineLimit(1)
+                }
+                .accessibilityIdentifier("home-row-\(row.title)")
+            }
+            .width(min: 180, ideal: 280)  // design-lint: allow (table column widths)
+            TableColumn("app:home.column.location", sortUsing: HomeSort(field: .location)) { row in
+                Text(row.location).foregroundStyle(Theme.subtleForeground).lineLimit(1)
+            }
+            .width(min: 100, ideal: 180)  // design-lint: allow (table column widths)
+            TableColumn("app:home.column.created", sortUsing: HomeSort(field: .created)) { row in
+                Text(row.createdAt, format: .dateTime.year().month().day()).foregroundStyle(Theme.subtleForeground)
+            }
+            .width(min: 90, ideal: 110)  // design-lint: allow (table column widths)
+            TableColumn("app:home.column.edited", sortUsing: HomeSort(field: .edited)) { row in
+                Text(row.updatedAt, format: .relative(presentation: .named)).foregroundStyle(Theme.subtleForeground)
+            }
+            .width(min: 90, ideal: 120)  // design-lint: allow (table column widths)
+            TableColumn("app:home.column.words", sortUsing: HomeSort(field: .words)) { row in
+                Text(row.words, format: .number).foregroundStyle(Theme.subtleForeground).monospacedDigit()
+            }
+            .width(min: 50, ideal: 70)  // design-lint: allow (table column widths)
+            TableColumn("app:home.column.favorite", sortUsing: HomeSort(field: .favorite)) { row in
+                if row.isFavorite {
+                    IconView(.star, size: TextSize.sm.rawValue).foregroundStyle(Theme.subtleForeground)
                 }
             }
+            .width(min: 40, ideal: 60)  // design-lint: allow (table column widths)
         }
-    }
-}
-
-// MARK: - Pieces
-
-/// Blurred shapes in the colour tone behind Home, for its glass to pick up.
-private struct HomeBackdrop: View {
-    @Environment(\.colorTone) private var tone
-
-    var body: some View {
-        ZStack {
-            Theme.background
-            Circle().fill(tone.fill.opacity(0.28)).frame(width: 520, height: 520).blur(radius: 140).offset(x: -260, y: -260)
-            Circle().fill(tone.fill.opacity(0.16)).frame(width: 640, height: 640).blur(radius: 160).offset(x: 320, y: 120)
-            Ellipse().fill(tone.ink.opacity(0.10)).frame(width: 700, height: 360).blur(radius: 150).offset(x: -80, y: 520)
-        }
-        .ignoresSafeArea()
-    }
-}
-
-/// A titled panel on Home.
-private struct HomeCard<Content: View, Title: View, Subtitle: View>: View {
-    @ViewBuilder let content: Content
-    @ViewBuilder let title: Title
-    @ViewBuilder let subtitle: Subtitle
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.s4) {
-            VStack(alignment: .leading, spacing: Spacing.s0_5) {
-                title.font(.title3.bold())
-                subtitle.font(.subheadline).foregroundStyle(.secondary)
+        .contextMenu(forSelectionType: HomeRow.ID.self) { ids in
+            if ids.count == 1, let id = ids.first, let page = model.tree.page(id) {
+                PageActions(page: page, navigator: navigator)
             }
-            content
+        } primaryAction: { ids in
+            if let id = ids.first { navigator.openFromSidebar(.page(id)) }
         }
-        .padding(Spacing.s5)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glassEffect(.regular, in: .rect(cornerRadius: Radius.xl))
+        // Its rows on the screen's own surface, so the title above and the table read as one.
+        .scrollContentBackground(.hidden)
+        .accessibilityIdentifier("home-table")
+    }
+
+    private func gallery(_ rows: [HomeRow]) -> some View {
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: Size.homeCard), spacing: Spacing.s3)], spacing: Spacing.s3) {
+                ForEach(rows) { row in
+                    Button {
+                        navigator.openFromSidebar(.page(row.id))
+                    } label: {
+                        HomeCard(row: row)
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        if let page = model.tree.page(row.id) { PageActions(page: page, navigator: navigator) }
+                    }
+                    .accessibilityIdentifier("home-card-\(row.title)")
+                }
+            }
+            .padding(.horizontal, Spacing.s6)
+            .padding(.bottom, Spacing.s6)
+        }
+    }
+
+    private func list(_ rows: [HomeRow]) -> some View {
+        List(rows) { row in
+            Button {
+                navigator.open(row.id)
+            } label: {
+                HStack(spacing: Spacing.s3) {
+                    PageIcon(row.icon, size: 18)
+                    VStack(alignment: .leading, spacing: Spacing.s0_5) {
+                        Text(row.title).font(.hk(.base)).foregroundStyle(Theme.foreground).lineLimit(1)
+                        if !row.location.isEmpty {
+                            Text(row.location).font(.hk(.xs)).foregroundStyle(Theme.mutedForeground).lineLimit(1)
+                        }
+                    }
+                    Spacer(minLength: Spacing.s2)
+                    Text(row.updatedAt, format: .relative(presentation: .named))
+                        .font(.hk(.xs))
+                        .foregroundStyle(Theme.mutedForeground)
+                }
+            }
+            .accessibilityIdentifier("home-row-\(row.title)")
+        }
+        .listStyle(.plain)
     }
 }
 
-/// One number with its label, the icon in the colour tone.
-private struct StatTile: View {
-    let value: Int
-    let title: LocalizedStringKey
-    let icon: Icon
-    @Environment(\.colorTone) private var tone
+/// A page in Home's gallery: its icon large, the title, where it sits, when it was edited and how long it is.
+private struct HomeCard: View {
+    let row: HomeRow
+    @State private var hovering = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.s2) {
-            IconView(icon, size: TextSize.lg.rawValue).foregroundStyle(tone.fill)
-            Text(value, format: .number)
-                .font(.title.bold())
-                .monospacedDigit()
-                .contentTransition(.numericText())
-            Text(title).font(.subheadline).foregroundStyle(.secondary)
+            PageIcon(row.icon, size: 28)
+            Text(row.title).font(.hk(.base, .medium)).foregroundStyle(Theme.foreground).lineLimit(2)
+            if !row.location.isEmpty {
+                Text(row.location).font(.hk(.xs)).foregroundStyle(Theme.mutedForeground).lineLimit(1)
+            }
+            Spacer(minLength: Spacing.s0)
+            HStack(spacing: Spacing.s1) {
+                Text(row.updatedAt, format: .relative(presentation: .named))
+                Text(verbatim: "·")
+                Text("app:home.words \(row.words.formatted())")
+                Spacer(minLength: Spacing.s0)
+                if row.isFavorite { IconView(.star, size: TextSize.xs.rawValue) }
+            }
+            .font(.hk(.xs))
+            .foregroundStyle(Theme.mutedForeground)
         }
         .padding(Spacing.s4)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glassEffect(.regular, in: .rect(cornerRadius: Radius.xl))
-    }
-}
-
-/// GitHub-style grid: a column per week, a cell per day, deeper tone for busier days.
-private struct ActivityHeatmap: View {
-    let activity: [DailyActivity]
-    let weeks: Int
-    @Environment(\.colorTone) private var tone
-
-    @State private var width: CGFloat = 0
-
-    var body: some View {
-        let byDay = Dictionary(activity.map { (ActivityDay.key($0.day), $0.edits) }, uniquingKeysWith: +)
-        let busiest = byDay.values.max() ?? 0
-        // As many weeks as fit the card's width (up to `weeks`), ending with this one.
-        let step = Size.heatmapCell + Spacing.s1
-        let fitting = max(1, min(weeks, Int((width + Spacing.s1) / step)))
-        let grid = ActivitySummary.grid(weeks: fitting, today: .now)
-        VStack(alignment: .leading, spacing: Spacing.s2) {
-            VStack(alignment: .leading, spacing: Spacing.s1) {
-                monthLabels(grid)
-                HStack(alignment: .top, spacing: Spacing.s1) {
-                    ForEach(Array(grid.enumerated()), id: \.offset) { _, week in
-                        VStack(spacing: Spacing.s1) {
-                            ForEach(Array(week.enumerated()), id: \.offset) { _, day in
-                                cell(day, edits: day.map { byDay[ActivityDay.key($0)] ?? 0 } ?? 0, busiest: busiest)
-                            }
-                        }
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .onGeometryChange(for: CGFloat.self) {
-                $0.size.width
-            } action: {
-                width = $0
-            }
-            legend
-        }
-    }
-
-    @ViewBuilder private func cell(_ day: Date?, edits: Int, busiest: Int) -> some View {
-        if let day {
-            RoundedRectangle(cornerRadius: Radius.sm)
-                .fill(color(level: ActivitySummary.level(edits, max: busiest)))
-                .frame(width: Size.heatmapCell, height: Size.heatmapCell)
-                .help(String(localized: "app:home.activity.day \(String(edits)) \(day.formatted(.dateTime.month().day()))"))
-        } else {
-            Color.clear.frame(width: Size.heatmapCell, height: Size.heatmapCell)
-        }
-    }
-
-    private func color(level: Int) -> AnyShapeStyle {
-        level == 0 ? AnyShapeStyle(.quaternary) : AnyShapeStyle(tone.fill.opacity([0, 0.3, 0.5, 0.75, 1][level]))
-    }
-
-    /// A month's short name above the first week that starts in it.
-    private func monthLabels(_ grid: [[Date?]]) -> some View {
-        HStack(spacing: Spacing.s1) {
-            ForEach(Array(grid.enumerated()), id: \.offset) { index, week in
-                Text(isNewMonth(grid, index) ? (week.compactMap { $0 }.first?.formatted(.dateTime.month(.abbreviated)) ?? "") : "")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .fixedSize()
-                    .frame(width: Size.heatmapCell, alignment: .leading)
-            }
-        }
-    }
-
-    private func isNewMonth(_ grid: [[Date?]], _ index: Int) -> Bool {
-        guard let first = grid[index].compactMap({ $0 }).first else { return false }
-        guard index > 0, let previous = grid[index - 1].compactMap({ $0 }).first else { return true }
-        return !Calendar.current.isDate(first, equalTo: previous, toGranularity: .month)
-    }
-
-    private var legend: some View {
-        HStack(spacing: Spacing.s1) {
-            Spacer()
-            Text("app:home.less").font(.caption).foregroundStyle(.secondary)
-            ForEach(0..<5) { level in
-                RoundedRectangle(cornerRadius: Radius.sm)
-                    .fill(color(level: level))
-                    .frame(width: Size.heatmapCell, height: Size.heatmapCell)
-            }
-            Text("app:home.more").font(.caption).foregroundStyle(.secondary)
-        }
-    }
-}
-
-/// Words added per day over the last 30 days.
-private struct WritingChart: View {
-    let activity: [DailyActivity]
-    @Environment(\.colorTone) private var tone
-
-    var body: some View {
-        let today = Calendar.current.startOfDay(for: .now)
-        let start = Calendar.current.date(byAdding: .day, value: -29, to: today) ?? today
-        let end = Calendar.current.date(byAdding: .day, value: 1, to: today) ?? today
-        Chart(activity.filter { $0.day >= start }, id: \.day) { day in
-            BarMark(x: .value("Day", day.day, unit: .day), y: .value("Words", day.wordsAdded))
-                .foregroundStyle(tone.fill.gradient)
-                .clipShape(.rect(cornerRadius: Radius.sm))
-        }
-        .chartXScale(domain: start...end)
-        .chartXAxis {
-            AxisMarks(values: .stride(by: .day, count: 7)) { _ in
-                AxisGridLine()
-                AxisValueLabel(format: .dateTime.month(.abbreviated).day())
-            }
-        }
-        .frame(height: 160)  // design-lint: allow (chart height)
-    }
-}
-
-/// A page to jump back into: its icon on a tinted tile, title, where it lives and when it was edited.
-private struct RecentPageCard: View {
-    let page: PageSummary
-    let parent: PageSummary?
-    @Environment(\.colorTone) private var tone
-
-    var body: some View {
-        HStack(spacing: Spacing.s3) {
-            PageIcon(page.icon, size: TextSize.x2l.rawValue)
-                .frame(width: Size.iconButton + Spacing.s4, height: Size.iconButton + Spacing.s4)
-                .background(tone.selectionFill, in: .rect(cornerRadius: Radius.lg))
-            VStack(alignment: .leading, spacing: Spacing.s0_5) {
-                Text(page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
-                    .font(.headline)
-                    .foregroundStyle(page.title.isEmpty ? .secondary : .primary)
-                    .lineLimit(1)
-                if let parent {
-                    Text("app:home.in \(parent.title.isEmpty ? String(localized: "app:page.untitled") : parent.title)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                Text(page.updatedAt, format: .relative(presentation: .named))
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(Spacing.s3)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: Size.homeCard * 0.55, alignment: .topLeading)
+        .background(hovering ? Theme.accent : Theme.card, in: .rect(cornerRadius: Radius.xl))
+        .overlay { RoundedRectangle(cornerRadius: Radius.xl).stroke(Theme.border, lineWidth: 1) }
         .contentShape(.rect(cornerRadius: Radius.xl))
-        // Interactive glass: it reacts to hover and press itself.
-        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: Radius.xl))
+        .onHover { hovering = $0 }
+        .animation(Motion.easeOut(Motion.popOut), value: hovering)
     }
 }

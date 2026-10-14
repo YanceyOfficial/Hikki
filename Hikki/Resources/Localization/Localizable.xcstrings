@@ -460,245 +460,109 @@
         }
       }
     },
-    "app:home.activity": {
+    "app:home.allPages": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activity"
+            "value": "All pages"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "活跃度"
+            "value": "全部页面"
           }
         }
       }
     },
-    "app:home.activity.day %@ %@": {
+    "app:home.column.created": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ edits · %@"
+            "value": "Created"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ 次编辑 · %@"
+            "value": "创建时间"
           }
         }
       }
     },
-    "app:home.activity.summary %@": {
+    "app:home.column.edited": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ edits in the last year"
+            "value": "Edited"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "近一年编辑 %@ 次"
+            "value": "编辑时间"
           }
         }
       }
     },
-    "app:home.empty": {
+    "app:home.column.favorite": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nothing edited yet — start with a new page."
+            "value": "Favorite"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "还没有编辑过的页面，先新建一个吧。"
+            "value": "收藏"
           }
         }
       }
     },
-    "app:home.goodAfternoon": {
+    "app:home.column.location": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Good afternoon"
+            "value": "Location"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "下午好"
+            "value": "位置"
           }
         }
       }
     },
-    "app:home.goodEvening": {
+    "app:home.column.name": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Good evening"
+            "value": "Name"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "晚上好"
+            "value": "名称"
           }
         }
       }
     },
-    "app:home.goodMorning": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Good morning"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "早上好"
-          }
-        }
-      }
-    },
-    "app:home.in %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "in %@"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "位于 %@"
-          }
-        }
-      }
-    },
-    "app:home.less": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Less"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "少"
-          }
-        }
-      }
-    },
-    "app:home.more": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "More"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "多"
-          }
-        }
-      }
-    },
-    "app:home.recentlyEdited": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recently edited"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "最近编辑"
-          }
-        }
-      }
-    },
-    "app:home.stat.pages": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pages"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "页面"
-          }
-        }
-      }
-    },
-    "app:home.stat.streak": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Day streak"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "连续天数"
-          }
-        }
-      }
-    },
-    "app:home.stat.week": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Edits this week"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "本周编辑"
-          }
-        }
-      }
-    },
-    "app:home.stat.words": {
+    "app:home.column.words": {
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -715,36 +579,138 @@
         }
       }
     },
-    "app:home.writing": {
+    "app:home.empty": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Words written"
+            "value": "No pages yet. Start one with New Page."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "写作字数"
+            "value": "还没有页面，点“新建页面”开始。"
           }
         }
       }
     },
-    "app:home.writing.subtitle": {
+    "app:home.filter": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Last 30 days"
+            "value": "Filter pages"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "近 30 天"
+            "value": "筛选页面"
+          }
+        }
+      }
+    },
+    "app:home.layout": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Layout"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "布局"
+          }
+        }
+      }
+    },
+    "app:home.layout.gallery": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gallery"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画廊"
+          }
+        }
+      }
+    },
+    "app:home.layout.table": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Table"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "表格"
+          }
+        }
+      }
+    },
+    "app:home.noMatches": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No pages match the filter."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有符合筛选条件的页面。"
+          }
+        }
+      }
+    },
+    "app:home.sort": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sort"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "排序"
+          }
+        }
+      }
+    },
+    "app:home.words %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ words"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 字"
           }
         }
       }
@@ -3129,6 +3095,91 @@
         }
       }
     },
+    "app:settings.trash": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trash"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回收站"
+          }
+        }
+      }
+    },
+    "app:settings.trash.days %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ days"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 天"
+          }
+        }
+      }
+    },
+    "app:settings.trash.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Older pages in the trash are deleted for good, on every device that uses this workspace."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回收站中超过期限的页面会被永久删除，所有使用此工作区的设备都会同步。"
+          }
+        }
+      }
+    },
+    "app:settings.trash.forever": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Until emptied"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "直到清空"
+          }
+        }
+      }
+    },
+    "app:settings.trash.keep": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep deleted pages"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保留已删除页面"
+          }
+        }
+      }
+    },
     "app:settings.version": {
       "extractionState": "manual",
       "localizations": {
@@ -3231,23 +3282,6 @@
         }
       }
     },
-    "app:sidebar.private": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Private"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "私人"
-          }
-        }
-      }
-    },
     "app:sidebar.rowMenuHelp": {
       "extractionState": "manual",
       "localizations": {
@@ -3346,6 +3380,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "此操作无法撤销。"
+          }
+        }
+      }
+    },
+    "app:trash.column.deleted": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deleted"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除时间"
+          }
+        }
+      }
+    },
+    "app:trash.column.name": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名称"
+          }
+        }
+      }
+    },
+    "app:trash.column.purge": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expires"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "到期"
           }
         }
       }
@@ -3469,23 +3554,6 @@
         }
       }
     },
-    "app:trash.filterPrompt": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Filter by page title"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "按标题筛选"
-          }
-        }
-      }
-    },
     "app:trash.isEmpty": {
       "extractionState": "manual",
       "localizations": {
@@ -3503,19 +3571,19 @@
         }
       }
     },
-    "app:trash.noMatches": {
+    "app:trash.never": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No matches"
+            "value": "Never"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "没有匹配的页面"
+            "value": "不会"
           }
         }
       }
@@ -3533,6 +3601,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "恢复"
+          }
+        }
+      }
+    },
+    "app:trash.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trash"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回收站"
           }
         }
       }

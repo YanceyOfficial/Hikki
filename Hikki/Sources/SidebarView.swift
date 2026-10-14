@@ -57,7 +57,7 @@ private struct PageRowDropDelegate: DropDelegate {
     }
 }
 
-/// Drop onto the "app:sidebar.private" header: move the dragged page to the end of the top level.
+/// Drop onto the gap above the page tree: move the dragged page to the end of the top level.
 private struct SectionDropDelegate: DropDelegate {
     let navigator: Navigator
     let model: AppModel
@@ -164,6 +164,19 @@ private struct PhoneSidebar: View {
         }
     }
 
+    /// iPhone: Home and Trash as list rows.
+    @ViewBuilder private var phonePlaces: some View {
+        SidebarDestination(route: .home, navigator: navigator, wide: false) {
+            NativeSymbolLabel("app:nav.home", icon: .house)
+        }
+        .accessibilityIdentifier("nav-home")
+        SidebarDestination(route: .trash, navigator: navigator, wide: false) {
+            NativeSymbolLabel("app:nav.trash", icon: .trash)
+        }
+        .badge(model.trash.count)
+        .accessibilityIdentifier("nav-trash")
+    }
+
     @ViewBuilder private var sections: some View {
         Section {
             // Mac/iPad: search is the glass field pinned above the list (NativeSidebarChrome).
@@ -176,22 +189,21 @@ private struct PhoneSidebar: View {
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("sidebar-search")
             }
-            SidebarDestination(route: .home, navigator: navigator, wide: wideSidebar) {
-                NativeSymbolLabel("app:nav.home", icon: .house)
-            }
-            .accessibilityIdentifier("nav-home")
-            // Trash sits with Home (as in the first design), not at the end of the tree.
-            SidebarDestination(route: .trash, navigator: navigator, wide: wideSidebar) {
-                HStack {
-                    NativeSymbolLabel("app:nav.trash", icon: .trash)
-                    // List's .badge doesn't exist in the stack; the same count, drawn here.
-                    if wideSidebar, !model.trash.isEmpty {
-                        Spacer()
-                        Text(model.trash.count, format: .number).font(.caption).foregroundStyle(.secondary)
-                    }
+            if wideSidebar {
+                // Notion's top row: the places as icons side by side, the open one widening into a pill with its name.
+                HStack(spacing: Spacing.s1) {
+                    SidebarPlace(route: .home, title: "app:nav.home", icon: .house, navigator: navigator)
+                        .accessibilityIdentifier("nav-home")
+                    SidebarPlace(
+                        route: .trash, title: "app:nav.trash", icon: .trash, navigator: navigator, count: model.trash.count
+                    )
+                    .accessibilityIdentifier("nav-trash")
+                    Spacer(minLength: 0)
                 }
+                .padding(.vertical, Spacing.s1)
+            } else {
+                phonePlaces
             }
-            .badge(wideSidebar ? 0 : model.trash.count)
         }
 
         if !model.tree.favorites.isEmpty {
@@ -219,10 +231,13 @@ private struct PhoneSidebar: View {
             }
             PhoneTree(nodes: model.tree.roots, depth: 0, navigator: navigator, wide: wideSidebar)
         } header: {
-            // No "+" here: New page sits in the toolbar on every platform. Dropping a page here moves it
-            // to the end of the top level.
-            SidebarHeader("app:sidebar.private")
+            // No title (Notion's sidebar has none here either): a thin gap that still takes a dropped page to the
+            // end of the top level.
+            Color.clear
+                .frame(height: Spacing.s3)
+                .frame(maxWidth: .infinity)
                 .background(privateTargeted ? colorTone.selectionFill : .clear, in: .rect(cornerRadius: Radius.md))
+                .contentShape(.rect)
                 .onDrop(
                     of: [.plainText], delegate: SectionDropDelegate(navigator: navigator, model: model, isTargeted: $privateTargeted))
         }
@@ -720,4 +735,52 @@ private struct NativeSidebarChrome: ViewModifier {
 extension EnvironmentValues {
     /// Set on a selected native sidebar row (Mac/iPad), so its label draws on the tone's fill.
     @Entry var sidebarRowSelected = false
+}
+
+/// One place in the sidebar's top row (Mac/iPad): an icon button; the open one is a grey pill with its name (Notion).
+private struct SidebarPlace: View {
+    let route: Route
+    let title: LocalizedStringKey
+    let icon: Icon
+    let navigator: Navigator
+    var count = 0
+    @Environment(\.colorTone) private var colorTone
+    @Environment(\.self) private var environment
+    @State private var hovering = false
+
+    var body: some View {
+        let selected = navigator.route == route
+        Button {
+            navigator.openFromSidebar(route)
+        } label: {
+            HStack(spacing: Spacing.s1_5) {
+                icon.glyph
+                    .imageScale(.large)
+                    .foregroundStyle(selected ? colorTone.fill : Theme.subtleForeground)
+                if selected {
+                    Text(title).font(.hk(.md, .medium)).foregroundStyle(Theme.foreground)
+                    if count > 0 {
+                        Text(count, format: .number).font(.hk(.xs)).foregroundStyle(Theme.mutedForeground)
+                    }
+                }
+            }
+            .padding(.horizontal, Spacing.s2_5)
+            .frame(height: Size.iconButton + Spacing.s2)
+            .background {
+                RoundedRectangle(cornerRadius: Radius.lg)
+                    .fill(
+                        selected
+                            ? Color(Theme.sidebarAccent.resolve(in: environment))
+                            : hovering ? Color(Theme.sidebarAccent.resolve(in: environment)).opacity(0.55) : .clear)
+            }
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .animation(Motion.easeOut(), value: selected)
+        .animation(Motion.easeOut(Motion.popOut), value: hovering)
+        .help(title)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+    }
 }

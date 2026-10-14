@@ -148,6 +148,21 @@ struct DocumentStoreTests {
         #expect(try store.trash().isEmpty)
     }
 
+    @Test func purgeDeletesOnlyWhatWasTrashedBeforeTheCutoff() throws {
+        let store = try DocumentStore.inMemory()
+        try store.create(id: "old", now: t0)
+        try store.create(id: "oldChild", parentId: "old", now: t0)
+        try store.create(id: "recent", now: t0)
+        try store.create(id: "live", now: t0)
+        try store.moveToTrash(id: "old", now: t0)
+        try store.moveToTrash(id: "recent", now: t0.addingTimeInterval(20 * 86_400))
+        let purged = try store.purgeTrash(deletedBefore: t0.addingTimeInterval(10 * 86_400))
+        #expect(purged == 2)  // the page and its child
+        #expect(try store.trash().map(\.id) == ["recent"])
+        #expect(try store.pages().map(\.id) == ["live"])
+        #expect(try store.document(id: "oldChild") == nil)
+    }
+
     @Test func emptyTrashKeepsLivePages() throws {
         let store = try DocumentStore.inMemory()
         try store.create(id: "a", now: t0)

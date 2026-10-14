@@ -201,6 +201,7 @@ private struct WorkspaceSection: View {
     @State private var name = ""
     @State private var choosingFolder = false
     @State private var storageFailed = false
+    @AppStorage(TrashPreferences.keepDaysKey) private var keepDays = TrashPreferences.defaultDays
 
     var body: some View {
         Section {
@@ -235,6 +236,23 @@ private struct WorkspaceSection: View {
         } footer: {
             Text(storageFailed ? "app:settings.storage.error" : "app:settings.storage.detail")
                 .foregroundStyle(storageFailed ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+        }
+        Section {
+            Picker("app:settings.trash.keep", selection: $keepDays) {
+                ForEach(TrashPreferences.choices, id: \.self) { days in
+                    if days == 0 {
+                        Text("app:settings.trash.forever").tag(days)
+                    } else {
+                        Text("app:settings.trash.days \(days.formatted())").tag(days)
+                    }
+                }
+            }
+            .accessibilityIdentifier("settings-trash-keep")
+            .onChange(of: keepDays) { _, _ in model.purgeTrash() }
+        } header: {
+            Text("app:settings.trash")
+        } footer: {
+            Text("app:settings.trash.detail")
         }
         // Moving to (or joining) a folder — put it in iCloud Drive to use the workspace on other devices.
         .fileImporter(isPresented: $choosingFolder, allowedContentTypes: [.folder]) { result in

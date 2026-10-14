@@ -41,6 +41,7 @@ final class AppModel {
         }
         startWorkspaceSync()
         searchIndexer.start()
+        purgeTrash()
     }
 
     // MARK: Workspace folder (storage option C)
@@ -284,6 +285,16 @@ final class AppModel {
         perform("delete permanently", id) { try store.deletePermanently(id: id) }
     }
 
+    /// Deletes what has been in the trash longer than Settings → Keep deleted pages allows (at launch and when the
+    /// app comes back to the front). Other devices follow through the workspace folder.
+    func purgeTrash(now: Date = .now) {
+        let days = TrashPreferences.keepDays
+        guard days > 0, let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: now) else { return }
+        if let count = perform("purge trash", nil, { try store.purgeTrash(deletedBefore: cutoff) }), count > 0 {
+            Log.info("trash purged", category: "store", context: ["pages": "\(count)", "days": "\(days)"])
+        }
+    }
+
     func emptyTrash() {
         perform("empty trash") { try store.emptyTrash() }
     }
@@ -320,4 +331,20 @@ final class AppModel {
 extension Notification.Name {
     /// Pages the workspace sync imported from the folder; `userInfo["ids"]` is `[String]`.
     static let pagesChangedOnDisk = Notification.Name("app.yancey.hikki.pagesChangedOnDisk")
+}
+
+/// Settings → Workspace → Keep deleted pages: how many days a page stays in the trash (0 = until emptied).
+enum TrashPreferences {
+    static let keepDaysKey = "trash.keepDays"
+    static let choices = [7, 30, 90, 0]
+    static let defaultDays = 30
+
+    static var keepDays: Int {
+        UserDefaults.standard.object(forKey: keepDaysKey) as? Int ?? defaultDays
+    }
+
+    /// When a page trashed at `deletedAt` goes for good, or nil when nothing is purged.
+    static func purgeDate(for deletedAt: Date) -> Date? {
+        keepDays > 0 ? Calendar.current.date(byAdding: .day, value: keepDays, to: deletedAt) : nil
+    }
 }

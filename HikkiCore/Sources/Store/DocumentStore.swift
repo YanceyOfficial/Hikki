@@ -42,14 +42,19 @@ public struct PageSummary: Codable, Sendable, Equatable, Identifiable, Fetchable
     public var deletedAt: Date?
     public var sortKey: Double
     public var lockedAt: Date?
+    /// For Home's table (created column, word count column).
+    public var createdAt: Date
+    public var wordCount: Int
 
     public var isFavorite: Bool { favoritedAt != nil }
     public var isLocked: Bool { lockedAt != nil }
 
     public init(
         id: String, parentId: String?, title: String, icon: String?, updatedAt: Date, favoritedAt: Date?, deletedAt: Date?,
-        sortKey: Double, lockedAt: Date? = nil
+        sortKey: Double, lockedAt: Date? = nil, createdAt: Date? = nil, wordCount: Int = 0
     ) {
+        self.createdAt = createdAt ?? updatedAt
+        self.wordCount = wordCount
         self.id = id
         self.parentId = parentId
         self.title = title
@@ -469,6 +474,21 @@ public final class DocumentStore: Sendable {
         _ = try writer.write { try DocumentRecord.deleteOne($0, key: id) }
     }
 
+    /// Deletes for good what has been in the trash since before `cutoff` (Settings → Keep deleted pages); returns how
+    /// many pages went. A trashed page's subtree shares its timestamp, so it goes with it.
+    @discardableResult
+    public func purgeTrash(deletedBefore cutoff: Date) throws -> Int {
+        try writer.write { db in
+            // Counted first: SQLite's change count leaves out the rows a cascade removes.
+            let count =
+                try Int.fetchOne(
+                    db, sql: "SELECT COUNT(*) FROM document WHERE deletedAt IS NOT NULL AND deletedAt < ?", arguments: [cutoff])
+                ?? 0
+            try db.execute(sql: "DELETE FROM document WHERE deletedAt IS NOT NULL AND deletedAt < ?", arguments: [cutoff])
+            return count
+        }
+    }
+
     public func emptyTrash() throws {
         try writer.write { db in
             try db.execute(sql: "DELETE FROM document WHERE deletedAt IS NOT NULL")
@@ -476,7 +496,7 @@ public final class DocumentStore: Sendable {
     }
 
     private static let summaryColumns =
-        "document.id, document.parentId, document.title, document.icon, document.updatedAt, document.favoritedAt, document.deletedAt, document.sortKey, document.lockedAt"
+        "document.id, document.parentId, document.title, document.icon, document.updatedAt, document.favoritedAt, document.deletedAt, document.sortKey, document.lockedAt, document.createdAt, document.wordCount"
 
     private static let pagesRequest = SQLRequest<PageSummary>(
         sql: "SELECT \(summaryColumns) FROM document WHERE deletedAt IS NULL ORDER BY sortKey, createdAt, id"

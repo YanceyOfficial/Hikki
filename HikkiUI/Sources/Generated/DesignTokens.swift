@@ -206,6 +206,8 @@ public nonisolated enum Size {
     public static let pdfThumbnails: CGFloat = 150
     public static let pdfPassword: CGFloat = 220
     public static let pdfFind: CGFloat = 160
+    public static let homeFilter: CGFloat = 220
+    public static let homeCard: CGFloat = 240
 }
 
 /// Motion: one timing for everything that appears, leaves or reacts (popovers, hover states, scrims).

@@ -121,7 +121,8 @@ final class EditorFlowTests: XCTestCase {
     func testSimplifiedChineseUI() throws {
         continueAfterFailure = false
         let app = launch(language: "zh-Hans")
-        XCTAssertTrue(waitOrDumpTree(app.staticTexts["回收站"].firstMatch, in: app), "native chrome not localized")
+        // The Home tab (toolbar on Mac/iPad, the sidebar row on iPhone) carries the localized name.
+        XCTAssertTrue(waitOrDumpTree(app.descendants(matching: .any)["主页"].firstMatch, in: app), "native chrome not localized")
         let newPage = app.buttons["new-page"].firstMatch
         XCTAssertTrue(waitOrDumpTree(newPage, in: app))
         newPage.tap()
@@ -265,12 +266,13 @@ final class EditorFlowTests: XCTestCase {
     func testSidebarRowsNavigate() throws {
         continueAfterFailure = false
         let app = launch()
-        let trashRow = app.staticTexts["Trash"].firstMatch
+        // The sidebar's place: an icon on Mac/iPad, a row on iPhone — the same identifier.
+        let trashRow = app.descendants(matching: .any)["nav-trash"].firstMatch
         XCTAssertTrue(waitOrDumpTree(trashRow, in: app))
         tapWhenSettled(trashRow)
         XCTAssertTrue(waitOrDumpTree(app.staticTexts["Trash is empty"].firstMatch, in: app), "Trash row did not navigate")
         backToSidebarIfNeeded(app)
-        tapWhenSettled(app.staticTexts["Home"].firstMatch)
+        tapWhenSettled(app.descendants(matching: .any)["nav-home"].firstMatch)
         XCTAssertTrue(waitOrDumpTree(app.buttons["home-new-page"].firstMatch, in: app), "Home row did not navigate")
     }
 
@@ -290,7 +292,8 @@ final class EditorFlowTests: XCTestCase {
 
         // The page leaves the tree (and favorites) and shows up in Trash.
         backToSidebarIfNeeded(app)
-        let trashRow = app.staticTexts["Trash"].firstMatch
+        // The sidebar's place: an icon on Mac/iPad, a row on iPhone — the same identifier.
+        let trashRow = app.descendants(matching: .any)["nav-trash"].firstMatch
         XCTAssertTrue(waitOrDumpTree(trashRow, in: app))
         tapWhenSettled(trashRow)
         XCTAssertTrue(waitOrDumpTree(app.staticTexts["Trash me"].firstMatch, in: app), "trashed page not listed in Trash")

@@ -13,6 +13,16 @@ import SwiftUI
 /// module's default MainActor isolation the provider closures trapped there (EXC_BREAKPOINT in
 /// `_swift_task_checkIsolatedSwift`, seen on iPad).
 public nonisolated enum Theme {
+    /// What a system table or list draws behind its rows (Home's and Trash's tables): screens built around one use it
+    /// whole, so their header and the rows read as one surface.
+    public static var listSurface: Color {
+        #if os(macOS)
+            Color(nsColor: .controlBackgroundColor)
+        #else
+            Color(uiColor: .systemBackground)
+        #endif
+    }
+
     static func dynamic(light: UInt32, lightAlpha: Double, dark: UInt32, darkAlpha: Double) -> Color {
         #if os(iOS)
             Color(

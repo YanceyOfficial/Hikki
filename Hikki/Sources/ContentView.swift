@@ -128,6 +128,7 @@ struct ContentView: View {
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {
                     model.reconcileWorkspace()  // pick up other devices' changes
+                    model.purgeTrash()
                 } else {
                     Task {
                         await editor.flush(reason: "scenePhase-\(phase)")
