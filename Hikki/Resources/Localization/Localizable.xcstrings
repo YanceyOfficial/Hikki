@@ -4540,6 +4540,23 @@
         }
       }
     },
+    "app:split.change": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show another page here"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在这里显示其他页面"
+          }
+        }
+      }
+    },
     "app:split.close": {
       "extractionState": "manual",
       "localizations": {
@@ -4553,6 +4570,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "关闭分栏"
+          }
+        }
+      }
+    },
+    "app:split.dropHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open on the right"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在右侧打开"
           }
         }
       }

@@ -53,6 +53,12 @@
                                 onReset: { recorded = "⌘B" })
                         }
                     }
+                    Section("toolTip") {
+                        HStack {
+                            Text(verbatim: "Hover").padding(Spacing.s2).background(Theme.muted).toolTip("Its own tooltip")
+                            Text(verbatim: "Me too").padding(Spacing.s2).background(Theme.muted).toolTip("Another one")
+                        }
+                    }
                     Section("MonthCalendar") {
                         MonthCalendarGalleryItem()
                     }

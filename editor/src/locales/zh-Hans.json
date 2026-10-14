@@ -360,5 +360,8 @@
   },
   "mention": {
     "empty": "没有页面"
+  },
+  "split": {
+    "dropHint": "在右侧打开"
   }
 }

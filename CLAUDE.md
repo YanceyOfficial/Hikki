@@ -282,7 +282,12 @@ HikkiUITests/                 XCUITest flows
   on first use and wired like the main one in `ContentView`); the same page can't be on both sides. Opened from the
   toolbar's split button or View → Show Split View (⌘\\) — an empty pane offers the left page's PDF attachments, PDFs
   open in tabs and recent pages — or a page's "Open in Split View". The divider drags (fraction remembered); the pane's
-  bar swaps the sides or closes it. Menus and the inspector act on the left side.
+  bar swaps the sides or closes it, and its title offers the picker again to show another page. Menus and the inspector
+  act on the left side. By drag: a sidebar row or a page's tab dropped onto the pane shows there (`PageDrop`), and
+  dropped on the right edge of the left side — the right quarter, 96–240 pt — opens beside it: native content
+  (Home, a PDF) through `EdgeDrop` in `Hikki/Sources/SplitView.swift`, a page through the editor's own edge
+  (`editor/src/extensions/split-drop.ts`, `openInSplit` bridge message, `window.hikki.setSplitDrop`), since the web
+  view takes the drags over it. iPadOS keeps the screen's very edge for "open in a new window".
 - **PDF viewer**: a PDF attachment opens in a pane of its own in a tab (`Route.file`), drawn natively by
   `HikkiUI/Sources/PDFViewer.swift` (PDFKit: continuous pages, zoom/fit, page number, find, thumbnails, an unlock prompt
   for password-protected files — the password is never stored); other attachments still open in Quick Look. Panes are

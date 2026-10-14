@@ -25,6 +25,7 @@ import { Ruby, type RubyHost } from '../extensions/ruby'
 import { SelectionMenuExtension } from '../extensions/selection-menu'
 import { BlockShortcuts, ShortcutOverrides } from '../extensions/shortcuts'
 import { SlashCommand } from '../extensions/slash-command'
+import { SplitDrop, type SplitDropHost } from '../extensions/split-drop'
 import { tableExtensions } from '../extensions/table'
 import { TableOfContents } from '../extensions/toc'
 import { Quote, toggleExtensions } from '../extensions/toggle'
@@ -59,6 +60,8 @@ type EditorOptions = {
   ruby?: RubyHost
   /** A link card's details (title, description, icon), read natively; without it cards show the bare link. */
   linkPreview?: (url: string) => Promise<LinkCard | null>
+  /** A page dropped on the right edge opens in split view; without it there is no such edge. */
+  splitDrop?: SplitDropHost
 }
 
 /**
@@ -140,6 +143,7 @@ export function createEditor(
       PageLinks(options.pageLinks ?? noPageLinks),
       // "@" mentions a page; ":" suggests emoji.
       PageMention(options.pageLinks ?? noPageLinks),
+      SplitDrop(options.splitDrop ?? { enabled: () => false, open: () => {} }),
       EmojiSuggestion,
       // "--" → —, "..." → …, "->" → →, "(c)" → ©… Quotes stay straight and fractions stay typed (notes, code-ish text, CJK).
       Typography.configure({

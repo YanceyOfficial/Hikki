@@ -528,6 +528,67 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)["split-pane"].waitForExistence(timeout: 2))
     }
 
+    /// A sidebar page dragged onto the split pane shows there — onto an empty pane, then onto the pane's bar to switch —
+    /// and the pane's title offers the picker again.
+    func testDraggingPagesIntoTheSplitPane() throws {
+        continueAfterFailure = false
+        let app = launch()
+        guard app.buttons["nav-home"].waitForExistence(timeout: 10) else {
+            throw XCTSkip("needs a wide window — run on iPad or Mac")
+        }
+        createPage(app, title: "Notes")
+        createPage(app, title: "Textbook")
+        createPage(app, title: "Draft")
+        app.descendants(matching: .any)["split-toggle"].firstMatch.tap()
+        let pane = app.descendants(matching: .any)["split-pane"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(pane, in: app))
+
+        let notesRow = app.descendants(matching: .any)["page-row-Notes"].firstMatch
+        notesRow.press(forDuration: 0.6, thenDragTo: pane, withVelocity: .slow, thenHoldForDuration: 0.6)
+        let change = app.descendants(matching: .any)["split-change"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(change, in: app, timeout: 5), "the dropped page did not open in the pane")
+        let pageTitle = { (title: String) in
+            app.webViews.textViews.matching(NSPredicate(format: "value == %@", title)).firstMatch
+        }
+        XCTAssertTrue(waitOrDumpTree(pageTitle("Notes"), in: app, timeout: 10))
+
+        // Onto the bar of a pane that shows a page: it switches.
+        let textbookRow = app.descendants(matching: .any)["page-row-Textbook"].firstMatch
+        textbookRow.press(forDuration: 0.6, thenDragTo: change, withVelocity: .slow, thenHoldForDuration: 0.6)
+        XCTAssertTrue(waitOrDumpTree(pageTitle("Textbook"), in: app, timeout: 10), "the pane did not switch pages")
+        attachScreenshot(app, "split-dropped")
+
+        // The title offers the others to switch to.
+        change.tap()
+        XCTAssertTrue(waitOrDumpTree(app.descendants(matching: .any)["split-pick-Notes"].firstMatch, in: app))
+    }
+
+    /// A sidebar page dropped on the right edge of the open page opens beside it. (Not at the screen's very edge: iPadOS
+    /// takes a link dropped there as "open in a new window".)
+    func testDroppingAPageOnTheRightEdgeOpensSplitView() throws {
+        continueAfterFailure = false
+        let app = launch()
+        guard app.buttons["nav-home"].waitForExistence(timeout: 10) else {
+            throw XCTSkip("needs a wide window — run on iPad or Mac")
+        }
+        createPage(app, title: "Notes")
+        createPage(app, title: "Textbook")
+        let page = app.webViews.firstMatch
+        let notesRow = app.descendants(matching: .any)["page-row-Notes"].firstMatch
+        notesRow.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(
+                forDuration: 0.6, thenDragTo: page.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5)),
+                withVelocity: .slow, thenHoldForDuration: 0.8)
+        XCTAssertTrue(
+            waitOrDumpTree(app.descendants(matching: .any)["split-pane"].firstMatch, in: app, timeout: 5),
+            "dropping on the right edge did not open split view")
+        XCTAssertTrue(
+            waitOrDumpTree(
+                app.webViews.textViews.matching(NSPredicate(format: "value == %@", "Notes")).firstMatch, in: app,
+                timeout: 10))
+        attachScreenshot(app, "split-edge-drop")
+    }
+
     private func createPage(_ app: XCUIApplication, title: String) {
         let newPage = app.buttons["new-page"].firstMatch
         XCTAssertTrue(waitOrDumpTree(newPage, in: app))

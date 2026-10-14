@@ -7,6 +7,7 @@ import type { MediaHost } from '../extensions/media'
 import { pageLinkHref, type PageIndexEntry, type PageLinksHost } from '../extensions/page-links'
 import { notifyPageIndexChanged } from '../extensions/page-mention'
 import { rubySegmentsFrom, type RubyHost } from '../extensions/ruby'
+import type { SplitDropHost } from '../extensions/split-drop'
 import { linkCardFrom } from '../lib/embeds'
 import { activeCommands, createEditor, runCommand } from './editor'
 import { plainText, wordCount } from './extract'
@@ -118,6 +119,7 @@ export class EditorBridge {
       spellcheck: this.spellcheck,
       media: this.media,
       pageLinks: this.pageLinks,
+      splitDrop: this.splitDropHost,
       ruby: this.ruby,
       linkPreview: async (url) =>
         linkCardFrom(await this.transport.post({ type: 'linkPreview', url })),
@@ -232,6 +234,18 @@ export class EditorBridge {
     this.pageIndex = pages
     // "@" mention chips show the pages' current titles and icons.
     notifyPageIndexChanged()
+  }
+
+  /** Split view exists in this window (`window.hikki.setSplitDrop`): a page dropped on the right edge opens there. */
+  private splitDrop = false
+
+  setSplitDrop(on: boolean): void {
+    this.splitDrop = on
+  }
+
+  readonly splitDropHost: SplitDropHost = {
+    enabled: () => this.splitDrop,
+    open: (pageId) => void this.send({ type: 'openInSplit', id: pageId })
   }
 
   /** Page links in the body: labels from the index, clicks routed to the native side. */

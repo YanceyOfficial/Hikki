@@ -719,6 +719,14 @@
   visibility: hidden;
   transition-duration: var(--motion-pop-out);
 }
+/* Where a dragged page opens in split view (extensions/split-drop.ts): the right half, tinted, while it's over the edge. */
+.hk-split-drop {
+  @apply pointer-events-none fixed right-2 bottom-2 z-50 flex w-1/2 items-center justify-center rounded-lg border border-tone-ink/40 bg-selection/70 text-sm font-medium text-tone-ink;
+  top: calc(var(--hk-inset-top, 0px) + 0.5rem);
+  --hk-pop-origin: right center;
+  --hk-pop-dx: 8px;
+  --hk-pop-dy: 0px;
+}
 /* The gliding selection surface of a list (components/gliding-highlight.tsx). */
 .hk-glide {
   @apply pointer-events-none absolute top-0 left-0 rounded-md bg-accent opacity-0;

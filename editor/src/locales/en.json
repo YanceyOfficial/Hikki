@@ -360,5 +360,8 @@
   },
   "mention": {
     "empty": "No pages"
+  },
+  "split": {
+    "dropHint": "Open on the right"
   }
 }

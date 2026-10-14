@@ -75,6 +75,8 @@ final class EditorController {
 
     /// A page link was clicked in the editor (ContentView routes it); the block to land on, if any.
     @ObservationIgnored var onOpenPage: ((String, String?) -> Void)?
+    /// A page dropped on the page's right edge (split view); nil where there is no split view (iPhone).
+    @ObservationIgnored var onOpenInSplit: ((String) -> Void)?
 
     /// Pages the editor names links with (`window.hikki.setPages`), kept to resend after a reload.
     @ObservationIgnored private var pages: [[String: Any]] = []
@@ -252,6 +254,25 @@ final class EditorController {
         }
     }
 
+    /// Split view exists in this window (Mac, a wide iPad): a page dropped on the right edge opens there.
+    @ObservationIgnored private var splitDrop = false
+
+    func setSplitDrop(_ on: Bool) {
+        guard splitDrop != on else { return }
+        splitDrop = on
+        guard isReady else { return }
+        Task { await applySplitDrop() }
+    }
+
+    private func applySplitDrop() async {
+        do {
+            _ = try await webView.callAsyncJavaScript(
+                "window.hikki.setSplitDrop(on)", arguments: ["on": splitDrop], contentWorld: .page)
+        } catch {
+            Log.warn("setSplitDrop failed: \(error)", category: "bridge")
+        }
+    }
+
     /// Settings → Shortcuts: the user's rebindings (`ShortcutStore`), sent on ready and whenever they change.
     func updateShortcuts() {
         guard isReady else { return }
@@ -377,6 +398,7 @@ final class EditorController {
                 await applyTone()
                 await applySpellcheck()
                 await applyShortcuts()
+                await applySplitDrop()
                 await applyInsets()
                 await applyPages()
                 await load(pending ?? nil)
@@ -423,6 +445,8 @@ final class EditorController {
             }
         case .openPage(let id, let block):
             onOpenPage?(id, block)
+        case .openInSplit(let id):
+            onOpenInSplit?(id)
         case .openLink(let url):
             // Clicked in the page: only web/mail/phone links leave the app; nothing else is opened.
             guard let target = URL(string: url), let scheme = target.scheme?.lowercased(),

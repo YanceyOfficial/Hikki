@@ -53,6 +53,7 @@ public struct TabStrip<Leading: View>: View {
     private let leading: Leading
     private let showsHistory: Bool
     private let drop: TabStripDrop?
+    private let dragItem: ((UUID) -> NSItemProvider?)?
     @State private var frames: [UUID: CGRect] = [:]
     @State private var dropTarget: TabStripDropTarget?
     @Environment(\.chromeMetrics) private var metrics
@@ -62,7 +63,7 @@ public struct TabStrip<Leading: View>: View {
         items: [TabStripItem], activeID: UUID, canGoBack: Bool, canGoForward: Bool,
         onSelect: @escaping (UUID) -> Void, onClose: @escaping (UUID) -> Void, onNew: @escaping () -> Void,
         onBack: @escaping () -> Void, onForward: @escaping () -> Void, showsHistory: Bool = true,
-        drop: TabStripDrop? = nil,
+        drop: TabStripDrop? = nil, dragItem: ((UUID) -> NSItemProvider?)? = nil,
         @ViewBuilder leading: () -> Leading = { EmptyView() }
     ) {
         self.showsHistory = showsHistory
@@ -76,6 +77,7 @@ public struct TabStrip<Leading: View>: View {
         self.onBack = onBack
         self.onForward = onForward
         self.drop = drop
+        self.dragItem = dragItem
         self.leading = leading()
     }
 
@@ -108,6 +110,7 @@ public struct TabStrip<Leading: View>: View {
                     TabButton(
                         item: item, isActive: item.id == activeID, canClose: items.count > 1,
                         isDropTarget: dropTarget == .onto(item.id),
+                        dragItem: dragItem.map { make in { make(item.id) } },
                         onSelect: { onSelect(item.id) }, onClose: { onClose(item.id) }
                     )
                     .onGeometryChange(for: CGRect.self) {
@@ -118,6 +121,7 @@ public struct TabStrip<Leading: View>: View {
                 }
             }
             SidebarIconButton("app:tabs.new", symbol: .plus, action: onNew)
+                .toolTip(String(localized: "app:tabs.new"))
         }
         .coordinateSpace(name: tabStripSpace)
         .overlay {
@@ -131,8 +135,8 @@ public struct TabStrip<Leading: View>: View {
             .allowsHitTesting(false)
         }
         .modifier(DropArea(drop: drop, target: target(at:), indicator: $dropTarget))
-        // In a window toolbar macOS lifts the first `.help` inside the item (the first tab's) up to the whole item, so
-        // hovering any tab showed that title before its own. The strip says nothing itself; each tab keeps its own.
+        // In a window toolbar macOS lifts the first `.help` inside the item up to the whole item, so hovering any tab
+        // showed that one. The strip says nothing itself; each tab carries an AppKit tooltip of its own (`toolTip`).
         .help(Text(verbatim: ""))
         // A drop that changed the tabs is over, whatever the drag session still reports.
         .onChange(of: items) { _, _ in dropTarget = nil }
@@ -207,6 +211,8 @@ private struct TabButton: View {
     let isActive: Bool
     let canClose: Bool
     var isDropTarget = false
+    /// What dragging the tab carries (its page's link); nil: the tab doesn't drag.
+    var dragItem: (() -> NSItemProvider?)?
     let onSelect: () -> Void
     let onClose: () -> Void
     @State private var hovering = false
@@ -247,12 +253,26 @@ private struct TabButton: View {
         .contentShape(.capsule)
         .onTapGesture(perform: onSelect)
         .onHover { hovering = $0 }
+        .modifier(TabDrag(item: dragItem))
         // The whole title, for a tab narrowed down to "N1…".
-        .help(item.title.isEmpty ? String(localized: "app:page.untitled") : item.title)
+        .toolTip(item.title.isEmpty ? String(localized: "app:page.untitled") : item.title)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isActive ? [.isButton, .isSelected] : .isButton)
         .accessibilityAction(named: "app:tabs.close", onClose)
         .accessibilityIdentifier("tab-\(item.title)")
+    }
+}
+
+/// A tab dragged out (onto the split pane, into a page) carries its page's link.
+private struct TabDrag: ViewModifier {
+    let item: (() -> NSItemProvider?)?
+
+    func body(content: Content) -> some View {
+        if let item {
+            content.onDrag { item() ?? NSItemProvider() }
+        } else {
+            content
+        }
     }
 }
 

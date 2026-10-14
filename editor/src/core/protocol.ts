@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 14
+export const PROTOCOL_VERSION = 15
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -76,6 +76,8 @@ export type ToNativeMessage =
   | { type: 'openAsset'; url: string; name?: string | null }
   /** A page link was clicked; `block` for a link to a block inside the page. */
   | { type: 'openPage'; id: string; block?: string }
+  /** A page dropped on the right edge of the page (split view): open it in the pane on the right. */
+  | { type: 'openInSplit'; id: string }
   /** Any other link was clicked: the system opens it. */
   | { type: 'openLink'; url: string }
   /** Furigana: replies with `text` split into runs — `{ text, reading? }`, a reading per kanji run — or null. */

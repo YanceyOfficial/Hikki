@@ -1,6 +1,7 @@
 import HikkiCore
 import HikkiUI
 import SwiftUI
+import UniformTypeIdentifiers
 
 enum SplitPreferences {
     /// The left side's share of the width, remembered.
@@ -23,7 +24,7 @@ struct SplitDetail<Leading: View>: View {
                 let minFraction = min(0.5, Size.splitMin / max(width, 1))
                 let left = width * min(max(fraction, minFraction), 1 - minFraction)
                 HStack(spacing: Spacing.s0) {
-                    leading.frame(width: left)
+                    leading.modifier(EdgeDrop(navigator: navigator)).frame(width: left)
                     divider(width: width)
                     SplitPane(navigator: navigator, editor: splitEditor)
                         .frame(maxWidth: .infinity)
@@ -31,7 +32,7 @@ struct SplitDetail<Leading: View>: View {
             }
             .transition(.opacity)
         } else {
-            leading
+            leading.modifier(EdgeDrop(navigator: navigator))
         }
     }
 
@@ -69,6 +70,8 @@ private struct SplitPane: View {
     @Environment(AppModel.self) private var model
     let navigator: Navigator
     let editor: EditorController?
+    @State private var dropTargeted = false
+    @Environment(\.colorTone) private var colorTone
 
     var body: some View {
         VStack(spacing: Spacing.s0) {
@@ -77,20 +80,42 @@ private struct SplitPane: View {
             content.frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Theme.background)
+        // A page dragged from the sidebar or a tab shows here, whatever the pane showed. (Over the pane's own page the
+        // editor takes the drag: its right edge opens it here too, the rest makes a link.)
+        .onDrop(of: PageDrop.types, isTargeted: $dropTargeted) { providers in
+            PageDrop.page(from: providers, navigator: navigator) { id in navigator.openInSplit(.page(id)) }
+        }
+        .overlay {
+            if dropTargeted {
+                RoundedRectangle(cornerRadius: Radius.lg)
+                    .fill(colorTone.selectionFill.opacity(0.6))
+                    .strokeBorder(colorTone.fill.opacity(0.5), lineWidth: 1)
+                    .padding(Spacing.s2)
+                    .allowsHitTesting(false)
+            }
+        }
+        .animation(Motion.easeOut(), value: dropTargeted)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("split-pane")
     }
 
     private var bar: some View {
         HStack(spacing: Spacing.s2) {
-            switch navigator.split {
-            case .page(let id):
-                PageIcon(model.tree.page(id)?.icon, size: 16)
-                Text(Self.title(model.tree.page(id))).font(.hk(.md, .medium)).lineLimit(1)
-            case .file(_, let label):
-                IconView(.fileText, size: TextSize.sm.rawValue).foregroundStyle(Theme.subtleForeground)
-                Text(label).font(.hk(.md, .medium)).lineLimit(1)
-            default:
+            if navigator.split != nil {
+                // What the pane shows; pressing it offers the others (recent pages, PDFs) to switch to.
+                Button(action: navigator.showSplitPicker) {
+                    HStack(spacing: Spacing.s2) {
+                        current
+                        IconView(.caretDown, size: TextSize.xs.rawValue).foregroundStyle(Theme.mutedForeground)
+                    }
+                    .padding(.horizontal, Spacing.s1_5)
+                    .padding(.vertical, Spacing.s1)
+                    .contentShape(.rect)
+                }
+                .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.md))
+                .help("app:split.change")
+                .accessibilityIdentifier("split-change")
+            } else {
                 Text("app:split.pickTitle").font(.hk(.md, .medium)).foregroundStyle(Theme.subtleForeground)
             }
             Spacer(minLength: Spacing.s2)
@@ -103,6 +128,19 @@ private struct SplitPane: View {
         }
         .padding(.horizontal, Spacing.s3)
         .frame(height: Size.pageBar)
+    }
+
+    @ViewBuilder private var current: some View {
+        switch navigator.split {
+        case .page(let id):
+            PageIcon(model.tree.page(id)?.icon, size: 16)
+            Text(Self.title(model.tree.page(id))).font(.hk(.md, .medium)).foregroundStyle(Theme.foreground).lineLimit(1)
+        case .file(_, let label):
+            IconView(.fileText, size: TextSize.sm.rawValue).foregroundStyle(Theme.subtleForeground)
+            Text(label).font(.hk(.md, .medium)).foregroundStyle(Theme.foreground).lineLimit(1)
+        default:
+            EmptyView()
+        }
     }
 
     @ViewBuilder private var content: some View {
@@ -215,5 +253,107 @@ private struct SplitPicker: View {
             .contentShape(.rect)
         }
         .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.md))
+    }
+}
+
+/// Pages dropped on native views (the split pane, the right edge of Home or a PDF): a sidebar row's drag says which
+/// page it is (`Navigator.draggingPageID`); a tab's carries the page's link.
+enum PageDrop {
+    static let types: [UTType] = [.url, .plainText]
+
+    /// Calls `open` with the dropped page (now, or once the link has loaded); false when nothing here is a page.
+    static func page(
+        from providers: [NSItemProvider], navigator: Navigator, open: @escaping @MainActor @Sendable (String) -> Void
+    ) -> Bool {
+        if let id = navigator.draggingPageID {
+            navigator.draggingPageID = nil
+            open(id)
+            return true
+        }
+        guard let provider = providers.first(where: { $0.canLoadObject(ofClass: URL.self) || $0.canLoadObject(ofClass: String.self) })
+        else { return false }
+        let deliver: @Sendable (URL?) -> Void = { url in
+            guard let url, let id = PageLink.pageID(from: url) else { return }
+            Task { @MainActor in open(id) }
+        }
+        if provider.canLoadObject(ofClass: URL.self) {
+            _ = provider.loadObject(ofClass: URL.self) { url, _ in deliver(url) }
+        } else {
+            _ = provider.loadObject(ofClass: String.self) { text, _ in deliver(text.flatMap { URL(string: $0) }) }
+        }
+        return true
+    }
+}
+
+/// The right edge of what the left side shows when it isn't a page (Home, Trash, a PDF): a page dropped there opens
+/// in the pane on the right, and while one is over it the right half shows where. (A page's editor has its own edge,
+/// `editor/src/extensions/split-drop.ts`.) Mac and wide iPads only.
+private struct EdgeDrop: ViewModifier {
+    let navigator: Navigator
+    @State private var showing = false
+    @Environment(\.colorTone) private var colorTone
+    #if os(iOS)
+        @Environment(\.horizontalSizeClass) private var sizeClass
+    #endif
+
+    private var available: Bool {
+        #if os(macOS)
+            true
+        #else
+            sizeClass == .regular
+        #endif
+    }
+
+    func body(content: Content) -> some View {
+        if available {
+            GeometryReader { proxy in
+                content
+                    .onDrop(of: PageDrop.types, delegate: Delegate(width: proxy.size.width, navigator: navigator, showing: $showing))
+                    .overlay(alignment: .trailing) {
+                        if showing {
+                            RoundedRectangle(cornerRadius: Radius.lg)
+                                .fill(colorTone.selectionFill.opacity(0.7))
+                                .strokeBorder(colorTone.fill.opacity(0.4), lineWidth: 1)
+                                .overlay { Text("app:split.dropHint").font(.hk(.sm, .medium)).foregroundStyle(colorTone.fill) }
+                                .frame(width: proxy.size.width / 2)
+                                .padding(Spacing.s2)
+                                .allowsHitTesting(false)
+                                .transition(.opacity)
+                        }
+                    }
+                    .animation(Motion.easeOut(), value: showing)
+            }
+        } else {
+            content
+        }
+    }
+
+    private struct Delegate: DropDelegate {
+        let width: CGFloat
+        let navigator: Navigator
+        @Binding var showing: Bool
+
+        /// The right quarter, within 96…240 points (as in the editor).
+        private func inZone(_ info: DropInfo) -> Bool {
+            info.location.x >= width - max(96, min(240, width / 4))
+        }
+
+        func validateDrop(info: DropInfo) -> Bool { info.hasItemsConforming(to: PageDrop.types) }
+
+        func dropUpdated(info: DropInfo) -> DropProposal? {
+            let inside = inZone(info)
+            if showing != inside { showing = inside }
+            return DropProposal(operation: inside ? .copy : .cancel)
+        }
+
+        func dropExited(info: DropInfo) { showing = false }
+
+        func performDrop(info: DropInfo) -> Bool {
+            showing = false
+            guard inZone(info) else { return false }
+            return PageDrop.page(from: info.itemProviders(for: PageDrop.types), navigator: navigator) { id in
+                navigator.openInSplit(.page(id))
+            }
+        }
     }
 }

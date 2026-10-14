@@ -92,6 +92,7 @@ struct ContentView: View {
                 editor.open(documentID: route.pageID)
                 navigator.revealCurrent()
             }
+            .onChange(of: wide) { _, on in editor.setSplitDrop(on) }
             .onChange(of: spellcheck) { _, on in
                 editor.setSpellcheck(on)
                 splitEditor?.setSpellcheck(on)
@@ -164,6 +165,11 @@ struct ContentView: View {
         navigator.attach(model)
         navigator.restoreTabs(from: storedTabs)
         editor.onOpenDocument = { [navigator] name, label in navigator.openDocument(name: name, label: label) }
+        // A page dropped on the page's right edge opens beside it (split view).
+        editor.onOpenInSplit = { [navigator] id in
+            if model.tree.page(id) != nil { navigator.openInSplit(.page(id)) }
+        }
+        editor.setSplitDrop(wide)
         // The inspector starts closed in every window (its tab is remembered); `-inspector.visible YES` opens it
         // (screenshots).
         // Only the launch argument counts; a value saved by earlier builds (which remembered it) is dropped.
@@ -274,6 +280,11 @@ struct ContentView: View {
             if let block { pane.scrollToBlock(block, in: id) }
         }
         pane.onOpenDocument = { [navigator] name, label in navigator.openInSplit(.file(name: name, label: label)) }
+        // Dropped on the pane's own right edge: it shows that page instead.
+        pane.onOpenInSplit = { [navigator] id in
+            if model.tree.page(id) != nil { navigator.openInSplit(.page(id)) }
+        }
+        pane.setSplitDrop(true)
         pane.setPages(model.tree.all)
         splitEditor = pane
         return pane
@@ -363,7 +374,11 @@ private struct NativeDetailToolbar: ToolbarContent {
                         navigator.draggingPageID = nil
                         navigator.dropPage(id, target)
                         return true
-                    })
+                    }),
+                // A page's tab drags its link: onto the split pane, the page's right edge, or into a page.
+                dragItem: { id in
+                    navigator.tabs.tabs.first { $0.id == id }?.route.pageID.map(PageLink.dragItem)
+                }
             )
             .frame(minWidth: 240, idealWidth: 480, maxWidth: 640)  // design-lint: allow (toolbar item width)
             // The toolbar centres it over the whole detail column; with the inspector open that is page + panel, so

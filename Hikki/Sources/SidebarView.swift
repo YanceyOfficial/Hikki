@@ -387,6 +387,20 @@ private struct PageRowDragDrop: ViewModifier {
                 // The payload is the page's link: the editor makes a labelled hyperlink of it and the tab strip
                 // opens it. The sidebar's own drops go by `draggingPageID`.
                 return PageLink.dragItem(page.id)
+            } preview: {
+                // The row as a rounded chip (the default preview was the bare row, square-cornered).
+                HStack(spacing: Spacing.s2) {
+                    PageIcon(page.icon, size: 16)
+                    Text(page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
+                        .font(.hk(.md))
+                        .foregroundStyle(Theme.foreground)
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, Spacing.s2_5)
+                .padding(.vertical, Spacing.s1_5)
+                .background(Theme.popover, in: .rect(cornerRadius: Radius.lg))
+                .overlay(RoundedRectangle(cornerRadius: Radius.lg).strokeBorder(Theme.border, lineWidth: 1))
+                .clipShape(.rect(cornerRadius: Radius.lg))
             }
             .onDrop(of: [.plainText], delegate: PageRowDropDelegate(target: page.id, navigator: navigator, model: model))
             // Outline level for VoiceOver (and UI tests): "level 1" at the top, +1 per nesting.
