@@ -84,15 +84,11 @@ private struct SectionDropDelegate: DropDelegate {
 private struct WorkspaceSwitcher: View {
     let navigator: Navigator
     @Environment(AppModel.self) private var model
-    @State private var renaming = false
 
     var body: some View {
         Menu {
             Section {
                 SettingsMenuItem(navigator: navigator)
-                Button("app:workspace.rename") { renaming = true }
-                    .accessibilityIdentifier("workspace-rename")
-                ShareLink("app:workspace.exportLogs", items: model.exportableFiles)
             } header: {
                 // The user's workspace name and where it lives.
                 Text(verbatim: "\(model.workspace?.name ?? "Hikki") · \(location)")
@@ -108,7 +104,6 @@ private struct WorkspaceSwitcher: View {
         .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.xl, hoverFill: Theme.sidebarAccent))
         .menuIndicator(.hidden)
         .accessibilityIdentifier("workspace-menu")
-        .renameWorkspaceAlert(isPresented: $renaming)
     }
 
     /// Where the workspace lives: the chosen folder, or "This device only".
@@ -124,7 +119,6 @@ private struct PhoneSidebar: View {
     @Environment(AppModel.self) private var model
     @Bindable var navigator: Navigator
     let wideSidebar: Bool
-    @State private var renaming = false
     @State private var privateTargeted = false
     @Environment(\.colorTone) private var colorTone
 
@@ -147,7 +141,6 @@ private struct PhoneSidebar: View {
         }
         .modifier(NativeSidebarChrome(navigator: navigator, isWide: wideSidebar))
         .navigationTitle(model.workspace?.name ?? "Hikki")  // l10n: allow (the user's workspace name)
-        .renameWorkspaceAlert(isPresented: $renaming)
         .toolbar {
             // Both trailing, side by side; with default placement the first item stretched and pushed the
             // menu into the overflow button.
@@ -162,9 +155,6 @@ private struct PhoneSidebar: View {
                 if !wideSidebar {
                     Menu {
                         SettingsMenuItem(navigator: navigator)
-                        Button("app:workspace.rename") { renaming = true }
-                            .accessibilityIdentifier("workspace-rename")
-                        ShareLink("app:workspace.exportLogs", items: model.exportableFiles)
                     } label: {
                         IconLabel("app:common.more", icon: .dotsThreeCircle).labelStyle(.iconOnly)
                     }
@@ -669,34 +659,6 @@ extension PageLink {
         #else
             UIPasteboard.general.url = url
         #endif
-    }
-}
-
-// MARK: - Rename workspace
-
-private struct RenameWorkspaceAlert: ViewModifier {
-    @Environment(AppModel.self) private var model
-    @Binding var isPresented: Bool
-    @State private var draft = ""
-
-    func body(content: Content) -> some View {
-        content
-            .alert("app:workspace.renameTitle", isPresented: $isPresented) {
-                TextField("app:onboarding.name.placeholder", text: $draft)
-                Button("app:common.cancel", role: .cancel) {}
-                Button("app:common.save") { model.renameWorkspace(draft) }
-                    .disabled(Workspace.normalizedName(draft) == nil)
-                    .accessibilityIdentifier("workspace-rename-save")
-            }
-            .onChange(of: isPresented) { _, presented in
-                if presented { draft = model.workspace?.name ?? "" }
-            }
-    }
-}
-
-extension View {
-    fileprivate func renameWorkspaceAlert(isPresented: Binding<Bool>) -> some View {
-        modifier(RenameWorkspaceAlert(isPresented: isPresented))
     }
 }
 

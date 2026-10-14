@@ -43,7 +43,7 @@ struct ContentView: View {
             // (SwiftUI's `.inspector` widened the window instead). A sheet on iPhone.
             HStack(spacing: Spacing.s0) {
                 DetailView(navigator: navigator, editor: editor, phoneToolbar: !wide)
-                if wide && navigator.isShowingInspector {
+                if wide && navigator.isShowingInspector && navigator.route.pageID != nil {
                     InspectorPanel(navigator: navigator, editor: editor)
                         .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
@@ -53,12 +53,13 @@ struct ContentView: View {
             #if os(macOS)
                 // Photos' way: with the inspector open the page title and subtitle leave the toolbar, so the tabs keep
                 // their width.
-                .toolbar(removing: navigator.isShowingInspector ? .title : nil)
+                .toolbar(removing: navigator.isShowingInspector && navigator.route.pageID != nil ? .title : nil)
             #endif
             .toolbar { if wide { NativeDetailToolbar(navigator: navigator, editor: editor) } }
             .sheet(
                 isPresented: Binding(
-                    get: { !wide && navigator.isShowingInspector }, set: { navigator.isShowingInspector = $0 })
+                    get: { !wide && navigator.isShowingInspector && navigator.route.pageID != nil },
+                    set: { navigator.isShowingInspector = $0 })
             ) {
                 InspectorView(navigator: navigator, editor: editor)
                     .presentationDetents([.medium, .large])
@@ -90,7 +91,6 @@ struct ContentView: View {
             // The inspector's state outlives the window; the page's own outline rail steps aside while the
             // inspector shows the outline.
             .onChange(of: navigator.isShowingInspector) { _, on in
-                UserDefaults.standard.set(on, forKey: InspectorPreferences.visibleKey)
                 editor.setOutlineRail(!(on && navigator.inspectorTab == .outline))
             }
             .onChange(of: navigator.inspectorTab) { _, tab in
@@ -141,7 +141,12 @@ struct ContentView: View {
     private func setUp() {
         navigator.attach(model)
         navigator.restoreTabs(from: storedTabs)
-        navigator.isShowingInspector = UserDefaults.standard.bool(forKey: InspectorPreferences.visibleKey)
+        // The inspector starts closed in every window (its tab is remembered); `-inspector.visible YES` opens it
+        // (screenshots).
+        // Only the launch argument counts; a value saved by earlier builds (which remembered it) is dropped.
+        let arguments = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
+        UserDefaults.standard.removeObject(forKey: InspectorPreferences.visibleKey)
+        navigator.isShowingInspector = (arguments[InspectorPreferences.visibleKey] as? String).map { $0 == "YES" } ?? false
         if let raw = UserDefaults.standard.string(forKey: InspectorPreferences.tabKey), let tab = InspectorTab(rawValue: raw) {
             navigator.inspectorTab = tab
         }
@@ -308,16 +313,19 @@ private struct NativeDetailToolbar: ToolbarContent {
                 PageMoreMenu(page: page, navigator: navigator, editor: editor, toolbar: true)
             }
         }
-        // The inspector toggle, at the trailing end as in Xcode — in a glass group of its own, apart from the page's.
-        ToolbarSpacer(.fixed, placement: .primaryAction)
-        ToolbarItem(placement: .primaryAction) {
-            Button {
-                navigator.isShowingInspector.toggle()
-            } label: {
-                IconLabel("app:inspector.toggle", icon: .columnsPlusRight)
+        // The inspector toggle, at the trailing end as in Xcode — in a glass group of its own, apart from the page's;
+        // only where there is a page to inspect.
+        if navigator.route.pageID != nil {
+            ToolbarSpacer(.fixed, placement: .primaryAction)
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    navigator.isShowingInspector.toggle()
+                } label: {
+                    IconLabel("app:inspector.toggle", icon: .columnsPlusRight)
+                }
+                .help("app:inspector.toggle")
+                .accessibilityIdentifier("inspector-toggle")
             }
-            .help("app:inspector.toggle")
-            .accessibilityIdentifier("inspector-toggle")
         }
     }
 

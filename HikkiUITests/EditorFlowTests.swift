@@ -64,28 +64,6 @@ final class EditorFlowTests: XCTestCase {
         }
     #endif
 
-    /// Workspace menu → Rename: the new name shows in the chrome (iPhone: the nav title is the menu).
-    func testRenameWorkspace() throws {
-        continueAfterFailure = false
-        let app = launch(workspace: "Old Name")
-        // Mac/iPad: the sidebar header menu. iPhone: the nav bar's More menu (may collapse into the overflow button).
-        let header = app.buttons["workspace-menu"].firstMatch
-        let more = app.buttons["workspace-more"].firstMatch
-        let menu = header.waitForExistence(timeout: 5) ? header : (more.exists ? more : app.navigationBars.buttons["More"].firstMatch)
-        XCTAssertTrue(waitOrDumpTree(menu, in: app))
-        menu.tap()
-        let rename = app.buttons["workspace-rename"].firstMatch
-        XCTAssertTrue(waitOrDumpTree(rename, in: app))
-        rename.tap()
-        // System alerts drop custom identifiers on their text fields.
-        let field = app.alerts.textFields.firstMatch
-        XCTAssertTrue(waitOrDumpTree(field, in: app))
-        field.tap()
-        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 10) + "Atlas")
-        app.buttons["workspace-rename-save"].firstMatch.tap()
-        XCTAssertTrue(waitOrDumpTree(app.staticTexts["Atlas"].firstMatch, in: app), "renamed workspace not shown")
-    }
-
     #if os(iOS)
         /// Page context menu (long press on iPhone): Duplicate adds a sibling copy; Rename opens the page with
         /// the title selected, so typing replaces it.

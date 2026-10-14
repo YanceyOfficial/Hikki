@@ -120,23 +120,6 @@
         }
       }
     },
-    "app:common.save": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Save"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "保存"
-          }
-        }
-      }
-    },
     "app:find.find": {
       "extractionState": "manual",
       "localizations": {
@@ -3329,40 +3312,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "导出日志"
-          }
-        }
-      }
-    },
-    "app:workspace.rename": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rename workspace…"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重命名工作区…"
-          }
-        }
-      }
-    },
-    "app:workspace.renameTitle": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rename workspace"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重命名工作区"
           }
         }
       }
