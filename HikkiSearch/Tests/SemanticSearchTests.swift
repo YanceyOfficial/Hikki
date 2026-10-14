@@ -204,6 +204,28 @@ struct EmbeddingProviderTests {
         #expect(try await provider().models() == ["bge-m3", "qllama/multilingual-e5-small:latest"])
     }
 
+    @Test func aKeyIsNeverSentInTheClearToAnotherMachine() async throws {
+        let remote = OpenAICompatibleEmbeddings(
+            baseURL: URL(string: "http://192.168.1.20:11434/v1")!, model: "m", apiKey: "sk-secret")
+        #expect(remote.apiKey == nil)
+        #expect(
+            OpenAICompatibleEmbeddings(baseURL: URL(string: "https://api.openai.com/v1")!, model: "m", apiKey: "sk")
+                .apiKey == "sk")
+        #expect(
+            OpenAICompatibleEmbeddings(baseURL: URL(string: "http://localhost:11434/v1")!, model: "m", apiKey: "k")
+                .apiKey == "k")
+    }
+
+    @Test func aKeyBelongsToItsOrigin() {
+        let origin = { OpenAICompatibleEmbeddings.origin(of: URL(string: $0)!) }
+        #expect(origin("https://API.openai.com/v1") == "https://api.openai.com")
+        #expect(origin("https://api.openai.com/other") == "https://api.openai.com")
+        #expect(origin("http://localhost:11434/v1") == "http://localhost:11434")
+        // A half-typed host is another origin, so it never gets the key.
+        #expect(origin("https://api.op") != origin("https://api.openai.com/v1"))
+        #expect(origin("http://localhost:1234/v1") != origin("http://localhost:11434/v1"))
+    }
+
     @Test func loopbackSkipsTheProxy() {
         let local = OpenAICompatibleEmbeddings.makeSession(for: URL(string: "http://localhost:11434/v1")!)
         #expect(local.configuration.connectionProxyDictionary?.isEmpty == true)

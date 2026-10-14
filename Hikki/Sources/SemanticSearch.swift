@@ -12,8 +12,17 @@ enum SemanticPreferences {
     static let modelKey = "semantic.model"
     static let defaultEndpoint = "http://localhost:11434/v1"
     static let defaultModel = "qllama/multilingual-e5-small"
-    /// Keychain account of the optional API key (OpenAI and other hosted endpoints; Ollama needs none).
-    static let apiKeyAccount = "semantic.apiKey"
+    /// Keychain account of the optional API key (OpenAI and other hosted endpoints; Ollama needs none), one per
+    /// origin: a key is only ever sent back to the scheme, host and port it was entered for — editing the address
+    /// (half-typed hosts included) never carries it somewhere else.
+    static func apiKeyAccount(for endpoint: String) -> String? {
+        URL(string: endpoint.trimmingCharacters(in: .whitespaces)).flatMap(OpenAICompatibleEmbeddings.origin(of:))
+            .map { "semantic.apiKey|\($0)" }
+    }
+
+    static func apiKey(for endpoint: String) -> String? {
+        apiKeyAccount(for: endpoint).flatMap(Keychain.read)
+    }
 
     /// The provider the settings describe, or nil when semantic search is off or the address isn't a URL.
     static func provider(_ defaults: UserDefaults = .standard) -> OpenAICompatibleEmbeddings? {
@@ -23,7 +32,7 @@ enum SemanticPreferences {
         guard let url = URL(string: endpoint), url.scheme == "http" || url.scheme == "https", url.host() != nil,
             !model.isEmpty
         else { return nil }
-        return OpenAICompatibleEmbeddings(baseURL: url, model: model, apiKey: Keychain.read(apiKeyAccount))
+        return OpenAICompatibleEmbeddings(baseURL: url, model: model, apiKey: apiKey(for: endpoint))
     }
 }
 
@@ -110,7 +119,7 @@ final class SemanticSearch {
             throw EmbeddingError.unreachable
         }
         return try await OpenAICompatibleEmbeddings(
-            baseURL: url, model: "", apiKey: Keychain.read(SemanticPreferences.apiKeyAccount)
+            baseURL: url, model: "", apiKey: SemanticPreferences.apiKey(for: endpoint)
         ).models()
     }
 }

@@ -54,18 +54,35 @@ public struct OpenAICompatibleEmbeddings: EmbeddingProvider {
     public init(baseURL: URL, model: String, apiKey: String? = nil, session: URLSession? = nil) {
         self.baseURL = baseURL
         self.model = model
-        self.apiKey = apiKey.flatMap { $0.isEmpty ? nil : $0 }
+        // A key never crosses the network in the clear: over http only to this machine.
+        self.apiKey = apiKey.flatMap { $0.isEmpty || !Self.mayCarryKey(baseURL) ? nil : $0 }
         prefixes = EmbeddingPrefixes.forModel(model)
         self.session = session ?? Self.makeSession(for: baseURL)
     }
 
     public var identity: String { "\(baseURL.absoluteString)|\(model)" }
 
+    /// Whether a key may be sent to this address: https anywhere, http only to loopback.
+    public static func mayCarryKey(_ url: URL) -> Bool {
+        url.scheme == "https" || (url.scheme == "http" && isLoopback(url))
+    }
+
+    /// The scheme, host and port a key belongs to: it is only ever sent back there (`SemanticPreferences`).
+    public static func origin(of url: URL) -> String? {
+        guard let scheme = url.scheme, let host = url.host() else { return nil }
+        return "\(scheme)://\(host.lowercased())" + (url.port.map { ":\($0)" } ?? "")
+    }
+
+    static func isLoopback(_ url: URL) -> Bool {
+        guard let host = url.host() else { return false }
+        return ["localhost", "127.0.0.1", "::1", "[::1]"].contains(host.lowercased())
+    }
+
     /// A model on this machine is reached directly: a system or shell proxy would otherwise get the loopback request.
     static func makeSession(for url: URL) -> URLSession {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.timeoutIntervalForRequest = 60
-        if let host = url.host(), ["localhost", "127.0.0.1", "::1"].contains(host) {
+        if isLoopback(url) {
             configuration.connectionProxyDictionary = [:]
         }
         return URLSession(configuration: configuration)

@@ -512,7 +512,8 @@ private struct SemanticSection: View {
     @AppStorage(SemanticPreferences.enabledKey) private var enabled = false
     @AppStorage(SemanticPreferences.endpointKey) private var endpoint = SemanticPreferences.defaultEndpoint
     @AppStorage(SemanticPreferences.modelKey) private var modelName = SemanticPreferences.defaultModel
-    @State private var apiKey = Keychain.read(SemanticPreferences.apiKeyAccount) ?? ""
+    /// The key for the address shown (keys are kept per origin).
+    @State private var apiKey = ""
     @State private var available: [String] = []
 
     var body: some View {
@@ -554,11 +555,20 @@ private struct SemanticSection: View {
         } footer: {
             Text("app:semantic.detail")
         }
+        // Another address shows its own key (usually none): a key typed for one host never goes to another.
+        .onChange(of: endpoint, initial: true) { _, address in
+            apiKey = SemanticPreferences.apiKey(for: address) ?? ""
+        }
+        .onChange(of: apiKey) { _, key in
+            // Stored under the address it was typed for.
+            if let account = SemanticPreferences.apiKeyAccount(for: endpoint) {
+                Keychain.write(key.trimmingCharacters(in: .whitespaces), for: account)
+            }
+        }
         .task(id: [String(enabled), endpoint, modelName, apiKey]) {
-            // Once typing pauses: store the key, point the indexer at the new settings, list the endpoint's models.
+            // Once typing pauses: point the indexer at the new settings, list the endpoint's models.
             try? await Task.sleep(for: .milliseconds(600))
             guard !Task.isCancelled else { return }
-            Keychain.write(apiKey.trimmingCharacters(in: .whitespaces), for: SemanticPreferences.apiKeyAccount)
             model.semantic.reconfigure()
             available = enabled ? ((try? await model.semantic.availableModels()) ?? []) : []
         }
