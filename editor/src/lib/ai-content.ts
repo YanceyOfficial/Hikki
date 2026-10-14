@@ -141,10 +141,10 @@ export function sanitizeInlineHTML(html: string): HTMLElement {
 }
 
 /** `source`'s children into `target`, keeping only allowed tags (see `sanitizeInlineHTML`). */
-function copyAllowed(source: Node, target: Node): void {
+function copyAllowed(source: Node, target: Element): void {
   for (const child of source.childNodes) {
     if (child.nodeType === Node.TEXT_NODE) {
-      target.appendChild(document.createTextNode(child.textContent ?? ''))
+      target.append(document.createTextNode(child.textContent ?? ''))
     } else if (child instanceof Element) {
       const tag = child.tagName
       if (DROPPED.has(tag)) continue
@@ -162,7 +162,7 @@ function copyAllowed(source: Node, target: Node): void {
         clean.setAttribute('href', href)
       }
       copyAllowed(child, clean)
-      target.appendChild(clean)
+      target.append(clean)
     }
   }
 }
@@ -178,6 +178,38 @@ export function parseInline(schema: Schema, html: string): Fragment | null {
   } catch {
     return null
   }
+}
+
+/** A change the model explains (review style C): what it replaced, with what, and why. */
+export type AINote = { from: string; to: string; why: string }
+
+/** Most notes shown, and the longest text kept in each field. */
+const MAX_NOTES = 30
+const MAX_NOTE_TEXT = 300
+
+const noteText = (value: unknown) =>
+  typeof value === 'string' ? value.slice(0, MAX_NOTE_TEXT) : ''
+
+/** The reasons an edit's reply gives (`"notes": [{from, to, why}]`), checked like the blocks; none when absent. */
+export function parseEditNotes(reply: string): AINote[] {
+  if (reply.length > MAX_REPLY) return []
+  const start = reply.indexOf('{')
+  const end = reply.lastIndexOf('}')
+  if (start < 0 || end <= start) return []
+  let notes: unknown
+  try {
+    notes = (JSON.parse(reply.slice(start, end + 1)) as { notes?: unknown } | null)?.notes
+  } catch {
+    return []
+  }
+  if (!Array.isArray(notes)) return []
+  return notes
+    .map((note) => {
+      const { from, to, why } = (note ?? {}) as Record<string, unknown>
+      return { from: noteText(from), to: noteText(to), why: noteText(why) }
+    })
+    .filter((note) => note.from || note.to)
+    .slice(0, MAX_NOTES)
 }
 
 /** Longest reply read (characters): a runaway answer isn't parsed. */

@@ -7,6 +7,8 @@ import SwiftUI
 enum AIPreferences {
     /// The model chosen: an id from the catalog or "auto".
     static let modelKey = "ai.model"
+    /// How an AI edit is reviewed: `inline` (A, default), `diff` (B) or `bubble` (C) — `ReviewStyleThumbnail.Sketch`.
+    static let reviewStyleKey = "ai.reviewStyle"
 
     static func keyAccount(_ provider: AIProvider) -> String { "ai.key.\(provider.rawValue)" }
 
@@ -22,8 +24,25 @@ enum AIPreferences {
 
 struct AISettingsSection: View {
     @AppStorage(AIPreferences.modelKey) private var model = AIModelCatalog.autoID
+    @AppStorage(AIPreferences.reviewStyleKey) private var reviewStyle = ReviewStyleThumbnail.Sketch.inline.rawValue
 
     var body: some View {
+        Section {
+            HStack(alignment: .top, spacing: Spacing.s2) {
+                ForEach(ReviewStyleThumbnail.Sketch.allCases, id: \.self) { sketch in
+                    ThumbnailOption(title(sketch), isSelected: reviewStyle == sketch.rawValue) {
+                        withAnimation(Motion.easeOut()) { reviewStyle = sketch.rawValue }
+                    } thumbnail: {
+                        ReviewStyleThumbnail(sketch)
+                    }
+                    .accessibilityIdentifier("settings-ai-review-\(sketch.rawValue)")
+                }
+            }
+        } header: {
+            Text("app:ai.settings.review")
+        } footer: {
+            Text(detail(ReviewStyleThumbnail.Sketch(rawValue: reviewStyle) ?? .inline))
+        }
         Section {
             Picker("app:ai.settings.model", selection: $model) {
                 Text("app:ai.model.auto").tag(AIModelCatalog.autoID)
@@ -40,6 +59,22 @@ struct AISettingsSection: View {
         }
         ForEach(AIProvider.allCases, id: \.self) { provider in
             AIKeySection(provider: provider)
+        }
+    }
+
+    private func title(_ sketch: ReviewStyleThumbnail.Sketch) -> LocalizedStringKey {
+        switch sketch {
+        case .inline: "app:ai.review.inline"
+        case .diff: "app:ai.review.diff"
+        case .bubble: "app:ai.review.bubble"
+        }
+    }
+
+    private func detail(_ sketch: ReviewStyleThumbnail.Sketch) -> LocalizedStringKey {
+        switch sketch {
+        case .inline: "app:ai.review.inline.detail"
+        case .diff: "app:ai.review.diff.detail"
+        case .bubble: "app:ai.review.bubble.detail"
         }
     }
 }

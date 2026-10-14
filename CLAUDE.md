@@ -348,10 +348,13 @@ HikkiUITests/                 XCUITest flows
   editors) with the prompts in `HikkiAI/Sources/AIPrompts.swift`: an edit asks for JSON `{"blocks":[{id, html}]}`
   with the same ids and inline tags only, an answer for short Markdown with web search; page text is wrapped in tags
   as data. In the page: the selection menu's "Ask AI" (`editor/src/components/ai-panel.tsx`) runs a preset or the
-  user's words; `editor/src/extensions/ai-review.ts` shows the result as review style A — removals struck through and
-  additions as widgets in the page (decorations only, the document untouched), a bar from
-  `editor/src/components/ai-review.tsx` (Accept ↵ in one undo step, Discard esc, Retry, a follow-up), or an answer card
-  (Insert below, Copy). Model output is untrusted: the reply is parsed tolerantly (`editor/src/lib/ai-content.ts`;
+  user's words; `editor/src/extensions/ai-review.ts` shows an edit in the review style picked in Settings → AI
+  (thumbnails: `ReviewStyleThumbnail` / `ThumbnailOption` in HikkiUI; `ai.reviewStyle`, sent with
+  `window.hikki.setAIReviewStyle`): A `inline` (default) — removals struck through and additions as widgets in the page
+  (decorations only, the document untouched) under a bar from `editor/src/components/ai-review.tsx` (Accept ↵ in one
+  undo step, Discard esc, Retry, a follow-up); B `diff` — − / + lines in the bar; C `bubble` — a card listing each
+  change with the model's reason (`explain` in the request, `notes` in the reply), the page untouched until Replace
+  (B and C: `editor/src/components/ai-review-styles.tsx`). Answers get a card (Insert below, Copy). Model output is untrusted: the reply is parsed tolerantly (`editor/src/lib/ai-content.ts`;
   sanitized inline HTML through the schema, unknown keys dropped, an unreadable reply is an error), citations must be
   http(s), and any change to the page closes the review.
 - **Find, spelling, insets**: find and replace is `editor/src/extensions/find.ts` (Tiptap's extension, RE2 regex) with

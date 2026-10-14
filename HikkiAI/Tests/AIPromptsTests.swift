@@ -19,6 +19,14 @@ struct AIPromptsTests {
         #expect(text.contains("Task: Fix spelling"))
     }
 
+    @Test func anExplainedEditAlsoAsksForNotes() {
+        let plain = AIPrompts.request(for: AITask(action: "fix", answer: false, units: [unit]), model: AIModelCatalog.sonnet)
+        #expect(!plain.instructions.contains("\"notes\""))
+        let task = AITask(action: "fix", answer: false, explain: true, units: [unit])
+        let request = AIPrompts.request(for: task, model: AIModelCatalog.sonnet)
+        #expect(request.instructions.contains(#"{"from": "<the words replaced>""#))
+    }
+
     @Test func anAnswerGetsPlainTextAndWebSearch() {
         let task = AITask(action: "explain", answer: true, units: [unit, .init(key: "p2:1", html: "a &amp; b")])
         let request = AIPrompts.request(for: task, model: AIModelCatalog.gptSol)

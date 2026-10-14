@@ -5,6 +5,7 @@ import { createEditor } from '../src/core/editor'
 import {
   fragmentText,
   OBJECT_CHAR,
+  parseEditNotes,
   parseEditReply,
   parseInline,
   sanitizeInlineHTML,
@@ -94,5 +95,31 @@ describe('parseEditReply', () => {
     expect(parseEditReply('{"blocks": [', ['a'])).toBeNull()
     expect(parseEditReply('{"text":"hi"}', ['a'])).toBeNull()
     expect(parseEditReply('x'.repeat(300_000), ['a'])).toBeNull()
+  })
+})
+
+describe('parseEditNotes', () => {
+  it('keeps notes that name a change, as strings, capped', () => {
+    const reply = JSON.stringify({
+      blocks: [],
+      notes: [
+        { from: 'が', to: '', why: 'から already marks it' },
+        { from: 5, to: 'x' },
+        { why: 'nothing named' },
+        'junk',
+        null
+      ]
+    })
+    expect(parseEditNotes(reply)).toEqual([
+      { from: 'が', to: '', why: 'から already marks it' },
+      { from: '', to: 'x', why: '' }
+    ])
+    expect(parseEditNotes('{"blocks":[]}')).toEqual([])
+    expect(parseEditNotes('nope')).toEqual([])
+    const many = JSON.stringify({
+      notes: Array.from({ length: 50 }, () => ({ from: 'a'.repeat(500) }))
+    })
+    expect(parseEditNotes(many)).toHaveLength(30)
+    expect(parseEditNotes(many)[0].from).toHaveLength(300)
   })
 })

@@ -13,12 +13,14 @@ import { renderAIReview, type AIReviewProps } from '../components/ai-review'
 import { FloatingLayer } from '../components/floating'
 import type { AIStreamEvent } from '../core/protocol'
 import {
+  type AINote,
+  type AIUnit,
   fragmentText,
+  parseEditNotes,
   parseEditReply,
   parseInline,
   selectionUnits,
-  textBetween,
-  type AIUnit
+  textBetween
 } from '../lib/ai-content'
 import { changeCount, diffText, type DiffSegment } from '../lib/ai-diff'
 
@@ -28,11 +30,19 @@ export type AIAction = { id: string; instruction?: string }
 /** Prose answers (nothing replaced); `ask` is a follow-up question on an answer. */
 const ANSWER_ACTIONS = new Set(['explain', 'summarize', 'ask'])
 
+/**
+ * How an edit is reviewed (Settings → AI): A `inline` — tracked changes in the page; B `diff` — before/after lines in
+ * the bar; C `bubble` — a card listing each change with why, the page untouched until Replace.
+ */
+export type AIReviewStyle = 'inline' | 'diff' | 'bubble'
+
 export type AIRequestMessage = {
   id: string
   action: string
   instruction?: string
   answer: boolean
+  /** Ask for a short reason per change (review style C). */
+  explain?: boolean
   units: { key: string; html: string }[]
   context: { title: string; before: string; after: string; previous?: string }
 }
@@ -42,6 +52,8 @@ export type AIHost = {
   request: (message: AIRequestMessage) => void
   cancel: (id: string) => void
   title: () => string
+  /** The review style for edits (default `inline`). */
+  style?: () => AIReviewStyle
 }
 
 /** One AI request over the selection, from asking to accepting or closing. */
@@ -49,12 +61,15 @@ export type AISession = {
   id: string
   action: AIAction
   answer: boolean
+  style: AIReviewStyle
   units: AIUnit[]
   status: 'thinking' | 'review' | 'answer' | 'error'
   /** The text received so far (the edit's JSON, or the answer's Markdown). */
   reply: string
   /** For edits: each unit's replacement, and its diff against the selection. */
   edits: Map<string, { fragment: Fragment; diff: DiffSegment[] }>
+  /** Style C: the model's reasons, one per change. */
+  notes: AINote[]
   searching: string | null
   citations: { url: string; title?: string | null }[]
   error: { code: string; provider?: string | null; message?: string | null } | null
@@ -208,10 +223,12 @@ function start(
     id: newID(),
     action,
     answer,
+    style: host.style?.() ?? 'inline',
     units,
     status: 'thinking',
     reply: '',
     edits: new Map(),
+    notes: [],
     searching: null,
     citations: [],
     error: null
@@ -224,6 +241,7 @@ function start(
     action: action.id,
     ...(action.instruction ? { instruction: action.instruction } : {}),
     answer,
+    ...(session.style === 'bubble' && !answer ? { explain: true } : {}),
     units: units.map(({ key, html }) => ({ key, html })),
     context: {
       title: host.title(),
@@ -307,6 +325,7 @@ function finishEdit(editor: Editor, session: AISession): void {
     if (diff.some((segment) => segment.type !== 'same'))
       session.edits.set(unit.key, { fragment, diff })
   }
+  if (session.style === 'bubble') session.notes = parseEditNotes(session.reply)
   session.status = 'review'
 }
 
@@ -315,7 +334,8 @@ function decorations(state: EditorState, session: AISession | null): DecorationS
   if (!session) return DecorationSet.empty
   const decos: Decoration[] = []
   for (const unit of session.units) {
-    if (session.status === 'thinking' || session.answer) {
+    // Styles B and C show the edit in the bar; the page keeps the selection marked.
+    if (session.status === 'thinking' || session.answer || session.style !== 'inline') {
       decos.push(
         Decoration.inline(unit.from, unit.to, {
           class: session.status === 'thinking' ? 'hk-ai-thinking' : 'hk-ai-subject'
@@ -418,7 +438,13 @@ function draw(editor: Editor, host: AIHost): void {
       searching: session.searching,
       citations: session.citations,
       error: session.error,
-      changes: [...session.edits.values()].reduce((sum, edit) => sum + changeCount(edit.diff), 0)
+      changes: [...session.edits.values()].reduce((sum, edit) => sum + changeCount(edit.diff), 0),
+      style: session.style,
+      lines: session.units.map((unit) => ({
+        key: unit.key,
+        diff: session.edits.get(unit.key)?.diff ?? [{ type: 'same', text: unit.text }]
+      })),
+      notes: session.notes
     },
     onAccept: () => void editor.chain().focus().aiAccept().run(),
     onDiscard: () => close(editor, host),
@@ -432,7 +458,7 @@ function draw(editor: Editor, host: AIHost): void {
         session.reply
       ),
     onInsertBelow: () => insertBelow(editor, host, session.reply),
-    onCopy: () => void navigator.clipboard?.writeText(session.reply).catch(() => {})
+    onCopy: (text) => void navigator.clipboard?.writeText(text ?? session.reply).catch(() => {})
   }
   renderAIReview(store.layer, props, () => {
     try {

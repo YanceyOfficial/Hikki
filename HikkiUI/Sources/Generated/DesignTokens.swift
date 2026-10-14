@@ -215,6 +215,7 @@ public nonisolated enum Size {
     public static let historyList: CGFloat = 240
     public static let historyWidth: CGFloat = 880
     public static let historyHeight: CGFloat = 600
+    public static let thumbnail: CGFloat = 84
 }
 
 /// Motion: one timing for everything that appears, leaves or reacts (popovers, hover states, scrims).

@@ -139,13 +139,14 @@ struct BridgeMessageTests {
         #expect(try decode(["type": "aiCancel", "id": "r1"]) == .aiCancel(id: "r1"))
         #expect(
             try decode([
-                "type": "aiRequest", "id": "r1", "action": "tone:casual", "answer": false,
+                "type": "aiRequest", "id": "r1", "action": "tone:casual", "answer": false, "explain": true,
                 "units": [["key": "p1:0", "html": "Hello <strong>there</strong>"]],
                 "context": ["title": "Notes", "before": "", "after": "Bye"],
             ])
                 == .aiRequest(
                     AIRequestPayload(
-                        id: "r1", action: "tone:casual", answer: false, units: [.init(key: "p1:0", html: "Hello <strong>there</strong>")],
+                        id: "r1", action: "tone:casual", answer: false, explain: true,
+                        units: [.init(key: "p1:0", html: "Hello <strong>there</strong>")],
                         context: .init(title: "Notes", before: "", after: "Bye"))))
         #expect(try decode(["type": "activeHeading", "docId": "p1", "id": NSNull()]) == .activeHeading(docId: "p1", id: nil))
         #expect(try decode(["type": "openLink", "url": "https://example.com"]) == .openLink(url: "https://example.com"))

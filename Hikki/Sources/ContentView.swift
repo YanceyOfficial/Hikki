@@ -30,6 +30,7 @@ struct ContentView: View {
     @State private var isExporting = false
     private let tone = ColorTone.standard
     @AppStorage(EditorPreferences.spellcheckKey) private var spellcheck = true
+    @AppStorage(AIPreferences.reviewStyleKey) private var aiReviewStyle = "inline"
     #if os(macOS)
         @Environment(\.openSettings) private var openSettings
     #endif
@@ -187,6 +188,10 @@ struct ContentView: View {
             .onChange(of: spellcheck) { _, on in
                 editor.setSpellcheck(on)
                 splitEditor?.setSpellcheck(on)
+            }
+            .onChange(of: aiReviewStyle) { _, style in
+                editor.setAIReviewStyle(style)
+                splitEditor?.setAIReviewStyle(style)
             }
             // Settings → Shortcuts: the page handles the editor's own keys, so it hears about rebindings.
             .onChange(of: ShortcutStore.shared.overrides) {
@@ -357,6 +362,7 @@ struct ContentView: View {
         if let initialPageID, model.tree.page(initialPageID) != nil { navigator.open(initialPageID) }
         editor.setTone(tone)
         editor.setSpellcheck(spellcheck)
+        editor.setAIReviewStyle(aiReviewStyle)
         editor.attach(store: model.store, assets: model.assets) { [weak model] in model?.history }
         editor.onOpenPage = { id, block in
             guard model.tree.page(id) != nil else { return }
@@ -375,6 +381,7 @@ struct ContentView: View {
         let pane = EditorController()
         pane.setTone(tone)
         pane.setSpellcheck(spellcheck)
+        pane.setAIReviewStyle(aiReviewStyle)
         pane.attach(store: model.store, assets: model.assets) { [weak model] in model?.history }
         pane.onOpenPage = { [navigator] id, block in
             guard model.tree.page(id) != nil else { return }

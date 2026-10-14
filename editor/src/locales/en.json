@@ -424,6 +424,11 @@
       "rejected": "The request was refused.",
       "rejectedWith": "The request was refused: {{message}}",
       "invalidResponse": "The answer couldn’t be read. Try again."
-    }
+    },
+    "replace": "Replace selection",
+    "pageUntouched": "The page changes only when you replace.",
+    "removed": "(removed)",
+    "changesInLines_one": "{{count}} change in {{changed}} of {{total}} lines",
+    "changesInLines_other": "{{count}} changes in {{changed}} of {{total}} lines"
   }
 }

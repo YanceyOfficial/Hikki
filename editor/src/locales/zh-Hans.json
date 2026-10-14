@@ -424,6 +424,11 @@
       "rejected": "请求被拒绝。",
       "rejectedWith": "请求被拒绝：{{message}}",
       "invalidResponse": "无法读取回答。请重试。"
-    }
+    },
+    "replace": "替换选中内容",
+    "pageUntouched": "替换之前页面不会改动。",
+    "removed": "（删除）",
+    "changesInLines_one": "{{total}} 行中的 {{changed}} 行有 {{count}} 处修改",
+    "changesInLines_other": "{{total}} 行中的 {{changed}} 行有 {{count}} 处修改"
   }
 }

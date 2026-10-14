@@ -2,7 +2,7 @@ import type { Editor } from '@tiptap/core'
 import type { Transaction } from '@tiptap/pm/state'
 
 import { setBlockLinkBuilder } from '../components/block-menu'
-import { handleAIEvent, type AIHost } from '../extensions/ai-review'
+import { handleAIEvent, type AIHost, type AIReviewStyle } from '../extensions/ai-review'
 import { runFind, type FindMode } from '../extensions/find'
 import type { MediaHost } from '../extensions/media'
 import { pageLinkHref, type PageIndexEntry, type PageLinksHost } from '../extensions/page-links'
@@ -98,6 +98,7 @@ export class EditorBridge {
   private pageInfoTimer: ReturnType<typeof setTimeout> | null = null
   /** Settings → Editor → Check spelling; applied to every page's editor. */
   private spellcheck = true
+  private aiReviewStyle: AIReviewStyle = 'inline'
 
   constructor(
     private readonly host: HTMLElement,
@@ -349,7 +350,13 @@ export class EditorBridge {
   readonly aiHost: AIHost = {
     request: (message) => void this.send({ type: 'aiRequest', ...message }),
     cancel: (id) => void this.send({ type: 'aiCancel', id }),
-    title: () => this.page.get().title
+    title: () => this.page.get().title,
+    style: () => this.aiReviewStyle
+  }
+
+  /** Settings → AI → Review style: how the next edit is shown. */
+  setAIReviewStyle(style: AIReviewStyle): void {
+    if (style === 'inline' || style === 'diff' || style === 'bubble') this.aiReviewStyle = style
   }
 
   /** `window.hikki.aiEvent`: one event of an AI request's answer. */

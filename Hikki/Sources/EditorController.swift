@@ -331,6 +331,24 @@ final class EditorController {
         Task { await applySpellcheck() }
     }
 
+    @ObservationIgnored private var aiReviewStyle = "inline"
+
+    /// Settings → AI → Review: how the page shows an AI edit (`inline`, `diff`, `bubble`).
+    func setAIReviewStyle(_ style: String) {
+        aiReviewStyle = style
+        guard isReady else { return }
+        Task { await applyAIReviewStyle() }
+    }
+
+    private func applyAIReviewStyle() async {
+        do {
+            _ = try await webView.callAsyncJavaScript(
+                "window.hikki.setAIReviewStyle(style)", arguments: ["style": aiReviewStyle], contentWorld: .page)
+        } catch {
+            Log.warn("setAIReviewStyle failed: \(error)", category: "bridge")
+        }
+    }
+
     private func applySpellcheck() async {
         do {
             _ = try await webView.callAsyncJavaScript(
@@ -486,6 +504,7 @@ final class EditorController {
                 await applyLocale()
                 await applyTone()
                 await applySpellcheck()
+                await applyAIReviewStyle()
                 await applyShortcuts()
                 await applySplitDrop()
                 await applyInsets()

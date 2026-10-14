@@ -8,6 +8,7 @@ import {
   aiReviewOpen,
   handleAIEvent,
   type AIHost,
+  type AIReviewStyle,
   type AIRequestMessage
 } from '../src/extensions/ai-review'
 
@@ -16,6 +17,7 @@ let editor: Editor
 let requests: AIRequestMessage[]
 let cancelled: string[]
 let ai: AIHost
+let style: AIReviewStyle
 
 const text = () => editor.state.doc.textContent
 type Unsent<T> = T extends unknown ? Omit<T, 'id'> : never
@@ -29,7 +31,9 @@ beforeEach(() => {
   document.body.append(host)
   requests = []
   cancelled = []
+  style = 'inline'
   ai = {
+    style: () => style,
     request: (message) => requests.push(message),
     cancel: (id) => cancelled.push(id),
     title: () => 'Notes'
@@ -143,5 +147,50 @@ describe('AI review (style A)', () => {
       units: [{ key: 'p1:0' }],
       context: { previous: 'Foxes are quick.' }
     })
+  })
+
+  it('style B shows the edit as before/after lines in the bar, not in the page', () => {
+    style = 'diff'
+    editor.commands.aiRun({ id: 'improve' })
+    expect(requests[0].explain).toBeUndefined()
+    send({ type: 'text', delta: reply({ 'p1:0': 'the fast fox' }) })
+    send({ type: 'done' })
+    expect(host.querySelector('.hk-ai-del, .hk-ai-ins')).toBeNull()
+    expect(host.querySelector('.hk-ai-subject')).not.toBeNull()
+    const diff = document.querySelector('[data-testid="ai-review-diff"]')!
+    expect([...diff.querySelectorAll('mark')].map((m) => m.textContent)).toEqual([
+      'quick ',
+      'fast '
+    ])
+    expect(editor.commands.aiAccept()).toBe(true)
+    expect(text()).toBe('the fast fox')
+  })
+
+  it('style C asks for reasons and lists each change with its reason', () => {
+    style = 'bubble'
+    editor.commands.aiRun({ id: 'improve' })
+    expect(requests[0].explain).toBe(true)
+    send({
+      type: 'text',
+      delta: JSON.stringify({
+        blocks: [{ id: 'p1:0', html: 'the fast fox' }],
+        notes: [{ from: 'quick', to: 'fast', why: 'shorter word' }, { why: 'no change named' }]
+      })
+    })
+    send({ type: 'done' })
+    expect(host.querySelector('.hk-ai-del, .hk-ai-ins')).toBeNull()
+    const items = [...document.querySelectorAll('[data-testid="ai-review-bubble"] li')]
+    expect(items.map((li) => li.textContent)).toEqual(['quickfast· shorter word'])
+    document.querySelector<HTMLButtonElement>('[data-testid="ai-accept"]')!.click()
+    expect(text()).toBe('the fast fox')
+  })
+
+  it('style C without notes lists the changes from the diff', () => {
+    style = 'bubble'
+    editor.commands.aiRun({ id: 'improve' })
+    send({ type: 'text', delta: reply({ 'p1:0': 'the fast fox' }) })
+    send({ type: 'done' })
+    const items = [...document.querySelectorAll('[data-testid="ai-review-bubble"] li')]
+    expect(items.map((li) => li.textContent)).toEqual(['quick fast '])
   })
 })

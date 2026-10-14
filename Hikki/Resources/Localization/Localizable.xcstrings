@@ -18,6 +18,108 @@
         }
       }
     },
+    "app:ai.review.bubble": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Card"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卡片"
+          }
+        }
+      }
+    },
+    "app:ai.review.bubble.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A card lists each change with a short reason; the page changes only when you replace. Good for learning a language."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卡片列出每处修改及简短原因，替换之前页面不会改动。适合学习语言。"
+          }
+        }
+      }
+    },
+    "app:ai.review.diff": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diff"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "对比"
+          }
+        }
+      }
+    },
+    "app:ai.review.diff.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Each changed line appears before and after, like a code diff. Clearest for long rewrites."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每一行修改都以前后对照的方式显示，像代码对比。适合大段改写。"
+          }
+        }
+      }
+    },
+    "app:ai.review.inline": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In the page"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "页面内"
+          }
+        }
+      }
+    },
+    "app:ai.review.inline.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Removals and additions appear right in the text; accept or discard them under the selection."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除和新增的内容直接显示在正文里，在选中内容下方接受或放弃。"
+          }
+        }
+      }
+    },
     "app:ai.settings.anthropic.detail": {
       "extractionState": "manual",
       "localizations": {
@@ -150,6 +252,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "sk-…"
+          }
+        }
+      }
+    },
+    "app:ai.settings.review": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review edits"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "审阅修改"
           }
         }
       }

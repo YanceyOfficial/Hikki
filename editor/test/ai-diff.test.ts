@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { changeCount, diffText, diffUnits } from '../src/lib/ai-diff'
+import { changeCount, changePairs, diffSide, diffText, diffUnits } from '../src/lib/ai-diff'
 
 describe('diffUnits', () => {
   it('splits CJK by character, other text by word with its spaces, punctuation on its own', () => {
@@ -63,5 +63,27 @@ describe('changeCount', () => {
       )
     ).toBe(2)
     expect(changeCount([{ type: 'same', text: 'x' }])).toBe(0)
+  })
+})
+
+describe('changePairs / diffSide', () => {
+  const diff = diffText(
+    'いいえ、あまりません。うちからが遠いんです。',
+    'いいえ、あまり行きません。うちから遠いんです。'
+  )
+
+  it('lists each change as what it replaced and with what', () => {
+    expect(changePairs(diff)).toEqual([
+      { from: '', to: '行き' },
+      { from: 'が', to: '' }
+    ])
+    expect(changePairs(diffText('the quick fox', 'the fast fox'))).toEqual([
+      { from: 'quick ', to: 'fast ' }
+    ])
+  })
+
+  it('gives back either text', () => {
+    expect(diffSide(diff, 'before')).toBe('いいえ、あまりません。うちからが遠いんです。')
+    expect(diffSide(diff, 'after')).toBe('いいえ、あまり行きません。うちから遠いんです。')
   })
 })

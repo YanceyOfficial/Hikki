@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 18
+export const PROTOCOL_VERSION = 19
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -82,6 +82,8 @@ export type ToNativeMessage =
       action: string
       instruction?: string
       answer: boolean
+      /** Ask for a reason per change (`notes` in the reply; review style C). */
+      explain?: boolean
       units: { key: string; html: string }[]
       context: { title: string; before: string; after: string; previous?: string }
     }

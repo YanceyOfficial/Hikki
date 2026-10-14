@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 18
+    public static let version = 19
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -259,16 +259,20 @@ public struct AIRequestPayload: Decodable, Equatable, Sendable {
     public var action: String
     public var instruction: String?
     public var answer: Bool
+    /// Ask for a short reason per change (review style C).
+    public var explain: Bool?
     public var units: [Unit]
     public var context: Context
 
     public init(
-        id: String, action: String, instruction: String? = nil, answer: Bool, units: [Unit], context: Context
+        id: String, action: String, instruction: String? = nil, answer: Bool, explain: Bool? = nil, units: [Unit],
+        context: Context
     ) {
         self.id = id
         self.action = action
         self.instruction = instruction
         self.answer = answer
+        self.explain = explain
         self.units = units
         self.context = context
     }

@@ -17,6 +17,9 @@ import {
 import { Kbd } from '@/components/ui/kbd'
 
 import { t } from '../core/i18n'
+import type { AIReviewStyle } from '../extensions/ai-review'
+import type { AINote } from '../lib/ai-content'
+import { BubbleReview, DiffReview, type AIReviewLine } from './ai-review-styles'
 import type { FloatingAnchor, FloatingLayer } from './floating'
 
 export type AIReviewProps = {
@@ -27,15 +30,20 @@ export type AIReviewProps = {
     searching: string | null
     citations: { url: string; title?: string | null }[]
     error: { code: string; provider?: string | null; message?: string | null } | null
-    /** For edits: how many separate changes are shown in the page. */
+    /** For edits: how many separate changes there are. */
     changes: number
+    style: AIReviewStyle
+    /** Each unit's diff (styles B and C draw them in the bar). */
+    lines: AIReviewLine[]
+    notes: AINote[]
   }
   onAccept: () => void
   onDiscard: () => void
   onRetry: () => void
   onFollowUp: (instruction: string) => void
   onInsertBelow: () => void
-  onCopy: () => void
+  /** Copies `text`, or the answer. */
+  onCopy: (text?: string) => void
 }
 
 /** The three dots of AI at work (the one loading shimmer's timing, `--motion-loop`). */
@@ -131,7 +139,8 @@ export function AIReview({
   onInsertBelow,
   onCopy
 }: AIReviewProps) {
-  const { status, answer, reply, searching, citations, error, changes } = session
+  const { status, answer, reply, searching, citations, error, changes, style, lines, notes } =
+    session
   const working =
     searching === null
       ? answer
@@ -203,7 +212,19 @@ export function AIReview({
         </div>
       )}
 
-      {status === 'review' && changes > 0 && (
+      {status === 'review' && changes > 0 && style === 'diff' && (
+        <DiffReview lines={lines} changes={changes} onAccept={onAccept} onDiscard={onDiscard} />
+      )}
+      {status === 'review' && changes > 0 && style === 'bubble' && (
+        <BubbleReview
+          lines={lines}
+          notes={notes}
+          onAccept={onAccept}
+          onDiscard={onDiscard}
+          onCopy={onCopy}
+        />
+      )}
+      {status === 'review' && changes > 0 && style === 'inline' && (
         <>
           <FollowUp placeholder={t('ai.followUp')} onSubmit={onFollowUp} />
           <div className="flex flex-wrap items-center gap-1.5">
@@ -230,7 +251,7 @@ export function AIReview({
         <>
           <FollowUp placeholder={t('ai.askFollowUp')} onSubmit={onFollowUp} />
           <div className="flex flex-wrap items-center justify-end gap-1.5">
-            <Button variant="ghost" size="sm" onClick={onCopy}>
+            <Button variant="ghost" size="sm" onClick={() => onCopy()}>
               <CopyIcon aria-hidden />
               {t('ai.copy')}
             </Button>

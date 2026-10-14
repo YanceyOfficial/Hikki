@@ -63,6 +63,15 @@
                             Text(verbatim: "Me too").padding(Spacing.s2).background(Theme.muted).toolTip("Another one")
                         }
                     }
+                    Section("ThumbnailOption + ReviewStyleThumbnail") {
+                        HStack(alignment: .top, spacing: Spacing.s2) {
+                            ForEach(ReviewStyleThumbnail.Sketch.allCases, id: \.self) { sketch in
+                                ThumbnailOption(LocalizedStringKey(sketch.rawValue), isSelected: sketch == .inline, action: {}) {
+                                    ReviewStyleThumbnail(sketch)
+                                }
+                            }
+                        }
+                    }
                     Section("AIGlyph") {
                         HStack(spacing: Spacing.s4) {
                             AIGlyph()

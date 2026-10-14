@@ -95,3 +95,31 @@ export function changeCount(segments: DiffSegment[]): number {
   }
   return count
 }
+
+/** Each change as what it replaced and with what (either side may be empty), in order — `changeCount` of them. */
+export function changePairs(segments: DiffSegment[]): { from: string; to: string }[] {
+  const pairs: { from: string; to: string }[] = []
+  let current: { from: string; to: string } | null = null
+  for (const segment of segments) {
+    if (segment.type === 'same') {
+      current = null
+      continue
+    }
+    if (!current) {
+      current = { from: '', to: '' }
+      pairs.push(current)
+    }
+    if (segment.type === 'del') current.from += segment.text
+    else current.to += segment.text
+  }
+  return pairs
+}
+
+/** One side of a diff: the old text (`del` and `same`) or the new (`add` and `same`). */
+export function diffSide(segments: DiffSegment[], side: 'before' | 'after'): string {
+  const skip = side === 'before' ? 'add' : 'del'
+  return segments
+    .filter((segment) => segment.type !== skip)
+    .map((segment) => segment.text)
+    .join('')
+}
