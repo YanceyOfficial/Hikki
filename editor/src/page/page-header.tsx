@@ -22,7 +22,7 @@ import { EmojiPickerPanel } from '../components/emoji-picker-panel'
 import type { EditorBridge } from '../core/bridge'
 import {
   coverBackground,
-  coverImageURL,
+  coverImage,
   coverPosition,
   isImageCover,
   randomGradient,
@@ -56,7 +56,12 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
   return (
     <header className="group/header relative">
       {background && (
-        <Cover background={background} repositioning={draftY !== null} onDrag={setDraftY}>
+        <Cover
+          background={background}
+          image={coverImage(cover)}
+          repositioning={draftY !== null}
+          onDrag={setDraftY}
+        >
           {draftY !== null ? (
             <CoverActions>
               <CoverAction
@@ -268,11 +273,14 @@ function TitleField({
  */
 function Cover({
   background,
+  image,
   repositioning,
   onDrag,
   children
 }: {
   background: string
+  /** An image cover is drawn as an <img> (see below); a gradient as the CSS background. */
+  image: { src: string; y: number } | null
   repositioning: boolean
   onDrag: (y: number) => void
   children: ReactNode
@@ -280,16 +288,15 @@ function Cover({
   const { t } = useTranslation()
   const ref = useRef<HTMLDivElement>(null)
   const drag = useRef<{ pointerId: number; startY: number; startClientY: number } | null>(null)
-  const overflow = useCoverOverflow(ref, background)
+  const overflow = useCoverOverflow(ref, image?.src ?? null)
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!repositioning || event.button !== 0) return
     // A press on the controls is theirs: capturing the pointer here would steal their click.
     if ((event.target as HTMLElement).closest('[data-slot="cover-actions"]')) return
-    const match = /(\d+(?:\.\d+)?)% \/ cover/u.exec(background)
     drag.current = {
       pointerId: event.pointerId,
-      startY: match ? Number(match[1]) : 50,
+      startY: image?.y ?? 50,
       startClientY: event.clientY
     }
     event.currentTarget.setPointerCapture?.(event.pointerId)
@@ -312,13 +319,26 @@ function Cover({
         'group/cover relative h-[30vh] max-h-[280px] min-h-[140px]',
         repositioning && 'cursor-grab touch-none select-none active:cursor-grabbing'
       )}
-      style={{ background }}
+      style={image ? undefined : { background }}
       data-testid="cover"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
     >
+      {/* A picture as a CSS background was re-rasterized at every size while the window was resized (the cover
+          flickered); an <img> on its own compositing layer is decoded once and scaled by the GPU. */}
+      {image && (
+        <img
+          src={image.src}
+          alt=""
+          draggable={false}
+          decoding="async"
+          data-testid="cover-image"
+          className="pointer-events-none absolute inset-0 size-full [transform:translateZ(0)] object-cover select-none [backface-visibility:hidden]"
+          style={{ objectPosition: `50% ${image.y}%` }}
+        />
+      )}
       {repositioning && (
         <div className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center">
           <span className="hk-pop rounded-md bg-popover/90 px-3 py-1.5 text-sm text-popover-foreground shadow-sm">
@@ -337,12 +357,10 @@ function Cover({
  */
 function useCoverOverflow(
   ref: React.RefObject<HTMLDivElement | null>,
-  background: string
+  src: string | null
 ): number | null {
   // Measured for one picture; another picture's cover reads as unmeasured until its own load lands.
   const [measured, setMeasured] = useState<{ src: string; overflow: number } | null>(null)
-  const url = /url\("([^"]+)"\)/u.exec(background)?.[1]?.replaceAll('%22', '"') ?? null
-  const src = coverImageURL(url)
   useEffect(() => {
     if (!src || typeof Image === 'undefined') return
     let cancelled = false
@@ -352,7 +370,7 @@ function useCoverOverflow(
       () => {
         if (cancelled || !ref.current || !image.naturalWidth) return
         const { width, height } = ref.current.getBoundingClientRect()
-        // `background-size: cover`: the image fills the width (or the height, when it is the taller one).
+        // `object-fit: cover`: the image fills the width (or the height, when it is the taller one).
         const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight)
         setMeasured({ src, overflow: image.naturalHeight * scale - height })
       },
@@ -363,7 +381,7 @@ function useCoverOverflow(
       cancelled = true
     }
   }, [src, ref])
-  return measured?.src === src ? measured.overflow : null
+  return src && measured?.src === src ? measured.overflow : null
 }
 
 /**

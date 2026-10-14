@@ -90,6 +90,12 @@ export function coverImageURL(cover: string | null): string | null {
   return isImageCover(cover) ? cover.replace(POSITION, '') : null
 }
 
+/** An image cover's picture and vertical position (0–100), or null for a gradient or nothing. */
+export function coverImage(cover: string | null): { src: string; y: number } | null {
+  const src = coverImageURL(cover)
+  return src ? { src, y: coverPosition(cover) } : null
+}
+
 /** CSS `background` for a stored cover value, or null if it is unusable. */
 export function coverBackground(cover: string | null): string | null {
   if (!cover) return null

@@ -7,6 +7,9 @@ import { Outline } from '../src/page/outline'
 import { PageHeader } from '../src/page/page-header'
 import { page, settle } from './helpers'
 
+/** Where the cover's picture sits (its `object-position`). */
+const position = () => (screen.getByTestId('cover-image') as HTMLImageElement).style.objectPosition
+
 describe('PageHeader', () => {
   let sent: ToNativeMessage[]
   let bridge: EditorBridge
@@ -114,7 +117,7 @@ describe('PageHeader', () => {
     fireEvent.pointerDown(cover, { pointerId: 1, button: 0, clientY: 100 })
     fireEvent.pointerMove(cover, { pointerId: 1, clientY: 150 })
     fireEvent.pointerUp(cover, { pointerId: 1 })
-    expect(cover.style.background).toContain('50% 25%')
+    expect(position()).toBe('50% 25%')
     // The page itself is untouched until Save.
     expect(bridge.page.get().cover).toBe('hikki-editor://assets/a.png')
     // A press on the controls is not a drag.
@@ -124,7 +127,7 @@ describe('PageHeader', () => {
       clientY: 10
     })
     fireEvent.pointerMove(cover, { pointerId: 3, clientY: 110 })
-    expect(cover.style.background).toContain('50% 25%')
+    expect(position()).toBe('50% 25%')
     fireEvent.click(screen.getByText('Save position'))
     expect(bridge.page.get().cover).toBe('hikki-editor://assets/a.png#y=25')
     expect(sent.at(-1)).toMatchObject({
@@ -136,9 +139,9 @@ describe('PageHeader', () => {
     fireEvent.click(screen.getByText('Reposition'))
     fireEvent.pointerDown(cover, { pointerId: 2, button: 0, clientY: 100 })
     fireEvent.pointerMove(cover, { pointerId: 2, clientY: 0 })
-    expect(screen.getByTestId('cover').style.background).toContain('50% 75%')
+    expect(position()).toBe('50% 75%')
     fireEvent.click(screen.getByText('Cancel'))
-    expect(screen.getByTestId('cover').style.background).toContain('50% 25%')
+    expect(position()).toBe('50% 25%')
     expect(bridge.page.get().cover).toBe('hikki-editor://assets/a.png#y=25')
   })
 
