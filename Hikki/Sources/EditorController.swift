@@ -12,6 +12,8 @@ final class EditorController {
     private(set) var activeFormats: Set<String> = []
     /// The open page's outline and size as the editor last reported them (`pageInfo`), for the inspector.
     private(set) var pageInfo: PageInfo?
+    /// The heading the reader is in (block id), for the inspector's outline; nil above the first.
+    private(set) var activeHeading: (docId: String, id: String?)?
 
     struct PageInfo: Equatable {
         var docId: String
@@ -119,9 +121,17 @@ final class EditorController {
     }
 
     /// The inspector's outline: a heading of the open page.
+    /// The inspector's outline: the heading to the top of the page, marked there as the one being read.
     func scrollToHeading(_ blockID: String) {
-        guard let id = currentDocumentID else { return }
-        scrollToBlock(blockID, in: id)
+        guard isReady, currentDocumentID != nil else { return }
+        Task {
+            do {
+                _ = try await webView.callAsyncJavaScript(
+                    "window.hikki.jumpToHeading(id)", arguments: ["id": blockID], contentWorld: .page)
+            } catch {
+                Log.warn("jumpToHeading failed: \(error)", category: "bridge")
+            }
+        }
     }
 
     /// Whether the page draws its own hover outline rail (off while the inspector shows the outline).
@@ -423,6 +433,8 @@ final class EditorController {
             activeFormats = Set(active)
         case .pageInfo(let docId, let headings, let words, let characters):
             pageInfo = PageInfo(docId: docId, headings: headings, words: words, characters: characters)
+        case .activeHeading(let docId, let id):
+            activeHeading = (docId, id)
         case .log(let level, let message, let context):
             Log.write(level, message, category: "web", context: context)
         case .setIcon(let docId, let icon):

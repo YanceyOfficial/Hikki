@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 15
+export const PROTOCOL_VERSION = 16
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -61,6 +61,8 @@ export type ToNativeMessage =
       words: number
       characters: number
     }
+  /** The heading the reader is in (scroll-spy) changed: the inspector's outline marks it; null above the first. */
+  | { type: 'activeHeading'; docId: string; id: string | null }
   | { type: 'log'; level: LogLevel; message: string; context?: Record<string, string> }
   /** Saved immediately (not debounced) — metadata has its own write path. */
   | { type: 'setIcon'; docId: string; icon: string | null }

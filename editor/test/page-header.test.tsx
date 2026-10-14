@@ -213,3 +213,124 @@ describe('Outline', () => {
     host.remove()
   })
 })
+
+describe('Outline marks where the reader is', () => {
+  afterEach(cleanup)
+
+  it('lights the bar of the active heading and marks it in the open list', () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const bridge = new EditorBridge(host, { post: async () => null })
+    render(<Outline bridge={bridge} />)
+    act(() =>
+      bridge.page.set({
+        docId: 'a',
+        headings: [
+          { id: 'h1', pos: 0, level: 2, text: 'Goals' },
+          { id: 'h2', pos: 7, level: 3, text: 'Risks' },
+          { id: 'h3', pos: 14, level: 2, text: 'Plan' }
+        ],
+        activeHeading: 1
+      })
+    )
+    const nav = screen.getByRole('navigation', { name: 'Outline' })
+    const bars = nav.querySelectorAll('span[data-active]')
+    expect([...bars].map((b) => b.getAttribute('data-active'))).toEqual(['false', 'true', 'false'])
+    expect(screen.getByRole('button', { name: 'Risks' }).getAttribute('aria-current')).toBe(
+      'location'
+    )
+    expect(screen.getByRole('button', { name: 'Goals' }).getAttribute('aria-current')).toBeNull()
+  })
+
+  it('tells the native inspector which heading the reader is in as the page scrolls', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const sent: ToNativeMessage[] = []
+    const bridge = new EditorBridge(host, {
+      post: async (m) => {
+        sent.push(m)
+        return null
+      }
+    })
+    act(() =>
+      bridge.loadDocument(
+        page('a', {
+          content: {
+            type: 'doc',
+            content: [
+              {
+                type: 'heading',
+                attrs: { level: 2, id: 'h1' },
+                content: [{ type: 'text', text: 'Goals' }]
+              },
+              { type: 'paragraph', content: [{ type: 'text', text: 'text' }] },
+              {
+                type: 'heading',
+                attrs: { level: 2, id: 'h2' },
+                content: [{ type: 'text', text: 'Risks' }]
+              }
+            ]
+          }
+        })
+      )
+    )
+    window.dispatchEvent(new Event('scroll'))
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    // Without layout every heading sits at the top: the reader has passed them all.
+    const reports = sent.filter((m) => m.type === 'activeHeading')
+    expect(reports.at(-1)).toEqual({ type: 'activeHeading', docId: 'a', id: 'h2' })
+    expect(bridge.page.get().activeHeading).toBe(1)
+    host.remove()
+  })
+
+  it('a heading jumped to is marked until the reader scrolls by themselves', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const sent: ToNativeMessage[] = []
+    const bridge = new EditorBridge(host, {
+      post: async (m) => {
+        sent.push(m)
+        return null
+      }
+    })
+    act(() =>
+      bridge.loadDocument(
+        page('a', {
+          content: {
+            type: 'doc',
+            content: [
+              {
+                type: 'heading',
+                attrs: { level: 2, id: 'h1' },
+                content: [{ type: 'text', text: 'Goals' }]
+              },
+              {
+                type: 'heading',
+                attrs: { level: 2, id: 'h2' },
+                content: [{ type: 'text', text: 'Risks' }]
+              }
+            ]
+          }
+        })
+      )
+    )
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    expect(bridge.jumpToHeading('h1')).toBe(true)
+    expect(bridge.page.get().activeHeading).toBe(0)
+    expect(sent.filter((m) => m.type === 'activeHeading').at(-1)).toEqual({
+      type: 'activeHeading',
+      docId: 'a',
+      id: 'h1'
+    })
+    // Scrolling by itself (the smooth scroll) keeps the jump; the reader's wheel hands back to the scroll-spy.
+    window.dispatchEvent(new Event('scroll'))
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    expect(bridge.page.get().activeHeading).toBe(0)
+    window.dispatchEvent(new Event('wheel'))
+    window.dispatchEvent(new Event('scroll'))
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    expect(bridge.page.get().activeHeading).toBe(1)
+    expect(bridge.jumpToHeading('nope')).toBe(false)
+    host.remove()
+  })
+})

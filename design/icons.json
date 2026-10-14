@@ -102,6 +102,9 @@
     "tray-arrow-down": {
       "sf": "tray.and.arrow.down"
     },
+    "chat-circle-dots": {
+      "sf": "plus.bubble"
+    },
     "browsers": {
       "sf": "plus.square.on.square"
     },

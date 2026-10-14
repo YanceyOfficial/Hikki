@@ -21,12 +21,20 @@ export function sampleEvenly<T>(items: T[], limit: number): T[] {
  */
 export function Outline({ bridge }: { bridge: EditorBridge }) {
   const { t } = useTranslation()
-  const { headings, railHidden } = useSyncExternalStore(bridge.page.subscribe, bridge.page.get)
+  const { headings, railHidden, activeHeading } = useSyncExternalStore(
+    bridge.page.subscribe,
+    bridge.page.get
+  )
   const [open, setOpen] = useState(false)
   if (railHidden || headings.length < 2) return null
   const minLevel = Math.min(...headings.map((h) => h.level))
   // Long pages have dozens of headings; the closed rail shows a sample of them, not a solid bar.
-  const bars = sampleEvenly(headings, MAX_BARS)
+  const bars = sampleEvenly(
+    headings.map((h, index) => ({ ...h, index })),
+    MAX_BARS
+  )
+  // The bar for the section being read: the last sampled one at or before the active heading.
+  const activeBar = bars.findLast((b) => b.index <= activeHeading)?.index ?? -1
 
   return (
     <nav
@@ -51,8 +59,11 @@ export function Outline({ bridge }: { bridge: EditorBridge }) {
         {bars.map((h) => (
           <span
             key={h.pos}
-            className="h-0.5 rounded-full bg-muted-foreground/35"
-            style={{ width: `${16 - (h.level - minLevel) * 4}px` }}
+            data-active={h.index === activeBar}
+            className="h-0.5 rounded-full bg-muted-foreground/35 transition-colors duration-(--motion-pop-in) data-[active=true]:bg-foreground"
+            style={{
+              width: `${16 - (h.level - minLevel) * 4 + (h.index === activeBar ? 4 : 0)}px`
+            }}
           />
         ))}
       </div>
@@ -62,11 +73,12 @@ export function Outline({ bridge }: { bridge: EditorBridge }) {
           data-open={open}
           className="hk-pop-toggle m-0 max-h-[60vh] w-60 list-none overflow-y-auto rounded-xl bg-popover p-2 shadow-popover [--hk-pop-dx:8px] [--hk-pop-dy:0px] [--hk-pop-origin:right_center]"
         >
-          {headings.map((h) => (
+          {headings.map((h, index) => (
             <li key={h.pos} style={{ paddingLeft: `${(h.level - minLevel) * 12}px` }}>
               <button
                 type="button"
-                className="block w-full cursor-pointer truncate rounded-md px-2 py-1 text-left text-md text-subtle-foreground hover:bg-accent hover:text-foreground"
+                aria-current={index === activeHeading ? 'location' : undefined}
+                className="block w-full cursor-pointer truncate rounded-md px-2 py-1 text-left text-md text-subtle-foreground hover:bg-accent hover:text-foreground aria-[current=location]:font-medium aria-[current=location]:text-foreground"
                 onClick={() => bridge.scrollToHeading(h.pos)}
               >
                 {h.text}

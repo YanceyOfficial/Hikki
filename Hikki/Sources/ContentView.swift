@@ -81,6 +81,8 @@ struct ContentView: View {
         .animation(.snappy(duration: 0.18), value: navigator.isSearching)
         // Attachments opened from the editor.
         .quickLookPreview($editor.previewURL)
+        // "Open in Split View" wherever page actions are (sidebar, Home, ⋯): by the window's width, not a column's.
+        .environment(\.splitAvailable, wide)
     }
 
     /// Setup, routing to the editor, settings, deep links, tab persistence, backgrounding.
@@ -111,11 +113,11 @@ struct ContentView: View {
             // The inspector's state outlives the window; the page's own outline rail steps aside while the
             // inspector shows the outline.
             .onChange(of: navigator.isShowingInspector) { _, on in
-                editor.setOutlineRail(!(on && navigator.inspectorTab == .outline))
+                editor.setOutlineRail(!(on && navigator.inspectorMode == .outline))
             }
-            .onChange(of: navigator.inspectorTab) { _, tab in
-                UserDefaults.standard.set(tab.rawValue, forKey: InspectorPreferences.tabKey)
-                editor.setOutlineRail(!(navigator.isShowingInspector && tab == .outline))
+            .onChange(of: navigator.inspectorMode) { _, mode in
+                UserDefaults.standard.set(mode.rawValue, forKey: InspectorPreferences.tabKey)
+                editor.setOutlineRail(!(navigator.isShowingInspector && mode == .outline))
             }
             // Lock / unlock while the page is open (the load payload carries it otherwise).
             .onChange(of: navigator.currentPage?.isLocked) { _, locked in editor.setLocked(locked ?? false) }
@@ -177,10 +179,11 @@ struct ContentView: View {
         let arguments = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
         UserDefaults.standard.removeObject(forKey: InspectorPreferences.visibleKey)
         navigator.isShowingInspector = (arguments[InspectorPreferences.visibleKey] as? String).map { $0 == "YES" } ?? false
-        if let raw = UserDefaults.standard.string(forKey: InspectorPreferences.tabKey), let tab = InspectorTab(rawValue: raw) {
-            navigator.inspectorTab = tab
+        // (A mode saved by older builds — info, calendar — falls back to the outline.)
+        if let raw = UserDefaults.standard.string(forKey: InspectorPreferences.tabKey), let mode = InspectorMode(rawValue: raw) {
+            navigator.inspectorMode = mode
         }
-        editor.setOutlineRail(!(navigator.isShowingInspector && navigator.inspectorTab == .outline))
+        editor.setOutlineRail(!(navigator.isShowingInspector && navigator.inspectorMode == .outline))
         #if DEBUG
             // Screenshot/test hooks: HIKKI_OPEN_TABS=pageA,pageB opens those pages as tabs; HIKKI_OPEN_SEARCH opens ⌘K
             // (with its value as the query).
@@ -407,31 +410,33 @@ private struct NativeDetailToolbar: ToolbarContent {
                 PageMoreMenu(page: page, navigator: navigator, editor: editor, toolbar: true).disabled(navigator.isSplit)
             }
         }
-        // The inspector toggle, at the trailing end as in Xcode — in a glass group of its own, apart from the page's;
-        // only where there is a page to inspect. Split view sits in the same group.
+        // The side panel's modes, at the trailing end as in Xcode, in a glass group of their own: the outline and AI
+        // (comments later), each a toggle that shows as on while the panel shows it. Only where there is a page; off
+        // while split (the panel belongs to the left page). Split view itself opens by drag, ⌘\ or "Open in Split
+        // View".
         if navigator.route.pageID != nil {
             ToolbarSpacer(.fixed, placement: .primaryAction)
             ToolbarItem(placement: .primaryAction) {
-                // A toggle: it shows as on while the window is split.
-                Toggle(
-                    isOn: Binding(
-                        get: { navigator.isSplit }, set: { on in on ? navigator.showSplitPicker() : navigator.closeSplit() })
-                ) {
-                    IconLabel("app:split.toggle", icon: .squareSplitHorizontal)
+                Toggle(isOn: inspectorBinding(.outline)) {
+                    IconLabel("app:inspector.outline", icon: .listBullets)
                 }
                 .toggleStyle(.button)
-                .help("app:split.toggle")
-                .accessibilityIdentifier("split-toggle")
-            }
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    navigator.isShowingInspector.toggle()
-                } label: {
-                    IconLabel("app:inspector.toggle", icon: .columnsPlusRight)
-                }
-                .help("app:inspector.toggle")
+                .help("app:inspector.outline")
                 .disabled(navigator.isSplit)
                 .accessibilityIdentifier("inspector-toggle")
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Toggle(isOn: inspectorBinding(.ai)) {
+                    Label {
+                        Text("app:inspector.ai")
+                    } icon: {
+                        AIGlyph(tinted: navigator.isShowingInspector && navigator.inspectorMode == .ai)
+                    }
+                }
+                .toggleStyle(.button)
+                .help("app:inspector.ai")
+                .disabled(navigator.isSplit)
+                .accessibilityIdentifier("ai-toggle")
             }
         }
     }
@@ -448,6 +453,16 @@ private struct NativeDetailToolbar: ToolbarContent {
 }
 
 /// An attached file in a pane of its own (a PDF, natively): the file's name as the window title, "open in Preview".
+extension NativeDetailToolbar {
+    /// A mode button's state: on while the panel shows that mode; switching it on opens the panel there.
+    fileprivate func inspectorBinding(_ mode: InspectorMode) -> Binding<Bool> {
+        Binding(
+            get: { navigator.isShowingInspector && navigator.inspectorMode == mode },
+            set: { _ in navigator.toggleInspector(mode) })
+    }
+
+}
+
 private struct DocumentPane: View {
     let name: String
     let label: String

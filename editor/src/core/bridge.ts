@@ -11,7 +11,7 @@ import type { SplitDropHost, SplitDropMode } from '../extensions/split-drop'
 import { linkCardFrom } from '../lib/embeds'
 import { activeCommands, createEditor, runCommand } from './editor'
 import { plainText, wordCount } from './extract'
-import { collectHeadings, type HeadingItem } from './headings'
+import { activeHeadingIndex, collectHeadings, type HeadingItem } from './headings'
 import { t } from './i18n'
 import { normalizeBody } from './normalize'
 import {
@@ -46,6 +46,8 @@ export type PageState = {
   locked: boolean
   /** The native inspector shows the outline: the page's own hover rail steps aside. */
   railHidden: boolean
+  /** The heading the reader is in (index into `headings`, -1 above the first): the rail and the inspector mark it. */
+  activeHeading: number
 }
 
 type Options = {
@@ -62,6 +64,8 @@ type Options = {
 const isUserEdit = (transaction: Transaction) => transaction.getMeta('addToHistory') !== false
 
 const MAX_TITLE_LENGTH = 500
+/** Where a heading counts as reached: this far below the toolbar (the top of the reading area). */
+const ACTIVE_LINE = 96
 
 /**
  * Owns the live page: header state (title/icon/cover) and the Tiptap body editor, and talks to the
@@ -79,7 +83,8 @@ export class EditorBridge {
     selectTitle: false,
     readOnly: false,
     locked: false,
-    railHidden: false
+    railHidden: false,
+    activeHeading: -1
   })
   private editor: Editor | null = null
   private timer: ReturnType<typeof setTimeout> | null = null
@@ -96,7 +101,65 @@ export class EditorBridge {
     private readonly host: HTMLElement,
     private readonly transport: Transport,
     private readonly options: Options = { debounceMs: 400, maxWaitMs: 2000 }
-  ) {}
+  ) {
+    // The heading the reader is in follows the scroll (once a frame at most).
+    let queued = false
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (queued) return
+        queued = true
+        requestAnimationFrame(() => {
+          queued = false
+          this.updateActiveHeading()
+        })
+      },
+      { passive: true }
+    )
+    // The reader scrolls by themselves: the scroll-spy takes over from a jump.
+    const release = () => {
+      this.pinnedHeading = null
+    }
+    for (const type of ['wheel', 'touchmove', 'keydown'] as const) {
+      window.addEventListener(type, release, { passive: true, capture: true })
+    }
+  }
+
+  /** A heading jumped to from an outline: marked until the reader scrolls (wheel, touch, keys) by themselves. */
+  private pinnedHeading: number | null = null
+
+  /** The last id sent as `activeHeading` (the native inspector follows it). */
+  private lastActiveHeading: string | null | undefined = undefined
+
+  /**
+   * Which heading the reader is in: the last one whose top has passed a line a little below the toolbar, or the last
+   * once scrolled to the end. Kept in the page state (the rail) and sent to the native inspector when it changes.
+   */
+  private updateActiveHeading(): void {
+    const editor = this.editor
+    const { headings, docId } = this.page.get()
+    if (!editor || !docId) return
+    const tops = headings.map((h) => {
+      const dom = editor.view.nodeDOM(h.pos)
+      return dom instanceof HTMLElement ? dom.getBoundingClientRect().top : Number.POSITIVE_INFINITY
+    })
+    const inset =
+      Number.parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--hk-inset-top')
+      ) || 0
+    const scroller = document.scrollingElement ?? document.documentElement
+    const atBottom =
+      scroller.scrollTop > 0 && scroller.scrollTop + window.innerHeight >= scroller.scrollHeight - 2
+    const index =
+      this.pinnedHeading !== null && this.pinnedHeading < headings.length
+        ? this.pinnedHeading
+        : activeHeadingIndex(tops, inset + ACTIVE_LINE, atBottom)
+    if (index !== this.page.get().activeHeading) this.page.set({ activeHeading: index })
+    const id = index >= 0 ? (headings[index]?.id ?? null) : null
+    if (id === this.lastActiveHeading) return
+    this.lastActiveHeading = id
+    void this.send({ type: 'activeHeading', docId, id })
+  }
 
   loadDocument(payload: PagePayload): void {
     // Never drop a pending edit of the previous page.
@@ -136,6 +199,7 @@ export class EditorBridge {
     editor.on('update', ({ transaction }) => {
       this.page.set({ headings: collectHeadings(editor) })
       this.reportPageInfo()
+      this.updateActiveHeading()
       if (isUserEdit(transaction)) this.scheduleChanged()
     })
     editor.on('selectionUpdate', () => this.reportActive())
@@ -151,6 +215,9 @@ export class EditorBridge {
       locked
     })
     this.reportPageInfo(true)
+    this.lastActiveHeading = undefined
+    this.pinnedHeading = null
+    requestAnimationFrame(() => this.updateActiveHeading())
   }
 
   /** Page → Lock / Unlock while the page is open. */
@@ -410,6 +477,20 @@ export class EditorBridge {
     const dom = this.editor.view.nodeDOM(pos)
     if (dom instanceof HTMLElement) dom.scrollIntoView({ behavior: 'smooth', block: 'start' })
     this.editor.commands.setTextSelection(pos + 1)
+    // The heading jumped to is the one marked (a short page can't scroll it up to the line), until the reader scrolls.
+    const index = this.page.get().headings.findIndex((h) => h.pos === pos)
+    if (index >= 0) {
+      this.pinnedHeading = index
+      this.updateActiveHeading()
+    }
+  }
+
+  /** The inspector's outline: to a heading by its block id, as the rail does (`scrollToHeading`). */
+  jumpToHeading(id: string): boolean {
+    const heading = this.page.get().headings.find((h) => h.id === id)
+    if (!heading) return false
+    this.scrollToHeading(heading.pos)
+    return true
   }
 
   /** The native inspector shows the outline itself: the page's hover rail steps aside meanwhile. */

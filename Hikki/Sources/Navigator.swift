@@ -48,7 +48,17 @@ final class Navigator {
     private(set) var split: Route?
     /// The trailing inspector (outline, info, calendar) — remembered across launches by ContentView.
     var isShowingInspector = false
-    var inspectorTab: InspectorTab = .outline
+    var inspectorMode: InspectorMode = .outline
+
+    /// A toolbar button for one mode: opens the panel on it, or closes the panel when it already shows it.
+    func toggleInspector(_ mode: InspectorMode) {
+        if isShowingInspector && inspectorMode == mode {
+            isShowingInspector = false
+        } else {
+            inspectorMode = mode
+            isShowingInspector = true
+        }
+    }
     /// Bumped by "Rename": the editor selects that page's title once it has loaded it.
     private(set) var titleFocusRequest: TitleFocusRequest?
     var expanded: Set<String> = []

@@ -63,8 +63,11 @@
                             Text(verbatim: "Me too").padding(Spacing.s2).background(Theme.muted).toolTip("Another one")
                         }
                     }
-                    Section("MonthCalendar") {
-                        MonthCalendarGalleryItem()
+                    Section("AIGlyph") {
+                        HStack(spacing: Spacing.s4) {
+                            AIGlyph()
+                            AIGlyph(size: 24)
+                        }
                     }
                     Section("SearchResultRow") {
                         SearchResultRow(
@@ -80,14 +83,6 @@
                 }
                 .navigationTitle("HikkiUI Gallery")
             }
-        }
-    }
-    private struct MonthCalendarGalleryItem: View {
-        @State private var month = Date.now
-        @State private var day = Date.now
-
-        var body: some View {
-            MonthCalendar(month: $month, selection: $day, marked: [MonthCalendar.dayKey(.now)]).frame(width: 320)
         }
     }
 #endif

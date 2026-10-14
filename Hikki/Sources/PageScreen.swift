@@ -160,21 +160,19 @@ struct PageMoreMenu: View {
         PageActions(page: page, navigator: navigator)
         Divider()
         #if os(iOS)
-            // iPhone: the inspector (outline, info, calendar) is a sheet, opened from here.
+            // iPhone: the outline is a sheet, opened from here.
             if !toolbar {
                 Button {
-                    navigator.isShowingInspector = true
+                    navigator.toggleInspector(.outline)
                 } label: {
-                    IconLabel("app:inspector.toggle", icon: .columnsPlusRight)
+                    IconLabel("app:inspector.outline", icon: .listBullets)
                 }
                 .accessibilityIdentifier("open-inspector")
                 Divider()
             }
         #endif
-        Text("app:page.edited \(page.updatedAt, format: .relative(presentation: .named))")
-        if let info = editor?.pageInfo, info.docId == page.id {
-            Text("app:page.stats \(info.words.formatted()) \(info.characters.formatted())")
-        }
+        // The page's facts (once the inspector's Info pane): where it is, when, how big — live while it is open.
+        PageFacts(page: page, editor: editor)
     }
 
     private var barMenu: some View {
@@ -192,5 +190,25 @@ struct PageMoreMenu: View {
         .fixedSize()
         .accessibilityLabel("app:common.more")
         .accessibilityIdentifier("page-more")
+    }
+}
+
+/// The page's facts as quiet lines at the end of its ⋯ menu: where it is, when it was made and edited, its size.
+private struct PageFacts: View {
+    @Environment(AppModel.self) private var model
+    let page: PageSummary
+    let editor: EditorController?
+
+    var body: some View {
+        let path = model.tree.path(to: page.id).dropLast()
+            .map { $0.title.isEmpty ? String(localized: "app:page.untitled") : $0.title }
+        if !path.isEmpty {
+            Text("app:page.location \(path.joined(separator: " › "))")
+        }
+        Text("app:page.created \(page.createdAt.formatted(date: .abbreviated, time: .shortened))")
+        Text("app:page.edited \(page.updatedAt, format: .relative(presentation: .named))")
+        if let info = editor?.pageInfo, info.docId == page.id {
+            Text("app:page.stats \(info.words.formatted()) \(info.characters.formatted())")
+        }
     }
 }

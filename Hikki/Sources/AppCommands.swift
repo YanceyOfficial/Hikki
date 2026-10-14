@@ -49,10 +49,11 @@ struct AppCommands: Commands {
             Button("app:find.previous") { editor?.find(.previous) }
                 .keyboardShortcut(Shortcut.findPrevious.keyboardShortcut)
         }
-        // View → Show/Hide Inspector (⌥⌘0, Xcode's).
+        // View → Show/Hide Outline (⌥⌘I): the side panel on the outline.
         CommandGroup(after: .sidebar) {
-            Button(navigator?.isShowingInspector == true ? "app:menu.hideInspector" : "app:menu.showInspector") {
-                navigator?.isShowingInspector.toggle()
+            let outlineOpen = navigator?.isShowingInspector == true && navigator?.inspectorMode == .outline
+            Button(outlineOpen ? "app:menu.hideOutline" : "app:menu.showOutline") {
+                navigator?.toggleInspector(.outline)
             }
             .keyboardShortcut(Shortcut.toggleInspector.keyboardShortcut)
             // Split: the inspector would describe the left page from beside the right one.

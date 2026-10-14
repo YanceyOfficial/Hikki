@@ -281,7 +281,7 @@ HikkiUITests/                 XCUITest flows
 - **Split view** (Mac/iPad, `Hikki/Sources/SplitView.swift`): the current tab and a second pane side by side, either
   holding a page or a PDF (`Navigator.split`, `isSplit`). The pane's page has its own editor (a second web view, made
   on first use and wired like the main one in `ContentView`). Opened from the
-  toolbar's split button or View → Show Split View (⌘\\) — an empty pane offers the left page's PDF attachments, PDFs
+  View → Show Split View (⌘\\) (no toolbar button: drag is the way) — an empty pane offers the left page's PDF attachments, PDFs
   open in tabs and recent pages — or a page's "Open in Split View". The divider drags (fraction remembered); the pane's
   bar closes it, and its title is a chooser (recent pages, More… for the picker) to show another page; the same page may be on both sides (write left, read right — each editor reloads the other's saves, `pageSavedInEditor`). The inspector belongs to the left page, so it
   closes when the window splits; its toggle, ⌥⌘I and the page's star / ⋯ / lock buttons are off while split. By drag: a sidebar row or a page's tab dropped onto the pane shows there (`PageDrop`), and
@@ -295,13 +295,16 @@ HikkiUITests/                 XCUITest flows
   the unit the planned split view will put side by side.
 - **Inspector** (Mac/iPad: a full-height trailing panel inside the detail column — SwiftUI's `.inspector` widened the
   window — with the window title hidden while it is open, as in Photos; iPhone: a sheet from the page ⋯ menu):
-  `Hikki/Sources/InspectorView.swift` — icon tabs Outline / Info / Calendar; toggled by the toolbar button, View →
-  Show Inspector (⌥⌘I) and remembered in UserDefaults (`InspectorPreferences`). The editor reports the open page's
-  outline and size with the `pageInfo` bridge message (headings with block ids, words — CJK characters count one
-  each — and characters from Tiptap's CharacterCount): at once on load, then throttled at 300 ms; a heading in the
-  inspector jumps there through `scrollToBlock`. While the inspector shows the outline the page's own hover rail
-  hides (`window.hikki.setOutlineRail`). Info shows the page's facts with live counts and favorite/lock toggles;
-  Calendar lists the pages last edited on a day. The page ⋯ menu ends with the live word and character count.
+  `Hikki/Sources/InspectorView.swift`, one mode at a time (`InspectorMode`): the outline or AI (a placeholder until the AI
+  work lands; comments later), each opened by its own toolbar toggle (list, and `AIGlyph` — the AI mark in the ink
+  palette's sweep), View → Show Outline (⌥⌘I); no tab bar. The page's facts (location, created, edited, words and
+  characters) are the last lines of its ⋯ menu. The editor reports the outline and size with `pageInfo` (headings with
+  block ids, words — CJK characters count one each — and characters from Tiptap's CharacterCount) and the heading the
+  reader is in with `activeHeading` (a scroll-spy in `editor/src/core/bridge.ts`: the last heading past a line under
+  the toolbar, the last one at the end; a heading jumped to from an outline stays marked until the reader scrolls).
+  The panel's outline marks it on its rail and keeps it in view; the page's own hover rail lights its bar. A heading
+  picked in the outline lands at the top (`window.hikki.jumpToHeading`). While the inspector shows the outline the
+  page's hover rail hides (`window.hikki.setOutlineRail`).
 - **Find, spelling, insets**: find and replace is `editor/src/extensions/find.ts` (Tiptap's extension, RE2 regex) with
   `editor/src/components/find-panel.tsx`; the page handles ⌘F/⌥⌘F/⌘G itself, the native Edit menu and the page ⋯ menu ("Find
   in Page", the only way on a phone) call `window.hikki.find`. Spellcheck is WebKit's (Settings → Editor,

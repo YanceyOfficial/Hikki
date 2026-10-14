@@ -581,17 +581,9 @@ struct PageRowMenu: View {
 /// Shared page actions for the ⋯ menu, context menus and the page bar.
 struct PageActions: View {
     @Environment(AppModel.self) private var model
-    #if os(iOS)
-        @Environment(\.horizontalSizeClass) private var sizeClass
-    #endif
-    /// Split view needs a wide window (Mac, a regular-width iPad).
-    private var splitAvailable: Bool {
-        #if os(macOS)
-            true
-        #else
-            sizeClass == .regular
-        #endif
-    }
+    /// Split view needs a wide window (Mac, a regular-width iPad) — the window's width class, set by ContentView: the
+    /// sidebar column's own is compact on iPad, which hid "Open in Split View" there.
+    @Environment(\.splitAvailable) private var splitAvailable
     #if os(macOS)
         @Environment(\.openWindow) private var openWindow
     #endif
@@ -768,6 +760,8 @@ private struct NativeSidebarChrome: ViewModifier {
 extension EnvironmentValues {
     /// Set on a selected native sidebar row (Mac/iPad), so its label draws on the tone's fill.
     @Entry var sidebarRowSelected = false
+    /// The window is wide enough for split view (ContentView's `wide`).
+    @Entry var splitAvailable = false
 }
 
 /// One place in the sidebar's top row (Mac/iPad): an icon button; the open one is a grey pill with its name (Notion).

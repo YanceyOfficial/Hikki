@@ -164,6 +164,10 @@
   [data-bg-color='red'] {
     background: var(--color-wash-red);
   }
+  /* A heading jumped to from an outline lands just below the toolbar, not under it. */
+  .tiptap :is(h1, h2, h3, h4) {
+    scroll-margin-top: calc(var(--hk-inset-top, 0px) + --spacing(6));
+  }
   .tiptap a {
     @apply underline decoration-muted-foreground underline-offset-2;
     color: inherit;

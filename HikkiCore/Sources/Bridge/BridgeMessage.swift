@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 15
+    public static let version = 16
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -50,6 +50,8 @@ public enum BridgeMessage: Sendable, Equatable {
     case activeFormats([String])
     /// The open page's outline and size for the inspector: on load, then throttled as it changes.
     case pageInfo(docId: String, headings: [OutlineHeading], words: Int, characters: Int)
+    /// The heading the reader is in changed (the page's scroll-spy); nil above the first heading.
+    case activeHeading(docId: String, id: String?)
     case log(level: LogLevel, message: String, context: [String: String]?)
     case setIcon(docId: String, icon: String?)
     case setCover(docId: String, cover: String?)
@@ -109,6 +111,8 @@ extension BridgeMessage: Decodable {
         case "ready": self = .ready(protocolVersion: try c.decode(Int.self, forKey: .protocolVersion))
         case "changed": self = .changed(try c.decode(Snapshot.self, forKey: .snapshot))
         case "activeFormats": self = .activeFormats(try c.decode([String].self, forKey: .active))
+        case "activeHeading":
+            self = .activeHeading(docId: try c.decode(String.self, forKey: .docId), id: try c.decodeIfPresent(String.self, forKey: .id))
         case "pageInfo":
             self = .pageInfo(
                 docId: try c.decode(String.self, forKey: .docId), headings: try c.decode([OutlineHeading].self, forKey: .headings),

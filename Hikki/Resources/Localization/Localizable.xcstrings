@@ -1,40 +1,6 @@
 {
   "sourceLanguage": "en",
   "strings": {
-    "app:calendar.next": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Next month"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "下个月"
-          }
-        }
-      }
-    },
-    "app:calendar.previous": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Previous month"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "上个月"
-          }
-        }
-      }
-    },
     "app:chrome.back": {
       "extractionState": "manual",
       "localizations": {
@@ -715,223 +681,36 @@
         }
       }
     },
-    "app:inspector.calendar": {
+    "app:inspector.ai": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Calendar"
+            "value": "AI"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "日历"
+            "value": "AI"
           }
         }
       }
     },
-    "app:inspector.calendar.none": {
+    "app:inspector.ai.soon": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nothing edited on this day."
+            "value": "Ask AI about this page — coming soon."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "这一天没有编辑过页面。"
-          }
-        }
-      }
-    },
-    "app:inspector.info": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Info"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "信息"
-          }
-        }
-      }
-    },
-    "app:inspector.info.attachments": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Attachments"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "附件"
-          }
-        }
-      }
-    },
-    "app:inspector.info.characters": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Characters"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "字符数"
-          }
-        }
-      }
-    },
-    "app:inspector.info.created": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Created"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "创建于"
-          }
-        }
-      }
-    },
-    "app:inspector.info.edited": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Edited"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "编辑于"
-          }
-        }
-      }
-    },
-    "app:inspector.info.favorite": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Favorite"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "收藏"
-          }
-        }
-      }
-    },
-    "app:inspector.info.headings": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Headings"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "标题数"
-          }
-        }
-      }
-    },
-    "app:inspector.info.location": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Location"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "位置"
-          }
-        }
-      }
-    },
-    "app:inspector.info.locked": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Locked"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "锁定"
-          }
-        }
-      }
-    },
-    "app:inspector.info.title": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Title"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "标题"
-          }
-        }
-      }
-    },
-    "app:inspector.info.words": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Words"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "字数"
+            "value": "针对这篇页面向 AI 提问——即将推出。"
           }
         }
       }
@@ -987,23 +766,6 @@
         }
       }
     },
-    "app:inspector.toggle": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Inspector"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "检查器"
-          }
-        }
-      }
-    },
     "app:keyboard.hide": {
       "extractionState": "manual",
       "localizations": {
@@ -1055,19 +817,19 @@
         }
       }
     },
-    "app:menu.hideInspector": {
+    "app:menu.hideOutline": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hide Inspector"
+            "value": "Hide Outline"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "隐藏检查器"
+            "value": "隐藏大纲"
           }
         }
       }
@@ -1123,19 +885,19 @@
         }
       }
     },
-    "app:menu.showInspector": {
+    "app:menu.showOutline": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Show Inspector"
+            "value": "Show Outline"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "显示检查器"
+            "value": "显示大纲"
           }
         }
       }
@@ -1684,6 +1446,23 @@
         }
       }
     },
+    "app:page.created %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Created %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "创建于 %@"
+          }
+        }
+      }
+    },
     "app:page.duplicate": {
       "extractionState": "manual",
       "localizations": {
@@ -1748,6 +1527,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "最后编辑于 %@"
+          }
+        }
+      }
+    },
+    "app:page.location %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "位于 %@"
           }
         }
       }
@@ -4138,13 +3934,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Show or hide the inspector"
+            "value": "Show or hide the outline"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "显示或隐藏检查器"
+            "value": "显示或隐藏大纲"
           }
         }
       }
@@ -4740,23 +4536,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "最近的页面"
-          }
-        }
-      }
-    },
-    "app:split.toggle": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Split View"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "分栏"
           }
         }
       }

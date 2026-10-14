@@ -6,11 +6,13 @@ final class EditorFlowTests: XCTestCase {
     private let dataDir = NSTemporaryDirectory() + "hikki-uitest-\(UUID().uuidString)"
 
     /// `workspace: nil` starts from a fresh install (onboarding); otherwise a device workspace is seeded.
-    private func launch(language: String? = nil, workspace: String? = "Test", shortcutOverrides: String = "{}")
-        -> XCUIApplication
-    {
+    private func launch(
+        language: String? = nil, workspace: String? = "Test", shortcutOverrides: String = "{}",
+        environment: [String: String] = [:]
+    ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["HIKKI_DATA_DIR"] = dataDir
+        app.launchEnvironment.merge(environment) { _, new in new }
         if let workspace { app.launchEnvironment["HIKKI_WORKSPACE"] = workspace }
         // Preferences outlive the data directory (UserDefaults): every test starts with the inspector closed.
         app.launchArguments += [
@@ -494,13 +496,13 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(waitOrDumpTree(row, in: app), "the inspector did not list the headings")
         attachScreenshot(app, "inspector-outline")
         row.tap()
-        // The tabs are HikkiUI buttons inside a container: look them up by identifier, whatever their type.
-        app.descendants(matching: .any)["inspector-tab-info"].firstMatch.tap()
-        XCTAssertTrue(
-            waitOrDumpTree(app.descendants(matching: .any)["inspector-words"].firstMatch, in: app), "Info shows no word count")
-        attachScreenshot(app, "inspector-info")
-        app.descendants(matching: .any)["inspector-tab-calendar"].firstMatch.tap()
-        attachScreenshot(app, "inspector-calendar")
+        // The outline follows the page: the section jumped to is the one marked.
+        let selected = expectation(for: NSPredicate(format: "isSelected == true"), evaluatedWith: row)
+        wait(for: [selected], timeout: 5)
+        // The AI button shows the panel's other mode.
+        app.descendants(matching: .any)["ai-toggle"].firstMatch.tap()
+        XCTAssertTrue(waitOrDumpTree(app.descendants(matching: .any)["inspector-ai"].firstMatch, in: app))
+        attachScreenshot(app, "inspector-ai")
         toggle.tap()
     }
 
@@ -517,15 +519,10 @@ final class EditorFlowTests: XCTestCase {
         let inspectorToggle = app.descendants(matching: .any)["inspector-toggle"].firstMatch
         XCTAssertTrue(waitOrDumpTree(inspectorToggle, in: app))
         inspectorToggle.tap()
-        XCTAssertTrue(waitOrDumpTree(app.descendants(matching: .any)["inspector-tabs"].firstMatch, in: app))
-        let toggle = app.descendants(matching: .any)["split-toggle"].firstMatch
-        XCTAssertTrue(waitOrDumpTree(toggle, in: app))
-        toggle.tap()
-        XCTAssertFalse(app.descendants(matching: .any)["inspector-tabs"].waitForExistence(timeout: 2))
+        XCTAssertTrue(waitOrDumpTree(app.descendants(matching: .any)["inspector-outline"].firstMatch, in: app))
+        openInSplit(app, "Notes")
+        XCTAssertFalse(app.descendants(matching: .any)["inspector-outline"].waitForExistence(timeout: 2))
         XCTAssertFalse(inspectorToggle.isEnabled)
-        let pick = app.descendants(matching: .any)["split-pick-Notes"].firstMatch
-        XCTAssertTrue(waitOrDumpTree(pick, in: app), "the empty pane offers no recent pages")
-        pick.tap()
         // Two editors: the tab's page and the pane's.
         let second = app.webViews.element(boundBy: 1)
         XCTAssertTrue(second.waitForExistence(timeout: 10), "no second editor in the pane")
@@ -539,14 +536,14 @@ final class EditorFlowTests: XCTestCase {
     /// and the pane's title offers the picker again.
     func testDraggingPagesIntoTheSplitPane() throws {
         continueAfterFailure = false
-        let app = launch()
+        // An empty pane from the start (⌘\ in the app; the simulator's synthesized keys carry no modifiers).
+        let app = launch(environment: ["HIKKI_OPEN_SPLIT": "picker"])
         guard app.buttons["nav-home"].waitForExistence(timeout: 10) else {
             throw XCTSkip("needs a wide window — run on iPad or Mac")
         }
         createPage(app, title: "Notes")
         createPage(app, title: "Textbook")
         createPage(app, title: "Draft")
-        app.descendants(matching: .any)["split-toggle"].firstMatch.tap()
         let pane = app.descendants(matching: .any)["split-pane"].firstMatch
         XCTAssertTrue(waitOrDumpTree(pane, in: app))
 
@@ -581,10 +578,7 @@ final class EditorFlowTests: XCTestCase {
             throw XCTSkip("needs a wide window — run on iPad or Mac")
         }
         createPage(app, title: "Shared")
-        app.descendants(matching: .any)["split-toggle"].firstMatch.tap()
-        let pick = app.descendants(matching: .any)["split-pick-Shared"].firstMatch
-        XCTAssertTrue(waitOrDumpTree(pick, in: app), "the open page isn't offered for the right side")
-        pick.tap()
+        openInSplit(app, "Shared")
         let titles = app.webViews.textViews.matching(NSPredicate(format: "label == %@", "Page title"))
         let shared = titles.matching(NSPredicate(format: "value == %@", "Shared"))
         XCTAssertTrue(waitOrDumpTree(shared.element(boundBy: 1), in: app, timeout: 10), "not on both sides")
@@ -628,6 +622,16 @@ final class EditorFlowTests: XCTestCase {
                 app.webViews.textViews.matching(NSPredicate(format: "value == %@", "Notes")).firstMatch, in: app,
                 timeout: 10))
         attachScreenshot(app, "split-edge-drop")
+    }
+
+    /// A sidebar row's "Open in Split View" (its context menu).
+    private func openInSplit(_ app: XCUIApplication, _ title: String) {
+        let row = app.descendants(matching: .any)["page-row-\(title)"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(row, in: app))
+        row.press(forDuration: 1.2)
+        let item = app.descendants(matching: .any)["open-in-split"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(item, in: app))
+        item.tap()
     }
 
     private func createPage(_ app: XCUIApplication, title: String) {
