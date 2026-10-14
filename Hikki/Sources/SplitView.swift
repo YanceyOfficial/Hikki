@@ -21,8 +21,9 @@ struct SplitDetail<Leading: View>: View {
         if navigator.isSplit {
             GeometryReader { proxy in
                 let width = proxy.size.width
-                let minFraction = min(0.5, Size.splitMin / max(width, 1))
-                let left = width * min(max(fraction, minFraction), 1 - minFraction)
+                // The sides share what the divider leaves (half and half is the same width on each side).
+                let left = SplitGeometry.leftWidth(
+                    total: width, fraction: fraction, grip: Size.splitGrip, minimum: Size.splitMin)
                 HStack(spacing: Spacing.s0) {
                     leading.modifier(EdgeDrop(navigator: navigator)).frame(width: left)
                     divider(width: width)
@@ -59,7 +60,8 @@ struct SplitDetail<Leading: View>: View {
                     .onChanged { drag in
                         let start = dragStart ?? fraction
                         dragStart = start
-                        fraction = min(max(start + drag.translation.width / max(width, 1), 0.2), 0.8)
+                        fraction = SplitGeometry.dragged(
+                            from: start, by: drag.translation.width, total: width, grip: Size.splitGrip)
                     }
                     .onEnded { _ in dragStart = nil }
             )

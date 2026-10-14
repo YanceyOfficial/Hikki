@@ -110,7 +110,8 @@ Project.swift                 Tuist manifest (targets: Hikki, HikkiCore, HikkiSe
 Hikki/Sources/                app: SwiftUI shell, navigation (tabs), sidebar, page bar, search, editor host
 Hikki/Resources/AppIcon.icon  Icon Composer document (merged from design/icon/hi-star; actool renders all sizes)
 HikkiCore/Sources/            framework: Store (GRDB/SQLite, page tree, assets, tabs model), Text (Japanese readings),
-                              Bridge (protocol, JSONValue), Logging (file log, MetricKit crash collection), Shortcuts (KeyCombo)
+                              Bridge (protocol, JSONValue), Logging (file log, MetricKit crash collection),
+                              Layout (split view geometry), Shortcuts (KeyCombo)
 HikkiSearch/Sources/          framework: the search engine — its own SQLite index (trigram FTS5, BM25), query parsing,
                               ranking, pinyin keys, fuzzy titles; tests in HikkiSearch/Tests/
 HikkiUI/Sources/              framework: reusable SwiftUI components + Theme
