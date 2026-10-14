@@ -352,6 +352,35 @@
   /* Embed (extensions/embed.ts): the frame fills the column; a handle under it sets the height; the
      original page opens from a bar that shows on hover. */
   /* A link card (any page without an embed of its own). */
+  /* Body images while they load (extensions/image-loading.ts): a pulsing box, then the image fades in. */
+  .tiptap img.hk-image[data-load] {
+    @apply transition-opacity duration-(--motion-pop-in) ease-out;
+  }
+  .tiptap img.hk-image[data-load='loading'] {
+    /* Its wrapper shrinks to the image, which is 0 wide until loaded: a width of its own. */
+    @apply min-h-40 w-md max-w-full;
+  }
+  /* Tiptap's resizable view hides its container until the image has loaded (to measure it); the skeleton — and a
+     failed image's box — must show meanwhile. */
+  .tiptap [data-resize-container]:has(img.hk-image[data-load='loading']),
+  .tiptap [data-resize-container]:has(img.hk-image[data-load='failed']),
+  .tiptap :has(> img.hk-image[data-load='loading']),
+  .tiptap :has(> img.hk-image[data-load='failed']) {
+    visibility: visible !important;
+  }
+  /* WebKit paints no background on an image that hasn't loaded: the pulsing box is its wrapper. */
+  .tiptap :has(> img.hk-image[data-load='loading']) {
+    @apply animate-pulse rounded-md bg-muted;
+  }
+  .tiptap img.hk-image[data-load='entering'] {
+    @apply opacity-0;
+  }
+  .tiptap img.hk-image[data-load='failed'] {
+    @apply min-h-24 w-md max-w-full;
+  }
+  .tiptap :has(> img.hk-image[data-load='failed']) {
+    @apply rounded-md bg-muted;
+  }
   .tiptap .hk-embed-card {
     @apply my-2 flex cursor-pointer flex-col gap-1.5 rounded-xl border border-border p-5 select-none hover:bg-accent/40 focus-visible:outline-2 focus-visible:outline-ring;
   }

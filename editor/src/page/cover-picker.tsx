@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
+import { LazyLoadImage } from '../components/lazy-load-image'
 import { GRADIENTS, gradientCover } from '../lib/covers'
 import {
   bffURL,
@@ -199,7 +200,7 @@ function UnsplashPane({ onSelect }: { onSelect: Props['onSelect'] }) {
               }}
               aria-label={photo.alt ?? t('cover.photoBy', { name: photo.author })}
             >
-              <img src={photo.thumb} alt="" loading="lazy" className="size-full object-cover" />
+              <LazyLoadImage src={photo.thumb} alt="" />
             </button>
             <PhotoCredit photo={photo} />
           </figure>

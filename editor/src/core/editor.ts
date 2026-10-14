@@ -14,6 +14,7 @@ import { Column, Columns, ColumnsKeymap } from '../extensions/columns'
 import { EdgeNavigation } from '../extensions/edge-navigation'
 import { Embed } from '../extensions/embed'
 import { Find } from '../extensions/find'
+import { ImageLoading } from '../extensions/image-loading'
 import { mathExtension } from '../extensions/math'
 import { mediaExtensions, type MediaHost } from '../extensions/media'
 import { PageLinks, type PageLinksHost } from '../extensions/page-links'
@@ -152,6 +153,7 @@ export function createEditor(
       }),
       BlockShortcuts,
       // Words and characters for the inspector (`pageInfo`).
+      ImageLoading,
       CharacterCount,
       Placeholder.configure({
         includeChildren: false,

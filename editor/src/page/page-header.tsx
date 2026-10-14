@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea'
 
 import { AnchoredPopover } from '../components/anchored-popover'
 import { EmojiPickerPanel } from '../components/emoji-picker-panel'
+import { LazyLoadImage } from '../components/lazy-load-image'
 import type { EditorBridge } from '../core/bridge'
 import {
   coverBackground,
@@ -329,14 +330,13 @@ function Cover({
       {/* A picture as a CSS background was re-rasterized at every size while the window was resized (the cover
           flickered); an <img> on its own compositing layer is decoded once and scaled by the GPU. */}
       {image && (
-        <img
+        <LazyLoadImage
           src={image.src}
           alt=""
-          draggable={false}
-          decoding="async"
-          data-testid="cover-image"
-          className="pointer-events-none absolute inset-0 size-full [transform:translateZ(0)] object-cover select-none [backface-visibility:hidden]"
-          style={{ objectPosition: `50% ${image.y}%` }}
+          imgTestId="cover-image"
+          className="pointer-events-none absolute inset-0 select-none"
+          imgClassName="[transform:translateZ(0)] [backface-visibility:hidden]"
+          imgStyle={{ objectPosition: `50% ${image.y}%` }}
         />
       )}
       {repositioning && (

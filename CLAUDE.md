@@ -177,6 +177,10 @@ HikkiUITests/                 XCUITest flows
   (`editor/src/extensions/table.ts` + `editor/src/extensions/table-ops.ts`, controls drawn by
   `editor/src/components/table-overlay.tsx`) and columns (`editor/src/extensions/columns.ts`: schema needs 2–5 columns, so
   removing one of two replaces the row; dragging a block onto another's side edge makes a row).
+- **Network images** load like exodus's (`editor/src/components/lazy-load-image.tsx`: skeleton, fade in, an icon on
+  failure) — covers and the Unsplash grid use the component; body images get the same through
+  `editor/src/extensions/image-loading.ts` (`data-load` states styled in `editor/src/style.css`; Tiptap's resizable view hides its
+  container until an image loads, so the CSS shows it meanwhile).
 - **Covers**: the stored value is `gradient:<id>` or an image URL, and an image's vertical position rides along
   as a `#y=<0-100>` fragment (`editor/src/lib/covers.ts`: `coverPosition`, `withCoverPosition`), so the store and
   the protocol keep a plain string. "Reposition" on the cover (`editor/src/page/page-header.tsx`) drags the picture
