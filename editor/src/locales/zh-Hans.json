@@ -367,5 +367,63 @@
       "replace": "替换右侧",
       "here": "在这里显示"
     }
+  },
+  "ai": {
+    "menu": "询问 AI",
+    "editPlaceholder": "用 AI 编辑…",
+    "send": "发送",
+    "group": {
+      "edit": "编辑",
+      "tone": "更换语气",
+      "translate": "翻译",
+      "ask": "提问"
+    },
+    "action": {
+      "improve": "润色文字",
+      "fix": "修正拼写和语法",
+      "shorter": "改短一些",
+      "longer": "写长一些",
+      "simplify": "简化用语",
+      "tone": {
+        "professional": "专业",
+        "casual": "随意",
+        "friendly": "友好",
+        "confident": "自信"
+      },
+      "translate": {
+        "zh": "简体中文",
+        "en": "英语",
+        "ja": "日语"
+      },
+      "explain": "解释",
+      "summarize": "总结"
+    },
+    "editing": "正在修改…",
+    "thinking": "正在思考…",
+    "searching": "正在搜索网页…",
+    "searchingFor": "正在搜索“{{query}}”…",
+    "stop": "停止",
+    "retry": "重试",
+    "close": "关闭",
+    "discard": "放弃",
+    "accept": "接受",
+    "copy": "复制",
+    "insertBelow": "插入到下方",
+    "followUp": "告诉 AI 要怎么改…",
+    "askFollowUp": "继续提问…",
+    "noChanges": "这里没有需要修改的地方。",
+    "changes_one": "{{count}} 处修改",
+    "changes_other": "{{count}} 处修改",
+    "sources": "来源",
+    "error": {
+      "missingKey": "请在“设置 → AI”中填写 {{provider}} 的 API 密钥后再使用这个模型。",
+      "unauthorized": "API 密钥被拒绝。请在“设置 → AI”中检查。",
+      "rateLimited": "请求过多，或账户额度已用完。请稍后再试。",
+      "unavailable": "AI 服务繁忙或不可用。请稍后再试。",
+      "offline": "没有网络连接。请检查网络后重试。",
+      "rejected": "请求被拒绝。",
+      "rejectedWith": "请求被拒绝：{{message}}",
+      "invalidResponse": "无法读取回答。请重试。"
+    }
   }
 }

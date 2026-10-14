@@ -136,11 +136,14 @@ for (const file of walk(join(root, 'editor/src'), /\.(ts|tsx)$/u, (p) => p.inclu
   ))
     usedWeb.add(key)
 }
+// i18next plurals: t('x', { count }) reads x_one / x_other.
+const pluralBase = (key) => key.replace(/_(?:zero|one|two|few|many|other)$/u, '')
 for (const key of usedWeb)
-  if (!webCatalogs.en.has(key))
+  if (!webCatalogs.en.has(key) && !webCatalogs.en.has(`${key}_other`))
     errors.push(`web: '${key}' is used but missing from locales/en.json`)
 for (const [key, value] of webCatalogs.en) {
-  if (!usedWeb.has(key)) errors.push(`web: '${key}' is in locales/en.json but not used`)
+  if (!usedWeb.has(key) && !usedWeb.has(pluralBase(key)))
+    errors.push(`web: '${key}' is in locales/en.json but not used`)
   for (const lang of LANGS.slice(1)) {
     const translated = webCatalogs[lang].get(key)
     if (!translated) errors.push(`web: '${key}' missing from locales/${lang}.json`)

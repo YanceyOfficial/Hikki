@@ -731,6 +731,76 @@
   --hk-pop-dx: 8px;
   --hk-pop-dy: 0px;
 }
+/*
+ * AI on the selection (extensions/ai-review.ts). While the model works, the selection shimmers (one sweep per
+ * --motion-loop); its edit shows in place — removed text struck through in red, added text in green — until accepted.
+ */
+.tiptap .hk-ai-thinking {
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--color-selection) 35%, transparent) 0%,
+    var(--color-selection) 50%,
+    color-mix(in oklab, var(--color-selection) 35%, transparent) 100%
+  );
+  background-size: 200% 100%;
+  animation: hk-ai-sweep var(--motion-loop) linear infinite;
+}
+@keyframes hk-ai-sweep {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+.tiptap .hk-ai-subject {
+  border-radius: 2px;
+  background: var(--color-selection);
+}
+.tiptap .hk-ai-del {
+  border-radius: 2px;
+  color: var(--color-ink-red);
+  background: var(--color-wash-red);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+.tiptap .hk-ai-ins {
+  border-radius: 2px;
+  color: var(--color-ink-green);
+  background: var(--color-wash-green);
+  animation: hk-fade-in var(--motion-pop-in) var(--ease-out);
+}
+/* AI at work: three dots rising in turn, over one --motion-loop. */
+.hk-ai-dots {
+  display: inline-flex;
+  gap: 3px;
+}
+.hk-ai-dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--color-tone-ink);
+  animation: hk-ai-dot var(--motion-loop) var(--ease-out) infinite;
+}
+.hk-ai-dots span:nth-child(2) {
+  animation-delay: calc(var(--motion-loop) / 7);
+}
+.hk-ai-dots span:nth-child(3) {
+  animation-delay: calc(var(--motion-loop) / 3.5);
+}
+@keyframes hk-ai-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    translate: 0 0;
+  }
+  30% {
+    opacity: 1;
+    translate: 0 -2px;
+  }
+}
 /* The gliding selection surface of a list (components/gliding-highlight.tsx). */
 .hk-glide {
   @apply pointer-events-none absolute top-0 left-0 rounded-md bg-accent opacity-0;
@@ -747,7 +817,10 @@
   .hk-pop,
   .hk-pop[data-closing],
   .hk-pop[data-ending-style],
-  .tiptap .hk-toggle.is-open > div > [data-type='detailsContent'] {
+  .tiptap .hk-toggle.is-open > div > [data-type='detailsContent'],
+  .tiptap .hk-ai-thinking,
+  .tiptap .hk-ai-ins,
+  .hk-ai-dots span {
     animation: none;
   }
   .hk-pop-toggle,

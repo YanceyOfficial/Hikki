@@ -2,6 +2,7 @@ import type { Editor } from '@tiptap/core'
 import type { Transaction } from '@tiptap/pm/state'
 
 import { setBlockLinkBuilder } from '../components/block-menu'
+import { handleAIEvent, type AIHost } from '../extensions/ai-review'
 import { runFind, type FindMode } from '../extensions/find'
 import type { MediaHost } from '../extensions/media'
 import { pageLinkHref, type PageIndexEntry, type PageLinksHost } from '../extensions/page-links'
@@ -16,6 +17,7 @@ import { t } from './i18n'
 import { normalizeBody } from './normalize'
 import {
   COMMANDS,
+  type AIStreamEvent,
   type Command,
   type PagePayload,
   type Snapshot,
@@ -210,6 +212,7 @@ export class EditorBridge {
       media: this.media,
       pageLinks: this.pageLinks,
       splitDrop: this.splitDropHost,
+      ai: this.aiHost,
       ruby: this.ruby,
       linkPreview: async (url) =>
         linkCardFrom(await this.transport.post({ type: 'linkPreview', url })),
@@ -340,6 +343,18 @@ export class EditorBridge {
   readonly splitDropHost: SplitDropHost = {
     mode: () => this.splitDrop,
     open: (pageId) => void this.send({ type: 'openInSplit', id: pageId })
+  }
+
+  /** AI on the selection: requests go to the native AI service; its answer comes back through `aiEvent`. */
+  readonly aiHost: AIHost = {
+    request: (message) => void this.send({ type: 'aiRequest', ...message }),
+    cancel: (id) => void this.send({ type: 'aiCancel', id }),
+    title: () => this.page.get().title
+  }
+
+  /** `window.hikki.aiEvent`: one event of an AI request's answer. */
+  aiEvent(event: AIStreamEvent): void {
+    if (this.editor) handleAIEvent(this.editor, this.aiHost, event)
   }
 
   /** Page links in the body: labels from the index, clicks routed to the native side. */

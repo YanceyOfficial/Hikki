@@ -5,7 +5,7 @@ import { IconProvider } from './components/icons'
 import { EditorBridge } from './core/bridge'
 import { installErrorForwarding } from './core/errors'
 import { setLocale } from './core/i18n'
-import { PROTOCOL_VERSION, type PagePayload } from './core/protocol'
+import { PROTOCOL_VERSION, type AIStreamEvent, type PagePayload } from './core/protocol'
 import { applyShortcutOverrides, type ShortcutOverride } from './core/shortcuts'
 import { devTransport, webkitTransport } from './core/transport'
 import { findShortcut, type FindMode } from './extensions/find'
@@ -45,6 +45,8 @@ window.hikki = {
   // The sidebar's pages, for naming links to them; and a block to land on after a link.
   setPages: (pages: PageIndexEntry[]) => bridge.setPages(pages),
   scrollToBlock: (id: string) => bridge.scrollToBlock(id),
+  // AI on the selection: the answer to an `aiRequest`, one event at a time.
+  aiEvent: (event: AIStreamEvent) => bridge.aiEvent(event),
   // A tab shown again scrolls back to where it was.
   restoreScroll: (top: number) => bridge.restoreScroll(top),
   // The inspector's outline: a heading to the top of the page, marked as the one being read.

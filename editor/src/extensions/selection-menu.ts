@@ -4,6 +4,7 @@ import { PluginKey } from '@tiptap/pm/state'
 import { createRoot, type Root } from 'react-dom/client'
 
 import { renderSelectionMenu } from '../components/selection-menu'
+import { aiReviewOpen } from './ai-review'
 import { SlashCommandKey } from './slash-command'
 
 export const SelectionMenuKey = new PluginKey('selectionMenu')
@@ -55,6 +56,8 @@ export const SelectionMenuExtension = Extension.create<
           if (editor.isActive('codeBlock')) return false
           // Not while the "/" menu is open.
           if (SlashCommandKey.getState(state)?.active) return false
+          // Not while AI works on the selection or shows its review.
+          if (aiReviewOpen(editor)) return false
           return true
         }
       })

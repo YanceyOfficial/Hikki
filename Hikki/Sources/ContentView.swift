@@ -19,6 +19,8 @@ struct ContentView: View {
     @State private var shownTab: UUID?
     /// The split pane's editor (a second web view), made the first time a page opens in the pane.
     @State private var splitEditor: EditorController?
+    /// AI on the selection, for both editors.
+    @State private var ai = AIService()
     @State private var navigator = Navigator()
     @State private var columns: NavigationSplitViewVisibility = .all
     @SceneStorage("tabs") private var storedTabs: Data?
@@ -185,6 +187,7 @@ struct ContentView: View {
             if model.tree.page(id) != nil { navigator.openInSplit(.page(id)) }
         }
         editor.setSplitDrop(mainSplitDrop)
+        ai.attach(editor)
         // The inspector starts closed in every window (its tab is remembered); `-inspector.visible YES` opens it
         // (screenshots).
         // Only the launch argument counts; a value saved by earlier builds (which remembered it) is dropped.
@@ -302,6 +305,7 @@ struct ContentView: View {
             if model.tree.page(id) != nil { navigator.openInSplit(.page(id)) }
         }
         pane.setSplitDrop(.here)
+        ai.attach(pane)
         pane.setPages(model.tree.all)
         splitEditor = pane
         return pane

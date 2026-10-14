@@ -6,6 +6,7 @@ import {
   EraserIcon,
   LinkSimpleIcon,
   MathOperationsIcon,
+  SparkleIcon,
   TextAaIcon,
   TextBIcon,
   TextItalicIcon,
@@ -32,10 +33,11 @@ import { isSafeHref, normalizeHref } from '../core/links'
 import { shortcutLabel } from '../core/shortcuts'
 import { colorLabel, PALETTE, type PaletteColor } from '../extensions/colors'
 import { useEditorSnapshot } from '../hooks/use-editor-snapshot'
+import { AIPanel } from './ai-panel'
 import { usePresence } from './floating'
 import { IconProvider } from './icons'
 
-type Panel = 'turnInto' | 'color' | 'link' | 'more' | null
+type Panel = 'ai' | 'turnInto' | 'color' | 'link' | 'more' | null
 
 const TURN_INTO = BLOCK_TYPES.filter((b) => b.turnInto)
 
@@ -62,7 +64,7 @@ function snapshot(editor: Editor) {
 /**
  * The menu over a text selection (Notion-like): "Turn into", two rows of formatting, link and color.
  * Side panels open inside the menu element so focus never leaves it (BubbleMenu hides on blur otherwise).
- * Comment and AI rows come later.
+ * "Ask AI" opens the AI actions (`AIReview` shows the result under the selection).
  */
 export function SelectionMenu({ editor }: { editor: Editor }) {
   const state = useEditorSnapshot(editor, snapshot)
@@ -101,6 +103,18 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
         aria-label={t('format.menu')}
         className="hk-pop w-[224px] rounded-xl bg-popover p-1 text-popover-foreground shadow-popover"
       >
+        <button
+          type="button"
+          className={cn(rowClass, panel === 'ai' && 'bg-accent')}
+          aria-haspopup="menu"
+          aria-expanded={panel === 'ai'}
+          data-testid="selection-menu-ask-ai"
+          onClick={() => toggle('ai')}
+        >
+          <SparkleIcon size={18} weight="fill" className="text-primary" aria-hidden />
+          <span className="flex-1 truncate">{t('ai.menu')}</span>
+          <CaretRightIcon size={14} className="text-muted-foreground" aria-hidden />
+        </button>
         <button
           type="button"
           className={cn(rowClass, panel === 'turnInto' && 'bg-accent')}
@@ -196,6 +210,18 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
           )}
           data-testid={`selection-menu-${shownPanel}`}
         >
+          {shownPanel === 'ai' && (
+            <AIPanel
+              onRun={(action) => {
+                setPanel(null)
+                editor.commands.aiRun(action)
+              }}
+              onCancel={() => {
+                setPanel(null)
+                editor.commands.focus()
+              }}
+            />
+          )}
           {shownPanel === 'turnInto' && (
             <div role="menu" aria-label={t('format.turnInto')}>
               <PanelTitle>{t('format.turnInto')}</PanelTitle>
@@ -293,7 +319,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
   )
 }
 
-const rowClass =
+export const rowClass =
   'flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 text-left text-sm select-none transition-colors duration-(--motion-pop-out) ease-out hover:bg-accent coarse:h-10'
 
 /** Buttons keep the editor's selection: no focus change on press (inputs are exempt). */
@@ -302,7 +328,7 @@ function keepEditorFocus(event: React.MouseEvent) {
   if (!target.closest('input')) event.preventDefault()
 }
 
-function PanelTitle({ children }: { children: ReactNode }) {
+export function PanelTitle({ children }: { children: ReactNode }) {
   return (
     <div className="px-2 pt-1.5 pb-1 text-xs font-medium text-muted-foreground">{children}</div>
   )

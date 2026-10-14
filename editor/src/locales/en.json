@@ -367,5 +367,63 @@
       "replace": "Replace the right side",
       "here": "Show here"
     }
+  },
+  "ai": {
+    "menu": "Ask AI",
+    "editPlaceholder": "Edit with AI…",
+    "send": "Send",
+    "group": {
+      "edit": "Edit",
+      "tone": "Change tone",
+      "translate": "Translate",
+      "ask": "Ask"
+    },
+    "action": {
+      "improve": "Improve writing",
+      "fix": "Fix spelling & grammar",
+      "shorter": "Make shorter",
+      "longer": "Make longer",
+      "simplify": "Simplify language",
+      "tone": {
+        "professional": "Professional",
+        "casual": "Casual",
+        "friendly": "Friendly",
+        "confident": "Confident"
+      },
+      "translate": {
+        "zh": "Chinese (Simplified)",
+        "en": "English",
+        "ja": "Japanese"
+      },
+      "explain": "Explain",
+      "summarize": "Summarize"
+    },
+    "editing": "Editing…",
+    "thinking": "Thinking…",
+    "searching": "Searching the web…",
+    "searchingFor": "Searching for “{{query}}”…",
+    "stop": "Stop",
+    "retry": "Retry",
+    "close": "Close",
+    "discard": "Discard",
+    "accept": "Accept",
+    "copy": "Copy",
+    "insertBelow": "Insert below",
+    "followUp": "Tell AI what to change…",
+    "askFollowUp": "Ask a follow-up…",
+    "noChanges": "Nothing to change here.",
+    "changes_one": "{{count}} change",
+    "changes_other": "{{count}} changes",
+    "sources": "Sources",
+    "error": {
+      "missingKey": "Add your {{provider}} API key in Settings → AI to use this model.",
+      "unauthorized": "The API key was refused. Check it in Settings → AI.",
+      "rateLimited": "Too many requests, or the account’s quota is used up. Try again in a moment.",
+      "unavailable": "The AI service is busy or down. Try again in a moment.",
+      "offline": "No connection. Check your network and try again.",
+      "rejected": "The request was refused.",
+      "rejectedWith": "The request was refused: {{message}}",
+      "invalidResponse": "The answer couldn’t be read. Try again."
+    }
   }
 }

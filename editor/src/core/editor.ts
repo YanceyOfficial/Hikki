@@ -7,6 +7,7 @@ import UniqueID from '@tiptap/extension-unique-id'
 import { CharacterCount, Placeholder } from '@tiptap/extensions'
 import StarterKit from '@tiptap/starter-kit'
 
+import { AIReview, type AIHost } from '../extensions/ai-review'
 import { BlockControls } from '../extensions/block-controls'
 import { Callout } from '../extensions/callout'
 import { CodeBlock } from '../extensions/code-block'
@@ -62,6 +63,8 @@ type EditorOptions = {
   linkPreview?: (url: string) => Promise<LinkCard | null>
   /** A page dropped on the right edge opens in split view; without it there is no such edge. */
   splitDrop?: SplitDropHost
+  /** AI on the selection (the native AI service); without it the AI actions do nothing. */
+  ai?: AIHost
 }
 
 /**
@@ -144,6 +147,7 @@ export function createEditor(
       // "@" mentions a page; ":" suggests emoji.
       PageMention(options.pageLinks ?? noPageLinks),
       SplitDrop(options.splitDrop ?? { mode: () => 'off', open: () => {} }),
+      AIReview(options.ai ?? { request: () => {}, cancel: () => {}, title: () => '' }),
       EmojiSuggestion,
       // "--" → —, "..." → …, "->" → →, "(c)" → ©… Quotes stay straight and fractions stay typed (notes, code-ish text, CJK).
       Typography.configure({
