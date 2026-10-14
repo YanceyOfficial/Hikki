@@ -54,6 +54,20 @@ final class AppModel {
     // MARK: Workspace folder (storage option C)
 
     @ObservationIgnored private var sync: WorkspaceSync?
+    /// Versions of pages (Page ⋯ → Page History…), in the workspace folder; nil until the folder is known.
+    @ObservationIgnored private(set) var history: PageHistory?
+
+    /// Notion-like: a version per editing session (10 quiet minutes apart), all of the last day, then one a day for
+    /// 30 days. DEBUG: `HIKKI_HISTORY_INTERVAL=<seconds>` shortens the session (UI tests).
+    static var historyPolicy: PageHistoryPolicy {
+        var policy = PageHistoryPolicy()
+        #if DEBUG
+            if let value = ProcessInfo.processInfo.environment["HIKKI_HISTORY_INTERVAL"], let seconds = TimeInterval(value) {
+                policy.interval = seconds
+            }
+        #endif
+        return policy
+    }
 
     /// The folder the workspace lives in (access held for the session).
     @ObservationIgnored private var workspaceFolder: URL?
@@ -75,14 +89,28 @@ final class AppModel {
             assets.useWorkspaceFolder(folder)
             let assets = assets
             Task.detached(priority: .utility) { assets.copyLegacyAssets() }
+            // Page history lives in the folder too (`history/<page id>/`), so versions sync with the pages.
+            let history = PageHistory(root: folder, policy: Self.historyPolicy, device: Self.deviceName)
+            self.history = history
             // Every pass — launch, activation, or the folder watcher noticing another device — tells open
             // editors which pages came from disk, so one showing such a page reloads it.
-            // The losing side of a conflict becomes a page of its own, titled in the app's language.
+            // The losing side of a conflict becomes a page of its own, titled in the app's language; a page
+            // another device replaces is kept in its history first; a page deleted here takes its history along.
             let options = WorkspaceSync.Options(
                 device: Self.deviceName,
                 conflictTitle: { title, source in
                     let title = title.isEmpty ? String(localized: "app:page.untitled") : title
                     return String(localized: "app:sync.conflictedCopy \(title) \(source)")
+                },
+                willReplace: { row in
+                    do {
+                        try history.recordBeforeReplace(row)
+                    } catch {
+                        Log.warn("page version not kept: \(error)", category: "history", context: ["docId": row.id])
+                    }
+                },
+                onDeleted: { ids in
+                    for id in ids { try? history.forget(pageID: id) }
                 })
             let sync = WorkspaceSync(store: store, files: PageFiles(root: folder), options: options) { [weak self] report in
                 let ids = report.importedIDs

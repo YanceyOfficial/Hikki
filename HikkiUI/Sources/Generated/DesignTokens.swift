@@ -212,6 +212,9 @@ public nonisolated enum Size {
     public static let homeFilter: CGFloat = 220
     public static let homeCard: CGFloat = 240
     public static let splitMin: CGFloat = 320
+    public static let historyList: CGFloat = 240
+    public static let historyWidth: CGFloat = 880
+    public static let historyHeight: CGFloat = 600
 }
 
 /// Motion: one timing for everything that appears, leaves or reacts (popovers, hover states, scrims).

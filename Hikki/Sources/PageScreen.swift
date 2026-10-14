@@ -157,6 +157,24 @@ struct PageMoreMenu: View {
             .accessibilityIdentifier("find-in-page")
             Divider()
         }
+        Button {
+            navigator.historyPageID = page.id
+        } label: {
+            IconLabel("app:history.open", icon: .clockCounterClockwise)
+        }
+        .accessibilityIdentifier("page-history")
+        Menu {
+            ForEach(PageExport.Format.allCases) { format in
+                Button(format.title) {
+                    navigator.exportRequest = ExportRequest(pageID: page.id, format: format)
+                }
+                .accessibilityIdentifier("export-\(format.rawValue)")
+            }
+        } label: {
+            IconLabel("app:export.menu", icon: .export)
+        }
+        .accessibilityIdentifier("page-export")
+        Divider()
         PageActions(page: page, navigator: navigator)
         Divider()
         #if os(iOS)
@@ -190,6 +208,18 @@ struct PageMoreMenu: View {
         .fixedSize()
         .accessibilityLabel("app:common.more")
         .accessibilityIdentifier("page-more")
+    }
+}
+
+extension PageExport.Format {
+    /// The format's name in the Export menu.
+    var title: LocalizedStringKey {
+        switch self {
+        case .markdown: "app:export.markdown"
+        case .html: "app:export.html"
+        case .pdf: "app:export.pdf"
+        case .json: "app:export.json"
+        }
     }
 }
 

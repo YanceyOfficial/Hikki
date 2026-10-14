@@ -308,6 +308,102 @@ final class EditorFlowTests: XCTestCase {
             "title not editable after unlocking: \(String(describing: title.value))")
     }
 
+    /// Page ⋯ → Page History…: an earlier version is listed with its preview, and restoring it puts it back.
+    /// A one-second session (`HIKKI_HISTORY_INTERVAL`) instead of ten minutes, so the second edit keeps the first.
+    func testPageHistoryRestoresAnEarlierVersion() throws {
+        continueAfterFailure = false
+        let app = launch(environment: ["HIKKI_HISTORY_INTERVAL": "1"])
+        let newPage = app.buttons["new-page"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+        newPage.tap()
+        let title = app.webViews.textViews["Page title"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+        title.tap()
+        title.typeText("Alpha")
+        sleep(3)  // saved, and the session is over
+        title.typeText(" Beta")
+        sleep(3)  // this save keeps "Alpha" as a version
+        XCTAssertEqual(title.value as? String, "Alpha Beta")
+
+        let more = app.buttons["page-more"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(more, in: app))
+        more.tap()
+        let history = app.buttons["page-history"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(history, in: app), "no Page History item")
+        history.tap()
+        let version = app.descendants(matching: .any)["history-version-0"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(version, in: app), "no version listed")
+        version.tap()  // a sheet on iPad is compact: the list pushes the version
+        XCTAssertTrue(waitOrDumpTree(app.staticTexts["Alpha"].firstMatch, in: app), "preview doesn't show the version")
+        attachScreenshot(app, "page-history")
+        let restore = app.buttons["history-restore"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(restore, in: app))
+        restore.tap()
+        XCTAssertTrue(restore.waitForNonExistence(timeout: 5), "history stayed open after restoring")
+        let restored = NSPredicate(format: "value == %@", "Alpha")
+        wait(for: [expectation(for: restored, evaluatedWith: app.webViews.textViews["Page title"].firstMatch)], timeout: 10)
+
+        // Restoring kept the page as it was: "Alpha Beta" is now a version too.
+        more.tap()
+        XCTAssertTrue(waitOrDumpTree(history, in: app))
+        history.tap()
+        let newest = app.descendants(matching: .any)["history-version-0"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(newest, in: app))
+        newest.tap()
+        XCTAssertTrue(waitOrDumpTree(app.staticTexts["Alpha Beta"].firstMatch, in: app), "the restored-over page wasn't kept")
+    }
+
+    /// Page ⋯ → Export → Markdown writes the page (`HIKKI_EXPORT_DIR` skips the save panel, which runs out of
+    /// process), and a Markdown file imports as a new page (`HIKKI_IMPORT_FILE`, the file picker's stand-in).
+    func testExportAndImportMarkdown() throws {
+        continueAfterFailure = false
+        let exportDir = dataDir + "-export"
+        try FileManager.default.createDirectory(atPath: exportDir, withIntermediateDirectories: true)
+        var app = launch(environment: ["HIKKI_EXPORT_DIR": exportDir])
+        let newPage = app.buttons["new-page"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+        newPage.tap()
+        let field = app.webViews.textViews["Page title"].firstMatch
+        // A cold simulator takes a while to start the web content process.
+        XCTAssertTrue(waitOrDumpTree(field, in: app, timeout: 30), "editor never became editable")
+        field.tap()
+        field.typeText("Exported")
+        sleep(1)
+        let body = app.webViews.textViews["Page content"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(body, in: app))
+        body.tap()
+        body.typeText("Hello world")
+        sleep(1)
+
+        let more = app.buttons["page-more"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(more, in: app))
+        more.tap()
+        let export = app.buttons["page-export"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(export, in: app), "no Export menu")
+        export.tap()
+        let markdown = app.buttons["export-markdown"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(markdown, in: app), "no Markdown item")
+        markdown.tap()
+        let file = exportDir + "/Exported.md"
+        let written = expectation(for: NSPredicate { _, _ in FileManager.default.fileExists(atPath: file) }, evaluatedWith: nil)
+        wait(for: [written], timeout: 10)
+        let text = try String(contentsOfFile: file, encoding: .utf8)
+        XCTAssertTrue(text.hasPrefix("# Exported\n"), text)
+        XCTAssertTrue(text.contains("Hello world"), text)
+
+        app.terminate()
+        let source = dataDir + "-import.md"
+        try "# Imported note\n\nSome **bold** text.\n".write(toFile: source, atomically: true, encoding: .utf8)
+        app = launch(environment: ["HIKKI_IMPORT_FILE": source])
+        let row = app.descendants(matching: .any)["page-row-Imported note"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(row, in: app, timeout: 15), "imported page missing from the sidebar")
+        let title = app.webViews.textViews["Page title"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(title, in: app))
+        let opened = NSPredicate(format: "value == %@", "Imported note")
+        wait(for: [expectation(for: opened, evaluatedWith: title)], timeout: 10)
+        XCTAssertTrue(waitOrDumpTree(app.webViews.staticTexts["bold"].firstMatch, in: app), "imported body missing")
+    }
+
     /// Regression: on iPhone, tag-based List selection didn't navigate; rows must be NavigationLinks.
     func testSidebarRowsNavigate() throws {
         continueAfterFailure = false

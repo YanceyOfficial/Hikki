@@ -68,11 +68,42 @@ final class EditorController {
         }
     }
 
-    func attach(store: DocumentStore, assets: AssetStore) {
+    /// `history`: the workspace's page history (nil until a workspace is open) — saves keep versions through it.
+    func attach(store: DocumentStore, assets: AssetStore, history: @escaping () -> PageHistory?) {
         self.store = store
         self.assets = assets
+        self.history = history
         uploads = AssetUploads(store: assets)
         schemeHandler.assets = assets
+    }
+
+    @ObservationIgnored private var history: () -> PageHistory? = { nil }
+
+    // MARK: - Import / export (editor/src/core/convert.ts)
+
+    enum ConversionError: Error {
+        case editorNotReady
+        case unexpectedResult
+    }
+
+    /// The page as a Markdown or HTML document, written by the editor in its own schema.
+    func exportText(_ record: DocumentRecord, format: ExportFormat) async throws -> String {
+        guard isReady else { throw ConversionError.editorNotReady }
+        let result = try await webView.callAsyncJavaScript(
+            "return window.hikki.exportPage(page, format)",
+            arguments: ["page": try PagePayload.make(from: record), "format": format.rawValue], contentWorld: .page)
+        guard let text = result as? String else { throw ConversionError.unexpectedResult }
+        return text
+    }
+
+    /// A file's text as a new page's title and body (always fitting the schema).
+    func importDocument(_ text: String, format: ImportFormat, fallbackTitle: String) async throws -> ImportedPage {
+        guard isReady else { throw ConversionError.editorNotReady }
+        let result = try await webView.callAsyncJavaScript(
+            "return window.hikki.importDocument(text, format, fallbackTitle)",
+            arguments: ["text": text, "format": format.rawValue, "fallbackTitle": fallbackTitle], contentWorld: .page)
+        guard let result else { throw ConversionError.unexpectedResult }
+        return try ImportedPage.decode(scriptResult: result)
     }
 
     @ObservationIgnored private var uploads: AssetUploads?
@@ -494,6 +525,16 @@ final class EditorController {
     }
 
     private func save(_ snapshot: Snapshot) {
+        // Page history: the first save of an editing session keeps the page as it was (PageHistory's policy).
+        if let history = history(), let store {
+            do {
+                try history.recordBeforeEdit(pageID: snapshot.docId, newTitle: snapshot.title, newContent: snapshot.content) {
+                    try store.document(id: snapshot.docId)
+                }
+            } catch {
+                Log.warn("page version not kept: \(error)", category: "history", context: ["docId": snapshot.docId])
+            }
+        }
         do {
             if try store?.saveContent(snapshot) == false {
                 Log.warn("save skipped: document no longer exists", category: "store", context: ["docId": snapshot.docId])

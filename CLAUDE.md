@@ -156,6 +156,28 @@ HikkiUITests/                 XCUITest flows
   other version that says something different becomes a sibling page titled "<title> (conflicted copy <device>,
   <date>)" (`ConflictCopy`), then the conflicts are marked resolved. The same happens when the row and the file both
   changed since they last agreed — `pageFileState.baseUpdatedAt`, set on every write and import (`syncBases`).
+- **Page history** (`HikkiCore/Sources/Store/PageHistory.swift`): versions are files in the workspace folder,
+  `history/<page id>/<yyyyMMddTHHmmss.SSSZ>.json` (format-versioned, atomic writes), so they sync like pages. Policy
+  (`PageHistoryPolicy`, Notion-like): the first save of an editing session (10 quiet minutes) keeps the page _as it
+  was_ — `EditorController.save` calls `recordBeforeEdit`, which reads the row only when a session starts and keeps
+  nothing for an unchanged or empty page (viewing never adds history); a page another device replaces is kept first
+  (`WorkspaceSync.Options.willReplace`); restoring keeps the current page first (`snapshot(reason: .restore)`). Pruned
+  on every write: everything from the last 24 h, then the newest per day, nothing past 30 days; a page deleted for good
+  takes its history along (`onDeleted`). UI: page ⋯ → Page History… (`Hikki/Sources/PageHistoryView.swift`) lists
+  versions beside a native preview — `TextBlock`/`PageDiff` (`HikkiCore/Sources/Store/PageDiff.swift`) flatten both
+  versions to blocks and diff them block by block, then word by word (CJK by character), drawn by HikkiUI's
+  `VersionDiffView`. Restore writes through `saveContent` + `setIcon`/`setCover` and reloads open editors.
+  DEBUG: `HIKKI_HISTORY_INTERVAL=<s>` shortens the session (UI tests).
+- **Import / export** (`Hikki/Sources/PageTransfer.swift`): the editor converts, in its own schema
+  (`editor/src/core/convert.ts`: Tiptap's official `@tiptap/markdown`, HTML through the schema's parse/render rules;
+  blocks with no Markdown form export as their container's blocks or their rendered HTML) — `window.hikki.exportPage`
+  / `importDocument`. Export (page ⋯ → Export: Markdown, HTML, PDF, JSON = the page file) is packed by
+  `PageExport` (`HikkiCore/Sources/Store/PageExport.swift`): one file, or — when the page attaches files — a folder
+  with the document and `assets/` it links into relatively; saved with `.fileExporter` on both platforms. PDF renders
+  the HTML export in an offscreen light web view (`createPDF`: one tall page). Import (File → Import…, the workspace
+  menu) takes .md/.html/.txt as new top-level pages; whatever the file holds, the body fits the schema (text fallback).
+  Not yet: dropping files on the sidebar, relative images in imported Markdown. DEBUG: `HIKKI_EXPORT_DIR=<folder>`
+  skips the save panel, `HIKKI_IMPORT_FILE=<path>` imports at launch (UI tests).
 - **Workspace identity** lives in the folder (a workspace.json next to `pages/`: id, name, icon — `WorkspaceIdentity`); the per-device
   record (`AppPaths.workspace`) only adds the location. A device picking a folder that has one _opens_ that workspace
   (onboarding says so), and a newer identity from another device replaces the local name/icon on activation. Settings →

@@ -93,6 +93,9 @@
   --size-home-filter: 220px;
   --size-home-card: 240px;
   --size-split-min: 320px;
+  --size-history-list: 240px;
+  --size-history-width: 880px;
+  --size-history-height: 600px;
   --motion-pop-in: 200ms;
   --motion-pop-out: 150ms;
   --radius: 8px;

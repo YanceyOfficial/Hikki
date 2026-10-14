@@ -69,6 +69,16 @@
                             AIGlyph(size: 24)
                         }
                     }
+                    Section("VersionDiffView") {
+                        VersionDiffView(blocks: [
+                            .init(id: 0, style: .heading2, runs: [.init("Plan", .same)]),
+                            .init(
+                                id: 1, style: .paragraph,
+                                runs: [.init("Leave on ", .same), .init("Friday", .removed), .init("Saturday", .added)]),
+                            .init(id: 2, style: .bullet, change: .added, runs: [.init("Book the ryokan", .added)]),
+                            .init(id: 3, style: .paragraph, change: .removed, runs: [.init("An old note", .removed)]),
+                        ])
+                    }
                     Section("SearchResultRow") {
                         SearchResultRow(
                             title: "Weekly sync", icon: "🗓️", path: "Work / Meetings", terms: ["week"], updatedAt: .now,

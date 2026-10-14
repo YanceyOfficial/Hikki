@@ -1,0 +1,201 @@
+import HikkiCore
+import SwiftUI
+import UniformTypeIdentifiers
+import WebKit
+
+// Page history (restoring a version), import and export: the app's side. The conversions run in the editor
+// (editor/src/core/convert.ts), packing and history in HikkiCore (PageExport, PageHistory).
+
+extension AppModel {
+    // MARK: - History
+
+    /// The page's kept versions, newest first.
+    func versions(of pageID: String) -> [PageVersion] {
+        guard let history else { return [] }
+        do {
+            return try history.versions(of: pageID)
+        } catch {
+            Log.error("page versions unreadable: \(error)", category: "history", context: ["docId": pageID])
+            return []
+        }
+    }
+
+    /// Puts a version back as the page (title, body, icon, cover). Editors showing the page hand over their unsaved
+    /// edits first, and the page as it is now is kept as a version — restoring can itself be undone from the history.
+    func restore(_ version: PageVersion, editors: [EditorController]) async {
+        let id = version.pageId
+        for editor in editors { await editor.flush(reason: "restore") }
+        do {
+            guard let current = try store.document(id: id) else { return }
+            if let history { try history.snapshot(current, reason: .restore) }
+            let content =
+                version.content ?? .object(["type": .string("doc"), "content": .array([.object(["type": .string("paragraph")])])])
+            try store.saveContent(
+                Snapshot(docId: id, content: content, title: version.title, text: version.plainText, wordCount: version.wordCount))
+            if current.icon != version.icon { try store.setIcon(version.icon, for: id) }
+            if current.cover != version.cover { try store.setCover(version.cover, for: id) }
+            Log.info("page version restored", category: "history", context: ["docId": id])
+            // Every editor showing the page shows the restored version.
+            NotificationCenter.default.post(name: .pageSavedInEditor, object: nil, userInfo: ["id": id])
+        } catch {
+            Log.error("restore failed: \(error)", category: "history", context: ["docId": id])
+        }
+    }
+
+    // MARK: - Import
+
+    /// Files larger than this aren't read as text.
+    static let importLimit = 20 * 1024 * 1024
+
+    /// Each Markdown / HTML / text file as a new page at the top level (converted by the editor); returns the new
+    /// pages' ids in order.
+    func importFiles(_ urls: [URL], editor: EditorController) async -> [String] {
+        var created: [String] = []
+        for url in urls {
+            let access = url.startAccessingSecurityScopedResource()
+            defer { if access { url.stopAccessingSecurityScopedResource() } }
+            let format = ImportFormat(fileExtension: url.pathExtension) ?? .text
+            do {
+                let data = try Data(contentsOf: url)
+                guard data.count <= Self.importLimit else {
+                    Log.warn("import skipped: file too large", category: "import", context: ["bytes": "\(data.count)"])
+                    continue
+                }
+                let text = String(decoding: data, as: UTF8.self)
+                let page = try await editor.importDocument(
+                    text, format: format, fallbackTitle: url.deletingPathExtension().lastPathComponent)
+                let record = try store.create()
+                try store.saveContent(
+                    Snapshot(docId: record.id, content: page.content, title: page.title, text: page.text, wordCount: page.wordCount))
+                created.append(record.id)
+                Log.info(
+                    "page imported", category: "import", context: ["docId": record.id, "format": format.rawValue, "bytes": "\(data.count)"])
+            } catch {
+                Log.error("import failed: \(error)", category: "import", context: ["format": format.rawValue])
+            }
+        }
+        return created
+    }
+
+    // MARK: - Export
+
+    /// The page in `format`, packed for saving: one file, or a folder with its attachments (see `PageExport`).
+    func exportPackage(_ request: ExportRequest, editor: EditorController) async throws -> ExportFile {
+        await editor.flush(reason: "export")
+        guard let record = try store.document(id: request.pageID) else { throw ExportError.pageMissing }
+        let name = PageExport.fileName(for: record.title, fallback: String(localized: "app:page.untitled"))
+        switch request.format {
+        case .json:
+            return ExportFile(
+                wrapper: PageExport.package(document: try PageExport.json(record), name: name, fileExtension: "json", assets: []))
+        case .markdown, .html:
+            let text = try await editor.exportText(record, format: request.format == .markdown ? .markdown : .html)
+            let (relinked, names) = PageExport.relinkAssets(in: text)
+            let files = names.compactMap { name in assets.file(named: name).map { (name: name, file: $0) } }
+            let wrapper = PageExport.package(
+                document: Data(relinked.utf8), name: name, fileExtension: request.format.fileExtension, assets: files)
+            return ExportFile(wrapper: wrapper)
+        case .pdf:
+            let html = try await editor.exportText(record, format: .html)
+            let pdf = try await PDFExporter.render(html: html, assets: assets)
+            return ExportFile(wrapper: PageExport.package(document: pdf, name: name, fileExtension: "pdf", assets: []))
+        }
+    }
+
+    enum ExportError: Error {
+        case pageMissing
+    }
+}
+
+/// An export, for `.fileExporter`: a single file or a folder (the page's document and its `assets/`).
+struct ExportFile: FileDocument, @unchecked Sendable {
+    static let readableContentTypes: [UTType] = [.data]
+    let wrapper: FileWrapper
+
+    init(wrapper: FileWrapper) {
+        self.wrapper = wrapper
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        wrapper = configuration.file
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper { wrapper }
+
+    /// What the save panel offers: a folder, or the document's own type.
+    var contentType: UTType {
+        if wrapper.isDirectory { return .folder }
+        let ext = (wrapper.preferredFilename as NSString?)?.pathExtension ?? ""
+        return UTType(filenameExtension: ext) ?? .data
+    }
+
+    /// The name the save panel starts with (without the extension it adds itself).
+    var defaultFilename: String {
+        let name = wrapper.preferredFilename ?? ""
+        return wrapper.isDirectory ? name : (name as NSString).deletingPathExtension
+    }
+}
+
+/// Renders an exported HTML page to PDF in an offscreen web view (light, unstyled by the app: the export's own
+/// minimal stylesheet), with its attachments beside it so pictures show. One tall page — WebKit's `createPDF`.
+@MainActor
+enum PDFExporter {
+    static func render(html: String, assets: AssetStore) async throws -> Data {
+        let folder = FileManager.default.temporaryDirectory.appending(
+            path: "hikki-export-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: folder.appending(path: "assets"), withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let (relinked, names) = PageExport.relinkAssets(in: html)
+        for name in names {
+            if let file = assets.file(named: name) {
+                try? FileManager.default.copyItem(at: file, to: folder.appending(path: "assets/\(name)"))
+            }
+        }
+        let page = folder.appending(path: "page.html")
+        try Data(relinked.utf8).write(to: page)
+        let configuration = WKWebViewConfiguration()
+        // Nothing runs in the export: it is a document to print, not a page.
+        configuration.defaultWebpagePreferences.allowsContentJavaScript = false
+        let webView = WKWebView(frame: CGRect(x: 0, y: 0, width: 794, height: 1123), configuration: configuration)  // A4 at 96 dpi
+        #if os(iOS)
+            webView.overrideUserInterfaceStyle = .light
+        #else
+            webView.appearance = NSAppearance(named: .aqua)
+        #endif
+        let loader = Loader()
+        webView.navigationDelegate = loader
+        try await loader.load(page, in: webView, readAccess: folder)
+        return try await webView.pdf()
+    }
+
+    private final class Loader: NSObject, WKNavigationDelegate {
+        private var continuation: CheckedContinuation<Void, any Error>?
+
+        func load(_ url: URL, in webView: WKWebView, readAccess: URL) async throws {
+            try await withCheckedThrowingContinuation { continuation in
+                self.continuation = continuation
+                webView.loadFileURL(url, allowingReadAccessTo: readAccess)
+            }
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            continuation?.resume()
+            continuation = nil
+        }
+
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: any Error) {
+            continuation?.resume(throwing: error)
+            continuation = nil
+        }
+
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: any Error) {
+            continuation?.resume(throwing: error)
+            continuation = nil
+        }
+
+        /// Only the export itself loads; links in it don't navigate.
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction) async -> WKNavigationActionPolicy {
+            navigationAction.request.url?.isFileURL == true ? .allow : .cancel
+        }
+    }
+}
