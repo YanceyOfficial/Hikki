@@ -131,6 +131,9 @@ public struct TabStrip<Leading: View>: View {
             .allowsHitTesting(false)
         }
         .modifier(DropArea(drop: drop, target: target(at:), indicator: $dropTarget))
+        // In a window toolbar macOS lifts the first `.help` inside the item (the first tab's) up to the whole item, so
+        // hovering any tab showed that title before its own. The strip says nothing itself; each tab keeps its own.
+        .help(Text(verbatim: ""))
         // A drop that changed the tabs is over, whatever the drag session still reports.
         .onChange(of: items) { _, _ in dropTarget = nil }
     }
