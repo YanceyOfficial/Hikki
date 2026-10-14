@@ -10,6 +10,8 @@
 
     struct ComponentGalleryView: View {
         @State private var active: Set<String> = ["bold"]
+        @State private var recording = false
+        @State private var recorded = "⌘B"
 
         var body: some View {
             NavigationStack {
@@ -41,6 +43,15 @@
                             }
                         }
                         .listRowInsets(EdgeInsets())
+                    }
+                    Section("ShortcutRecorder") {
+                        LabeledContent("Bold") {
+                            ShortcutRecorder(
+                                display: recorded, isCustom: recorded != "⌘B", recording: $recording,
+                                identifier: "gallery-shortcut",
+                                onRecord: { key, _ in recorded = "⌘" + String(key.character).uppercased() },
+                                onReset: { recorded = "⌘B" })
+                        }
                     }
                     Section("MonthCalendar") {
                         MonthCalendarGalleryItem()

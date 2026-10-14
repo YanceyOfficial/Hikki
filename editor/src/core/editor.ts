@@ -20,7 +20,7 @@ import { mediaExtensions, type MediaHost } from '../extensions/media'
 import { PageLinks, type PageLinksHost } from '../extensions/page-links'
 import { Ruby, type RubyHost } from '../extensions/ruby'
 import { SelectionMenuExtension } from '../extensions/selection-menu'
-import { BlockShortcuts } from '../extensions/shortcuts'
+import { BlockShortcuts, ShortcutOverrides } from '../extensions/shortcuts'
 import { SlashCommand } from '../extensions/slash-command'
 import { tableExtensions } from '../extensions/table'
 import { TableOfContents } from '../extensions/toc'
@@ -152,6 +152,8 @@ export function createEditor(
         }
       }),
       BlockShortcuts,
+      // Settings → Shortcuts: rebound keys, ahead of every keymap.
+      ShortcutOverrides,
       // Words and characters for the inspector (`pageInfo`).
       ImageLoading,
       CharacterCount,

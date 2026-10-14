@@ -96,6 +96,11 @@ struct ContentView: View {
                 editor.setSpellcheck(on)
                 splitEditor?.setSpellcheck(on)
             }
+            // Settings → Shortcuts: the page handles the editor's own keys, so it hears about rebindings.
+            .onChange(of: ShortcutStore.shared.overrides) {
+                editor.updateShortcuts()
+                splitEditor?.updateShortcuts()
+            }
             // The split pane's page: its own editor, made on first use and wired like the main one.
             .onChange(of: navigator.split) { _, split in
                 guard let id = split?.pageID else { return }

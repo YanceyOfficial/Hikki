@@ -6,6 +6,7 @@ import { EditorBridge } from './core/bridge'
 import { installErrorForwarding } from './core/errors'
 import { setLocale } from './core/i18n'
 import { PROTOCOL_VERSION, type PagePayload } from './core/protocol'
+import { applyShortcutOverrides, type ShortcutOverride } from './core/shortcuts'
 import { devTransport, webkitTransport } from './core/transport'
 import { findShortcut, type FindMode } from './extensions/find'
 import type { PageIndexEntry } from './extensions/page-links'
@@ -60,6 +61,8 @@ window.hikki = {
     document.documentElement.style.setProperty('--hk-inset-top', `${Math.max(0, insets.top)}px`)
   },
   setLocale: (tag: string) => setLocale(tag),
+  // Settings → Shortcuts: the user's rebindings (only those; the rest keep the registry's keys).
+  setShortcuts: (overrides: Record<string, ShortcutOverride>) => applyShortcutOverrides(overrides),
   // Settings → Appearance → Color tone: theme.css keys its [data-tone] palettes on this attribute.
   setTone: (tone: string) => {
     document.documentElement.dataset.tone = tone

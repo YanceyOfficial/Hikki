@@ -6,12 +6,17 @@ final class EditorFlowTests: XCTestCase {
     private let dataDir = NSTemporaryDirectory() + "hikki-uitest-\(UUID().uuidString)"
 
     /// `workspace: nil` starts from a fresh install (onboarding); otherwise a device workspace is seeded.
-    private func launch(language: String? = nil, workspace: String? = "Test") -> XCUIApplication {
+    private func launch(language: String? = nil, workspace: String? = "Test", shortcutOverrides: String = "{}")
+        -> XCUIApplication
+    {
         let app = XCUIApplication()
         app.launchEnvironment["HIKKI_DATA_DIR"] = dataDir
         if let workspace { app.launchEnvironment["HIKKI_WORKSPACE"] = workspace }
         // Preferences outlive the data directory (UserDefaults): every test starts with the inspector closed.
-        app.launchArguments += ["-inspector.visible", "NO", "-inspector.tab", "outline", "-settings.page", "workspace"]
+        app.launchArguments += [
+            "-inspector.visible", "NO", "-inspector.tab", "outline", "-settings.page", "workspace",
+            "-shortcutOverrides", "<\(Data(shortcutOverrides.utf8).map { String(format: "%02x", $0) }.joined())>",
+        ]
         if let language { app.launchArguments += ["-AppleLanguages", "(\(language))", "-AppleLocale", language] }
         app.launch()
         return app
@@ -116,6 +121,45 @@ final class EditorFlowTests: XCTestCase {
         app.buttons["settings-close"].firstMatch.tap()
         XCTAssertTrue(waitOrDumpTree(app.staticTexts["Atlas"].firstMatch, in: app), "renamed workspace not shown")
     }
+
+    #if os(iOS)
+        /// Settings → Shortcuts on iPad: a rebound shortcut shows its keys and resets; the key cap records a press and
+        /// refuses one without ⌘/⌃/⌥. (XCUITest on iOS delivers typed keys without their modifiers, so recording a
+        /// whole combo is covered by the unit tests and the Mac.)
+        func testSettingsRebindsAShortcut() throws {
+            continueAfterFailure = false
+            let app = launch(shortcutOverrides: #"{"bold":{"key":"j","modifiers":["command","shift"]}}"#)
+            let header = app.buttons["workspace-menu"].firstMatch
+            let more = app.buttons["workspace-more"].firstMatch
+            let menu = header.waitForExistence(timeout: 5) ? header : more
+            XCTAssertTrue(waitOrDumpTree(menu, in: app))
+            menu.tap()
+            app.buttons["settings-open"].firstMatch.tap()
+            app.descendants(matching: .any)["settings-page-shortcuts"].firstMatch.tap()
+
+            let search = app.textFields["shortcuts-search"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(search, in: app))
+            search.tap()
+            search.typeText("Bold")
+            let cap = app.buttons["shortcut-bold"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(cap, in: app))
+            XCTAssertEqual(cap.value as? String, "⇧⌘J")
+            let reset = app.buttons["shortcut-bold-reset"].firstMatch
+            XCTAssertTrue(reset.exists, "a rebound shortcut offers its default back")
+            attachScreenshot(app, "shortcuts-rebound")
+
+            // A plain key is refused, with the reason under the row; the keys stay.
+            cap.tap()
+            app.typeKey("k", modifierFlags: [])
+            XCTAssertTrue(waitOrDumpTree(app.staticTexts["shortcut-refusal"].firstMatch, in: app), "no refusal")
+            XCTAssertEqual(cap.value as? String, "⇧⌘J")
+            attachScreenshot(app, "shortcuts-refused")
+
+            reset.tap()
+            XCTAssertEqual(cap.value as? String, "⌘B")
+            XCTAssertFalse(reset.exists)
+        }
+    #endif
 
     /// Simplified Chinese end to end: native chrome from the String Catalog, the web editor via setLocale.
     func testSimplifiedChineseUI() throws {

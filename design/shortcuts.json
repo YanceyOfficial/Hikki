@@ -1,195 +1,233 @@
 {
-  "$comment": "Single source of keyboard shortcuts. `make shortcuts` generates Hikki/Sources/Generated/Shortcuts.swift (the `Shortcut` enum: KeyboardShortcut + display string) and editor/src/generated/shortcuts.ts (SHORTCUTS: match keydown events, display strings). `bound`: `app` — the native menu binds the key (the page must not handle it); `editor` — the page handles it, native menus only display it; `both` — the page handles it when it has focus and the native menu covers the rest (find). Modifiers: command, shift, option, control. Keys: a character, or arrowUp/arrowDown/arrowLeft/arrowRight/tab/return/escape/delete.",
+  "$comment": "Single source of keyboard shortcuts. `make shortcuts` generates Hikki/Sources/Generated/Shortcuts.swift (the `Shortcut` enum: KeyboardShortcut + display string) and editor/src/generated/shortcuts.ts (SHORTCUTS: match keydown events, display strings). `bound`: `app` — the native menu binds the key (the page must not handle it); `editor` — the page handles it, native menus only display it; `both` — the page handles it when it has focus and the native menu covers the rest (find). Modifiers: command, shift, option, control. Keys: a character, or arrowUp/arrowDown/arrowLeft/arrowRight/tab/return/escape/delete. `group` places it in Settings → Shortcuts (general, navigation, find, format, blocks); users can rebind any of them there.",
   "shortcuts": {
     "newPage": {
       "key": "n",
       "modifiers": ["command"],
-      "bound": "app"
+      "bound": "app",
+      "group": "general"
     },
     "newTab": {
       "key": "t",
       "modifiers": ["command"],
-      "bound": "app"
+      "bound": "app",
+      "group": "general"
     },
     "closeTab": {
       "key": "w",
       "modifiers": ["command"],
-      "bound": "app"
+      "bound": "app",
+      "group": "general"
     },
     "search": {
       "key": "k",
       "modifiers": ["command"],
-      "bound": "app"
+      "bound": "app",
+      "group": "general"
     },
     "toggleInspector": {
       "key": "i",
       "modifiers": ["command", "option"],
-      "bound": "app"
+      "bound": "app",
+      "group": "general"
     },
     "toggleSplit": {
       "key": "\\",
       "modifiers": ["command"],
-      "bound": "app"
+      "bound": "app",
+      "group": "general"
     },
     "settings": {
       "key": ",",
       "modifiers": ["command"],
-      "bound": "app"
+      "bound": "app",
+      "group": "general"
     },
     "back": {
       "key": "[",
       "modifiers": ["command"],
-      "bound": "app"
+      "bound": "app",
+      "group": "navigation"
     },
     "forward": {
       "key": "]",
       "modifiers": ["command"],
-      "bound": "app"
+      "bound": "app",
+      "group": "navigation"
     },
     "nextTab": {
       "key": "tab",
       "modifiers": ["control"],
-      "bound": "app"
+      "bound": "app",
+      "group": "navigation"
     },
     "previousTab": {
       "key": "tab",
       "modifiers": ["control", "shift"],
-      "bound": "app"
+      "bound": "app",
+      "group": "navigation"
     },
     "lockPage": {
       "key": "l",
       "modifiers": ["command", "shift"],
-      "bound": "app"
+      "bound": "app",
+      "group": "general"
     },
     "copyPageLink": {
       "key": "c",
       "modifiers": ["command", "option"],
-      "bound": "app"
+      "bound": "app",
+      "group": "general"
     },
     "find": {
       "key": "f",
       "modifiers": ["command"],
-      "bound": "both"
+      "bound": "both",
+      "group": "find"
     },
     "findReplace": {
       "key": "f",
       "modifiers": ["command", "option"],
-      "bound": "both"
+      "bound": "both",
+      "group": "find"
     },
     "findNext": {
       "key": "g",
       "modifiers": ["command"],
-      "bound": "both"
+      "bound": "both",
+      "group": "find"
     },
     "findPrevious": {
       "key": "g",
       "modifiers": ["command", "shift"],
-      "bound": "both"
+      "bound": "both",
+      "group": "find"
     },
     "bold": {
       "key": "b",
       "modifiers": ["command"],
-      "bound": "editor"
+      "bound": "editor",
+      "group": "format"
     },
     "italic": {
       "key": "i",
       "modifiers": ["command"],
-      "bound": "editor"
+      "bound": "editor",
+      "group": "format"
     },
     "underline": {
       "key": "u",
       "modifiers": ["command"],
-      "bound": "editor"
+      "bound": "editor",
+      "group": "format"
     },
     "strikethrough": {
       "key": "s",
       "modifiers": ["command", "shift"],
-      "bound": "editor"
+      "bound": "editor",
+      "group": "format"
     },
     "inlineCode": {
       "key": "e",
       "modifiers": ["command"],
-      "bound": "editor"
+      "bound": "editor",
+      "group": "format"
     },
     "superscript": {
       "key": ".",
       "modifiers": ["command"],
-      "bound": "editor"
+      "bound": "editor",
+      "group": "format"
     },
     "subscript": {
       "key": ",",
       "modifiers": ["command", "shift"],
-      "bound": "editor"
+      "bound": "editor",
+      "group": "format"
     },
     "text": {
       "key": "0",
       "modifiers": ["command", "option"],
-      "bound": "editor"
+      "bound": "editor",
+      "group": "blocks"
     },
     "heading1": {
       "key": "1",
       "modifiers": ["command", "option"],
-      "bound": "editor"
+      "bound": "editor",
+      "group": "blocks"
     },
     "heading2": {
       "key": "2",
       "modifiers": ["command", "option"],
-      "bound": "editor"
+      "bound": "editor",
+      "group": "blocks"
     },
     "heading3": {
       "key": "3",
       "modifiers": ["command", "option"],
-      "bound": "editor"
+      "bound": "editor",
+      "group": "blocks"
     },
     "todoList": {
       "key": "4",
       "modifiers": ["command", "option"],
-      "bound": "editor"
+      "bound": "editor",
+      "group": "blocks"
     },
     "bulletedList": {
       "key": "5",
       "modifiers": ["command", "option"],
-      "bound": "editor"
+      "bound": "editor",
+      "group": "blocks"
     },
     "numberedList": {
       "key": "6",
       "modifiers": ["command", "option"],
-      "bound": "editor"
+      "bound": "editor",
+      "group": "blocks"
     },
     "toggleList": {
       "key": "7",
       "modifiers": ["command", "option"],
-      "bound": "editor"
+      "bound": "editor",
+      "group": "blocks"
     },
     "codeBlock": {
       "key": "8",
       "modifiers": ["command", "option"],
-      "bound": "editor"
+      "bound": "editor",
+      "group": "blocks"
     },
     "quote": {
       "key": "9",
       "modifiers": ["command", "option"],
-      "bound": "editor"
+      "bound": "editor",
+      "group": "blocks"
     },
     "duplicateBlock": {
       "key": "d",
       "modifiers": ["command"],
-      "bound": "editor"
+      "bound": "editor",
+      "group": "blocks"
     },
     "moveBlockUp": {
       "key": "arrowUp",
       "modifiers": ["command", "shift"],
-      "bound": "editor"
+      "bound": "editor",
+      "group": "blocks"
     },
     "moveBlockDown": {
       "key": "arrowDown",
       "modifiers": ["command", "shift"],
-      "bound": "editor"
+      "bound": "editor",
+      "group": "blocks"
     },
     "ruby": {
       "key": "r",
       "modifiers": ["command", "shift"],
-      "bound": "editor"
+      "bound": "editor",
+      "group": "format"
     }
   }
 }

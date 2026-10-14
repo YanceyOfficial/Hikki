@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Menu bar (macOS, iPadOS). Keys come from the registry (design/shortcuts.json → `Shortcut`): items bound
+/// Menu bar (macOS, iPadOS). Keys come from the registry (design/shortcuts.json → `Shortcut`), as the user rebound
+/// them (`ShortcutStore`, observed: the menus follow a change at once). Items bound
 /// `app` or `both` get them here. Formatting items (`editor`) have none: ProseMirror owns ⌘B/⌘I/⌘Z inside the
 /// editor, and binding them here too would toggle twice.
 struct AppCommands: Commands {

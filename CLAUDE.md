@@ -51,7 +51,11 @@ These rules are mandatory. Automated ones are noted.
   `editor/src/generated/shortcuts.ts` (`matchesShortcut`, `shortcutLabel`, `tiptapShortcut` in
   `editor/src/core/shortcuts.ts`). Each entry says who binds it: `app` (native menu), `editor` (the page; menus only
   display it) or `both`. No literal key equivalents or "⌘X" labels in code; the generator refuses two shortcuts on
-  the same keys. _Checked by `make lint-design`._
+  the same keys. _Checked by `make lint-design`._ Users rebind any of them in Settings → Shortcuts: the overrides
+  (`HikkiCore/Sources/Shortcuts/KeyCombo.swift` — what may be bound, conflicts) live in
+  `Hikki/Sources/ShortcutStore.swift` (UserDefaults; `Shortcut.keyboardShortcut` / `.display` read it, observed by the
+  menus) and reach the page through `window.hikki.setShortcuts`, where `ShortcutOverrides`
+  (`editor/src/extensions/shortcuts.ts`) runs a rebound shortcut on its new keys ahead of the default-bound keymaps.
 - **Copy language.** User-facing strings are keys, never literals: native `app:<area>.<element>` keys in
   `Hikki/Resources/Localization/Localizable.xcstrings` (interpolations become `%@`, e.g. `app:page.edited %@`); web
   `t('area.key')` with catalogs in `editor/src/locales/`. English is the source; zh-Hans must be complete. The native
@@ -106,7 +110,7 @@ Project.swift                 Tuist manifest (targets: Hikki, HikkiCore, HikkiSe
 Hikki/Sources/                app: SwiftUI shell, navigation (tabs), sidebar, page bar, search, editor host
 Hikki/Resources/AppIcon.icon  Icon Composer document (merged from design/icon/hi-star; actool renders all sizes)
 HikkiCore/Sources/            framework: Store (GRDB/SQLite, page tree, assets, tabs model), Text (Japanese readings),
-                              Bridge (protocol, JSONValue), Logging (file log, MetricKit crash collection)
+                              Bridge (protocol, JSONValue), Logging (file log, MetricKit crash collection), Shortcuts (KeyCombo)
 HikkiSearch/Sources/          framework: the search engine — its own SQLite index (trigram FTS5, BM25), query parsing,
                               ranking, pinyin keys, fuzzy titles; tests in HikkiSearch/Tests/
 HikkiUI/Sources/              framework: reusable SwiftUI components + Theme

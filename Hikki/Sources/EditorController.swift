@@ -252,6 +252,22 @@ final class EditorController {
         }
     }
 
+    /// Settings → Shortcuts: the user's rebindings (`ShortcutStore`), sent on ready and whenever they change.
+    func updateShortcuts() {
+        guard isReady else { return }
+        Task { await applyShortcuts() }
+    }
+
+    private func applyShortcuts() async {
+        do {
+            _ = try await webView.callAsyncJavaScript(
+                "window.hikki.setShortcuts(overrides)", arguments: ["overrides": ShortcutStore.shared.editorPayload],
+                contentWorld: .page)
+        } catch {
+            Log.warn("setShortcuts failed: \(error)", category: "bridge")
+        }
+    }
+
     /// The open page was locked or unlocked while shown (`window.hikki.setLocked`; a page load carries its own).
     func setLocked(_ locked: Bool) {
         guard isReady else { return }
@@ -360,6 +376,7 @@ final class EditorController {
                 await applyLocale()
                 await applyTone()
                 await applySpellcheck()
+                await applyShortcuts()
                 await applyInsets()
                 await applyPages()
                 await load(pending ?? nil)

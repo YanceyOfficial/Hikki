@@ -54,7 +54,7 @@ enum AppearancePreference: String, CaseIterable, Identifiable {
 
 /// The pages of Settings: toolbar tabs on the Mac (the classic Settings window), the hub list on iPhone and iPad.
 enum SettingsPage: String, CaseIterable, Identifiable {
-    case workspace, general, appearance, editor, search, about
+    case workspace, general, appearance, editor, shortcuts, search, about
 
     /// The page Settings opens on, remembered; `HIKKI_OPEN_SETTINGS=<page>` sets it (screenshots).
     static let storageKey = "settings.page"
@@ -67,6 +67,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
         case .general: "app:settings.general"
         case .appearance: "app:settings.appearance"
         case .editor: "app:settings.editor"
+        case .shortcuts: "app:settings.shortcuts"
         case .search: "app:settings.search"
         case .about: "app:settings.about"
         }
@@ -78,6 +79,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
         case .general: .gearSix
         case .appearance: .slidersHorizontal
         case .editor: .pencilSimple
+        case .shortcuts: .command
         case .search: .magnifyingGlass
         case .about: .info
         }
@@ -86,7 +88,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
     /// The groups the iOS hub shows: the workspace, then the app, then About on its own.
     static let groups: [(title: LocalizedStringKey?, pages: [SettingsPage])] = [
         ("app:settings.group.workspace", [.workspace]),
-        ("app:settings.group.app", [.general, .appearance, .editor, .search]),
+        ("app:settings.group.app", [.general, .appearance, .editor, .shortcuts, .search]),
         (nil, [.about]),
     ]
 }
@@ -186,6 +188,8 @@ private struct SettingsPageContent: View {
             AppearanceSection()
         case .editor:
             EditorSection()
+        case .shortcuts:
+            ShortcutsSection()
         case .search:
             SpotlightSection()
         case .about:
@@ -394,6 +398,109 @@ private struct EditorSection: View {
         } footer: {
             Text("app:settings.spellcheck.detail")
         }
+    }
+}
+
+/// Settings → Shortcuts: every shortcut by group, each a key cap that records new keys (ShortcutStore). Keys another
+/// shortcut has, the system's (⌘Q, ⌘C…) and plain keys are refused with the reason under the row.
+private struct ShortcutsSection: View {
+    private let store = ShortcutStore.shared
+    @State private var recording: Shortcut?
+    @State private var refusal: (shortcut: Shortcut, problem: KeyCombo.Problem)?
+    @State private var query = ""
+    @State private var confirmReset = false
+
+    var body: some View {
+        Section {
+            TextField("app:shortcuts.search", text: $query)
+                .accessibilityIdentifier("shortcuts-search")
+        } footer: {
+            Text("app:shortcuts.detail")
+        }
+        ForEach(Shortcut.Group.allCases, id: \.self) { group in
+            let shortcuts = Shortcut.allCases.filter { $0.group == group && matches($0) }
+            if !shortcuts.isEmpty {
+                Section(group.title) {
+                    ForEach(shortcuts, id: \.self) { shortcut in
+                        row(shortcut)
+                    }
+                }
+            }
+        }
+        Section {
+            Button("app:shortcuts.resetAll", role: .destructive) { confirmReset = true }
+                .disabled(store.overrides.combos.isEmpty)
+                .accessibilityIdentifier("shortcuts-reset-all")
+                .confirmationDialog("app:shortcuts.resetAll.confirm", isPresented: $confirmReset) {
+                    Button("app:shortcuts.resetAll", role: .destructive) {
+                        store.resetAll()
+                        refusal = nil
+                    }
+                }
+        }
+    }
+
+    private func row(_ shortcut: Shortcut) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.s1) {
+            LabeledContent {
+                ShortcutRecorder(
+                    display: store.combo(shortcut).display,
+                    isCustom: store.isCustom(shortcut),
+                    recording: Binding(
+                        get: { recording == shortcut },
+                        set: { on in
+                            if on {
+                                recording = shortcut
+                                refusal = nil
+                            } else if recording == shortcut {
+                                recording = nil
+                            }
+                        }),
+                    identifier: "shortcut-\(shortcut.rawValue)",
+                    onRecord: { key, modifiers in record(key, modifiers, for: shortcut) },
+                    onReset: {
+                        store.reset(shortcut)
+                        refusal = nil
+                    })
+            } label: {
+                Text(shortcut.title)
+            }
+            if let refusal, refusal.shortcut == shortcut {
+                Text(message(refusal.problem))
+                    .font(.hk(.xs))
+                    .foregroundStyle(Theme.destructive)
+                    .accessibilityIdentifier("shortcut-refusal")
+            }
+        }
+    }
+
+    private func record(_ key: KeyEquivalent, _ modifiers: EventModifiers, for shortcut: Shortcut) {
+        guard let combo = KeyCombo(keyEquivalent: key, modifiers: modifiers) else { return }
+        if let problem = store.problem(combo, for: shortcut) {
+            refusal = (shortcut, problem)
+        } else {
+            store.set(combo, for: shortcut)
+            refusal = nil
+        }
+    }
+
+    private func message(_ problem: KeyCombo.Problem) -> String {
+        switch problem {
+        case .needsModifier: String(localized: "app:shortcuts.problem.needsModifier")
+        case .unsupportedKey: String(localized: "app:shortcuts.problem.unsupported")
+        case .reserved: String(localized: "app:shortcuts.problem.reserved")
+        case .taken(let id):
+            String(localized: "app:shortcuts.problem.taken \(Shortcut(rawValue: id).map { String(localized: $0.title) } ?? id)")
+        }
+    }
+
+    /// The search matches the shortcut's name (in the app's language) or its keys ("⌘B", "b").
+    private func matches(_ shortcut: Shortcut) -> Bool {
+        let needle = query.trimmingCharacters(in: .whitespaces)
+        guard !needle.isEmpty else { return true }
+        let display = store.combo(shortcut).display
+        return String(localized: shortcut.title).localizedCaseInsensitiveContains(needle)
+            || display.localizedCaseInsensitiveContains(needle)
     }
 }
 

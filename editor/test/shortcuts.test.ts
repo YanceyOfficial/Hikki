@@ -3,7 +3,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createEditor } from '../src/core/editor'
 import {
+  applyShortcutOverrides,
   codeFor,
+  isRebound,
   matchesShortcut,
   SHORTCUTS,
   shortcutLabel,
@@ -84,5 +86,79 @@ describe('block shortcuts in the editor', () => {
   it('⌥⌘2 is a heading 2 once, not toggled twice by two bindings', () => {
     editor.commands.keyboardShortcut('Mod-Alt-2')
     expect(editor.getJSON().content?.[0]).toMatchObject({ type: 'heading', attrs: { level: 2 } })
+  })
+})
+
+describe('rebound shortcuts (Settings → Shortcuts)', () => {
+  let host: HTMLElement
+  let editor: Editor
+  beforeEach(() => {
+    host = document.createElement('div')
+    document.body.append(host)
+    editor = createEditor(host, doc('shortcut me'))
+    editor.commands.setTextSelection({ from: 1, to: 9 })
+  })
+  afterEach(() => {
+    applyShortcutOverrides({})
+    editor.destroy()
+    host.remove()
+  })
+
+  /**
+   * A keydown on the page, through ProseMirror's handlers (keymaps, our overrides). jsdom isn't a Mac, so the keymaps'
+   * "Mod" is Ctrl — which the registry's ⌘ accepts too (`matchesKeys`).
+   */
+  const press = (init: KeyboardEventInit) =>
+    editor.view.dom.dispatchEvent(
+      new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init })
+    )
+  const marks = () => (editor.getJSON().content?.[0].content?.[0].marks ?? []).map((m) => m.type)
+
+  it('relabels and rematches, and an empty set brings the defaults back', () => {
+    applyShortcutOverrides({
+      bold: { key: 'j', modifiers: ['command', 'shift'] },
+      moveBlockDown: { key: 'arrowDown', modifiers: ['option', 'command'] },
+      nonsense: { key: 'x', modifiers: ['command'] }
+    })
+    expect(shortcutLabel('bold')).toBe('⇧⌘J')
+    expect(shortcutLabel('moveBlockDown')).toBe('⌥⌘↓')
+    expect(isRebound('bold')).toBe(true)
+    expect(isRebound('italic')).toBe(false)
+    expect(
+      matchesShortcut(key({ metaKey: true, shiftKey: true, code: 'KeyJ', key: 'J' }), 'bold')
+    ).toBe(true)
+    expect(matchesShortcut(key({ metaKey: true, code: 'KeyB', key: 'b' }), 'bold')).toBe(false)
+    expect(tiptapShortcut('bold')).toBe('Mod-b')
+    applyShortcutOverrides({})
+    expect(shortcutLabel('bold')).toBe('⌘B')
+    expect(isRebound('bold')).toBe(false)
+  })
+
+  it('runs a rebound mark on its new keys, and its old keys do nothing', () => {
+    applyShortcutOverrides({ bold: { key: 'j', modifiers: ['command'] } })
+    press({ ctrlKey: true, code: 'KeyB', key: 'b' })
+    expect(marks()).toEqual([])
+    press({ ctrlKey: true, code: 'KeyJ', key: 'j' })
+    expect(marks()).toEqual(['bold'])
+    // Shortcuts nobody moved keep working.
+    press({ ctrlKey: true, code: 'KeyI', key: 'i' })
+    expect(marks()).toEqual(['bold', 'italic'])
+  })
+
+  it('two shortcuts can swap keys', () => {
+    applyShortcutOverrides({
+      bold: { key: 'i', modifiers: ['command'] },
+      italic: { key: 'b', modifiers: ['command'] }
+    })
+    press({ ctrlKey: true, code: 'KeyI', key: 'i' })
+    expect(marks()).toEqual(['bold'])
+  })
+
+  it('moves a block shortcut too (⌥⌘1 → ⌃⌘1)', () => {
+    applyShortcutOverrides({ heading1: { key: '1', modifiers: ['control', 'command'] } })
+    press({ ctrlKey: true, altKey: true, code: 'Digit1', key: '1' })
+    expect(editor.getJSON().content?.[0].type).toBe('paragraph')
+    press({ metaKey: true, ctrlKey: true, code: 'Digit1', key: '1' })
+    expect(editor.getJSON().content?.[0]).toMatchObject({ type: 'heading', attrs: { level: 1 } })
   })
 })

@@ -96,6 +96,9 @@
     "keyboard": {
       "sf": "keyboard.chevron.compact.down"
     },
+    "command": {
+      "sf": "command"
+    },
     "browsers": {
       "sf": "plus.square.on.square"
     },

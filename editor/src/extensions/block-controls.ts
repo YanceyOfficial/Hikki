@@ -6,7 +6,7 @@ import type { EditorView } from '@tiptap/pm/view'
 
 import { openBlockMenu } from '../components/block-menu'
 import { t } from '../core/i18n'
-import { tiptapShortcut } from '../core/shortcuts'
+import { tiptapShortcut, type ShortcutId } from '../core/shortcuts'
 import { BlockHighlight, BlockHighlightKey, setBlockHighlight } from './block-highlight'
 import { duplicateUnit, firstTextPos, moveUnit, unitAtPos, type BlockUnit } from './block-units'
 import { dropBeside, MAX_COLUMNS } from './columns'
@@ -47,6 +47,18 @@ const icon = (svg: string) =>
  * ghost follows the pointer and a line marks the gap; near another block's side edge the drop makes
  * columns. Click the grip for the block menu. Fine pointers only (touch would fight text selection).
  */
+/** Duplicate the block (Notion ⌘D), move it up/down (⌘⇧↑ / ⌘⇧↓) — by shortcut id, for rebound keys too. */
+export const BLOCK_UNIT_ACTIONS: Partial<Record<ShortcutId, (editor: Editor) => boolean>> = {
+  duplicateBlock: (editor) => {
+    const unit = atCaret(editor)
+    if (!unit) return false
+    editor.view.dispatch(duplicateUnit(editor.state, unit))
+    return true
+  },
+  moveBlockUp: (editor) => moveAtCaret(editor, -1),
+  moveBlockDown: (editor) => moveAtCaret(editor, 1)
+}
+
 export const BlockControls = Extension.create<{ enabled: boolean | null }>({
   name: 'blockControls',
 
@@ -56,17 +68,12 @@ export const BlockControls = Extension.create<{ enabled: boolean | null }>({
   },
 
   addKeyboardShortcuts() {
-    return {
-      // Duplicate the block (Notion ⌘D), move it up/down (⌘⇧↑ / ⌘⇧↓).
-      [tiptapShortcut('duplicateBlock')]: ({ editor }) => {
-        const unit = atCaret(editor)
-        if (!unit) return false
-        editor.view.dispatch(duplicateUnit(editor.state, unit))
-        return true
-      },
-      [tiptapShortcut('moveBlockUp')]: ({ editor }) => moveAtCaret(editor, -1),
-      [tiptapShortcut('moveBlockDown')]: ({ editor }) => moveAtCaret(editor, 1)
-    }
+    return Object.fromEntries(
+      Object.entries(BLOCK_UNIT_ACTIONS).map(([id, run]) => [
+        tiptapShortcut(id as ShortcutId),
+        ({ editor }: { editor: Editor }) => run(editor)
+      ])
+    )
   },
 
   addProseMirrorPlugins() {
