@@ -16,14 +16,33 @@ public struct LinkPreview: Equatable, Sendable {
 
     /// How much of a page is read: the head is near the top.
     static let maxBytes = 512 * 1024
+    /// How much of that is parsed when the page never closes its head (the regexes stay linear and short).
+    static let maxHeadCharacters = 64 * 1024
+    /// The whole fetch, start to last byte: a server trickling bytes can't hold it longer.
+    static let deadline: Duration = .seconds(12)
 
     /// Fetches `url` and reads its head; nil for anything that isn't a page (an error status, not HTML).
     ///
     /// The link comes from a document — possibly synced from another device or pasted — so the fetch follows exodus's
     /// rules for a URL someone else chose (`safe-fetch.ts`): http/https only, and the host must be on the public
     /// internet — not localhost, the LAN or link-local (cloud metadata) — for the first request and every redirect.
-    /// (Unlike exodus the connection isn't pinned to the checked addresses: URLSession has no hook for it.)
+    /// Unlike exodus the connection isn't pinned to the checked addresses (URLSession has no hook for it), so a DNS
+    /// answer that changes between the check and the connect could reach a local address. Accepted: what comes back
+    /// only becomes a title, a description and an icon URL shown on this device — nothing is sent anywhere — and the
+    /// whole fetch is capped in time and size.
     public static func fetch(_ url: URL) async throws -> LinkPreview? {
+        try await withThrowingTaskGroup(of: LinkPreview?.self) { group in
+            group.addTask { try await fetchUnbounded(url) }
+            group.addTask {
+                try await Task.sleep(for: deadline)
+                throw URLError(.timedOut)
+            }
+            defer { group.cancelAll() }
+            return try await group.next() ?? nil
+        }
+    }
+
+    private static func fetchUnbounded(_ url: URL) async throws -> LinkPreview? {
         try await PublicHost.check(url)
         let guardDelegate = RedirectGuard()
         let session = URLSession(configuration: .ephemeral, delegate: guardDelegate, delegateQueue: nil)
@@ -38,13 +57,15 @@ public struct LinkPreview: Equatable, Sendable {
         for try await byte in bytes {
             data.append(byte)
             if data.count >= maxBytes { break }
+            if data.count % 4096 == 0 { try Task.checkCancellation() }
         }
         return parse(html: String(decoding: data, as: UTF8.self), url: response.url ?? url)
     }
 
     /// Reads the head of `html`; relative icon links resolve against `url` (the page's final address).
     public static func parse(html: String, url: URL) -> LinkPreview {
-        let head = html.range(of: "</head>", options: .caseInsensitive).map { String(html[..<$0.upperBound]) } ?? html
+        let closed = html.range(of: "</head>", options: .caseInsensitive).map { String(html[..<$0.upperBound]) } ?? html
+        let head = String(closed.prefix(maxHeadCharacters))
         var meta: [String: String] = [:]
         for tag in tags(named: "meta", in: head) {
             let attributes = attributes(of: tag)
@@ -52,7 +73,8 @@ public struct LinkPreview: Equatable, Sendable {
             else { continue }
             if meta[key] == nil { meta[key] = content }
         }
-        let titleTag = firstMatch(#"<title[^>]*>([\s\S]*?)</title>"#, in: head)
+        // Bounded and without nested quantifiers: linear on any input.
+        let titleTag = firstMatch(#"<title[^>]{0,200}>([^<]{0,2000})</title>"#, in: head)
         let title = clean(meta["og:title"] ?? meta["twitter:title"] ?? titleTag)
         let description = clean(meta["og:description"] ?? meta["description"] ?? meta["twitter:description"])
 
@@ -75,7 +97,7 @@ public struct LinkPreview: Equatable, Sendable {
     // MARK: - A little HTML reading (heads only; no DOM needed)
 
     static func tags(named name: String, in html: String) -> [String] {
-        matches("<\(name)\\b[^>]*>", in: html)
+        matches("<\(name)\\b[^>]{0,2000}>", in: html)
     }
 
     static func attributes(of tag: String) -> [String: String] {

@@ -63,4 +63,13 @@ struct LinkPreviewTests {
             await #expect(throws: PublicHost.Refused.self) { try await PublicHost.check(URL(string: url)!) }
         }
     }
+
+    @Test func hostilePagesStayCheapToRead() {
+        // No closing tags anywhere, half a megabyte of it: parsing must stay quick (and find nothing odd).
+        let junk = "<head><title>" + String(repeating: "<meta content=x ", count: 30_000)
+        let start = Date()
+        let preview = LinkPreview.parse(html: junk, url: base)
+        #expect(Date().timeIntervalSince(start) < 1)
+        #expect(preview.title == nil)
+    }
 }
