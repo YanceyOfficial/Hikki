@@ -155,7 +155,8 @@ private struct OutlinePane: View {
 }
 
 /// One heading of the outline, indented by depth — top-level headings in full colour, deeper ones quieter. The section
-/// being read carries the outline's one background (matched geometry: it glides to the next active row).
+/// being read carries the outline's one background (matched geometry: it glides to the next active row); nothing else
+/// about the row changes.
 private struct OutlineRow: View {
     let text: String
     let depth: Int
@@ -165,9 +166,11 @@ private struct OutlineRow: View {
 
     var body: some View {
         Button(action: action) {
+            // The text never changes with the reading (a weight or colour change animated along with the background
+            // flickered as it moved): only the background marks the section.
             Text(text)
-                .font(.hk(.sm, isActive ? .medium : .regular))
-                .foregroundStyle(isActive || depth == 0 ? Theme.foreground : Theme.subtleForeground)
+                .font(.hk(.sm))
+                .foregroundStyle(depth == 0 ? Theme.foreground : Theme.subtleForeground)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
