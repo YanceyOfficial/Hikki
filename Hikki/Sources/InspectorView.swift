@@ -31,8 +31,9 @@ enum InspectorPreferences {
     static let widthKey = "inspector.width"
 }
 
-/// The inspector beside the page on Mac and iPad: a hairline, a handle on it to drag the width (remembered), then the
-/// inspector. It lives inside the detail column, so opening it narrows the page rather than the screen growing.
+/// The inspector beside the page on Mac and iPad, full height as Apple's are: a hairline, a handle on it to drag the
+/// width (remembered), then the inspector. It lives inside the detail column, so opening it narrows the page rather
+/// than the window growing; the window's title steps aside meanwhile (ContentView), as in Photos.
 struct InspectorPanel: View {
     let navigator: Navigator
     let editor: EditorController
@@ -43,8 +44,10 @@ struct InspectorPanel: View {
         InspectorView(navigator: navigator, editor: editor)
             .frame(width: CGFloat(width))
             .overlay(alignment: .leading) {
+                // Apple's inspector: full height on the right, the hairline from the window's top edge.
                 Theme.border.frame(width: 1)
                     .frame(maxHeight: .infinity)
+                    .ignoresSafeArea(edges: .top)
                     .overlay {
                         // A wider, invisible grip over the hairline.
                         Color.clear
@@ -80,19 +83,17 @@ struct InspectorView: View {
     var body: some View {
         @Bindable var navigator = navigator
         VStack(spacing: Spacing.s0) {
-            Picker("app:inspector.toggle", selection: $navigator.inspectorTab) {
+            // Xcode's inspector tabs: plain icons in a row, the chosen one in the tone.
+            HStack(spacing: Spacing.s1) {
                 ForEach(InspectorTab.allCases) { tab in
-                    IconLabel(tab.title, icon: tab.icon)
-                        .labelStyle(.iconOnly)
-                        .help(tab.title)
-                        .tag(tab)
-                        .accessibilityIdentifier("inspector-tab-\(tab.rawValue)")
+                    InspectorTabButton(tab: tab, isSelected: navigator.inspectorTab == tab) {
+                        navigator.inspectorTab = tab
+                    }
                 }
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .padding(.horizontal, Spacing.s3)
-            .padding(.vertical, Spacing.s2)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, Spacing.s1_5)
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("inspector-tabs")
             Divider()
             Group {
@@ -104,7 +105,30 @@ struct InspectorView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
+        // Full height: the panel's background runs up under the toolbar (its content starts below it).
         .background(Theme.background)
+    }
+}
+
+/// One inspector tab: an icon, tinted when chosen, a soft hover; the title as tooltip and label.
+private struct InspectorTabButton: View {
+    let tab: InspectorTab
+    let isSelected: Bool
+    let action: () -> Void
+    @Environment(\.colorTone) private var colorTone
+
+    var body: some View {
+        Button(action: action) {
+            IconView(tab.icon, size: TextSize.base.rawValue)
+                .foregroundStyle(isSelected ? colorTone.ink : Theme.subtleForeground)
+                .frame(width: Size.iconButton + Spacing.s2, height: Size.iconButton)
+                .contentShape(.rect)
+        }
+        .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.md))
+        .help(tab.title)
+        .accessibilityLabel(tab.title)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityIdentifier("inspector-tab-\(tab.rawValue)")
     }
 }
 
@@ -220,11 +244,12 @@ private struct InfoPane: View {
     }
 }
 
-/// A month at a glance; a day lists the pages last edited on it.
+/// A month at a glance (days with edits dotted); a day lists the pages last edited on it.
 private struct CalendarPane: View {
     @Environment(AppModel.self) private var model
     let navigator: Navigator
     @State private var day = Date.now
+    @State private var month = Date.now
 
     var body: some View {
         let pages =
@@ -232,38 +257,42 @@ private struct CalendarPane: View {
             .filter { Calendar.current.isDate($0.updatedAt, inSameDayAs: day) }
             .sorted { $0.updatedAt > $1.updatedAt }
         ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.s2) {
-                DatePicker("app:inspector.calendar", selection: $day, displayedComponents: .date)
-                    .datePickerStyle(.graphical)
-                    .labelsHidden()
+            VStack(alignment: .leading, spacing: Spacing.s3) {
+                MonthCalendar(
+                    month: $month, selection: $day, marked: Set(model.tree.all.map { MonthCalendar.dayKey($0.updatedAt) }))
                 Divider()
+                Text(day, format: .dateTime.weekday(.wide).month().day())
+                    .font(.hk(.xs, .medium))
+                    .foregroundStyle(Theme.mutedForeground)
+                    .padding(.horizontal, Spacing.s2)
                 if pages.isEmpty {
                     Text("app:inspector.calendar.none")
                         .font(.hk(.md))
                         .foregroundStyle(Theme.mutedForeground)
                         .padding(.horizontal, Spacing.s2)
-                        .padding(.vertical, Spacing.s1_5)
                 } else {
-                    ForEach(pages) { page in
-                        Button {
-                            navigator.open(page.id)
-                        } label: {
-                            HStack(spacing: Spacing.s2) {
-                                PageIcon(page.icon, size: 16)
-                                Text(page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
-                                    .font(.hk(.md))
-                                    .foregroundStyle(Theme.foreground)
-                                    .lineLimit(1)
-                                Spacer(minLength: Spacing.s2)
-                                Text(page.updatedAt, format: .dateTime.hour().minute())
-                                    .font(.hk(.xs))
-                                    .foregroundStyle(Theme.mutedForeground)
+                    VStack(spacing: Spacing.px) {
+                        ForEach(pages) { page in
+                            Button {
+                                navigator.open(page.id)
+                            } label: {
+                                HStack(spacing: Spacing.s2) {
+                                    PageIcon(page.icon, size: 16)
+                                    Text(page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
+                                        .font(.hk(.md))
+                                        .foregroundStyle(Theme.foreground)
+                                        .lineLimit(1)
+                                    Spacer(minLength: Spacing.s2)
+                                    Text(page.updatedAt, format: .dateTime.hour().minute())
+                                        .font(.hk(.xs))
+                                        .foregroundStyle(Theme.mutedForeground)
+                                }
+                                .padding(.vertical, Spacing.s1_5)
+                                .padding(.horizontal, Spacing.s2)
+                                .contentShape(.rect)
                             }
-                            .padding(.vertical, Spacing.s1_5)
-                            .padding(.horizontal, Spacing.s2)
-                            .contentShape(.rect)
+                            .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.md))
                         }
-                        .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.md))
                     }
                 }
             }

@@ -235,7 +235,8 @@ HikkiUITests/                 XCUITest flows
   state is re-read on enter/exit/resize/key (restored windows) and logged (category `fullscreen`). DEBUG:
   `HIKKI_DEBUG_FULLSCREEN` forces the layout on in a window, `HIKKI_DEBUG_ENTER_FULLSCREEN` enters full screen 1.5 s
   after launch, `HIKKI_DEBUG_QUIT_AFTER=<s>` quits — own-instance checks.
-- **Inspector** (Mac/iPad: Xcode-style trailing column, `.inspector`; iPhone: a sheet from the page ⋯ menu):
+- **Inspector** (Mac/iPad: a full-height trailing panel inside the detail column — SwiftUI's `.inspector` widened the
+  window — with the window title hidden while it is open, as in Photos; iPhone: a sheet from the page ⋯ menu):
   `Hikki/Sources/InspectorView.swift` — icon tabs Outline / Info / Calendar; toggled by the toolbar button, View →
   Show Inspector (⌥⌘I) and remembered in UserDefaults (`InspectorPreferences`). The editor reports the open page's
   outline and size with the `pageInfo` bridge message (headings with block ids, words — CJK characters count one
@@ -273,8 +274,7 @@ HikkiUITests/                 XCUITest flows
   `AccentColor.colorset` from it, so system menus, selection and controls take the tone (where the user's system
   accent is "Multicolor" — a chosen system accent overrides every app's).
 - **Settings** (`Hikki/Sources/SettingsView.swift`): pages (`SettingsPage`: Workspace, General, Appearance, Editor,
-  Search, About) in a sidebar on the Mac (`NavigationSplitView`, like Notion's and exodus's settings) and a hub list
-  on iPhone/iPad; each page is a grouped form of sections, the last page opened is remembered.
+  Search, About) as the classic toolbar tabs of the Mac Settings window and a hub list on iPhone/iPad; each page is a grouped form of sections, the last page opened is remembered.
   `HIKKI_OPEN_SETTINGS=<page>` opens that page (screenshots). Optional integrations (a local Ollama for semantic
   search, later) get pages here with a detected/not-detected status, exodus's way.
 - **Appearance** (Settings → Theme) is applied app-wide (`NSApp.appearance` / window `overrideUserInterfaceStyle`),

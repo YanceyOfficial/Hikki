@@ -201,9 +201,8 @@ public nonisolated enum Size {
     public static let inspectorMin: CGFloat = 280
     public static let inspectorIdeal: CGFloat = 360
     public static let inspectorMax: CGFloat = 560
-    public static let settingsWidth: CGFloat = 820
-    public static let settingsHeight: CGFloat = 560
-    public static let settingsSidebar: CGFloat = 210
+    public static let settingsWidth: CGFloat = 620
+    public static let settingsHeight: CGFloat = 420
 }
 
 /// Motion: one timing for everything that appears, leaves or reacts (popovers, hover states, scrims).

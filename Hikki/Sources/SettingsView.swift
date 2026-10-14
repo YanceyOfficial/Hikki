@@ -52,7 +52,7 @@ enum AppearancePreference: String, CaseIterable, Identifiable {
     }
 }
 
-/// The pages of Settings: the sidebar on the Mac, the hub list on iPhone and iPad (Notion's settings, exodus's).
+/// The pages of Settings: toolbar tabs on the Mac (the classic Settings window), the hub list on iPhone and iPad.
 enum SettingsPage: String, CaseIterable, Identifiable {
     case workspace, general, appearance, editor, search, about
 
@@ -83,7 +83,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
         }
     }
 
-    /// The groups the sidebar shows: the workspace, then the app, then About on its own.
+    /// The groups the iOS hub shows: the workspace, then the app, then About on its own.
     static let groups: [(title: LocalizedStringKey?, pages: [SettingsPage])] = [
         ("app:settings.group.workspace", [.workspace]),
         ("app:settings.group.app", [.general, .appearance, .editor, .search]),
@@ -91,7 +91,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
     ]
 }
 
-/// Settings: pages in a sidebar (Mac) or a hub list (iPhone, iPad), each a grouped form of sections.
+/// Settings: pages as tabs (Mac) or a hub list (iPhone, iPad), each a grouped form of sections.
 struct SettingsView: View {
     @AppStorage(SettingsPage.storageKey) private var pageID = SettingsPage.workspace.rawValue
 
@@ -104,32 +104,28 @@ struct SettingsView: View {
     }
 
     #if os(macOS)
+        /// The classic Mac Settings window: the pages as toolbar tabs along the top, a grouped form under each.
         private var content: some View {
-            NavigationSplitView {
-                List(selection: Binding(get: { Optional(page) }, set: { if let next = $0 { pageID = next.rawValue } })) {
-                    ForEach(Array(SettingsPage.groups.enumerated()), id: \.offset) { _, group in
-                        Section {
-                            ForEach(group.pages) { page in
-                                IconLabel(page.title, icon: page.icon)
-                                    .tag(page)
-                                    .accessibilityIdentifier("settings-page-\(page.rawValue)")
-                            }
-                        } header: {
-                            if let title = group.title { Text(title) }
+            TabView(selection: Binding(get: { page }, set: { pageID = $0.rawValue })) {
+                ForEach(SettingsPage.allCases) { page in
+                    Tab(value: page) {
+                        Form {
+                            SettingsPageContent(page: page)
+                        }
+                        .formStyle(.grouped)
+                    } label: {
+                        Label {
+                            Text(page.title)
+                        } icon: {
+                            page.icon.glyph
                         }
                     }
+                    .accessibilityIdentifier("settings-page-\(page.rawValue)")
                 }
-                .listStyle(.sidebar)
-                .navigationSplitViewColumnWidth(Size.settingsSidebar)
-                .toolbar(removing: .sidebarToggle)
-            } detail: {
-                Form {
-                    SettingsPageContent(page: page)
-                }
-                .formStyle(.grouped)
-                .navigationTitle(page.title)
             }
-            .frame(minWidth: Size.settingsWidth, minHeight: Size.settingsHeight)
+            .scenePadding()
+            .frame(width: Size.settingsWidth)
+            .frame(minHeight: Size.settingsHeight)
         }
     #else
         @Environment(\.dismiss) private var dismiss

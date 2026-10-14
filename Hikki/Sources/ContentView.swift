@@ -49,6 +49,12 @@ struct ContentView: View {
                 }
             }
             .animation(Motion.easeOut(), value: navigator.isShowingInspector)
+            .background(Theme.background)
+            #if os(macOS)
+                // Photos' way: with the inspector open the page title and subtitle leave the toolbar, so the tabs keep
+                // their width.
+                .toolbar(removing: navigator.isShowingInspector ? .title : nil)
+            #endif
             .toolbar { if wide { NativeDetailToolbar(navigator: navigator, editor: editor) } }
             .sheet(
                 isPresented: Binding(

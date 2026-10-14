@@ -82,9 +82,8 @@
   --size-inspector-min: 280px;
   --size-inspector-ideal: 360px;
   --size-inspector-max: 560px;
-  --size-settings-width: 820px;
-  --size-settings-height: 560px;
-  --size-settings-sidebar: 210px;
+  --size-settings-width: 620px;
+  --size-settings-height: 420px;
   --motion-pop-in: 200ms;
   --motion-pop-out: 150ms;
   --radius: 8px;

@@ -42,6 +42,9 @@
                         }
                         .listRowInsets(EdgeInsets())
                     }
+                    Section("MonthCalendar") {
+                        MonthCalendarGalleryItem()
+                    }
                     Section("SearchResultRow") {
                         SearchResultRow(
                             title: "Weekly sync", icon: "🗓️", path: "Work / Meetings", terms: ["week"], updatedAt: .now,
@@ -56,6 +59,14 @@
                 }
                 .navigationTitle("HikkiUI Gallery")
             }
+        }
+    }
+    private struct MonthCalendarGalleryItem: View {
+        @State private var month = Date.now
+        @State private var day = Date.now
+
+        var body: some View {
+            MonthCalendar(month: $month, selection: $day, marked: [MonthCalendar.dayKey(.now)]).frame(width: 320)
         }
     }
 #endif
