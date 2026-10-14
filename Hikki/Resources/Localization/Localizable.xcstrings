@@ -2024,6 +2024,23 @@
         }
       }
     },
+    "app:search.close": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭"
+          }
+        }
+      }
+    },
     "app:search.hintClose": {
       "extractionState": "manual",
       "localizations": {

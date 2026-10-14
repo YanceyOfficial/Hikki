@@ -27,6 +27,18 @@ struct SearchPalette: View {
                     .accessibilityIdentifier("search-field")
                 #if os(iOS)
                     Button("app:common.cancel", action: dismiss).foregroundStyle(Theme.subtleForeground)
+                #else
+                    // A sheet on the Mac can't be clicked away: Escape or this.
+                    Button(action: dismiss) {
+                        IconView(.x, size: TextSize.sm.rawValue)
+                            .foregroundStyle(Theme.mutedForeground)
+                            .frame(width: Size.iconButtonSm, height: Size.iconButtonSm)
+                            .contentShape(.rect)
+                    }
+                    .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.full))
+                    .help("app:search.close")
+                    .accessibilityLabel("app:search.close")
+                    .accessibilityIdentifier("search-close")
                 #endif
             }
             .padding(.horizontal, Spacing.s4)
