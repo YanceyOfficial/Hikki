@@ -405,6 +405,8 @@ final class EditorController {
             #else
                 NSWorkspace.shared.open(target)
             #endif
+        case .linkPreview:
+            return nil  // answered by the message proxy (it needs the network)
         case .suggestReading(let text):
             // Short selections only: a reading is for a word or phrase, and the tokenizer runs on the main thread.
             guard text.count <= 80, let segments = JapaneseReading.segments(for: text) else { return nil }
@@ -492,7 +494,17 @@ private final class ScriptMessageProxy: NSObject, WKScriptMessageHandlerWithRepl
             return (nil, "untrusted frame")
         }
         do {
-            let reply = try owner?.handle(try BridgeMessage.decode(scriptMessageBody: message.body))
+            let decoded = try BridgeMessage.decode(scriptMessageBody: message.body)
+            // A link card's details come from the network: answered here, off the main actor's synchronous path.
+            if case .linkPreview(let url) = decoded {
+                guard let target = URL(string: url), let preview = try? await LinkPreview.fetch(target) else { return (nil, nil) }
+                let reply: [String: Any] = [
+                    "title": preview.title ?? NSNull(), "description": preview.description ?? NSNull(),
+                    "icon": preview.icon ?? NSNull(),
+                ]
+                return (reply, nil)
+            }
+            let reply = try owner?.handle(decoded)
             return (reply, nil)
         } catch {
             Log.error("bridge message failed: \(error)", category: "bridge")

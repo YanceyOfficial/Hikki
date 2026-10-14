@@ -6,6 +6,7 @@ import { runFind, type FindMode } from '../extensions/find'
 import type { MediaHost } from '../extensions/media'
 import { pageLinkHref, type PageIndexEntry, type PageLinksHost } from '../extensions/page-links'
 import { rubySegmentsFrom, type RubyHost } from '../extensions/ruby'
+import { linkCardFrom } from '../lib/embeds'
 import { activeCommands, createEditor, runCommand } from './editor'
 import { plainText, wordCount } from './extract'
 import { collectHeadings, type HeadingItem } from './headings'
@@ -117,6 +118,8 @@ export class EditorBridge {
       media: this.media,
       pageLinks: this.pageLinks,
       ruby: this.ruby,
+      linkPreview: async (url) =>
+        linkCardFrom(await this.transport.post({ type: 'linkPreview', url })),
       onExitTop: () => this.requestTitleFocus(),
       onContentError: (error) => {
         contentError = error

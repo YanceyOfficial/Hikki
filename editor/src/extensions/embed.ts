@@ -12,6 +12,7 @@ import {
   isWebURL,
   safeFrameSrc,
   themedEmbedSrc,
+  type LinkCard,
   type EmbedProvider,
   type EmbedSource
 } from '../lib/embeds'
@@ -20,6 +21,8 @@ import {
 export type EmbedHost = {
   openExternal: (href: string) => void
   bff: string | null
+  /** A page's title, description and icon for a link card (null when it can't be read). */
+  linkPreview: (url: string) => Promise<LinkCard | null>
 }
 
 declare module '@tiptap/core' {
@@ -65,6 +68,10 @@ export const Embed = Node.create<{ host: EmbedHost | null }>({
         parseHTML: (el) => el.getAttribute('data-provider') ?? 'generic'
       },
       original: { default: null, parseHTML: (el) => el.getAttribute('data-original') },
+      // A link card's details, read once when the embed is added (and stored, so the card shows offline).
+      title: { default: null, parseHTML: (el) => el.getAttribute('data-title') },
+      description: { default: null, parseHTML: (el) => el.getAttribute('data-description') },
+      icon: { default: null, parseHTML: (el) => el.getAttribute('data-icon') },
       height: {
         default: 400,
         parseHTML: (el) => Number(el.getAttribute('data-height')) || 400,
@@ -78,7 +85,7 @@ export const Embed = Node.create<{ host: EmbedHost | null }>({
   },
 
   renderHTML({ node, HTMLAttributes }) {
-    const { src, html, provider, original } = node.attrs
+    const { src, html, provider, original, title, description, icon } = node.attrs
     return [
       'div',
       mergeAttributes(HTMLAttributes, {
@@ -86,7 +93,10 @@ export const Embed = Node.create<{ host: EmbedHost | null }>({
         'data-src': src,
         'data-html': html,
         'data-provider': provider,
-        'data-original': original
+        'data-original': original,
+        'data-title': title,
+        'data-description': description,
+        'data-icon': icon
       })
     ]
   },
@@ -115,7 +125,10 @@ export const Embed = Node.create<{ host: EmbedHost | null }>({
 
   addNodeView() {
     return ({ node, editor, getPos }) =>
-      new EmbedView(node, editor, getPos as () => number | undefined, this.options.host)
+      // Any page without an embed of its own is a link card: most sites refuse to be framed by another page.
+      node.attrs.provider === 'generic' && node.attrs.html === null
+        ? new LinkCardView(node, editor, getPos as () => number | undefined, this.options.host)
+        : new EmbedView(node, editor, getPos as () => number | undefined, this.options.host)
   }
 })
 
@@ -253,6 +266,137 @@ class EmbedView implements NodeView {
   }
 }
 
+/** Links whose cards were just added from the panel: their details are saved into the block once read. */
+const freshCards = new Set<string>()
+
+/**
+ * A link card (Notion's bookmark): the page's icon, title, description and address, opening the page outside when
+ * clicked. A card added just now saves what it reads into the block; an older one without details reads them for
+ * display only, so viewing a page never counts as editing it.
+ */
+class LinkCardView implements NodeView {
+  dom: HTMLElement
+  private node: PMNode
+  private shown: LinkCard | null = null
+
+  constructor(
+    node: PMNode,
+    private readonly editor: Editor,
+    private readonly getPos: () => number | undefined,
+    private readonly host: EmbedHost | null
+  ) {
+    this.node = node
+    this.dom = document.createElement('div')
+    this.dom.className = 'hk-embed-card'
+    this.dom.contentEditable = 'false'
+    this.dom.setAttribute('role', 'link')
+    this.dom.tabIndex = 0
+    this.dom.addEventListener('click', this.open)
+    this.dom.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') this.open()
+    })
+    this.render()
+    this.readDetails()
+  }
+
+  private get url(): string | null {
+    const original = this.node.attrs.original as string | null
+    return isWebURL(original) ? original : null
+  }
+
+  private open = () => {
+    if (this.url && this.host) this.host.openExternal(this.url)
+  }
+
+  private readDetails() {
+    const url = this.url
+    if (!url || !this.host || this.node.attrs.title) {
+      if (url) freshCards.delete(url)
+      return
+    }
+    const fresh = freshCards.delete(url)
+    void this.host.linkPreview(url).then((card) => {
+      if (!card || this.editor.isDestroyed) return
+      this.shown = card
+      this.render()
+      const pos = this.getPos()
+      if (!fresh || pos === undefined || !this.editor.isEditable) return
+      this.editor.view.dispatch(
+        this.editor.state.tr.setNodeMarkup(pos, undefined, {
+          ...this.node.attrs,
+          title: card.title,
+          description: card.description,
+          icon: card.icon
+        })
+      )
+    })
+  }
+
+  private render() {
+    const attrs = this.node.attrs
+    const title = (attrs.title as string | null) ?? this.shown?.title ?? null
+    const description = (attrs.description as string | null) ?? this.shown?.description ?? null
+    const icon = (attrs.icon as string | null) ?? this.shown?.icon ?? null
+    const url = this.url ?? (attrs.original as string | null) ?? ''
+    this.dom.replaceChildren()
+    if (isWebURL(icon)) {
+      const img = document.createElement('img')
+      img.className = 'hk-embed-card-icon'
+      img.alt = ''
+      img.referrerPolicy = 'no-referrer'
+      img.src = icon
+      img.addEventListener('error', () => img.remove(), { once: true })
+      this.dom.append(img)
+    }
+    const heading = document.createElement('div')
+    heading.className = 'hk-embed-card-title'
+    heading.textContent = title ?? hostOf(url)
+    this.dom.append(heading)
+    if (description) {
+      const line = document.createElement('div')
+      line.className = 'hk-embed-card-description'
+      line.textContent = description
+      this.dom.append(line)
+    }
+    const address = document.createElement('div')
+    address.className = 'hk-embed-card-url'
+    address.textContent = url
+    this.dom.append(address)
+    this.dom.setAttribute('aria-label', title ?? url)
+  }
+
+  update(node: PMNode) {
+    if (
+      node.type !== this.node.type ||
+      node.attrs.provider !== 'generic' ||
+      node.attrs.html !== null
+    )
+      return false
+    const changed = node.attrs.original !== this.node.attrs.original
+    this.node = node
+    if (changed) this.shown = null
+    this.render()
+    if (changed) this.readDetails()
+    return true
+  }
+
+  stopEvent(event: Event) {
+    return event.type !== 'dragstart' && event.type !== 'drop'
+  }
+
+  ignoreMutation() {
+    return true
+  }
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host
+  } catch {
+    return url
+  }
+}
+
 let open: FloatingLayer | null = null
 
 function close() {
@@ -289,6 +433,9 @@ export function openEmbedPanel(editor: Editor, provider: EmbedProvider | 'html')
       provider,
       onDone: (source) => {
         close()
+        // A link card just added stores what it reads about its page (an edit the user made).
+        if (source.kind === 'iframe' && source.provider === 'generic')
+          freshCards.add(source.original)
         editor.chain().focus().insertEmbed(source).run()
       },
       onCancel: cancel

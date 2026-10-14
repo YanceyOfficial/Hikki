@@ -185,7 +185,10 @@ HikkiUITests/                 XCUITest flows
   `<iframe>` on a third-party page (sandboxed, keeps its origin) or on a snippet of HTML (`srcdoc`, no origin) — behind
   the "/" menu's Embeds group (Embed, HTML, Google Drive, Tweet, Gist, Google Maps, Figma). `embedFromURL` turns a
   pasted link into the provider's embeddable URL (YouTube, Vimeo, Figma, Maps, Drive/Docs, gists as a script snippet,
-  tweets via platform.twitter.com, CodePen; anything else as it is). The height is an attribute, set by the handle
+  tweets via platform.twitter.com, CodePen). Any other page is a link card instead of a frame (most sites refuse to be
+  framed): icon, title, description and address, read natively by `HikkiCore/Sources/Text/LinkPreview.swift` through
+  the `linkPreview` bridge request (exodus's `safe-fetch` rules: http/https, public hosts only, every redirect checked)
+  and stored in the block when it is added; an older card without details reads them for display only. The height is an attribute, set by the handle
   under the frame. The native navigation delegate lets https / about: load in subframes only, and popups from a frame
   open in the system browser (`HikkiCore/Sources/Bridge/EditorNavigationPolicy.swift` decides; the editor's own scheme
   loads as the page only — in a frame it would be same-origin with the page). Embedded pages are hostile by default:

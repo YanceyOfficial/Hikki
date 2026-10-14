@@ -5,12 +5,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createEditor } from '../src/core/editor'
 import { openEmbedPanel } from '../src/extensions/embed'
 import type { PageLinksHost } from '../src/extensions/page-links'
-import { embedFromHTML, embedFromURL } from '../src/lib/embeds'
+import { embedFromHTML, embedFromURL, type LinkCard } from '../src/lib/embeds'
 import { doc, settle } from './helpers'
 
 let host: HTMLElement
 let editor: Editor
 let links: PageLinksHost
+let linkPreview: ReturnType<typeof vi.fn<(url: string) => Promise<LinkCard | null>>>
 
 beforeEach(() => {
   host = document.createElement('div')
@@ -22,7 +23,12 @@ beforeEach(() => {
     open: vi.fn(),
     openExternal: vi.fn()
   }
-  editor = createEditor(host, doc(''), { pageLinks: links })
+  linkPreview = vi.fn(async (_url: string): Promise<LinkCard | null> => ({
+    title: 'Yancey Blog',
+    description: 'Thoughts and stories',
+    icon: 'https://www.yanceyleo.com/icon.png'
+  }))
+  editor = createEditor(host, doc(''), { pageLinks: links, linkPreview })
 })
 afterEach(() => {
   editor.destroy()
@@ -35,7 +41,7 @@ const stored = (src: string, original: string) => {
   editor.commands.setContent({
     type: 'doc',
     content: [
-      { type: 'embed', attrs: { src, provider: 'generic', original, height: 300, html: null } }
+      { type: 'embed', attrs: { src, provider: 'vimeo', original, height: 300, html: null } }
     ]
   })
 }
@@ -85,7 +91,7 @@ describe('embed block', () => {
   })
 
   it('the handle under the frame sets its height, within the range', () => {
-    editor.commands.insertEmbed(embedFromURL('https://example.com/')!)
+    editor.commands.insertEmbed(embedFromURL('https://vimeo.com/76979871')!)
     const handle = host.querySelector('.hk-embed-resize') as HTMLElement
     fireEvent.pointerDown(handle, { pointerId: 1, button: 0, clientY: 100 })
     fireEvent.pointerMove(handle, { pointerId: 1, clientY: 160 })
@@ -108,8 +114,80 @@ describe('embed block', () => {
     fireEvent.change(input, { target: { value: 'example.com/thing' } })
     fireEvent.keyDown(input, { key: 'Enter' })
     await settle()
-    expect(frame().src).toBe('https://example.com/thing')
+    expect(host.querySelector('.hk-embed-card-url')?.textContent).toBe('https://example.com/thing')
     expect(document.querySelector('.hk-embed-panel')).toBeNull()
+  })
+
+  it('any other page is a link card: its details are read and, for one just added, saved into the block', async () => {
+    act(() => openEmbedPanel(editor, 'generic'))
+    const input = (await screen.findByLabelText('Link to embed')) as HTMLInputElement
+    fireEvent.change(input, { target: { value: 'https://www.yanceyleo.com/' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    await settle()
+    await settle()
+    expect(linkPreview).toHaveBeenCalledWith('https://www.yanceyleo.com/')
+    expect(host.querySelector('.hk-embed iframe')).toBeNull()
+    expect(host.querySelector('.hk-embed-card-title')?.textContent).toBe('Yancey Blog')
+    expect(host.querySelector('.hk-embed-card-description')?.textContent).toBe(
+      'Thoughts and stories'
+    )
+    expect((host.querySelector('.hk-embed-card-icon') as HTMLImageElement).src).toBe(
+      'https://www.yanceyleo.com/icon.png'
+    )
+    expect(editor.getJSON().content?.[0]).toMatchObject({
+      type: 'embed',
+      attrs: {
+        provider: 'generic',
+        title: 'Yancey Blog',
+        icon: 'https://www.yanceyleo.com/icon.png'
+      }
+    })
+    fireEvent.click(host.querySelector('.hk-embed-card')!)
+    expect(links.openExternal).toHaveBeenCalledWith('https://www.yanceyleo.com/')
+  })
+
+  it('an older card without details reads them for display only — viewing never edits the page', async () => {
+    editor.commands.setContent({
+      type: 'doc',
+      content: [
+        {
+          type: 'embed',
+          attrs: {
+            src: 'https://old.example/',
+            provider: 'generic',
+            original: 'https://old.example/',
+            html: null
+          }
+        }
+      ]
+    })
+    expect(host.querySelector('.hk-embed-card-title')?.textContent).toBe('old.example')
+    await settle()
+    await settle()
+    expect(host.querySelector('.hk-embed-card-title')?.textContent).toBe('Yancey Blog')
+    expect(editor.getJSON().content?.[0]).toMatchObject({ attrs: { title: null } })
+  })
+
+  it('a card with stored details asks for nothing and a non-web link opens nothing', () => {
+    editor.commands.setContent({
+      type: 'doc',
+      content: [
+        {
+          type: 'embed',
+          attrs: {
+            provider: 'generic',
+            original: 'javascript:alert(1)',
+            title: 'T',
+            html: null,
+            icon: 'javascript:x'
+          }
+        }
+      ]
+    })
+    expect(linkPreview).not.toHaveBeenCalled()
+    expect(host.querySelector('.hk-embed-card-icon')).toBeNull()
+    fireEvent.click(host.querySelector('.hk-embed-card')!)
+    expect(links.openExternal).not.toHaveBeenCalled()
   })
 
   it('the HTML panel takes a snippet (⌘Enter) and Escape anywhere cancels', async () => {

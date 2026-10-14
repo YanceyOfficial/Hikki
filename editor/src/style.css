@@ -351,6 +351,22 @@
   }
   /* Embed (extensions/embed.ts): the frame fills the column; a handle under it sets the height; the
      original page opens from a bar that shows on hover. */
+  /* A link card (any page without an embed of its own). */
+  .tiptap .hk-embed-card {
+    @apply my-2 flex cursor-pointer flex-col gap-1.5 rounded-xl border border-border p-5 select-none hover:bg-accent/40 focus-visible:outline-2 focus-visible:outline-ring;
+  }
+  .tiptap .hk-embed-card-icon {
+    @apply mb-1 size-6 rounded-md object-cover;
+  }
+  .tiptap .hk-embed-card-title {
+    @apply text-lg font-medium text-foreground;
+  }
+  .tiptap .hk-embed-card-description {
+    @apply line-clamp-2 text-md text-subtle-foreground;
+  }
+  .tiptap .hk-embed-card-url {
+    @apply truncate text-sm text-muted-foreground;
+  }
   .tiptap .hk-embed {
     @apply relative my-2 rounded-md bg-muted;
   }

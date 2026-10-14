@@ -209,5 +209,23 @@ export function isWebURL(href: string | null | undefined): href is string {
   }
 }
 
+/** What a link card shows: what the page says about itself (any of it may be missing). */
+export type LinkCard = { title: string | null; description: string | null; icon: string | null }
+
+/** A non-empty trimmed string, or null. */
+const text = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null)
+
+/** A native `linkPreview` reply, checked: strings or nulls only, an icon only when it is a web URL. */
+export function linkCardFrom(reply: unknown): LinkCard | null {
+  if (!reply || typeof reply !== 'object') return null
+  const r = reply as Record<string, unknown>
+  const icon = text(r.icon)
+  return {
+    title: text(r.title),
+    description: text(r.description),
+    icon: isWebURL(icon) ? icon : null
+  }
+}
+
 export const clampEmbedHeight = (height: number): number =>
   Math.round(Math.min(MAX_EMBED_HEIGHT, Math.max(MIN_EMBED_HEIGHT, height)))

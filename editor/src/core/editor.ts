@@ -25,6 +25,7 @@ import { tableExtensions } from '../extensions/table'
 import { TableOfContents } from '../extensions/toc'
 import { Quote, toggleExtensions } from '../extensions/toggle'
 import { bffURL } from '../lib/bff'
+import type { LinkCard } from '../lib/embeds'
 import { setMediaHost } from './blocks'
 import { t } from './i18n'
 import { isSafeHref } from './links'
@@ -52,6 +53,8 @@ type EditorOptions = {
   pageLinks?: PageLinksHost
   /** Furigana reading suggestions (the native tokenizer). */
   ruby?: RubyHost
+  /** A link card's details (title, description, icon), read natively; without it cards show the bare link. */
+  linkPreview?: (url: string) => Promise<LinkCard | null>
 }
 
 /**
@@ -116,7 +119,8 @@ export function createEditor(
       Embed.configure({
         host: {
           openExternal: (href) => (options.pageLinks ?? noPageLinks).openExternal(href),
-          bff: bffURL()
+          bff: bffURL(),
+          linkPreview: options.linkPreview ?? (async () => null)
         }
       }),
       ...toggleExtensions,

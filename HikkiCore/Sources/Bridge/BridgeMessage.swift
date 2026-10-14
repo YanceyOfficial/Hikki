@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 12
+    public static let version = 13
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -70,6 +70,8 @@ public enum BridgeMessage: Sendable, Equatable {
     /// Furigana: expects `text` split into runs — `[{text, reading?}]`, a reading per kanji run — as the reply (nil
     /// when there is none).
     case suggestReading(text: String)
+    /// A link card's details: expects `{title, description, icon}` (each may be null), or nil, as the reply.
+    case linkPreview(url: String)
 }
 
 public enum BridgeError: Error, Equatable {
@@ -139,6 +141,7 @@ extension BridgeMessage: Decodable {
             self = .openPage(id: try c.decode(String.self, forKey: .id), block: try c.decodeIfPresent(String.self, forKey: .block))
         case "openLink": self = .openLink(url: try c.decode(String.self, forKey: .url))
         case "suggestReading": self = .suggestReading(text: try c.decode(String.self, forKey: .text))
+        case "linkPreview": self = .linkPreview(url: try c.decode(String.self, forKey: .url))
         default: throw BridgeError.unknownType(type)
         }
     }

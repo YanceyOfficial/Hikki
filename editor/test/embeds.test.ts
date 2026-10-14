@@ -7,6 +7,7 @@ import {
   frameSrc,
   htmlEmbedDocument,
   isWebURL,
+  linkCardFrom,
   safeFrameSrc,
   themedEmbedSrc
 } from '../src/lib/embeds'
@@ -141,6 +142,21 @@ describe('embedFromHTML and friends', () => {
     expect(isWebURL('javascript:alert(1)')).toBe(false)
     expect(isWebURL('file:///etc/passwd')).toBe(false)
     expect(isWebURL(null)).toBe(false)
+  })
+
+  it('a native link preview reply is checked before it reaches a card', () => {
+    expect(linkCardFrom({ title: ' A ', description: '', icon: 'https://x.com/i.png' })).toEqual({
+      title: 'A',
+      description: null,
+      icon: 'https://x.com/i.png'
+    })
+    expect(linkCardFrom({ title: 3, icon: 'javascript:alert(1)' })).toEqual({
+      title: null,
+      description: null,
+      icon: null
+    })
+    expect(linkCardFrom(null)).toBeNull()
+    expect(linkCardFrom('nope')).toBeNull()
   })
 
   it('heights stay within the range', () => {

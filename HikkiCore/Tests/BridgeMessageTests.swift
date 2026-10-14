@@ -20,6 +20,11 @@ struct BridgeMessageTests {
         #expect(try BridgeMessage.decode(scriptMessageBody: body) == .ready(protocolVersion: BridgeProtocol.version))
     }
 
+    @Test func decodesLinkPreview() throws {
+        let body: NSDictionary = ["type": "linkPreview", "url": "https://www.yanceyleo.com/"]
+        #expect(try BridgeMessage.decode(scriptMessageBody: body) == .linkPreview(url: "https://www.yanceyleo.com/"))
+    }
+
     @Test func decodesPageInfoWithOptionalBlockIds() throws {
         let body: NSDictionary = [
             "type": "pageInfo", "docId": "a",
