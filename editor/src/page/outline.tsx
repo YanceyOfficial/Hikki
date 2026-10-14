@@ -1,7 +1,8 @@
 import { cn } from 'cn'
-import { useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { GlidingHighlight } from '../components/gliding-highlight'
 import type { EditorBridge } from '../core/bridge'
 
 /** The closed rail never shows more bars than this (Notion's stays a loose stack on long pages too). */
@@ -26,6 +27,17 @@ export function Outline({ bridge }: { bridge: EditorBridge }) {
     bridge.page.get
   )
   const [open, setOpen] = useState(false)
+  const [hovered, setHovered] = useState<number | null>(null)
+  const listRef = useRef<HTMLOListElement>(null)
+
+  // Opened (or the reading moved on while open): the section being read is in view in the list.
+  useEffect(() => {
+    if (!open || activeHeading < 0) return
+    listRef.current
+      ?.querySelector<HTMLElement>(`[data-index="${activeHeading}"]`)
+      ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [open, activeHeading])
+
   if (railHidden || headings.length < 2) return null
   const minLevel = Math.min(...headings.map((h) => h.level))
   // Long pages have dozens of headings; the closed rail shows a sample of them, not a solid bar.
@@ -41,7 +53,10 @@ export function Outline({ bridge }: { bridge: EditorBridge }) {
       className="fixed top-1/2 right-4 z-20 flex -translate-y-1/2 justify-end max-[1000px]:hidden"
       aria-label={t('page.outline')}
       onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      onMouseLeave={() => {
+        setOpen(false)
+        setHovered(null)
+      }}
       onFocus={() => setOpen(true)}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false)
@@ -69,16 +84,25 @@ export function Outline({ bridge }: { bridge: EditorBridge }) {
       </div>
       {/* The list stays mounted and shows/hides with the shared motion, from the rail's edge. */}
       <div className="absolute top-1/2 right-0 -translate-y-1/2">
+        {/* One surface marks the row: the hovered one, else the section being read (it glides between them). */}
         <ol
+          ref={listRef}
           data-open={open}
-          className="hk-pop-toggle m-0 max-h-[60vh] w-60 list-none overflow-y-auto rounded-xl bg-popover p-2 shadow-popover [--hk-pop-dx:8px] [--hk-pop-dy:0px] [--hk-pop-origin:right_center]"
+          onMouseLeave={() => setHovered(null)}
+          className="hk-pop-toggle relative m-0 max-h-[60vh] w-60 list-none overflow-y-auto rounded-xl bg-popover p-2 shadow-popover [--hk-pop-dx:8px] [--hk-pop-dy:0px] [--hk-pop-origin:right_center]"
         >
+          <GlidingHighlight listRef={listRef} index={hovered ?? activeHeading} />
           {headings.map((h, index) => (
-            <li key={h.pos} style={{ paddingLeft: `${(h.level - minLevel) * 12}px` }}>
+            <li
+              key={h.pos}
+              style={{ paddingLeft: `${(h.level - minLevel) * 12}px` }}
+              onMouseEnter={() => setHovered(index)}
+            >
               <button
                 type="button"
+                data-index={index}
                 aria-current={index === activeHeading ? 'location' : undefined}
-                className="block w-full cursor-pointer truncate rounded-md px-2 py-1 text-left text-md text-subtle-foreground hover:bg-accent hover:text-foreground aria-[current=location]:font-medium aria-[current=location]:text-foreground"
+                className="relative block w-full cursor-pointer truncate rounded-md px-2 py-1 text-left text-md text-subtle-foreground hover:text-foreground aria-[current=location]:text-foreground"
                 onClick={() => bridge.scrollToHeading(h.pos)}
               >
                 {h.text}

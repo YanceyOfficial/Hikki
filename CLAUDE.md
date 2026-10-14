@@ -302,7 +302,7 @@ HikkiUITests/                 XCUITest flows
   block ids, words — CJK characters count one each — and characters from Tiptap's CharacterCount) and the heading the
   reader is in with `activeHeading` (a scroll-spy in `editor/src/core/bridge.ts`: the last heading past a line under
   the toolbar, the last one at the end; a heading jumped to from an outline stays marked until the reader scrolls).
-  The panel's outline marks it on its rail and keeps it in view; the page's own hover rail lights its bar. A heading
+  The panel's outline puts it on a background that glides from row to row and keeps it in view; the page's own hover rail lights its bar, and its list opens on it (the shared `GlidingHighlight`, following the hovered row meanwhile). A heading
   picked in the outline lands at the top (`window.hikki.jumpToHeading`). While the inspector shows the outline the
   page's hover rail hides (`window.hikki.setOutlineRail`).
 - **Find, spelling, insets**: find and replace is `editor/src/extensions/find.ts` (Tiptap's extension, RE2 regex) with

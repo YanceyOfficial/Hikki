@@ -109,11 +109,13 @@ private struct EmptyPane: View {
     }
 }
 
-/// The open page's headings, indented by level, along a rail: the section being read is marked on it (the page's
-/// scroll-spy, `EditorController.activeHeading`) and kept in view; one jumps to its block.
+/// The open page's headings, indented by level: the section being read (the page's scroll-spy,
+/// `EditorController.activeHeading`) sits on a background that glides from row to row as the reading moves, and is kept
+/// in view; one jumps to its block.
 private struct OutlinePane: View {
     let navigator: Navigator
     let editor: EditorController
+    @Namespace private var highlight
 
     var body: some View {
         if let pageID = navigator.route.pageID {
@@ -126,7 +128,7 @@ private struct OutlinePane: View {
                             ForEach(Array(info.headings.enumerated()), id: \.offset) { index, heading in
                                 OutlineRow(
                                     text: heading.text, depth: heading.level - minLevel,
-                                    isActive: heading.id != nil && heading.id == active
+                                    isActive: heading.id != nil && heading.id == active, highlight: highlight
                                 ) {
                                     if let id = heading.id { editor.scrollToHeading(id) }
                                 }
@@ -136,6 +138,7 @@ private struct OutlinePane: View {
                         }
                         .padding(.horizontal, Spacing.s3)
                         .padding(.vertical, Spacing.s2)
+                        .animation(Motion.easeOut(), value: active)
                     }
                     .onChange(of: active) { _, id in
                         guard let index = info.headings.firstIndex(where: { $0.id == id && id != nil }) else { return }
@@ -151,36 +154,36 @@ private struct OutlinePane: View {
     }
 }
 
-/// One heading of the outline: a segment of the rail at its leading edge (the colour tone when it is the section
-/// being read), the text indented by depth — top-level headings in full colour, deeper ones quieter.
+/// One heading of the outline, indented by depth — top-level headings in full colour, deeper ones quieter. The section
+/// being read carries the outline's one background (matched geometry: it glides to the next active row).
 private struct OutlineRow: View {
     let text: String
     let depth: Int
     let isActive: Bool
+    let highlight: Namespace.ID
     let action: () -> Void
-    @Environment(\.colorTone) private var colorTone
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: Spacing.s0) {
-                Capsule()
-                    .fill(isActive ? colorTone.fill : Theme.border)
-                    .frame(width: isActive ? 2 : 1)
-                    .frame(width: Spacing.s2, alignment: .center)
-                Text(text)
-                    .font(.hk(.sm, isActive ? .medium : .regular))
-                    .foregroundStyle(isActive || depth == 0 ? Theme.foreground : Theme.subtleForeground)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.leading, Spacing.s2 + CGFloat(depth) * Spacing.s3)
-                    .padding(.trailing, Spacing.s2)
-                    .padding(.vertical, Spacing.s1_5)
-            }
-            .contentShape(.rect)
+            Text(text)
+                .font(.hk(.sm, isActive ? .medium : .regular))
+                .foregroundStyle(isActive || depth == 0 ? Theme.foreground : Theme.subtleForeground)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, Spacing.s2 + CGFloat(depth) * Spacing.s3)
+                .padding(.trailing, Spacing.s2)
+                .padding(.vertical, Spacing.s1_5)
+                .background {
+                    if isActive {
+                        RoundedRectangle(cornerRadius: Radius.md)
+                            .fill(Theme.accent)
+                            .matchedGeometryEffect(id: "active", in: highlight)
+                    }
+                }
+                .contentShape(.rect)
         }
         .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.md))
-        .animation(Motion.easeOut(), value: isActive)
         .accessibilityAddTraits(isActive ? [.isButton, .isSelected] : .isButton)
     }
 }
