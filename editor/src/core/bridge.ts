@@ -340,6 +340,32 @@ export class EditorBridge {
    * Caret to the start of the body (ArrowDown from the title). Focus is moved synchronously:
    * Tiptap's focus() waits a frame, and keystrokes typed in that gap would still land in the title.
    */
+  /**
+   * A press in the empty space below the last block (Notion's): the caret goes to an empty line at the end — the last
+   * block when it already is an empty paragraph, otherwise a new one. False on a read-only or locked page.
+   */
+  focusEnd(): boolean {
+    const editor = this.editor
+    if (!editor || !editor.isEditable) return false
+    const { doc } = editor.state
+    const last = doc.lastChild
+    if (last && last.type.name === 'paragraph' && last.content.size === 0) {
+      editor
+        .chain()
+        .setTextSelection(doc.content.size - 1)
+        .focus()
+        .run()
+    } else {
+      editor
+        .chain()
+        .insertContentAt(doc.content.size, { type: 'paragraph' })
+        .setTextSelection(editor.state.doc.content.size + 1)
+        .focus()
+        .run()
+    }
+    return true
+  }
+
   focusBodyStart(): void {
     if (!this.editor) return
     this.editor.commands.setTextSelection(1)

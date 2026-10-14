@@ -66,6 +66,22 @@ window.hikki = {
   }
 }
 
+// A press in the blank space under the page's last block opens a line there (Notion's). Only presses on the page's
+// own background count — not the header, not a block, not a floating panel.
+const editorHost = document.getElementById('editor')!
+const pageBackground = new Set<EventTarget | null>([
+  editorHost,
+  document.getElementById('page'),
+  document.body,
+  document.documentElement
+])
+document.addEventListener('mousedown', (event) => {
+  if (event.button !== 0 || !pageBackground.has(event.target)) return
+  const content = editorHost.querySelector('.tiptap')
+  if (!content || event.clientY <= content.getBoundingClientRect().bottom) return
+  if (bridge.focusEnd()) event.preventDefault()
+})
+
 // ⌘F and friends reach the page before the native menu; handled here, the menu never fires.
 document.addEventListener(
   'keydown',

@@ -203,6 +203,42 @@ describe('EditorBridge', () => {
     expect(bridge.page.get().focusTitleRequest).toBe(before + 1)
   })
 
+  it('a press below the last block opens an empty line there, reusing an empty last paragraph', () => {
+    bridge.loadDocument(page('a', { content: doc('ddd') }))
+    expect(bridge.focusEnd()).toBe(true)
+    const json = () =>
+      editor()
+        .getJSON()
+        .content.map((n: any) => n.type + ':' + (n.content?.[0]?.text ?? ''))
+    expect(json()).toEqual(['paragraph:ddd', 'paragraph:'])
+    expect(editor().state.selection.$from.parent.content.size).toBe(0)
+    expect(editor().state.selection.from).toBe(editor().state.doc.content.size - 1)
+    // Already an empty line at the end: no second one.
+    expect(bridge.focusEnd()).toBe(true)
+    expect(json()).toEqual(['paragraph:ddd', 'paragraph:'])
+    // A heading (or any other block) last gets a paragraph after it.
+    bridge.loadDocument(
+      page('b', {
+        content: {
+          type: 'doc',
+          content: [
+            { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'H' }] }
+          ]
+        }
+      })
+    )
+    bridge.focusEnd()
+    expect(
+      editor()
+        .getJSON()
+        .content.map((n: any) => n.type)
+    ).toEqual(['heading', 'paragraph'])
+    // Locked pages stay as they are.
+    bridge.loadDocument(page('c', { content: doc('x'), locked: true }))
+    expect(bridge.focusEnd()).toBe(false)
+    expect(editor().getJSON().content).toHaveLength(1)
+  })
+
   it('blur() drops editor focus and is safe before any page is loaded', () => {
     expect(() => bridge.blur()).not.toThrow()
     bridge.loadDocument(page('a'))
