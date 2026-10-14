@@ -1,4 +1,5 @@
 import HikkiCore
+import HikkiSearch
 import SwiftUI
 
 @main
@@ -29,11 +30,24 @@ struct HikkiApp: App {
             let store = try DocumentStore.onDisk(at: paths.database)
             _model = State(
                 initialValue: AppModel(
-                    store: store, assets: AssetStore(directory: paths.assets), crashReporter: crashReporter,
-                    workspaceStore: HikkiApp.workspaceStore(paths)))
+                    store: store, searchIndex: HikkiApp.searchIndex(paths), assets: AssetStore(directory: paths.assets),
+                    crashReporter: crashReporter, workspaceStore: HikkiApp.workspaceStore(paths)))
         } catch {
             Log.error("cannot open database: \(error)", category: "store")
             fatalError("Cannot open database: \(error)")
+        }
+    }
+
+    /// The search index file; an unopenable one (corrupt) is replaced by an in-memory index for this run — the
+    /// indexer fills it from the database either way.
+    private static func searchIndex(_ paths: AppPaths) -> SearchIndex {
+        do {
+            return try SearchIndex(url: paths.searchIndex)
+        } catch {
+            Log.error("cannot open search index: \(error)", category: "search")
+            try? FileManager.default.removeItem(at: paths.searchIndex)
+            if let fresh = try? SearchIndex(url: paths.searchIndex) { return fresh }
+            return try! SearchIndex.inMemory()  // swiftlint:disable:this force_try
         }
     }
 

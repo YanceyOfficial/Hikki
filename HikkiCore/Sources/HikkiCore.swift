@@ -18,6 +18,8 @@ public struct AppPaths: Sendable {
     }
 
     public var database: URL { root.appending(path: "hikki.sqlite") }
+    /// The search index (HikkiSearch), rebuilt from the database when missing or outdated.
+    public var searchIndex: URL { root.appending(path: "search.sqlite") }
     public var logs: URL { root.appending(path: "logs", directoryHint: .isDirectory) }
     public var diagnostics: URL { root.appending(path: "diagnostics", directoryHint: .isDirectory) }
     public var assets: URL { root.appending(path: "assets", directoryHint: .isDirectory) }

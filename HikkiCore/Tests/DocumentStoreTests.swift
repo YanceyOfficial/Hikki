@@ -158,36 +158,21 @@ struct DocumentStoreTests {
         #expect(try store.document(id: "a") == nil)
     }
 
-    // MARK: Search
-
-    @Test func searchFindsTitleAndBodyIncludingChinese() throws {
-        let store = try DocumentStore.inMemory()
-        try store.create(id: "a", now: t0)
-        try store.create(id: "b", now: t0)
-        try store.saveContent(snapshot("a", "Weekly sync", text: "我们讨论了产品路线图和发布计划"))
-        try store.saveContent(snapshot("b", "路线图", text: "Q4 goals"))
-        // Trigram path (≥ 3 chars): title hit ranks first, body hit has a snippet.
-        let hits = try store.search("路线图")
-        #expect(hits.map(\.id) == ["b", "a"])
-        #expect(hits[1].snippet.contains("路线图"))
-        // Short query path (LIKE).
-        #expect(try store.search("计划").map(\.id) == ["a"])
-        #expect(try store.search("Q4").map(\.id) == ["b"])
-    }
-
-    @Test func searchIgnoresTrashedPagesAndHandlesSpecialCharacters() throws {
-        let store = try DocumentStore.inMemory()
-        try store.create(id: "a", now: t0)
-        try store.saveContent(snapshot("a", "100% \"done\" a_b"))
-        #expect(try store.search("100%").map(\.id) == ["a"])
-        #expect(try store.search("\"done\"").map(\.id) == ["a"])
-        #expect(try store.search("a_b").map(\.id) == ["a"])
-        #expect(try store.search("1_0").isEmpty)
-        try store.moveToTrash(id: "a")
-        #expect(try store.search("done").isEmpty)
-    }
-
     // MARK: Migration & persistence
+
+    @Test func v7LeavesNoSearchTablesBehindAndPagesStillSave() throws {
+        let url = try makeTempDirectory().appending(path: "hikki.sqlite")
+        let store = try DocumentStore.onDisk(at: url)
+        try store.create(id: "a", now: t0)
+        try store.saveContent(snapshot("a", "Roadmap", text: "body"))
+        let queue = try DatabaseQueue(path: url.path)
+        try queue.read { db in
+            #expect(try !db.tableExists("documentFts"))
+            let columns = try db.columns(in: "document").map { $0.name }
+            #expect(!columns.contains("titlePinyin"))
+            #expect(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger'") == 0)
+        }
+    }
 
     @Test func onDiskStorePersistsAcrossReopen() throws {
         let url = try makeTempDirectory().appending(path: "hikki.sqlite")
@@ -195,7 +180,7 @@ struct DocumentStoreTests {
         #expect(try DocumentStore.onDisk(at: url).pages().map(\.id) == ["a"])
     }
 
-    @Test func v2MigrationKeepsV1PagesSearchableAndOrdered() throws {
+    @Test func v2MigrationKeepsV1PagesAndTheirOrder() throws {
         let url = try makeTempDirectory().appending(path: "hikki.sqlite")
         // Build a v1-only database the way the first release wrote it.
         do {
@@ -225,7 +210,7 @@ struct DocumentStoreTests {
         }
         let store = try DocumentStore.onDisk(at: url)
         #expect(try store.pages().map(\.id) == ["new", "old"])
-        #expect(try store.search("legacy").map(\.id) == ["old"])
+        #expect(try store.document(id: "old")?.plainText == "legacy body text")
     }
 
     @Test func observePagesEmitsAfterChanges() async throws {

@@ -17,7 +17,7 @@ struct PageFileTests {
         return DocumentRecord(
             id: id, title: "旅行計画 · Trip", content: body, plainText: "日本語 and 😀", wordCount: 4, createdAt: t0,
             updatedAt: t0.addingTimeInterval(90), parentId: "parent-1", icon: "🗻", cover: "gradient:ocean",
-            favoritedAt: t0.addingTimeInterval(5), deletedAt: nil, sortKey: 2.5, titlePinyin: "")
+            favoritedAt: t0.addingTimeInterval(5), deletedAt: nil, sortKey: 2.5)
     }
 
     @Test func recordRoundTripsThroughAFile() throws {
@@ -31,7 +31,6 @@ struct PageFileTests {
         #expect(abs(back.createdAt.timeIntervalSince(record.createdAt)) < 0.001)  // milliseconds kept
         #expect(back.favoritedAt != nil && back.deletedAt == nil)
         #expect(try back.contentValue() == (try record.contentValue()))
-        #expect(back.titlePinyin == Pinyin.searchKey(for: record.title))
     }
 
     @Test func lockStateRoundTripsAndOlderFilesReadAsUnlocked() throws {

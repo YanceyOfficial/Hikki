@@ -1,11 +1,13 @@
 import Foundation
 import HikkiCore
+import HikkiSearch
 import Observation
 
 /// App-wide data shared by every window: the page tree, the trash, and page operations.
 @Observable
 final class AppModel {
     let store: DocumentStore
+    let searchIndexer: SearchIndexer
     let assets: AssetStore
     let crashReporter: CrashReporter
     let workspaceStore: WorkspaceStore
@@ -23,8 +25,12 @@ final class AppModel {
         var report: WorkspaceSync.Report
     }
 
-    init(store: DocumentStore, assets: AssetStore, crashReporter: CrashReporter, workspaceStore: WorkspaceStore) {
+    init(
+        store: DocumentStore, searchIndex: SearchIndex, assets: AssetStore, crashReporter: CrashReporter,
+        workspaceStore: WorkspaceStore
+    ) {
         self.store = store
+        self.searchIndexer = SearchIndexer(index: searchIndex, store: store)
         self.assets = assets
         self.crashReporter = crashReporter
         self.workspaceStore = workspaceStore
@@ -34,6 +40,7 @@ final class AppModel {
             Log.error("workspace load failed: \(error)", category: "workspace")
         }
         startWorkspaceSync()
+        searchIndexer.start()
     }
 
     // MARK: Workspace folder (storage option C)
@@ -282,7 +289,7 @@ final class AppModel {
     }
 
     func search(_ query: String) -> [SearchHit] {
-        perform("search") { try store.search(query) } ?? []
+        perform("search") { try searchIndexer.search(query) } ?? []
     }
 
     /// Home: this device's writing activity over the last `days` days, and the workspace's totals.

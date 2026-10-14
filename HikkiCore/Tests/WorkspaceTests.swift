@@ -99,7 +99,7 @@ struct FolderBookmarkTests {
                 try PageFile(
                     record: DocumentRecord(
                         id: "p", title: "", content: nil, plainText: "", wordCount: 0, createdAt: .now, updatedAt: .now, parentId: nil,
-                        icon: nil, cover: nil, favoritedAt: nil, deletedAt: nil, sortKey: 0, titlePinyin: "")))
+                        icon: nil, cover: nil, favoritedAt: nil, deletedAt: nil, sortKey: 0)))
             return files.exists("p")
         }
         #expect(written)

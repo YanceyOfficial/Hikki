@@ -24,8 +24,8 @@ struct DuplicateTests {
         #expect(copy.isFavorite == false)
         #expect(copy.createdAt == t1 && copy.updatedAt == t1)
         #expect(try s.pages().filter { $0.parentId == nil }.map(\.id) == ["a", "b", "b2", "c"])
-        // Indexed for search like any page.
-        #expect(try s.search("hello world").map(\.id).contains("b2"))
+        // Stored like any page (the search indexer picks it up from the commit observer).
+        #expect(try s.document(id: "b2")?.plainText == "hello world")
     }
 
     @Test func staysUnderTheSameParentAndSkipsMissingOrTrashedPages() throws {

@@ -1,4 +1,5 @@
 import HikkiCore
+import HikkiSearch
 import HikkiUI
 import SwiftUI
 
@@ -63,7 +64,7 @@ struct SearchPalette: View {
                     .padding(Spacing.s1_5)
                 }
                 .scrollIndicators(.automatic)
-                .frame(maxHeight: 420)
+                .frame(maxHeight: Size.searchResults)
                 .fixedSize(horizontal: false, vertical: true)
                 .onChange(of: selection) { _, index in proxy.scrollTo(index) }
             }
@@ -82,8 +83,11 @@ struct SearchPalette: View {
         }
         .background(Theme.popover)
         #if os(iOS)
-            // A phone sheet: the field at the top, not floating mid-way above the keyboard.
+            // A phone sheet: the field at the top, not floating mid-way above the keyboard; a page-sized one on iPad.
             .frame(maxHeight: .infinity, alignment: .top)
+            .presentationSizing(.page)
+        #else
+            .frame(width: Size.searchWidth)
         #endif
         .onAppear { fieldFocused = true }
         .onChange(of: query) { _, q in

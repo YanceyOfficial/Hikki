@@ -66,10 +66,12 @@ test-bff:
 # Hikki scheme exists again for builds and UI tests.
 test-core:
 	tuist test HikkiCore --platform macos
+	tuist test HikkiSearch --platform macos
 	tuist generate --no-open
 
 test-core-ios:
 	tuist test HikkiCore --platform ios
+	tuist test HikkiSearch --platform ios
 
 test: lint fmt-check lint-design lint-docs lint-l10n test-web test-bff test-core
 

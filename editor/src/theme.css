@@ -77,6 +77,8 @@
   --size-sidebar-icon: 18px;
   --size-onboarding-badge: 64px;
   --size-heatmap-cell: 12px;
+  --size-search-width: 760px;
+  --size-search-results: 480px;
   --motion-pop-in: 200ms;
   --motion-pop-out: 150ms;
   --radius: 8px;

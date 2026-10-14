@@ -49,7 +49,7 @@ let project = Project(
                 // MenuBarIcon (template image for the menu bar extra).
                 "Hikki/Resources/Assets.xcassets",
             ],
-            dependencies: [.target(name: "HikkiCore"), .target(name: "HikkiUI")],
+            dependencies: [.target(name: "HikkiCore"), .target(name: "HikkiUI"), .target(name: "HikkiSearch")],
             settings: .settings(base: [
                 "SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor",
                 "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
@@ -76,6 +76,16 @@ let project = Project(
             resources: ["HikkiUI/Resources/**"],
             settings: .settings(base: ["SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor"])
         ),
+        // The search engine: its own index file, ranking, pinyin — fed by the app, nothing else of the store.
+        .target(
+            name: "HikkiSearch",
+            destinations: destinations,
+            product: .framework,
+            bundleId: "app.yancey.hikki.search",
+            deploymentTargets: deploymentTargets,
+            sources: ["HikkiSearch/Sources/**"],
+            dependencies: [.external(name: "GRDB")]
+        ),
         .target(
             name: "HikkiCoreTests",
             destinations: destinations,
@@ -84,6 +94,15 @@ let project = Project(
             deploymentTargets: deploymentTargets,
             sources: ["HikkiCore/Tests/**"],
             dependencies: [.target(name: "HikkiCore")]
+        ),
+        .target(
+            name: "HikkiSearchTests",
+            destinations: destinations,
+            product: .unitTests,
+            bundleId: "app.yancey.hikki.search.tests",
+            deploymentTargets: deploymentTargets,
+            sources: ["HikkiSearch/Tests/**"],
+            dependencies: [.target(name: "HikkiSearch")]
         ),
         .target(
             name: "HikkiUITests",

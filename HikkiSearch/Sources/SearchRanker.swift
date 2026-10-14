@@ -1,63 +1,51 @@
 import Foundation
 
-/// A search as typed: its terms, lowercased and without accents, in order, without repeats
-/// ("Weekly  SYNC weekly" → weekly, sync).
-public struct SearchQuery: Equatable, Sendable {
-    public let raw: String
-    public let terms: [String]
-
-    public init(_ raw: String) {
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.raw = trimmed
-        var seen = Set<String>()
-        terms = SearchRanker.fold(trimmed).split(whereSeparator: \.isWhitespace).map(String.init)
-            .filter { seen.insert($0).inserted }
-    }
-
-    public var isEmpty: Bool { terms.isEmpty }
-
-    /// The terms as one string, for whole-title comparisons.
-    public var joined: String { terms.joined(separator: " ") }
-}
-
-/// Orders search results — titles first, then the page text, recent pages ahead on ties — and cuts the excerpt a
-/// result shows. Pure, so the order is testable without a store.
+/// Orders search results — the title first, then the headings, then the page text, recent pages ahead on
+/// ties — and cuts the excerpt a result shows. Pure, so the order is testable without an index.
 public enum SearchRanker {
     /// What a page offers the ranker.
     public struct Page: Sendable {
         public var title: String
         /// `Pinyin.searchKey(for: title)` — "chanpinluxiantu cplxt" — or "" for a title without Han characters.
         public var titlePinyin: String
+        /// The page's headings, one per line.
+        public var headings: String
         public var text: String
         public var updatedAt: Date
+        /// 0…40 from the index's BM25 order among the query's candidates (the best gets 40); 0 without an index.
+        public var textRank: Int
 
-        public init(title: String, titlePinyin: String = "", text: String = "", updatedAt: Date = .distantPast) {
+        public init(
+            title: String, titlePinyin: String = "", headings: String = "", text: String = "",
+            updatedAt: Date = .distantPast, textRank: Int = 0
+        ) {
             self.title = title
             self.titlePinyin = titlePinyin
+            self.headings = headings
             self.text = text
             self.updatedAt = updatedAt
+            self.textRank = textRank
         }
     }
 
-    /// Case and accents don't matter: "cafe" finds Café.
-    public static func fold(_ text: String) -> String {
-        text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
-    }
-
-    /// nil when no term occurs in the title (also by pinyin) or the text. Higher is better.
+    /// nil when no term occurs in the title (also by pinyin), the headings or the text. Higher is better.
     public static func score(_ query: SearchQuery, _ page: Page, now: Date = .now) -> Int? {
         guard !query.isEmpty else { return nil }
         let title = titleScore(query, page)
-        let text = textScore(query, fold(page.text))
-        guard title > 0 || text > 0 else { return nil }
-        return title + text + recency(page.updatedAt, now: now)
+        let headings =
+            page.headings.isEmpty
+            ? 0 : termsScore(query.terms, in: SearchQuery.fold(page.headings), wordStarts: 320, anywhere: 300, each: 80)
+        let text = textScore(query, SearchQuery.fold(page.text))
+        guard title > 0 || headings > 0 || text > 0 else { return nil }
+        let rank = headings > 0 || text > 0 ? page.textRank : 0
+        return title + headings + text + rank + recency(page.updatedAt, now: now)
     }
 
     /// The whole title (1000), its start (700), every term at a word start (500) or anywhere in it (400), some of
     /// the terms (60 each); the pinyin keys the same way a step lower; failing all that, an fzf-style subsequence
     /// ("wkly" → Weekly) for the quick switcher.
     static func titleScore(_ query: SearchQuery, _ page: Page) -> Int {
-        let title = fold(page.title)
+        let title = SearchQuery.fold(page.title)
         guard !title.isEmpty else { return 0 }
         let joined = query.joined
         if title == joined { return 1000 }
@@ -92,28 +80,13 @@ public enum SearchRanker {
         return (starts + inside) * each
     }
 
-    /// Every term in the (folded) text (250) or some of them (50 each), a little more for repeats (up to 40) and
-    /// for a first match near the top (20).
+    /// Every term in the (folded) text (250) or some of them (50 each); how well beyond that is the index's
+    /// BM25 order (`Page.textRank`).
     static func textScore(_ query: SearchQuery, _ text: String) -> Int {
         guard !text.isEmpty else { return 0 }
-        var found = 0
-        var repeats = 0
-        var firstOffset = Int.max
-        for term in query.terms {
-            guard let first = text.range(of: term) else { continue }
-            found += 1
-            firstOffset = min(firstOffset, text.distance(from: text.startIndex, to: first.lowerBound))
-            var from = first.upperBound
-            while repeats < 8, let next = text.range(of: term, range: from..<text.endIndex) {
-                repeats += 1
-                from = next.upperBound
-            }
-        }
+        let found = query.terms.count { text.contains($0) }
         guard found > 0 else { return 0 }
-        var score = found == query.terms.count ? 250 : found * 50
-        score += repeats * 5
-        if firstOffset < 200 { score += 20 }
-        return score
+        return found == query.terms.count ? 250 : found * 50
     }
 
     /// Edited today, this week, this month: a little ahead.

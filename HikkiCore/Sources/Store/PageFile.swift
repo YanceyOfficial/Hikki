@@ -47,13 +47,12 @@ public struct PageFile: Codable, Equatable, Sendable {
         content = try record.contentValue()
     }
 
-    /// Back into a store row (`titlePinyin` is derived by the store's write path).
+    /// Back into a store row.
     public func record() throws -> DocumentRecord {
         DocumentRecord(
             id: id, title: title, content: try content.map { String(decoding: try $0.jsonData(), as: UTF8.self) },
             plainText: plainText, wordCount: wordCount, createdAt: createdAt, updatedAt: updatedAt, parentId: parentId,
-            icon: icon, cover: cover, favoritedAt: favoritedAt, deletedAt: deletedAt, sortKey: sortKey,
-            titlePinyin: Pinyin.searchKey(for: title), lockedAt: lockedAt)
+            icon: icon, cover: cover, favoritedAt: favoritedAt, deletedAt: deletedAt, sortKey: sortKey, lockedAt: lockedAt)
     }
 }
 

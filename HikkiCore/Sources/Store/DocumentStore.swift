@@ -20,8 +20,6 @@ public struct DocumentRecord: Codable, Sendable, Equatable, Identifiable, Fetcha
     public var favoritedAt: Date?
     public var deletedAt: Date?
     public var sortKey: Double
-    /// Derived from `title` on every save (see `Pinyin.searchKey`).
-    public var titlePinyin: String = ""
     /// Locked pages are read-only in the editor (title, body, icon, cover) until unlocked.
     public var lockedAt: Date? = nil
 
@@ -61,26 +59,6 @@ public struct PageSummary: Codable, Sendable, Equatable, Identifiable, Fetchable
         self.deletedAt = deletedAt
         self.sortKey = sortKey
         self.lockedAt = lockedAt
-    }
-}
-
-public struct SearchHit: Sendable, Equatable, Identifiable {
-    public var id: String
-    public var title: String
-    public var icon: String?
-    /// The page text around the first matching term; empty when only the title matched.
-    public var snippet: String
-    public var updatedAt: Date
-    /// The query's terms, for emphasizing them in the title and the excerpt.
-    public var terms: [String]
-
-    public init(id: String, title: String, icon: String?, snippet: String, updatedAt: Date, terms: [String]) {
-        self.id = id
-        self.title = title
-        self.icon = icon
-        self.snippet = snippet
-        self.updatedAt = updatedAt
-        self.terms = terms
     }
 }
 
@@ -149,13 +127,9 @@ public final class DocumentStore: Sendable {
             }
         }
         migrator.registerMigration("v3-title-pinyin") { db in
+            // The pinyin key column of the in-store search; v7 drops it again (the search index derives its own).
             try db.alter(table: "document") { t in
                 t.add(column: "titlePinyin", .text).notNull().defaults(to: "")
-            }
-            for row in try Row.fetchAll(db, sql: "SELECT id, title FROM document") {
-                let title: String = row["title"]
-                try db.execute(
-                    sql: "UPDATE document SET titlePinyin = ? WHERE id = ?", arguments: [Pinyin.searchKey(for: title), row["id"] as String])
             }
         }
         migrator.registerMigration("v4-activity") { db in
@@ -189,6 +163,17 @@ public final class DocumentStore: Sendable {
                 t.add(column: "lockedAt", .datetime)
             }
         }
+        migrator.registerMigration("v7-search-index-moved") { db in
+            // Search lives in its own index now (HikkiSearch): the FTS table, the triggers that fed it and the
+            // pinyin key column go.
+            let triggers = try String.fetchAll(
+                db, sql: "SELECT name FROM sqlite_master WHERE type = 'trigger' AND sql LIKE '%documentFts%'")
+            for trigger in triggers { try db.execute(sql: "DROP TRIGGER IF EXISTS \"\(trigger)\"") }
+            try db.execute(sql: "DROP TABLE IF EXISTS documentFts")
+            try db.alter(table: "document") { t in
+                t.drop(column: "titlePinyin")
+            }
+        }
         return migrator
     }
 
@@ -200,7 +185,7 @@ public final class DocumentStore: Sendable {
             let last = try Double.fetchOne(db, sql: "SELECT MAX(sortKey) FROM document WHERE parentId IS ?", arguments: [parentId]) ?? -1
             let record = DocumentRecord(
                 id: id, title: "", content: nil, plainText: "", wordCount: 0, createdAt: now, updatedAt: now,
-                parentId: parentId, icon: nil, cover: nil, favoritedAt: nil, deletedAt: nil, sortKey: last + 1, titlePinyin: ""
+                parentId: parentId, icon: nil, cover: nil, favoritedAt: nil, deletedAt: nil, sortKey: last + 1
             )
             try record.insert(db)
             return record
@@ -289,11 +274,11 @@ public final class DocumentStore: Sendable {
             let previousWords = try Int.fetchOne(db, sql: "SELECT wordCount FROM document WHERE id = ?", arguments: [snapshot.docId]) ?? 0
             try db.execute(
                 sql: """
-                    UPDATE document SET title = ?, titlePinyin = ?, content = ?, plainText = ?, wordCount = ?, updatedAt = ?
+                    UPDATE document SET title = ?, content = ?, plainText = ?, wordCount = ?, updatedAt = ?
                     WHERE id = ? AND (content IS NOT ? OR title IS NOT ?)
                     """,
                 arguments: [
-                    snapshot.title, Pinyin.searchKey(for: snapshot.title), json, snapshot.text, snapshot.wordCount, now,
+                    snapshot.title, json, snapshot.text, snapshot.wordCount, now,
                     snapshot.docId, json, snapshot.title,
                 ]
             )
@@ -383,10 +368,8 @@ public final class DocumentStore: Sendable {
         writer.add(transactionObserver: PageCommitObserver(onCommit: onCommit), extent: .databaseLifetime)
     }
 
-    /// Writes a page as it came from its file: no activity bump, no edited-time change, `titlePinyin` derived.
+    /// Writes a page as it came from its file: no activity bump, no edited-time change.
     public func importPage(_ record: DocumentRecord) throws {
-        var record = record
-        record.titlePinyin = Pinyin.searchKey(for: record.title)
         try writer.write { db in
             try record.save(db)
             try db.execute(sql: "INSERT OR IGNORE INTO pageFileState (id) VALUES (?)", arguments: [record.id])
@@ -492,78 +475,6 @@ public final class DocumentStore: Sendable {
         }
     }
 
-    // MARK: - Search
-
-    /// How many pages the text index offers the ranker per query.
-    private static let candidateLimit = 200
-
-    /// Search over live pages, best first (`SearchRanker`): titles — also by pinyin, so "lxt" finds 路线图 — then
-    /// page text. Every title is looked at; text comes through the trigram index for terms of three characters or
-    /// more and LIKE for shorter ones. A hit carries an excerpt around the first matching term.
-    public func search(_ query: String, limit: Int = 30, now: Date = .now) throws -> [SearchHit] {
-        let parsed = SearchQuery(query)
-        guard !parsed.isEmpty else { return [] }
-        return try writer.read { db in
-            let texts = try Self.candidateTexts(db, parsed)
-            let pages = try Row.fetchAll(
-                db, sql: "SELECT id, title, icon, titlePinyin, updatedAt FROM document WHERE deletedAt IS NULL")
-            let scored: [(row: Row, text: String, score: Int)] = pages.compactMap { row in
-                let text = texts[row["id"]] ?? ""
-                let page = SearchRanker.Page(
-                    title: row["title"], titlePinyin: row["titlePinyin"], text: text, updatedAt: row["updatedAt"])
-                guard let score = SearchRanker.score(parsed, page, now: now) else { return nil }
-                return (row, text, score)
-            }
-            return
-                scored
-                .sorted {
-                    $0.score != $1.score ? $0.score > $1.score : ($0.row["updatedAt"] as Date) > ($1.row["updatedAt"] as Date)
-                }
-                .prefix(limit)
-                .map { hit in
-                    SearchHit(
-                        id: hit.row["id"], title: hit.row["title"], icon: hit.row["icon"],
-                        snippet: SearchRanker.snippet(of: hit.text, terms: parsed.terms), updatedAt: hit.row["updatedAt"],
-                        terms: parsed.terms)
-                }
-        }
-    }
-
-    /// The text of the pages whose title or text holds any term, by id. The trigram index answers terms of three
-    /// characters or more (CJK included — there are no spaces for a word tokenizer), LIKE the shorter ones.
-    private static func candidateTexts(_ db: Database, _ query: SearchQuery) throws -> [String: String] {
-        var ids = Set<String>()
-        let long = query.terms.filter { $0.count >= 3 }
-        if !long.isEmpty {
-            let match = long.map { "\"" + $0.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }.joined(separator: " OR ")
-            ids.formUnion(
-                try String.fetchAll(
-                    db,
-                    sql: """
-                        SELECT d.id FROM documentFts JOIN document d ON d.rowid = documentFts.rowid
-                        WHERE documentFts MATCH ? AND d.deletedAt IS NULL
-                        ORDER BY rank LIMIT ?
-                        """, arguments: [match, candidateLimit]))
-        }
-        let short = query.terms.filter { $0.count < 3 }
-        if !short.isEmpty {
-            let clauses = short.map { _ in "plainText LIKE ? ESCAPE '\\'" }.joined(separator: " OR ")
-            let arguments: [DatabaseValueConvertible] = short.map(likePattern) + [candidateLimit]
-            ids.formUnion(
-                try String.fetchAll(
-                    db,
-                    sql: "SELECT id FROM document WHERE deletedAt IS NULL AND (\(clauses)) ORDER BY updatedAt DESC LIMIT ?",
-                    arguments: StatementArguments(arguments)))
-        }
-        guard !ids.isEmpty else { return [:] }
-        let marks = Array(repeating: "?", count: ids.count).joined(separator: ",")
-        let rows = try Row.fetchAll(
-            db, sql: "SELECT id, plainText FROM document WHERE id IN (\(marks))", arguments: StatementArguments(Array(ids)))
-        return Dictionary(uniqueKeysWithValues: rows.map { ($0["id"] as String, $0["plainText"] as String) })
-    }
-
-    // MARK: - Helpers
-
     private static let summaryColumns =
         "document.id, document.parentId, document.title, document.icon, document.updatedAt, document.favoritedAt, document.deletedAt, document.sortKey, document.lockedAt"
 
@@ -583,12 +494,6 @@ public final class DocumentStore: Sendable {
     private static let subtreeCTE = """
         WITH RECURSIVE sub(id) AS (SELECT ? UNION ALL SELECT d.id FROM document d JOIN sub ON d.parentId = sub.id)
         """
-
-    private static func likePattern(_ q: String) -> String {
-        "%"
-            + q.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "%", with: "\\%").replacingOccurrences(
-                of: "_", with: "\\_") + "%"
-    }
 }
 
 /// Collects page row changes in a transaction and reports them once it commits (see `observePageCommits`).

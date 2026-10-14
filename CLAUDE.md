@@ -102,11 +102,13 @@ design/logo/                  wordmark + lockups (generate.mjs: text → outline
 scripts/gen-tokens.mjs        tokens → Swift + Tailwind theme
 scripts/lint-design.sh        no literal colors/fonts/spacing/radii in view code
 Configs/Version.xcconfig      MARKETING_VERSION / CURRENT_PROJECT_VERSION
-Project.swift                 Tuist manifest (targets: Hikki, HikkiCore, HikkiUI, HikkiCoreTests, HikkiUITests)
+Project.swift                 Tuist manifest (targets: Hikki, HikkiCore, HikkiSearch, HikkiUI + their tests, HikkiUITests)
 Hikki/Sources/                app: SwiftUI shell, navigation (tabs), sidebar, page bar, search, editor host
 Hikki/Resources/AppIcon.icon  Icon Composer document (merged from design/icon/hi-star; actool renders all sizes)
-HikkiCore/Sources/            framework: Store (GRDB/SQLite, page tree, assets, tabs model), Search (pinyin, fuzzy),
+HikkiCore/Sources/            framework: Store (GRDB/SQLite, page tree, assets, tabs model), Text (Japanese readings),
                               Bridge (protocol, JSONValue), Logging (file log, MetricKit crash collection)
+HikkiSearch/Sources/          framework: the search engine — its own SQLite index (trigram FTS5, BM25), query parsing,
+                              ranking, pinyin keys, fuzzy titles; tests in HikkiSearch/Tests/
 HikkiUI/Sources/              framework: reusable SwiftUI components + Theme
 editor/src/                   web editor: main.tsx + style.css; each folder below holds only .tsx or only .ts
 editor/src/core/              bridge, protocol, transport, editor setup, block catalog, i18n, shortcuts, links, page store
@@ -201,14 +203,19 @@ HikkiUITests/                 XCUITest flows
   (`openPage` with the block, `openLink` for the web) and `window.hikki.scrollToBlock` lands on the block.
 - **Ruby / furigana** (`editor/src/extensions/ruby.ts`): an inline node (`<ruby><rb>…</rb><rt>…</rt></ruby>`, reading as
   an attribute); ⇧⌘R or Format → More → Ruby opens the reading panel, prefilled from the native tokenizer
-  (`HikkiCore/Sources/Search/JapaneseReading.swift`, `suggestReading` message): a phrase comes back as kanji runs with
+  (`HikkiCore/Sources/Text/JapaneseReading.swift`, `suggestReading` message): a phrase comes back as kanji runs with
   readings and bare kana (役に立ちます → 役(やく)に立(た)ちます), one ruby per run; "Whole" puts one reading over all of it.
-- **Search** (⌘K, `Hikki/Sources/SearchPalette.swift`): `DocumentStore.search` gathers candidates — every live title,
-  page text through the trigram FTS for terms of 3+ characters and LIKE below — and
-  `HikkiCore/Sources/Search/SearchRanker.swift` orders them (whole title, its start, every term at a word start /
-  anywhere, the pinyin keys, then fzf-style subsequences; page text below titles; recent pages ahead on ties) and cuts
-  the excerpt. One ranked list ("Best matches"); a row shows the parent path, the excerpt with the terms emphasized
-  (`HighlightedText`) and the edited time.
+- **Search** (⌘K, `Hikki/Sources/SearchPalette.swift`) is the `HikkiSearch` package: `SearchIndex`
+  (`HikkiSearch/Sources/SearchIndex.swift`) keeps its own SQLite file (`search.sqlite` next to the database) with every
+  page's title, pinyin keys, headings and text under a trigram FTS5 index; `Hikki/Sources/SearchIndexer.swift` feeds it
+  — every committed page change through the store's commit observer, plus a reconcile at launch by edited time (the
+  index is rebuildable; `SearchIndex.version` empties an outdated one). Headings come out of the stored content
+  natively (`ContentText.headings`, `HikkiCore/Sources/Store/ContentText.swift`), so synced pages count too.
+  `SearchRanker` orders results: whole title, its start, every term at a word start / anywhere, the pinyin keys, then
+  fzf-style subsequences; headings below titles, text below headings, the index's BM25 order (headings weighed 3×)
+  among text matches, recent pages ahead on ties; it also cuts the excerpt. The store has no search left in it. One
+  ranked list ("Best matches"); a row shows the parent path, the excerpt with the terms emphasized (`HighlightedText`)
+  and the edited time.
 - **Full screen (macOS)**: Xcode's way, in `Hikki/Sources/FullScreenChrome.swift` — the toolbar stays and gets its
   background while in full screen (that is what puts the columns below the toolbar row instead of under it); the
   traffic lights come down with the menu bar into that row. Measured, not guessed: in full screen AppKit moves the

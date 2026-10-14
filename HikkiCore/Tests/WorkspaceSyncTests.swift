@@ -29,7 +29,7 @@ struct WorkspaceSyncTests {
         let report = try WorkspaceSync(store: store, files: files).reconcile()
         #expect(report.imported == 1)
         #expect(try store.document(id: "remote")?.title == "Remote")
-        #expect(try store.search("afar").map(\.id) == ["remote"])  // indexed like any page
+        #expect(try store.document(id: "remote")?.plainText.contains("afar") == true)  // stored like any page
         #expect(try store.activity(since: t0.addingTimeInterval(-86_400)).allSatisfy { $0.edits == 0 })  // imports aren't edits
     }
 
