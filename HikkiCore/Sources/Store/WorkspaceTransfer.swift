@@ -114,10 +114,11 @@ public enum WorkspaceExport {
     /// Every attachment named in a page body (`hikki-editor://assets/<name>` anywhere in it), in order, each once.
     public static func assetNames(in content: JSONValue) -> [String] {
         var names: [String] = []
+        var seen = Set<String>()
         func walk(_ value: JSONValue) {
             switch value {
             case .string(let text):
-                if let name = AssetStore.name(fromURL: text), !names.contains(name) { names.append(name) }
+                if let name = AssetStore.name(fromURL: text), seen.insert(name).inserted { names.append(name) }
             case .array(let items): items.forEach(walk)
             case .object(let object): object.keys.sorted().forEach { walk(object[$0]!) }
             default: break
@@ -435,15 +436,10 @@ public enum WorkspaceImport {
             guard assets.file(named: name) == nil, let file = assetFile(name, from: base, root: root) else { return }
             _ = try? assets.importCopy(of: file, named: name)
         }
-        let content = page.content ?? .object(["type": .string("doc"), "content": .array([.object(["type": .string("paragraph")])])])
-        WorkspaceExport.assetNames(in: content).forEach(copy)
+        if let content = page.content { WorkspaceExport.assetNames(in: content).forEach(copy) }
         if let cover = page.cover.flatMap(AssetStore.name(fromURL:)) { copy(cover) }
-        _ = try store.create(id: id, parentId: parentId)
-        try store.saveContent(Snapshot(docId: id, content: content, title: page.title, text: page.plainText, wordCount: page.wordCount))
-        if page.icon != nil { try store.setIcon(page.icon, for: id) }
-        if page.cover != nil { try store.setCover(page.cover, for: id) }
-        if page.favoritedAt != nil { try store.setFavorite(true, for: id) }
-        if page.lockedAt != nil { try store.setLocked(true, for: id) }
+        // As it was — created and edited dates included — in one write; restoring a page isn't writing in it.
+        try store.insertImported(page, id: id, parentId: parentId)
         return id
     }
 

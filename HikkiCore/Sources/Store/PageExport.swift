@@ -74,8 +74,8 @@ public enum PageExport {
         let file = FileWrapper(regularFileWithContents: document)
         file.preferredFilename = documentName
         let attachments = assets.compactMap { asset -> FileWrapper? in
-            guard let data = try? Data(contentsOf: asset.file) else { return nil }
-            let wrapper = FileWrapper(regularFileWithContents: data)
+            // By reference: the file is read when the export is written, not held in memory meanwhile.
+            guard let wrapper = try? FileWrapper(url: asset.file, options: []), wrapper.isRegularFile else { return nil }
             wrapper.preferredFilename = asset.name
             return wrapper
         }
