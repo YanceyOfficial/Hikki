@@ -139,10 +139,13 @@ extension SearchIndex {
     /// Search by words and, given the query's vector, by meaning: the word matches as they rank (what was typed wins;
     /// a model's sense of meaning shouldn't shuffle an exact title), then up to `relatedLimit` pages found only by
     /// meaning (`SearchHit.related`) — those that stand out from the rest (`standouts`) — with their closest passage
-    /// as the excerpt (`SearchHit.passage` keeps all of it for `closestSentence`).
-    public func search(_ query: String, queryVector: [Float]?, limit: Int = 30, now: Date = .now) throws -> [SearchHit] {
-        let hits = try search(query, limit: limit, now: now)
-        guard let queryVector, !queryVector.isEmpty, Self.meansSomething(query) else { return hits }
+    /// as the excerpt (`SearchHit.passage` keeps all of it for `closestSentence`). Only an unfiltered search (scope
+    /// `all`) adds those: a filter asks where the words are.
+    public func search(
+        _ query: String, queryVector: [Float]?, options: SearchOptions = .standard, limit: Int = 30, now: Date = .now
+    ) throws -> [SearchHit] {
+        let hits = try search(query, options: options, limit: limit, now: now)
+        guard options.scope == .all, let queryVector, !queryVector.isEmpty, Self.meansSomething(query) else { return hits }
         let matches = Self.standouts(try semanticMatches(queryVector, limit: .max))
         let matched = Set(hits.map(\.id))
         let related = matches.filter { !matched.contains($0.pageId) }.prefix(Self.relatedLimit)

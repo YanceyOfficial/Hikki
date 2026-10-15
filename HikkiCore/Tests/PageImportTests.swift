@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import UniformTypeIdentifiers
 
 @testable import HikkiCore
 
@@ -60,5 +61,43 @@ struct PageImportTests {
             return src
         }
         #expect(sources == ["hikki-editor://assets/new.png", "hikki-editor://assets/new.png", "../secret.png", "https://x.example/p.png"])
+    }
+
+    @Test func droppedFilesImportOnlyAsFoldersOrDocuments() throws {
+        let (root, folder) = try fixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let dropped = [
+            folder.appending(path: "Trip.md"), root.appending(path: "secret.png"), folder, folder.appending(path: "b.txt"),
+        ]
+        #expect(PageImport.importable(dropped).map(\.lastPathComponent) == ["Trip.md", "Trip", "b.txt"])
+    }
+
+    @Test func aDroppedItemImportsByItsTypeAndPlainTextNeedsAFileName() {
+        #expect(PageImport.documentType(registered: ["net.daringfireball.markdown"], suggestedName: "Trip") != nil)
+        #expect(PageImport.documentType(registered: ["public.html"], suggestedName: nil) == .html)
+        #expect(PageImport.documentType(registered: ["public.folder"], suggestedName: "Notes") == .folder)
+        // A picture or a PDF doesn't import; the first type that does wins.
+        #expect(PageImport.documentType(registered: ["public.png"], suggestedName: "a.png") == nil)
+        #expect(PageImport.documentType(registered: ["com.adobe.pdf", "public.html"], suggestedName: "x") == .html)
+        // Text dragged out of another app is a snippet; a text file has a name.
+        #expect(PageImport.documentType(registered: ["public.utf8-plain-text"], suggestedName: nil) == nil)
+        #expect(PageImport.documentType(registered: ["public.plain-text"], suggestedName: "notes.txt") == .plainText)
+    }
+
+    @Test func aDroppedDocumentKeepsItsNameAndGetsAnExtensionItsFormatIsReadFrom() throws {
+        let markdown = try #require(UTType("net.daringfireball.markdown"))
+        #expect(PageImport.fileName(suggestedName: "Trip.md", type: markdown) == "Trip.md")
+        #expect(PageImport.fileName(suggestedName: "Trip", type: markdown).hasPrefix("Trip."))
+        #expect(
+            ImportFormat(fileExtension: (PageImport.fileName(suggestedName: "Trip", type: markdown) as NSString).pathExtension) == .markdown
+        )
+        #expect(PageImport.fileName(suggestedName: "Page", type: .html) == "Page.html")
+        #expect(PageImport.fileName(suggestedName: nil, type: .plainText) == "Untitled.txt")
+        #expect(PageImport.fileName(suggestedName: "Notes", type: .folder) == "Notes")
+        // The drag source names the file: it never reaches outside the folder the copy is made in.
+        #expect(PageImport.fileName(suggestedName: "../../Library/x.md", type: markdown) == "x.md")
+        #expect(PageImport.fileName(suggestedName: "..", type: .folder) == "Untitled")
+        #expect(PageImport.fileName(suggestedName: "a/", type: .html) == "a.html")
+        #expect(!PageImport.fileName(suggestedName: "../..", type: .html).contains("/"))
     }
 }

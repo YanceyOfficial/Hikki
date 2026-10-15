@@ -57,6 +57,25 @@
                         DropTargetArea("Drag a page here", icon: .trayArrowDown, isTargeted: false).frame(height: 80)
                         DropTargetArea("Show here", isTargeted: true).frame(height: 80)
                     }
+                    Section("FilterChip") {
+                        HStack(spacing: Spacing.s1_5) {
+                            FilterChip("All", isSelected: true) {}
+                            FilterChip("Titles", isSelected: false) {}
+                        }
+                        HStack(spacing: Spacing.s2) {
+                            FilterChip("All", isSelected: true, look: .filled) {}
+                            FilterChip("Files", isSelected: false, look: .filled) {}
+                        }
+                    }
+                    Section("ModelPickerList") {
+                        ModelPickerList(
+                            autoID: "auto", autoTitle: "Auto",
+                            groups: [
+                                .init(id: "f", title: "Favorites", items: [.init(id: "o", name: "Opus 5.5", isFavorite: true)]),
+                                .init(id: "r", title: "Recommended", items: [.init(id: "s", name: "Sonnet 5.5", detail: "Anthropic")]),
+                            ],
+                            selection: "s", onSelect: { _ in }, onToggleFavorite: { _ in })
+                    }
                     Section("toolTip") {
                         HStack {
                             Text(verbatim: "Hover").padding(Spacing.s2).background(Theme.muted).toolTip("Its own tooltip")
@@ -85,6 +104,9 @@
                         }
                     }
                     Section("VersionDiffView") {
+                        VersionTitleView(
+                            title: "Trip to Kyoto", runs: [.init("Trip to ", .same), .init("Osaka", .removed), .init("Kyoto", .added)],
+                            placeholder: "Untitled")
                         VersionDiffView(blocks: [
                             .init(id: 0, style: .heading2, runs: [.init("Plan", .same)]),
                             .init(

@@ -140,7 +140,11 @@ HikkiUITests/                 XCUITest flows
   `obscuredContentInsets` on macOS, an explicit scroll inset on iOS).
 - **Sidebar**: Mac/iPad draw our own rows in a `LazyVStack` (`Hikki/Sources/SidebarView.swift`) — a native `List`
   paints selection in the system accent (not the colour tone) and swallowed row drops on iPad. Fills on the sidebar use
-  resolved colours (dynamic ones picked up the active window's vibrancy).
+  resolved colours (dynamic ones picked up the active window's vibrancy). Markdown / HTML / text files or folders
+  dragged onto it import (`Hikki/Sources/SidebarFileDrop.swift`): on a page row as its children (the row tints as for
+  "inside"), elsewhere at the top level (the sidebar is outlined); ContentView runs the import through
+  `Navigator.importDrop` → `AppModel.importFiles(_:parentId:)`. A page row's own drag carries a page link, never a
+  file, so the two never mix; iPad drags (typed documents, no file URL) load as a temporary copy.
 - **iPhone is its own layout**, not the Mac's squeezed (prototype: the "Hikki iPhone redesign" canvas): the collapsed
   split view's sidebar column is `Hikki/Sources/PhoneHome.swift` (workspace, All pages / Trash tiles, "Jump back in"
   cards, favorites, the page tree as plain rows) and opening anything shows the detail through
@@ -177,7 +181,8 @@ HikkiUITests/                 XCUITest flows
   takes its history along (`onDeleted`). UI: page ⋯ → Page History… (`Hikki/Sources/PageHistoryView.swift`) lists
   versions beside a native preview — `TextBlock`/`PageDiff` (`HikkiCore/Sources/Store/PageDiff.swift`) flatten both
   versions to blocks and diff them block by block, then word by word (CJK by character), drawn by HikkiUI's
-  `VersionDiffView`. Restore writes through `saveContent` + `setIcon`/`setCover` and reloads open editors.
+  `VersionDiffView`; a title that differs from the page's now is marked the same way above the body
+  (`PageDiff.title`, `VersionTitleView`, "Title changed"). Restore writes through `saveContent` + `setIcon`/`setCover` and reloads open editors.
   DEBUG: `HIKKI_HISTORY_INTERVAL=<s>` shortens the session (UI tests).
 - **Import / export** (`Hikki/Sources/PageTransfer.swift`): the editor converts, in its own schema
   (`editor/src/core/convert.ts`: Tiptap's official `@tiptap/markdown`, HTML through the schema's parse/render rules;
@@ -190,7 +195,8 @@ HikkiUITests/                 XCUITest flows
   attachments a document links by relative path inside its folder are copied into the workspace's assets
   (`HikkiCore/Sources/Store/PageImport.swift`; nothing outside the folder), and Markdown's inline pictures are lifted
   into blocks (`liftBlockMedia`). Whatever the file holds, the body fits the schema (text fallback, its reason logged).
-  Not yet: dropping files on the sidebar. DEBUG: `HIKKI_EXPORT_DIR=<folder>`
+  Files dropped on the sidebar import the same way (see Sidebar; a dropped file's name is reduced to its last
+  component before it is copied). DEBUG: `HIKKI_EXPORT_DIR=<folder>`
   skips the save panel, `HIKKI_IMPORT_FILE=<path>` imports at launch (UI tests).
 - **Workspace identity** lives in the folder (a workspace.json next to `pages/`: id, name, icon — `WorkspaceIdentity`); the per-device
   record (`AppPaths.workspace`) only adds the location. A device picking a folder that has one _opens_ that workspace
@@ -308,7 +314,10 @@ HikkiUITests/                 XCUITest flows
   PDFs through PDFKit, images through Vision's text recognition (`HikkiSearch/Sources/AttachmentText.swift`) — one
   file at a time at low priority after the page is indexed, once per file; a hit whose only match is in a file names
   it. The store has no search left in it. One ranked list ("Best matches"); a row shows the parent path, the excerpt
-  with the terms emphasized (`HighlightedText`) and the edited time. Pages also go into the device's Spotlight index
+  with the terms emphasized (`HighlightedText`) and the edited time. Under the field, scope chips (`FilterChip`:
+  All / Titles / Text / Files — `SearchScope` in `HikkiSearch/Sources/SearchOptions.swift`; the ranker and the index
+  only count matches where the scope looks, Files always shows the file's excerpt) and a sort menu (Best match / Last
+  edited, `SearchSort`); "Similar in meaning" joins only an unfiltered search. Pages also go into the device's Spotlight index
   (Core Spotlight: `Hikki/Sources/SpotlightIndex.swift`, items shaped by `SpotlightItems` in HikkiSearch; Settings →
   Spotlight, default on, off empties it); a Spotlight result opens the page through `onContinueUserActivity`.
   On-device embeddings (`NLContextualEmbedding`) were measured and rejected for a "related" tier: related and
@@ -374,7 +383,10 @@ HikkiUITests/                 XCUITest flows
   streams `AIEvent`s (text, searching, citation, finished); `HikkiAI/Sources/StreamDecoders.swift` reads each provider's events
   tolerantly (unknown events skipped, malformed lines ignored, only error events throw), `HTTPErrors` maps failures
   to `AIError`. Models are a fixed list (`AIModelCatalog`; "Auto" picks a balanced one among the providers with a
-  key). Each provider may have a base URL (blank: its own API; `HikkiAI/Sources/AIEndpoint.swift` — OpenAI's base
+  key). The model menu (`AIModelButton` in `Hikki/Sources/AISettings.swift` over `HikkiUI/Sources/ModelPickerList.swift`;
+  the chat's composer and Settings → AI) is Notion's: Auto, starred models under Favorites, Recommended, Other
+  models — a star on each row (`AIModelFavorites` in `HikkiAI/Sources/AIModelFavorites.swift`, UserDefaults
+  `ai.favoriteModels`); a pick in the chat is also the default, which the page's Ask AI runs on. Each provider may have a base URL (blank: its own API; `HikkiAI/Sources/AIEndpoint.swift` — OpenAI's base
   includes `/v1`, Anthropic's doesn't, as in their SDKs; https, or http only to loopback). Keys live in the Keychain
   (`AIPreferences`, `Hikki/Sources/AISettings.swift`), one per provider and origin (`AIEndpoint.keyAccount`), so a key
   only ever goes to the address it was entered for. The editor asks through `aiRequest` / `aiCancel` (selected parts of blocks as inline HTML + nearby

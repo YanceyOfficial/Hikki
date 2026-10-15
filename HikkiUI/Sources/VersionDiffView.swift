@@ -140,6 +140,77 @@ public struct VersionDiffView: View {
     }
 }
 
+/// A version's title in page history's preview. Without `runs` (the title didn't change) it is the version's title;
+/// with them it is marked like the body below it — what only the version has washed green, what only the current
+/// page has struck through in red — under a small "Title changed" line. `showsChanges` false: the version's title, no
+/// marks.
+public struct VersionTitleView: View {
+    private let title: String
+    private let runs: [VersionDiffView.Run]?
+    private let placeholder: String
+    private let showsChanges: Bool
+
+    public init(title: String, runs: [VersionDiffView.Run]? = nil, placeholder: String, showsChanges: Bool = true) {
+        self.title = title
+        self.runs = runs
+        self.placeholder = placeholder
+        self.showsChanges = showsChanges
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.s1) {
+            if marked {
+                Text("app:history.titleChanged")
+                    .font(.hk(.xs, .medium))
+                    .foregroundStyle(Theme.mutedForeground)
+                    .accessibilityIdentifier("history-title-changed")
+            }
+            Text(text)
+                .font(.hk(.x3l, .bold))
+                .foregroundStyle(title.isEmpty && !marked ? Theme.placeholder : Theme.foreground)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("history-title")
+        }
+        .textSelection(.enabled)
+    }
+
+    private var marked: Bool { showsChanges && runs != nil }
+
+    private var text: AttributedString {
+        guard marked, let runs else { return AttributedString(title.isEmpty ? placeholder : title) }
+        var result = AttributedString()
+        for run in runs {
+            var piece = AttributedString(run.text)
+            switch run.change {
+            case .same: break
+            case .added: piece.backgroundColor = Theme.washGreen
+            case .removed:
+                piece.strikethroughStyle = .single
+                piece.foregroundColor = Theme.inkRed
+            }
+            result += piece
+        }
+        // The version had no title (every word is the current page's): "Untitled" follows them.
+        if !runs.contains(where: { $0.change != .removed }) {
+            var untitled = AttributedString(" " + placeholder)
+            untitled.foregroundColor = Theme.placeholder
+            result += untitled
+        }
+        return result
+    }
+}
+
+#Preview("Title") {
+    VStack(alignment: .leading, spacing: Spacing.s4) {
+        VersionTitleView(
+            title: "Trip to Kyoto", runs: [.init("Trip to ", .same), .init("Osaka", .removed), .init("Kyoto", .added)],
+            placeholder: "Untitled")
+        VersionTitleView(title: "", runs: [.init("Plans", .removed)], placeholder: "Untitled")
+        VersionTitleView(title: "Unchanged", placeholder: "Untitled")
+    }
+    .padding()
+}
+
 #Preview {
     ScrollView {
         VersionDiffView(blocks: [

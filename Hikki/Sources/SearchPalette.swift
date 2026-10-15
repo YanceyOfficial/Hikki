@@ -6,7 +6,8 @@ import SwiftUI
 /// ⌘K search (Notion's): one list of best matches — titles, also by pinyin, ahead of page text (`SearchRanker`) —
 /// each with its path, an excerpt around the match and the edited time; recent pages while the field is empty. With
 /// semantic search on, the few pages that stand out by meaning follow under "Similar in meaning", each showing its
-/// closest sentence; nothing at all is listed when nothing matches.
+/// closest sentence; nothing at all is listed when nothing matches. Chips under the field narrow where the words
+/// may match (All / Titles / Text / Files, `SearchScope`) and a menu at their end orders by match or by edited time.
 /// Mac/iPad show it as a centered overlay card; iPhone as a sheet.
 struct SearchPalette: View {
     @Environment(AppModel.self) private var model
@@ -15,6 +16,7 @@ struct SearchPalette: View {
     @State private var query = ""
     @State private var results: [SearchHit] = []
     @State private var selection = 0
+    @State private var options = SearchOptions.standard
     @FocusState private var fieldFocused: Bool
 
     var body: some View {
@@ -45,6 +47,7 @@ struct SearchPalette: View {
             }
             .padding(.horizontal, Spacing.s4)
             .frame(height: 52)
+            filters
             Theme.border.frame(height: 1)
 
             ScrollViewReader { proxy in
@@ -116,21 +119,26 @@ struct SearchPalette: View {
             #endif
         }
         .onChange(of: query) { _, q in
-            results = model.search(q)
+            results = model.search(q, options: options)
             selection = 0
         }
-        // Then by meaning too (Settings → Search → Semantic search), once typing pauses: the matches are reordered
-        // and pages related only by meaning follow under their own heading.
-        .task(id: query) {
+        .onChange(of: options) { _, new in
+            results = model.search(query, options: new)
+            selection = 0
+        }
+        // Then by meaning too (Settings → Search → Semantic search), once typing pauses: pages related only by
+        // meaning follow under their own heading (unfiltered searches only).
+        .task(id: SearchKey(query: query, options: options)) {
             let text = query
-            guard model.semantic.isEnabled, SearchIndex.meansSomething(text) else { return }
+            let options = options
+            guard model.semantic.isEnabled, options.scope == .all, SearchIndex.meansSomething(text) else { return }
             try? await Task.sleep(for: .milliseconds(250))
             guard !Task.isCancelled, let vector = await model.semantic.queryVector(text), !Task.isCancelled,
-                text == query
+                text == query, options == self.options
             else { return }
-            let found = model.search(text, queryVector: vector)
+            let found = model.search(text, queryVector: vector, options: options)
             let sharpened = await model.semantic.sharpen(found, queryVector: vector)
-            guard !Task.isCancelled, text == query else { return }
+            guard !Task.isCancelled, text == query, options == self.options else { return }
             results = sharpened
             selection = min(selection, max(results.count - 1, 0))
         }
@@ -141,6 +149,79 @@ struct SearchPalette: View {
             guard !TextComposition.isActive else { return .ignored }
             dismiss()
             return .handled
+        }
+    }
+
+    private struct SearchKey: Equatable {
+        let query: String
+        let options: SearchOptions
+    }
+
+    /// The scope chips and, at the row's end, the sort menu.
+    private var filters: some View {
+        HStack(spacing: Spacing.s2) {
+            ScrollView(.horizontal) {
+                HStack(spacing: phoneChips ? Spacing.s2 : Spacing.s1_5) {
+                    ForEach(SearchScope.allCases, id: \.self) { scope in
+                        FilterChip(title(scope), isSelected: options.scope == scope, look: phoneChips ? .filled : .subtle) {
+                            options.scope = scope
+                        }
+                        .accessibilityIdentifier("search-scope-\(scope.rawValue)")
+                    }
+                }
+            }
+            .scrollIndicators(.never)
+            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+            Menu {
+                Picker(selection: $options.sort) {
+                    ForEach(SearchSort.allCases, id: \.self) { sort in
+                        Text(title(sort)).tag(sort)
+                    }
+                } label: {
+                    EmptyView()
+                }
+                .pickerStyle(.inline)
+            } label: {
+                HStack(spacing: Spacing.s1) {
+                    Text(title(options.sort)).font(.hk(.xs, .medium))
+                    IconView(.caretDown, size: TextSize.x2s.rawValue)
+                }
+                .foregroundStyle(Theme.mutedForeground)
+            }
+            .menuStyle(.button)
+            .buttonStyle(.borderless)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("app:search.sort")
+            .accessibilityLabel("app:search.sort")
+            .accessibilityIdentifier("search-sort")
+        }
+        .padding(.horizontal, Spacing.s4)
+        .padding(.bottom, Spacing.s2_5)
+    }
+
+    /// iPhone: the larger, filled chips of the phone's search sheet.
+    private var phoneChips: Bool {
+        #if os(iOS)
+            UIDevice.current.userInterfaceIdiom == .phone
+        #else
+            false
+        #endif
+    }
+
+    private func title(_ scope: SearchScope) -> LocalizedStringKey {
+        switch scope {
+        case .all: "app:search.scope.all"
+        case .titles: "app:search.scope.titles"
+        case .text: "app:search.scope.text"
+        case .files: "app:search.scope.files"
+        }
+    }
+
+    private func title(_ sort: SearchSort) -> LocalizedStringKey {
+        switch sort {
+        case .relevance: "app:search.sort.relevance"
+        case .edited: "app:search.sort.edited"
         }
     }
 

@@ -249,12 +249,16 @@ public final class SearchIndex: Sendable {
     /// Best first. Every title is ranked; headings, text and attachments come through the index — the trigram
     /// FTS (BM25, headings weighed 3×) for terms of three characters or more, LIKE for shorter ones — and the
     /// BM25 order among those candidates feeds the ranker. A hit carries an excerpt around the first matching
-    /// term: the page's, or an attachment's when only that matched.
-    public func search(_ query: String, limit: Int = 30, now: Date = .now) throws -> [SearchHit] {
+    /// term: the page's, or an attachment's when only that matched (always an attachment's when searching files).
+    /// `options` narrows where the terms may match (`SearchScope`) and orders by match or by edited time.
+    public func search(
+        _ query: String, options: SearchOptions = .standard, limit: Int = 30, now: Date = .now
+    ) throws -> [SearchHit] {
         let parsed = SearchQuery(query)
         guard !parsed.isEmpty else { return [] }
+        let scope = options.scope
         return try queue.read { db in
-            let candidates = try Self.candidates(db, parsed)
+            let candidates = scope == .all || scope == .text ? try Self.candidates(db, parsed) : []
             let ranks = Self.textRanks(candidates)
             var bodies: [String: (headings: String, text: String)] = [:]
             if !candidates.isEmpty {
@@ -266,7 +270,7 @@ public final class SearchIndex: Sendable {
                     bodies[row["id"]] = (row["headings"], row["text"])
                 }
             }
-            let attachments = try Self.attachmentCandidates(db, parsed)
+            let attachments = scope == .all || scope == .files ? try Self.attachmentCandidates(db, parsed) : [:]
             let pages = try Row.fetchAll(db, sql: "SELECT id, title, titlePinyin, icon, updatedAt FROM page")
             let scored: [(row: Row, text: String, attachment: AttachmentRow?, score: Int)] = pages.compactMap { row in
                 let id: String = row["id"]
@@ -276,19 +280,24 @@ public final class SearchIndex: Sendable {
                     title: row["title"], titlePinyin: row["titlePinyin"], headings: body?.headings ?? "",
                     text: body?.text ?? "", attachmentText: attachment?.text ?? "", updatedAt: row["updatedAt"],
                     textRank: ranks[id] ?? 0)
-                guard let score = SearchRanker.score(parsed, page, now: now) else { return nil }
+                guard let score = SearchRanker.score(parsed, page, scope: scope, now: now) else { return nil }
                 return (row, body?.text ?? "", attachment, score)
             }
             return
                 scored
                 .sorted {
-                    $0.score != $1.score ? $0.score > $1.score : ($0.row["updatedAt"] as Date) > ($1.row["updatedAt"] as Date)
+                    let (a, b) = ($0.row["updatedAt"] as Date, $1.row["updatedAt"] as Date)
+                    switch options.sort {
+                    case .relevance: return $0.score != $1.score ? $0.score > $1.score : a > b
+                    case .edited: return a != b ? a > b : $0.score > $1.score
+                    }
                 }
                 .prefix(limit)
                 .map { hit in
-                    var snippet = SearchRanker.snippet(of: hit.text, terms: parsed.terms)
+                    // Titles show no excerpt (the title is the match); files show the file's.
+                    var snippet = scope == .titles || scope == .files ? "" : SearchRanker.snippet(of: hit.text, terms: parsed.terms)
                     var attachment: SearchHit.Attachment?
-                    if snippet.isEmpty, let found = hit.attachment {
+                    if snippet.isEmpty, scope != .titles, let found = hit.attachment {
                         snippet = SearchRanker.snippet(of: found.text, terms: parsed.terms)
                         attachment = SearchHit.Attachment(name: found.name, label: found.label)
                     }

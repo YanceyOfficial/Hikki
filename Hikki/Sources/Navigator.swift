@@ -30,6 +30,13 @@ struct ExportRequest: Equatable, Identifiable {
     var id: String { "\(pageID).\(format.rawValue)" }
 }
 
+/// Files dropped on the sidebar: imported at the top level, or as children of the page row they were dropped on.
+struct ImportDrop: Equatable, Identifiable {
+    let id = UUID()
+    let urls: [URL]
+    let parentID: String?
+}
+
 struct TitleFocusRequest: Equatable {
     let pageID: String
     let serial: Int
@@ -62,6 +69,8 @@ final class Navigator {
     var exportRequest: ExportRequest?
     /// File → Import… / the workspace menu: the file picker is up.
     var isImporting = false
+    /// Files dropped on the sidebar, waiting for ContentView (which has the editor that converts them) to import.
+    var importDrop: ImportDrop?
     /// Split view (Mac/iPad): the window shows a second pane beside the current tab.
     private(set) var isSplit = false
     /// What the second pane shows — a page or a file; nil while it offers a picker.

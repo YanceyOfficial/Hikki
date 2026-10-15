@@ -545,6 +545,40 @@
         }
       }
     },
+    "app:ai.model.auto.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Balanced"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "均衡"
+          }
+        }
+      }
+    },
+    "app:ai.model.favorites": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Favorites"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收藏"
+          }
+        }
+      }
+    },
     "app:ai.model.other": {
       "extractionState": "manual",
       "localizations": {
@@ -575,6 +609,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "推荐"
+          }
+        }
+      }
+    },
+    "app:ai.model.star": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add to Favorites"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加入收藏"
+          }
+        }
+      }
+    },
+    "app:ai.model.unstar": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove from Favorites"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移出收藏"
           }
         }
       }
@@ -1952,6 +2020,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "页面历史"
+          }
+        }
+      }
+    },
+    "app:history.titleChanged": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Title changed"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标题已更改"
           }
         }
       }
@@ -3907,6 +3992,125 @@
           "stringUnit": {
             "state": "translated",
             "value": "意思相近"
+          }
+        }
+      }
+    },
+    "app:search.scope.all": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部"
+          }
+        }
+      }
+    },
+    "app:search.scope.files": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Files"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文件"
+          }
+        }
+      }
+    },
+    "app:search.scope.text": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Text"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正文"
+          }
+        }
+      }
+    },
+    "app:search.scope.titles": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Titles"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标题"
+          }
+        }
+      }
+    },
+    "app:search.sort": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sort"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "排序"
+          }
+        }
+      }
+    },
+    "app:search.sort.edited": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last edited"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近编辑"
+          }
+        }
+      }
+    },
+    "app:search.sort.relevance": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Best match"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最佳匹配"
           }
         }
       }

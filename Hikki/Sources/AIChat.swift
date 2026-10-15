@@ -745,38 +745,30 @@ private struct ChipStyle: ViewModifier {
     }
 }
 
-/// Notion's model menu: Auto, the recommended models, then the rest under "Other models".
+/// Notion's model menu (`AIModelButton`): Auto, the starred models, the recommended ones, then the rest under "Other
+/// models". The pick is also the default (Settings → AI), so the page's own Ask AI runs on the same model; a change
+/// made in Settings reaches the open chat.
 struct AIModelMenu: View {
     @Bindable var chat: AIChat
+    @AppStorage(AIPreferences.modelKey) private var defaultModel = AIModelCatalog.autoID
 
     var body: some View {
-        Menu {
-            Picker(selection: $chat.modelChoice) {
-                Text("app:ai.model.auto").tag(AIModelCatalog.autoID)
-                Section("app:ai.model.recommended") {
-                    ForEach(AIModelCatalog.recommended) { Text(verbatim: $0.displayName).tag($0.id) }
-                }
-                Section("app:ai.model.other") {
-                    ForEach(AIModelCatalog.others) { Text(verbatim: $0.displayName).tag($0.id) }
-                }
-            } label: {
-                EmptyView()
-            }
-            .pickerStyle(.inline)
-        } label: {
-            Text(modelName).font(.hk(.sm))
+        AIModelButton(selection: choice) {
+            Text(AIPreferences.modelName(chat.modelChoice)).font(.hk(.sm))
         }
         // Quiet text in the composer's row, not a button of its own.
-        .menuStyle(.button)
-        .buttonStyle(.borderless)
-        .tint(Theme.subtleForeground)
         .fixedSize()
         .accessibilityIdentifier("ai-chat-model")
+        .onChange(of: defaultModel) { _, model in chat.modelChoice = model }
     }
 
-    private var modelName: LocalizedStringKey {
-        if let model = AIModelCatalog.model(id: chat.modelChoice) { return "\(model.displayName)" }
-        return "app:ai.model.auto"
+    private var choice: Binding<String> {
+        Binding(
+            get: { chat.modelChoice },
+            set: { model in
+                chat.modelChoice = model
+                defaultModel = model
+            })
     }
 }
 

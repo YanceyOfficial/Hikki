@@ -83,6 +83,27 @@ struct SearchRankerTests {
         #expect(score("roadmap", title: "Notes", text: "nothing", attachmentText: "nothing") == nil)
     }
 
+    @Test func aScopeOnlyCountsMatchesWhereItLooks() throws {
+        func scoped(_ scope: SearchScope, _ page: SearchRanker.Page) -> Int? {
+            SearchRanker.score(SearchQuery("roadmap"), page, scope: scope, now: now)
+        }
+        let inTitle = SearchRanker.Page(title: "Roadmap", text: "nothing", textRank: 40)
+        let inText = SearchRanker.Page(title: "Notes", headings: "Roadmap", text: "the roadmap", textRank: 40)
+        let inFile = SearchRanker.Page(title: "Notes", attachmentText: "roadmap")
+        #expect(scoped(.titles, inTitle) != nil)
+        #expect(scoped(.titles, inText) == nil)
+        #expect(scoped(.titles, inFile) == nil)
+        #expect(scoped(.text, inTitle) == nil)
+        #expect(scoped(.text, inText) != nil)
+        #expect(scoped(.text, inFile) == nil)
+        #expect(scoped(.files, inTitle) == nil)
+        #expect(scoped(.files, inText) == nil)
+        #expect(scoped(.files, inFile) != nil)
+        // A page matching in its title and its text scores only the text part under Text.
+        let both = SearchRanker.Page(title: "Roadmap", text: "the roadmap")
+        #expect(try #require(scoped(.text, both)) < (try #require(scoped(.all, both))))
+    }
+
     @Test func everyTermCountsAndTheIndexOrderBreaksTies() throws {
         let both = try #require(score("roadmap friday", text: "the roadmap is due friday"))
         let one = try #require(score("roadmap friday", text: "the roadmap is due monday"))

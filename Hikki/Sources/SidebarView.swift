@@ -22,7 +22,8 @@ struct SidebarView: View {
 // MARK: - Mac / iPad
 
 /// Drop handling for one sidebar row: tracks the pointer to show before / inside / after, and
-/// moves the dragged page on drop (validity comes from `PageTree.destination`).
+/// moves the dragged page on drop (validity comes from `PageTree.destination`). Files dragged in from outside
+/// (`SidebarFileDrop`) import as the page's children, the row tinted as for "inside".
 private struct PageRowDropDelegate: DropDelegate {
     let target: String
     let navigator: Navigator
@@ -34,9 +35,13 @@ private struct PageRowDropDelegate: DropDelegate {
         return model.tree.destination(dropping: dragged, onto: target, zone: zone) == nil ? nil : zone
     }
 
-    func validateDrop(info: DropInfo) -> Bool { zone(info) != nil }
+    func validateDrop(info: DropInfo) -> Bool { SidebarFileDrop.carriesFiles(info) || zone(info) != nil }
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
+        if SidebarFileDrop.carriesFiles(info) {
+            navigator.dropIndicator = (target, .inside)
+            return DropProposal(operation: .copy)
+        }
         if let zone = zone(info) {
             navigator.dropIndicator = (target, zone)
             return DropProposal(operation: .move)
@@ -54,6 +59,7 @@ private struct PageRowDropDelegate: DropDelegate {
             navigator.dropIndicator = nil
             navigator.draggingPageID = nil
         }
+        if SidebarFileDrop.carriesFiles(info) { return SidebarFileDrop.perform(info, parent: target, navigator: navigator) }
         guard let dragged = navigator.draggingPageID, let zone = zone(info) else { return false }
         let moved = model.movePage(dragged, onto: target, zone: zone)
         if moved, zone == .inside { navigator.expanded.insert(target) }
@@ -61,13 +67,14 @@ private struct PageRowDropDelegate: DropDelegate {
     }
 }
 
-/// Drop onto the gap above the page tree: move the dragged page to the end of the top level.
+/// Drop onto the gap above the page tree: move the dragged page to the end of the top level (files dropped there
+/// import at the top level).
 private struct SectionDropDelegate: DropDelegate {
     let navigator: Navigator
     let model: AppModel
     @Binding var isTargeted: Bool
 
-    func validateDrop(info: DropInfo) -> Bool { navigator.draggingPageID != nil }
+    func validateDrop(info: DropInfo) -> Bool { navigator.draggingPageID != nil || SidebarFileDrop.carriesFiles(info) }
     func dropEntered(info: DropInfo) { isTargeted = true }
     func dropExited(info: DropInfo) { isTargeted = false }
 
@@ -77,6 +84,7 @@ private struct SectionDropDelegate: DropDelegate {
             navigator.draggingPageID = nil
             navigator.dropIndicator = nil
         }
+        if SidebarFileDrop.carriesFiles(info) { return SidebarFileDrop.perform(info, parent: nil, navigator: navigator) }
         guard let dragged = navigator.draggingPageID else { return false }
         return model.movePageToTopLevel(dragged)
     }
@@ -125,6 +133,8 @@ private struct PhoneSidebar: View {
     @Bindable var navigator: Navigator
     let wideSidebar: Bool
     @State private var privateTargeted = false
+    /// Files from outside are over the sidebar (not over a row): it is outlined in the colour tone.
+    @State private var filesTargeted = false
     @Environment(\.colorTone) private var colorTone
 
     var body: some View {
@@ -139,6 +149,17 @@ private struct PhoneSidebar: View {
                         .padding(.vertical, Spacing.s1)
                 }
                 .scrollIndicators(.never)
+                .overlay {
+                    if filesTargeted {
+                        RoundedRectangle(cornerRadius: Radius.lg)
+                            .fill(colorTone.selectionFill.opacity(0.35))
+                            .strokeBorder(colorTone.fill.opacity(0.7), lineWidth: 2)
+                            .padding(Spacing.s2)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .animation(Motion.easeOut(), value: filesTargeted)
+                .onDrop(of: SidebarFileDrop.types, delegate: SidebarFileDropDelegate(navigator: navigator, isTargeted: $filesTargeted))
             } else {
                 List(selection: $navigator.sidebarSelection) { sections }
                     .listStyle(.sidebar)
@@ -245,7 +266,8 @@ private struct PhoneSidebar: View {
                 .background(privateTargeted ? colorTone.selectionFill : .clear, in: .rect(cornerRadius: Radius.md))
                 .contentShape(.rect)
                 .onDrop(
-                    of: [.plainText], delegate: SectionDropDelegate(navigator: navigator, model: model, isTargeted: $privateTargeted))
+                    of: [.plainText] + SidebarFileDrop.types,
+                    delegate: SectionDropDelegate(navigator: navigator, model: model, isTargeted: $privateTargeted))
         }
     }
 
@@ -408,7 +430,10 @@ private struct PageRowDragDrop: ViewModifier {
                 .overlay(RoundedRectangle(cornerRadius: Radius.lg).strokeBorder(Theme.border, lineWidth: 1))
                 .clipShape(.rect(cornerRadius: Radius.lg))
             }
-            .onDrop(of: [.plainText], delegate: PageRowDropDelegate(target: page.id, navigator: navigator, model: model))
+            .onDrop(
+                of: [.plainText] + SidebarFileDrop.types,
+                delegate: PageRowDropDelegate(target: page.id, navigator: navigator, model: model)
+            )
             // Outline level for VoiceOver (and UI tests): "level 1" at the top, +1 per nesting.
             .accessibilityValue("level \(depth + 1)")
     }

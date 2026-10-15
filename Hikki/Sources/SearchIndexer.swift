@@ -37,8 +37,8 @@ nonisolated final class SearchIndexer: Sendable {
         queue.async { [self] in reconcile() }
     }
 
-    func search(_ query: String, queryVector: [Float]? = nil) throws -> [SearchHit] {
-        try index.search(query, queryVector: queryVector)
+    func search(_ query: String, queryVector: [Float]? = nil, options: SearchOptions = .standard) throws -> [SearchHit] {
+        try index.search(query, queryVector: queryVector, options: options)
     }
 
     /// Settings → Spotlight: on pushes every page, off empties Spotlight.
