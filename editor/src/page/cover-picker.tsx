@@ -51,11 +51,11 @@ export function CoverPicker({ current, onSelect, onRemove, onUpload }: Props) {
         className="grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-2 p-3"
       >
         {GRADIENTS.map((g) => (
-          <button
+          <Button
             key={g.id}
-            type="button"
+            variant="ghost"
             className={cn(
-              'h-14 cursor-pointer rounded-sm shadow-[inset_0_0_0_1px_var(--color-border)] hover:opacity-85',
+              'h-14 w-full cursor-pointer rounded-sm p-0 shadow-[inset_0_0_0_1px_var(--color-border)] hover:opacity-85',
               current === gradientCover(g.id) && 'outline-2 outline-offset-2 outline-primary'
             )}
             aria-label={g.label()}
@@ -109,7 +109,7 @@ function UploadPane({ onUpload }: { onUpload: Props['onUpload'] }) {
       </Button>
       <p className="m-0 text-xs text-muted-foreground">{t('cover.uploadHint')}</p>
       {failed && <p className="m-0 text-xs text-destructive">{t('cover.uploadFailed')}</p>}
-      <input
+      <Input
         ref={input}
         type="file"
         accept={ACCEPTED}
@@ -209,9 +209,9 @@ function UnsplashPane({ onSelect }: { onSelect: Props['onSelect'] }) {
           ))}
         {photos?.map((photo) => (
           <figure key={photo.id} className="m-0 flex min-w-0 flex-col gap-1">
-            <button
-              type="button"
-              className="aspect-[16/10] cursor-pointer overflow-hidden rounded-sm bg-muted hover:opacity-85"
+            <Button
+              variant="ghost"
+              className="aspect-[16/10] h-auto w-full cursor-pointer overflow-hidden rounded-sm bg-muted p-0 hover:bg-muted hover:opacity-85 dark:hover:bg-muted"
               style={{ backgroundColor: photo.color ?? undefined }}
               onClick={() => {
                 trackUnsplashDownload(photo)
@@ -220,7 +220,7 @@ function UnsplashPane({ onSelect }: { onSelect: Props['onSelect'] }) {
               aria-label={photo.alt ?? t('cover.photoBy', { name: photo.author })}
             >
               <LazyLoadImage src={photo.thumb} alt="" />
-            </button>
+            </Button>
             <PhotoCredit photo={photo} />
           </figure>
         ))}

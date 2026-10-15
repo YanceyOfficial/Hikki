@@ -1,11 +1,14 @@
 import { cn } from 'cn'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
+import { Button } from '@/components/ui/button'
+
 import { BLOCK_GROUPS, type BlockGroup, type BlockType } from '../core/blocks'
 import { t } from '../core/i18n'
 import { BlockPreview } from './block-preview'
 import type { FloatingAnchor, FloatingLayer } from './floating'
 import { GlidingHighlight } from './gliding-highlight'
+import { MenuRow } from './menu-row'
 
 type Props = {
   items: BlockType[]
@@ -72,14 +75,14 @@ export function SlashMenu({ items, query, selectedIndex, onSelect, onHover, onCl
     const i = index
     const Icon = item.icon
     return (
-      <button
+      <MenuRow
         key={item.id}
-        type="button"
+        glide
         role="option"
         aria-selected={i === selectedIndex}
         aria-label={item.label()}
         data-index={i}
-        className="relative flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 text-left text-sm select-none coarse:h-11"
+        className="coarse:h-11"
         // Keep editor focus (and the iOS keyboard) when tapping an item.
         onMouseDown={(e) => e.preventDefault()}
         onMouseMove={() => i !== selectedIndex && onHover(i)}
@@ -90,7 +93,7 @@ export function SlashMenu({ items, query, selectedIndex, onSelect, onHover, onCl
         {item.shortcut && (
           <span className="flex-none font-mono text-xs text-placeholder">{item.shortcut}</span>
         )}
-      </button>
+      </MenuRow>
     )
   }
 
@@ -126,15 +129,15 @@ export function SlashMenu({ items, query, selectedIndex, onSelect, onHover, onCl
             items.map(row)
           )}
         </div>
-        <button
-          type="button"
-          className="flex h-9 flex-none cursor-pointer items-center justify-between border-t border-border px-3 text-sm text-muted-foreground transition-colors duration-(--motion-pop-out) ease-out hover:bg-accent coarse:hidden"
+        <Button
+          variant="ghost"
+          className="h-9 w-full flex-none cursor-pointer justify-between rounded-none border-t border-border px-3 font-normal text-muted-foreground hover:bg-accent hover:text-muted-foreground active:not-aria-[haspopup]:scale-100 dark:hover:bg-accent coarse:hidden"
           onMouseDown={(e) => e.preventDefault()}
           onClick={onClose}
         >
           <span>{t('slash.close')}</span>
           <span className="text-xs text-placeholder">esc</span>
-        </button>
+        </Button>
       </div>
       {selected && previewReady && (
         <div

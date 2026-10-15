@@ -110,17 +110,17 @@ export function EmojiPickerPanel({ onSelect, onRemove, onRandom, locale: localeP
       {categories && !query && (
         <div className="flex justify-between border-b border-border px-2.5 pb-1.5" role="tablist">
           {categories.map((c) => (
-            <button
+            <Button
               key={c.key}
-              type="button"
+              variant="ghost"
               role="tab"
-              className="grid h-6.5 w-7 cursor-pointer place-items-center rounded-md font-emoji text-sm opacity-70 grayscale hover:bg-accent hover:opacity-100 hover:grayscale-0"
+              className="h-6.5 w-7 cursor-pointer rounded-md p-0 font-emoji text-sm font-normal opacity-70 grayscale hover:bg-accent hover:opacity-100 hover:grayscale-0 dark:hover:bg-accent"
               title={c.label}
               aria-label={c.label}
               onClick={() => jump(c.key)}
             >
               {c.emojis[0]?.emoji}
-            </button>
+            </Button>
           ))}
         </div>
       )}
@@ -174,7 +174,9 @@ function EmojiGrid({
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(34px,1fr))]">
       {emojis.map((e) => (
-        <button
+        // One cell per emoji, about 1,900 of them: a plain button each (a Base UI Button per cell is hooks × 1,900
+        // on every open); the look is the ghost Button's.
+        <button // design-lint: allow
           key={e.emoji}
           type="button"
           className="hk-emoji grid aspect-square cursor-pointer place-items-center rounded-md font-emoji text-2xl leading-none hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"

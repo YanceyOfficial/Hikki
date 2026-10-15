@@ -1,7 +1,6 @@
 import {
   ArrowsClockwiseIcon,
   CaretRightIcon,
-  CheckIcon,
   CopyIcon,
   LinkSimpleIcon,
   PaintBrushIcon,
@@ -15,7 +14,6 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 
 import { Input } from '@/components/ui/input'
 
-import { BLOCK_TYPES } from '../core/blocks'
 import { t } from '../core/i18n'
 import { shortcutLabel } from '../core/shortcuts'
 import type { AIAction } from '../extensions/ai-review'
@@ -29,14 +27,15 @@ import {
   type BlockUnit,
   type Followed
 } from '../extensions/block-units'
-import { BLOCK_COLOR_TYPES, colorLabel, PALETTE, type PaletteColor } from '../extensions/colors'
+import { BLOCK_COLOR_TYPES, type PaletteColor } from '../extensions/colors'
 import { blockLabel, copyLink } from '../extensions/page-links'
 import { AIPanel } from './ai-panel'
+import { BlockTypeList, TURN_INTO } from './block-type-list'
+import { ColorList } from './color-list'
 import { FloatingLayer, usePresence } from './floating'
 import { GlidingHighlight } from './gliding-highlight'
 import { IconProvider } from './icons'
-
-const TURN_INTO = BLOCK_TYPES.filter((b) => b.turnInto)
+import { MenuRow } from './menu-row'
 
 let open: { layer: FloatingLayer; close: () => void } | null = null
 
@@ -155,6 +154,14 @@ function BlockMenu({
     })
     return () => onEscape(null)
   }, [onEscape, submenu])
+
+  /** Colours the block where it is now. */
+  const paint = (attrs: Record<string, PaletteColor | null>) =>
+    act((now) =>
+      editor.view.dispatch(
+        editor.state.tr.setNodeMarkup(now.pos, undefined, { ...now.node.attrs, ...attrs })
+      )
+    )()
 
   /** Runs on the block where it is now (the menu closed itself if it is gone), then closes. */
   const act = (run: (unit: BlockUnit) => void) => () => {
@@ -304,15 +311,15 @@ function BlockMenu({
             <div className="px-2 py-1.5 text-sm text-muted-foreground">{t('editor.noResults')}</div>
           )}
           {visible.map((item, i) => (
-            <button
+            <MenuRow
               key={item.id}
-              type="button"
+              glide
               role="menuitem"
               aria-haspopup={item.submenu ? 'menu' : undefined}
               aria-expanded={item.submenu ? submenu === item.submenu : undefined}
               data-index={i}
               className={cn(
-                'relative flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 text-left text-sm select-none [&_svg]:text-subtle-foreground',
+                '[&_svg]:text-subtle-foreground',
                 item.destructive && 'text-destructive [&_svg]:text-destructive'
               )}
               onMouseMove={() => {
@@ -328,7 +335,7 @@ function BlockMenu({
               <span className="flex-1 truncate">{item.label}</span>
               {item.keys && <span className="text-xs text-placeholder">{item.keys}</span>}
               {item.submenu && <CaretRightIcon size={14} aria-hidden />}
-            </button>
+            </MenuRow>
           ))}
         </div>
       </div>
@@ -345,25 +352,19 @@ function BlockMenu({
             </div>
           )}
           {shownSubmenu === 'turnInto' && (
-            <TurnIntoList
-              editor={editor}
-              unit={unit}
-              onPick={(id) => act((now) => turnUnitInto(editor, now, id))()}
+            <BlockTypeList
+              title={t('blockMenu.turnInto')}
+              current={unitTypeId(editor, unit)}
+              onPick={(block) => act((now) => turnUnitInto(editor, now, block.id))()}
             />
           )}
           {shownSubmenu === 'color' && (
             <ColorList
-              unit={unit}
-              onPick={(attrs) =>
-                act((now) =>
-                  editor.view.dispatch(
-                    editor.state.tr.setNodeMarkup(now.pos, undefined, {
-                      ...now.node.attrs,
-                      ...attrs
-                    })
-                  )
-                )()
-              }
+              kind="block"
+              text={unit.node.attrs.blockColor as PaletteColor | null}
+              background={unit.node.attrs.blockBackground as PaletteColor | null}
+              onText={(color) => paint({ blockColor: color })}
+              onBackground={(color) => paint({ blockBackground: color })}
             />
           )}
         </div>
@@ -414,114 +415,4 @@ function turnUnitInto(editor: Editor, unit: BlockUnit, id: string) {
   withCaretIn(editor, unit)
   block.turnInto?.(editor.chain().focus()).run()
   block.after?.(editor)
-}
-
-function TurnIntoList({
-  editor,
-  unit,
-  onPick
-}: {
-  editor: Editor
-  unit: BlockUnit
-  onPick: (id: string) => void
-}) {
-  const current = unitTypeId(editor, unit)
-  return (
-    <>
-      <div className="px-2 pt-1.5 pb-1 text-xs font-medium text-muted-foreground">
-        {t('blockMenu.turnInto')}
-      </div>
-      {TURN_INTO.map((block) => (
-        <button
-          key={block.id}
-          type="button"
-          role="menuitemradio"
-          aria-checked={block.id === current}
-          className="flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 text-left text-sm transition-colors duration-(--motion-pop-out) ease-out hover:bg-accent"
-          onClick={() => onPick(block.id)}
-        >
-          <block.icon size={18} className="text-subtle-foreground" aria-hidden />
-          <span className="flex-1 truncate">{block.label()}</span>
-          {block.id === current && <CheckIcon size={14} aria-hidden />}
-        </button>
-      ))}
-    </>
-  )
-}
-
-function ColorRow({
-  label,
-  checked,
-  onClick,
-  children
-}: {
-  label: string
-  checked: boolean
-  onClick: () => void
-  children: ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      role="menuitemradio"
-      aria-checked={checked}
-      className="flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-1 text-left text-sm hover:bg-accent"
-      onClick={onClick}
-    >
-      {children}
-      <span className="flex-1 truncate">{label}</span>
-      {checked && <CheckIcon size={14} aria-hidden />}
-    </button>
-  )
-}
-
-function ColorList({
-  unit,
-  onPick
-}: {
-  unit: BlockUnit
-  onPick: (attrs: Record<string, PaletteColor | null>) => void
-}) {
-  const set = onPick
-  const text = unit.node.attrs.blockColor as PaletteColor | null
-  const background = unit.node.attrs.blockBackground as PaletteColor | null
-  return (
-    <>
-      <div className="px-2 pt-1.5 pb-1 text-xs font-medium text-muted-foreground">
-        {t('color.text')}
-      </div>
-      {[null, ...PALETTE].map((color) => (
-        <ColorRow
-          key={`t-${color}`}
-          label={colorLabel(color)}
-          checked={text === color}
-          onClick={() => set({ blockColor: color })}
-        >
-          <span
-            className="grid size-5 place-items-center rounded-[5px] border border-border text-xs font-semibold"
-            data-text-color={color ?? undefined}
-          >
-            A
-          </span>
-        </ColorRow>
-      ))}
-      <div className="mx-1 my-1 h-px bg-border" />
-      <div className="px-2 pt-1.5 pb-1 text-xs font-medium text-muted-foreground">
-        {t('color.background')}
-      </div>
-      {[null, ...PALETTE].map((color) => (
-        <ColorRow
-          key={`b-${color}`}
-          label={colorLabel(color)}
-          checked={background === color}
-          onClick={() => set({ blockBackground: color })}
-        >
-          <span
-            className="size-5 rounded-[5px] border border-border"
-            data-block-bg={color ?? undefined}
-          />
-        </ColorRow>
-      ))}
-    </>
-  )
 }

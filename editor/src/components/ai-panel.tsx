@@ -10,7 +10,7 @@ import {
 
 import { t } from '../core/i18n'
 import type { AIAction } from '../extensions/ai-review'
-import { PanelTitle, rowClass } from './selection-menu'
+import { MenuRow, MenuTitle } from './menu-row'
 
 /** The AI actions: what the user types, then presets (edits replace the selection after review; Ask explains it). */
 const AI_GROUPS: { label: () => string; actions: { id: string; label: () => string }[] }[] = [
@@ -103,18 +103,16 @@ export function AIPanel({
       </div>
       {AI_GROUPS.map((group) => (
         <div key={group.actions[0].id}>
-          <PanelTitle>{group.label()}</PanelTitle>
+          <MenuTitle>{group.label()}</MenuTitle>
           {group.actions.map((action) => (
-            <button
+            <MenuRow
               key={action.id}
-              type="button"
               role="menuitem"
-              className={rowClass}
               data-testid={`ai-action-${action.id}`}
               onClick={() => onRun({ id: action.id })}
             >
               <span className="flex-1 truncate">{action.label()}</span>
-            </button>
+            </MenuRow>
           ))}
         </div>
       ))}

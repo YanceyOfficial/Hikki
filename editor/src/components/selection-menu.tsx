@@ -1,7 +1,6 @@
 import {
   CaretRightIcon,
   ChatTeardropTextIcon,
-  CheckIcon,
   CodeIcon,
   DotsThreeIcon,
   EraserIcon,
@@ -19,7 +18,7 @@ import {
 } from '@phosphor-icons/react'
 import type { Editor } from '@tiptap/core'
 import { cn } from 'cn'
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { Root } from 'react-dom/client'
 
 import { Button } from '@/components/ui/button'
@@ -28,19 +27,19 @@ import { Kbd } from '@/components/ui/kbd'
 import { Toggle } from '@/components/ui/toggle'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
-import { BLOCK_TYPES } from '../core/blocks'
 import { t } from '../core/i18n'
 import { isSafeHref, normalizeHref } from '../core/links'
 import { shortcutLabel } from '../core/shortcuts'
-import { colorLabel, PALETTE, type PaletteColor } from '../extensions/colors'
+import type { PaletteColor } from '../extensions/colors'
 import { useEditorSnapshot } from '../hooks/use-editor-snapshot'
 import { AIPanel } from './ai-panel'
+import { BlockTypeList, TURN_INTO } from './block-type-list'
+import { ColorList, ColorSwatch } from './color-list'
 import { usePresence } from './floating'
 import { IconProvider } from './icons'
+import { MenuRow } from './menu-row'
 
 type Panel = 'ai' | 'turnInto' | 'color' | 'link' | 'more' | null
-
-const TURN_INTO = BLOCK_TYPES.filter((b) => b.turnInto)
 
 /**
  * What the menu shows; recomputed per transaction, re-rendered only on change. The selection counts only
@@ -116,9 +115,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
         aria-label={t('format.menu')}
         className="hk-pop w-[224px] rounded-xl bg-popover p-1 text-popover-foreground shadow-popover"
       >
-        <button
-          type="button"
-          className={cn(rowClass, panel === 'ai' && 'bg-accent')}
+        <MenuRow
           aria-haspopup="menu"
           aria-expanded={panel === 'ai'}
           data-testid="selection-menu-ask-ai"
@@ -131,10 +128,8 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
           <SparkleIcon size={18} weight="fill" className="text-primary" aria-hidden />
           <span className="flex-1 truncate">{t('ai.menu')}</span>
           <CaretRightIcon size={14} className="text-muted-foreground" aria-hidden />
-        </button>
-        <button
-          type="button"
-          className={rowClass}
+        </MenuRow>
+        <MenuRow
           data-testid="selection-menu-comment"
           onMouseEnter={() => {
             if (panel === 'ai' || panel === 'turnInto') setPanel(null)
@@ -144,10 +139,8 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
           <ChatTeardropTextIcon size={18} className="text-subtle-foreground" aria-hidden />
           <span className="flex-1 truncate">{t('comments.menu')}</span>
           <span className="text-xs text-placeholder">{shortcutLabel('comment')}</span>
-        </button>
-        <button
-          type="button"
-          className={cn(rowClass, panel === 'turnInto' && 'bg-accent')}
+        </MenuRow>
+        <MenuRow
           aria-haspopup="menu"
           aria-expanded={panel === 'turnInto'}
           onMouseEnter={() => hover('turnInto')}
@@ -156,7 +149,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
           <CurrentIcon size={18} className="text-subtle-foreground" aria-hidden />
           <span className="flex-1 truncate">{current.label()}</span>
           <CaretRightIcon size={14} className="text-muted-foreground" aria-hidden />
-        </button>
+        </MenuRow>
         <div className="mx-1 my-1 h-px bg-border" />
         <div
           className="grid grid-cols-5 gap-0.5"
@@ -262,59 +255,39 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
           )}
           {shownPanel === 'turnInto' && (
             <div role="menu" aria-label={t('format.turnInto')}>
-              <PanelTitle>{t('format.turnInto')}</PanelTitle>
-              {TURN_INTO.map((block) => {
-                const BlockIcon = block.icon
-                const active = block.id === state.block
-                return (
-                  <button
-                    key={block.id}
-                    type="button"
-                    role="menuitemradio"
-                    aria-checked={active}
-                    className={rowClass}
-                    onClick={() => {
-                      block.turnInto?.(editor.chain().focus()).run()
-                      block.after?.(editor)
-                      setPanel(null)
-                    }}
-                  >
-                    <BlockIcon size={18} className="text-subtle-foreground" aria-hidden />
-                    <span className="flex-1 truncate">{block.label()}</span>
-                    {active && <CheckIcon size={14} aria-hidden />}
-                  </button>
-                )
-              })}
+              <BlockTypeList
+                title={t('format.turnInto')}
+                current={state.block}
+                onPick={(block) => {
+                  block.turnInto?.(editor.chain().focus()).run()
+                  block.after?.(editor)
+                  setPanel(null)
+                }}
+              />
             </div>
           )}
           {shownPanel === 'more' && (
             <div role="menu" aria-label={t('format.more')}>
-              <button
-                type="button"
+              <MenuRow
                 role="menuitemcheckbox"
                 aria-checked={state.superscript}
-                className={rowClass}
                 onClick={() => run((c) => c.toggleSuperscript())}
               >
                 <TextSuperscriptIcon size={18} className="text-subtle-foreground" aria-hidden />
                 <span className="flex-1 truncate">{t('format.superscript')}</span>
                 <span className="text-xs text-placeholder">{shortcutLabel('superscript')}</span>
-              </button>
-              <button
-                type="button"
+              </MenuRow>
+              <MenuRow
                 role="menuitemcheckbox"
                 aria-checked={state.subscript}
-                className={rowClass}
                 onClick={() => run((c) => c.toggleSubscript())}
               >
                 <TextSubscriptIcon size={18} className="text-subtle-foreground" aria-hidden />
                 <span className="flex-1 truncate">{t('format.subscript')}</span>
                 <span className="text-xs text-placeholder">{shortcutLabel('subscript')}</span>
-              </button>
-              <button
-                type="button"
+              </MenuRow>
+              <MenuRow
                 role="menuitem"
-                className={rowClass}
                 onClick={() => {
                   setPanel(null)
                   editor.commands.editRuby()
@@ -323,16 +296,19 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
                 <TextAaIcon size={18} className="text-subtle-foreground" aria-hidden />
                 <span className="flex-1 truncate">{t('format.ruby')}</span>
                 <span className="text-xs text-placeholder">{shortcutLabel('ruby')}</span>
-              </button>
+              </MenuRow>
             </div>
           )}
           {shownPanel === 'color' && (
-            <ColorPanel
-              textColor={state.textColor}
-              bgColor={state.bgColor}
-              onText={(color) => run((c) => c.setTextColor(color))}
-              onBackground={(color) => run((c) => c.setBackgroundColor(color))}
-            />
+            <div role="menu" aria-label={t('format.color')}>
+              <ColorList
+                kind="mark"
+                text={state.textColor}
+                background={state.bgColor}
+                onText={(color) => run((c) => c.setTextColor(color))}
+                onBackground={(color) => run((c) => c.setBackgroundColor(color))}
+              />
+            </div>
           )}
           {shownPanel === 'link' && (
             <LinkPanel
@@ -359,19 +335,10 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
   )
 }
 
-export const rowClass =
-  'flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 text-left text-sm select-none transition-colors duration-(--motion-pop-out) ease-out hover:bg-accent coarse:h-10'
-
 /** Buttons keep the editor's selection: no focus change on press (inputs are exempt). */
 function keepEditorFocus(event: React.MouseEvent) {
   const target = event.target as HTMLElement
   if (!target.closest('input')) event.preventDefault()
-}
-
-export function PanelTitle({ children }: { children: ReactNode }) {
-  return (
-    <div className="px-2 pt-1.5 pb-1 text-xs font-medium text-muted-foreground">{children}</div>
-  )
 }
 
 function MarkButton({
@@ -410,25 +377,6 @@ function MarkButton({
   )
 }
 
-/** The "A" swatch: shows the selection's current text and background color. */
-function Swatch({
-  text,
-  background
-}: {
-  text: PaletteColor | null
-  background: PaletteColor | null
-}) {
-  return (
-    <span
-      className="grid size-5 place-items-center rounded-[5px] border border-border text-xs font-semibold"
-      data-text-color={text ?? undefined}
-      data-bg-color={background ?? undefined}
-    >
-      A
-    </span>
-  )
-}
-
 function ColorButton({
   textColor,
   bgColor,
@@ -455,76 +403,10 @@ function ColorButton({
           />
         }
       >
-        <Swatch text={textColor} background={bgColor} />
+        <ColorSwatch text={textColor} background={bgColor} />
       </TooltipTrigger>
       <TooltipContent side="bottom">{t('format.color')}</TooltipContent>
     </Tooltip>
-  )
-}
-
-function ColorRow({
-  color,
-  selected,
-  onPick,
-  children
-}: {
-  color: PaletteColor | null
-  selected: boolean
-  onPick: () => void
-  children: ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      role="menuitemradio"
-      aria-checked={selected}
-      className={rowClass}
-      onClick={onPick}
-    >
-      {children}
-      <span className="flex-1 truncate">{color ? colorLabel(color) : t('color.default')}</span>
-      {selected && <CheckIcon size={14} aria-hidden />}
-    </button>
-  )
-}
-
-function ColorPanel({
-  textColor,
-  bgColor,
-  onText,
-  onBackground
-}: {
-  textColor: PaletteColor | null
-  bgColor: PaletteColor | null
-  onText: (color: PaletteColor | null) => void
-  onBackground: (color: PaletteColor | null) => void
-}) {
-  return (
-    <div role="menu" aria-label={t('format.color')}>
-      <PanelTitle>{t('color.text')}</PanelTitle>
-      {[null, ...PALETTE].map((color) => (
-        <ColorRow
-          key={`text-${color}`}
-          color={color}
-          selected={textColor === color}
-          onPick={() => onText(color)}
-        >
-          <Swatch text={color} background={null} />
-        </ColorRow>
-      ))}
-      <div className="mx-1 my-1 h-px bg-border" />
-      <PanelTitle>{t('color.background')}</PanelTitle>
-      {[null, ...PALETTE].map((color) => (
-        <ColorRow
-          key={`bg-${color}`}
-          color={color}
-          selected={bgColor === color}
-          onPick={() => onBackground(color)}
-        >
-          <Swatch text={null} background={color} />
-        </ColorRow>
-      ))}
-    </div>
   )
 }
 

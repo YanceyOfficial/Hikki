@@ -2,6 +2,7 @@ import { cn } from 'cn'
 import { useState } from 'react'
 import type { Root } from 'react-dom/client'
 
+import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 import { t } from '../core/i18n'
@@ -27,9 +28,9 @@ export function CalloutIcon({ icon, color, editable, onIcon, onColor }: Props) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={
-          <button
-            type="button"
-            className="grid size-7 cursor-pointer place-items-center rounded-md hover:bg-foreground/5"
+          <Button
+            variant="ghost"
+            className="size-7 cursor-pointer rounded-md p-0 hover:bg-foreground/5 dark:hover:bg-foreground/5"
             aria-label={t('callout.icon')}
           />
         }
@@ -49,19 +50,24 @@ export function CalloutIcon({ icon, color, editable, onIcon, onColor }: Props) {
           aria-label={t('callout.color')}
         >
           {[null, ...PALETTE].map((swatch) => (
-            <button
+            <Button
               key={swatch ?? 'default'}
-              type="button"
+              variant="ghost"
               role="radio"
               aria-checked={color === swatch}
               aria-label={colorLabel(swatch)}
-              data-bg-color={swatch ?? 'gray'}
               className={cn(
-                'size-5 cursor-pointer rounded-full border border-border',
+                'size-5 cursor-pointer rounded-full p-0',
                 color === swatch && 'ring-2 ring-ring'
               )}
               onClick={() => onColor(swatch)}
-            />
+            >
+              {/* The tint on its own surface: the button's hover never paints over it. */}
+              <span
+                className="size-full rounded-full border border-border"
+                data-bg-color={swatch ?? 'gray'}
+              />
+            </Button>
           ))}
         </div>
       </PopoverContent>
