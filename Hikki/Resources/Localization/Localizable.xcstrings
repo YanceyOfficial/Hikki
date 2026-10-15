@@ -75,13 +75,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ask anything"
+            "value": "Ask or do anything with AI…"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "问点什么"
+            "value": "让 AI 回答或帮你做点什么…"
           }
         }
       }
@@ -99,6 +99,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "不带这个页面提问"
+          }
+        }
+      }
+    },
+    "app:ai.chat.removeSelection": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ask without the selection"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不带选中内容提问"
           }
         }
       }

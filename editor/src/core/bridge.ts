@@ -79,6 +79,9 @@ const ACTIVE_LINE = 96
  * native shell. One editor instance per page: loadDocument() destroys and recreates it so undo
  * history never leaks between pages.
  */
+/** Longest selected text sent to the native side (Ask AI's context). */
+const SELECTION_LIMIT = 4000
+
 export class EditorBridge {
   readonly page = new Store<PageState>({
     docId: null,
@@ -102,6 +105,9 @@ export class EditorBridge {
   private dirty = false
   private lastActive = ''
   private pageInfoTimer: ReturnType<typeof setTimeout> | null = null
+  private selectionTimer: ReturnType<typeof setTimeout> | null = null
+  /** The last selected text sent (so a selection is reported once, and its clearing once). */
+  private sentSelection = ''
   /** Settings → Editor → Check spelling; applied to every page's editor. */
   private spellcheck = true
   private aiReviewStyle: AIReviewStyle = 'inline'
@@ -239,7 +245,10 @@ export class EditorBridge {
       this.updateActiveHeading()
       if (isUserEdit(transaction)) this.scheduleChanged()
     })
-    editor.on('selectionUpdate', () => this.reportActive())
+    editor.on('selectionUpdate', () => {
+      this.reportActive()
+      this.reportSelection()
+    })
     editor.on('transaction', () => this.reportActive())
     this.editor = editor
     this.page.set({
@@ -585,6 +594,23 @@ export class EditorBridge {
     }
     if (now) send()
     else this.pageInfoTimer = setTimeout(send, 300)
+  }
+
+  /** The selected text, for Ask AI's context — after the selection settles, only when it changed. */
+  private reportSelection(): void {
+    if (this.selectionTimer) clearTimeout(this.selectionTimer)
+    this.selectionTimer = setTimeout(() => {
+      const editor = this.editor
+      if (!editor) return
+      const { from, to, empty } = editor.state.selection
+      const text = empty
+        ? ''
+        : editor.state.doc.textBetween(from, to, '\n', ' ').trim().slice(0, SELECTION_LIMIT)
+      const docId = this.page.get().docId
+      if (text === this.sentSelection || !docId) return
+      this.sentSelection = text
+      void this.send({ type: 'selection', docId, text })
+    }, 200)
   }
 
   private requestTitleFocus(select = false): void {

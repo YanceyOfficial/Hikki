@@ -37,7 +37,22 @@ describe('EditorBridge', () => {
   })
 
   const changed = () => sent.filter((m) => m.type === 'changed')
+  const selections = () => sent.filter((m) => m.type === 'selection')
   const editor = () => (bridge as any).editor
+
+  it('reports the selected text once it settles, once per change, and its clearing', () => {
+    bridge.loadDocument(page('a', { content: doc('hello world') }))
+    editor().commands.setTextSelection({ from: 1, to: 6 })
+    editor().commands.setTextSelection({ from: 1, to: 4 })
+    vi.advanceTimersByTime(250)
+    expect(selections()).toEqual([{ type: 'selection', docId: 'a', text: 'hel' }])
+    editor().commands.setTextSelection({ from: 1, to: 4 })
+    vi.advanceTimersByTime(250)
+    expect(selections()).toHaveLength(1)
+    editor().commands.setTextSelection(3)
+    vi.advanceTimersByTime(250)
+    expect(selections().at(-1)).toEqual({ type: 'selection', docId: 'a', text: '' })
+  })
 
   it('loading a page does not emit a change and exposes header state', () => {
     bridge.loadDocument(

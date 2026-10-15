@@ -14,6 +14,8 @@ final class EditorController {
     private(set) var pageInfo: PageInfo?
     /// The heading the reader is in (block id), for the inspector's outline; nil above the first.
     private(set) var activeHeading: (docId: String, id: String?)?
+    /// The text selected in the page (Ask AI offers it as context); nil when nothing is.
+    private(set) var selection: EditorSelection?
 
     struct PageInfo: Equatable {
         var docId: String
@@ -550,6 +552,8 @@ final class EditorController {
             pageInfo = PageInfo(docId: docId, headings: headings, words: words, characters: characters)
         case .activeHeading(let docId, let id):
             activeHeading = (docId, id)
+        case .selection(let docId, let text):
+            selection = text.isEmpty ? nil : EditorSelection(docId: docId, text: text)
         case .scroll(let docId, let top):
             lastScroll = (docId, top)
         case .aiRequest(let payload):
@@ -804,4 +808,10 @@ private final class NavigationDelegate: NSObject, WKNavigationDelegate {
 extension Notification.Name {
     /// An editor saved a page (`userInfo["id"]`, the editor as `object`): another editor showing it reloads.
     static let pageSavedInEditor = Notification.Name("app.yancey.hikki.pageSavedInEditor")
+}
+
+/// Text selected in a page (`selection` bridge message).
+struct EditorSelection: Equatable {
+    let docId: String
+    let text: String
 }

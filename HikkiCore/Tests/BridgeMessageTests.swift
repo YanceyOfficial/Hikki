@@ -137,6 +137,7 @@ struct BridgeMessageTests {
         #expect(try decode(["type": "activeHeading", "docId": "p1", "id": "h2"]) == .activeHeading(docId: "p1", id: "h2"))
         #expect(try decode(["type": "scroll", "docId": "p1", "top": 840]) == .scroll(docId: "p1", top: 840))
         #expect(try decode(["type": "aiCancel", "id": "r1"]) == .aiCancel(id: "r1"))
+        #expect(try decode(["type": "selection", "docId": "p1", "text": "いいえ"]) == .selection(docId: "p1", text: "いいえ"))
         #expect(
             try decode([
                 "type": "aiRequest", "id": "r1", "action": "tone:casual", "answer": false, "explain": true,

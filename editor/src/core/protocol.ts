@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 19
+export const PROTOCOL_VERSION = 20
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -93,6 +93,8 @@ export type ToNativeMessage =
   | { type: 'aiCancel'; id: string }
   /** The heading the reader is in (scroll-spy) changed: the inspector's outline marks it; null above the first. */
   | { type: 'activeHeading'; docId: string; id: string | null }
+  /** The selected text (debounced; "" when nothing is): Ask AI offers it as context. Capped at 4000 characters. */
+  | { type: 'selection'; docId: string; text: string }
   | { type: 'log'; level: LogLevel; message: string; context?: Record<string, string> }
   /** Saved immediately (not debounced) — metadata has its own write path. */
   | { type: 'setIcon'; docId: string; icon: string | null }

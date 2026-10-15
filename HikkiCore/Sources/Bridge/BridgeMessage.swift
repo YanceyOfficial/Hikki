@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 19
+    public static let version = 20
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -52,6 +52,8 @@ public enum BridgeMessage: Sendable, Equatable {
     case pageInfo(docId: String, headings: [OutlineHeading], words: Int, characters: Int)
     /// The heading the reader is in changed (the page's scroll-spy); nil above the first heading.
     case activeHeading(docId: String, id: String?)
+    /// The selected text ("" when nothing is): Ask AI offers it as context.
+    case selection(docId: String, text: String)
     /// Where the page is scrolled (throttled), so a tab shown again gets its place back.
     case scroll(docId: String, top: Double)
     /// AI on the selection (see `AIRequestPayload`); replies go back through `window.hikki.aiEvent`.
@@ -164,6 +166,8 @@ extension BridgeMessage: Decodable {
             self = .aiRequest(try AIRequestPayload(from: decoder))
         case "aiCancel":
             self = .aiCancel(id: try c.decode(String.self, forKey: .id))
+        case "selection":
+            self = .selection(docId: try c.decode(String.self, forKey: .docId), text: try c.decode(String.self, forKey: .text))
         case "activeHeading":
             self = .activeHeading(docId: try c.decode(String.self, forKey: .docId), id: try c.decodeIfPresent(String.self, forKey: .id))
         case "pageInfo":

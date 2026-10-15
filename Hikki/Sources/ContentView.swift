@@ -107,6 +107,8 @@ struct ContentView: View {
         .animation(.snappy(duration: 0.18), value: navigator.isSearching)
         // Attachments opened from the editor.
         .quickLookPreview($editor.previewURL)
+        // The passage selected in the page (the main editor's) rides along to Ask AI as context, as in Notion.
+        .onChange(of: editor.selection) { _, selection in chat.selection = selection?.text }
         // "Open in Split View" wherever page actions are (sidebar, Home, ⋯): by the window's width, not a column's.
         .environment(\.splitAvailable, wide)
     }

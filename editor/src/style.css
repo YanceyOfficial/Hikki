@@ -917,8 +917,10 @@
   @apply fixed top-0 left-0 z-50 overflow-y-auto overscroll-contain rounded-xl bg-popover text-popover-foreground shadow-popover;
 }
 /* The page column: the header and the editor share its width and gutters. */
+/* The page's text column: Notion's fixed side margins — a narrower window narrows the text, never the margins, so the
+   + / ⋮⋮ handles (left) and the outline rail (right) keep their room. Touch screens have no handles: slim margins. */
 .hk-column {
-  @apply mx-auto box-border max-w-[calc(var(--size-column)+96px)] px-12 max-sm:px-5;
+  @apply mx-auto box-border max-w-[calc(var(--size-column)+192px)] px-24 coarse:px-5;
 }
 
 /* The outline rail (right edge) gives way to the find panel, which sits in the same corner. */

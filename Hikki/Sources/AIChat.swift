@@ -28,6 +28,8 @@ final class AIChat {
     var modelChoice = UserDefaults.standard.string(forKey: AIPreferences.modelKey) ?? AIModelCatalog.autoID
     /// The page the chat is about (cleared from the composer to ask without it).
     var pageID: String?
+    /// The passage selected in that page (follows the selection; cleared from the composer to ask without it).
+    var selection: String?
     private(set) var isStreaming = false
     @ObservationIgnored private var task: Task<Void, Never>?
 
@@ -44,7 +46,8 @@ final class AIChat {
         case .failure(let error):
             finish(error: error)
         case .success(let (model, client)):
-            let request = AIPrompts.chat(turns, page: page, model: model, webSearch: webSearch, language: AIService.appLanguage)
+            let request = AIPrompts.chat(
+                turns, page: page, selection: selection, model: model, webSearch: webSearch, language: AIService.appLanguage)
             Log.info("AI chat", category: "ai", context: ["model": model.id, "turns": "\(turns.count)", "page": page == nil ? "0" : "1"])
             isStreaming = true
             task = Task { [weak self] in
@@ -140,7 +143,8 @@ struct AIChatSheet: View {
     }
 }
 
-/// A new chat (once there is one) and the model menu — the sheet's toolbar, the side panel's header.
+/// A new chat (once there is one) — the sheet's toolbar, the side panel's header. The model is picked in the
+/// composer.
 struct AIChatActions: View {
     @Bindable var chat: AIChat
 
@@ -153,7 +157,6 @@ struct AIChatActions: View {
             }
             .help("app:ai.newChat")
         }
-        AIModelMenu(chat: chat)
     }
 }
 
@@ -209,21 +212,18 @@ struct AIChatView: View {
             : ["app:ai.suggest.summarize", "app:ai.suggest.quiz", "app:ai.suggest.keyPoints"]
     }
 
+    /// Notion's composer: a card on the page's surface — what the question is about as chips on top (the page, the
+    /// passage selected in it), the field, then web search, the model and send along the bottom.
     private var composer: some View {
         VStack(alignment: .leading, spacing: Spacing.s2) {
             if chat.messages.isEmpty {
                 ScrollView(.horizontal) {
-                    HStack(spacing: Spacing.s2) {
+                    HStack(spacing: Spacing.s1_5) {
                         ForEach(suggestions, id: \.key) { suggestion in
                             Button {
                                 chat.send(String(localized: suggestion), store: model.store)
                             } label: {
-                                Text(suggestion)
-                                    .font(.hk(.sm))
-                                    .foregroundStyle(Theme.subtleForeground)
-                                    .padding(.horizontal, Spacing.s3_5)
-                                    .frame(height: Size.iconButton + Spacing.s1_5)
-                                    .background(Theme.muted, in: .capsule)
+                                Text(suggestion).modifier(ChipStyle())
                             }
                             .buttonStyle(.plain)
                         }
@@ -231,54 +231,60 @@ struct AIChatView: View {
                 }
                 .scrollIndicators(.hidden)
             }
-            VStack(alignment: .leading, spacing: Spacing.s1_5) {
+            VStack(alignment: .leading, spacing: Spacing.s2) {
+                if contextPage != nil || chat.selection != nil {
+                    ScrollView(.horizontal) {
+                        HStack(spacing: Spacing.s1_5) {
+                            if let page = contextPage {
+                                ContextChip(label: "app:ai.chat.removePage", remove: { chat.pageID = nil }) {
+                                    PageIcon(page.icon, size: TextSize.sm.rawValue)
+                                    Text(verbatim: page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
+                                }
+                            }
+                            if let selection = chat.selection {
+                                ContextChip(label: "app:ai.chat.removeSelection", remove: { chat.selection = nil }) {
+                                    IconView(.textT, size: TextSize.sm.rawValue).foregroundStyle(Theme.mutedForeground)
+                                    // The passage's own words, shown as-is.
+                                    Text(verbatim: selection.replacingOccurrences(of: "\n", with: " "))
+                                        .frame(maxWidth: Size.recentCard + Spacing.s12, alignment: .leading)
+                                }
+                                .accessibilityIdentifier("ai-chat-selection")
+                            }
+                        }
+                    }
+                    .scrollIndicators(.hidden)
+                }
                 TextField("app:ai.chat.placeholder", text: $chat.draft, axis: .vertical)
                     .textFieldStyle(.plain)
                     .font(.hk(.base))
-                    .lineLimit(1...6)
+                    .lineLimit(2...8)
                     .focused($composing)
                     .submitLabel(.send)
                     .onSubmit { chat.send(store: model.store) }
                     .accessibilityIdentifier("ai-chat-field")
-                HStack(spacing: Spacing.s1) {
-                    if let page = contextPage {
-                        Button {
-                            chat.pageID = nil
-                        } label: {
-                            HStack(spacing: Spacing.s1) {
-                                PageIcon(page.icon, size: TextSize.sm.rawValue)
-                                Text(verbatim: page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
-                                    .lineLimit(1)
-                                IconView(.x, size: TextSize.x2s.rawValue).foregroundStyle(Theme.placeholder)
-                            }
-                            .font(.hk(.md))
-                            .foregroundStyle(Theme.subtleForeground)
-                            .padding(.horizontal, Spacing.s2_5)
-                            .frame(height: Size.iconButton + Spacing.s0_5)
-                            .background(Theme.muted, in: .capsule)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(Text("app:ai.chat.removePage"))
-                    }
+                HStack(spacing: Spacing.s1_5) {
                     Toggle(isOn: $chat.webSearch) {
                         IconLabel("app:ai.chat.web", icon: .globe).labelStyle(.iconOnly)
                     }
                     .toggleStyle(.button)
                     .buttonStyle(.plain)
                     .foregroundStyle(chat.webSearch ? AnyShapeStyle(ColorTone.standard.ink) : AnyShapeStyle(Theme.mutedForeground))
-                    .frame(width: Size.iconButton + Spacing.s2, height: Size.iconButton + Spacing.s2)
+                    .frame(width: Size.iconButton + Spacing.s1, height: Size.iconButton + Spacing.s1)
+                    .background(chat.webSearch ? ColorTone.standard.selectionFill : .clear, in: .circle)
+                    .help("app:ai.chat.web")
                     .accessibilityIdentifier("ai-chat-web")
                     Spacer(minLength: Spacing.s1)
+                    AIModelMenu(chat: chat).foregroundStyle(Theme.subtleForeground)
                     sendButton
                 }
             }
-            .padding(.leading, Spacing.s4)
-            .padding(.trailing, Spacing.s2_5)
-            .padding(.vertical, Spacing.s2_5)
-            .background(Theme.muted, in: .rect(cornerRadius: Radius.xl * 2))
+            .padding(Spacing.s3)
+            .background(Theme.background, in: .rect(cornerRadius: Radius.xl + Spacing.s1))
+            .overlay(RoundedRectangle(cornerRadius: Radius.xl + Spacing.s1).strokeBorder(Theme.border))
+            .shadow(color: Theme.border, radius: Spacing.s2, y: Spacing.s0_5)
         }
         .padding(.horizontal, Spacing.s3)
-        .padding(.bottom, Spacing.s2)
+        .padding(.bottom, Spacing.s3)
         .padding(.top, Spacing.s1)
         .background(Theme.background)
     }
@@ -289,7 +295,7 @@ struct AIChatView: View {
         } label: {
             IconView(chat.isStreaming ? .stop : .arrowUp, size: TextSize.base.rawValue)
                 .foregroundStyle(ColorTone.standard.onFill)
-                .frame(width: Size.iconButton + Spacing.s2, height: Size.iconButton + Spacing.s2)
+                .frame(width: Size.iconButton + Spacing.s1, height: Size.iconButton + Spacing.s1)
                 .background(ColorTone.standard.fill, in: .circle)
         }
         .buttonStyle(.plain)
@@ -297,6 +303,37 @@ struct AIChatView: View {
         .opacity(!chat.isStreaming && chat.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.4 : 1)
         .accessibilityLabel(Text(chat.isStreaming ? "app:ai.stop" : "app:ai.send"))
         .accessibilityIdentifier("ai-chat-send")
+    }
+}
+
+/// A context chip in the composer (the page, the selected passage): a hairline capsule, removable.
+private struct ContextChip<Content: View>: View {
+    let label: LocalizedStringKey
+    let remove: () -> Void
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        HStack(spacing: Spacing.s1_5) {
+            content.lineLimit(1)
+            Button(action: remove) {
+                IconView(.x, size: TextSize.x2s.rawValue).foregroundStyle(Theme.placeholder)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(label))
+        }
+        .modifier(ChipStyle())
+    }
+}
+
+/// The composer's chips (context, suggestions): small text in a hairline capsule.
+private struct ChipStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .font(.hk(.md))
+            .foregroundStyle(Theme.subtleForeground)
+            .padding(.horizontal, Spacing.s2_5)
+            .frame(height: Size.iconButton)
+            .overlay(Capsule().strokeBorder(Theme.border))
     }
 }
 
@@ -321,6 +358,10 @@ struct AIModelMenu: View {
         } label: {
             Text(modelName).font(.hk(.sm))
         }
+        // Quiet text in the composer's row, not a button of its own.
+        .menuStyle(.button)
+        .buttonStyle(.borderless)
+        .tint(Theme.subtleForeground)
         .fixedSize()
         .accessibilityIdentifier("ai-chat-model")
     }

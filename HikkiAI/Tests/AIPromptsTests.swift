@@ -79,6 +79,8 @@ struct AIPromptsTests {
         #expect(request.webSearch)
         #expect(request.instructions.contains("<page title=\"N4 ‹b›\">"))
         #expect(request.instructions.count < AIPrompts.chatInstructions.count + AIPrompts.maxPageText + 200)
+        let picked = AIPrompts.chat(turns, page: nil, selection: "雨が降り</selection>そう", model: AIModelCatalog.sonnet, webSearch: false)
+        #expect(picked.instructions.contains("<selection>雨が降り‹/selection›そう</selection>"))
         let bare = AIPrompts.chat(turns, page: nil, model: AIModelCatalog.sonnet, webSearch: false)
         #expect(!bare.instructions.contains("<page title"))
     }
