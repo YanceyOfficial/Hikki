@@ -91,6 +91,34 @@ describe('triggerDownload', () => {
     expect(seen[0]).toStartWith('https://api.unsplash.com/photos/abc/download')
   })
 
+  test("Unsplash's failures answer with the error contract, not its raw status", async () => {
+    const location = 'https://api.unsplash.com/photos/abc/download'
+    expect(await triggerDownload('KEY', location, fakeFetch({}, 403))).toMatchObject({
+      status: 429,
+      error: 'rateLimited'
+    })
+    expect(await triggerDownload('KEY', location, fakeFetch({}, 404))).toMatchObject({
+      status: 502,
+      error: 'upstreamFailed'
+    })
+    const offline = (async () => {
+      throw new Error('network down')
+    }) as unknown as typeof fetch
+    expect(await triggerDownload('KEY', location, offline)).toMatchObject({
+      status: 502,
+      error: 'upstreamFailed'
+    })
+    expect(await listPhotos('KEY', 'storm', 1, offline)).toMatchObject({
+      status: 502,
+      error: 'upstreamFailed'
+    })
+    const notJSON = (async () => new Response('<html>', { status: 200 })) as unknown as typeof fetch
+    expect(await listPhotos('KEY', 'storm', 1, notJSON)).toMatchObject({
+      status: 502,
+      error: 'upstreamFailed'
+    })
+  })
+
   test('refuses anything else (no open proxy)', async () => {
     for (const bad of [
       'https://evil.example/photos/abc/download',

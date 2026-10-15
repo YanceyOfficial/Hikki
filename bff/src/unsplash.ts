@@ -87,16 +87,15 @@ export async function listPhotos(
     url.searchParams.set('query', q.slice(0, 100))
     url.searchParams.set('orientation', 'landscape')
   }
-  const upstream = await fetcher(url, {
-    headers: { Authorization: `Client-ID ${accessKey}`, 'Accept-Version': 'v1' }
-  })
-  if (!upstream.ok) {
-    // Unsplash says 403 when the hourly limit is used up.
-    const error: ErrorId =
-      upstream.status === 403 || upstream.status === 429 ? 'rateLimited' : 'upstreamFailed'
-    return { status: ERRORS[error].status, body: null, error, headers: rateHeaders(upstream) }
+  const upstream = await call(fetcher, url, accessKey)
+  if (!(upstream instanceof Response)) return upstream
+  if (!upstream.ok) return upstreamFailure(upstream)
+  let json: RawPhoto[] | { results: RawPhoto[]; total_pages: number }
+  try {
+    json = (await upstream.json()) as typeof json
+  } catch {
+    return failure('upstreamFailed', rateHeaders(upstream))
   }
-  const json = (await upstream.json()) as RawPhoto[] | { results: RawPhoto[]; total_pages: number }
   const raw = Array.isArray(json) ? json : json.results
   const totalPages = Array.isArray(json) ? null : json.total_pages
   return {
@@ -125,8 +124,33 @@ export async function triggerDownload(
   ) {
     return { status: 400, body: null, error: 'badRequest', headers: {} }
   }
-  const upstream = await fetcher(url, {
-    headers: { Authorization: `Client-ID ${accessKey}`, 'Accept-Version': 'v1' }
-  })
-  return { status: upstream.ok ? 204 : upstream.status, body: null, headers: rateHeaders(upstream) }
+  const upstream = await call(fetcher, url, accessKey)
+  if (!(upstream instanceof Response)) return upstream
+  if (!upstream.ok) return upstreamFailure(upstream)
+  return { status: 204, body: null, headers: rateHeaders(upstream) }
+}
+
+/** Unsplash, or a failure result when it can't be reached at all. */
+async function call(fetcher: Fetch, url: URL, accessKey: string): Promise<Response | ProxyResult> {
+  try {
+    return await fetcher(url, {
+      headers: { Authorization: `Client-ID ${accessKey}`, 'Accept-Version': 'v1' }
+    })
+  } catch {
+    return failure('upstreamFailed', {})
+  }
+}
+
+const failure = (error: ErrorId, headers: Record<string, string>): ProxyResult => ({
+  status: ERRORS[error].status,
+  body: null,
+  error,
+  headers
+})
+
+/** Unsplash answered with an error: its hourly limit (it says 403), or anything else it failed at. */
+function upstreamFailure(upstream: Response): ProxyResult {
+  const error: ErrorId =
+    upstream.status === 403 || upstream.status === 429 ? 'rateLimited' : 'upstreamFailed'
+  return failure(error, rateHeaders(upstream))
 }

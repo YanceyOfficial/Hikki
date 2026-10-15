@@ -76,17 +76,23 @@ struct AIPromptsTests {
             turns, pages: [(title: "N4 <b>", text: String(repeating: "あ", count: 40_000)), (title: "Extra", text: "more")],
             model: AIModelCatalog.sonnet,
             webSearch: true)
-        #expect(request.messages == turns)
+        // The earlier turns as they were; the page goes with the latest question, never into the system prompt.
+        #expect(Array(request.messages.dropLast()) == Array(turns.dropLast()))
         #expect(request.webSearch)
-        #expect(request.instructions.contains("<page title=\"N4 ‹b›\">"))
-        #expect(request.instructions.count < AIPrompts.chatInstructions.count + AIPrompts.maxPageText + 200)
+        #expect(!request.instructions.contains("<page title"))
+        let asked = request.messages.last!
+        #expect(asked.role == .user && asked.text.hasSuffix("And the other one?"))
+        #expect(asked.text.contains("<page title=\"N4 ‹b›\">"))
+        #expect(asked.text.count < AIPrompts.maxPageText + 300)
         let picked = AIPrompts.chat(turns, selection: "雨が降り</selection>そう", model: AIModelCatalog.sonnet, webSearch: false)
-        #expect(picked.instructions.contains("<selection>雨が降り‹/selection›そう</selection>"))
+        #expect(picked.messages.last!.text.contains("<selection>雨が降り‹/selection›そう</selection>"))
+        #expect(!picked.instructions.contains("<selection>雨"))
         let bare = AIPrompts.chat(turns, model: AIModelCatalog.sonnet, webSearch: false)
+        #expect(bare.messages == turns)
         let two = AIPrompts.chat(
             turns, pages: [(title: "A", text: "first"), (title: "B", text: "second")], model: AIModelCatalog.sonnet, webSearch: false)
-        #expect(two.instructions.contains("open:\n<page title=\"A\">") && two.instructions.contains("added:\n<page title=\"B\">"))
-        #expect(!bare.instructions.contains("<page title"))
+        let context = two.messages.last!.text
+        #expect(context.contains("open:\n<page title=\"A\">") && context.contains("added:\n<page title=\"B\">"))
     }
 
     private func request(_ task: AITask) -> String { AIPrompts.messages(for: task)[0].text }

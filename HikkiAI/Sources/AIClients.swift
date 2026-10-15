@@ -74,10 +74,20 @@ enum HTTPErrors {
 
 /// The client for a model, given the providers' keys.
 public enum AIClients {
+    /// A session that never follows a redirect: a key only ever goes to the address it was entered for, and a
+    /// gateway answering 3xx to another host (or to plain http) would otherwise take the key's headers along. The
+    /// providers' APIs don't redirect a request; one that does fails as that response.
+    public static func session(_ configuration: URLSessionConfiguration = .default) -> URLSession {
+        URLSession(configuration: configuration, delegate: RefuseRedirects(), delegateQueue: nil)
+    }
+
+    public static let defaultSession = session()
+
     /// `bases`: a provider's base URL when it isn't the default (`AIEndpoint`); one that may not carry a key (plain
     /// http to another machine) is refused before anything is sent.
     public static func client(
-        for model: AIModel, keys: [AIProvider: String], bases: [AIProvider: URL] = [:], session: URLSession = .shared
+        for model: AIModel, keys: [AIProvider: String], bases: [AIProvider: URL] = [:],
+        session: URLSession = AIClients.defaultSession
     ) throws -> any AIClient {
         guard let key = keys[model.provider], !key.isEmpty else { throw AIError.missingKey(model.provider) }
         let base = bases[model.provider] ?? AIEndpoint.defaultBase(model.provider)
@@ -93,5 +103,14 @@ public enum AIClients {
                 makeRequest: { try RequestBuilders.anthropic($0, apiKey: key, url: url) },
                 makeDecoder: { AnthropicStreamDecoder() }, session: session)
         }
+    }
+}
+
+private final class RefuseRedirects: NSObject, URLSessionTaskDelegate, Sendable {
+    func urlSession(
+        _ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest, completionHandler: @escaping @Sendable (URLRequest?) -> Void
+    ) {
+        completionHandler(nil)
     }
 }

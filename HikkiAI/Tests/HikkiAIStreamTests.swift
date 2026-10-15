@@ -243,3 +243,49 @@ struct StreamingClientTests {
         #expect(error as? AIError == .rejected("Unknown model"))
     }
 }
+
+/// Answers every request to the configured host with a 307 to another host, and counts what reaches that one.
+final class RedirectingProtocol: URLProtocol, @unchecked Sendable {
+    nonisolated(unsafe) static var reachedOtherHost = 0
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        let url = request.url!
+        if url.host() == "elsewhere.example" {
+            Self.reachedOtherHost += 1
+            let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: Data("data: {\"type\":\"message_stop\"}\n\n".utf8))
+            client?.urlProtocolDidFinishLoading(self)
+            return
+        }
+        var redirect = request
+        redirect.url = URL(string: "https://elsewhere.example/v1/messages")
+        let response = HTTPURLResponse(
+            url: url, statusCode: 307, httpVersion: nil, headerFields: ["Location": redirect.url!.absoluteString])!
+        client?.urlProtocol(self, wasRedirectedTo: redirect, redirectResponse: response)
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() {}
+}
+
+@Suite(.serialized)
+struct RedirectTests {
+    @Test(.timeLimit(.minutes(1))) func aKeyNeverFollowsARedirectToAnotherHost() async {
+        RedirectingProtocol.reachedOtherHost = 0
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [RedirectingProtocol.self]
+        var failed = false
+        do {
+            let client = try AIClients.client(
+                for: AIModelCatalog.sonnet, keys: [.anthropic: "secret"], session: AIClients.session(configuration))
+            for try await _ in client.stream(AIRequest(model: AIModelCatalog.sonnet, instructions: "", messages: [.user("hi")])) {}
+        } catch {
+            failed = true
+        }
+        #expect(RedirectingProtocol.reachedOtherHost == 0)
+        #expect(failed)
+    }
+}
