@@ -10,6 +10,12 @@ import Observation
 /// App-wide data shared by every window: the page tree, the trash, and page operations.
 @Observable
 final class AppModel {
+    /// The losing side of a conflict becomes a page of its own, titled in the app's language.
+    nonisolated static let conflictTitle: ConflictCopy.Title = { title, source in
+        let title = title.isEmpty ? String(localized: "app:page.untitled") : title
+        return String(localized: "app:sync.conflictedCopy \(title) \(source)")
+    }
+
     let store: DocumentStore
     let searchIndexer: SearchIndexer
     let assets: AssetStore
@@ -111,10 +117,7 @@ final class AppModel {
             // another device replaces is kept in its history first; a page deleted here takes its history along.
             let options = WorkspaceSync.Options(
                 device: Self.deviceName,
-                conflictTitle: { title, source in
-                    let title = title.isEmpty ? String(localized: "app:page.untitled") : title
-                    return String(localized: "app:sync.conflictedCopy \(title) \(source)")
-                },
+                conflictTitle: Self.conflictTitle,
                 willReplace: { row in
                     do {
                         try history.recordBeforeReplace(row)

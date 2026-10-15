@@ -169,7 +169,10 @@ final class EditorController {
                 guard let record = try store?.document(id: id), currentDocumentID == id else { return }
                 let applied = try await webView.callAsyncJavaScript(
                     "return window.hikki.reload(page)", arguments: ["page": try PagePayload.make(from: record)], contentWorld: .page)
-                if applied as? Bool == true { pageState.loaded(id, locked: record.isLocked) }
+                if applied as? Bool == true {
+                    pageState.loaded(id, locked: record.isLocked)
+                    loaded = (id, try LoadedContent(record))
+                }
                 Log.info(
                     "open page changed on disk", category: "bridge", context: ["docId": id, "applied": "\(applied as? Bool ?? false)"])
             } catch {
@@ -506,6 +509,7 @@ final class EditorController {
                 arguments: ["page": try PagePayload.make(from: record)],
                 contentWorld: .page
             )
+            loaded = (id, try LoadedContent(record))
             // The payload carried the page's lock; one set while it loaded goes now.
             pageState.loaded(id, locked: record.isLocked)
             sendLockIfChanged()
@@ -644,6 +648,11 @@ final class EditorController {
         return nil
     }
 
+    /// The title and body the page last had here — loaded, reloaded or saved. A save finding the stored page changed
+    /// since (another device's version came in while this editor held unsaved edits, or the page beside it saved)
+    /// keeps that version as a conflicted copy before writing (`DocumentStore.saveContent(_:loaded:)`).
+    @ObservationIgnored private var loaded: (id: String, content: LoadedContent)?
+
     private func save(_ snapshot: Snapshot) {
         // Page history: the first save of an editing session keeps the page as it was (PageHistory's policy).
         if let history = history(), let store {
@@ -656,9 +665,11 @@ final class EditorController {
             }
         }
         do {
-            if try store?.saveContent(snapshot) == false {
+            let base = loaded?.id == snapshot.docId ? loaded?.content : nil
+            if try store?.saveContent(snapshot, loaded: base, conflictTitle: AppModel.conflictTitle) == false {
                 Log.warn("save skipped: document no longer exists", category: "store", context: ["docId": snapshot.docId])
             } else {
+                loaded = (snapshot.docId, LoadedContent(snapshot))
                 NotificationCenter.default.post(name: .pageSavedInEditor, object: self, userInfo: ["id": snapshot.docId])
             }
         } catch {

@@ -45,7 +45,10 @@ struct HikkiApp: App {
             return try SearchIndex(url: paths.searchIndex)
         } catch {
             Toasts.report(.searchIndexFailed, error, category: "search")
-            try? FileManager.default.removeItem(at: paths.searchIndex)
+            // The index is rebuildable: the file goes whole, with its write-ahead log (WAL mode) beside it.
+            for suffix in ["", "-wal", "-shm"] {
+                try? FileManager.default.removeItem(at: URL(filePath: paths.searchIndex.path + suffix))
+            }
             if let fresh = try? SearchIndex(url: paths.searchIndex) { return fresh }
             return try! SearchIndex.inMemory()  // swiftlint:disable:this force_try
         }
