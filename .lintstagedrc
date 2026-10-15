@@ -1,5 +1,8 @@
 {
-  "*.{js,jsx,ts,tsx,mjs}": ["oxlint --no-error-on-unmatched-pattern", "oxfmt --no-error-on-unmatched-pattern"],
+  "*.{js,jsx,ts,tsx,mjs}": [
+    "oxlint --no-error-on-unmatched-pattern",
+    "oxfmt --no-error-on-unmatched-pattern"
+  ],
   "*.{json,md,css,html,yaml,yml}": ["oxfmt --no-error-on-unmatched-pattern"],
   "*.swift": ["xcrun swift-format format -i", "xcrun swift-format lint --strict"]
 }
