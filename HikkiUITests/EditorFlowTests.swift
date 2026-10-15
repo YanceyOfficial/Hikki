@@ -758,6 +758,62 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Hearsay or appearance?"].firstMatch.exists)
     }
 
+    /// iPhone: a comment is written in a bottom sheet; a tap on the commented passage opens the thread in the sheet
+    /// without bringing the keyboard up (the tap doesn't place the caret); a tap on the dimmed page closes it.
+    func testPhoneCommentSheet() throws {
+        #if os(iOS)
+            guard UIDevice.current.userInterfaceIdiom == .phone else { throw XCTSkip("the iPhone layout") }
+        #else
+            throw XCTSkip("the iPhone layout")
+        #endif
+        continueAfterFailure = false
+        let app = launch(environment: ["HIKKI_DEMO_PAGES": "1", "HIKKI_DEBUG_NAV": "demo-46ffce8"])
+        let body = app.webViews.textViews["Page content"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(body, in: app, timeout: 30))
+        let line = body.staticTexts["山へ行くんですか。"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(line, in: app))
+        line.tap()
+        // A fresh simulator's keyboard first shows its "slide to type" tip.
+        let tip = app.buttons["Continue"].firstMatch
+        if tip.waitForExistence(timeout: 2) { tip.tap() }
+        sleep(1)
+        // The whole line, from the keyboard, then Comment's shortcut.
+        body.typeKey(.rightArrow, modifierFlags: .command)
+        body.typeKey(.leftArrow, modifierFlags: [.shift, .command])
+        body.typeKey("m", modifierFlags: [.command, .shift])
+        let composer = app.webViews.textFields["Add a comment…"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(composer, in: app), "no comment sheet")
+        composer.typeText("Hearsay or appearance?\n")
+        let reply = app.webViews.textFields["Reply…"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(reply, in: app), "the sheet doesn't show the new thread")
+        attachScreenshot(app, "sheet-after-send")
+        // The dimmed page above the sheet closes it.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).tap()
+        XCTAssertTrue(reply.waitForNonExistence(timeout: 5), "a tap on the scrim didn't close the sheet")
+        sleep(1)
+        XCTAssertFalse(app.keyboards.firstMatch.exists, "the keyboard stayed up after the sheet closed")
+
+        // A tap on the passage: the thread, and no keyboard.
+        let passage = body.staticTexts["山へ行くんですか。"].firstMatch
+        passage.tap()
+        XCTAssertTrue(waitOrDumpTree(reply, in: app), "a tap on the passage didn't open its thread")
+        sleep(1)
+        XCTAssertTrue(app.staticTexts["Hearsay or appearance?"].firstMatch.exists)
+        XCTAssertFalse(app.keyboards.firstMatch.exists, "a tap on the passage brought the keyboard up")
+        attachScreenshot(app, "sheet-from-tap")
+        // Its field sits above the floating bottom bar, not under it.
+        let bar = app.buttons["edit-page"].firstMatch
+        XCTAssertTrue(bar.exists)
+        XCTAssertLessThanOrEqual(reply.frame.maxY, bar.frame.minY + 1, "the reply field is under the bottom bar")
+        // The reply field takes the keyboard; the sheet rides above it.
+        reply.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        sleep(1)
+        let keyboard = app.keyboards.firstMatch.frame
+        XCTAssertLessThanOrEqual(reply.frame.maxY, keyboard.minY + 1, "the reply field is under the keyboard")
+        attachScreenshot(app, "sheet-keyboard")
+    }
+
     /// Split view: once the pane's page has loaded, the left page still takes typing — and the pane's too.
     func testBothSidesOfASplitTakeTyping() throws {
         continueAfterFailure = false

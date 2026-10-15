@@ -457,7 +457,8 @@
     "mention": "提及页面",
     "noPages": "没有页面",
     "untitled": "无标题",
-    "linkCopied": "链接已复制"
+    "linkCopied": "链接已复制",
+    "discussion": "讨论"
   },
   "error": {
     "unknown": "出了点问题。",

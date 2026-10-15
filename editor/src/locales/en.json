@@ -457,7 +457,8 @@
     "mention": "Mention a page",
     "noPages": "No pages",
     "untitled": "Untitled",
-    "linkCopied": "Link copied"
+    "linkCopied": "Link copied",
+    "discussion": "Discussion"
   },
   "error": {
     "unknown": "Something went wrong.",

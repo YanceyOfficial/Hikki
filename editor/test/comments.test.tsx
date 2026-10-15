@@ -1,8 +1,8 @@
-import { act, cleanup, fireEvent, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, within } from '@testing-library/react'
 import type { Editor } from '@tiptap/core'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { marginPlacement } from '../src/components/comments'
+import { marginPlacement, PHONE_QUERY } from '../src/components/comments'
 import { createEditor } from '../src/core/editor'
 import {
   commentRanges,
@@ -60,7 +60,33 @@ afterEach(() => {
   cleanup()
   editor.destroy()
   host.parentElement?.remove()
+  vi.unstubAllGlobals()
 })
+
+/** An iPhone: a touch screen in a narrow window (jsdom has no matchMedia of its own). */
+function stubPhone() {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: query === PHONE_QUERY || query === '(pointer: coarse)',
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {}
+  }))
+}
+
+/** A thread on "quick", known to the store. */
+function commentOnQuick(): string {
+  act(() => {
+    editor.commands.setTextSelection({ from: 5, to: 10 })
+    editor.commands.commentStart()
+    editor.commands.commentSend('hi')
+  })
+  const id = [...commentRanges(editor.state.doc).keys()][0]
+  act(() => {
+    editor.commands.commentOpen(null)
+    setThreads(editor, [thread(id)])
+  })
+  return id
+}
 
 describe('comments', () => {
   it('a comment on a selection: a draft first, the passage marked only once it is sent', async () => {
@@ -205,5 +231,80 @@ describe('comments', () => {
     expect(findQuote(editor.state.doc, 'slow dog')).toBeNull()
     act(() => setThreads(editor, [{ ...thread('done', true), quote: 'jumps' }]))
     expect(commentRanges(editor.state.doc).has('done')).toBe(false)
+  })
+
+  it('on a phone an open thread is a bottom sheet: the quote, its comments, a reply field it does not focus', async () => {
+    stubPhone()
+    const id = commentOnQuick()
+    act(() => editor.commands.commentOpen(id))
+    const sheet = await screen.findByTestId('comment-sheet')
+    // In a sheet over the page, not a card in the text column.
+    expect(host.parentElement!.contains(sheet)).toBe(false)
+    expect(sheet.textContent).toContain('quick')
+    expect(sheet.textContent).toContain('first')
+    const field = within(sheet).getByTestId('comment-field')
+    expect(document.activeElement).not.toBe(field)
+    expect(document.activeElement).not.toBe(editor.view.dom)
+    // The per-comment actions still work there.
+    expect(within(sheet).getByTestId('comment-more')).toBeTruthy()
+    fireEvent.change(field, { target: { value: 'a reply' } })
+    fireEvent.keyDown(field, { key: 'Enter' })
+    expect(calls.at(-1)).toBe(`reply ${id} a reply`)
+  })
+
+  it('on a phone a new comment is written in the sheet, its field focused', async () => {
+    stubPhone()
+    act(() => {
+      editor.commands.setTextSelection({ from: 5, to: 10 })
+      editor.commands.commentStart()
+    })
+    const sheet = await screen.findByTestId('comment-sheet')
+    const field = within(sheet).getByTestId('comment-field')
+    await vi.waitFor(() => expect(document.activeElement).toBe(field))
+    fireEvent.change(field, { target: { value: 'hello' } })
+    fireEvent.keyDown(field, { key: 'Enter' })
+    expect(calls).toEqual(['create quick hello'])
+  })
+
+  it('the sheet closes with Escape and with a tap on the dimmed page, never giving the page the caret', async () => {
+    stubPhone()
+    const id = commentOnQuick()
+    act(() => editor.commands.commentOpen(id))
+    const sheet = await screen.findByTestId('comment-sheet')
+    fireEvent.keyDown(sheet, { key: 'Escape' })
+    await vi.waitFor(() => expect(commentsState(editor.state)?.active).toBeNull())
+    expect(document.activeElement).not.toBe(editor.view.dom)
+
+    act(() => editor.commands.commentOpen(id))
+    await screen.findByTestId('comment-sheet')
+    const scrim = document.querySelector('[data-slot="drawer-overlay"]')!
+    expect(scrim).toBeTruthy()
+    fireEvent.pointerDown(scrim)
+    fireEvent.mouseDown(scrim)
+    fireEvent.pointerUp(scrim)
+    fireEvent.mouseUp(scrim)
+    fireEvent.click(scrim)
+    await vi.waitFor(() => expect(commentsState(editor.state)?.active).toBeNull())
+    expect(document.activeElement).not.toBe(editor.view.dom)
+  })
+
+  it('a tap on a commented passage opens its thread without placing the caret (no keyboard)', () => {
+    stubPhone()
+    const id = commentOnQuick()
+    const passage = host.querySelector(`[data-comment="${id}"]`)!
+    const at = { clientX: 10, clientY: 10 }
+    fireEvent.touchStart(passage, { touches: [at], changedTouches: [at] })
+    // Not cancelled: the browser's click (caret, focus, keyboard) would follow.
+    const allowed = fireEvent.touchEnd(passage, { touches: [], changedTouches: [at] })
+    expect(allowed).toBe(false)
+    expect(commentsState(editor.state)?.active).toBe(id)
+    expect(document.activeElement).not.toBe(editor.view.dom)
+
+    // A drag over it (scrolling) is not a tap: left to the browser.
+    act(() => editor.commands.commentOpen(null))
+    fireEvent.touchStart(passage, { touches: [at], changedTouches: [at] })
+    fireEvent.touchMove(passage, { touches: [{ clientX: 10, clientY: 60 }] })
+    expect(fireEvent.touchEnd(passage, { touches: [], changedTouches: [at] })).toBe(true)
+    expect(commentsState(editor.state)?.active).toBeNull()
   })
 })

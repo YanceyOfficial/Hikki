@@ -13,11 +13,13 @@ struct EditorView: PlatformViewRepresentable {
     /// Height of the toolbar the page scrolls under: the content starts below it and passes beneath the
     /// Liquid Glass when scrolled (Photos).
     var topInset: CGFloat = 0
+    /// Height of a native bar floating over the page's foot (iPhone): bottom sheets in the page stay clear of it.
+    var bottomInset: CGFloat = 0
 
     #if os(iOS)
         func makeUIView(context: Context) -> HikkiWebView { controller.webView }
         func updateUIView(_ view: HikkiWebView, context: Context) {
-            controller.setTopInset(topInset)
+            controller.setInsets(top: topInset, bottom: bottomInset)
             // Set explicitly: WKWebView's scroll view didn't inset for the toolbar on its own (the cover's
             // buttons sat under the glass at rest).
             let scroll = view.scrollView

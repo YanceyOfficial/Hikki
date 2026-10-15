@@ -19,7 +19,7 @@ struct PageScreen: View {
         // The page runs under the window toolbar (Photos-style glass); the toolbar's height becomes the
         // editor's top inset so the first line still starts below it.
         GeometryReader { proxy in
-            EditorView(controller: editor, topInset: proxy.safeAreaInsets.top)
+            EditorView(controller: editor, topInset: proxy.safeAreaInsets.top, bottomInset: bottomBarInset)
                 .ignoresSafeArea(.container, edges: [.top, .bottom])
         }
         // iPhone: the page shows its own title; the bar keeps only its glass buttons.
@@ -77,6 +77,15 @@ struct PageScreen: View {
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
                 keyboardShown = false
             }
+        #endif
+    }
+
+    /// The floating bar's room over the page's foot (iPhone, keyboard down), above the home indicator.
+    private var bottomBarInset: CGFloat {
+        #if os(iOS)
+            phoneToolbar && !keyboardShown ? Size.floatingBar + Spacing.s2 : 0
+        #else
+            0
         #endif
     }
 

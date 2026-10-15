@@ -1,7 +1,7 @@
 import { Extension, Mark, type Editor } from '@tiptap/core'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import { Plugin, PluginKey, type EditorState, type Transaction } from '@tiptap/pm/state'
-import { Decoration, DecorationSet } from '@tiptap/pm/view'
+import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
 
 import { renderComments } from '../components/comments'
 import { tiptapShortcut } from '../core/shortcuts'
@@ -237,6 +237,8 @@ export function Comments(host: CommentsHost) {
 
     addProseMirrorPlugins() {
       const editor = this.editor
+      // A finger on a commented passage: where it went down, when, and the thread there.
+      let tap: { x: number; y: number; at: number; id: string } | null = null
       return [
         new Plugin<CommentsState>({
           key: CommentsKey,
@@ -261,6 +263,42 @@ export function Comments(host: CommentsHost) {
           },
           props: {
             decorations: (state) => decorations(state),
+            // A tap on a commented passage opens its thread and nothing else: the touch's click is cancelled, so the
+            // caret doesn't move and the keyboard doesn't come up (a click still places the caret on a Mac). A drag,
+            // a long press (selecting) or a second finger is left alone.
+            handleDOMEvents: {
+              touchstart: (view, event) => {
+                const touch = event.touches[0]
+                const id = event.touches.length === 1 ? threadAt(view, event.target) : undefined
+                tap =
+                  touch && id ? { x: touch.clientX, y: touch.clientY, at: Date.now(), id } : null
+                return false
+              },
+              touchmove: (_view, event) => {
+                const touch = event.touches[0]
+                if (
+                  tap &&
+                  (!touch || Math.hypot(touch.clientX - tap.x, touch.clientY - tap.y) > 10)
+                )
+                  tap = null
+                return false
+              },
+              touchcancel: () => {
+                tap = null
+                return false
+              },
+              touchend: (view, event) => {
+                const started = tap
+                tap = null
+                if (!started || Date.now() - started.at > TAP_MS || event.touches.length > 0)
+                  return false
+                event.preventDefault()
+                if (view.hasFocus()) (view.dom as HTMLElement).blur()
+                if (commentsState(view.state)?.active !== started.id)
+                  view.dispatch(setMeta(view.state.tr, { type: 'active', id: started.id }))
+                return true
+              }
+            },
             // A press on a commented passage opens its thread.
             handleClick: (view, pos) => {
               const plugin = commentsState(view.state)
@@ -290,6 +328,22 @@ export function Comments(host: CommentsHost) {
       ]
     }
   })
+}
+
+/** Longer than this, a touch is a long press (text selection), not a tap. */
+const TAP_MS = 500
+
+/** The open thread whose passage holds `target` (the innermost, where passages overlap). */
+function threadAt(view: EditorView, target: EventTarget | null): string | undefined {
+  const plugin = commentsState(view.state)
+  if (!plugin) return undefined
+  let node =
+    target instanceof HTMLElement ? target : target instanceof Node ? target.parentElement : null
+  for (; node && node !== view.dom; node = node.parentElement) {
+    const id = node.dataset.comment
+    if (id && plugin.threads.get(id)?.resolved === false) return id
+  }
+  return undefined
 }
 
 function setMeta(tr: Transaction, meta: Meta): Transaction {

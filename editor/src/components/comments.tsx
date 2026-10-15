@@ -16,6 +16,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import { Button } from '@/components/ui/button'
+import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -205,6 +206,7 @@ function CommentsLayer({
   column: HTMLElement
 }) {
   const layout = useLayout(editor, column)
+  const phone = usePhone()
   // A page with open threads makes room for their cards: its column moves left where the window allows (style.css).
   const has = layout.anchors.length > 0 || layout.draft !== null
   useEffect(() => {
@@ -213,10 +215,27 @@ function CommentsLayer({
     const frame = requestAnimationFrame(() => column.dispatchEvent(new Event('hk-relayout')))
     return () => cancelAnimationFrame(frame)
   }, [column, has])
-  return layout.wide ? (
+  return layout.wide && !phone ? (
     <Margin editor={editor} host={host} layout={layout} />
   ) : (
-    <Narrow editor={editor} host={host} layout={layout} />
+    <Narrow editor={editor} host={host} layout={layout} phone={phone} />
+  )
+}
+
+/** A phone: a touch screen in a narrow (or short) window. Its open thread is a bottom sheet (Notion's iPhone app). */
+export const PHONE_QUERY =
+  '(pointer: coarse) and (max-width: 640px), (pointer: coarse) and (max-height: 500px)'
+
+const phoneQuery = () => window.matchMedia?.(PHONE_QUERY) ?? null
+
+function usePhone(): boolean {
+  return useSyncExternalStore(
+    (notify) => {
+      const list = phoneQuery()
+      list?.addEventListener('change', notify)
+      return () => list?.removeEventListener('change', notify)
+    },
+    () => phoneQuery()?.matches ?? false
   )
 }
 
@@ -285,8 +304,19 @@ function Margin({ editor, host, layout }: { editor: Editor; host: CommentsHost; 
   )
 }
 
-/** Narrow: a count badge per block; the open thread (or a new comment) as a card under its passage. */
-function Narrow({ editor, host, layout }: { editor: Editor; host: CommentsHost; layout: Layout }) {
+/** Narrow: a count badge per block; the open thread (or a new comment) as a card under its passage — on a phone, in a
+ * bottom sheet instead. */
+function Narrow({
+  editor,
+  host,
+  layout,
+  phone
+}: {
+  editor: Editor
+  host: CommentsHost
+  layout: Layout
+  phone: boolean
+}) {
   const blocks = new Map<number, Anchor[]>()
   for (const anchor of layout.anchors)
     blocks.set(anchor.block, [...(blocks.get(anchor.block) ?? []), anchor])
@@ -312,17 +342,140 @@ function Narrow({ editor, host, layout }: { editor: Editor; host: CommentsHost; 
           </Button>
         )
       })}
-      {card && (
-        <div className="absolute z-30" style={popoverStyle(card.left, card.bottom)}>
-          <ThreadCard editor={editor} host={host} thread={card.thread} active quote />
-        </div>
-      )}
-      {layout.draft && (
-        <div className="absolute z-30" style={popoverStyle(layout.draft.left, layout.draft.bottom)}>
-          <Composer editor={editor} host={host} quote={layout.draft.quote} />
-        </div>
+      {phone ? (
+        <CommentSheet
+          editor={editor}
+          host={host}
+          thread={card?.thread ?? null}
+          draft={layout.draft?.quote ?? null}
+        />
+      ) : (
+        <>
+          {card && (
+            <div className="absolute z-30" style={popoverStyle(card.left, card.bottom)}>
+              <ThreadCard editor={editor} host={host} thread={card.thread} active quote />
+            </div>
+          )}
+          {layout.draft && (
+            <div
+              className="absolute z-30"
+              style={popoverStyle(layout.draft.left, layout.draft.bottom)}
+            >
+              <Composer editor={editor} host={host} quote={layout.draft.quote} />
+            </div>
+          )}
+        </>
       )}
     </>
+  )
+}
+
+function readViewport(): { height: number; keyboard: number } {
+  const viewport = window.visualViewport
+  const height = Math.round(viewport?.height ?? window.innerHeight)
+  const keyboard = viewport
+    ? Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop))
+    : 0
+  return { height, keyboard }
+}
+
+/**
+ * The visual viewport against the layout one: its height, and how much of the window's bottom the software keyboard
+ * covers (WKWebView, like Safari, keeps the layout viewport and shrinks the visual one).
+ */
+function useKeyboardViewport(): { height: number; keyboard: number } {
+  const [state, setState] = useState(readViewport)
+  useEffect(() => {
+    const update = () =>
+      setState((previous) => {
+        const next = readViewport()
+        return next.height === previous.height && next.keyboard === previous.keyboard
+          ? previous
+          : next
+      })
+    const viewport = window.visualViewport
+    viewport?.addEventListener('resize', update)
+    viewport?.addEventListener('scroll', update)
+    window.addEventListener('resize', update)
+    return () => {
+      viewport?.removeEventListener('resize', update)
+      viewport?.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [])
+  return state
+}
+
+/**
+ * A phone's open thread, or a new comment, as a bottom sheet over the dimmed page (the shadcn Drawer): its grabber
+ * and the scrim dismiss it, as Escape does; the reply field stays at its foot, above the keyboard. Opening it never
+ * focuses a field (no keyboard) unless a new comment is being written; closing it never gives the page the caret back.
+ */
+function CommentSheet({
+  editor,
+  host,
+  thread,
+  draft
+}: {
+  editor: Editor
+  host: CommentsHost
+  thread: ThreadItem | null
+  /** The quote of a comment being started. */
+  draft: string | null
+}) {
+  const open = thread !== null || draft !== null
+  // What it shows stays while it slides away.
+  const [shown, setShown] = useState({ thread, draft })
+  if (open && (shown.thread !== thread || shown.draft !== draft)) setShown({ thread, draft })
+  const popup = useRef<HTMLDivElement>(null)
+  const { height, keyboard } = useKeyboardViewport()
+  const close = () => editor.commands.commentOpen(null)
+  return (
+    <Drawer
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) close()
+      }}
+      showSwipeHandle
+    >
+      <DrawerContent
+        ref={popup}
+        initialFocus={shown.draft === null ? () => popup.current : true}
+        finalFocus={false}
+        data-testid="comment-sheet"
+        // Its content's height: the Drawer pins the height it first measured (for stacking nested drawers), which
+        // would clip a reply added later or the room kept for the native bar.
+        className="pt-1 [--drawer-content-height:auto]"
+        style={
+          {
+            bottom: keyboard,
+            '--drawer-content-max-height': `calc(${height}px - var(--hk-inset-top, 0px) - 12px)`,
+            // Over the keyboard it sits right on it; else clear of the home indicator and the native bottom bar.
+            paddingBottom:
+              keyboard > 0
+                ? 'calc(var(--spacing) * 2)'
+                : 'calc(env(safe-area-inset-bottom, 0px) + var(--hk-inset-bottom, 0px) + var(--spacing) * 2)'
+          } as React.CSSProperties
+        }
+      >
+        <DrawerTitle className="sr-only">{t('comments.discussion')}</DrawerTitle>
+        {shown.draft === null ? (
+          shown.thread && (
+            <ThreadCard
+              editor={editor}
+              host={host}
+              thread={shown.thread}
+              active
+              quote
+              onClose={close}
+              sheet
+            />
+          )
+        ) : (
+          <Composer editor={editor} host={host} quote={shown.draft} onClose={close} sheet />
+        )}
+      </DrawerContent>
+    </Drawer>
   )
 }
 
@@ -407,7 +560,8 @@ function CommentRow({
   thread,
   comment,
   first,
-  active
+  active,
+  sheet = false
 }: {
   editor: Editor
   host: CommentsHost
@@ -415,6 +569,8 @@ function CommentRow({
   comment: CommentItem
   first: boolean
   active: boolean
+  /** In a phone's sheet: no hover there, so the actions always show. */
+  sheet?: boolean
 }) {
   const [editing, setEditing] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -452,7 +608,10 @@ function CommentRow({
       {active && !editing && (
         <div
           className={cn(
-            'absolute -top-1 right-0 flex gap-0.5 rounded-lg border border-border bg-popover p-0.5 opacity-0 shadow-sm transition-opacity duration-(--motion-pop-in) group-hover/comment:opacity-100 focus-within:opacity-100',
+            'absolute right-0 flex gap-0.5',
+            sheet
+              ? '-top-1.5 text-muted-foreground'
+              : '-top-1 rounded-lg border border-border bg-popover p-0.5 opacity-0 shadow-sm transition-opacity duration-(--motion-pop-in) group-hover/comment:opacity-100 focus-within:opacity-100',
             menuOpen && 'opacity-100'
           )}
         >
@@ -527,15 +686,60 @@ function ThreadCard({
   host,
   thread,
   active,
-  quote
+  quote,
+  onClose,
+  sheet = false
 }: {
   editor: Editor
   host: CommentsHost
   thread: ThreadItem
   active: boolean
   quote: boolean
+  /** Escape in the reply field: by default the thread closes and the page takes the caret back. */
+  onClose?: () => void
+  /** In a phone's sheet: the quote, the comments scrolling under it, the reply field at the foot. */
+  sheet?: boolean
 }) {
   const shown = active ? thread.comments : thread.comments.slice(0, 1)
+  const close =
+    onClose ??
+    (() => {
+      editor.commands.commentOpen(null)
+      editor.commands.focus()
+    })
+  if (sheet)
+    return (
+      <section className="flex min-h-0 flex-1 flex-col" data-testid="comment-thread">
+        {quote && thread.quote && (
+          <span className="mx-4 mt-2 line-clamp-3 shrink-0 border-l-2 border-ink-yellow pl-2.5 text-sm text-muted-foreground">
+            {thread.quote}
+          </span>
+        )}
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 py-4">
+          {thread.comments.map((comment, index) => (
+            <CommentRow
+              key={comment.id}
+              editor={editor}
+              host={host}
+              thread={thread}
+              comment={comment}
+              first={index === 0}
+              active
+              sheet
+            />
+          ))}
+        </div>
+        <div className="shrink-0 border-t border-border px-4 pt-3">
+          <CommentField
+            host={host}
+            placeholder={t('comments.reply')}
+            onSubmit={(body) => editor.commands.commentSend(body)}
+            onCancel={close}
+            listAbove
+          />
+        </div>
+      </section>
+    )
   return (
     <section
       className={cn(
@@ -581,10 +785,7 @@ function ThreadCard({
           host={host}
           placeholder={t('comments.reply')}
           onSubmit={(body) => editor.commands.commentSend(body)}
-          onCancel={() => {
-            editor.commands.commentOpen(null)
-            editor.commands.focus()
-          }}
+          onCancel={close}
         />
       )}
     </section>
@@ -595,19 +796,33 @@ function ThreadCard({
 function Composer({
   editor,
   host,
-  quote
+  quote,
+  onClose,
+  sheet = false
 }: {
   editor: Editor
   host: CommentsHost
   quote: string | null
+  /** Escape: by default the draft is dropped and the page takes the caret back. */
+  onClose?: () => void
+  /** In a phone's sheet: no card of its own. */
+  sheet?: boolean
 }) {
   return (
     <section
-      className="hk-pop flex flex-col gap-2.5 rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-popover"
+      className={cn(
+        'flex flex-col gap-2.5 text-popover-foreground',
+        sheet ? 'px-4 pt-2' : 'hk-pop rounded-xl border border-border bg-popover p-3 shadow-popover'
+      )}
       data-testid="comment-composer"
     >
       {quote && (
-        <span className="border-l-2 border-primary pl-2.5 text-xs text-muted-foreground">
+        <span
+          className={cn(
+            'border-l-2 border-primary pl-2.5 text-muted-foreground',
+            sheet ? 'line-clamp-3 text-sm' : 'text-xs'
+          )}
+        >
           {quote}
         </span>
       )}
@@ -616,10 +831,14 @@ function Composer({
         placeholder={t('comments.add')}
         autoFocus
         onSubmit={(body) => editor.commands.commentSend(body)}
-        onCancel={() => {
-          editor.commands.commentOpen(null)
-          editor.commands.focus()
-        }}
+        onCancel={
+          onClose ??
+          (() => {
+            editor.commands.commentOpen(null)
+            editor.commands.focus()
+          })
+        }
+        listAbove={sheet}
       />
     </section>
   )
@@ -636,13 +855,16 @@ function CommentField({
   initial,
   autoFocus = false,
   onSubmit,
-  onCancel
+  onCancel,
+  listAbove = false
 }: {
   host: CommentsHost
   placeholder: string
   /** A stored comment being edited. */
   initial?: string
   autoFocus?: boolean
+  /** The "@" page list opens above the field (at a sheet's foot there is no room below). */
+  listAbove?: boolean
   /** Returns false to keep the text (nothing was sent). */
   onSubmit: (body: string) => boolean | void
   onCancel: () => void
@@ -787,7 +1009,11 @@ function CommentField({
       </InputGroup>
       {query && (
         <div
-          className="hk-pop absolute top-full left-0 z-40 mt-1 max-h-72 w-72 overflow-y-auto rounded-xl bg-popover shadow-popover"
+          className={cn(
+            'hk-pop absolute left-0 z-40 max-h-72 w-72 overflow-y-auto rounded-xl bg-popover shadow-popover',
+            listAbove ? 'bottom-full mb-1' : 'top-full mt-1'
+          )}
+          data-above={listAbove || undefined}
           data-testid="comment-mention-list"
         >
           <CommandList
