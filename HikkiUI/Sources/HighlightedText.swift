@@ -10,11 +10,6 @@ public struct HighlightedText: View {
         self.terms = terms
     }
 
-    /// One query, split on whitespace.
-    public init(_ text: String, query: String) {
-        self.init(text, terms: query.split(whereSeparator: \.isWhitespace).map(String.init))
-    }
-
     public var body: some View {
         Text(attributed)
     }
@@ -61,7 +56,7 @@ public struct HighlightedText: View {
 #Preview {
     VStack(alignment: .leading, spacing: Spacing.s2) {
         HighlightedText("The roadmap is due Friday, after the café review", terms: ["roadmap", "friday", "cafe"])
-        HighlightedText("Weekly sync", query: "week sy")
+        HighlightedText("Weekly sync", terms: ["week", "sy"])
     }
     .padding()
 }

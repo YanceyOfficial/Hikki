@@ -116,6 +116,7 @@ design/logo/                  wordmark + lockups (generate.mjs: text → outline
 scripts/gen-tokens.mjs        tokens → Swift + Tailwind theme
 scripts/lint-design.sh        no literal colors/fonts/spacing/radii in view code
 design/errors.json            error codes for app, editor and BFF (single source; scripts/gen-errors.mjs)
+design/fixtures/              fixtures both sides are tested against (content-text.json: block texts, Swift + editor)
 Configs/Version.xcconfig      MARKETING_VERSION / CURRENT_PROJECT_VERSION
 Project.swift                 Tuist manifest (targets: Hikki, HikkiCore, HikkiSearch, HikkiAI, HikkiUI + their tests, HikkiUITests)
 Hikki/Sources/                app: SwiftUI shell, navigation (tabs), sidebar, page bar, search, editor host
@@ -329,29 +330,39 @@ HikkiUITests/                 XCUITest flows
   (`HikkiCore/Sources/Text/JapaneseReading.swift`, `suggestReading` message): a phrase comes back as kanji runs with
   readings and bare kana (役に立ちます → 役(やく)に立(た)ちます), one ruby per run; "Whole" puts one reading over all of it.
 - **Search** (⌘K, `Hikki/Sources/SearchPalette.swift`) is the `HikkiSearch` package: `SearchIndex`
-  (`HikkiSearch/Sources/SearchIndex.swift`) keeps its own SQLite file (`search.sqlite` next to the database) with every
-  page's title, pinyin keys, headings and text under a trigram FTS5 index; `Hikki/Sources/SearchIndexer.swift` feeds it
-  — every committed page change through the store's commit observer, plus a reconcile at launch by edited time (the
-  index is rebuildable; `SearchIndex.version` empties an outdated one). Headings come out of the stored content
-  natively (`ContentText.headings`, `HikkiCore/Sources/Store/ContentText.swift`), so synced pages count too.
-  `SearchRanker` orders results: whole title, its start, every term at a word start / anywhere, the pinyin keys, then
-  fzf-style subsequences; headings below titles, text below headings, the index's BM25 order (headings weighed 3×)
-  among text matches, attached files a step below the page's own text, recent pages ahead on ties; it also cuts the
-  excerpt. Attached files (`ContentText.assets`: inline images and file attachments) have their text read on device —
-  PDFs through PDFKit, images through Vision's text recognition (`HikkiSearch/Sources/AttachmentText.swift`) — one
-  file at a time at low priority after the page is indexed, once per file; a hit whose only match is in a file names
-  it. The store has no search left in it. One ranked list ("Best matches"); a row shows the parent path, the excerpt
-  with the terms emphasized (`HighlightedText`) and the edited time. The index keeps each page's text blocks with
-  their ids (`ContentText.blocks` → `SearchBlock`); a text hit names its best block (`SearchRanker.bestBlock`: most
-  terms, a heading ahead of body text, one starting with a term, the earliest), its excerpt runs from there, and
-  opening it lands on that block with the words selected (`Navigator.open(_:at:revealing:)` →
-  `window.hikki.revealText`; without a block, the first place a term occurs). A page's other matching blocks
-  (`SearchHit.moreMatches`) fold under its row — "N more matches", then the first five, "Show N more", "Hide"
-  (`SearchListItem`, rows `SearchMatchRow` / `SearchMatchesToggleRow` in HikkiUI) — each opening at its block. Under the field, scope chips (`FilterChip`:
-  All / Titles / Text / Files — `SearchScope` in `HikkiSearch/Sources/SearchOptions.swift`; the ranker and the index
-  only count matches where the scope looks, Files always shows the file's excerpt) and a sort menu (Best match / Last
-  edited, `SearchSort`). The palette searches off the main thread (`AppModel.search` is async; a newer query cancels
-  the older one), so a busy index never freezes typing. Pages also go into the device's Spotlight index
+  (`HikkiSearch/Sources/SearchIndex.swift`) keeps its own SQLite file (`search.sqlite` next to the database, WAL so
+  searches read beside writes) with every page's title (and pinyin keys) and its text blocks with their ids, stored
+  as written and once more folded (`SearchQuery.fold`: no case, no accents — "cafe" finds Café), the folded copy under
+  a trigram FTS5 index. `Hikki/Sources/SearchIndexer.swift` feeds it — every committed page change through the
+  store's commit observer (a record whose title, icon and edited time the index has is skipped), plus a reconcile at
+  launch by edited time (the index is rebuildable; `SearchIndex.version` empties an outdated one). Each page's
+  content is read once, natively (`ContentText.extract` in `HikkiCore/Sources/Store/ContentText.swift`: headings,
+  blocks, attached files; block text reads as the editor's `editor/src/core/extract.ts` — `design/fixtures/content-text.json` holds
+  both to the same answers), for the index and Spotlight both. A search looks each term up on its own — FTS for
+  three characters or more, a scan of the folded blocks for shorter ones — so every page holding a term is a
+  candidate. `SearchRanker` orders results: whole title, its start, every term at a word start / anywhere, the pinyin
+  keys; headings below titles, text below headings, the BM25 order (summed over a page's blocks, headings weighed 3×)
+  among text matches, attached files a step below the page's own text, recent pages ahead on ties; an fzf-style
+  subsequence of a title counts only when nothing else matched and the query has three letters or more. Attached
+  files (inline images and file attachments) have their text read on device — PDFs through PDFKit, images through
+  Vision's text recognition (`HikkiSearch/Sources/AttachmentText.swift`) — by one background reader
+  (`HikkiSearch/Sources/FileTextReader.swift`), once per file name: the file texts live apart from pages, outlive a
+  new index layout and the trash, and a file that can't be read is marked and not tried again (one not on the device
+  yet is, at the next launch). A hit whose only match is in a file names it and opens at the block showing it. The
+  store has no search left in it. One ranked list ("Best matches"); a row shows the parent path, the excerpt
+  with the terms emphasized (`HighlightedText`) and the edited time. Only for the hits shown are the matching blocks
+  read: a text hit names its best block (`SearchRanker.bestBlock`: most terms, a heading ahead of body text, one
+  starting with a term, the earliest), its excerpt runs from there, and opening it lands on that block with the words
+  selected (`Navigator.open(_:at:revealing:)` → `window.hikki.revealText`; without a block, the first place a term
+  occurs). A page's other matching blocks (`SearchHit.moreMatches`, the first 50; `moreMatchCount` counts them all)
+  fold under its row — "N more matches", then the first five, "Show N more", "Hide" (`SearchListItem`, rows
+  `SearchMatchRow` / `SearchMatchesToggleRow` in HikkiUI) — each opening at its block. Under the field, scope chips
+  (`FilterChip`: All / Titles / Text / Files — `SearchScope` in `HikkiSearch/Sources/SearchOptions.swift`; the ranker
+  and the index only count matches where the scope looks, Files always shows the file's excerpt) and a sort menu
+  (Best match / Last edited, `SearchSort`). The palette's search runs off the main thread in its own task
+  (`AppModel.search` → `SearchIndex.search`, `@concurrent`): a newer query cancels the older one, which stops between
+  steps and interrupts its read, so a busy index never freezes typing. Index failures are logged and shown once per
+  run (`searchIndexFailed`). Pages also go into the device's Spotlight index
   (Core Spotlight: `Hikki/Sources/SpotlightIndex.swift`, items shaped by `SpotlightItems` in HikkiSearch; Settings →
   Spotlight, default on, off empties it); a Spotlight result opens the page through `onContinueUserActivity`. The
   index is shared by every run of the app, so a run on its own data folder (`HIKKI_DATA_DIR`: UI tests, demos) never

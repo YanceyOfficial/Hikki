@@ -1,0 +1,91 @@
+{
+  "doc": {
+    "type": "doc",
+    "content": [
+      {
+        "type": "heading",
+        "attrs": { "id": "h1", "level": 1 },
+        "content": [
+          { "type": "text", "text": "Plan" },
+          { "type": "hardBreak" },
+          { "type": "text", "text": "2026" }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "attrs": { "id": "p1" },
+        "content": [
+          { "type": "text", "text": "See " },
+          { "type": "mention", "attrs": { "id": "page-1", "label": "Roadmap" } },
+          { "type": "text", "text": " and " },
+          { "type": "inlineMath", "attrs": { "latex": "E=mc^2" } },
+          { "type": "text", "text": " first" }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "attrs": { "id": "p2" },
+        "content": [
+          {
+            "type": "ruby",
+            "attrs": { "reading": "やく" },
+            "content": [{ "type": "text", "text": "役" }]
+          },
+          { "type": "text", "text": "に立つ " },
+          { "type": "text", "text": "Café", "marks": [{ "type": "bold" }] }
+        ]
+      },
+      { "type": "paragraph", "attrs": { "id": "empty" } },
+      {
+        "type": "bulletList",
+        "content": [
+          {
+            "type": "listItem",
+            "content": [
+              {
+                "type": "paragraph",
+                "attrs": { "id": "li1" },
+                "content": [{ "type": "text", "text": "item" }]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "details",
+        "attrs": { "id": "d1" },
+        "content": [
+          {
+            "type": "detailsSummary",
+            "attrs": { "id": "s1" },
+            "content": [{ "type": "text", "text": "Summary" }]
+          },
+          {
+            "type": "detailsContent",
+            "content": [
+              {
+                "type": "paragraph",
+                "attrs": { "id": "p3" },
+                "content": [{ "type": "text", "text": "hidden" }]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "codeBlock",
+        "attrs": { "id": "c1", "language": "swift" },
+        "content": [{ "type": "text", "text": "let x = 1\nlet y = 2" }]
+      }
+    ]
+  },
+  "blocks": [
+    { "id": "h1", "text": "Plan\n2026" },
+    { "id": "p1", "text": "See @Roadmap and E=mc^2 first" },
+    { "id": "p2", "text": "役に立つ Café" },
+    { "id": "li1", "text": "item" },
+    { "id": "s1", "text": "Summary" },
+    { "id": "p3", "text": "hidden" },
+    { "id": "c1", "text": "let x = 1\nlet y = 2" }
+  ]
+}

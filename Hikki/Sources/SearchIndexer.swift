@@ -1,41 +1,58 @@
 import Foundation
 import HikkiCore
 import HikkiSearch
+import os
 
-/// Feeds the search index from the store: every committed page change as it happens, and a reconcile at launch —
-/// pages whose edited time differs from the index's are indexed again, pages gone from the store (deleted, or in
-/// the trash) are dropped. The files a page attaches (PDFs, images) have their text read afterwards, one at a
-/// time at low priority, and only once per file. The device's Spotlight index gets the same pages (`SpotlightIndex`).
-/// Work runs off the main thread; the store's observer only hands it over.
+/// Feeds the search index from the store: every committed page change as it happens (a record whose title, icon
+/// and edited time the index already has is skipped), and a reconcile at launch — pages whose edited time differs
+/// from the index's are indexed again, pages gone from the store (deleted, or in the trash) are dropped. Each
+/// page's content is read once (`ContentText.extract`) for the index and Spotlight both. The files a page attaches
+/// (PDFs, images) have their text read afterwards by one background reader (`FileTextReader`), once per file:
+/// kept apart from pages, so a new index layout or a trip to the trash reads nothing again. The device's Spotlight
+/// index gets the same pages (`SpotlightIndex`). Work runs off the main thread; the store's observer only hands it
+/// over. A failure is logged each time and shown once per run.
 nonisolated final class SearchIndexer: Sendable {
     private let index: SearchIndex
     private let store: DocumentStore
-    private let assets: AssetStore
     private let queue = DispatchQueue(label: "app.yancey.hikki.search-index", qos: .utility)
-    private let attachments: AttachmentReader
+    private let files: FileTextReader
     private let spotlight = SpotlightIndex()
+    /// Whether a failure has been shown this run.
+    private let reported: OSAllocatedUnfairLock<Bool>
 
     init(index: SearchIndex, store: DocumentStore, assets: AssetStore) {
         self.index = index
         self.store = store
-        self.assets = assets
-        attachments = AttachmentReader(index: index, assets: assets)
+        let reported = OSAllocatedUnfairLock(initialState: false)
+        self.reported = reported
+        files = FileTextReader(
+            index: index,
+            read: { name in
+                guard let kind = AttachmentText.kind(ofExtension: (name as NSString).pathExtension),
+                    let url = assets.file(named: name)
+                else { return .missing }
+                return await AttachmentText.extract(from: url, kind: kind).map(FileTextReader.Outcome.text) ?? .unreadable
+            },
+            onError: { error in Self.fail("attachment indexing failed", error, reported: reported) },
+            onRead: { count in Log.info("attachments read for search", category: "search", context: ["count": "\(count)"]) })
     }
 
     /// Starts writing changes through, then reconciles once (in that order, so nothing slips between).
     func start() {
         do {
             try store.observePageCommits { [weak self] changed, deletions, live in
-                self?.queue.async { self?.apply(changed: changed, deletions: deletions, live: live) }
+                guard let self else { return }
+                queue.async { [self] in apply(changed: changed, deletions: deletions, live: live) }
             }
         } catch {
-            Log.error("search index observation failed: \(error)", category: "search")
+            fail("search index observation failed", error)
         }
         queue.async { [self] in reconcile() }
     }
 
-    func search(_ query: String, options: SearchOptions = .standard) throws -> [SearchHit] {
-        try index.search(query, options: options)
+    /// Off the caller's actor; cancelling the calling task stops it (`CancellationError`).
+    func search(_ query: String, options: SearchOptions = .standard) async throws -> [SearchHit] {
+        try await index.search(query, options: options)
     }
 
     /// Settings → Spotlight: on pushes every page, off empties Spotlight.
@@ -69,107 +86,81 @@ nonisolated final class SearchIndexer: Sendable {
             }
             let liveIDs = Set(live.map(\.id))
             let gone = stamps.keys.filter { !liveIDs.contains($0) }
-            try index.index(stale.map(Self.document))
+            let documents = stale.map(Self.document)
+            try index.index(documents)
             try index.remove(gone)
             // Spotlight follows: every page once per format, then only what changed.
             if spotlight.isEnabled {
                 if spotlight.isSeeded {
-                    spotlight.index(stale.map(Self.document))
+                    spotlight.index(documents)
                     spotlight.remove(gone)
                 } else {
-                    spotlight.reseed(live.map(Self.document))
+                    let staleIDs = Set(stale.map(\.id))
+                    spotlight.reseed(documents + live.filter { !staleIDs.contains($0.id) }.map(Self.document))
                 }
             }
             Log.info(
                 "search index reconciled", category: "search",
                 context: ["indexed": "\(stale.count)", "removed": "\(gone.count)", "total": "\(index.count)"])
-            // Every live page's attachments are looked at: a file read earlier is skipped, a new one read.
-            readAttachments(of: live)
+            // Every file not read yet: new ones, and those that weren't on this device last time.
+            enqueueFiles(try index.unreadFiles())
         } catch {
-            Log.error("search index reconcile failed: \(error)", category: "search")
+            fail("search index reconcile failed", error)
         }
     }
 
     private func apply(changed: [DocumentRecord], deletions: Bool, live: Set<String>?) {
         do {
             let kept = changed.filter { $0.deletedAt == nil }
-            try index.index(kept.map(Self.document))
+            // A record whose indexed fields didn't move (a sibling renumbered, a move) needs nothing.
+            let stamps = try index.stamps(of: kept.map(\.id))
+            let documents = kept.filter { stamps[$0.id] != SearchStamp(title: $0.title, icon: $0.icon, updatedAt: $0.updatedAt) }
+                .map(Self.document)
+            try index.index(documents)
             var gone = Set(changed.filter { $0.deletedAt != nil }.map(\.id))
             if deletions, let live {
                 gone.formUnion(try index.stamps().keys.filter { !live.contains($0) })
             }
             try index.remove(gone)
-            spotlight.index(kept.map(Self.document))
+            spotlight.index(documents)
             spotlight.remove(Array(gone))
-            readAttachments(of: kept)
+            enqueueFiles(try index.unreadFiles(among: documents.flatMap { $0.attachments.map(\.name) }))
         } catch {
-            Log.error("search index update failed: \(error)", category: "search")
+            fail("search index update failed", error)
         }
     }
 
-    private func readAttachments(of records: [DocumentRecord]) {
-        let jobs = records.map { record in
-            AttachmentReader.Job(pageId: record.id, references: record.assetReferences)
-        }
-        guard jobs.contains(where: { !$0.references.isEmpty }) else { return }
-        let attachments = attachments
-        Task.detached(priority: .utility) { await attachments.process(jobs) }
+    private func enqueueFiles(_ names: [String]) {
+        guard !names.isEmpty else { return }
+        let files = files
+        Task.detached(priority: .utility) { await files.enqueue(names) }
     }
 
+    /// One read of the page's content serves the index and Spotlight; only files text can be read from are listed.
     private static func document(_ record: DocumentRecord) -> SearchDocument {
-        SearchDocument(
-            id: record.id, title: record.title, icon: record.icon, headings: record.headings, text: record.plainText,
-            blocks: record.textBlocks.map { SearchBlock(id: $0.id, isHeading: $0.isHeading, text: $0.text) },
+        let content = record.contentText
+        return SearchDocument(
+            id: record.id, title: record.title, icon: record.icon,
+            blocks: content.blocks.map { SearchBlock(id: $0.id, isHeading: $0.isHeading, text: $0.text) },
+            attachments: content.assets.filter { AttachmentText.kind(ofExtension: ($0.name as NSString).pathExtension) != nil }
+                .map { SearchAttachment(name: $0.name, label: $0.label, blockId: $0.blockId) },
             updatedAt: record.updatedAt)
     }
-}
 
-/// Reads attached files' text into the index, one file at a time (an actor: jobs queue up behind each other).
-/// A page's attachments that are no longer in it are dropped; a file attached to several pages is read once.
-/// A file that isn't on this device yet (iCloud) is left for a later pass.
-private actor AttachmentReader {
-    struct Job: Sendable {
-        var pageId: String
-        var references: [AssetReference]
+    private func fail(_ message: String, _ error: any Error) {
+        Self.fail(message, error, reported: reported)
     }
 
-    private let index: SearchIndex
-    private let assets: AssetStore
-
-    init(index: SearchIndex, assets: AssetStore) {
-        self.index = index
-        self.assets = assets
-    }
-
-    func process(_ jobs: [Job]) async {
-        var read = 0
-        for job in jobs {
-            do {
-                let wanted = job.references.filter {
-                    AttachmentText.kind(ofExtension: ($0.name as NSString).pathExtension) != nil
-                }
-                let known = try index.attachmentNames(of: job.pageId)
-                try index.removeAttachments(known.subtracting(wanted.map(\.name)), of: job.pageId)
-                for reference in wanted where !known.contains(reference.name) {
-                    guard let text = await text(of: reference) else { continue }
-                    try index.index(attachments: [
-                        SearchAttachment(name: reference.name, pageId: job.pageId, label: reference.label, text: text)
-                    ])
-                    read += 1
-                }
-            } catch {
-                Log.error("attachment indexing failed: \(error)", category: "search", context: ["docId": job.pageId])
-            }
+    /// Logged every time; the user hears of it once per run (`searchIndexFailed`), not on every autosave.
+    private static func fail(_ message: String, _ error: any Error, reported: OSAllocatedUnfairLock<Bool>) {
+        let first = reported.withLock { reported in
+            defer { reported = true }
+            return !reported
         }
-        if read > 0 { Log.info("attachments read for search", category: "search", context: ["count": "\(read)"]) }
-    }
-
-    /// Text read earlier for the same file, else from the file; nil when the file isn't here (yet) or unreadable.
-    private func text(of reference: AssetReference) async -> String? {
-        if let known = try? index.attachmentText(named: reference.name) { return known }
-        guard let kind = AttachmentText.kind(ofExtension: (reference.name as NSString).pathExtension),
-            let url = assets.file(named: reference.name)
-        else { return nil }
-        return await AttachmentText.extract(from: url, kind: kind)
+        if first {
+            Toasts.report(.searchIndexFailed, error, category: "search", context: ["step": message])
+        } else {
+            Log.error("\(message): \(error)", category: "search")
+        }
     }
 }
