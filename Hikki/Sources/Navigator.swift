@@ -241,7 +241,11 @@ final class Navigator {
     /// Drops trashed pages from every tab's history.
     func prune(existing: (String) -> Bool) {
         let before = tabs.route
-        tabs.prune(fallback: .home) { route in route.pageID.map { !existing($0) } ?? false }
+        // Assigned only when a page actually left: this runs on every tree change (every save), and assigning an
+        // equal value still re-rendered the window.
+        let pruned = tabs.pruned(fallback: .home) { route in route.pageID.map { !existing($0) } ?? false }
+        guard pruned != tabs else { return }
+        tabs = pruned
         // Only when pruning changed the page: re-selecting on every tree change pushed the last page back
         // onto the iPhone stack while the sidebar was showing (e.g. after Duplicate).
         if tabs.route != before { syncSelection() }
@@ -281,7 +285,9 @@ final class Navigator {
 
     private func reveal(_ id: String) {
         guard let model else { return }
-        for ancestor in model.tree.path(to: id).dropLast() { expanded.insert(ancestor.id) }
+        let ancestors = model.tree.path(to: id).dropLast().map(\.id)
+        // Only when one is new: inserting a member already there still notified every sidebar row.
+        if !expanded.isSuperset(of: ancestors) { expanded.formUnion(ancestors) }
     }
 
     private func syncSelection() {

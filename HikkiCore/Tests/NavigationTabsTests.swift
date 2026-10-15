@@ -137,6 +137,19 @@ struct NavigationTabsTests {
         #expect(tabs.route == "home")
     }
 
+    @Test func prunedIsUnchangedWhenNothingIsGone() {
+        var tabs = Tabs(initial: "home")
+        tabs.navigate(to: "a")
+        tabs.openTab("b")
+        tabs.navigate(to: "c")
+        // Nothing gone: an equal value (the navigator then skips assigning it, so no window re-renders).
+        #expect(tabs.pruned(fallback: "home") { _ in false } == tabs)
+        let pruned = tabs.pruned(fallback: "home") { $0 == "c" }
+        #expect(pruned != tabs)
+        #expect(pruned.route == "b")
+        #expect(tabs.route == "c")  // the original is untouched
+    }
+
     @Test func sidebarPicksFocusTheirTabOrOpenOneAndKeepTheLatestFew() {
         var tabs = Tabs(initial: "home")
         tabs.openRecent("a", limit: 3)

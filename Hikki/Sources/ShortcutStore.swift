@@ -55,7 +55,7 @@ final class ShortcutStore {
     }
 
     /// What the editor needs: the rebound shortcuts only, in the registry's terms (`{ key, modifiers }`).
-    var editorPayload: [String: [String: Any]] {
+    static func editorPayload(_ overrides: ShortcutOverrides) -> [String: [String: Any]] {
         overrides.combos.mapValues { combo in
             ["key": combo.key, "modifiers": combo.modifiers.sorted().map(\.rawValue)]
         }

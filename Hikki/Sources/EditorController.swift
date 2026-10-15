@@ -4,6 +4,18 @@ import Observation
 import UniformTypeIdentifiers
 import WebKit
 
+/// What every editor of a window shows the same way (Settings): each editor holds the latest and replays it when its
+/// page comes up, so a second editor (the split pane) can't miss one.
+struct EditorSettings: Equatable {
+    var tone = ColorTone.standard
+    /// Settings → Editor → Check spelling.
+    var spellcheck = true
+    /// Settings → AI → Review: how the page shows an AI edit (`inline`, `diff`, `bubble`).
+    var aiReviewStyle = "inline"
+    /// Settings → Shortcuts: the user's rebindings (the page handles the editor's own keys).
+    var shortcuts = ShortcutOverrides()
+}
+
 /// Owns one long-lived WKWebView running the Tiptap bundle and mediates every bridge call.
 /// Documents are swapped in place (`hikki.loadDocument`) instead of recreating the web view.
 @Observable
@@ -33,35 +45,75 @@ final class EditorController {
 
     init() {
         webView = makeWebView()
-        diskChanges = NotificationCenter.default.addObserver(forName: .pagesChangedOnDisk, object: nil, queue: .main) {
-            [weak self] note in
-            let ids = note.userInfo?["ids"] as? [String] ?? []
-            MainActor.assumeIsolated { self?.reloadIfShowing(ids) }
-        }
-        // A page's comments changed (here, in the other editor, or from the side panel): the page shows them.
-        commentChanges = NotificationCenter.default.addObserver(forName: .pageCommentsChanged, object: nil, queue: .main) {
-            [weak self] note in
-            let id = note.userInfo?["id"] as? String
-            MainActor.assumeIsolated {
-                guard let self, id == nil || id == self.currentDocumentID else { return }
-                self.pushComments()
-            }
-        }
-        // The same page open in another editor (split view's other side) was saved: show it here too.
-        siblingSaves = NotificationCenter.default.addObserver(forName: .pageSavedInEditor, object: nil, queue: .main) {
-            [weak self] note in
-            let id = note.userInfo?["id"] as? String
-            let sender = (note.object as AnyObject?).map(ObjectIdentifier.init)
-            MainActor.assumeIsolated {
-                guard let self, let id, sender != ObjectIdentifier(self) else { return }
-                self.reloadIfShowing([id])
-            }
+        Self.live.removeAll { $0.editor == nil }
+        Self.live.append(WeakEditor(editor: self))
+        let center = NotificationCenter.default
+        observers.tokens = [
+            center.addObserver(forName: .pagesChangedOnDisk, object: nil, queue: .main) { [weak self] note in
+                let ids = note.userInfo?["ids"] as? [String] ?? []
+                MainActor.assumeIsolated { self?.reloadIfShowing(ids) }
+            },
+            // A page's comments changed (here, in the other editor, or from the side panel): the page shows them.
+            center.addObserver(forName: .pageCommentsChanged, object: nil, queue: .main) { [weak self] note in
+                let id = note.userInfo?["id"] as? String
+                MainActor.assumeIsolated {
+                    guard let self, id == nil || id == self.currentDocumentID else { return }
+                    self.pushComments()
+                }
+            },
+            // The same page open in another editor (split view's other side) was saved: show it here too.
+            center.addObserver(forName: .pageSavedInEditor, object: nil, queue: .main) { [weak self] note in
+                let id = note.userInfo?["id"] as? String
+                let sender = (note.object as AnyObject?).map(ObjectIdentifier.init)
+                MainActor.assumeIsolated {
+                    guard let self, let id, sender != ObjectIdentifier(self) else { return }
+                    self.reloadIfShowing([id])
+                }
+            },
+        ]
+    }
+
+    #if DEBUG
+        // A window's editor must go with its window (its web view is a process of its own): a missing line here after
+        // closing one means something still holds it.
+        deinit { Log.info("editor released", category: "bridge") }
+    #endif
+
+    /// The notification observers, removed when the editor goes.
+    @ObservationIgnored private let observers = NotificationTokens()
+
+    // MARK: - Every editor (⌘Q, backgrounding)
+
+    private struct WeakEditor {
+        weak var editor: EditorController?
+    }
+
+    /// Every editor alive, in any window.
+    private static var live: [WeakEditor] = []
+
+    /// Hands every editor's unsaved edits to the store (the app quitting or leaving the screen).
+    static func flushAll(reason: String) async {
+        for editor in live.compactMap(\.editor) { await editor.flush(reason: reason) }
+    }
+
+    // MARK: - Calling the page
+
+    /// Runs a `window.hikki` call; a failure is logged under `label` (the page keeps its last state).
+    @discardableResult
+    private func call(_ script: String, _ arguments: [String: Any] = [:], label: String) async -> Any? {
+        do {
+            return try await webView.callAsyncJavaScript(script, arguments: arguments, contentWorld: .page)
+        } catch {
+            Log.warn("\(label) failed: \(error)", category: "bridge")
+            return nil
         }
     }
 
-    @ObservationIgnored private var diskChanges: (any NSObjectProtocol)?
-    @ObservationIgnored private var siblingSaves: (any NSObjectProtocol)?
-    @ObservationIgnored private var commentChanges: (any NSObjectProtocol)?
+    /// `call`, once the page is up (before that, the state is replayed on ready).
+    private func send(_ script: String, _ arguments: [String: Any] = [:], label: String) {
+        guard isReady else { return }
+        Task { _ = await call(script, arguments, label: label) }
+    }
 
     // MARK: - Comments
 
@@ -86,24 +138,14 @@ final class EditorController {
                 },
             ]
         }
-        Task {
-            do {
-                _ = try await webView.callAsyncJavaScript(
-                    "window.hikki.setComments(docId, threads, device)",
-                    arguments: ["docId": id, "threads": payload, "device": deviceName ?? NSNull()], contentWorld: .page)
-            } catch {
-                Log.warn("setComments failed: \(error)", category: "bridge")
-            }
-        }
+        send(
+            "window.hikki.setComments(docId, threads, device)",
+            ["docId": id, "threads": payload, "device": deviceName ?? NSNull()], label: "setComments")
     }
 
     /// A thread picked in the side panel: opened in the page, its passage in view.
     func openComment(_ threadId: String) {
-        guard isReady else { return }
-        Task {
-            _ = try? await webView.callAsyncJavaScript(
-                "window.hikki.openComment(id)", arguments: ["id": threadId], contentWorld: .page)
-        }
+        send("window.hikki.openComment(id)", ["id": threadId], label: "openComment")
     }
 
     /// A comment change from the page, into the store; every editor showing the page (and the side panel) hears.
@@ -127,6 +169,7 @@ final class EditorController {
                 guard let record = try store?.document(id: id), currentDocumentID == id else { return }
                 let applied = try await webView.callAsyncJavaScript(
                     "return window.hikki.reload(page)", arguments: ["page": try PagePayload.make(from: record)], contentWorld: .page)
+                if applied as? Bool == true { pageState.loaded(id, locked: record.isLocked) }
                 Log.info(
                     "open page changed on disk", category: "bridge", context: ["docId": id, "applied": "\(applied as? Bool ?? false)"])
             } catch {
@@ -191,47 +234,55 @@ final class EditorController {
     /// `splitDropHover`: a page held over the edge would replace the right side (or no longer).
     @ObservationIgnored var onSplitDropHover: ((Bool) -> Void)?
 
-    /// Pages the editor names links with (`window.hikki.setPages`), kept to resend after a reload.
-    @ObservationIgnored private var pages: [[String: Any]] = []
+    // MARK: - Pages and lock
+
+    /// The workspace's pages as last pushed (the index links are named with, the open page's lock).
+    @ObservationIgnored private var tree: PageTree?
+    /// What the page was last told of them, so a body save sends nothing.
+    @ObservationIgnored private var pageState = EditorPageState()
     /// A block to scroll to as soon as its page is the loaded document (a link to a block).
     @ObservationIgnored private var pendingBlock: (pageID: String, blockID: String)?
 
-    func setPages(_ summaries: [PageSummary]) {
-        pages = summaries.map { ["id": $0.id, "title": $0.title, "icon": $0.icon ?? NSNull()] }
+    /// The pages changed (any window, any device): the page's link index when a title or icon changed, and its lock
+    /// when the open page was locked or unlocked — each editor hears for its own page.
+    func setPages(_ tree: PageTree) {
+        self.tree = tree
         guard isReady else { return }
-        Task { await applyPages() }
+        sendPageIndex()
+        sendLockIfChanged()
     }
 
-    private func applyPages() async {
-        do {
-            _ = try await webView.callAsyncJavaScript(
-                "window.hikki.setPages(pages)", arguments: ["pages": pages], contentWorld: .page)
-        } catch {
-            Log.warn("setPages failed: \(error)", category: "bridge")
-        }
+    private func sendPageIndex() {
+        if let arguments = pageIndexArguments() { send("window.hikki.setPages(pages)", arguments, label: "setPages") }
+    }
+
+    /// The index to send, or nil when the page already has it.
+    private func pageIndexArguments() -> [String: Any]? {
+        guard let tree, let entries = pageState.index(for: tree.all) else { return nil }
+        return ["pages": entries.map { ["id": $0.id, "title": $0.title, "icon": $0.icon ?? NSNull()] as [String: Any] }]
+    }
+
+    /// The open page was locked or unlocked while shown (`window.hikki.setLocked`; a page load carries its own).
+    private func sendLockIfChanged() {
+        guard isReady, pendingDocumentID == nil, let tree,
+            let locked = pageState.lockChange(showing: currentDocumentID, in: tree)
+        else { return }
+        send("window.hikki.setLocked(locked)", ["locked": locked], label: "setLocked")
     }
 
     /// Scrolls to a block — now if its page is loaded, otherwise right after that page loads.
     func scrollToBlock(_ blockID: String, in pageID: String) {
         if isReady, currentDocumentID == pageID, pendingDocumentID == nil {
-            Task { await callScrollToBlock(blockID) }
+            send("window.hikki.scrollToBlock(id)", ["id": blockID], label: "scrollToBlock")
         } else {
             pendingBlock = (pageID, blockID)
         }
     }
 
-    /// The inspector's outline: a heading of the open page.
     /// The inspector's outline: the heading to the top of the page, marked there as the one being read.
     func scrollToHeading(_ blockID: String) {
-        guard isReady, currentDocumentID != nil else { return }
-        Task {
-            do {
-                _ = try await webView.callAsyncJavaScript(
-                    "window.hikki.jumpToHeading(id)", arguments: ["id": blockID], contentWorld: .page)
-            } catch {
-                Log.warn("jumpToHeading failed: \(error)", category: "bridge")
-            }
-        }
+        guard currentDocumentID != nil else { return }
+        send("window.hikki.jumpToHeading(id)", ["id": blockID], label: "jumpToHeading")
     }
 
     /// Whether the page draws its own hover outline rail (off while the inspector shows the outline).
@@ -240,33 +291,14 @@ final class EditorController {
     func setOutlineRail(_ visible: Bool) {
         guard visible != outlineRailVisible else { return }
         outlineRailVisible = visible
-        guard isReady else { return }
-        Task { await applyOutlineRail() }
-    }
-
-    private func applyOutlineRail() async {
-        do {
-            _ = try await webView.callAsyncJavaScript(
-                "window.hikki.setOutlineRail(visible)", arguments: ["visible": outlineRailVisible], contentWorld: .page)
-        } catch {
-            Log.warn("setOutlineRail failed: \(error)", category: "bridge")
-        }
-    }
-
-    private func callScrollToBlock(_ blockID: String) async {
-        do {
-            _ = try await webView.callAsyncJavaScript(
-                "window.hikki.scrollToBlock(id)", arguments: ["id": blockID], contentWorld: .page)
-        } catch {
-            Log.warn("scrollToBlock failed: \(error)", category: "bridge")
-        }
+        send("window.hikki.setOutlineRail(visible)", ["visible": visible], label: "setOutlineRail")
     }
 
     func open(documentID: String?, scrollTop: Double? = nil) {
         Task {
             await load(documentID)
             if let scrollTop, scrollTop > 0, let id = documentID, currentDocumentID == id {
-                await restoreScroll(scrollTop)
+                await call("window.hikki.restoreScroll(top)", ["top": scrollTop], label: "restoreScroll")
             }
         }
     }
@@ -274,46 +306,21 @@ final class EditorController {
     /// Where the open page was last scrolled (the editor reports it), for a tab to come back to.
     @ObservationIgnored private(set) var lastScroll: (docId: String, top: Double)?
 
-    private func restoreScroll(_ top: Double) async {
-        do {
-            _ = try await webView.callAsyncJavaScript(
-                "window.hikki.restoreScroll(top)", arguments: ["top": top], contentWorld: .page)
-        } catch {
-            Log.warn("restoreScroll failed: \(error)", category: "bridge")
-        }
-    }
-
     /// AI on the selection: the request goes to the app's AI service; its events come back through `sendAIEvent`.
     @ObservationIgnored var onAIRequest: ((AIRequestPayload) -> Void)?
     @ObservationIgnored var onAICancel: ((String) -> Void)?
 
     /// One event of an AI request's answer, to the page (`window.hikki.aiEvent`).
     func sendAIEvent(_ event: [String: Any]) {
-        guard isReady else { return }
-        Task {
-            do {
-                _ = try await webView.callAsyncJavaScript(
-                    "window.hikki.aiEvent(event)", arguments: ["event": event], contentWorld: .page)
-            } catch {
-                Log.warn("aiEvent failed: \(error)", category: "bridge")
-            }
-        }
+        send("window.hikki.aiEvent(event)", ["event": event], label: "aiEvent")
     }
 
     /// Selects the page title for typing — now if that page is loaded, otherwise right after it loads.
     func focusTitle(of id: String) {
         if isReady, currentDocumentID == id, pendingDocumentID == nil {
-            Task { await callFocusTitle() }
+            send("window.hikki.focusTitle()", label: "focusTitle")
         } else {
             titleFocusPageID = id
-        }
-    }
-
-    private func callFocusTitle() async {
-        do {
-            _ = try await webView.callAsyncJavaScript("window.hikki.focusTitle()", contentWorld: .page)
-        } catch {
-            Log.warn("focusTitle failed: \(error)", category: "bridge")
         }
     }
 
@@ -329,26 +336,16 @@ final class EditorController {
         }
     }
 
-    /// Blurs the editor in JS (so ProseMirror's focus state stays truthful), then resigns the native first
-    /// responder as a fallback in case the page is unresponsive.
     /// The caret into the body (the iPhone's Edit button).
     func focusBody() {
-        Task {
-            do {
-                _ = try await webView.callAsyncJavaScript("window.hikki.focus()", contentWorld: .page)
-            } catch {
-                Log.warn("focus failed: \(error)", category: "bridge")
-            }
-        }
+        Task { _ = await call("window.hikki.focus()", label: "focus") }
     }
 
+    /// Blurs the editor in JS (so ProseMirror's focus state stays truthful), then resigns the native first responder
+    /// as a fallback in case the page is unresponsive.
     func dismissKeyboard() {
         Task {
-            do {
-                _ = try await webView.callAsyncJavaScript("window.hikki.blur()", contentWorld: .page)
-            } catch {
-                Log.warn("blur failed: \(error)", category: "bridge")
-            }
+            _ = await call("window.hikki.blur()", label: "blur")
             #if os(iOS)
                 webView.endEditing(true)
             #endif
@@ -368,21 +365,37 @@ final class EditorController {
         }
     }
 
-    // MARK: - Locale
+    // MARK: - Settings, find, insets
 
     /// The app's resolved language (e.g. "zh-Hans"), so the editor UI matches the native chrome.
     static var appLocale: String { Bundle.main.preferredLocalizations.first ?? "en" }
 
-    private func applyLocale() async {
-        do {
-            _ = try await webView.callAsyncJavaScript(
-                "window.hikki.setLocale(locale)", arguments: ["locale": Self.appLocale], contentWorld: .page)
-        } catch {
-            Log.warn("setLocale failed: \(error)", category: "bridge")
-        }
+    /// The window's settings (ContentView keeps them current); sent as they change and replayed on ready.
+    @ObservationIgnored private(set) var settings = EditorSettings()
+
+    func apply(_ new: EditorSettings) {
+        let old = settings
+        settings = new
+        guard isReady else { return }
+        Task { await sendSettings(changedFrom: old) }
     }
 
-    // MARK: - Find, spelling, insets
+    /// Each setting that differs from `old` (all of them with nil: the page just came up).
+    private func sendSettings(changedFrom old: EditorSettings?) async {
+        let new = settings
+        if new.tone != old?.tone { await call("window.hikki.setTone(tone)", ["tone": new.tone.rawValue], label: "setTone") }
+        if new.spellcheck != old?.spellcheck {
+            await call("window.hikki.setSpellcheck(on)", ["on": new.spellcheck], label: "setSpellcheck")
+        }
+        if new.aiReviewStyle != old?.aiReviewStyle {
+            await call("window.hikki.setAIReviewStyle(style)", ["style": new.aiReviewStyle], label: "setAIReviewStyle")
+        }
+        if new.shortcuts != old?.shortcuts {
+            await call(
+                "window.hikki.setShortcuts(overrides)", ["overrides": ShortcutStore.editorPayload(new.shortcuts)],
+                label: "setShortcuts")
+        }
+    }
 
     /// Edit → Find… / Find and Replace… / Find Next / Find Previous (mirrors FindMode in the editor).
     enum FindMode: String { case find, replace, next, previous }
@@ -392,23 +405,7 @@ final class EditorController {
             Log.warn("find before the editor was ready", category: "bridge", context: ["mode": mode.rawValue])
             return
         }
-        Task {
-            do {
-                _ = try await webView.callAsyncJavaScript(
-                    "window.hikki.find(mode)", arguments: ["mode": mode.rawValue], contentWorld: .page)
-            } catch {
-                Log.warn("find failed: \(error)", category: "bridge")
-            }
-        }
-    }
-
-    /// Settings → Editor → Check spelling; sent on ready and whenever it changes.
-    @ObservationIgnored private var spellcheck = true
-
-    func setSpellcheck(_ on: Bool) {
-        spellcheck = on
-        guard isReady else { return }
-        Task { await applySpellcheck() }
+        send("window.hikki.find(mode)", ["mode": mode.rawValue], label: "find")
     }
 
     @ObservationIgnored private var autoFocus = true
@@ -417,44 +414,7 @@ final class EditorController {
     /// loading never takes the keyboard from the page being typed in beside it.
     func setAutoFocus(_ on: Bool) {
         autoFocus = on
-        guard isReady else { return }
-        Task { await applyAutoFocus() }
-    }
-
-    private func applyAutoFocus() async {
-        do {
-            _ = try await webView.callAsyncJavaScript(
-                "window.hikki.setAutoFocus(on)", arguments: ["on": autoFocus], contentWorld: .page)
-        } catch {
-            Log.warn("setAutoFocus failed: \(error)", category: "bridge")
-        }
-    }
-
-    @ObservationIgnored private var aiReviewStyle = "inline"
-
-    /// Settings → AI → Review: how the page shows an AI edit (`inline`, `diff`, `bubble`).
-    func setAIReviewStyle(_ style: String) {
-        aiReviewStyle = style
-        guard isReady else { return }
-        Task { await applyAIReviewStyle() }
-    }
-
-    private func applyAIReviewStyle() async {
-        do {
-            _ = try await webView.callAsyncJavaScript(
-                "window.hikki.setAIReviewStyle(style)", arguments: ["style": aiReviewStyle], contentWorld: .page)
-        } catch {
-            Log.warn("setAIReviewStyle failed: \(error)", category: "bridge")
-        }
-    }
-
-    private func applySpellcheck() async {
-        do {
-            _ = try await webView.callAsyncJavaScript(
-                "window.hikki.setSpellcheck(on)", arguments: ["on": spellcheck], contentWorld: .page)
-        } catch {
-            Log.warn("setSpellcheck failed: \(error)", category: "bridge")
-        }
+        send("window.hikki.setAutoFocus(on)", ["on": on], label: "setAutoFocus")
     }
 
     /// What a page dropped on the page's right edge does (split view): open it beside, replace the right side, show it
@@ -466,46 +426,7 @@ final class EditorController {
     func setSplitDrop(_ mode: SplitDropMode) {
         guard splitDrop != mode else { return }
         splitDrop = mode
-        guard isReady else { return }
-        Task { await applySplitDrop() }
-    }
-
-    private func applySplitDrop() async {
-        do {
-            _ = try await webView.callAsyncJavaScript(
-                "window.hikki.setSplitDrop(mode)", arguments: ["mode": splitDrop.rawValue], contentWorld: .page)
-        } catch {
-            Log.warn("setSplitDrop failed: \(error)", category: "bridge")
-        }
-    }
-
-    /// Settings → Shortcuts: the user's rebindings (`ShortcutStore`), sent on ready and whenever they change.
-    func updateShortcuts() {
-        guard isReady else { return }
-        Task { await applyShortcuts() }
-    }
-
-    private func applyShortcuts() async {
-        do {
-            _ = try await webView.callAsyncJavaScript(
-                "window.hikki.setShortcuts(overrides)", arguments: ["overrides": ShortcutStore.shared.editorPayload],
-                contentWorld: .page)
-        } catch {
-            Log.warn("setShortcuts failed: \(error)", category: "bridge")
-        }
-    }
-
-    /// The open page was locked or unlocked while shown (`window.hikki.setLocked`; a page load carries its own).
-    func setLocked(_ locked: Bool) {
-        guard isReady else { return }
-        Task {
-            do {
-                _ = try await webView.callAsyncJavaScript(
-                    "window.hikki.setLocked(locked)", arguments: ["locked": locked], contentWorld: .page)
-            } catch {
-                Log.warn("setLocked failed: \(error)", category: "bridge")
-            }
-        }
+        send("window.hikki.setSplitDrop(mode)", ["mode": mode.rawValue], label: "setSplitDrop")
     }
 
     /// Height of the toolbar the page runs under, so fixed panels in the page (find) sit below it; and of the bar
@@ -520,38 +441,25 @@ final class EditorController {
         topInset = top
         bottomInset = bottom
         bleedTop = bleed
-        guard isReady else { return }
-        Task { await applyInsets() }
+        send("window.hikki.setInsets({ top, bottom, bleed })", insetArguments, label: "setInsets")
     }
 
-    private func applyInsets() async {
-        do {
-            _ = try await webView.callAsyncJavaScript(
-                "window.hikki.setInsets({ top, bottom, bleed })",
-                arguments: ["top": Double(topInset), "bottom": Double(bottomInset), "bleed": bleedTop], contentWorld: .page)
-        } catch {
-            Log.warn("setInsets failed: \(error)", category: "bridge")
+    private var insetArguments: [String: Any] {
+        ["top": Double(topInset), "bottom": Double(bottomInset), "bleed": bleedTop]
+    }
+
+    /// Everything the page is told besides its document, in order, when it comes up (first load, a crashed web
+    /// process reloaded).
+    private func replayState() async {
+        await call("window.hikki.setLocale(locale)", ["locale": Self.appLocale], label: "setLocale")
+        await sendSettings(changedFrom: nil)
+        await call("window.hikki.setAutoFocus(on)", ["on": autoFocus], label: "setAutoFocus")
+        await call("window.hikki.setSplitDrop(mode)", ["mode": splitDrop.rawValue], label: "setSplitDrop")
+        await call("window.hikki.setInsets({ top, bottom, bleed })", insetArguments, label: "setInsets")
+        if !outlineRailVisible {
+            await call("window.hikki.setOutlineRail(visible)", ["visible": false], label: "setOutlineRail")
         }
-    }
-
-    // MARK: - Color tone
-
-    /// The tone the editor should paint in (Settings → Appearance); sent on ready and whenever it changes.
-    @ObservationIgnored private var tone = ColorTone.standard
-
-    func setTone(_ tone: ColorTone) {
-        self.tone = tone
-        guard isReady else { return }
-        Task { await applyTone() }
-    }
-
-    private func applyTone() async {
-        do {
-            _ = try await webView.callAsyncJavaScript(
-                "window.hikki.setTone(tone)", arguments: ["tone": tone.rawValue], contentWorld: .page)
-        } catch {
-            Log.warn("setTone failed: \(error)", category: "bridge")
-        }
+        if let arguments = pageIndexArguments() { await call("window.hikki.setPages(pages)", arguments, label: "setPages") }
     }
 
     // MARK: - Loading
@@ -563,7 +471,10 @@ final class EditorController {
         }
         await flush(reason: "switch")
         currentDocumentID = id
-        guard let id else { return }
+        guard let id else {
+            pageState.loaded(nil, locked: false)
+            return
+        }
         do {
             guard let record = try store?.document(id: id) else {
                 Log.warn("open: document missing", category: "store", context: ["docId": id])
@@ -574,14 +485,17 @@ final class EditorController {
                 arguments: ["page": try PagePayload.make(from: record)],
                 contentWorld: .page
             )
+            // The payload carried the page's lock; one set while it loaded goes now.
+            pageState.loaded(id, locked: record.isLocked)
+            sendLockIfChanged()
             pushComments()
             if titleFocusPageID == id {
                 titleFocusPageID = nil
-                await callFocusTitle()
+                await call("window.hikki.focusTitle()", label: "focusTitle")
             }
             if let pending = pendingBlock, pending.pageID == id {
                 pendingBlock = nil
-                await callScrollToBlock(pending.blockID)
+                await call("window.hikki.scrollToBlock(id)", ["id": pending.blockID], label: "scrollToBlock")
             }
         } catch {
             Toasts.report(.pageLoadFailed, error, category: "bridge", context: ["docId": id])
@@ -600,23 +514,16 @@ final class EditorController {
                 return nil
             }
             isReady = true
-            if !outlineRailVisible { Task { await applyOutlineRail() } }
             // Cold start of the bundle (web content process + parse + first render); IDs/timings only.
             let elapsed = loadStartedAt.map { Int(Date.now.timeIntervalSince($0) * 1000) } ?? -1
             Log.info("editor ready", category: "bridge", context: ["ms": "\(elapsed)"])
             let pending = pendingDocumentID ?? currentDocumentID
             pendingDocumentID = nil
             currentDocumentID = nil
+            // A fresh page knows nothing yet: everything is sent again.
+            pageState.reset()
             Task {
-                await applyLocale()
-                await applyTone()
-                await applySpellcheck()
-                await applyAIReviewStyle()
-                await applyAutoFocus()
-                await applyShortcuts()
-                await applySplitDrop()
-                await applyInsets()
-                await applyPages()
+                await replayState()
                 await load(pending ?? nil)
             }
         case .changed(let snapshot):
@@ -781,6 +688,15 @@ final class EditorController {
     @ObservationIgnored private var loadStartedAt: Date?
 }
 
+/// Block-based notification observers, removed when their owner (and so this) goes.
+nonisolated private final class NotificationTokens: @unchecked Sendable {
+    nonisolated(unsafe) var tokens: [any NSObjectProtocol] = []
+
+    deinit {
+        for token in tokens { NotificationCenter.default.removeObserver(token) }
+    }
+}
+
 /// WKUserContentController retains its handlers; this proxy keeps the controller weakly referenced.
 private final class ScriptMessageProxy: NSObject, WKScriptMessageHandlerWithReply {
     weak var owner: EditorController?
@@ -905,10 +821,4 @@ extension Notification.Name {
     /// A page's comments changed (`userInfo["id"]`; none: any page — the app came back and other devices may have
     /// written): editors showing it and the side panel reload them.
     static let pageCommentsChanged = Notification.Name("app.yancey.hikki.pageCommentsChanged")
-}
-
-/// Text selected in a page (`selection` bridge message).
-struct EditorSelection: Equatable {
-    let docId: String
-    let text: String
 }

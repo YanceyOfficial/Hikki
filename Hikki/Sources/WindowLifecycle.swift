@@ -55,6 +55,14 @@
     final class AppDelegate: NSObject, NSApplicationDelegate {
         func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
+        /// ⌘Q: every editor's last typing and the workspace folder's queued writes reach the disk first.
+        func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+            SaveOnExit.flushAll(model: AppModel.current, reason: "quit") {
+                sender.reply(toApplicationShouldTerminate: true)
+            }
+            return .terminateLater
+        }
+
         /// Dock click with nothing on screen: bring back the hidden window rather than letting SwiftUI open a new one.
         func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
             if !hasVisibleWindows, MainWindows.showHidden() { return false }
