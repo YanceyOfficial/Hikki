@@ -95,6 +95,45 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(app.buttons["home-new-page"].firstMatch.exists)
     }
 
+    /// iPhone: leaving the app while typing in a page (keyboard up) and coming back — or relaunching — keeps the body
+    /// right under the title (it was drawn far down the screen once, with the keyboard's room left above it).
+    func testPhoneBodyStaysUnderTheTitleAfterLeavingWhileTyping() throws {
+        #if os(iOS)
+            guard UIDevice.current.userInterfaceIdiom == .phone else { throw XCTSkip("the iPhone layout") }
+        #else
+            throw XCTSkip("the iPhone layout")
+        #endif
+        continueAfterFailure = false
+        let app = launch(environment: ["HIKKI_DEMO_PAGES": "1", "HIKKI_DEBUG_NAV": "demo-46ffce8"])
+        let body = app.webViews.textViews["Page content"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(body, in: app, timeout: 30))
+        let line = body.staticTexts["山へ行くんですか。"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(line, in: app))
+        let gap = { () -> CGFloat in
+            let title = app.webViews.staticTexts["N4 文法"].firstMatch
+            return body.staticTexts.element(boundBy: 0).frame.minY - title.frame.maxY
+        }
+        let before = gap()
+        line.tap()
+        sleep(1)
+        app.typeText("x")
+        sleep(3)
+        attachScreenshot(app, "typing")
+        XCUIDevice.shared.press(.home)
+        sleep(2)
+        app.activate()
+        sleep(3)
+        attachScreenshot(app, "back")
+        XCTAssertLessThan(abs(gap() - before), 40, "the body moved away from the title after coming back")
+        app.terminate()
+        app.launchEnvironment["HIKKI_DEBUG_NAV"] = "demo-46ffce8"
+        app.launch()
+        XCTAssertTrue(waitOrDumpTree(app.webViews.textViews["Page content"].firstMatch, in: app, timeout: 30))
+        sleep(2)
+        attachScreenshot(app, "relaunched")
+        XCTAssertLessThan(abs(gap() - before), 40, "the body moved away from the title after relaunching")
+    }
+
     /// First launch: welcome → name → "this device only" → the named workspace opens, and stays bound on relaunch.
     func testOnboardingCreatesNamedWorkspace() throws {
         continueAfterFailure = false

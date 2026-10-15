@@ -211,13 +211,27 @@ function TitleField({
   const ref = useRef<HTMLTextAreaElement>(null)
   const composing = useRef(false)
 
-  // Auto-grow to fit wrapped lines.
+  // Auto-grow to fit wrapped lines — again whenever the width changes or fonts arrive: measured once on a cold launch,
+  // while the web view was still narrow, the title kept the height of several wrapped lines and pushed the body far
+  // down the page.
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
-    el.style.height = '0px'
-    el.style.height = `${el.scrollHeight}px`
+    fitTitle(el)
   }, [title])
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    let width = el.clientWidth
+    const observer = new ResizeObserver(() => {
+      if (el.clientWidth === width) return
+      width = el.clientWidth
+      fitTitle(el)
+    })
+    observer.observe(el)
+    void document.fonts?.ready.then(() => fitTitle(el))
+    return () => observer.disconnect()
+  }, [])
 
   // Caret into the title, at its end (ArrowUp / Backspace from the top of the body).
   useEffect(() => {
@@ -419,4 +433,10 @@ function CoverAction(props: React.ComponentProps<typeof Button>) {
       )}
     />
   )
+}
+
+/** The title's height to fit its wrapped lines. */
+export function fitTitle(el: HTMLTextAreaElement): void {
+  el.style.height = '0px'
+  el.style.height = `${el.scrollHeight}px`
 }
