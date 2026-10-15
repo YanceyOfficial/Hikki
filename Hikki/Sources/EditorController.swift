@@ -506,12 +506,15 @@ final class EditorController {
         }
     }
 
-    /// Height of the toolbar the page runs under, so fixed panels in the page (find) sit below it.
+    /// Height of the toolbar the page runs under, so fixed panels in the page (find) sit below it; and of the bar
+    /// floating over its foot (iPhone, keyboard down), so a bottom sheet (comments) keeps its field above it.
     @ObservationIgnored private var topInset: CGFloat = 0
+    @ObservationIgnored private var bottomInset: CGFloat = 0
 
-    func setTopInset(_ top: CGFloat) {
-        guard top != topInset else { return }
+    func setInsets(top: CGFloat, bottom: CGFloat) {
+        guard top != topInset || bottom != bottomInset else { return }
         topInset = top
+        bottomInset = bottom
         guard isReady else { return }
         Task { await applyInsets() }
     }
@@ -519,7 +522,8 @@ final class EditorController {
     private func applyInsets() async {
         do {
             _ = try await webView.callAsyncJavaScript(
-                "window.hikki.setInsets({ top })", arguments: ["top": Double(topInset)], contentWorld: .page)
+                "window.hikki.setInsets({ top, bottom })",
+                arguments: ["top": Double(topInset), "bottom": Double(bottomInset)], contentWorld: .page)
         } catch {
             Log.warn("setInsets failed: \(error)", category: "bridge")
         }

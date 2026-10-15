@@ -344,7 +344,13 @@ HikkiUITests/                 XCUITest flows
   — `isUserEdit` in `editor/src/core/bridge.ts` otherwise skips non-undo transactions), and an open thread whose mark is
   missing is marked again where its quote occurs once (`findQuote`). `editor/src/components/comments.tsx` draws
   cards in the right margin when the window is wide (`#page[data-comments]` shifts the page left at ≥ 1240 px), count
-  badges with a thread card under the passage otherwise; resolved threads lose their highlight. Each comment in an
+  badges with a thread card under the passage otherwise; on a phone (`PHONE_QUERY`: coarse pointer, narrow or short
+  window) the open thread or a new comment is a bottom sheet instead (shadcn `Drawer`, `editor/src/components/ui/drawer.tsx`,
+  restyled to the motion tokens): grabber, quote, comments with their actions always shown, the reply field at the
+  foot riding the software keyboard (`visualViewport`) and clear of the native bottom bar (`--hk-inset-bottom`);
+  scrim, swipe down or Escape close it, and neither opening nor closing it focuses the page. A tap on a commented
+  passage opens its thread without moving the caret (the plugin cancels that touch's click, so no keyboard comes up);
+  a click on a Mac still places the caret. Resolved threads lose their highlight. Each comment in an
   open thread shows its actions on hover (the first: resolve ✓; all: ⋯ → Edit in place, Copy link to discussion —
   `hikki://page/<id>#<thread id>`, which `scrollToBlock` turns into opening the thread — and Delete: a reply alone,
   the first comment the whole discussion); `commentEdit` rewrites one (`editedAt`; a merge keeps the newer edit).
@@ -401,7 +407,8 @@ HikkiUITests/                 XCUITest flows
 - **Find, spelling, insets**: find and replace is `editor/src/extensions/find.ts` (Tiptap's extension, RE2 regex) with
   `editor/src/components/find-panel.tsx`; the page handles ⌘F/⌥⌘F/⌘G itself, the native Edit menu and the page ⋯ menu ("Find
   in Page", the only way on a phone) call `window.hikki.find`. Spellcheck is WebKit's (Settings → Editor,
-  `window.hikki.setSpellcheck`). `window.hikki.setInsets` gives the page the toolbar height for fixed panels.
+  `window.hikki.setSpellcheck`). `window.hikki.setInsets` gives the page the toolbar height for fixed panels and, on
+  iPhone, the floating bar's room at the foot (`--hk-inset-bottom`, 0 while the keyboard is up).
 - **iOS input zoom**: fields under 16px make iOS zoom the page on focus (fixed panels then sit off screen); touch
   devices get 16px fields via an unlayered rule in `editor/src/style.css` (the page title is exempt).
 - **Editor content safety**: content that doesn't fit the schema (corrupt, or from a newer Hikki) opens read-only and
