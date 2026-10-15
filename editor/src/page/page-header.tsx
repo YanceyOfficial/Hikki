@@ -13,11 +13,10 @@ import { useTranslation } from 'react-i18next'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Popover as CoverPopover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 
-import { AnchoredPopover } from '../components/anchored-popover'
 import { EmojiPickerPanel } from '../components/emoji-picker-panel'
 import { LazyLoadImage } from '../components/lazy-load-image'
 import type { EditorBridge } from '../core/bridge'
@@ -37,15 +36,21 @@ import { CoverPicker } from './cover-picker'
 export function PageHeader({ bridge }: { bridge: EditorBridge }) {
   const { t } = useTranslation()
   const page = useSyncExternalStore(bridge.page.subscribe, bridge.page.get)
-  const [iconAnchor, setIconAnchor] = useState<HTMLElement | null>(null)
   const [iconOpen, setIconOpen] = useState(false)
   // Reposition: the position being dragged (null when not repositioning).
   const [draftY, setDraftY] = useState<number | null>(null)
+  // The header stays mounted from page to page: another page starts with nothing of the last one's in progress
+  // (a reposition draft would otherwise be saved into the next page's cover).
+  const [shownDoc, setShownDoc] = useState(page.docId)
+  if (shownDoc !== page.docId) {
+    setShownDoc(page.docId)
+    setDraftY(null)
+    setIconOpen(false)
+  }
   const cover = draftY !== null && page.cover ? withCoverPosition(page.cover, draftY) : page.cover
   const background = coverBackground(cover)
   // Nothing in the header may change on a locked (or unreadable) page.
   const frozen = page.readOnly || page.locked
-  const closeIcon = useCallback(() => setIconOpen(false), [])
 
   if (!page.docId) return null
 
@@ -85,7 +90,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
             // Visible on hover (always on touch / while open).
             !frozen && (
               <CoverActions className="opacity-0 transition-opacity group-focus-within/cover:opacity-100 group-hover/cover:opacity-100 has-aria-expanded:opacity-100 touch:opacity-100">
-                <CoverPopover>
+                <Popover>
                   <PopoverTrigger render={<CoverAction />}>{t('page.changeCover')}</PopoverTrigger>
                   <PopoverContent
                     align="end"
@@ -98,7 +103,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
                       onUpload={uploadCover}
                     />
                   </PopoverContent>
-                </CoverPopover>
+                </Popover>
                 {isImageCover(page.cover) && (
                   <>
                     <Separator orientation="vertical" className="mx-0.5 h-4 self-center!" />
@@ -114,20 +119,41 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
       )}
       <div className={cn('hk-column', background ? 'pt-0' : 'pt-18')}>
         {page.icon && (
-          <button
-            type="button"
-            className={cn(
-              '-ml-0.5 mb-1 block size-[78px] rounded-lg font-emoji text-[78px] leading-none',
-              !frozen && 'cursor-pointer hover:bg-accent',
-              background && 'relative -mt-[39px]'
-            )}
-            ref={setIconAnchor}
-            aria-label={t('page.changeIcon')}
-            disabled={frozen}
-            onClick={() => setIconOpen((o) => !o)}
-          >
-            {page.icon}
-          </button>
+          <Popover open={iconOpen && !frozen} onOpenChange={setIconOpen}>
+            <PopoverTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    '-ml-0.5 mb-1 flex size-[78px] rounded-lg p-0 font-emoji text-[78px] leading-none disabled:opacity-100',
+                    !frozen && 'cursor-pointer hover:bg-accent',
+                    background && 'relative -mt-[39px]'
+                  )}
+                  aria-label={t('page.changeIcon')}
+                  disabled={frozen}
+                />
+              }
+            >
+              {page.icon}
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              aria-label={t('page.chooseIcon')}
+              className="w-[400px] max-w-[calc(100vw-16px)] gap-0 p-0"
+            >
+              <EmojiPickerPanel
+                onSelect={(emoji) => {
+                  bridge.setIcon(emoji)
+                  setIconOpen(false)
+                }}
+                onRandom={() => bridge.setIcon(randomIcon())}
+                onRemove={() => {
+                  bridge.setIcon(null)
+                  setIconOpen(false)
+                }}
+              />
+            </PopoverContent>
+          </Popover>
         )}
         <div className="mt-2 mb-1 -ml-1.5 flex min-h-7 gap-1 opacity-0 transition-opacity group-hover/header:opacity-100 focus-within:opacity-100 touch:opacity-100">
           {!page.icon && !frozen && (
@@ -135,7 +161,6 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
               variant="ghost"
               size="sm"
               className="font-normal text-muted-foreground"
-              ref={setIconAnchor}
               onClick={() => bridge.setIcon(randomIcon())}
             >
               <SmileyIcon size={18} aria-hidden /> {t('page.addIcon')}
@@ -169,26 +194,6 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
           docId={page.docId}
         />
       </div>
-
-      <AnchoredPopover
-        anchor={iconAnchor}
-        open={iconOpen && !!page.icon}
-        onClose={closeIcon}
-        label="Choose icon"
-        className="w-[400px]"
-      >
-        <EmojiPickerPanel
-          onSelect={(emoji) => {
-            bridge.setIcon(emoji)
-            setIconOpen(false)
-          }}
-          onRandom={() => bridge.setIcon(randomIcon())}
-          onRemove={() => {
-            bridge.setIcon(null)
-            setIconOpen(false)
-          }}
-        />
-      </AnchoredPopover>
     </header>
   )
 }
@@ -290,8 +295,9 @@ function TitleField({
 
 /**
  * The cover picture (or gradient) with the controls over it. While repositioning, dragging it moves the
- * picture vertically, one pixel per pixel of drag (the image's overflow beyond the cover is measured once
- * the image has loaded); the position is reported in percent through `onDrag`.
+ * picture vertically, one pixel per pixel of drag (the image's overflow beyond the cover is measured from the
+ * drawn picture when it loads and again when repositioning starts — the window may have been resized since);
+ * the position is reported in percent through `onDrag`.
  */
 function Cover({
   background,
@@ -310,7 +316,7 @@ function Cover({
   const { t } = useTranslation()
   const ref = useRef<HTMLDivElement>(null)
   const drag = useRef<{ pointerId: number; startY: number; startClientY: number } | null>(null)
-  const overflow = useCoverOverflow(ref, image?.src ?? null)
+  const { overflow, measure } = useCoverOverflow(ref, image?.src ?? null, repositioning)
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!repositioning || event.button !== 0) return
@@ -358,6 +364,7 @@ function Cover({
           className="pointer-events-none absolute inset-0 select-none"
           imgClassName="[transform:translateZ(0)] [backface-visibility:hidden]"
           imgStyle={{ objectPosition: `50% ${image.y}%` }}
+          onLoad={measure}
         />
       )}
       {repositioning && (
@@ -374,35 +381,29 @@ function Cover({
 
 /**
  * How many pixels of the cover's image lie beyond the cover vertically (null until the image has loaded, or
- * for a gradient): what a reposition drag can travel.
+ * for a gradient): what a reposition drag can travel. Read from the drawn <img> at the cover's size now —
+ * `measure` on load, and again whenever repositioning starts.
  */
 function useCoverOverflow(
   ref: React.RefObject<HTMLDivElement | null>,
-  src: string | null
-): number | null {
+  src: string | null,
+  repositioning: boolean
+): { overflow: number | null; measure: () => void } {
   // Measured for one picture; another picture's cover reads as unmeasured until its own load lands.
   const [measured, setMeasured] = useState<{ src: string; overflow: number } | null>(null)
+  const measure = useCallback(() => {
+    const cover = ref.current
+    const img = cover?.querySelector('img')
+    if (!src || !cover || !img?.naturalWidth || !img.naturalHeight) return
+    const { width, height } = cover.getBoundingClientRect()
+    // `object-fit: cover`: the image fills the width (or the height, when it is the taller one).
+    const scale = Math.max(width / img.naturalWidth, height / img.naturalHeight)
+    setMeasured({ src, overflow: img.naturalHeight * scale - height })
+  }, [ref, src])
   useEffect(() => {
-    if (!src || typeof Image === 'undefined') return
-    let cancelled = false
-    const image = new Image()
-    image.addEventListener(
-      'load',
-      () => {
-        if (cancelled || !ref.current || !image.naturalWidth) return
-        const { width, height } = ref.current.getBoundingClientRect()
-        // `object-fit: cover`: the image fills the width (or the height, when it is the taller one).
-        const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight)
-        setMeasured({ src, overflow: image.naturalHeight * scale - height })
-      },
-      { once: true }
-    )
-    image.src = src
-    return () => {
-      cancelled = true
-    }
-  }, [src, ref])
-  return src && measured?.src === src ? measured.overflow : null
+    if (repositioning) measure()
+  }, [repositioning, measure])
+  return { overflow: src && measured?.src === src ? measured.overflow : null, measure }
 }
 
 /**
