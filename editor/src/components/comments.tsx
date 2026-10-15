@@ -1,8 +1,13 @@
 import {
   ArrowUpIcon,
+  AtIcon,
   ChatTeardropTextIcon,
-  CheckCircleIcon,
-  TrashIcon
+  CheckIcon,
+  DotsThreeIcon,
+  LinkSimpleIcon,
+  PencilSimpleIcon,
+  TrashIcon,
+  XIcon
 } from '@phosphor-icons/react'
 import type { Editor } from '@tiptap/core'
 import { cn } from 'cn'
@@ -11,6 +16,13 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 import {
   InputGroup,
   InputGroupAddon,
@@ -26,6 +38,15 @@ import {
   type CommentsHost,
   type ThreadItem
 } from '../extensions/comments'
+import { pageMentionItems } from '../extensions/page-mention'
+import {
+  bodyFromDraft,
+  commentParts,
+  draftFromBody,
+  mentionQuery,
+  type DraftMention
+} from '../lib/comment-text'
+import { CommandList, handleListKey } from './command-list'
 
 /** Card width in the margin, and the room the margin needs beside the text to hold one. */
 const CARD = 300
@@ -238,7 +259,7 @@ function Margin({ editor, host, layout }: { editor: Editor; host: CommentsHost; 
           quote={false}
         />
       ) : (
-        <Composer editor={editor} quote={null} />
+        <Composer editor={editor} host={host} quote={null} />
       )
     })
   }
@@ -297,7 +318,7 @@ function Narrow({ editor, host, layout }: { editor: Editor; host: CommentsHost; 
       )}
       {layout.draft && (
         <div className="absolute z-30" style={popoverStyle(layout.draft.left, layout.draft.bottom)}>
-          <Composer editor={editor} quote={layout.draft.quote} />
+          <Composer editor={editor} host={host} quote={layout.draft.quote} />
         </div>
       )}
     </>
@@ -343,27 +364,159 @@ function when(createdAt: number): string {
   return format.format(Math.round(seconds / unit[1]), unit[0])
 }
 
-function CommentRow({ comment, host }: { comment: CommentItem; host: CommentsHost }) {
-  const other = comment.device && comment.device !== host.device()
+/** A comment's words, its page mentions drawn as chips (the page's current icon and title; the stored label when this
+ * device doesn't know the page). */
+function CommentBody({ body, host }: { body: string; host: CommentsHost }) {
+  const pages = host.pages()
   return (
-    <div className="flex gap-2.5">
+    <p className="m-0 text-sm leading-relaxed break-words whitespace-pre-wrap">
+      {commentParts(body).map((part, index) => {
+        if ('text' in part) return <span key={index}>{part.text}</span>
+        const page = pages.find((p) => p.id === part.pageId)
+        return (
+          <Button
+            key={index}
+            variant="ghost"
+            className="inline h-auto gap-0 rounded-sm px-0.5 py-0 align-baseline text-sm font-medium text-foreground data-[missing=true]:text-muted-foreground"
+            data-missing={!page}
+            data-testid="comment-mention"
+            onClick={(e) => {
+              e.stopPropagation()
+              if (page) host.openPage(part.pageId)
+            }}
+          >
+            <span aria-hidden className="mr-0.5">
+              {page?.icon ?? '📄'}
+            </span>
+            <span className="underline decoration-muted-foreground underline-offset-2">
+              {page ? page.title || t('comments.untitled') : part.label}
+            </span>
+          </Button>
+        )
+      })}
+    </p>
+  )
+}
+
+/** One comment: who and when, its words (or, editing, a field), and — on hover in an open thread — its actions:
+ * the thread's ✓ on the first comment, then ⋯ (Edit, Copy link to discussion, Delete). */
+function CommentRow({
+  editor,
+  host,
+  thread,
+  comment,
+  first,
+  active
+}: {
+  editor: Editor
+  host: CommentsHost
+  thread: ThreadItem
+  comment: CommentItem
+  first: boolean
+  active: boolean
+}) {
+  const [editing, setEditing] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const other = comment.device && comment.device !== host.device()
+  const time = other
+    ? t('comments.onDevice', { device: comment.device, when: when(comment.createdAt) })
+    : when(comment.createdAt)
+  return (
+    <div className="group/comment relative flex gap-2.5" data-testid="comment-row">
       <Avatar name={comment.author || t('comments.you')} />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <div className="flex items-baseline gap-2 text-sm">
+        <div className="flex items-baseline gap-2 pr-16 text-sm">
           <span className="font-semibold">{comment.author || t('comments.you')}</span>
           <span className="text-xs text-muted-foreground">
-            {other
-              ? t('comments.onDevice', { device: comment.device, when: when(comment.createdAt) })
-              : when(comment.createdAt)}
+            {time}
+            {comment.editedAt ? ` · ${t('comments.edited')}` : ''}
           </span>
         </div>
-        <p className="m-0 text-sm leading-relaxed whitespace-pre-wrap">{comment.body}</p>
+        {editing ? (
+          <CommentField
+            host={host}
+            placeholder={t('comments.editPlaceholder')}
+            initial={comment.body}
+            autoFocus
+            onSubmit={(body) => {
+              if (body !== comment.body) editor.commands.commentEdit(thread.id, comment.id, body)
+              setEditing(false)
+            }}
+            onCancel={() => setEditing(false)}
+          />
+        ) : (
+          <CommentBody body={comment.body} host={host} />
+        )}
       </div>
+      {active && !editing && (
+        <div
+          className={cn(
+            'absolute -top-1 right-0 flex gap-0.5 rounded-lg border border-border bg-popover p-0.5 opacity-0 shadow-sm transition-opacity duration-(--motion-pop-in) group-hover/comment:opacity-100 focus-within:opacity-100',
+            menuOpen && 'opacity-100'
+          )}
+        >
+          {first && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={t('comments.resolve')}
+              title={t('comments.resolve')}
+              data-testid="comment-resolve"
+              onClick={() => editor.commands.commentResolve(thread.id, true)}
+            >
+              <CheckIcon className="size-4.5" />
+            </Button>
+          )}
+          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={t('comments.more')}
+                  title={t('comments.more')}
+                  data-testid="comment-more"
+                />
+              }
+            >
+              <DotsThreeIcon className="size-4.5" weight="bold" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="bottom" align="end" className="w-56">
+              <DropdownMenuItem data-testid="comment-edit" onClick={() => setEditing(true)}>
+                <PencilSimpleIcon aria-hidden />
+                {t('comments.edit')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  const link = host.link(thread.id)
+                  if (link) void navigator.clipboard?.writeText(link).catch(() => {})
+                }}
+              >
+                <LinkSimpleIcon aria-hidden />
+                {t('comments.copyLink')}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                data-testid="comment-delete"
+                onClick={() =>
+                  first
+                    ? editor.commands.commentDelete(thread.id)
+                    : editor.commands.commentDeleteReply(thread.id, comment.id)
+                }
+              >
+                <TrashIcon aria-hidden />
+                {first ? t('comments.deleteThread') : t('comments.delete')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
     </div>
   )
 }
 
-/** A thread: its comments; open, also resolve / delete and a reply field. Collapsed in the margin: its first comment. */
+/** A thread: its comments and a reply field when open; collapsed in the margin, its first comment. */
 function ThreadCard({
   editor,
   host,
@@ -388,7 +541,8 @@ function ThreadCard({
       )}
       data-testid="comment-thread"
       onMouseDown={(e) => {
-        if (!(e.target as HTMLElement).closest('input, button')) e.preventDefault()
+        if (!(e.target as HTMLElement).closest('input, textarea, button, [role=menuitem]'))
+          e.preventDefault()
       }}
       onClick={() => {
         if (!active) editor.commands.commentOpen(thread.id)
@@ -399,48 +553,49 @@ function ThreadCard({
           {thread.quote}
         </span>
       )}
-      <div className="flex gap-1">
-        <div className="flex min-w-0 flex-1 flex-col gap-3">
-          {shown.map((comment) => (
-            <CommentRow key={comment.id} comment={comment} host={host} />
-          ))}
-        </div>
-        {active && (
-          <div className="flex shrink-0 gap-0.5">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={t('comments.resolve')}
-              title={t('comments.resolve')}
-              data-testid="comment-resolve"
-              onClick={() => editor.commands.commentResolve(thread.id, true)}
-            >
-              <CheckCircleIcon className="size-4.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={t('comments.delete')}
-              title={t('comments.delete')}
-              onClick={() => editor.commands.commentDelete(thread.id)}
-            >
-              <TrashIcon className="size-4.5" />
-            </Button>
-          </div>
-        )}
+      <div className="flex flex-col gap-3">
+        {shown.map((comment, index) => (
+          <CommentRow
+            key={comment.id}
+            editor={editor}
+            host={host}
+            thread={thread}
+            comment={comment}
+            first={index === 0}
+            active={active}
+          />
+        ))}
       </div>
       {!active && thread.comments.length > 1 && (
         <span className="text-xs text-muted-foreground">
           {t('comments.replies', { count: thread.comments.length - 1 })}
         </span>
       )}
-      {active && <ReplyField editor={editor} placeholder={t('comments.reply')} />}
+      {active && (
+        <CommentField
+          host={host}
+          placeholder={t('comments.reply')}
+          onSubmit={(body) => editor.commands.commentSend(body)}
+          onCancel={() => {
+            editor.commands.commentOpen(null)
+            editor.commands.focus()
+          }}
+        />
+      )}
     </section>
   )
 }
 
 /** A new comment on the selection: what it is about, then the field. */
-function Composer({ editor, quote }: { editor: Editor; quote: string | null }) {
+function Composer({
+  editor,
+  host,
+  quote
+}: {
+  editor: Editor
+  host: CommentsHost
+  quote: string | null
+}) {
   return (
     <section
       className="hk-pop flex flex-col gap-2.5 rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-popover"
@@ -451,58 +606,194 @@ function Composer({ editor, quote }: { editor: Editor; quote: string | null }) {
           {quote}
         </span>
       )}
-      <ReplyField editor={editor} placeholder={t('comments.add')} autoFocus />
+      <CommentField
+        host={host}
+        placeholder={t('comments.add')}
+        autoFocus
+        onSubmit={(body) => editor.commands.commentSend(body)}
+        onCancel={() => {
+          editor.commands.commentOpen(null)
+          editor.commands.focus()
+        }}
+      />
     </section>
   )
 }
 
-function ReplyField({
-  editor,
+/**
+ * The comment field (new comment, reply, edit): Return sends, Escape cancels; "@" (typed, or the @ button) lists
+ * pages, and a picked one goes in as "@Title" and is stored as a mention (`lib/comment-text.ts`). Editing, it ends
+ * with cancel / save instead of send.
+ */
+function CommentField({
+  host,
   placeholder,
-  autoFocus = false
+  initial,
+  autoFocus = false,
+  onSubmit,
+  onCancel
 }: {
-  editor: Editor
+  host: CommentsHost
   placeholder: string
+  /** A stored comment being edited. */
+  initial?: string
   autoFocus?: boolean
+  /** Returns false to keep the text (nothing was sent). */
+  onSubmit: (body: string) => boolean | void
+  onCancel: () => void
 }) {
-  const [value, setValue] = useState('')
-  const send = () => {
-    if (value.trim() && editor.commands.commentSend(value)) setValue('')
+  const start = initial === undefined ? { text: '', mentions: [] } : draftFromBody(initial)
+  const [value, setValue] = useState(start.text)
+  const [mentions, setMentions] = useState<DraftMention[]>(start.mentions)
+  const [query, setQuery] = useState<{ start: number; query: string } | null>(null)
+  const [selected, setSelected] = useState(0)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const items = query
+    ? pageMentionItems(host.pages(), query.query, t('comments.untitled')).map((p) => ({
+        id: p.id,
+        title: p.title || t('comments.untitled'),
+        icon: p.icon ?? '📄'
+      }))
+    : []
+
+  const readQuery = (text: string) => {
+    const caret = inputRef.current?.selectionStart ?? text.length
+    let next = mentionQuery(text, caret)
+    // A page already picked there ("@Kyoto in spring ") is not a new query…
+    if (next && mentions.some((m) => text.startsWith(`@${m.label}`, next!.start))) next = null
+    // …and one that runs past a space without matching anything has ended.
+    if (next && /\s/.test(next.query)) {
+      const found = pageMentionItems(host.pages(), next.query, t('comments.untitled'))
+      if (found.length === 0) next = null
+    }
+    setQuery(next)
+    if (next?.query !== query?.query) setSelected(0)
   }
+  const choose = (index: number) => {
+    const item = items[index]
+    if (!item || !query) return
+    const caret = inputRef.current?.selectionStart ?? value.length
+    const inserted = `@${item.title} `
+    const text = value.slice(0, query.start) + inserted + value.slice(caret)
+    setValue(text)
+    setMentions((list) => [...list, { label: item.title, pageId: item.id }])
+    setQuery(null)
+    const at = query.start + inserted.length
+    requestAnimationFrame(() => inputRef.current?.setSelectionRange(at, at))
+  }
+  const submit = () => {
+    if (!value.trim()) return
+    if (onSubmit(bodyFromDraft(value, mentions)) === false) return
+    if (initial === undefined) {
+      setValue('')
+      setMentions([])
+    }
+  }
+  const startMention = () => {
+    const input = inputRef.current
+    const caret = input?.selectionStart ?? value.length
+    const gap = caret > 0 && !/\s/.test(value[caret - 1]) ? ' ' : ''
+    const text = value.slice(0, caret) + gap + '@' + value.slice(caret)
+    setValue(text)
+    const at = caret + gap.length + 1
+    setQuery({ start: at - 1, query: '' })
+    setSelected(0)
+    requestAnimationFrame(() => {
+      input?.focus()
+      input?.setSelectionRange(at, at)
+    })
+  }
+
   return (
-    <InputGroup className="h-9 shadow-none">
-      <InputGroupInput
-        // oxlint-disable-next-line jsx-a11y/no-autofocus -- a new comment opens to be typed
-        autoFocus={autoFocus}
-        className="md:text-sm"
-        placeholder={placeholder}
-        aria-label={placeholder}
-        data-testid="comment-field"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.nativeEvent.isComposing) return
-          e.stopPropagation()
-          if (e.key === 'Enter') {
-            e.preventDefault()
-            send()
-          } else if (e.key === 'Escape') {
-            e.preventDefault()
-            editor.commands.commentOpen(null)
-            editor.commands.focus()
-          }
-        }}
-      />
-      <InputGroupAddon align="inline-end">
-        <InputGroupButton
-          size="icon-xs"
-          aria-label={t('comments.send')}
-          disabled={!value.trim()}
-          onClick={send}
+    <div className="relative">
+      <InputGroup className="h-9 shadow-none">
+        <InputGroupInput
+          ref={inputRef}
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- a new comment (or an edit) opens to be typed
+          autoFocus={autoFocus}
+          className="md:text-sm"
+          placeholder={placeholder}
+          aria-label={placeholder}
+          data-testid="comment-field"
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value)
+            readQuery(e.target.value)
+          }}
+          onBlur={() => setQuery(null)}
+          onKeyDown={(e) => {
+            if (e.nativeEvent.isComposing) return
+            e.stopPropagation()
+            if (
+              query &&
+              items.length > 0 &&
+              handleListKey(e.key, items.length, selected, setSelected, choose)
+            ) {
+              e.preventDefault()
+              return
+            }
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              submit()
+            } else if (e.key === 'Escape') {
+              e.preventDefault()
+              if (query) setQuery(null)
+              else onCancel()
+            }
+          }}
+        />
+        <InputGroupAddon align="inline-end">
+          <InputGroupButton
+            size="icon-xs"
+            aria-label={t('comments.mention')}
+            title={t('comments.mention')}
+            data-testid="comment-mention-button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={startMention}
+          >
+            <AtIcon className="size-4" aria-hidden />
+          </InputGroupButton>
+          {initial === undefined ? (
+            <InputGroupButton
+              size="icon-xs"
+              aria-label={t('comments.send')}
+              disabled={!value.trim()}
+              onClick={submit}
+            >
+              <ArrowUpIcon className="size-4" weight="bold" aria-hidden />
+            </InputGroupButton>
+          ) : (
+            <>
+              <InputGroupButton size="icon-xs" aria-label={t('comments.cancel')} onClick={onCancel}>
+                <XIcon className="size-4" aria-hidden />
+              </InputGroupButton>
+              <InputGroupButton
+                size="icon-xs"
+                aria-label={t('comments.save')}
+                data-testid="comment-save"
+                disabled={!value.trim()}
+                onClick={submit}
+              >
+                <CheckIcon className="size-4" weight="bold" aria-hidden />
+              </InputGroupButton>
+            </>
+          )}
+        </InputGroupAddon>
+      </InputGroup>
+      {query && (
+        <div
+          className="hk-pop absolute top-full left-0 z-40 mt-1 max-h-72 w-72 overflow-y-auto rounded-xl bg-popover shadow-popover"
+          data-testid="comment-mention-list"
         >
-          <ArrowUpIcon className="size-4" weight="bold" aria-hidden />
-        </InputGroupButton>
-      </InputGroupAddon>
-    </InputGroup>
+          <CommandList
+            items={items}
+            selectedIndex={selected}
+            emptyText={t('comments.noPages')}
+            onSelect={choose}
+            onHover={setSelected}
+          />
+        </div>
+      )}
+    </div>
   )
 }

@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 21
+    public static let version = 22
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -60,6 +60,8 @@ public enum BridgeMessage: Sendable, Equatable {
     case commentReply(docId: String, threadId: String, body: String)
     case commentResolve(docId: String, threadId: String, resolved: Bool)
     case commentDelete(docId: String, threadId: String, commentId: String?)
+    /// A comment's words rewritten.
+    case commentEdit(docId: String, threadId: String, commentId: String, body: String)
     /// Where the page is scrolled (throttled), so a tab shown again gets its place back.
     case scroll(docId: String, top: Double)
     /// AI on the selection (see `AIRequestPayload`); replies go back through `window.hikki.aiEvent`.
@@ -189,6 +191,10 @@ extension BridgeMessage: Decodable {
             self = .commentDelete(
                 docId: try c.decode(String.self, forKey: .docId), threadId: try c.decode(String.self, forKey: .threadId),
                 commentId: try c.decodeIfPresent(String.self, forKey: .commentId))
+        case "commentEdit":
+            self = .commentEdit(
+                docId: try c.decode(String.self, forKey: .docId), threadId: try c.decode(String.self, forKey: .threadId),
+                commentId: try c.decode(String.self, forKey: .commentId), body: try c.decode(String.self, forKey: .body))
         case "selection":
             self = .selection(docId: try c.decode(String.self, forKey: .docId), text: try c.decode(String.self, forKey: .text))
         case "activeHeading":

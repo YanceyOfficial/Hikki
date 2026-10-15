@@ -38,14 +38,27 @@ public struct PageComment: Codable, Equatable, Sendable, Identifiable {
     public var author: String?
     public var device: String?
     public var createdAt: Date
+    /// The last edit of `body` (nil: as written) — merging keeps the newer edit.
+    public var editedAt: Date?
     public var deletedAt: Date?
 
-    public init(id: String, body: String, author: String?, device: String?, createdAt: Date, deletedAt: Date? = nil) {
+    /// The words for plain display: a page mention (`[@Title](hikki://page/<id>)`, as the editor stores it) reads
+    /// "@Title".
+    public var plainBody: String {
+        body.replacingOccurrences(
+            of: #"\[@([^\]\n]*)\]\(hikki://page/[\w-]+\)"#, with: "@$1", options: .regularExpression)
+    }
+
+    public init(
+        id: String, body: String, author: String?, device: String?, createdAt: Date, editedAt: Date? = nil,
+        deletedAt: Date? = nil
+    ) {
         self.id = id
         self.body = body
         self.author = author
         self.device = device
         self.createdAt = createdAt
+        self.editedAt = editedAt
         self.deletedAt = deletedAt
     }
 }
@@ -121,6 +134,19 @@ public final class PageComments: @unchecked Sendable {
                 throw Failure.unknownThread
             }
             threads[index].comments.append(self.comment(text, now))
+            threads[index].updatedAt = now
+        }
+    }
+
+    /// Rewrites a comment (its own words; who wrote it and when stay).
+    public func edit(pageId: String, threadId: String, commentId: String, body: String, now: Date = .now) throws {
+        let text = try Self.clean(body)
+        try change(pageId) { threads in
+            guard let index = threads.firstIndex(where: { $0.id == threadId && $0.deletedAt == nil }),
+                let comment = threads[index].comments.firstIndex(where: { $0.id == commentId && $0.deletedAt == nil })
+            else { throw Failure.unknownThread }
+            threads[index].comments[comment].body = text
+            threads[index].comments[comment].editedAt = now
             threads[index].updatedAt = now
         }
     }
@@ -220,6 +246,11 @@ public final class PageComments: @unchecked Sendable {
             var comments: [String: PageComment] = [:]
             for comment in existing.comments + thread.comments {
                 if var known = comments[comment.id] {
+                    // The newer edit's words.
+                    if (comment.editedAt ?? .distantPast) > (known.editedAt ?? .distantPast) {
+                        known.body = comment.body
+                        known.editedAt = comment.editedAt
+                    }
                     known.deletedAt = known.deletedAt ?? comment.deletedAt
                     comments[comment.id] = known
                 } else {

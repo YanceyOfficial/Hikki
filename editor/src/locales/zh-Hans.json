@@ -438,13 +438,24 @@
     "add": "添加评论…",
     "send": "发送",
     "resolve": "标记为已解决",
-    "delete": "删除评论串",
+    "delete": "删除评论",
     "you": "你",
     "justNow": "刚刚",
     "onDevice": "来自{{device}} · {{when}}",
     "replies_one": "{{count}} 条回复",
     "replies_other": "{{count}} 条回复",
     "count_one": "{{count}} 条评论",
-    "count_other": "{{count}} 条评论"
+    "count_other": "{{count}} 条评论",
+    "edit": "编辑",
+    "editPlaceholder": "编辑评论…",
+    "copyLink": "复制讨论链接",
+    "deleteThread": "删除讨论",
+    "edited": "已编辑",
+    "more": "更多操作",
+    "save": "保存",
+    "cancel": "取消",
+    "mention": "提及页面",
+    "noPages": "没有页面",
+    "untitled": "无标题"
   }
 }

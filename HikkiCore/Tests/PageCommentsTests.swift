@@ -34,6 +34,42 @@ struct PageCommentsTests {
         #expect(try String(contentsOf: try comments.url(for: "p"), encoding: .utf8).contains("deletedAt"))
     }
 
+    @Test func aCommentIsEditedAndTheNewerEditWinsAMerge() throws {
+        let (comments, root) = store()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let t0 = Date(timeIntervalSince1970: 1_000)
+        try comments.create(pageId: "p", threadId: "t", quote: "q", body: "传闻", now: t0)
+        let id = try comments.threads(of: "p")[0].comments[0].id
+        try comments.edit(pageId: "p", threadId: "t", commentId: id, body: " 样态 ", now: t0.addingTimeInterval(30))
+        let edited = try comments.threads(of: "p")[0].comments[0]
+        #expect(edited.body == "样态" && edited.editedAt == t0.addingTimeInterval(30) && edited.createdAt == t0)
+        #expect(throws: PageComments.Failure.emptyComment) { try comments.edit(pageId: "p", threadId: "t", commentId: id, body: " ") }
+        #expect(throws: PageComments.Failure.unknownThread) { try comments.edit(pageId: "p", threadId: "t", commentId: "x", body: "a") }
+
+        // Two devices edited the same comment: the later edit's words stay, whichever side it is on.
+        func version(_ body: String, editedAt seconds: Double?) -> [CommentThread] {
+            [
+                CommentThread(
+                    id: "t", quote: "q", createdAt: t0, updatedAt: t0.addingTimeInterval(seconds ?? 0),
+                    comments: [
+                        PageComment(
+                            id: "c", body: body, author: nil, device: nil, createdAt: t0,
+                            editedAt: seconds.map { t0.addingTimeInterval($0) })
+                    ])
+            ]
+        }
+        #expect(PageComments.merge(version("mac", editedAt: 50), version("phone", editedAt: 90))[0].comments[0].body == "phone")
+        #expect(PageComments.merge(version("mac", editedAt: 90), version("phone", editedAt: 50))[0].comments[0].body == "mac")
+        #expect(PageComments.merge(version("original", editedAt: nil), version("edited", editedAt: 10))[0].comments[0].body == "edited")
+    }
+
+    @Test func aMentionReadsAsAtTitleInPlainText() {
+        let comment = PageComment(
+            id: "c", body: "see [@Kyoto in spring](hikki://page/A1-b2) and [@x](https://e.com)", author: nil, device: nil,
+            createdAt: .now)
+        #expect(comment.plainBody == "see @Kyoto in spring and [@x](https://e.com)")
+    }
+
     @Test func emptyCommentsAndUnknownThreadsAreRefused() throws {
         let (comments, root) = store()
         defer { try? FileManager.default.removeItem(at: root) }

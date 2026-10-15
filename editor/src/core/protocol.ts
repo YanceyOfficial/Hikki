@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 21
+export const PROTOCOL_VERSION = 22
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -99,6 +99,8 @@ export type ToNativeMessage =
   | { type: 'commentReply'; docId: string; threadId: string; body: string }
   | { type: 'commentResolve'; docId: string; threadId: string; resolved: boolean }
   | { type: 'commentDelete'; docId: string; threadId: string; commentId?: string }
+  /** A comment's words rewritten. */
+  | { type: 'commentEdit'; docId: string; threadId: string; commentId: string; body: string }
   /** The selected text (debounced; "" when nothing is): Ask AI offers it as context. Capped at 4000 characters. */
   | { type: 'selection'; docId: string; text: string }
   | { type: 'log'; level: LogLevel; message: string; context?: Record<string, string> }

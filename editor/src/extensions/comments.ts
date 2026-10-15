@@ -5,6 +5,7 @@ import { Decoration, DecorationSet } from '@tiptap/pm/view'
 
 import { renderComments } from '../components/comments'
 import { tiptapShortcut } from '../core/shortcuts'
+import type { PageIndexEntry } from './page-links'
 import { SelectionMenuKey } from './selection-menu'
 
 /** One comment of a thread (as the native store keeps it; `createdAt` in milliseconds). */
@@ -14,6 +15,8 @@ export type CommentItem = {
   author: string | null
   device: string | null
   createdAt: number
+  /** The last edit, or null as written. */
+  editedAt?: number | null
 }
 
 /** A thread on a passage: its words live natively (`comments/<page id>.json`); the passage carries a `comment` mark. */
@@ -25,6 +28,12 @@ export type CommentsHost = {
   reply: (threadId: string, body: string) => void
   resolve: (threadId: string, resolved: boolean) => void
   remove: (threadId: string, commentId?: string) => void
+  edit: (threadId: string, commentId: string, body: string) => void
+  /** Pages for "@" in a comment, and opening one from a mention chip. */
+  pages: () => PageIndexEntry[]
+  openPage: (pageId: string) => void
+  /** A link to the thread (`hikki://page/<page id>#<thread id>`), or null before a page is open. */
+  link: (threadId: string) => string | null
   /** This device's name ("Mac", "iPhone"): other devices' comments say where they were written. */
   device: () => string | null
 }
@@ -104,6 +113,10 @@ declare module '@tiptap/core' {
       commentResolve: (id: string, resolved: boolean) => ReturnType
       /** Deletes a thread: its words natively, its mark here. */
       commentDelete: (id: string) => ReturnType
+      /** Deletes one reply (the first comment is the thread: `commentDelete`). */
+      commentDeleteReply: (threadId: string, commentId: string) => ReturnType
+      /** Rewrites a comment. */
+      commentEdit: (threadId: string, commentId: string, body: string) => ReturnType
     }
   }
 }
@@ -187,6 +200,19 @@ export function Comments(host: CommentsHost) {
               setMeta(tr, { type: 'active', id: null })
               host.remove(id)
             }
+            return true
+          },
+        commentDeleteReply:
+          (threadId: string, commentId: string) =>
+          ({ dispatch }) => {
+            if (dispatch) host.remove(threadId, commentId)
+            return true
+          },
+        commentEdit:
+          (threadId: string, commentId: string, body: string) =>
+          ({ dispatch }) => {
+            if (!body.trim()) return false
+            if (dispatch) host.edit(threadId, commentId, body.trim())
             return true
           }
       }

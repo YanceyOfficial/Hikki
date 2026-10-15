@@ -104,7 +104,11 @@ const noComments: CommentsHost = {
   reply: () => {},
   resolve: () => {},
   remove: () => {},
-  device: () => null
+  edit: () => {},
+  device: () => null,
+  pages: () => [],
+  openPage: () => {},
+  link: () => null
 }
 
 export function createEditor(

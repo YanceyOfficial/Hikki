@@ -81,6 +81,7 @@ final class EditorController {
                     [
                         "id": comment.id, "body": comment.body, "author": comment.author ?? NSNull(),
                         "device": comment.device ?? NSNull(), "createdAt": comment.createdAt.timeIntervalSince1970 * 1000,
+                        "editedAt": comment.editedAt.map { $0.timeIntervalSince1970 * 1000 } ?? NSNull(),
                     ] as [String: Any]
                 },
             ]
@@ -625,6 +626,8 @@ final class EditorController {
             applyComment(pageId: docId) { try $0.setResolved(resolved, pageId: docId, threadId: threadId) }
         case .commentDelete(let docId, let threadId, let commentId):
             applyComment(pageId: docId) { try $0.delete(pageId: docId, threadId: threadId, commentId: commentId) }
+        case .commentEdit(let docId, let threadId, let commentId, let body):
+            applyComment(pageId: docId) { try $0.edit(pageId: docId, threadId: threadId, commentId: commentId, body: body) }
         case .selection(let docId, let text):
             selection = text.isEmpty ? nil : EditorSelection(docId: docId, text: text)
         case .scroll(let docId, let top):

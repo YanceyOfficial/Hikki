@@ -438,13 +438,24 @@
     "add": "Add a comment…",
     "send": "Send",
     "resolve": "Resolve",
-    "delete": "Delete thread",
+    "delete": "Delete comment",
     "you": "You",
     "justNow": "Just now",
     "onDevice": "on {{device}} · {{when}}",
     "replies_one": "{{count}} reply",
     "replies_other": "{{count}} replies",
     "count_one": "{{count}} comment",
-    "count_other": "{{count}} comments"
+    "count_other": "{{count}} comments",
+    "edit": "Edit",
+    "editPlaceholder": "Edit comment…",
+    "copyLink": "Copy link to discussion",
+    "deleteThread": "Delete discussion",
+    "edited": "edited",
+    "more": "More actions",
+    "save": "Save",
+    "cancel": "Cancel",
+    "mention": "Mention a page",
+    "noPages": "No pages",
+    "untitled": "Untitled"
   }
 }

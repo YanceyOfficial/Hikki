@@ -342,7 +342,13 @@ HikkiUITests/                 XCUITest flows
   `commentCreate` / `commentReply` / `commentResolve` / `commentDelete` bridge messages and pushed back with
   `window.hikki.setComments`. A draft is only a highlight until it is sent. `editor/src/components/comments.tsx` draws
   cards in the right margin when the window is wide (`#page[data-comments]` shifts the page left at ≥ 1240 px), count
-  badges with a thread card under the passage otherwise; resolved threads lose their highlight. The page column is
+  badges with a thread card under the passage otherwise; resolved threads lose their highlight. Each comment in an
+  open thread shows its actions on hover (the first: resolve ✓; all: ⋯ → Edit in place, Copy link to discussion —
+  `hikki://page/<id>#<thread id>`, which `scrollToBlock` turns into opening the thread — and Delete: a reply alone,
+  the first comment the whole discussion); `commentEdit` rewrites one (`editedAt`; a merge keeps the newer edit).
+  "@" in the field (typed, or its @ button) mentions a page: stored as `[@Title](hikki://page/<id>)` in the text
+  (`editor/src/lib/comment-text.ts`), drawn as a chip with the page's current icon and title, "@Title" natively
+  (`PageComment.plainBody`). The page column is
   `.hk-column` alone in `editor/index.html` (fixed 96 px side margins).
 - **Inspector** (Mac/iPad: a full-height trailing panel inside the detail column — SwiftUI's `.inspector` widened the
   window — with the window title hidden while it is open, as in Photos; iPhone: a sheet from the page ⋯ menu):

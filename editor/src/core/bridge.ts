@@ -385,7 +385,15 @@ export class EditorBridge {
       this.sendComment({ type: 'commentResolve', threadId, resolved }),
     remove: (threadId, commentId) =>
       this.sendComment({ type: 'commentDelete', threadId, ...(commentId ? { commentId } : {}) }),
-    device: () => this.device
+    edit: (threadId, commentId, body) =>
+      this.sendComment({ type: 'commentEdit', threadId, commentId, body }),
+    device: () => this.device,
+    pages: () => this.pageLinks.pages(),
+    openPage: (pageId) => this.pageLinks.open({ pageId, blockId: null }),
+    link: (threadId) => {
+      const docId = this.page.get().docId
+      return docId ? pageLinkHref(docId, threadId) : null
+    }
   }
 
   /** This device's name ("Mac", "iPhone"), from `setComments`. */
@@ -397,6 +405,7 @@ export class EditorBridge {
       | { type: 'commentReply'; threadId: string; body: string }
       | { type: 'commentResolve'; threadId: string; resolved: boolean }
       | { type: 'commentDelete'; threadId: string; commentId?: string }
+      | { type: 'commentEdit'; threadId: string; commentId: string; body: string }
   ): void {
     const docId = this.page.get().docId
     if (docId) void this.send({ ...message, docId } as ToNativeMessage)
@@ -448,7 +457,13 @@ export class EditorBridge {
 
   /** Arrived by a link to a block: scroll there (false when the block isn't in this page). */
   scrollToBlock(blockId: string): boolean {
-    return this.editor?.commands.scrollToBlock(blockId) ?? false
+    const editor = this.editor
+    if (!editor) return false
+    if (editor.commands.scrollToBlock(blockId)) return true
+    // A link to a discussion ("Copy link to discussion") names a thread: open it.
+    if (!commentRanges(editor.state.doc).has(blockId)) return false
+    this.openComment(blockId)
+    return true
   }
 
   /** Uploads and attachments for the editor's media blocks. */

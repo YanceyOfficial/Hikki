@@ -299,7 +299,7 @@ private struct ThreadRow: View {
                             .foregroundStyle(Theme.mutedForeground)
                     }
                     // The comment, as written.
-                    Text(verbatim: first.body).font(.hk(.sm)).foregroundStyle(Theme.foreground).lineLimit(4)
+                    Text(verbatim: first.plainBody).font(.hk(.sm)).foregroundStyle(Theme.foreground).lineLimit(4)
                 }
                 HStack {
                     if thread.comments.count > 1 {

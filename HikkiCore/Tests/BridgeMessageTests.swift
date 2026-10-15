@@ -151,6 +151,9 @@ struct BridgeMessageTests {
             try decode(["type": "commentDelete", "docId": "p1", "threadId": "t"])
                 == .commentDelete(docId: "p1", threadId: "t", commentId: nil))
         #expect(
+            try decode(["type": "commentEdit", "docId": "p1", "threadId": "t", "commentId": "c", "body": "更正"])
+                == .commentEdit(docId: "p1", threadId: "t", commentId: "c", body: "更正"))
+        #expect(
             try decode([
                 "type": "aiRequest", "id": "r1", "action": "tone:casual", "answer": false, "explain": true,
                 "units": [["key": "p1:0", "html": "Hello <strong>there</strong>"]],
