@@ -3,6 +3,9 @@
   "baseWeight": "regular",
   "strokeBoost": 4,
   "icons": {
+    "list": {
+      "sf": "line.3.horizontal"
+    },
     "image": {
       "sf": "photo"
     },

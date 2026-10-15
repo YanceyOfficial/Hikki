@@ -146,9 +146,13 @@ HikkiUITests/                 XCUITest flows
   `Navigator.importDrop` → `AppModel.importFiles(_:parentId:)`. A page row's own drag carries a page link, never a
   file, so the two never mix; iPad drags (typed documents, no file URL) load as a temporary copy.
 - **iPhone is its own layout**, not the Mac's squeezed (prototype: the "Hikki iPhone redesign" canvas): the collapsed
-  split view's sidebar column is `Hikki/Sources/PhoneHome.swift` (workspace, All pages / Trash tiles, "Jump back in"
-  cards, favorites, the page tree as plain rows) and opening anything shows the detail through
-  `Navigator.compactColumn` (`preferredCompactColumn`). Root screens and pages float one bottom bar —
+  split view's sidebar column is `Hikki/Sources/PhoneHome.swift` (a ☰ · Home · ⋯ top bar, All pages / Trash tiles,
+  "Jump back in" cards, favorites) and opening anything shows the detail through `Navigator.compactColumn`
+  (`preferredCompactColumn`). The page tree is Notion's side drawer: `Hikki/Sources/PhoneDrawer.swift` (workspace +
+  search, favorites, the tree with + / ⋯ per row, Add a page, then All pages · Trash · Settings fixed at the bottom)
+  inside HikkiUI's `SideDrawer` (`HikkiUI/Sources/SideDrawer.swift`, exodus-ios's drawer: the content is a card pushed
+  right and dimmed; a UIKit pan takes horizontal drags anywhere — flick projection, rubber band past open — and lets a
+  horizontal list keep its drags unless it sits at its leading edge; ☰ or a tap on the card toggles; `Motion.easeOut()`). Root screens and pages float one bottom bar —
   `FloatingActionBar` (HikkiUI): Search · Ask AI · New page at home, Outline · Ask about this page · Edit on a page
   (hidden while the keyboard is up); the page's ⋯ is a sheet (`Hikki/Sources/PhonePageActions.swift`: quick tiles,
   history, export, move, facts). All pages groups by day (`RecencyGroup`, HikkiCore). Ask AI is a native chat sheet

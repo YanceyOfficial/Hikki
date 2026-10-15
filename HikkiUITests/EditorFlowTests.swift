@@ -62,8 +62,8 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertLessThan(haiku.frame.minY, sonnet.frame.minY, "the star was kept")
     }
 
-    /// iPhone's home screen: the tree opens a page's subpages, a row opens the page, ⋯ opens its actions sheet, and
-    /// All pages lists every page under day headings.
+    /// iPhone's home screen: the drawer's tree opens a page's subpages, a row opens the page, ⋯ opens its actions
+    /// sheet, and All pages lists every page under day headings.
     func testPhoneHomeOpensPagesAndTheirActions() throws {
         #if os(iOS)
             guard UIDevice.current.userInterfaceIdiom == .phone else { throw XCTSkip("the iPhone layout") }
@@ -75,9 +75,12 @@ final class EditorFlowTests: XCTestCase {
         let allPages = app.buttons["nav-home"].firstMatch
         XCTAssertTrue(waitOrDumpTree(allPages, in: app))
 
+        // The tree is in the drawer: closed, its rows are not there.
+        XCTAssertFalse(app.buttons["page-expand-日本語を勉強する"].firstMatch.exists)
+        app.buttons["drawer-toggle"].firstMatch.tap()
         let child = app.buttons["page-row-N4 文法"].firstMatch
         XCTAssertFalse(child.exists)
-        app.buttons["page-expand-日本語を勉強する"].firstMatch.tap()
+        tapWhenSettled(app.buttons["page-expand-日本語を勉強する"].firstMatch)
         XCTAssertTrue(child.waitForExistence(timeout: 5))
         child.tap()
 
@@ -93,6 +96,52 @@ final class EditorFlowTests: XCTestCase {
         allPages.tap()
         XCTAssertTrue(app.buttons["home-row-Career Planning"].firstMatch.waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["home-new-page"].firstMatch.exists)
+    }
+
+    /// iPhone: the page tree is a side drawer (Notion's). ☰ opens it, a tap on the dimmed home closes it, a swipe from
+    /// the left opens it again; a parent expands, its child opens, and the page is on screen with the drawer gone.
+    func testPhoneDrawerOpensAPage() throws {
+        #if os(iOS)
+            guard UIDevice.current.userInterfaceIdiom == .phone else { throw XCTSkip("the iPhone layout") }
+        #else
+            throw XCTSkip("the iPhone layout")
+        #endif
+        continueAfterFailure = false
+        let app = launch(environment: ["HIKKI_DEMO_PAGES": "1"])
+        let toggle = app.buttons["drawer-toggle"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(toggle, in: app))
+        let parent = app.buttons["page-expand-日本語を勉強する"].firstMatch
+        XCTAssertFalse(parent.exists, "the closed drawer is hidden")
+
+        toggle.tap()
+        XCTAssertTrue(waitOrDumpTree(parent, in: app))
+        XCTAssertTrue(app.buttons["drawer-all-pages"].firstMatch.exists)
+        XCTAssertTrue(app.buttons["drawer-trash"].firstMatch.exists)
+        XCTAssertTrue(app.buttons["drawer-settings"].firstMatch.exists)
+        XCTAssertTrue(app.buttons["drawer-new-page"].firstMatch.exists)
+        XCTAssertTrue(app.buttons["page-add-日本語を勉強する"].firstMatch.exists)
+        XCTAssertTrue(app.buttons["page-row-menu-日本語を勉強する"].firstMatch.exists)
+        attachScreenshot(app, "drawer-open")
+        tapWhenSettled(app.descendants(matching: .any)["drawer-close"].firstMatch)
+        let closed = NSPredicate { _, _ in !parent.exists }
+        wait(for: [expectation(for: closed, evaluatedWith: nil)], timeout: 5)
+
+        // A swipe from the left edge, over the tiles (not the cards' own horizontal list).
+        let window = app.windows.firstMatch
+        let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.2))
+        start.press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.2)))
+        XCTAssertTrue(waitOrDumpTree(parent, in: app), "the swipe did not open the drawer")
+        tapWhenSettled(parent)
+        let child = app.buttons["page-row-N4 文法"].firstMatch
+        XCTAssertTrue(child.waitForExistence(timeout: 5))
+        child.tap()
+
+        let title = app.webViews.textViews["Page title"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(title, in: app, timeout: 30))
+        let opened = NSPredicate(format: "value == %@", "N4 文法")
+        wait(for: [expectation(for: opened, evaluatedWith: title)], timeout: 15)
+        XCTAssertTrue(app.buttons["page-more"].firstMatch.exists)
+        XCTAssertFalse(app.buttons["drawer-all-pages"].firstMatch.exists, "the drawer closed")
     }
 
     /// iPhone: leaving the app while typing in a page (keyboard up) and coming back — or relaunching — keeps the body
@@ -189,6 +238,7 @@ final class EditorFlowTests: XCTestCase {
             let app = launch()
             createPage(app, title: "Draft")
             backToSidebarIfNeeded(app)
+            openDrawerIfNeeded(app)
             let row = app.buttons["page-row-Draft"].firstMatch
             XCTAssertTrue(waitOrDumpTree(row, in: app))
             row.press(forDuration: 1.0)
@@ -231,6 +281,7 @@ final class EditorFlowTests: XCTestCase {
         name.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()
         name.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 10) + "Atlas\n")
         app.buttons["settings-close"].firstMatch.tap()
+        openDrawerIfNeeded(app)
         XCTAssertTrue(waitOrDumpTree(app.staticTexts["Atlas"].firstMatch, in: app), "renamed workspace not shown")
     }
 
@@ -505,13 +556,15 @@ final class EditorFlowTests: XCTestCase {
         let source = dataDir + "-import.md"
         try "# Imported note\n\nSome **bold** text.\n".write(toFile: source, atomically: true, encoding: .utf8)
         app = launch(environment: ["HIKKI_IMPORT_FILE": source])
-        let row = app.descendants(matching: .any)["page-row-Imported note"].firstMatch
-        XCTAssertTrue(waitOrDumpTree(row, in: app, timeout: 15), "imported page missing from the sidebar")
         let title = app.webViews.textViews["Page title"].firstMatch
-        XCTAssertTrue(waitOrDumpTree(title, in: app))
+        XCTAssertTrue(waitOrDumpTree(title, in: app, timeout: 15))
         let opened = NSPredicate(format: "value == %@", "Imported note")
         wait(for: [expectation(for: opened, evaluatedWith: title)], timeout: 10)
         XCTAssertTrue(waitOrDumpTree(app.webViews.staticTexts["bold"].firstMatch, in: app), "imported body missing")
+        backToSidebarIfNeeded(app)
+        openDrawerIfNeeded(app)
+        let row = app.descendants(matching: .any)["page-row-Imported note"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(row, in: app), "imported page missing from the sidebar")
     }
 
     /// Regression: on iPhone, tag-based List selection didn't navigate; rows must be NavigationLinks.
@@ -950,6 +1003,14 @@ final class EditorFlowTests: XCTestCase {
                 _ = app.buttons["sidebar-search"].waitForExistence(timeout: 5)
             }
         #endif
+    }
+
+    /// On iPhone the page tree is in Home's side drawer: opens it (no-op elsewhere, or when it is open).
+    private func openDrawerIfNeeded(_ app: XCUIApplication) {
+        let toggle = app.buttons["drawer-toggle"].firstMatch
+        guard toggle.waitForExistence(timeout: 3), !app.buttons["drawer-all-pages"].firstMatch.exists else { return }
+        tapWhenSettled(toggle)
+        _ = app.buttons["drawer-all-pages"].firstMatch.waitForExistence(timeout: 5)
     }
 
     private func tapWhenSettled(_ element: XCUIElement) {
