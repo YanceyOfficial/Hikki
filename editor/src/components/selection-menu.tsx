@@ -42,12 +42,15 @@ type Panel = 'ai' | 'turnInto' | 'color' | 'link' | 'more' | null
 
 const TURN_INTO = BLOCK_TYPES.filter((b) => b.turnInto)
 
-/** What the menu shows; recomputed per transaction, re-rendered only on change. */
+/**
+ * What the menu shows; recomputed per transaction, re-rendered only on change. The selection counts only
+ * while it is one (the menu's moment): a caret moving as the user types re-renders nothing.
+ */
 function snapshot(editor: Editor) {
   const style = editor.getAttributes('textStyle')
   const { from, to } = editor.state.selection
   return {
-    selection: `${from}:${to}`,
+    selection: from === to ? '' : `${from}:${to}`,
     block: TURN_INTO.find((b) => b.isActive?.(editor))?.id ?? 'paragraph',
     bold: editor.isActive('bold'),
     italic: editor.isActive('italic'),
@@ -78,11 +81,12 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
     if (panel && card) setPanelLeft(card.getBoundingClientRect().right + 232 > window.innerWidth)
   }, [panel])
 
-  // A new selection starts with the panels closed.
+  // A new selection starts with the panels closed — the link panel too: a link typed for one selection
+  // never lands on the next (a selection collapsing on a click elsewhere is a change as well).
   const [lastSelection, setLastSelection] = useState(state.selection)
   if (lastSelection !== state.selection) {
     setLastSelection(state.selection)
-    if (panel && panel !== 'link') setPanel(null)
+    if (panel) setPanel(null)
   }
 
   const run = (apply: (chain: ReturnType<Editor['chain']>) => ReturnType<Editor['chain']>) =>
@@ -332,6 +336,8 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
           )}
           {shownPanel === 'link' && (
             <LinkPanel
+              // Its field starts from the selection it was opened for.
+              key={`${state.selection}:${state.link ?? ''}`}
               href={state.link}
               onApply={(href) => {
                 run((c) => c.extendMarkRange('link').setLink({ href }))
