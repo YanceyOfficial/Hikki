@@ -79,6 +79,32 @@ describe('EditorBridge', () => {
     expect(changed()).toHaveLength(1)
   })
 
+  it('a comment saves the page (its passage mark is part of the page) without entering undo', () => {
+    bridge.loadDocument(page('a', { content: doc('the quick fox') }))
+    vi.advanceTimersByTime(1000)
+    expect(changed()).toHaveLength(0)
+    editor().commands.setTextSelection({ from: 5, to: 10 })
+    editor().commands.commentStart()
+    vi.advanceTimersByTime(1000)
+    // A draft is only a highlight: nothing to save yet.
+    expect(changed()).toHaveLength(0)
+    editor().commands.commentSend('样态')
+    vi.advanceTimersByTime(1000)
+    expect(changed()).toHaveLength(1)
+    expect(JSON.stringify(changed()[0])).toContain('"comment"')
+    // Undo doesn't take the mark away from a thread that exists.
+    editor().commands.undo()
+    expect(JSON.stringify(editor().getJSON())).toContain('"comment"')
+    // Deleting the thread saves the page without its mark.
+    const id = editor()
+      .getJSON()
+      .content[0].content.find((n: any) => n.marks)?.marks[0].attrs.id
+    editor().commands.commentDelete(id)
+    vi.advanceTimersByTime(1000)
+    expect(changed()).toHaveLength(2)
+    expect(JSON.stringify(changed()[1])).not.toContain('"comment"')
+  })
+
   it('title edits are saved through the same debounced snapshot, newlines stripped', () => {
     bridge.loadDocument(page('a'))
     bridge.setTitle('Weekly\nsync')

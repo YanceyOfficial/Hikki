@@ -5,6 +5,7 @@ import { setBlockLinkBuilder } from '../components/block-menu'
 import { handleAIEvent, type AIHost, type AIReviewStyle } from '../extensions/ai-review'
 import {
   commentRanges,
+  SAVE_META,
   setThreads,
   type CommentsHost,
   type ThreadItem
@@ -72,9 +73,10 @@ type Options = {
 /**
  * Edits the user made, as opposed to housekeeping the editor does by itself (UniqueID stamping block ids
  * on load, a remote reload) — those are marked not to enter the undo history and must not count as
- * editing the page.
+ * editing the page. A change kept out of undo that is still the user's (a comment's mark, `SAVE_META`) counts.
  */
-const isUserEdit = (transaction: Transaction) => transaction.getMeta('addToHistory') !== false
+const isUserEdit = (transaction: Transaction) =>
+  transaction.getMeta('addToHistory') !== false || transaction.getMeta(SAVE_META) === true
 
 const MAX_TITLE_LENGTH = 500
 /** Where a heading counts as reached: this far below the toolbar (the top of the reading area). */

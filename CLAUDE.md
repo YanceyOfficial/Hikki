@@ -340,7 +340,9 @@ HikkiUITests/                 XCUITest flows
   words live natively in `comments/<page id>.json` in the workspace folder (`HikkiCore/Sources/Store/PageComments.swift`:
   format-versioned, merged by id with tombstones, iCloud conflict versions folded in), written through the
   `commentCreate` / `commentReply` / `commentResolve` / `commentDelete` bridge messages and pushed back with
-  `window.hikki.setComments`. A draft is only a highlight until it is sent. `editor/src/components/comments.tsx` draws
+  `window.hikki.setComments`. A draft is only a highlight until it is sent; adding or removing the mark is kept out of undo but saved (`SAVE_META`
+  — `isUserEdit` in `editor/src/core/bridge.ts` otherwise skips non-undo transactions), and an open thread whose mark is
+  missing is marked again where its quote occurs once (`findQuote`). `editor/src/components/comments.tsx` draws
   cards in the right margin when the window is wide (`#page[data-comments]` shifts the page left at ≥ 1240 px), count
   badges with a thread card under the passage otherwise; resolved threads lose their highlight. Each comment in an
   open thread shows its actions on hover (the first: resolve ✓; all: ⋯ → Edit in place, Copy link to discussion —

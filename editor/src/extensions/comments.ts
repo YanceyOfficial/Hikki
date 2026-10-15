@@ -53,6 +53,10 @@ type Meta =
 
 export const CommentsKey = new PluginKey<CommentsState>('comments')
 
+/** On a transaction kept out of undo that must still be saved: a comment's mark added or removed (undoing it would
+ * leave a thread with no passage), so the page counts as edited. */
+export const SAVE_META = 'hikkiSave'
+
 /** The passage a thread is about: a mark with the thread's id (marks of different threads may overlap). */
 export const CommentMark = Mark.create({
   name: 'comment',
@@ -164,6 +168,7 @@ export function Comments(host: CommentsHost) {
                 )
                 setMeta(tr, { type: 'draft', draft: null })
                 setMeta(tr, { type: 'active', id: draft.id })
+                tr.setMeta(SAVE_META, true)
                 host.create(draft.id, quote, text)
               }
               return true
@@ -198,6 +203,7 @@ export function Comments(host: CommentsHost) {
               for (const range of commentRanges(state.doc).get(id) ?? [])
                 tr.removeMark(range.from, range.to, state.schema.marks.comment.create({ id }))
               setMeta(tr, { type: 'active', id: null })
+              tr.setMeta(SAVE_META, true)
               host.remove(id)
             }
             return true
@@ -291,10 +297,52 @@ function setMeta(tr: Transaction, meta: Meta): Transaction {
   return tr.setMeta(CommentsKey, [...metas, meta]).setMeta('addToHistory', false)
 }
 
-/** The native store's threads for the page (`window.hikki.setComments`). */
+/** The native store's threads for the page (`window.hikki.setComments`). An open thread whose passage isn't marked in
+ * the page (a mark lost before marks were saved, 2026-10-15) is marked again where its quote is — when the quote
+ * occurs exactly once, inside one block. */
 export function setThreads(editor: Editor, threads: ThreadItem[]): void {
   if (editor.isDestroyed) return
-  editor.view.dispatch(setMeta(editor.state.tr, { type: 'threads', threads }))
+  const tr = setMeta(editor.state.tr, { type: 'threads', threads })
+  if (editor.isEditable) {
+    const marked = commentRanges(editor.state.doc)
+    for (const thread of threads) {
+      if (thread.resolved || marked.has(thread.id) || !thread.quote.trim()) continue
+      const range = findQuote(editor.state.doc, thread.quote)
+      if (!range) continue
+      tr.addMark(range.from, range.to, editor.schema.marks.comment.create({ id: thread.id }))
+      tr.setMeta(SAVE_META, true)
+    }
+  }
+  editor.view.dispatch(tr)
+}
+
+/** Where `quote` is in the page, when it occurs exactly once and within one block (inline atoms count as one
+ * character, as in the quote). */
+export function findQuote(doc: PMNode, quote: string): { from: number; to: number } | null {
+  const found: { from: number; to: number }[] = []
+  doc.descendants((node, pos) => {
+    if (found.length > 1) return false
+    if (!node.isTextblock) return true
+    let text = ''
+    const at: number[] = []
+    node.forEach((child, offset) => {
+      const start = pos + 1 + offset
+      if (child.isText) {
+        for (let i = 0; i < child.text!.length; i++) at.push(start + i)
+        text += child.text
+      } else {
+        at.push(start)
+        text += '\uFFFC'
+      }
+    })
+    let index = text.indexOf(quote)
+    while (index >= 0 && found.length < 2) {
+      found.push({ from: at[index], to: at[index + quote.length - 1] + 1 })
+      index = text.indexOf(quote, index + 1)
+    }
+    return false
+  })
+  return found.length === 1 ? found[0] : null
 }
 
 /** Highlights: open threads' passages (the shown one darker) and a draft's selection. */

@@ -7,6 +7,7 @@ import { createEditor } from '../src/core/editor'
 import {
   commentRanges,
   commentsState,
+  findQuote,
   setThreads,
   type ThreadItem
 } from '../src/extensions/comments'
@@ -192,5 +193,17 @@ describe('comments', () => {
     fireEvent.change(field, { target: { value: 'first, edited' } })
     fireEvent.keyDown(field, { key: 'Enter' })
     expect(calls.at(-1)).toBe(`edit ${id} ${id}-1 first, edited`)
+  })
+
+  it('an open thread whose passage lost its mark is marked again where its quote is, once', () => {
+    act(() => setThreads(editor, [{ ...thread('lost'), quote: 'quick fox' }]))
+    const [[id, ranges]] = [...commentRanges(editor.state.doc)]
+    expect(id).toBe('lost')
+    expect(editor.state.doc.textBetween(ranges[0].from, ranges[0].to)).toBe('quick fox')
+    // Not when the quote is ambiguous, gone, or the thread resolved.
+    expect(findQuote(editor.state.doc, 'u')).toBeNull()
+    expect(findQuote(editor.state.doc, 'slow dog')).toBeNull()
+    act(() => setThreads(editor, [{ ...thread('done', true), quote: 'jumps' }]))
+    expect(commentRanges(editor.state.doc).has('done')).toBe(false)
   })
 })
