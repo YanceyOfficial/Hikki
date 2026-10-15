@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import fixture from '../../design/fixtures/content-text.json'
 import { blockTexts, plainText, wordCount } from '../src/core/extract'
 
 const doc = {
@@ -38,5 +39,14 @@ describe('extract', () => {
     expect(wordCount("Hello world, it's v2")).toBe(4)
     expect(wordCount('今天 review 了 PR123')).toBe(5)
     expect(wordCount('')).toBe(0)
+  })
+})
+
+describe('the text Swift and the editor read from a page agree', () => {
+  it('flattens the shared fixture to the blocks ContentTextTests expects (design/fixtures/content-text.json)', () => {
+    const texts = blockTexts(fixture.doc)
+      .map((text) => text.trim())
+      .filter(Boolean)
+    expect(texts).toEqual(fixture.blocks.map((block) => block.text))
   })
 })

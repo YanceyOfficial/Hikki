@@ -69,7 +69,9 @@ struct LinkPreviewTests {
         let junk = "<head><title>" + String(repeating: "<meta content=x ", count: 30_000)
         let start = Date()
         let preview = LinkPreview.parse(html: junk, url: base)
-        #expect(Date().timeIntervalSince(start) < 1)
+        // Linear parsing takes a few milliseconds; quadratic would take minutes. The bound is loose so a busy machine
+        // (parallel builds) can't fail it.
+        #expect(Date().timeIntervalSince(start) < 5)
         #expect(preview.title == nil)
     }
 }
