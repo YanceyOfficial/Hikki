@@ -104,6 +104,9 @@
                         }
                     }
                     Section("VersionDiffView") {
+                        VersionTitleView(
+                            title: "Trip to Kyoto", runs: [.init("Trip to ", .same), .init("Osaka", .removed), .init("Kyoto", .added)],
+                            placeholder: "Untitled")
                         VersionDiffView(blocks: [
                             .init(id: 0, style: .heading2, runs: [.init("Plan", .same)]),
                             .init(

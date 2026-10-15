@@ -193,6 +193,15 @@ public enum PageDiff {
         return Double(shared) >= Double(max(x.count, y.count)) / 3
     }
 
+    /// A version's title (`new`) against the page's now (`old`), word by word — nil when they read the same (spaces at
+    /// the ends aside). An emptied title is all removed, a title given since all added.
+    public static func title(old: String, new: String) -> [DiffRun]? {
+        let a = old.trimmingCharacters(in: .whitespacesAndNewlines)
+        let b = new.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard a != b else { return nil }
+        return words(old: a, new: b)
+    }
+
     /// The text of `new` with what `old` had and it hasn't put back in place: removed runs before added ones.
     public static func words(old: String, new: String) -> [DiffRun] {
         let a = tokens(old)

@@ -78,6 +78,21 @@ struct PageDiffTests {
         #expect(runs == [DiffRun("今天天气", .same), DiffRun("很", .removed), DiffRun("不", .added), DiffRun("好", .same)])
     }
 
+    @Test func aRenamedTitleComparesWordByWord() {
+        // The version (new) against the page now (old): what restoring brings back is added.
+        #expect(
+            PageDiff.title(old: "Trip to Osaka", new: "Trip to Kyoto")
+                == [DiffRun("Trip to ", .same), DiffRun("Osaka", .removed), DiffRun("Kyoto", .added)])
+        #expect(PageDiff.title(old: "", new: "Plans") == [DiffRun("Plans", .added)])
+        #expect(PageDiff.title(old: "Plans", new: "") == [DiffRun("Plans", .removed)])
+    }
+
+    @Test func anUnchangedTitleHasNoDiff() {
+        #expect(PageDiff.title(old: "Trip", new: "Trip") == nil)
+        #expect(PageDiff.title(old: "Trip ", new: " Trip") == nil)
+        #expect(PageDiff.title(old: "", new: "") == nil)
+    }
+
     @Test func tokensKeepWordsSpacesAndPunctuationApart() {
         #expect(PageDiff.tokens("Hi, there  you") == ["Hi", ",", " ", "there", "  ", "you"])
     }

@@ -181,7 +181,8 @@ HikkiUITests/                 XCUITest flows
   takes its history along (`onDeleted`). UI: page ⋯ → Page History… (`Hikki/Sources/PageHistoryView.swift`) lists
   versions beside a native preview — `TextBlock`/`PageDiff` (`HikkiCore/Sources/Store/PageDiff.swift`) flatten both
   versions to blocks and diff them block by block, then word by word (CJK by character), drawn by HikkiUI's
-  `VersionDiffView`. Restore writes through `saveContent` + `setIcon`/`setCover` and reloads open editors.
+  `VersionDiffView`; a title that differs from the page's now is marked the same way above the body
+  (`PageDiff.title`, `VersionTitleView`, "Title changed"). Restore writes through `saveContent` + `setIcon`/`setCover` and reloads open editors.
   DEBUG: `HIKKI_HISTORY_INTERVAL=<s>` shortens the session (UI tests).
 - **Import / export** (`Hikki/Sources/PageTransfer.swift`): the editor converts, in its own schema
   (`editor/src/core/convert.ts`: Tiptap's official `@tiptap/markdown`, HTML through the schema's parse/render rules;

@@ -129,9 +129,9 @@ struct PageHistoryView: View {
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: Spacing.s4) {
-                    Text(version.title.isEmpty ? String(localized: "app:page.untitled") : version.title)
-                        .font(.hk(.x3l, .bold))
-                        .foregroundStyle(version.title.isEmpty ? Theme.placeholder : Theme.foreground)
+                    VersionTitleView(
+                        title: version.title, runs: titleRuns(for: version), placeholder: String(localized: "app:page.untitled"),
+                        showsChanges: showsChanges)
                     VersionDiffView(blocks: blocks(for: version), showsChanges: showsChanges)
                 }
                 .padding(Spacing.s6)
@@ -141,6 +141,12 @@ struct PageHistoryView: View {
             .accessibilityIdentifier("history-preview")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    /// The version's title marked against the page's title now, or nil when it hasn't changed.
+    private func titleRuns(for version: PageVersion) -> [VersionDiffView.Run]? {
+        guard let current = try? model.store.document(id: pageID) else { return nil }
+        return PageDiff.title(old: current.title, new: version.title)?.map { VersionDiffView.Run($0.text, Self.change($0.change)) }
     }
 
     /// The version's blocks marked against the page now: what restoring would bring back, and what it would remove.
