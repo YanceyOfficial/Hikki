@@ -30,8 +30,8 @@ import {
 /** Card width in the margin, and the room the margin needs beside the text to hold one. */
 const CARD = 300
 const GAP = 40
-/** The room the outline rail keeps at the window's right edge (`editor/src/page/outline.tsx`): no card under it. */
-const RAIL = 48
+/** The room the outline rail's hover strip keeps at the window's right edge (`editor/src/page/outline.tsx`). */
+const RAIL = 64
 
 /** A thread anchored in the page, measured against the text column (the layer's box). */
 type Anchor = {

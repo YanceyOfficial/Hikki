@@ -50,7 +50,7 @@ export function Outline({ bridge }: { bridge: EditorBridge }) {
 
   return (
     <nav
-      className="fixed top-1/2 right-2 z-20 flex -translate-y-1/2 justify-end max-[1000px]:hidden"
+      className="fixed top-1/2 right-0 z-20 flex -translate-y-1/2 justify-end max-[1000px]:hidden"
       aria-label={t('page.outline')}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => {
@@ -66,7 +66,7 @@ export function Outline({ bridge }: { bridge: EditorBridge }) {
           bars for the (taller) list would move the nav under the pointer and flip it closed again. */}
       <div
         className={cn(
-          'flex flex-col items-end gap-2.5 px-1 py-2 transition-opacity duration-(--motion-pop-in) ease-out',
+          'flex flex-col items-end gap-2.5 py-2 pr-5 pl-6 transition-opacity duration-(--motion-pop-in) ease-out',
           open && 'opacity-0'
         )}
         aria-hidden
@@ -82,14 +82,15 @@ export function Outline({ bridge }: { bridge: EditorBridge }) {
           />
         ))}
       </div>
-      {/* The list stays mounted and shows/hides with the shared motion, from the rail's edge. */}
-      <div className="absolute top-1/2 right-0 -translate-y-1/2">
+      {/* The list stays mounted and shows/hides with the shared motion, from the rail's edge. Hidden, neither it nor
+          its (transparent, list-wide) wrapper takes the pointer: only the rail strip at the window edge opens it. */}
+      <div className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2">
         {/* One surface marks the row: the hovered one, else the section being read (it glides between them). */}
         <ol
           ref={listRef}
           data-open={open}
           onMouseLeave={() => setHovered(null)}
-          className="hk-pop-toggle relative m-0 max-h-[60vh] w-60 list-none overflow-y-auto rounded-xl bg-popover p-2 shadow-popover [--hk-pop-dx:8px] [--hk-pop-dy:0px] [--hk-pop-origin:right_center]"
+          className="hk-pop-toggle relative m-0 max-h-[60vh] w-60 list-none overflow-y-auto rounded-xl bg-popover p-2 shadow-popover [--hk-pop-dx:8px] [--hk-pop-dy:0px] [--hk-pop-origin:right_center] data-[open=true]:pointer-events-auto"
         >
           <GlidingHighlight listRef={listRef} index={hovered ?? activeHeading} />
           {headings.map((h, index) => (

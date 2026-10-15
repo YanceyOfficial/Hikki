@@ -119,11 +119,12 @@ describe('comments', () => {
   })
 
   it('cards and badges keep clear of the outline rail at the window edge', () => {
-    // 388 = a card (300) + its gap (40) + the rail's room (48).
-    expect(marginPlacement(1400, 1012)).toEqual({ wide: true, offset: 40 })
-    expect(marginPlacement(1400, 1013).wide).toBe(false)
+    // 404 = a card (300) + its gap (40) + the rail's room (64).
+    expect(marginPlacement(1400, 996)).toEqual({ wide: true, offset: 40 })
+    expect(marginPlacement(1400, 997).wide).toBe(false)
     // A badge beside the text only with the rail's room past it; else just inside the text.
-    expect(marginPlacement(1000, 896)).toEqual({ wide: false, offset: 12 })
+    expect(marginPlacement(1000, 880)).toEqual({ wide: false, offset: 12 })
+    expect(marginPlacement(1000, 881)).toEqual({ wide: false, offset: -44 })
     expect(marginPlacement(1000, 960)).toEqual({ wide: false, offset: -44 })
   })
 })
