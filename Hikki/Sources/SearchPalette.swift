@@ -51,7 +51,9 @@ struct SearchPalette: View {
 
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: Spacing.px) {
+                    // A plain stack keyed by page: lazily made rows keyed by position kept showing the recent pages
+                    // after the first search of a newly opened palette (and stopped following hover).
+                    VStack(alignment: .leading, spacing: Spacing.px) {
                         if rows.isEmpty {
                             Text(query.isEmpty ? "app:search.noPages" : "app:search.noResults \(query)")
                                 .font(.hk(.md))
@@ -66,14 +68,14 @@ struct SearchPalette: View {
                                 .padding(.horizontal, Spacing.s2_5)
                                 .padding(.top, Spacing.s2_5)
                                 .padding(.bottom, Spacing.s1)
-                            ForEach(section.items, id: \.offset) { index, hit in
+                            ForEach(section.items, id: \.element.id) { index, hit in
                                 SearchResultRow(
                                     title: hit.title, icon: hit.icon, snippet: hit.snippet, path: path(of: hit.id),
                                     terms: hit.terms,
                                     attachment: hit.attachment.map { $0.label ?? String(localized: "app:search.image") },
                                     updatedAt: hit.updatedAt, isSelected: index == selection
                                 )
-                                .id(index)
+                                .id(hit.id)
                                 .onTapGesture { open(hit.id) }
                                 .onHover { if $0 { selection = index } }
                             }
@@ -84,7 +86,9 @@ struct SearchPalette: View {
                 .scrollIndicators(.automatic)
                 .frame(maxHeight: Size.searchResults)
                 .fixedSize(horizontal: false, vertical: true)
-                .onChange(of: selection) { _, index in proxy.scrollTo(index) }
+                .onChange(of: selection) { _, index in
+                    if rows.indices.contains(index) { proxy.scrollTo(rows[index].id) }
+                }
             }
 
             #if os(macOS)
@@ -121,6 +125,15 @@ struct SearchPalette: View {
         .task(id: SearchKey(query: query, options: options)) {
             let found = await model.search(query, options: options)
             guard !Task.isCancelled else { return }
+            #if DEBUG
+                // What reached the index (as code points) and what came back — ids and counts only.
+                Log.info(
+                    "palette search", category: "search",
+                    context: [
+                        "scalars": query.unicodeScalars.map { String($0.value, radix: 16) }.joined(separator: " "),
+                        "results": "\(found.count)", "top": found.prefix(3).map(\.id).joined(separator: ","),
+                    ])
+            #endif
             results = found
             selection = 0
         }
