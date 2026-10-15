@@ -44,7 +44,7 @@ final class AIChat {
         case .failure(let error):
             finish(error: error)
         case .success(let (model, client)):
-            let request = AIPrompts.chat(turns, page: page, model: model, webSearch: webSearch)
+            let request = AIPrompts.chat(turns, page: page, model: model, webSearch: webSearch, language: AIService.appLanguage)
             Log.info("AI chat", category: "ai", context: ["model": model.id, "turns": "\(turns.count)", "page": page == nil ? "0" : "1"])
             isStreaming = true
             task = Task { [weak self] in

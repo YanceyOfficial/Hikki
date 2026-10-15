@@ -183,3 +183,72 @@ const escapeHTML = (text: string) =>
     .replaceAll(/</gu, '&lt;')
     .replaceAll(/>/gu, '&gt;')
     .replaceAll(/"/gu, '&quot;')
+
+/** What an AI answer may hold: text, lists, quotes, code and tables — no media or embeds (a remote picture in an
+ * answer would load from wherever the model pointed). */
+const ANSWER_NODES = new Set([
+  'doc',
+  'paragraph',
+  'text',
+  'hardBreak',
+  'heading',
+  'bulletList',
+  'orderedList',
+  'listItem',
+  'taskList',
+  'taskItem',
+  'blockquote',
+  'codeBlock',
+  'horizontalRule',
+  'table',
+  'tableRow',
+  'tableHeader',
+  'tableCell'
+])
+
+/** Only web links stay links; other marks stay as they are. */
+function answerNode(node: JSONContent): JSONContent | null {
+  if (!node.type || !ANSWER_NODES.has(node.type)) return null
+  const marks = node.marks?.filter((mark) => {
+    if (mark.type !== 'link') return true
+    const href = mark.attrs?.href
+    return typeof href === 'string' && /^https?:\/\//iu.test(href)
+  })
+  const content = node.content?.map(answerNode).filter((n): n is JSONContent => n !== null)
+  return {
+    ...node,
+    ...(marks ? { marks } : {}),
+    ...(content ? { content } : {})
+  }
+}
+
+/**
+ * An AI answer's Markdown (untrusted) as blocks of the page's schema — media and embeds left out, non-web links
+ * unlinked — or its text as paragraphs when it doesn't parse into something the schema takes.
+ */
+export function markdownBlocks(text: string): JSONContent[] {
+  const { schema, markdown } = converter()
+  try {
+    const content = answerNode(markdown.parse(text))
+    if (!content) throw new Error('no content')
+    PMNode.fromJSON(schema, content).check()
+    return content.content ?? []
+  } catch {
+    return textDocument(text).content ?? []
+  }
+}
+
+/** The same blocks drawn for the answer card: built node by node from the schema, never parsed from a string. */
+export function markdownDOM(text: string): DocumentFragment {
+  const { schema } = converter()
+  try {
+    const doc = PMNode.fromJSON(schema, { type: 'doc', content: markdownBlocks(text) })
+    const fragment = document.createDocumentFragment()
+    fragment.append(DOMSerializer.fromSchema(schema).serializeFragment(doc.content))
+    return fragment
+  } catch {
+    const fragment = document.createDocumentFragment()
+    fragment.append(document.createTextNode(text))
+    return fragment
+  }
+}

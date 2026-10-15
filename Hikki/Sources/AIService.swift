@@ -88,12 +88,18 @@ final class AIService {
         }
     }
 
+    /// The app's language by name, for answers (the system's per-app language choice).
+    static var appLanguage: String {
+        AIPrompts.languageName(Bundle.main.preferredLocalizations.first ?? "en")
+    }
+
     static func task(_ payload: AIRequestPayload) -> AITask {
         AITask(
             action: payload.action, instruction: payload.instruction, answer: payload.answer,
             explain: payload.explain ?? false,
             units: payload.units.map { AITask.Unit(key: $0.key, html: $0.html) }, title: payload.context.title,
-            before: payload.context.before, after: payload.context.after, previous: payload.context.previous)
+            before: payload.context.before, after: payload.context.after, previous: payload.context.previous,
+            language: appLanguage)
     }
 
     /// An answer's event as the page reads it (`AIStreamEvent` in protocol.ts).

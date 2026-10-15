@@ -226,4 +226,32 @@ describe('AI review (style A)', () => {
     window.scrollBy = original
     bar.remove()
   })
+
+  it('draws an answer as page blocks and inserts it below as blocks, without media or unsafe links', () => {
+    editor.commands.aiRun({ id: 'explain' })
+    send({
+      type: 'text',
+      delta:
+        '## Two uses\n\n- **Hearsay**: plain form\n- *Appearance*: stem\n\n![x](https://tracker.example/p.png) [bad](javascript:alert(1)) [ok](https://example.com)'
+    })
+    send({ type: 'done' })
+    const card = document.querySelector('[data-testid="ai-answer"]')!
+    expect(card.querySelector('h2')?.textContent).toBe('Two uses')
+    expect([...card.querySelectorAll('li')].map((li) => li.textContent)).toEqual([
+      'Hearsay: plain form',
+      'Appearance: stem'
+    ])
+    expect(card.querySelector('strong')?.textContent).toBe('Hearsay')
+    expect(card.querySelector('img')).toBeNull()
+    expect([...card.querySelectorAll('a')].map((a) => a.getAttribute('href'))).toEqual([
+      'https://example.com'
+    ])
+
+    const insert = [...document.querySelectorAll('[data-testid="ai-review"] button')].find((b) =>
+      b.textContent?.includes('Insert below')
+    ) as HTMLButtonElement
+    insert.click()
+    const types = editor.getJSON().content?.map((node) => node.type)
+    expect(types).toEqual(['paragraph', 'heading', 'bulletList', 'paragraph'])
+  })
 })

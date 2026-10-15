@@ -11,6 +11,7 @@ import { Decoration, DecorationSet } from '@tiptap/pm/view'
 
 import { renderAIReview, type AIReviewProps } from '../components/ai-review'
 import { FloatingLayer } from '../components/floating'
+import { markdownBlocks } from '../core/convert'
 import type { AIStreamEvent } from '../core/protocol'
 import {
   type AINote,
@@ -427,13 +428,10 @@ function insertBelow(editor: Editor, host: AIHost, text: string): void {
   if (!session) return
   const $end = editor.state.doc.resolve(session.units.at(-1)!.to)
   const after = $end.after(1)
-  const paragraphs = text
-    .split(/\n{2,}/u)
-    .map((p) => p.trim())
-    .filter(Boolean)
-    .map((p) => ({ type: 'paragraph', content: [{ type: 'text', text: p }] }))
+  // The answer's Markdown as real blocks (lists, headings, emphasis), media and non-web links left out.
+  const blocks = text.trim() ? markdownBlocks(text) : []
   close(editor, host)
-  if (paragraphs.length > 0) editor.chain().focus().insertContentAt(after, paragraphs).run()
+  if (blocks.length > 0) editor.chain().focus().insertContentAt(after, blocks).run()
 }
 
 /** The bar or card under the selection, redrawn on every change of the session. */

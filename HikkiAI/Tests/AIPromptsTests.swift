@@ -27,6 +27,17 @@ struct AIPromptsTests {
         #expect(request.instructions.contains(#"{"from": "<the words replaced>""#))
     }
 
+    @Test func answersAreWrittenInTheAppsLanguage() {
+        #expect(AIPrompts.languageName("zh-Hans").hasPrefix("Chinese"))
+        let task = AITask(action: "explain", answer: true, units: [unit], language: "Chinese (Simplified)")
+        #expect(AIPrompts.request(for: task, model: AIModelCatalog.sonnet).instructions.contains("app is in Chinese (Simplified)"))
+        let chat = AIPrompts.chat([.user("hi")], page: nil, model: AIModelCatalog.sonnet, webSearch: false, language: "Japanese")
+        #expect(chat.instructions.contains("app is in Japanese"))
+        #expect(
+            !AIPrompts.request(for: AITask(action: "fix", answer: false, units: [unit]), model: AIModelCatalog.sonnet)
+                .instructions.contains("app is in"))
+    }
+
     @Test func anAnswerGetsPlainTextAndWebSearch() {
         let task = AITask(action: "explain", answer: true, units: [unit, .init(key: "p2:1", html: "a &amp; b")])
         let request = AIPrompts.request(for: task, model: AIModelCatalog.gptSol)

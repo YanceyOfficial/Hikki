@@ -5,7 +5,7 @@ import {
   GlobeIcon,
   TextAlignLeftIcon
 } from '@phosphor-icons/react'
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/input-group'
 import { Kbd } from '@/components/ui/kbd'
 
+import { markdownDOM } from '../core/convert'
 import { t } from '../core/i18n'
 import type { AIReviewStyle } from '../extensions/ai-review'
 import type { AINote } from '../lib/ai-content'
@@ -57,6 +58,21 @@ function Working({ label }: { label: string }) {
       </span>
       <span className="truncate">{label}</span>
     </div>
+  )
+}
+
+/** The answer's Markdown, drawn with the page's own blocks (`markdownDOM`: built from the schema, never as HTML). */
+function MarkdownAnswer({ text }: { text: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    ref.current?.replaceChildren(markdownDOM(text))
+  }, [text])
+  return (
+    <div
+      ref={ref}
+      className="hk-ai-answer max-h-[min(360px,50vh)] overflow-y-auto overscroll-contain px-1 text-sm leading-relaxed"
+      data-testid="ai-answer"
+    />
   )
 }
 
@@ -173,11 +189,7 @@ export function AIReview({
         </div>
       )}
 
-      {answer && reply && (
-        <div className="max-h-[min(360px,50vh)] overflow-y-auto px-1 text-sm leading-relaxed whitespace-pre-wrap">
-          {reply}
-        </div>
-      )}
+      {answer && reply && <MarkdownAnswer text={reply} />}
       {citations.length > 0 && (
         <ol className="m-0 flex list-none flex-wrap gap-1 p-0 px-1" aria-label={t('ai.sources')}>
           {citations.map((c, index) => (
