@@ -140,7 +140,11 @@ HikkiUITests/                 XCUITest flows
   `obscuredContentInsets` on macOS, an explicit scroll inset on iOS).
 - **Sidebar**: Mac/iPad draw our own rows in a `LazyVStack` (`Hikki/Sources/SidebarView.swift`) — a native `List`
   paints selection in the system accent (not the colour tone) and swallowed row drops on iPad. Fills on the sidebar use
-  resolved colours (dynamic ones picked up the active window's vibrancy).
+  resolved colours (dynamic ones picked up the active window's vibrancy). Markdown / HTML / text files or folders
+  dragged onto it import (`Hikki/Sources/SidebarFileDrop.swift`): on a page row as its children (the row tints as for
+  "inside"), elsewhere at the top level (the sidebar is outlined); ContentView runs the import through
+  `Navigator.importDrop` → `AppModel.importFiles(_:parentId:)`. A page row's own drag carries a page link, never a
+  file, so the two never mix; iPad drags (typed documents, no file URL) load as a temporary copy.
 - **iPhone is its own layout**, not the Mac's squeezed (prototype: the "Hikki iPhone redesign" canvas): the collapsed
   split view's sidebar column is `Hikki/Sources/PhoneHome.swift` (workspace, All pages / Trash tiles, "Jump back in"
   cards, favorites, the page tree as plain rows) and opening anything shows the detail through

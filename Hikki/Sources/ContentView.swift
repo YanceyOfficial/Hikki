@@ -172,14 +172,20 @@ struct ContentView: View {
                 guard case .success(let urls) = result else { return }
                 Task { await importFiles(urls) }
             }
+            // Files dropped on the sidebar (SidebarFileDrop).
+            .onChange(of: navigator.importDrop) { _, drop in
+                guard let drop else { return }
+                navigator.importDrop = nil
+                Task { await importFiles(drop.urls, parentID: drop.parentID) }
+            }
     }
 
     /// Markdown, HTML and plain text files, or a folder of them (with the pictures they link inside it).
     private static let importTypes: [UTType] = [UTType("net.daringfireball.markdown"), .html, .plainText, .folder].compactMap { $0 }
 
-    /// Imported files become pages; the last one opens.
-    private func importFiles(_ urls: [URL]) async {
-        let ids = await model.importFiles(urls, editor: editor)
+    /// Imported files become pages (under `parentID` when given); the last one opens.
+    private func importFiles(_ urls: [URL], parentID: String? = nil) async {
+        let ids = await model.importFiles(urls, parentId: parentID, editor: editor)
         if let last = ids.last { navigator.open(last) }
     }
 

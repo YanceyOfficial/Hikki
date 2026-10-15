@@ -47,23 +47,24 @@ extension AppModel {
     /// Files larger than this aren't read as text.
     static let importLimit = 20 * 1024 * 1024
 
-    /// Each Markdown / HTML / text file as a new page at the top level (converted by the editor) — and for a chosen
+    /// Each Markdown / HTML / text file as a new page at the top level, or as the last children of `parentId` (files
+    /// dropped on a sidebar row), converted by the editor — and for a chosen
     /// folder, each such file in it. Pictures and attachments a document links by relative path inside its folder (an
     /// export's `assets/`) come along into the workspace's assets. Returns the new pages' ids in order.
-    func importFiles(_ urls: [URL], editor: EditorController) async -> [String] {
+    func importFiles(_ urls: [URL], parentId: String? = nil, editor: EditorController) async -> [String] {
         var created: [String] = []
         for url in urls {
             let access = url.startAccessingSecurityScopedResource()
             defer { if access { url.stopAccessingSecurityScopedResource() } }
             let isFolder = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
             for file in isFolder ? PageImport.documents(in: url) : [url] {
-                if let id = await importDocument(file, editor: editor) { created.append(id) }
+                if let id = await importDocument(file, parentId: parentId, editor: editor) { created.append(id) }
             }
         }
         return created
     }
 
-    private func importDocument(_ url: URL, editor: EditorController) async -> String? {
+    private func importDocument(_ url: URL, parentId: String?, editor: EditorController) async -> String? {
         let format = ImportFormat(fileExtension: url.pathExtension) ?? .text
         do {
             let data = try Data(contentsOf: url)
@@ -77,7 +78,7 @@ extension AppModel {
             let (content, copied) = PageImport.relinkLocalFiles(in: page.content, base: url.deletingLastPathComponent()) { file in
                 try assets.importCopy(of: file)
             }
-            let record = try store.create()
+            let record = try store.create(parentId: parentId)
             try store.saveContent(
                 Snapshot(docId: record.id, content: content, title: page.title, text: page.text, wordCount: page.wordCount))
             Log.info(

@@ -1,8 +1,47 @@
 import Foundation
+import UniformTypeIdentifiers
 
 /// Importing pages from files: which files a chosen folder holds, and the pictures and attachments a document links
 /// by relative path (an export's `assets/`, a Markdown folder's images), brought into the workspace's assets.
 public enum PageImport {
+    /// Of the files dropped (on the sidebar), those that import: folders and Markdown / HTML / text documents —
+    /// pictures, PDFs and the rest stay out. Order kept.
+    public static func importable(_ urls: [URL]) -> [URL] {
+        urls.filter { url in
+            let isFolder = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+            return isFolder || ImportFormat(fileExtension: url.pathExtension) != nil
+        }
+    }
+
+    /// The types a dropped item may come as that import (iPad drags from Files carry the document's type, not a file
+    /// URL): a folder, Markdown, HTML or plain text.
+    public static let documentTypes: [UTType] =
+        [.folder, UTType("net.daringfireball.markdown"), .html, .plainText].compactMap { $0 }
+
+    /// The type to load a dropped item as (the first of its registered types that imports), or nil when it doesn't
+    /// import. Plain text counts only with a file's name (`suggestedName`) — text dragged out of another app is a
+    /// snippet, not a document.
+    public static func documentType(registered identifiers: [String], suggestedName: String?) -> UTType? {
+        for identifier in identifiers {
+            guard let type = UTType(identifier) else { continue }
+            if type.conforms(to: .folder) { return type }
+            guard let match = documentTypes.first(where: { type.conforms(to: $0) }) else { continue }
+            if match == .plainText, type == .plainText || type == .utf8PlainText, suggestedName == nil { return nil }
+            return type
+        }
+        return nil
+    }
+
+    /// The name a dropped document is saved under before importing: its own name, with the extension its type has
+    /// when the name carries none (the import reads the format from it).
+    public static func fileName(suggestedName: String?, type: UTType) -> String {
+        let base = suggestedName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let name = base.isEmpty ? "Untitled" : base
+        guard !type.conforms(to: .folder) else { return name }
+        if ImportFormat(fileExtension: (name as NSString).pathExtension) != nil { return name }
+        return name + "." + (type.preferredFilenameExtension ?? "txt")
+    }
+
     /// The documents in a chosen folder (its own level, sorted by name): Markdown, HTML and text files.
     public static func documents(in folder: URL) -> [URL] {
         let names =
