@@ -5753,13 +5753,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Page titles and text join this device's private Spotlight index, so system search finds them. Nothing leaves the device."
+            "value": "Search a page's title in Spotlight (⌘Space) to open it in Hikki. Pages go into this device's private Spotlight index; nothing leaves the device."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "页面标题和正文会加入本设备的私有聚焦索引，系统搜索就能找到它们。数据不会离开设备。"
+            "value": "在聚焦搜索（⌘空格）中输入页面标题，即可在 Hikki 中打开该页面。页面只加入本设备的私有聚焦索引，数据不会离开设备。"
           }
         }
       }

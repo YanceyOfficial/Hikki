@@ -22,10 +22,13 @@ public enum SpotlightItems {
 
     public static func item(for document: SearchDocument, untitled: String) -> CSSearchableItem {
         let attributes = CSSearchableItemAttributeSet(contentType: .text)
-        attributes.title = document.title.isEmpty ? untitled : document.title
+        let title = document.title.isEmpty ? untitled : document.title
+        attributes.title = title
+        // What macOS Spotlight shows a result as and matches first (it ignored items with a title alone).
+        attributes.displayName = title
         attributes.textContent = String(document.text.prefix(maxTextCharacters))
         attributes.contentDescription = description(of: document.text)
-        attributes.keywords = document.headings.isEmpty ? nil : document.headings
+        attributes.keywords = [title] + document.headings
         attributes.contentModificationDate = document.updatedAt
         let item = CSSearchableItem(uniqueIdentifier: document.id, domainIdentifier: domain, attributeSet: attributes)
         item.expirationDate = .distantFuture

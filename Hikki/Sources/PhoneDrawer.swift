@@ -202,35 +202,13 @@
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("page-row-\(title)")
-                Menu {
-                    PageActions(page: page, navigator: navigator)
-                } label: {
-                    rowIcon(.dotsThree)
-                }
-                .accessibilityLabel(Text("app:common.more"))
-                .accessibilityIdentifier("page-row-menu-\(title)")
-                Button {
-                    close()
-                    navigator.newPage(parentId: page.id)
-                } label: {
-                    rowIcon(.plus)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text("app:page.addInside"))
-                .accessibilityIdentifier("page-add-\(title)")
             }
             .padding(.leading, Spacing.s2 + CGFloat(depth) * Spacing.s4)
             .padding(.trailing, Spacing.s2)
+            // Its actions — Add a page inside among them — on a long press (no ⋯ / + on every row: the tree stays calm).
             .contextMenu { PageActions(page: page, navigator: navigator) }
         }
 
         private var title: String { page.title.isEmpty ? String(localized: "app:page.untitled") : page.title }
-
-        private func rowIcon(_ icon: Icon) -> some View {
-            IconView(icon, size: TextSize.base.rawValue)
-                .foregroundStyle(Theme.placeholder)
-                .frame(width: Size.iconButton + Spacing.s1, height: Size.row + Spacing.s3)
-                .contentShape(.rect)
-        }
     }
 #endif

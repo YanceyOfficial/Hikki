@@ -119,8 +119,8 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(app.buttons["drawer-trash"].firstMatch.exists)
         XCTAssertTrue(app.buttons["drawer-settings"].firstMatch.exists)
         XCTAssertTrue(app.buttons["drawer-new-page"].firstMatch.exists)
-        XCTAssertTrue(app.buttons["page-add-日本語を勉強する"].firstMatch.exists)
-        XCTAssertTrue(app.buttons["page-row-menu-日本語を勉強する"].firstMatch.exists)
+        // No ⋯ / + on the rows: their actions are on a long press.
+        XCTAssertFalse(app.buttons["page-add-日本語を勉強する"].firstMatch.exists)
         attachScreenshot(app, "drawer-open")
         tapWhenSettled(app.descendants(matching: .any)["drawer-close"].firstMatch)
         let closed = NSPredicate { _, _ in !parent.exists }

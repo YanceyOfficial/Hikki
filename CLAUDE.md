@@ -162,7 +162,7 @@ HikkiUITests/                 XCUITest flows
   (`QuickNote`, HikkiCore) — Ask AI suggestions sent with this week's pages (`Navigator.pendingAIQuestion`), This
   week — HikkiUI's `WeekActivityCard` over the store's daily activity — recently edited, and favorites) and opening anything shows the detail through `Navigator.compactColumn`
   (`preferredCompactColumn`). The page tree is Notion's side drawer: `Hikki/Sources/PhoneDrawer.swift` (workspace +
-  search, favorites, the tree with + / ⋯ per row, Add a page, then All pages · Trash · Settings fixed at the bottom)
+  search, favorites, the tree — its actions on a long press, Add a page, then All pages · Trash · Settings fixed at the bottom)
   inside HikkiUI's `SideDrawer` (`HikkiUI/Sources/SideDrawer.swift`, exodus-ios's drawer, 75 % of the width: the content is a card pushed
   right and dimmed; a UIKit pan takes horizontal drags anywhere — flick projection, rubber band past open — and lets a
   horizontal list keep its drags unless it sits at its leading edge; ☰ or a tap on the card toggles; `Motion.easeOut()`). Root screens and pages float one bottom bar —

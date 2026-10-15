@@ -9,7 +9,8 @@ nonisolated enum SpotlightPreferences {
     /// The item format last pushed in full; a different `version` empties the index and pushes every page again.
     static let seededKey = "spotlightSeededVersion"
     /// 2: emptied once — UI test and demo runs had added their sample pages to the user's Spotlight (2026-10-16).
-    static let version = 2
+    /// 3: items carry a display name (macOS Spotlight showed none without it).
+    static let version = 3
 }
 
 /// The device's Spotlight index of pages (Core Spotlight), fed beside the search index by `SearchIndexer`:

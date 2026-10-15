@@ -16,7 +16,8 @@ struct SpotlightItemsTests {
         #expect(item.attributeSet.title == "Roadmap")
         #expect(item.attributeSet.textContent == "The roadmap is due Friday.\nMore text.")
         #expect(item.attributeSet.contentDescription == "The roadmap is due Friday. More text.")
-        #expect(item.attributeSet.keywords == ["Q4", "Risks"])
+        #expect(item.attributeSet.displayName == "Roadmap")
+        #expect(item.attributeSet.keywords == ["Roadmap", "Q4", "Risks"])
         #expect(item.attributeSet.contentModificationDate == t0)
     }
 
@@ -24,7 +25,8 @@ struct SpotlightItemsTests {
         let empty = SpotlightItems.item(for: SearchDocument(id: "e", title: "", updatedAt: .now), untitled: "Untitled")
         #expect(empty.attributeSet.title == "Untitled")
         #expect(empty.attributeSet.contentDescription == nil)
-        #expect(empty.attributeSet.keywords == nil)
+        #expect(empty.attributeSet.displayName == "Untitled")
+        #expect(empty.attributeSet.keywords == ["Untitled"])
         let long = SearchDocument(
             id: "l", title: "Long", text: String(repeating: "word ", count: SpotlightItems.maxTextCharacters), updatedAt: .now)
         let item = SpotlightItems.item(for: long, untitled: "Untitled")
