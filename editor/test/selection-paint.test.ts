@@ -2,6 +2,7 @@ import type { Editor } from '@tiptap/core'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createEditor } from '../src/core/editor'
+import { selectedTextRects } from '../src/extensions/selection-paint'
 
 let host: HTMLElement
 let editor: Editor
@@ -49,9 +50,30 @@ describe('selection paint', () => {
     editor.view.dom.dispatchEvent(new MouseEvent('mousedown', { button: 0, bubbles: true }))
     editor.commands.selectAll()
     expect(painted()).toBe('')
-    expect(editor.view.dom.classList.contains('hk-own-selection')).toBe(false)
+    // The browser still doesn't paint: the drag layer does (below).
+    expect(editor.view.dom.classList.contains('hk-own-selection')).toBe(true)
     window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
     expect(painted()).toBe('山田さん|ワットさん|タワポンさん')
     expect(editor.view.dom.classList.contains('hk-own-selection')).toBe(true)
+  })
+
+  it('the drag layer measures the selected text only — never the list numbers or the items around it', () => {
+    const measured: string[] = []
+    const original = Range.prototype.getClientRects
+    Range.prototype.getClientRects = function (this: Range) {
+      measured.push(this.toString())
+      return [new DOMRect(110, 220, 50, 20)] as unknown as DOMRectList
+    }
+    try {
+      const texts = [...host.querySelectorAll('li p')].map((p) => p.firstChild as Text)
+      const range = document.createRange()
+      range.setStart(texts[0], 1)
+      range.setEnd(texts[2], 3)
+      const rects = selectedTextRects(range, editor.view.dom, new DOMRect(100, 200, 500, 500))
+      expect(measured).toEqual(['田さん', 'ワットさん', 'タワポ'])
+      expect(rects[0]).toMatchObject({ x: 10, y: 20, width: 50, height: 20 })
+    } finally {
+      Range.prototype.getClientRects = original
+    }
   })
 })

@@ -767,6 +767,22 @@
 .tiptap .hk-selection {
   background: var(--color-selection);
 }
+/* The drag layer (selection-paint.ts): the selected characters' boxes, behind the page's text, while a mouse drag is
+   still selecting. Its parent becomes a stacking context so the layer sits between its background and the text. */
+.hk-column:has(> .hk-selection-layer) {
+  position: relative;
+  isolation: isolate;
+}
+.hk-selection-layer {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.hk-selection-layer > div {
+  position: absolute;
+  background: var(--color-selection);
+}
 .tiptap.hk-ai-open .hk-selection {
   background: transparent;
 }

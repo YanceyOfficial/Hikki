@@ -1,16 +1,19 @@
 import { Extension } from '@tiptap/core'
 import { AllSelection, Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
+import type { EditorView } from '@tiptap/pm/view'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 
-/** Plugin state: whether a mouse drag is selecting (the browser paints meanwhile). */
+/** Plugin state: whether a mouse drag is selecting (the drag layer paints meanwhile). */
 export const SelectionPaintKey = new PluginKey<{ dragging: boolean }>('selectionPaint')
 
 /**
  * The page paints a text selection itself, on the text only (as the AI range is): the browser's own paint covers
- * whole line boxes across blocks — list numbers, the gaps between items — and looks broken there. Not while the
- * mouse is still dragging: re-drawing the text under the pointer would cut the browser's drag-selection short, so the
- * browser paints until the button is released. Fields inside the page keep the browser's selection; table cell
- * selections keep their own style.
+ * whole line boxes across blocks — list numbers, the gaps between items — and looks broken there.
+ *
+ * Settled selections are a decoration. While the mouse is still dragging, re-drawing the text under the pointer
+ * would cut the browser's drag-selection short, so a layer behind the page draws the selected characters' boxes
+ * instead (nothing in the text changes) until the button is released. Fields inside the page keep the browser's
+ * selection; table cell selections keep their own style.
  */
 export const SelectionPaint = Extension.create({
   name: 'selectionPaint',
@@ -26,14 +29,7 @@ export const SelectionPaint = Extension.create({
             return dragging === undefined ? value : { dragging }
           }
         },
-        view: (view) => {
-          const release = () => {
-            if (SelectionPaintKey.getState(view.state)?.dragging)
-              view.dispatch(view.state.tr.setMeta(SelectionPaintKey, false))
-          }
-          window.addEventListener('mouseup', release, true)
-          return { destroy: () => window.removeEventListener('mouseup', release, true) }
-        },
+        view: (view) => new DragLayer(view),
         props: {
           handleDOMEvents: {
             mousedown: (view, event) => {
@@ -41,8 +37,7 @@ export const SelectionPaint = Extension.create({
               return false
             }
           },
-          attributes: (state): Record<string, string> =>
-            SelectionPaintKey.getState(state)?.dragging ? {} : { class: 'hk-own-selection' },
+          attributes: { class: 'hk-own-selection' },
           decorations: (state) => {
             const { selection } = state
             if (selection.empty || SelectionPaintKey.getState(state)?.dragging) return null
@@ -57,3 +52,101 @@ export const SelectionPaint = Extension.create({
     ]
   }
 })
+
+/** Boxes of the selected characters, relative to `origin` — text nodes only, so list numbers and gaps never count. */
+export function selectedTextRects(range: Range, root: Node, origin: DOMRect): DOMRect[] {
+  const rects: DOMRect[] = []
+  const container = range.commonAncestorContainer
+  const walker = document.createTreeWalker(
+    container.nodeType === Node.TEXT_NODE ? (container.parentNode ?? container) : container,
+    NodeFilter.SHOW_TEXT
+  )
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (!root.contains(node) || !range.intersectsNode(node)) continue
+    const text = node as Text
+    const part = document.createRange()
+    part.setStart(text, node === range.startContainer ? range.startOffset : 0)
+    part.setEnd(text, node === range.endContainer ? range.endOffset : text.length)
+    if (part.collapsed) continue
+    for (const rect of part.getClientRects()) {
+      if (rect.width > 0 && rect.height > 0)
+        rects.push(
+          new DOMRect(rect.left - origin.left, rect.top - origin.top, rect.width, rect.height)
+        )
+    }
+  }
+  return rects
+}
+
+/** The layer that paints a selection while it is being dragged (see `SelectionPaint`). */
+class DragLayer {
+  private readonly layer: HTMLDivElement
+  private frame = 0
+
+  constructor(private readonly view: EditorView) {
+    this.layer = document.createElement('div')
+    this.layer.className = 'hk-selection-layer'
+    this.layer.setAttribute('aria-hidden', 'true')
+    view.dom.parentElement?.prepend(this.layer)
+    document.addEventListener('selectionchange', this.schedule)
+    window.addEventListener('scroll', this.schedule, true)
+    window.addEventListener('mouseup', this.release, true)
+  }
+
+  private get dragging(): boolean {
+    return SelectionPaintKey.getState(this.view.state)?.dragging ?? false
+  }
+
+  private readonly release = () => {
+    if (this.dragging) this.view.dispatch(this.view.state.tr.setMeta(SelectionPaintKey, false))
+    this.layer.replaceChildren()
+  }
+
+  private readonly schedule = () => {
+    if (!this.dragging || this.frame) return
+    this.frame = requestAnimationFrame(() => {
+      this.frame = 0
+      this.paint()
+    })
+  }
+
+  /** Draws the selected characters' boxes (the layer sits behind the page's text). */
+  paint(): void {
+    const selection = this.view.dom.ownerDocument.getSelection()
+    const parent = this.layer.parentElement
+    if (
+      !this.dragging ||
+      !selection ||
+      selection.rangeCount === 0 ||
+      selection.isCollapsed ||
+      !parent
+    ) {
+      this.layer.replaceChildren()
+      return
+    }
+    const rects = selectedTextRects(
+      selection.getRangeAt(0),
+      this.view.dom,
+      parent.getBoundingClientRect()
+    )
+    this.layer.replaceChildren(
+      ...rects.map((rect) => {
+        const box = document.createElement('div')
+        box.style.cssText = `left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px`
+        return box
+      })
+    )
+  }
+
+  update(): void {
+    if (!this.dragging) this.layer.replaceChildren()
+  }
+
+  destroy(): void {
+    cancelAnimationFrame(this.frame)
+    document.removeEventListener('selectionchange', this.schedule)
+    window.removeEventListener('scroll', this.schedule, true)
+    window.removeEventListener('mouseup', this.release, true)
+    this.layer.remove()
+  }
+}
