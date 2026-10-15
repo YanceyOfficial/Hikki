@@ -87,6 +87,14 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
   const run = (apply: (chain: ReturnType<Editor['chain']>) => ReturnType<Editor['chain']>) =>
     apply(editor.chain().focus()).run()
   const toggle = (name: Panel) => setPanel((current) => (current === name ? null : name))
+  // The rows with a caret open their panel on hover (a menu's submenu); a click also puts the caret in its field.
+  const [clicked, setClicked] = useState(false)
+  const hover = (name: Panel) => {
+    if (panel !== name) {
+      setClicked(false)
+      setPanel(name)
+    }
+  }
   // The side panel stays in the tree through its leave motion, showing whatever it last showed.
   const panelRef = useRef<HTMLDivElement>(null)
   const panelShown = usePresence(panel !== null, panelRef)
@@ -109,7 +117,11 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
           aria-haspopup="menu"
           aria-expanded={panel === 'ai'}
           data-testid="selection-menu-ask-ai"
-          onClick={() => toggle('ai')}
+          onMouseEnter={() => hover('ai')}
+          onClick={() => {
+            setClicked(true)
+            setPanel('ai')
+          }}
         >
           <SparkleIcon size={18} weight="fill" className="text-primary" aria-hidden />
           <span className="flex-1 truncate">{t('ai.menu')}</span>
@@ -120,14 +132,21 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
           className={cn(rowClass, panel === 'turnInto' && 'bg-accent')}
           aria-haspopup="menu"
           aria-expanded={panel === 'turnInto'}
-          onClick={() => toggle('turnInto')}
+          onMouseEnter={() => hover('turnInto')}
+          onClick={() => setPanel('turnInto')}
         >
           <CurrentIcon size={18} className="text-subtle-foreground" aria-hidden />
           <span className="flex-1 truncate">{current.label()}</span>
           <CaretRightIcon size={14} className="text-muted-foreground" aria-hidden />
         </button>
         <div className="mx-1 my-1 h-px bg-border" />
-        <div className="grid grid-cols-5 gap-0.5">
+        <div
+          className="grid grid-cols-5 gap-0.5"
+          // Leaving the rows for the buttons closes a panel the rows opened.
+          onMouseEnter={() => {
+            if (panel === 'ai' || panel === 'turnInto') setPanel(null)
+          }}
+        >
           <ColorButton
             textColor={state.textColor}
             bgColor={state.bgColor}
@@ -212,6 +231,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
         >
           {shownPanel === 'ai' && (
             <AIPanel
+              autoFocus={clicked}
               onRun={(action) => {
                 setPanel(null)
                 editor.commands.aiRun(action)

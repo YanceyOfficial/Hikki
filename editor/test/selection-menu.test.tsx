@@ -89,6 +89,21 @@ describe('SelectionMenu', () => {
     expect(editor.getText().trim()).toBe('hello world')
   })
 
+  it('Ask AI and Turn into open on hover, and leaving for the buttons closes them', () => {
+    show()
+    selectHello()
+    fireEvent.mouseEnter(screen.getByTestId('selection-menu-ask-ai'))
+    expect(screen.getByRole('menu', { name: 'Ask AI' })).toBeTruthy()
+    // Opened by hover: the caret stays where it was (typing still goes to the page).
+    expect(document.activeElement?.closest('[role=menu]')).toBeNull()
+    fireEvent.mouseEnter(screen.getByRole('button', { name: /Text/u }))
+    expect(screen.getByRole('menu', { name: 'Turn into' })).toBeTruthy()
+    fireEvent.mouseEnter(screen.getByRole('toolbar').querySelector('.grid')!)
+    expect(screen.getByRole('button', { name: /Text/u }).getAttribute('aria-expanded')).toBe(
+      'false'
+    )
+  })
+
   it('turns a list item back into plain text (lifted out of the list)', () => {
     editor.commands.toggleBulletList()
     show()

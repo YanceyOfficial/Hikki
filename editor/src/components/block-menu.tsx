@@ -244,7 +244,7 @@ function BlockMenu({
       >
         <Input
           ref={inputRef}
-          className="mb-1 h-8 md:text-sm"
+          className="m-1 mb-1.5 h-8 w-auto md:text-sm"
           placeholder={t('blockMenu.search')}
           aria-label={t('blockMenu.search')}
           value={query}
