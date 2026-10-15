@@ -57,6 +57,8 @@ window.hikki = {
   // The sidebar's pages, for naming links to them; and a block to land on after a link.
   setPages: (pages: PageIndexEntry[]) => bridge.setPages(pages),
   scrollToBlock: (id: string) => bridge.scrollToBlock(id),
+  // A search result opened: land on its block, its words selected (folded terms, as the search index matched them).
+  revealText: (terms: string[], blockId: string | null) => bridge.revealText(terms, blockId),
   // AI on the selection: the answer to an `aiRequest`, one event at a time.
   aiEvent: (event: AIStreamEvent) => bridge.aiEvent(event),
   // A tab shown again scrolls back to where it was.

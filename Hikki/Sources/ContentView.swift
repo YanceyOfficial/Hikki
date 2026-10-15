@@ -104,7 +104,7 @@ struct ContentView: View {
                     get: { !wide && navigator.isShowingInspector && navigator.route.pageID != nil },
                     set: { navigator.isShowingInspector = $0 })
             ) {
-                InspectorView(navigator: navigator, editor: editor, chat: chat)
+                InspectorView(navigator: navigator, editor: editor, chat: chat, isSheet: true)
                     .presentationDetents([.medium, .large])
             }
         }
@@ -283,6 +283,9 @@ struct ContentView: View {
             .onChange(of: navigator.currentPage?.isLocked) { _, locked in editor.setLocked(locked ?? false) }
             .onChange(of: navigator.titleFocusRequest) { _, request in
                 if let request { editor.focusTitle(of: request.pageID) }
+            }
+            .onChange(of: navigator.textRevealRequest) { _, request in
+                if let request { editor.revealText(request.terms, at: request.blockID, in: request.pageID) }
             }
             // A page picked in Spotlight (SpotlightIndex.swift).
             .onContinueUserActivity(CSSearchableItemActionType) { activity in

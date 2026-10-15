@@ -146,3 +146,60 @@ struct SearchRankerTests {
         #expect(SearchRanker.snippet(of: "short text", terms: ["short"]) == "short text")
     }
 }
+
+struct BestBlockTests {
+    @Test func prefersMoreTermsThenHeadingsThenAStartThenTheEarliest() {
+        let blocks = [
+            SearchBlock(id: "a", text: "它是 のですか 的普通形"),
+            SearchBlock(id: "b", text: "ので、早く着くでしょう"),
+            SearchBlock(id: "c", isHeading: true, text: "名词化的の ので"),
+            SearchBlock(id: "d", isHeading: true, text: "ので表示理由"),
+            SearchBlock(id: "e", text: "Weekly sync notes"),
+        ]
+        #expect(SearchRanker.bestBlock(["ので"], in: blocks) == 3)
+        #expect(SearchRanker.bestBlock(["ので"], in: Array(blocks[0...1])) == 1)
+        #expect(SearchRanker.bestBlock(["ので"], in: [blocks[0], blocks[0]]) == 0)
+        #expect(SearchRanker.bestBlock(["weekly", "notes"], in: blocks + [SearchBlock(id: "f", isHeading: true, text: "Weekly")]) == 4)
+        #expect(SearchRanker.bestBlock(["missing"], in: blocks) == nil)
+        #expect(SearchRanker.bestBlock(["ので"], in: []) == nil)
+    }
+
+    @Test func listsEveryMatchingBlockInReadingOrder() {
+        let blocks = [
+            SearchBlock(id: "a", text: "Café notes"), SearchBlock(id: "b", text: "nothing"),
+            SearchBlock(id: "c", isHeading: true, text: "More cafe"),
+        ]
+        #expect(SearchRanker.matchingBlocks(["cafe"], in: blocks) == [0, 2])
+        #expect(SearchRanker.matchingBlocks(["zzz"], in: blocks).isEmpty)
+    }
+}
+
+struct SearchListItemTests {
+    private func hit(_ id: String, matches: Int) -> SearchHit {
+        SearchHit(
+            id: id, title: id, icon: nil, snippet: "x", updatedAt: .distantPast, terms: ["x"], blockId: "b",
+            moreMatches: (0..<matches).map { SearchMatch(blockId: "m\($0)", snippet: "x \($0)") })
+    }
+
+    @Test func aPageWithOtherMatchesGetsAToggleThatOpensTheFirstFewThenAll() {
+        let hits = [hit("a", matches: 7), hit("b", matches: 0), hit("c", matches: 2)]
+        #expect(
+            SearchListItem.list(hits, expanded: [], showingAll: []).map(\.id) == ["a", "a#toggle", "b", "c", "c#toggle"])
+        #expect(SearchListItem.list(hits, expanded: [], showingAll: [])[1] == .toggle(hits[0], .expand(count: 7)))
+
+        let open = SearchListItem.list(hits, expanded: ["a", "c"], showingAll: [])
+        #expect(open.map(\.id) == ["a", "a#m0", "a#m1", "a#m2", "a#m3", "a#m4", "a#toggle", "b", "c", "c#m0", "c#m1", "c#toggle"])
+        #expect(open[6] == .toggle(hits[0], .showAll(remaining: 2)))
+        #expect(open[11] == .toggle(hits[2], .collapse))
+
+        let all = SearchListItem.list(hits, expanded: ["a"], showingAll: ["a"])
+        #expect(all.filter { if case .match = $0 { true } else { false } }.count == 7)
+        #expect(all[8] == .toggle(hits[0], .collapse))
+    }
+
+    @Test func anAttachmentHitListsNoOtherMatches() {
+        var file = hit("f", matches: 3)
+        file.attachment = SearchHit.Attachment(name: "a.pdf", label: nil)
+        #expect(SearchListItem.list([file], expanded: ["f"], showingAll: []).map(\.id) == ["f"])
+    }
+}

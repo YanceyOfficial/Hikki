@@ -119,6 +119,7 @@ nonisolated final class SearchIndexer: Sendable {
     private static func document(_ record: DocumentRecord) -> SearchDocument {
         SearchDocument(
             id: record.id, title: record.title, icon: record.icon, headings: record.headings, text: record.plainText,
+            blocks: record.textBlocks.map { SearchBlock(id: $0.id, isHeading: $0.isHeading, text: $0.text) },
             updatedAt: record.updatedAt)
     }
 }

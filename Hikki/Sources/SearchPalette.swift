@@ -15,6 +15,9 @@ struct SearchPalette: View {
     @State private var query = ""
     @State private var results: [SearchHit] = []
     @State private var selection = 0
+    /// Pages whose other matches are open under their row, and those showing all of them (not just the first few).
+    @State private var expanded: Set<String> = []
+    @State private var showingAll: Set<String> = []
     @State private var options = SearchOptions.standard
     @FocusState private var fieldFocused: Bool
 
@@ -54,7 +57,7 @@ struct SearchPalette: View {
                     // A plain stack keyed by page: lazily made rows keyed by position kept showing the recent pages
                     // after the first search of a newly opened palette (and stopped following hover).
                     VStack(alignment: .leading, spacing: Spacing.px) {
-                        if rows.isEmpty {
+                        if items.isEmpty {
                             Text(query.isEmpty ? "app:search.noPages" : "app:search.noResults \(query)")
                                 .font(.hk(.md))
                                 .foregroundStyle(Theme.mutedForeground)
@@ -68,16 +71,11 @@ struct SearchPalette: View {
                                 .padding(.horizontal, Spacing.s2_5)
                                 .padding(.top, Spacing.s2_5)
                                 .padding(.bottom, Spacing.s1)
-                            ForEach(section.items, id: \.element.id) { index, hit in
-                                SearchResultRow(
-                                    title: hit.title, icon: hit.icon, snippet: hit.snippet, path: path(of: hit.id),
-                                    terms: hit.terms,
-                                    attachment: hit.attachment.map { $0.label ?? String(localized: "app:search.image") },
-                                    updatedAt: hit.updatedAt, isSelected: index == selection
-                                )
-                                .id(hit.id)
-                                .onTapGesture { open(hit.id) }
-                                .onHover { if $0 { selection = index } }
+                            ForEach(section.items, id: \.element.id) { index, item in
+                                row(item, isSelected: index == selection)
+                                    .id(item.id)
+                                    .onTapGesture { activate(item) }
+                                    .onHover { if $0 { selection = index } }
                             }
                         }
                     }
@@ -90,7 +88,7 @@ struct SearchPalette: View {
                 .frame(maxHeight: phone ? .infinity : Size.searchResults)
                 .fixedSize(horizontal: false, vertical: !phone)
                 .onChange(of: selection) { _, index in
-                    if rows.indices.contains(index) { proxy.scrollTo(rows[index].id) }
+                    if items.indices.contains(index) { proxy.scrollTo(items[index].id) }
                 }
             }
 
@@ -139,6 +137,8 @@ struct SearchPalette: View {
             #endif
             results = found
             selection = 0
+            expanded = []
+            showingAll = []
         }
         // While an input method is composing, its candidates own the arrows and Escape.
         .onKeyPress(.downArrow) { TextComposition.isActive ? .ignored : move(1) }
@@ -228,12 +228,42 @@ struct SearchPalette: View {
 
     private struct Section {
         let title: String
-        let items: [(offset: Int, element: SearchHit)]
+        let items: [(offset: Int, element: Item)]
+    }
+
+    private typealias Item = SearchListItem
+
+    private var items: [Item] {
+        SearchListItem.list(rows, expanded: expanded, showingAll: showingAll)
+    }
+
+    @ViewBuilder
+    private func row(_ item: Item, isSelected: Bool) -> some View {
+        switch item {
+        case .page(let hit):
+            SearchResultRow(
+                title: hit.title, icon: hit.icon, snippet: hit.snippet, path: path(of: hit.id), terms: hit.terms,
+                attachment: hit.attachment.map { $0.label ?? String(localized: "app:search.image") },
+                updatedAt: hit.updatedAt, isSelected: isSelected)
+        case .match(let hit, let match):
+            SearchMatchRow(snippet: match.snippet, terms: hit.terms, isSelected: isSelected)
+        case .toggle(_, let toggle):
+            switch toggle {
+            case .expand(let count):
+                SearchMatchesToggleRow(String(localized: "app:search.moreMatches \(String(count))"), isSelected: isSelected)
+                    .accessibilityIdentifier("search-more-matches")
+            case .showAll(let remaining):
+                SearchMatchesToggleRow(
+                    String(localized: "app:search.showMoreMatches \(String(remaining))"), isExpanded: true, isSelected: isSelected)
+            case .collapse:
+                SearchMatchesToggleRow(String(localized: "app:search.fewerMatches"), isExpanded: true, isSelected: isSelected)
+            }
+        }
     }
 
     /// Indices stay global so ↑/↓ walks across sections.
     private var sections: [Section] {
-        let indexed = Array(rows.enumerated())
+        let indexed = Array(items.enumerated())
         if query.trimmingCharacters(in: .whitespaces).isEmpty {
             return indexed.isEmpty ? [] : [Section(title: String(localized: "app:search.recent"), items: indexed)]
         }
@@ -266,18 +296,46 @@ struct SearchPalette: View {
     }
 
     private func move(_ delta: Int) -> KeyPress.Result {
-        guard !rows.isEmpty else { return .ignored }
-        selection = (selection + delta + rows.count) % rows.count
+        let count = items.count
+        guard count > 0 else { return .ignored }
+        selection = (selection + delta + count) % count
         return .handled
     }
 
     private func openSelection() {
-        guard rows.indices.contains(selection) else { return }
-        open(rows[selection].id)
+        let items = items
+        guard items.indices.contains(selection) else { return }
+        activate(items[selection])
     }
 
-    private func open(_ id: String) {
-        navigator.open(id)
+    /// A page or one of its matches opens; the toggle opens, extends or folds the matches (the selection stays on it,
+    /// or goes back to the page when they fold).
+    private func activate(_ item: Item) {
+        switch item {
+        case .page(let hit): open(hit)
+        case .match(let hit, let match):
+            navigator.open(hit.id, at: match.blockId, revealing: hit.terms)
+            dismiss()
+        case .toggle(let hit, let toggle):
+            switch toggle {
+            case .expand: expanded.insert(hit.id)
+            case .showAll: showingAll.insert(hit.id)
+            case .collapse:
+                expanded.remove(hit.id)
+                showingAll.remove(hit.id)
+                if let index = items.firstIndex(where: { $0.id == hit.id }) { selection = index }
+            }
+        }
+    }
+
+    /// A result whose excerpt is the page's own text opens at its block (or, indexed without one, the first place
+    /// its words occur), the words selected; a title or attachment match at the top.
+    private func open(_ hit: SearchHit) {
+        if !hit.snippet.isEmpty, hit.attachment == nil {
+            navigator.open(hit.id, at: hit.blockId, revealing: hit.terms)
+        } else {
+            navigator.open(hit.id)
+        }
         dismiss()
     }
 }

@@ -32,6 +32,32 @@ struct ContentTextTests {
         #expect(ContentText.headings(in: doc) == ["See @Roadmap first"])
     }
 
+    @Test func collectsTextBlocksWithTheirIdsNestedOnesIncluded() {
+        func block(_ type: String, _ id: String?, _ content: [JSONValue]) -> JSONValue {
+            var fields: [String: JSONValue] = ["type": .string(type), "content": .array(content)]
+            if let id { fields["attrs"] = .object(["id": .string(id)]) }
+            return .object(fields)
+        }
+        let doc = node(
+            "doc",
+            [
+                block("heading", "h1", [text("ので表示理由")]),
+                block("paragraph", "p1", [text("雨なので")]),
+                node("bulletList", [block("listItem", "li", [block("paragraph", "p2", [text("item")])])]),
+                block("callout", "c", [block("paragraph", "p3", [text("inside")])]),
+                block("paragraph", "empty", [text("  ")]),
+                block("paragraph", nil, [text("no id")]),
+                block("codeBlock", "code", [text("let x = 1")]),
+            ])
+        #expect(
+            ContentText.blocks(in: doc) == [
+                .init(id: "h1", isHeading: true, text: "ので表示理由"), .init(id: "p1", isHeading: false, text: "雨なので"),
+                .init(id: "p2", isHeading: false, text: "item"), .init(id: "p3", isHeading: false, text: "inside"),
+                .init(id: "code", isHeading: false, text: "let x = 1"),
+            ])
+        #expect(ContentText.blocks(in: nil).isEmpty)
+    }
+
     @Test func collectsAttachedAssetsOnceEachWithFileNames() {
         let image: JSONValue = .object([
             "type": .string("image"), "attrs": .object(["src": .string("hikki-editor://assets/a1.png"), "alt": .string("")]),

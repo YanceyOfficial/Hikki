@@ -66,6 +66,9 @@ struct InspectorView: View {
     let navigator: Navigator
     let editor: EditorController
     let chat: AIChat
+    /// Shown as a sheet over the page (iPhone, narrow iPad): a heading picked in the outline closes it, so the page
+    /// it scrolled is in view.
+    var isSheet = false
 
     var body: some View {
         VStack(spacing: Spacing.s0) {
@@ -83,7 +86,7 @@ struct InspectorView: View {
             }
             Group {
                 switch navigator.inspectorMode {
-                case .outline: OutlinePane(navigator: navigator, editor: editor)
+                case .outline: OutlinePane(navigator: navigator, editor: editor, closesOnPick: isSheet)
                 case .comments: CommentsPane(pageID: navigator.route.pageID, editor: editor)
                 case .ai:
                     // About the page beside it (cleared from the composer to ask without it).
@@ -121,6 +124,7 @@ private struct EmptyPane: View {
 private struct OutlinePane: View {
     let navigator: Navigator
     let editor: EditorController
+    let closesOnPick: Bool
     @Namespace private var highlight
 
     var body: some View {
@@ -136,7 +140,9 @@ private struct OutlinePane: View {
                                     text: heading.text, depth: heading.level - minLevel,
                                     isActive: heading.id != nil && heading.id == active, highlight: highlight
                                 ) {
-                                    if let id = heading.id { editor.scrollToHeading(id) }
+                                    guard let id = heading.id else { return }
+                                    editor.scrollToHeading(id)
+                                    if closesOnPick { navigator.isShowingInspector = false }
                                 }
                                 .id(index)
                                 .accessibilityIdentifier("outline-\(heading.text)")

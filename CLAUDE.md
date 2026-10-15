@@ -329,7 +329,13 @@ HikkiUITests/                 XCUITest flows
   PDFs through PDFKit, images through Vision's text recognition (`HikkiSearch/Sources/AttachmentText.swift`) — one
   file at a time at low priority after the page is indexed, once per file; a hit whose only match is in a file names
   it. The store has no search left in it. One ranked list ("Best matches"); a row shows the parent path, the excerpt
-  with the terms emphasized (`HighlightedText`) and the edited time. Under the field, scope chips (`FilterChip`:
+  with the terms emphasized (`HighlightedText`) and the edited time. The index keeps each page's text blocks with
+  their ids (`ContentText.blocks` → `SearchBlock`); a text hit names its best block (`SearchRanker.bestBlock`: most
+  terms, a heading ahead of body text, one starting with a term, the earliest), its excerpt runs from there, and
+  opening it lands on that block with the words selected (`Navigator.open(_:at:revealing:)` →
+  `window.hikki.revealText`; without a block, the first place a term occurs). A page's other matching blocks
+  (`SearchHit.moreMatches`) fold under its row — "N more matches", then the first five, "Show N more", "Hide"
+  (`SearchListItem`, rows `SearchMatchRow` / `SearchMatchesToggleRow` in HikkiUI) — each opening at its block. Under the field, scope chips (`FilterChip`:
   All / Titles / Text / Files — `SearchScope` in `HikkiSearch/Sources/SearchOptions.swift`; the ranker and the index
   only count matches where the scope looks, Files always shows the file's excerpt) and a sort menu (Best match / Last
   edited, `SearchSort`). The palette searches off the main thread (`AppModel.search` is async; a newer query cancels

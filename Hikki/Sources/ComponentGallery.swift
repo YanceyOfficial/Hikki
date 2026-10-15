@@ -169,6 +169,12 @@
                             title: "Trip", icon: "🧭", snippet: "…BOARDING PASS · gate B12…", terms: ["gate"],
                             attachment: "boarding-pass.pdf", updatedAt: .now.addingTimeInterval(-86_400))
                     }
+                    Section("SearchMatchRow · SearchMatchesToggleRow") {
+                        SearchMatchRow(snippet: "雨が降っているので家にいます。", terms: ["ので"], isSelected: true)
+                        SearchMatchRow(snippet: "日本語がわからないので、英語で話していただけませんか。", terms: ["ので"])
+                        SearchMatchesToggleRow("12 more matches")
+                        SearchMatchesToggleRow("Show fewer", isExpanded: true)
+                    }
                 }
                 .navigationTitle("HikkiUI Gallery")
             }

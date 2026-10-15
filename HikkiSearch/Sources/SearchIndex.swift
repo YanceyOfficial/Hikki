@@ -8,15 +8,46 @@ public struct SearchDocument: Sendable, Equatable {
     public var icon: String?
     public var headings: [String]
     public var text: String
+    /// The page's text blocks with their ids: a result names the block its match is in, and opens there.
+    public var blocks: [SearchBlock]
     public var updatedAt: Date
 
-    public init(id: String, title: String, icon: String? = nil, headings: [String] = [], text: String = "", updatedAt: Date) {
+    public init(
+        id: String, title: String, icon: String? = nil, headings: [String] = [], text: String = "", blocks: [SearchBlock] = [],
+        updatedAt: Date
+    ) {
         self.id = id
         self.title = title
         self.icon = icon
         self.headings = headings
         self.text = text
+        self.blocks = blocks
         self.updatedAt = updatedAt
+    }
+}
+
+/// Another block of a hit's page that holds a term: where it is and its excerpt (the palette's sub-rows).
+public struct SearchMatch: Sendable, Equatable, Identifiable {
+    public var blockId: String
+    public var snippet: String
+    public var id: String { blockId }
+
+    public init(blockId: String, snippet: String) {
+        self.blockId = blockId
+        self.snippet = snippet
+    }
+}
+
+/// A block of a page as search sees it: the editor's block id, whether it is a heading, its text.
+public struct SearchBlock: Sendable, Equatable, Codable {
+    public var id: String
+    public var isHeading: Bool
+    public var text: String
+
+    public init(id: String, isHeading: Bool = false, text: String) {
+        self.id = id
+        self.isHeading = isHeading
+        self.text = text
     }
 }
 
@@ -62,10 +93,15 @@ public struct SearchHit: Sendable, Equatable, Identifiable {
     public var terms: [String]
     /// Set when the excerpt is an attachment's text.
     public var attachment: Attachment?
+    /// The block the excerpt comes from (`SearchRanker.bestBlock`), for opening the page there; nil when only the
+    /// title or a file matched.
+    public var blockId: String?
+    /// The page's other blocks holding a term, in reading order (at most `SearchIndex.matchLimit`).
+    public var moreMatches: [SearchMatch]
 
     public init(
         id: String, title: String, icon: String?, snippet: String, updatedAt: Date, terms: [String],
-        attachment: Attachment? = nil
+        attachment: Attachment? = nil, blockId: String? = nil, moreMatches: [SearchMatch] = []
     ) {
         self.id = id
         self.title = title
@@ -74,6 +110,8 @@ public struct SearchHit: Sendable, Equatable, Identifiable {
         self.updatedAt = updatedAt
         self.terms = terms
         self.attachment = attachment
+        self.blockId = blockId
+        self.moreMatches = moreMatches
     }
 }
 
@@ -85,9 +123,11 @@ public struct SearchHit: Sendable, Equatable, Identifiable {
 /// term and orders them by BM25.
 public final class SearchIndex: Sendable {
     /// Bump when what is indexed, or how, changes: an older index empties itself and the app feeds it again.
-    public static let version = 2
+    public static let version = 3
     /// How many pages the text index offers the ranker per query.
     static let candidateLimit = 200
+    /// How many other matching blocks a hit lists.
+    static let matchLimit = 50
 
     let queue: DatabaseQueue
 
@@ -119,6 +159,8 @@ public final class SearchIndex: Sendable {
                 t.column("icon", .text)
                 t.column("headings", .text).notNull().defaults(to: "")
                 t.column("text", .text).notNull().defaults(to: "")
+                // The text blocks with their ids (JSON, `SearchBlock`); not searched, only read for the hits.
+                t.column("blocks", .text).notNull().defaults(to: "[]")
                 t.column("updatedAt", .datetime).notNull()
             }
             if try !db.tableExists("pageFts") {
@@ -161,13 +203,16 @@ public final class SearchIndex: Sendable {
             for document in documents {
                 try db.execute(
                     sql: """
-                        INSERT INTO page (id, title, titlePinyin, icon, headings, text, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO page (id, title, titlePinyin, icon, headings, text, blocks, updatedAt)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                         ON CONFLICT(id) DO UPDATE SET title = excluded.title, titlePinyin = excluded.titlePinyin,
-                            icon = excluded.icon, headings = excluded.headings, text = excluded.text, updatedAt = excluded.updatedAt
+                            icon = excluded.icon, headings = excluded.headings, text = excluded.text,
+                            blocks = excluded.blocks, updatedAt = excluded.updatedAt
                         """,
                     arguments: [
                         document.id, document.title, Pinyin.searchKey(for: document.title), document.icon,
-                        document.headings.joined(separator: "\n"), document.text, document.updatedAt,
+                        document.headings.joined(separator: "\n"), document.text,
+                        String(decoding: try JSONEncoder().encode(document.blocks), as: UTF8.self), document.updatedAt,
                     ])
             }
         }
@@ -254,19 +299,20 @@ public final class SearchIndex: Sendable {
         return try queue.read { db in
             let candidates = scope == .all || scope == .text ? try Self.candidates(db, parsed) : []
             let ranks = Self.textRanks(candidates)
-            var bodies: [String: (headings: String, text: String)] = [:]
+            var bodies: [String: (headings: String, text: String, blocks: String)] = [:]
             if !candidates.isEmpty {
                 let marks = Array(repeating: "?", count: candidates.count).joined(separator: ",")
                 for row in try Row.fetchAll(
-                    db, sql: "SELECT id, headings, text FROM page WHERE id IN (\(marks))",
+                    db, sql: "SELECT id, headings, text, blocks FROM page WHERE id IN (\(marks))",
                     arguments: StatementArguments(candidates.map(\.id)))
                 {
-                    bodies[row["id"]] = (row["headings"], row["text"])
+                    bodies[row["id"]] = (row["headings"], row["text"], row["blocks"])
                 }
             }
             let attachments = scope == .all || scope == .files ? try Self.attachmentCandidates(db, parsed) : [:]
             let pages = try Row.fetchAll(db, sql: "SELECT id, title, titlePinyin, icon, updatedAt FROM page")
-            let scored: [(row: Row, text: String, attachment: AttachmentRow?, score: Int)] = pages.compactMap { row in
+            let scored: [(row: Row, text: String, blocks: String, attachment: AttachmentRow?, score: Int)] = pages.compactMap {
+                row in
                 let id: String = row["id"]
                 let body = bodies[id]
                 let attachment = attachments[id]
@@ -275,7 +321,7 @@ public final class SearchIndex: Sendable {
                     text: body?.text ?? "", attachmentText: attachment?.text ?? "", updatedAt: row["updatedAt"],
                     textRank: ranks[id] ?? 0)
                 guard let score = SearchRanker.score(parsed, page, scope: scope, now: now) else { return nil }
-                return (row, body?.text ?? "", attachment, score)
+                return (row, body?.text ?? "", body?.blocks ?? "[]", attachment, score)
             }
             return
                 scored
@@ -288,8 +334,28 @@ public final class SearchIndex: Sendable {
                 }
                 .prefix(limit)
                 .map { hit in
-                    // Titles show no excerpt (the title is the match); files show the file's.
-                    var snippet = scope == .titles || scope == .files ? "" : SearchRanker.snippet(of: hit.text, terms: parsed.terms)
+                    // Titles show no excerpt (the title is the match); files show the file's. The page's own excerpt
+                    // comes from its best block (a heading ahead of body text), from there on, and opens there.
+                    var snippet = ""
+                    var blockId: String?
+                    var moreMatches: [SearchMatch] = []
+                    if scope != .titles, scope != .files {
+                        let blocks = (try? JSONDecoder().decode([SearchBlock].self, from: Data(hit.blocks.utf8))) ?? []
+                        if let best = SearchRanker.bestBlock(parsed.terms, in: blocks) {
+                            blockId = blocks[best].id
+                            let following = blocks[best...].map(\.text).joined(separator: " ")
+                            snippet = SearchRanker.snippet(of: following, terms: parsed.terms)
+                            moreMatches = SearchRanker.matchingBlocks(parsed.terms, in: blocks)
+                                .filter { $0 != best }
+                                .prefix(Self.matchLimit)
+                                .map {
+                                    SearchMatch(
+                                        blockId: blocks[$0].id, snippet: SearchRanker.snippet(of: blocks[$0].text, terms: parsed.terms))
+                                }
+                        } else {
+                            snippet = SearchRanker.snippet(of: hit.text, terms: parsed.terms)
+                        }
+                    }
                     var attachment: SearchHit.Attachment?
                     if snippet.isEmpty, scope != .titles, let found = hit.attachment {
                         snippet = SearchRanker.snippet(of: found.text, terms: parsed.terms)
@@ -297,7 +363,8 @@ public final class SearchIndex: Sendable {
                     }
                     return SearchHit(
                         id: hit.row["id"], title: hit.row["title"], icon: hit.row["icon"], snippet: snippet,
-                        updatedAt: hit.row["updatedAt"], terms: parsed.terms, attachment: attachment)
+                        updatedAt: hit.row["updatedAt"], terms: parsed.terms, attachment: attachment, blockId: blockId,
+                        moreMatches: moreMatches)
                 }
         }
     }

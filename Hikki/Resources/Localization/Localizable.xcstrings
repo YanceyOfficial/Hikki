@@ -5033,6 +5033,23 @@
         }
       }
     },
+    "app:search.fewerMatches": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide matches"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收起"
+          }
+        }
+      }
+    },
     "app:search.hintClose": {
       "extractionState": "manual",
       "localizations": {
@@ -5097,6 +5114,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "图片"
+          }
+        }
+      }
+    },
+    "app:search.moreMatches %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ more matches in this page"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "页面里还有 %@ 处"
           }
         }
       }
@@ -5233,6 +5267,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "标题"
+          }
+        }
+      }
+    },
+    "app:search.showMoreMatches %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show %@ more"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再显示 %@ 处"
           }
         }
       }

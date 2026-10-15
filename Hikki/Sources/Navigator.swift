@@ -42,6 +42,14 @@ struct TitleFocusRequest: Equatable {
     let serial: Int
 }
 
+/// A search result opened: its page scrolls to the block the match is in, the (folded) terms selected there.
+struct TextRevealRequest: Equatable {
+    let pageID: String
+    let blockID: String?
+    let terms: [String]
+    let serial: Int
+}
+
 /// Per-window navigation: browser-style tabs (each with back/forward history) plus the sidebar's
 /// selection and expansion state.
 @Observable
@@ -93,6 +101,7 @@ final class Navigator {
     }
     /// Bumped by "Rename": the editor selects that page's title once it has loaded it.
     private(set) var titleFocusRequest: TitleFocusRequest?
+    private(set) var textRevealRequest: TextRevealRequest?
     var expanded: Set<String> = []
     /// Sidebar drag state: the page being dragged and where it would land (for the drop indicator).
     var draggingPageID: String?
@@ -117,6 +126,13 @@ final class Navigator {
     func rename(_ id: String) {
         open(id)
         titleFocusRequest = TitleFocusRequest(pageID: id, serial: (titleFocusRequest?.serial ?? 0) + 1)
+    }
+
+    /// Opens a search result's page at the block it matched, those words selected.
+    func open(_ id: String, at blockID: String?, revealing terms: [String]) {
+        open(id)
+        textRevealRequest = TextRevealRequest(
+            pageID: id, blockID: blockID, terms: terms, serial: (textRevealRequest?.serial ?? 0) + 1)
     }
 
     func go(_ route: Route) {

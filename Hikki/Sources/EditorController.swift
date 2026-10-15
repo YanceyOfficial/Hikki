@@ -193,8 +193,14 @@ final class EditorController {
 
     /// Pages the editor names links with (`window.hikki.setPages`), kept to resend after a reload.
     @ObservationIgnored private var pages: [[String: Any]] = []
-    /// A block to scroll to as soon as its page is the loaded document (a link to a block).
-    @ObservationIgnored private var pendingBlock: (pageID: String, blockID: String)?
+    /// Where to land as soon as its page is the loaded document: a block (a link to a block) or a search
+    /// result's words.
+    @ObservationIgnored private var pendingArrival: (pageID: String, arrival: Arrival)?
+
+    private enum Arrival {
+        case block(String)
+        case text(terms: [String], blockID: String?)
+    }
 
     func setPages(_ summaries: [PageSummary]) {
         pages = summaries.map { ["id": $0.id, "title": $0.title, "icon": $0.icon ?? NSNull()] }
@@ -216,7 +222,26 @@ final class EditorController {
         if isReady, currentDocumentID == pageID, pendingDocumentID == nil {
             Task { await callScrollToBlock(blockID) }
         } else {
-            pendingBlock = (pageID, blockID)
+            pendingArrival = (pageID, .block(blockID))
+        }
+    }
+
+    /// A search result: scrolls to the block its match is in, the (folded) terms selected there — now if the page
+    /// is loaded, otherwise right after it loads.
+    func revealText(_ terms: [String], at blockID: String?, in pageID: String) {
+        if isReady, currentDocumentID == pageID, pendingDocumentID == nil {
+            Task { await callRevealText(terms, at: blockID) }
+        } else {
+            pendingArrival = (pageID, .text(terms: terms, blockID: blockID))
+        }
+    }
+
+    private func callRevealText(_ terms: [String], at blockID: String?) async {
+        do {
+            _ = try await webView.callAsyncJavaScript(
+                "window.hikki.revealText(terms, block)", arguments: ["terms": terms, "block": blockID ?? NSNull()], contentWorld: .page)
+        } catch {
+            Log.warn("revealText failed: \(error)", category: "bridge")
         }
     }
 
@@ -579,9 +604,12 @@ final class EditorController {
                 titleFocusPageID = nil
                 await callFocusTitle()
             }
-            if let pending = pendingBlock, pending.pageID == id {
-                pendingBlock = nil
-                await callScrollToBlock(pending.blockID)
+            if let pending = pendingArrival, pending.pageID == id {
+                pendingArrival = nil
+                switch pending.arrival {
+                case .block(let blockID): await callScrollToBlock(blockID)
+                case .text(let terms, let blockID): await callRevealText(terms, at: blockID)
+                }
             }
         } catch {
             Toasts.report(.pageLoadFailed, error, category: "bridge", context: ["docId": id])

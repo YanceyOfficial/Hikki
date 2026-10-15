@@ -47,6 +47,34 @@ struct SearchIndexTests {
         #expect(hits[1].updatedAt == t0)
     }
 
+    @Test func aTextHitNamesItsBestBlockAndShowsTheExcerptFromThere() throws {
+        let index = try SearchIndex.inMemory()
+        let blocks = [
+            SearchBlock(id: "p1", text: "它是 のですか 的普通形"),
+            SearchBlock(id: "h1", isHeading: true, text: "ので表示理由"),
+            SearchBlock(id: "p2", text: "雨なので、家にいます。"),
+        ]
+        try index.index([
+            SearchDocument(
+                id: "a", title: "N4 文法", headings: ["ので表示理由"], text: blocks.map(\.text).joined(separator: " "),
+                blocks: blocks, updatedAt: t0),
+            page("old", "Older", text: "雨なので"),
+        ])
+        let hits = try index.search("ので")
+        let hit = try #require(hits.first { $0.id == "a" })
+        #expect(hit.blockId == "h1")
+        #expect(hit.snippet.hasPrefix("ので表示理由 雨なので"))
+        // The other blocks holding a term, in reading order, each with its own excerpt.
+        #expect(hit.moreMatches.map(\.blockId) == ["p1", "p2"])
+        #expect(hit.moreMatches.map(\.snippet) == ["它是 のですか 的普通形", "雨なので、家にいます。"])
+        // Indexed without blocks (nothing to land on): the excerpt as before, no block.
+        let old = try #require(hits.first { $0.id == "old" })
+        #expect(old.blockId == nil)
+        #expect(old.snippet.contains("ので"))
+        // Titles carry no block.
+        #expect(try index.search("文法", options: SearchOptions(scope: .titles)).first?.blockId == nil)
+    }
+
     @Test func headingsOutrankBodyText() throws {
         let index = try SearchIndex.inMemory()
         try index.index([

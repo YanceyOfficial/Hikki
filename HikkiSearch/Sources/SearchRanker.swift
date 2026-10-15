@@ -109,6 +109,28 @@ public enum SearchRanker {
         return 0
     }
 
+    /// The block a result shows and opens at: the one holding the most terms; among those a heading ahead of body
+    /// text, then one that starts with a term ("ので表示理由" for ので), then the earliest. nil when no block holds one.
+    public static func bestBlock(_ terms: [String], in blocks: [SearchBlock]) -> Int? {
+        var best: (index: Int, score: Int)?
+        for (index, block) in blocks.enumerated() {
+            let text = SearchQuery.fold(block.text)
+            let found = terms.count { text.contains($0) }
+            guard found > 0 else { continue }
+            let score = found * 100 + (block.isHeading ? 40 : 0) + (terms.contains { text.hasPrefix($0) } ? 20 : 0)
+            if best == nil || score > best!.score { best = (index, score) }
+        }
+        return best?.index
+    }
+
+    /// Every block holding a term, in reading order.
+    public static func matchingBlocks(_ terms: [String], in blocks: [SearchBlock]) -> [Int] {
+        blocks.indices.filter { index in
+            let text = SearchQuery.fold(blocks[index].text)
+            return terms.contains { text.contains($0) }
+        }
+    }
+
     /// The text around the first term that occurs in it, about `width` characters, cut at word boundaries where
     /// one is near, with an ellipsis for each cut side; "" when no term occurs.
     public static func snippet(of text: String, terms: [String], width: Int = 100) -> String {

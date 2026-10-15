@@ -469,6 +469,16 @@ export class EditorBridge {
     return true
   }
 
+  /** Arrived from a search result: its block, the words selected (false when neither is in this page). */
+  revealText(terms: string[], blockId: string | null): boolean {
+    const editor = this.editor
+    if (!editor) return false
+    return (
+      editor.commands.revealText(terms, blockId) ||
+      (!!blockId && editor.commands.scrollToBlock(blockId))
+    )
+  }
+
   /** Uploads and attachments for the editor's media blocks. */
   readonly media: MediaHost = {
     upload: (file, onProgress) => this.uploadFile(file, onProgress),

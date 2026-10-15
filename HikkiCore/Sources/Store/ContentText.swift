@@ -24,6 +24,44 @@ public enum ContentText {
         }
     }
 
+    /// A line of text the editor can scroll to: a paragraph, heading, code block or toggle summary with its block id.
+    public struct Block: Sendable, Equatable {
+        public var id: String
+        public var isHeading: Bool
+        public var text: String
+
+        public init(id: String, isHeading: Bool, text: String) {
+            self.id = id
+            self.isHeading = isHeading
+            self.text = text
+        }
+    }
+
+    /// Every text block with an id and some text, in document order, nested ones (lists, tables, toggles, callouts,
+    /// columns) included — what search finds a match in and lands on.
+    public static func blocks(in content: JSONValue?) -> [Block] {
+        guard let content else { return [] }
+        var out: [Block] = []
+        collectBlocks(content, into: &out)
+        return out
+    }
+
+    private static let textBlockTypes: Set<String> = ["paragraph", "heading", "codeBlock", "detailsSummary"]
+
+    private static func collectBlocks(_ node: JSONValue, into out: inout [Block]) {
+        guard case .object(let fields) = node, case .string(let type)? = fields["type"] else { return }
+        if textBlockTypes.contains(type) {
+            if case .object(let attrs)? = fields["attrs"], case .string(let id)? = attrs["id"], !id.isEmpty {
+                let text = plainText(of: node).trimmingCharacters(in: .whitespacesAndNewlines)
+                if !text.isEmpty { out.append(Block(id: id, isHeading: type == "heading", text: text)) }
+            }
+            return
+        }
+        if case .array(let children)? = fields["content"] {
+            for child in children { collectBlocks(child, into: &out) }
+        }
+    }
+
     /// The files a document attaches (inline images and file attachments stored as assets), in order, each once.
     public static func assets(in content: JSONValue?) -> [AssetReference] {
         guard let content else { return [] }
@@ -77,6 +115,9 @@ public struct AssetReference: Sendable, Equatable {
 extension DocumentRecord {
     /// The page's headings, from its stored content.
     public var headings: [String] { ContentText.headings(in: try? contentValue()) }
+
+    /// The page's text blocks with their ids, from its stored content (search lands on them).
+    public var textBlocks: [ContentText.Block] { ContentText.blocks(in: try? contentValue()) }
 
     /// The files the page attaches, from its stored content.
     public var assetReferences: [AssetReference] { ContentText.assets(in: try? contentValue()) }

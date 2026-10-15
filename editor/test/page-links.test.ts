@@ -12,6 +12,7 @@ import {
   PageLinks,
   pageLinkHref,
   droppedPageLink,
+  findTextMatch,
   PageLinksKey,
   parsePageLink,
   type PageLinksHost
@@ -230,6 +231,89 @@ describe('page links', () => {
     expect(host.querySelector('.hk-block-selected')).not.toBeNull()
     expect(editor.state.selection.$from.parent.textContent).toBe('名词句基本文型')
     expect(editor.commands.scrollToBlock('nope')).toBe(false)
+  })
+
+  it('findTextMatch lands on the first place a folded term occurs, across marks and accents', () => {
+    editor.commands.setContent({
+      type: 'doc',
+      content: [
+        para('Nothing here', 'a'),
+        {
+          type: 'paragraph',
+          attrs: { id: 'b' },
+          content: [
+            { type: 'text', text: 'We met at the ' },
+            { type: 'text', text: 'Café', marks: [{ type: 'bold' }] },
+            { type: 'text', text: ' Royal' }
+          ]
+        },
+        para('café again', 'c')
+      ]
+    })
+    const doc = editor.state.doc
+    const match = findTextMatch(doc, ['zzz', 'cafe royal'])!
+    expect(doc.textBetween(match.from, match.to)).toBe('Café Royal')
+    expect(doc.resolve(match.from).parent.attrs.id).toBe('b')
+    // The earliest term in the block wins, whichever comes first in the query.
+    const first = findTextMatch(doc, ['royal', 'met'])!
+    expect(doc.textBetween(first.from, first.to)).toBe('met')
+    expect(findTextMatch(doc, ['absent'])).toBeNull()
+    expect(findTextMatch(doc, [])).toBeNull()
+  })
+
+  it('findTextMatch folds as the search index does: kana voicing, Hangul and ß survive', () => {
+    // Terms arrive folded by Swift (`.caseInsensitive, .diacriticInsensitive`): ので stays ので, Straße → strasse.
+    editor.commands.setContent({
+      type: 'doc',
+      content: [
+        para('それで終わり', 'a'),
+        para('雨なので休み', 'b'),
+        para('한국어 die Straße', 'c')
+      ]
+    })
+    const doc = editor.state.doc
+    const at = (terms: string[]) => {
+      const match = findTextMatch(doc, terms)
+      return match && doc.textBetween(match.from, match.to)
+    }
+    expect(at(['ので'])).toBe('ので')
+    expect(findTextMatch(doc, ['ので'])!.from).toBeGreaterThan(doc.child(0).nodeSize)
+    expect(at(['한국'])).toBe('한국')
+    expect(at(['strasse'])).toBe('Straße')
+    expect(at(['cafe'])).toBeNull()
+  })
+
+  it('findTextMatch looks in the block the search named, and anywhere when that block is gone', () => {
+    editor.commands.setContent({
+      type: 'doc',
+      content: [
+        para('のですか', 'early'),
+        heading('h2', 'ので表示理由'),
+        para('no match here', 'none')
+      ]
+    })
+    const doc = editor.state.doc
+    const inBlock = findTextMatch(doc, ['ので'], 'h2')!
+    expect(doc.resolve(inBlock.from).parent.attrs.id).toBe('h2')
+    expect(doc.textBetween(inBlock.from, inBlock.to)).toBe('ので')
+    // The block is there but its words aren't (edited since it was indexed): nothing to select.
+    expect(findTextMatch(doc, ['ので'], 'none')).toBeNull()
+    // A block id the page no longer has: the first place in the body.
+    expect(doc.resolve(findTextMatch(doc, ['ので'], 'gone')!.from).parent.attrs.id).toBe('early')
+  })
+
+  it('revealText scrolls to the words, tints their block and selects them', () => {
+    editor.commands.setContent({
+      type: 'doc',
+      content: [heading('h1', 'Title-ish'), para('first'), para('the 名词句 line', 'p2')]
+    })
+    const scrolled = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+    expect(editor.commands.revealText(['名词'])).toBe(true)
+    expect(scrolled).toHaveBeenCalled()
+    expect(host.querySelector('.hk-block-selected')).not.toBeNull()
+    const { from, to } = editor.state.selection
+    expect(editor.state.doc.textBetween(from, to)).toBe('名词')
+    expect(editor.commands.revealText(['absent'])).toBe(false)
   })
 
   it('copyLink writes a ready hyperlink and the URL', async () => {

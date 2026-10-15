@@ -101,12 +101,87 @@ declare module '@tiptap/core' {
       insertPageLink: (target: PageLinkTarget) => ReturnType
       /** Scrolls to the block with this id and tints it for a moment (arriving by link). */
       scrollToBlock: (blockId: string) => ReturnType
+      /** Scrolls to a search's words — in its block, else their first place — tints the block, selects them. */
+      revealText: (terms: string[], blockId?: string | null) => ReturnType
     }
   }
 }
 
 /** How long an arrived-at block stays tinted. */
 const ARRIVAL_TINT_MS = 1400
+
+/**
+ * Search folds case and accents away as Foundation's `.caseInsensitive, .diacriticInsensitive` does
+ * (`SearchQuery.fold`): "cafe" finds Café and "strasse" Straße, but kana keep their voicing marks (ので is not のて)
+ * and Hangul stays composed.
+ */
+function fold(text: string): string {
+  return text
+    .toUpperCase()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/(?![\u3099\u309A])\p{M}/gu, '')
+    .normalize('NFC')
+}
+
+/** Where a search's (already folded) terms first occur in one textblock (at `pos`), as a document range. */
+function matchInBlock(
+  node: PMNode,
+  pos: number,
+  terms: string[]
+): { from: number; to: number } | null {
+  // The block's text folded, with the document position each folded unit came from.
+  let text = ''
+  const at: number[] = []
+  node.forEach((child, offset) => {
+    if (!child.isText) return
+    let index = 0
+    for (const char of child.text!) {
+      const folded = fold(char)
+      text += folded
+      for (let i = 0; i < folded.length; i++) at.push(pos + 1 + offset + index)
+      index += char.length
+    }
+  })
+  let best: { start: number; end: number } | null = null
+  for (const term of terms) {
+    const start = term ? text.indexOf(term) : -1
+    if (start >= 0 && (!best || start < best.start)) best = { start, end: start + term.length }
+  }
+  return best && { from: at[best.start], to: at[best.end - 1] + 1 }
+}
+
+/**
+ * Where a search's (already folded) terms occur, as a document range, or null: in the block the search named
+ * (`SearchHit.blockId`) when it is in the page — null when its words aren't in it any more — otherwise the first
+ * place in the body (an index older than the page). Text across marks counts as one run.
+ */
+export function findTextMatch(
+  doc: PMNode,
+  terms: string[],
+  blockId: string | null = null
+): { from: number; to: number } | null {
+  if (blockId) {
+    let block: { node: PMNode; pos: number } | null = null
+    doc.descendants((node, pos) => {
+      if (block) return false
+      if (node.attrs.id === blockId) block = { node, pos }
+      return !block
+    })
+    if (block) {
+      const { node, pos } = block as { node: PMNode; pos: number }
+      return node.isTextblock ? matchInBlock(node, pos, terms) : null
+    }
+  }
+  let found: { from: number; to: number } | null = null
+  doc.descendants((node, pos) => {
+    if (found) return false
+    if (!node.isTextblock) return true
+    found = matchInBlock(node, pos, terms)
+    return false
+  })
+  return found
+}
 
 /** The page link in a drag's payload (a sidebar row carries its URL as a URI list and as text), or null. */
 export function droppedPageLink(data: DataTransfer | null): PageLinkTarget | null {
@@ -169,6 +244,26 @@ export function PageLinks(host: PageLinksHost) {
                 view.state.tr.setSelection(TextSelection.create(view.state.doc, pos + 1))
               )
             }
+            return true
+          },
+        revealText:
+          (terms, blockId = null) =>
+          ({ editor, view, tr }) => {
+            const match = findTextMatch(editor.state.doc, terms, blockId)
+            if (!match) return false
+            const $from = editor.state.doc.resolve(match.from)
+            const block = { from: $from.before(), to: $from.after() }
+            const coords = view.coordsAtPos(match.from)
+            window.scrollTo({
+              top: Math.max(0, window.scrollY + coords.top - window.innerHeight / 3),
+              behavior: 'smooth'
+            })
+            setBlockHighlight(view, { menu: block })
+            setTimeout(() => {
+              if (!editor.isDestroyed) setBlockHighlight(view, { menu: null })
+            }, ARRIVAL_TINT_MS)
+            // On the command's own transaction: Tiptap dispatches it after this returns.
+            tr.setSelection(TextSelection.create(tr.doc, match.from, match.to))
             return true
           }
       }
