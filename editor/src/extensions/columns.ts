@@ -122,6 +122,8 @@ export const Columns = Node.create({
           if (!transactions.some((t) => t.docChanged)) return null
           let tr: Transaction | null = null
           state.doc.descendants((node, pos) => {
+            // Rows sit among blocks: text blocks and atoms hold none (not looking into them skips every text node).
+            if (node.isTextblock || node.isAtom) return false
             if (node.type.name !== 'columns' || node.childCount !== 1) return true
             tr ??= state.tr
             const at = tr.mapping.map(pos)

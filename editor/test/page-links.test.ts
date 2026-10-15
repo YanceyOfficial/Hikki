@@ -283,6 +283,16 @@ describe('page links', () => {
     expect(at(['cafe'])).toBeNull()
   })
 
+  it('findTextMatch never ends a match inside a character of two code units', () => {
+    editor.commands.setContent({ type: 'doc', content: [para('a𠮷b 🍀 c', 'x')] })
+    const doc = editor.state.doc
+    const kanji = findTextMatch(doc, ['𠮷'])!
+    expect(kanji.to - kanji.from).toBe(2)
+    expect(doc.textBetween(kanji.from, kanji.to)).toBe('𠮷')
+    const clover = findTextMatch(doc, ['🍀 c'])!
+    expect(doc.textBetween(clover.from, clover.to)).toBe('🍀 c')
+  })
+
   it('findTextMatch looks in the block the search named, and anywhere when that block is gone', () => {
     editor.commands.setContent({
       type: 'doc',

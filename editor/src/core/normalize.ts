@@ -1,7 +1,6 @@
 import type { JSONContent } from '@tiptap/core'
 
-const textOf = (node: JSONContent): string =>
-  node.type === 'text' ? (node.text ?? '') : (node.content ?? []).map(textOf).join('')
+import { textOf } from './extract'
 
 /**
  * Brings stored body content up to the current schema before it is loaded. The title is a page

@@ -299,7 +299,15 @@ export function insertFiles(editor: Editor, host: MediaHost, files: File[], pos:
     host
       .upload(file, (progress) => update({ progress }))
       .then((src) => {
-        if (editor.isDestroyed) return
+        // Another page opened meanwhile: the file is stored but this page is gone — say so rather than drop it
+        // silently (it can be added again).
+        if (editor.isDestroyed) {
+          reportError('uploadFailed', new Error('the page closed before the upload finished'), {
+            kind,
+            reason: 'pageClosed'
+          })
+          return
+        }
         const item = UploadsKey.getState(editor.state)?.pending.find((p) => p.id === id)
         if (!item) return
         const node = nodeFor(kind, src, file)

@@ -184,6 +184,23 @@ describe('block handle', () => {
     editor.commands.setTextSelection(posOf('second'))
     expect(handle.dataset.hidden).toBe('false')
   })
+
+  it('stays hidden while typing, and when the page scrolls meanwhile', () => {
+    editor = createEditor(host, doc('first line', 'second line'))
+    const handle = document.querySelector('.hk-block-handle') as HTMLElement
+    // Shown by a hover on "first" (not reproducible in this DOM): stand in for it.
+    const controls = (
+      editor.view as unknown as { pluginViews: { unit?: unknown }[] }
+    ).pluginViews.find((view) => 'unit' in view)!
+    controls.unit = unitAtPos(editor.state, posOf('first'))
+    handle.dataset.hidden = 'false'
+    editor.view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: 'x' }))
+    expect(handle.dataset.hidden).toBe('true')
+    editor.commands.insertContentAt(posOf('first'), 'x')
+    expect(handle.dataset.hidden).toBe('true')
+    window.dispatchEvent(new Event('scroll'))
+    expect(handle.dataset.hidden).toBe('true')
+  })
 })
 
 const openMenu = (text: string) => {

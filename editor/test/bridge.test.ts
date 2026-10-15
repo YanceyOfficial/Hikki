@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { EditorBridge, type Transport } from '../src/core/bridge'
 import type { ToNativeMessage } from '../src/core/protocol'
+import { insertFiles } from '../src/extensions/media'
 import { doc, page, stripIds } from './helpers'
 
 const heading = (level: number, text: string) => ({
@@ -194,6 +195,72 @@ describe('EditorBridge', () => {
       [2, 'Goals'],
       [3, 'Risks']
     ])
+  })
+
+  it('re-marking a lost comment passage on open is no edit; the mark goes out with the next real one', async () => {
+    bridge.loadDocument(page('a', { content: doc('the quick fox') }))
+    const thread = {
+      id: 't1',
+      quote: 'quick',
+      resolved: false,
+      comments: [{ id: 'c1', body: 'hi', author: null, device: null, createdAt: 0 }]
+    }
+    bridge.setComments('a', [thread], null)
+    await vi.advanceTimersByTimeAsync(3000)
+    expect(changed()).toHaveLength(0)
+    editor().commands.insertContentAt(1, 'x')
+    await vi.advanceTimersByTimeAsync(3000)
+    expect(changed()).toHaveLength(1)
+    expect(JSON.stringify(bridge.snapshot()?.content)).toContain('"comment"')
+  })
+
+  it('a remote change waits while a file is uploading into the page', () => {
+    bridge.loadDocument(page('a', { content: doc('mine') }))
+    insertFiles(
+      editor(),
+      { upload: () => new Promise(() => {}), openAsset: () => {} },
+      [new File(['x'], 'a.pdf')],
+      1
+    )
+    expect(bridge.reload(page('a', { content: doc('theirs') }))).toBe(false)
+  })
+
+  it("a page's last scroll goes out before another page replaces it", async () => {
+    bridge.loadDocument(page('a', { content: doc('one') }))
+    const scroller = document.scrollingElement ?? document.documentElement
+    scroller.scrollTop = 420
+    window.dispatchEvent(new Event('scroll'))
+    await vi.advanceTimersByTimeAsync(20) // the frame the scroll waits for, not the 250 ms report
+    bridge.loadDocument(page('b', { content: doc('two') }))
+    await vi.advanceTimersByTimeAsync(300)
+    const scrolls = sent.filter((m) => m.type === 'scroll')
+    expect(scrolls[0]).toMatchObject({ docId: 'a', top: 420 })
+    expect(scrolls.some((m) => m.type === 'scroll' && m.docId === 'b' && m.top === 420)).toBe(false)
+  })
+
+  it('typing outside headings leaves the outline (and its readers) alone', () => {
+    bridge.loadDocument(
+      page('a', {
+        content: {
+          type: 'doc',
+          content: [
+            { type: 'paragraph', content: [{ type: 'text', text: 'intro' }] },
+            { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Goals' }] }
+          ]
+        }
+      })
+    )
+    let notified = 0
+    bridge.page.subscribe(() => notified++)
+    editor().commands.insertContentAt(2, 'more ')
+    expect(notified).toBe(0)
+    const goals = editor().state.doc.child(1)
+    editor().commands.insertContentAt(
+      editor().state.doc.child(0).nodeSize + goals.nodeSize - 1,
+      '!'
+    )
+    expect(notified).toBe(1)
+    expect(bridge.page.get().headings.map((h) => h.text)).toEqual(['Goals!'])
   })
 
   it('reports the page info — outline with block ids, words, characters — on load, then throttled', () => {

@@ -73,7 +73,7 @@ export function Outline({ bridge }: { bridge: EditorBridge }) {
       >
         {bars.map((h) => (
           <span
-            key={h.pos}
+            key={h.id ?? `i${h.index}`}
             data-active={h.index === activeBar}
             className="h-0.5 rounded-full bg-muted-foreground/35 transition-colors duration-(--motion-pop-in) data-[active=true]:bg-foreground"
             style={{
@@ -95,7 +95,7 @@ export function Outline({ bridge }: { bridge: EditorBridge }) {
           <GlidingHighlight listRef={listRef} index={hovered ?? activeHeading} />
           {headings.map((h, index) => (
             <li
-              key={h.pos}
+              key={h.id ?? `i${index}`}
               style={{ paddingLeft: `${(h.level - minLevel) * 12}px` }}
               onMouseEnter={() => setHovered(index)}
             >
@@ -104,7 +104,7 @@ export function Outline({ bridge }: { bridge: EditorBridge }) {
                 data-index={index}
                 aria-current={index === activeHeading ? 'location' : undefined}
                 className="relative block w-full cursor-pointer truncate rounded-md px-2 py-1 text-left text-md text-subtle-foreground hover:text-foreground aria-[current=location]:text-foreground"
-                onClick={() => bridge.scrollToHeading(h.pos)}
+                onClick={() => bridge.scrollToHeading(index)}
               >
                 {h.text}
               </button>

@@ -365,7 +365,7 @@ function setMeta(tr: Transaction, meta: Meta): Transaction {
 
 /** The native store's threads for the page (`window.hikki.setComments`). An open thread whose passage isn't marked in
  * the page (a mark lost before marks were saved, 2026-10-15) is marked again where its quote is — when the quote
- * occurs exactly once, inside one block. */
+ * occurs exactly once, inside one block — without counting as an edit: opening a page never saves it. */
 export function setThreads(editor: Editor, threads: ThreadItem[]): void {
   if (editor.isDestroyed) return
   const tr = setMeta(editor.state.tr, { type: 'threads', threads })
@@ -375,8 +375,8 @@ export function setThreads(editor: Editor, threads: ThreadItem[]): void {
       if (thread.resolved || marked.has(thread.id) || !thread.quote.trim()) continue
       const range = findQuote(editor.state.doc, thread.quote)
       if (!range) continue
+      // Not an edit (viewing never saves): the mark is saved with the page's next real change.
       tr.addMark(range.from, range.to, editor.schema.marks.comment.create({ id: thread.id }))
-      tr.setMeta(SAVE_META, true)
     }
   }
   editor.view.dispatch(tr)

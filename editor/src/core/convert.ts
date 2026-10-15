@@ -10,7 +10,7 @@ import { MarkdownManager } from '@tiptap/markdown'
 import { DOMSerializer, Node as PMNode, type Schema } from '@tiptap/pm/model'
 
 import { editorExtensions } from './editor'
-import { plainText, wordCount } from './extract'
+import { plainText, textOf, wordCount } from './extract'
 import { normalizeBody } from './normalize'
 import type { ExportFormat, ImportFormat, ImportedPage, PagePayload } from './protocol'
 
@@ -219,9 +219,6 @@ function textDocument(text: string): JSONContent {
     }))
   }
 }
-
-const textOf = (node: JSONContent): string =>
-  node.type === 'text' ? (node.text ?? '') : (node.content ?? []).map(textOf).join('')
 
 const plainLines = (node: JSONContent): string =>
   (node.content ?? []).map(textOf).filter(Boolean).join('\n')

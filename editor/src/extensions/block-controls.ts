@@ -131,7 +131,7 @@ class BlockControlsView {
     document.body.append(this.handle, this.line)
     document.addEventListener('mousemove', this.onMove)
     view.dom.addEventListener('keydown', this.hide)
-    window.addEventListener('scroll', this.reposition, true)
+    window.addEventListener('scroll', this.follow, true)
   }
 
   update() {
@@ -146,14 +146,14 @@ class BlockControlsView {
         Math.min(this.unit.pos, this.view.state.doc.content.size)
       )
       this.unit = unit
-      this.reposition()
+      this.follow()
     }
   }
 
   destroy() {
     document.removeEventListener('mousemove', this.onMove)
     this.view.dom.removeEventListener('keydown', this.hide)
-    window.removeEventListener('scroll', this.reposition, true)
+    window.removeEventListener('scroll', this.follow, true)
     this.endDrag()
     this.handle.remove()
     this.line.remove()
@@ -201,6 +201,12 @@ class BlockControlsView {
   private hide = () => {
     if (this.press) return
     this.handle.dataset.hidden = 'true'
+  }
+
+  /** A handle already showing keeps up with its block (the page scrolled, the block moved). A hidden one stays
+   * hidden: typing hides it, and only the pointer brings it back — not the keystroke's own transaction. */
+  private follow = () => {
+    if (this.handle.dataset.hidden === 'false') this.reposition()
   }
 
   /** Level with the block's first line (its vertical centre), left of the block (and of a list marker). */

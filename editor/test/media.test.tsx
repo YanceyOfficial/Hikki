@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { EditorBridge, extensionOf } from '../src/core/bridge'
 import { createEditor } from '../src/core/editor'
+import { installErrorForwarding } from '../src/core/errors'
 import type { ToNativeMessage } from '../src/core/protocol'
 import { insertFiles, mediaKindOf, safeMediaSrc, type MediaHost } from '../src/extensions/media'
 import { doc, settle, stripIds } from './helpers'
@@ -138,6 +139,24 @@ describe('inserting files', () => {
     expect(host.querySelector('.hk-upload')).toBeNull()
     expect(JSON.stringify(stripIds(editor.getJSON()))).toBe(before)
     vi.useRealTimers()
+  })
+
+  it('an upload that finishes after its page closed is reported, not dropped silently', async () => {
+    const posted: unknown[] = []
+    installErrorForwarding({ post: async (m) => void posted.push(m) })
+    let resolve!: (url: string) => void
+    const media = fakeHost(() => new Promise((r) => (resolve = r)))
+    editor = createEditor(host, doc('text'), { media })
+    insertFiles(editor, media, [new File(['x'], 'photo.png', { type: 'image/png' })], 1)
+    editor.destroy()
+    resolve(asset)
+    await settle()
+    expect(posted).toContainEqual(
+      expect.objectContaining({
+        type: 'reportError',
+        context: { kind: 'image', reason: 'pageClosed' }
+      })
+    )
   })
 
   it('attachments open through the host, only for our assets', () => {

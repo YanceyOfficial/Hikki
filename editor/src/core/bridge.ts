@@ -1,4 +1,5 @@
-import type { Editor } from '@tiptap/core'
+import type { Editor, JSONContent } from '@tiptap/core'
+import type { Node as PMNode } from '@tiptap/pm/model'
 import type { Transaction } from '@tiptap/pm/state'
 
 import { setBlockLinkBuilder } from '../components/block-menu'
@@ -11,7 +12,7 @@ import {
   type ThreadItem
 } from '../extensions/comments'
 import { runFind, type FindMode } from '../extensions/find'
-import type { MediaHost } from '../extensions/media'
+import { UploadsKey, type MediaHost } from '../extensions/media'
 import { pageLinkHref, type PageIndexEntry, type PageLinksHost } from '../extensions/page-links'
 import { notifyPageIndexChanged } from '../extensions/page-mention'
 import { rubySegmentsFrom, type RubyHost } from '../extensions/ruby'
@@ -20,7 +21,13 @@ import { openTogglesAround } from '../extensions/toggle'
 import { linkCardFrom } from '../lib/embeds'
 import { activeCommands, createEditor, runCommand } from './editor'
 import { plainText, wordCount } from './extract'
-import { activeHeadingIndex, collectHeadings, type HeadingItem } from './headings'
+import {
+  activeHeadingIndex,
+  collectHeadings,
+  outlineItems,
+  sameOutline,
+  type OutlineItem
+} from './headings'
 import { t } from './i18n'
 import { normalizeBody } from './normalize'
 import {
@@ -42,7 +49,8 @@ export type PageState = {
   title: string
   icon: string | null
   cover: string | null
-  headings: HeadingItem[]
+  /** Changes only when a heading's id, level or text does (not on every keystroke). */
+  headings: OutlineItem[]
   /** Bumped when the caret should move into the title (EdgeNavigation, native Rename). */
   focusTitleRequest: number
   /** With the latest request: select the whole title (Rename) instead of a caret at its end. */
@@ -155,13 +163,17 @@ export class EditorBridge {
   /** Where the page is scrolled, at most every 250 ms (the last position always goes out). */
   private reportScroll(): void {
     if (this.scrollTimer) return
-    this.scrollTimer = setTimeout(() => {
-      this.scrollTimer = null
-      const { docId } = this.page.get()
-      if (!docId) return
-      const top = Math.round((document.scrollingElement ?? document.documentElement).scrollTop)
-      void this.send({ type: 'scroll', docId, top })
-    }, 250)
+    this.scrollTimer = setTimeout(() => this.sendScroll(), 250)
+  }
+
+  /** Sends where the open page is scrolled now (also before another page replaces it: its last place counts). */
+  private sendScroll(): void {
+    if (this.scrollTimer) clearTimeout(this.scrollTimer)
+    this.scrollTimer = null
+    const { docId } = this.page.get()
+    if (!docId) return
+    const top = Math.round((document.scrollingElement ?? document.documentElement).scrollTop)
+    void this.send({ type: 'scroll', docId, top })
   }
 
   /** A tab shown again: back to where it was (after the page has laid out). */
@@ -185,8 +197,9 @@ export class EditorBridge {
    */
   private updateActiveHeading(): void {
     const editor = this.editor
-    const { headings, docId } = this.page.get()
+    const { docId } = this.page.get()
     if (!editor || !docId) return
+    const headings = collectHeadings(editor)
     const tops = headings.map((h) => {
       const dom = editor.view.nodeDOM(h.pos)
       return dom instanceof HTMLElement ? dom.getBoundingClientRect().top : Number.POSITIVE_INFINITY
@@ -210,8 +223,9 @@ export class EditorBridge {
   }
 
   loadDocument(payload: PagePayload): void {
-    // Never drop a pending edit of the previous page.
+    // Never drop a pending edit of the previous page, nor where it was last scrolled to.
     this.flushPending()
+    if (this.scrollTimer) this.sendScroll()
     // Another page starts at its top (the web view's scroll would otherwise carry over from the last one).
     if (payload.id !== this.page.get().docId)
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
@@ -250,9 +264,10 @@ export class EditorBridge {
     if (contentError)
       console.warn(`page opened read-only: content doesn't fit the schema (${payload.id})`)
     editor.on('update', ({ transaction }) => {
-      this.page.set({ headings: collectHeadings(editor) })
+      this.refreshOutline(editor)
       this.reportPageInfo()
-      this.updateActiveHeading()
+      // Measured once a frame, after the browser's own layout (not inside the keystroke's dispatch).
+      this.scheduleActiveHeading()
       if (isUserEdit(transaction)) this.scheduleChanged()
     })
     editor.on('selectionUpdate', () => {
@@ -266,7 +281,7 @@ export class EditorBridge {
       title,
       icon: payload.icon,
       cover: payload.cover,
-      headings: collectHeadings(editor),
+      headings: outlineItems(editor),
       readOnly: contentError !== null,
       locked
     })
@@ -297,6 +312,8 @@ export class EditorBridge {
     const editor = this.editor
     const { docId, readOnly } = this.page.get()
     if (!editor || payload.id !== docId || this.dirty || readOnly) return false
+    // A file still uploading lands where its placeholder stands; replacing the document would misplace it.
+    if (UploadsKey.getState(editor.state)?.pending.length) return false
     const { body, title } = normalizeBody(payload.content, payload.title ?? '')
     const { from, to } = editor.state.selection
     // Not an edit of this page: no undo step, no save. An invalid body leaves the page as it is.
@@ -320,7 +337,7 @@ export class EditorBridge {
       title,
       icon: payload.icon,
       cover: payload.cover,
-      headings: collectHeadings(editor)
+      headings: outlineItems(editor)
     })
     return true
   }
@@ -544,9 +561,22 @@ export class EditorBridge {
   snapshot(): Snapshot | null {
     const { docId, title } = this.page.get()
     if (!this.editor || !docId) return null
-    const content = this.editor.getJSON()
-    const text = plainText(content)
+    const { content, text } = this.contentOf(this.editor)
     return { docId, title: title.trim(), content, text, wordCount: wordCount(`${title}\n${text}`) }
+  }
+
+  /** Documents are immutable: each one is turned into JSON and text once, shared by saves and the page info. */
+  private readonly converted = new WeakMap<PMNode, { content: JSONContent; text: string }>()
+
+  private contentOf(editor: Editor): { content: JSONContent; text: string } {
+    const doc = editor.state.doc
+    let known = this.converted.get(doc)
+    if (!known) {
+      const content = editor.getJSON()
+      known = { content, text: plainText(content) }
+      this.converted.set(doc, known)
+    }
+    return known
   }
 
   focus(): void {
@@ -622,26 +652,43 @@ export class EditorBridge {
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
   }
 
-  scrollToHeading(pos: number): void {
-    if (!this.editor) return
-    openTogglesAround(this.editor, pos)
-    const dom = this.editor.view.nodeDOM(pos)
+  /** The page's hover rail: to the heading at this place in the outline (where it is now, looked up again). */
+  scrollToHeading(index: number): void {
+    const editor = this.editor
+    const heading = editor ? collectHeadings(editor)[index] : undefined
+    if (!editor || !heading) return
+    openTogglesAround(editor, heading.pos)
+    const dom = editor.view.nodeDOM(heading.pos)
     if (dom instanceof HTMLElement) dom.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    this.editor.commands.setTextSelection(pos + 1)
+    editor.commands.setTextSelection(heading.pos + 1)
     // The heading jumped to is the one marked (a short page can't scroll it up to the line), until the reader scrolls.
-    const index = this.page.get().headings.findIndex((h) => h.pos === pos)
-    if (index >= 0) {
-      this.pinnedHeading = index
-      this.updateActiveHeading()
-    }
+    this.pinnedHeading = index
+    this.updateActiveHeading()
   }
 
   /** The inspector's outline: to a heading by its block id, as the rail does (`scrollToHeading`). */
   jumpToHeading(id: string): boolean {
-    const heading = this.page.get().headings.find((h) => h.id === id)
-    if (!heading) return false
-    this.scrollToHeading(heading.pos)
+    if (!this.editor) return false
+    const index = collectHeadings(this.editor).findIndex((h) => h.id === id)
+    if (index < 0) return false
+    this.scrollToHeading(index)
     return true
+  }
+
+  /** The outline goes to the page state only when it reads differently (its readers re-render on a change). */
+  private refreshOutline(editor: Editor): void {
+    const headings = outlineItems(editor)
+    if (!sameOutline(headings, this.page.get().headings)) this.page.set({ headings })
+  }
+
+  private activeHeadingFrame = 0
+
+  private scheduleActiveHeading(): void {
+    if (this.activeHeadingFrame) return
+    this.activeHeadingFrame = requestAnimationFrame(() => {
+      this.activeHeadingFrame = 0
+      this.updateActiveHeading()
+    })
   }
 
   /** The native inspector shows the outline itself: the page's hover rail steps aside meanwhile. */
@@ -669,8 +716,8 @@ export class EditorBridge {
       void this.send({
         type: 'pageInfo',
         docId,
-        headings: headings.map(({ id, level, text }) => ({ id, level, text })),
-        words: wordCount(`${title}\n${plainText(editor.getJSON())}`),
+        headings,
+        words: wordCount(`${title}\n${this.contentOf(editor).text}`),
         characters: storage.characters() + title.length
       })
     }

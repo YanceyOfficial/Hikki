@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { blockTexts, deriveTitle, plainText, wordCount } from '../src/core/extract'
+import { blockTexts, plainText, wordCount } from '../src/core/extract'
 
 const doc = {
   type: 'doc',
@@ -31,17 +31,6 @@ describe('extract', () => {
   it('flattens nested blocks to one line each', () => {
     expect(blockTexts(doc)).toEqual(['  会议纪要 ', 'Hello world', 'item', 'let x = 1'])
     expect(plainText(doc)).toBe('  会议纪要 \nHello world\nitem\nlet x = 1')
-  })
-
-  it('derives the title from the first non-empty block', () => {
-    expect(deriveTitle(doc)).toBe('会议纪要')
-    expect(deriveTitle({ type: 'doc', content: [{ type: 'paragraph' }] })).toBe('')
-    expect(
-      deriveTitle({
-        type: 'doc',
-        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'x'.repeat(200) }] }]
-      })
-    ).toHaveLength(120)
   })
 
   it('counts CJK per character and other scripts per word', () => {

@@ -140,16 +140,22 @@ function matchInBlock(
   pos: number,
   terms: string[]
 ): { from: number; to: number } | null {
-  // The block's text folded, with the document position each folded unit came from.
+  // The block's text folded, with the document range of the character each folded unit came from (a character may
+  // be two code units: an emoji, 𠮷).
   let text = ''
-  const at: number[] = []
+  const from: number[] = []
+  const to: number[] = []
   node.forEach((child, offset) => {
     if (!child.isText) return
     let index = 0
     for (const char of child.text!) {
       const folded = fold(char)
+      const start = pos + 1 + offset + index
       text += folded
-      for (let i = 0; i < folded.length; i++) at.push(pos + 1 + offset + index)
+      for (let i = 0; i < folded.length; i++) {
+        from.push(start)
+        to.push(start + char.length)
+      }
       index += char.length
     }
   })
@@ -158,7 +164,7 @@ function matchInBlock(
     const start = term ? text.indexOf(term) : -1
     if (start >= 0 && (!best || start < best.start)) best = { start, end: start + term.length }
   }
-  return best && { from: at[best.start], to: at[best.end - 1] + 1 }
+  return best && { from: from[best.start], to: to[best.end - 1] }
 }
 
 /**

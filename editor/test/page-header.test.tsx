@@ -211,17 +211,17 @@ describe('Outline', () => {
     act(() =>
       bridge.page.set({
         headings: [
-          { id: null, pos: 0, level: 2, text: 'Goals' },
-          { id: null, pos: 7, level: 3, text: 'Risks' }
+          { id: 'g', level: 2, text: 'Goals' },
+          { id: 'r', level: 3, text: 'Risks' }
         ]
       })
     )
     let scrolled = -1
-    bridge.scrollToHeading = (pos) => {
-      scrolled = pos
+    bridge.scrollToHeading = (index) => {
+      scrolled = index
     }
     fireEvent.click(screen.getByRole('button', { name: 'Risks' }))
-    expect(scrolled).toBe(7)
+    expect(scrolled).toBe(1)
     host.remove()
   })
 })
@@ -238,9 +238,9 @@ describe('Outline marks where the reader is', () => {
       bridge.page.set({
         docId: 'a',
         headings: [
-          { id: 'h1', pos: 0, level: 2, text: 'Goals' },
-          { id: 'h2', pos: 7, level: 3, text: 'Risks' },
-          { id: 'h3', pos: 14, level: 2, text: 'Plan' }
+          { id: 'h1', level: 2, text: 'Goals' },
+          { id: 'h2', level: 3, text: 'Risks' },
+          { id: 'h3', level: 2, text: 'Plan' }
         ],
         activeHeading: 1
       })
