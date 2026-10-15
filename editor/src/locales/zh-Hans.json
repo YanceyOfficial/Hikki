@@ -423,7 +423,8 @@
       "offline": "没有网络连接。请检查网络后重试。",
       "rejected": "请求被拒绝。",
       "rejectedWith": "请求被拒绝：{{message}}",
-      "invalidResponse": "无法读取回答。请重试。"
+      "invalidResponse": "无法读取回答。请重试。",
+      "badBaseURL": "“设置 → AI”中的 {{provider}} 地址无法使用：请使用 https（http 只限本机）。"
     },
     "replace": "替换选中内容",
     "pageUntouched": "替换之前页面不会改动。",

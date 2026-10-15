@@ -54,7 +54,7 @@ enum AppearancePreference: String, CaseIterable, Identifiable {
 
 /// The pages of Settings: toolbar tabs on the Mac (the classic Settings window), the hub list on iPhone and iPad.
 enum SettingsPage: String, CaseIterable, Identifiable {
-    case workspace, general, appearance, editor, shortcuts, search, ai, about
+    case general, workspace, shortcuts, search, ai, about
 
     /// The page Settings opens on, remembered; `HIKKI_OPEN_SETTINGS=<page>` sets it (screenshots).
     static let storageKey = "settings.page"
@@ -65,8 +65,6 @@ enum SettingsPage: String, CaseIterable, Identifiable {
         switch self {
         case .workspace: "app:settings.workspace"
         case .general: "app:settings.general"
-        case .appearance: "app:settings.appearance"
-        case .editor: "app:settings.editor"
         case .shortcuts: "app:settings.shortcuts"
         case .search: "app:settings.search"
         case .ai: "app:settings.ai"
@@ -78,8 +76,6 @@ enum SettingsPage: String, CaseIterable, Identifiable {
         switch self {
         case .workspace: .house
         case .general: .gearSix
-        case .appearance: .slidersHorizontal
-        case .editor: .pencilSimple
         case .shortcuts: .command
         case .search: .magnifyingGlass
         case .ai: .chatCircleDots
@@ -87,19 +83,29 @@ enum SettingsPage: String, CaseIterable, Identifiable {
         }
     }
 
+    /// The pages this device shows: an iPhone has no keyboard to rebind, so no Shortcuts.
+    static var visible: [SettingsPage] {
+        #if os(iOS)
+            if UIDevice.current.userInterfaceIdiom == .phone { return allCases.filter { $0 != .shortcuts } }
+        #endif
+        return allCases
+    }
+
     /// The groups the iOS hub shows: the workspace, then the app, then About on its own.
-    static let groups: [(title: LocalizedStringKey?, pages: [SettingsPage])] = [
-        ("app:settings.group.workspace", [.workspace]),
-        ("app:settings.group.app", [.general, .appearance, .editor, .shortcuts, .search, .ai]),
-        (nil, [.about]),
-    ]
+    static var groups: [(title: LocalizedStringKey?, pages: [SettingsPage])] {
+        [
+            ("app:settings.group.workspace", [.workspace]),
+            ("app:settings.group.app", [.general, .shortcuts, .search, .ai].filter(visible.contains)),
+            (nil, [.about]),
+        ]
+    }
 }
 
 /// Settings: pages as tabs (Mac) or a hub list (iPhone, iPad), each a grouped form of sections.
 struct SettingsView: View {
-    @AppStorage(SettingsPage.storageKey) private var pageID = SettingsPage.workspace.rawValue
+    @AppStorage(SettingsPage.storageKey) private var pageID = SettingsPage.general.rawValue
 
-    private var page: SettingsPage { SettingsPage(rawValue: pageID) ?? .workspace }
+    private var page: SettingsPage { SettingsPage(rawValue: pageID) ?? .general }
 
     var body: some View {
         content
@@ -111,7 +117,7 @@ struct SettingsView: View {
         /// The classic Mac Settings window: the pages as toolbar tabs along the top, a grouped form under each.
         private var content: some View {
             TabView(selection: Binding(get: { page }, set: { pageID = $0.rawValue })) {
-                ForEach(SettingsPage.allCases) { page in
+                ForEach(SettingsPage.visible) { page in
                     Tab(value: page) {
                         Form {
                             SettingsPageContent(page: page)
@@ -182,14 +188,12 @@ private struct SettingsPageContent: View {
         case .workspace:
             WorkspaceSection()
         case .general:
+            AppearanceSection()
             LanguageSection()
+            EditorSection()
             #if os(macOS)
                 MenuBarSection()
             #endif
-        case .appearance:
-            AppearanceSection()
-        case .editor:
-            EditorSection()
         case .shortcuts:
             ShortcutsSection()
         case .ai:

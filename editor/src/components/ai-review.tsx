@@ -108,6 +108,8 @@ function errorText(error: NonNullable<AIReviewProps['session']['error']>): strin
   switch (error.code) {
     case 'missingKey':
       return t('ai.error.missingKey', { provider: error.provider ?? '' })
+    case 'badBaseURL':
+      return t('ai.error.badBaseURL', { provider: error.provider ?? '' })
     case 'unauthorized':
       return t('ai.error.unauthorized')
     case 'rateLimited':

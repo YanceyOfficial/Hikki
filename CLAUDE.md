@@ -342,8 +342,10 @@ HikkiUITests/                 XCUITest flows
   streams `AIEvent`s (text, searching, citation, finished); `HikkiAI/Sources/StreamDecoders.swift` reads each provider's events
   tolerantly (unknown events skipped, malformed lines ignored, only error events throw), `HTTPErrors` maps failures
   to `AIError`. Models are a fixed list (`AIModelCatalog`; "Auto" picks a balanced one among the providers with a
-  key). Keys live in the Keychain per provider (`AIPreferences`, `Hikki/Sources/AISettings.swift`) and go only to
-  that provider. The editor asks through `aiRequest` / `aiCancel` (selected parts of blocks as inline HTML + nearby
+  key). Each provider may have a base URL (blank: its own API; `HikkiAI/Sources/AIEndpoint.swift` — OpenAI's base
+  includes `/v1`, Anthropic's doesn't, as in their SDKs; https, or http only to loopback). Keys live in the Keychain
+  (`AIPreferences`, `Hikki/Sources/AISettings.swift`), one per provider and origin (`AIEndpoint.keyAccount`), so a key
+  only ever goes to the address it was entered for. The editor asks through `aiRequest` / `aiCancel` (selected parts of blocks as inline HTML + nearby
   text) and gets `window.hikki.aiEvent`s back. `Hikki/Sources/AIService.swift` runs them (one per window, both
   editors) with the prompts in `HikkiAI/Sources/AIPrompts.swift`: an edit asks for JSON `{"blocks":[{id, html}]}`
   with the same ids and inline tags only, an answer for short Markdown with web search; page text is wrapped in tags
@@ -386,11 +388,13 @@ HikkiUITests/                 XCUITest flows
   palettes stay in the tokens and `[data-tone]` CSS for when a picker returns. `make tokens` also writes the app's
   `AccentColor.colorset` from it, so system menus, selection and controls take the tone (where the user's system
   accent is "Multicolor" — a chosen system accent overrides every app's).
-- **Settings** (`Hikki/Sources/SettingsView.swift`): pages (`SettingsPage`: Workspace, General, Appearance, Editor,
-  Search, About) as the classic toolbar tabs of the Mac Settings window and a hub list on iPhone/iPad; each page is a grouped form of sections, the last page opened is remembered.
+- **Settings** (`Hikki/Sources/SettingsView.swift`): pages (`SettingsPage`: General — appearance, language, editor,
+  menu bar — then Workspace, Shortcuts, Search, AI, About; iPhone has no Shortcuts) as the classic toolbar tabs of the
+  Mac Settings window and a hub list on iPhone/iPad; each page is a grouped form of sections, the last page opened is
+  remembered.
   `HIKKI_OPEN_SETTINGS=<page>` opens that page (screenshots). Optional integrations (a local Ollama for semantic
   search, later) get pages here with a detected/not-detected status, exodus's way.
-- **Appearance** (Settings → Theme) is applied app-wide (`NSApp.appearance` / window `overrideUserInterfaceStyle`),
+- **Appearance** (Settings → General → Theme) is applied app-wide (`NSApp.appearance` / window `overrideUserInterfaceStyle`),
   not with `preferredColorScheme`, which left parts of windows in the old scheme after switching back.
 - **macOS windows**: closing the last main window only hides it (Dock click restores it) and closes Settings —
   `Hikki/Sources/WindowLifecycle.swift`.

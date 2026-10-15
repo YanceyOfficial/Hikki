@@ -126,13 +126,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Used for Claude models (Opus, Sonnet, Haiku). Create a key at console.anthropic.com. It is kept in the Keychain on this device and sent only to Anthropic, together with the text you ask AI about."
+            "value": "Used for Claude models (Opus, Sonnet, Haiku). Create a key at console.anthropic.com. It is kept in the Keychain on this device and sent only to the address above (Anthropic when blank), together with the text you ask AI about. A key belongs to the address it was entered for."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "用于 Claude 模型（Opus、Sonnet、Haiku）。可在 console.anthropic.com 创建密钥。密钥只保存在本设备的钥匙串中，只会和你让 AI 处理的文字一起发送给 Anthropic。"
+            "value": "用于 Claude 模型（Opus、Sonnet、Haiku）。可在 console.anthropic.com 创建密钥。密钥只保存在本设备的钥匙串中，只会和你让 AI 处理的文字一起发送到上面的地址（留空即 Anthropic）。每个地址的密钥分开保存。"
           }
         }
       }
@@ -150,6 +150,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "sk-ant-…"
+          }
+        }
+      }
+    },
+    "app:ai.settings.baseURL": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Base URL"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Base URL"
           }
         }
       }
@@ -228,13 +245,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Used for GPT models. Create a key at platform.openai.com. It is kept in the Keychain on this device and sent only to OpenAI, together with the text you ask AI about."
+            "value": "Used for GPT models. Create a key at platform.openai.com. It is kept in the Keychain on this device and sent only to the address above (OpenAI when blank), together with the text you ask AI about. A key belongs to the address it was entered for."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "用于 GPT 模型。可在 platform.openai.com 创建密钥。密钥只保存在本设备的钥匙串中，只会和你让 AI 处理的文字一起发送给 OpenAI。"
+            "value": "用于 GPT 模型。可在 platform.openai.com 创建密钥。密钥只保存在本设备的钥匙串中，只会和你让 AI 处理的文字一起发送到上面的地址（留空即 OpenAI）。每个地址的密钥分开保存。"
           }
         }
       }
@@ -286,6 +303,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "状态"
+          }
+        }
+      }
+    },
+    "app:ai.settings.status.badURL": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not a valid address"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地址无效"
+          }
+        }
+      }
+    },
+    "app:ai.settings.status.insecure": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use https (http only to this device)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请使用 https（http 只限本机）"
           }
         }
       }

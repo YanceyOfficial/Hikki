@@ -74,19 +74,24 @@ enum HTTPErrors {
 
 /// The client for a model, given the providers' keys.
 public enum AIClients {
+    /// `bases`: a provider's base URL when it isn't the default (`AIEndpoint`); one that may not carry a key (plain
+    /// http to another machine) is refused before anything is sent.
     public static func client(
-        for model: AIModel, keys: [AIProvider: String], session: URLSession = .shared
+        for model: AIModel, keys: [AIProvider: String], bases: [AIProvider: URL] = [:], session: URLSession = .shared
     ) throws -> any AIClient {
         guard let key = keys[model.provider], !key.isEmpty else { throw AIError.missingKey(model.provider) }
+        let base = bases[model.provider] ?? AIEndpoint.defaultBase(model.provider)
+        guard AIEndpoint.mayCarryKey(base) else { throw AIError.badBaseURL(model.provider) }
+        let url = AIEndpoint.requestURL(model.provider, base: base)
         switch model.provider {
         case .openAI:
             return StreamingClient(
-                makeRequest: { try RequestBuilders.openAI($0, apiKey: key) }, makeDecoder: { OpenAIStreamDecoder() },
-                session: session)
+                makeRequest: { try RequestBuilders.openAI($0, apiKey: key, url: url) },
+                makeDecoder: { OpenAIStreamDecoder() }, session: session)
         case .anthropic:
             return StreamingClient(
-                makeRequest: { try RequestBuilders.anthropic($0, apiKey: key) }, makeDecoder: { AnthropicStreamDecoder() },
-                session: session)
+                makeRequest: { try RequestBuilders.anthropic($0, apiKey: key, url: url) },
+                makeDecoder: { AnthropicStreamDecoder() }, session: session)
         }
     }
 }

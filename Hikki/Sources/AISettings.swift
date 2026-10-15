@@ -2,21 +2,36 @@ import HikkiAI
 import HikkiUI
 import SwiftUI
 
-/// Settings → AI: the providers' API keys (in the Keychain, one per provider; sent only to that provider) and the
-/// model AI uses by default. The models are a fixed list (`AIModelCatalog`).
+/// Settings → AI: the providers' API keys (in the Keychain; each sent only to the origin it was entered for), an
+/// optional base URL per provider, and the model AI uses by default. The models are a fixed list (`AIModelCatalog`).
 enum AIPreferences {
     /// The model chosen: an id from the catalog or "auto".
     static let modelKey = "ai.model"
     /// How an AI edit is reviewed: `inline` (A, default), `diff` (B) or `bubble` (C) — `ReviewStyleThumbnail.Sketch`.
     static let reviewStyleKey = "ai.reviewStyle"
 
-    static func keyAccount(_ provider: AIProvider) -> String { "ai.key.\(provider.rawValue)" }
+    /// The base URL typed for a provider (blank: its own API) — `AIEndpoint` reads it.
+    static func baseURLKey(_ provider: AIProvider) -> String { "ai.baseURL.\(provider.rawValue)" }
 
-    static func key(_ provider: AIProvider) -> String? {
-        Keychain.read(keyAccount(provider)).flatMap { $0.isEmpty ? nil : $0 }
+    static func baseText(_ provider: AIProvider, _ defaults: UserDefaults = .standard) -> String {
+        defaults.string(forKey: baseURLKey(provider)) ?? ""
     }
 
-    /// The providers that have a key.
+    /// The base requests go to, or nil when what was typed isn't a usable URL.
+    static func base(_ provider: AIProvider, _ defaults: UserDefaults = .standard) -> URL? {
+        AIEndpoint.base(baseText(provider, defaults), for: provider)
+    }
+
+    static func keyAccount(_ provider: AIProvider, base: URL?) -> String? {
+        AIEndpoint.keyAccount(provider, base: base)
+    }
+
+    /// The key for the provider's current base.
+    static func key(_ provider: AIProvider) -> String? {
+        keyAccount(provider, base: base(provider)).flatMap(Keychain.read).flatMap { $0.isEmpty ? nil : $0 }
+    }
+
+    /// The providers that have a key for their current base.
     static var available: Set<AIProvider> {
         Set(AIProvider.allCases.filter { key($0) != nil })
     }
@@ -83,18 +98,39 @@ struct AISettingsSection: View {
 private struct AIKeySection: View {
     let provider: AIProvider
     @State private var key = ""
+    @State private var baseText = ""
+
+    /// The base as typed, or nil while it isn't a usable URL (the key field waits for one).
+    private var base: URL? { AIEndpoint.base(baseText, for: provider) }
+    private var account: String? { AIPreferences.keyAccount(provider, base: base) }
 
     var body: some View {
         Section {
             SecureField("app:ai.settings.key", text: $key, prompt: Text(prompt))
                 .accessibilityIdentifier("settings-ai-key-\(provider.rawValue)")
-                .onAppear { key = AIPreferences.key(provider) ?? "" }
+                .disabled(account == nil)
                 .onChange(of: key) { _, value in
-                    Keychain.write(value.trimmingCharacters(in: .whitespacesAndNewlines), for: AIPreferences.keyAccount(provider))
+                    guard let account else { return }
+                    Keychain.write(value.trimmingCharacters(in: .whitespacesAndNewlines), for: account)
                 }
+            TextField(
+                "app:ai.settings.baseURL", text: $baseText,
+                prompt: Text(verbatim: AIEndpoint.defaultBase(provider).absoluteString)
+            )
+            .textContentType(.URL)
+            .autocorrectionDisabled()
+            #if os(iOS)
+                .keyboardType(.URL)
+                .textInputAutocapitalization(.never)
+            #endif
+            .accessibilityIdentifier("settings-ai-base-\(provider.rawValue)")
+            .onChange(of: baseText) { _, value in
+                UserDefaults.standard.set(value.trimmingCharacters(in: .whitespacesAndNewlines), forKey: AIPreferences.baseURLKey(provider))
+                // Another address has its own key (none yet, unless typed for it before).
+                key = account.flatMap(Keychain.read) ?? ""
+            }
             LabeledContent("app:ai.settings.status") {
-                Text(key.isEmpty ? "app:ai.settings.status.none" : "app:ai.settings.status.saved")
-                    .foregroundStyle(Theme.subtleForeground)
+                Text(status).foregroundStyle(problem ? AnyShapeStyle(.red) : AnyShapeStyle(Theme.subtleForeground))
             }
         } header: {
             Text(verbatim: provider.name)
@@ -104,6 +140,18 @@ private struct AIKeySection: View {
             case .openAI: Text("app:ai.settings.openai.detail")
             }
         }
+        .onAppear {
+            baseText = AIPreferences.baseText(provider)
+            key = account.flatMap(Keychain.read) ?? ""
+        }
+    }
+
+    private var problem: Bool { base.map { !AIEndpoint.mayCarryKey($0) } ?? true }
+
+    private var status: LocalizedStringKey {
+        guard let base else { return "app:ai.settings.status.badURL" }
+        if !AIEndpoint.mayCarryKey(base) { return "app:ai.settings.status.insecure" }
+        return key.isEmpty ? "app:ai.settings.status.none" : "app:ai.settings.status.saved"
     }
 
     private var prompt: LocalizedStringKey {

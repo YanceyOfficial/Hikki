@@ -24,17 +24,20 @@ final class AIService {
     private func run(_ payload: AIRequestPayload, send: @escaping @MainActor ([String: Any]) -> Void) {
         let id = payload.id
         let keys = Dictionary(uniqueKeysWithValues: AIProvider.allCases.compactMap { p in AIPreferences.key(p).map { (p, $0) } })
+        var bases: [AIProvider: URL] = [:]
+        for provider in AIProvider.allCases { bases[provider] = AIPreferences.base(provider) }
         let choice = UserDefaults.standard.string(forKey: AIPreferences.modelKey)
         guard let model = AIModelCatalog.resolve(choice, available: Set(keys.keys)) else {
             // No key at all: name the provider of the model chosen (or Auto's first choice).
             let provider = choice.flatMap(AIModelCatalog.model(id:))?.provider ?? .anthropic
-            send(Self.event(id, for: .missingKey(provider)))
+            send(Self.event(id, for: bases[provider] == nil ? .badBaseURL(provider) : .missingKey(provider)))
             return
         }
         let request = AIPrompts.request(for: Self.task(payload), model: model)
         let client: any AIClient
         do {
-            client = try AIClients.client(for: model, keys: keys)
+            guard let base = bases[model.provider] else { throw AIError.badBaseURL(model.provider) }
+            client = try AIClients.client(for: model, keys: keys, bases: [model.provider: base])
         } catch {
             send(Self.event(id, for: error as? AIError ?? .invalidResponse))
             return
@@ -84,6 +87,7 @@ final class AIService {
     static func event(_ id: String, for error: AIError) -> [String: Any] {
         var event: [String: Any] = ["id": id, "type": "error", "code": code(error)]
         if case .missingKey(let provider) = error { event["provider"] = provider.name }
+        if case .badBaseURL(let provider) = error { event["provider"] = provider.name }
         if case .rejected(let message) = error, !message.isEmpty { event["message"] = String(message.prefix(300)) }
         return event
     }
@@ -91,6 +95,7 @@ final class AIService {
     static func code(_ error: AIError) -> String {
         switch error {
         case .missingKey: "missingKey"
+        case .badBaseURL: "badBaseURL"
         case .unauthorized: "unauthorized"
         case .rateLimited: "rateLimited"
         case .unavailable: "unavailable"

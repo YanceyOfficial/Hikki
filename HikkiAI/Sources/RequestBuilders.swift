@@ -2,12 +2,12 @@ import Foundation
 
 /// The HTTP request for each provider: endpoint, headers, JSON body. Pure, so the shape is tested without a network.
 enum RequestBuilders {
-    static let openAIURL = URL(string: "https://api.openai.com/v1/responses")!
-    static let anthropicURL = URL(string: "https://api.anthropic.com/v1/messages")!
+    static let openAIURL = AIEndpoint.requestURL(.openAI, base: AIEndpoint.defaultBase(.openAI))
+    static let anthropicURL = AIEndpoint.requestURL(.anthropic, base: AIEndpoint.defaultBase(.anthropic))
     static let anthropicVersion = "2023-06-01"
 
     /// OpenAI's Responses API: `instructions` + `input` messages (images as data URLs), the `web_search` tool, streamed.
-    static func openAI(_ request: AIRequest, apiKey: String) throws -> URLRequest {
+    static func openAI(_ request: AIRequest, apiKey: String, url: URL = openAIURL) throws -> URLRequest {
         var body: [String: Any] = [
             "model": request.model.id,
             "instructions": request.instructions,
@@ -18,7 +18,7 @@ enum RequestBuilders {
             "store": false,
         ]
         if request.webSearch { body["tools"] = [["type": "web_search"]] }
-        var http = URLRequest(url: openAIURL)
+        var http = URLRequest(url: url)
         http.httpMethod = "POST"
         http.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         http.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -40,7 +40,7 @@ enum RequestBuilders {
     }
 
     /// Anthropic's Messages API: `system` + `messages` (images as base64 sources), the `web_search` server tool, streamed.
-    static func anthropic(_ request: AIRequest, apiKey: String) throws -> URLRequest {
+    static func anthropic(_ request: AIRequest, apiKey: String, url: URL = anthropicURL) throws -> URLRequest {
         var body: [String: Any] = [
             "model": request.model.id,
             "system": request.instructions,
@@ -49,7 +49,7 @@ enum RequestBuilders {
             "stream": true,
         ]
         if request.webSearch { body["tools"] = [["type": "web_search_20250305", "name": "web_search", "max_uses": 5]] }
-        var http = URLRequest(url: anthropicURL)
+        var http = URLRequest(url: url)
         http.httpMethod = "POST"
         http.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         http.setValue(anthropicVersion, forHTTPHeaderField: "anthropic-version")

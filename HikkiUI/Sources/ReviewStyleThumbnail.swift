@@ -1,7 +1,9 @@
 import SwiftUI
 
-/// A miniature of how an AI edit is reviewed (Settings → AI): lines of "text" as bars, removals red, additions green.
-/// `inline` — the changes in the page's lines; `diff` — − / + rows; `bubble` — the page untouched, a card beside it.
+/// A miniature of how an AI edit is reviewed (Settings → AI), drawn with one real edit — "We was late" fixed to "We
+/// were late" — so the three styles compare on the same change: `inline` — the change in the sentence; `diff` — the
+/// sentence before and after on − / + rows; `bubble` — the sentence untouched, a card naming the change and why. The
+/// sample stays English in every language: it shows a layout, not copy.
 public struct ReviewStyleThumbnail: View {
     public enum Sketch: String, CaseIterable, Sendable {
         case inline, diff, bubble
@@ -13,74 +15,101 @@ public struct ReviewStyleThumbnail: View {
         self.sketch = sketch
     }
 
+    private static let before = "was"
+    private static let after = "were"
+    private static let head = "We "
+    private static let tail = " late to the meeting."
+    private static let reason = "plural subject"
+
     public var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.s1) {
+        VStack(alignment: .leading, spacing: Spacing.s1_5) {
             switch sketch {
             case .inline:
-                line([.text(0.3), .del(0.18), .add(0.2), .text(0.2)])
-                line([.text(0.55), .add(0.25)])
-                line([.text(0.2), .del(0.15), .text(0.4)])
-                line([.text(0.7)])
+                Text(sentence(removed: true, added: true))
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                HStack(spacing: Spacing.s1) {
+                    Spacer(minLength: 0)
+                    pill("Discard", filled: false)
+                    pill("Accept", filled: true)
+                }
             case .diff:
-                line([.text(0.85)])
-                row(removed: true) { line([.text(0.3), .del(0.18), .text(0.32)]) }
-                row(removed: false) { line([.text(0.3), .add(0.22), .text(0.32)]) }
-                line([.text(0.6)])
+                VStack(alignment: .leading, spacing: Spacing.px) {
+                    diffRow(sign: "−", text: sentence(removed: true, added: false, struck: false), wash: Theme.washRed)
+                    diffRow(sign: "+", text: sentence(removed: false, added: true), wash: Theme.washGreen)
+                }
+                Spacer(minLength: 0)
             case .bubble:
-                line([.selected(0.75)])
-                line([.selected(0.5)])
-                VStack(alignment: .leading, spacing: Spacing.s1) {
-                    line([.del(0.22), .text(0.08), .add(0.25)])
-                    line([.del(0.15), .text(0.08), .add(0.3)])
+                Text(verbatim: Self.head + Self.before + Self.tail)
+                    .padding(.horizontal, Spacing.px)
+                    .background(Theme.selection, in: .rect(cornerRadius: Radius.sm))
+                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: Spacing.s0_5) {
+                    Text(change)
+                    Text(verbatim: Self.reason).foregroundStyle(Theme.mutedForeground)
                 }
                 .padding(Spacing.s1_5)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Theme.popover, in: .rect(cornerRadius: Radius.md))
                 .overlay(RoundedRectangle(cornerRadius: Radius.md).strokeBorder(Theme.border))
-                .shadow(color: Theme.border, radius: Spacing.s0_5, y: Spacing.px)
+                Spacer(minLength: 0)
             }
         }
-        .padding(Spacing.s2_5)
+        .font(.hk(.x2s))
+        .foregroundStyle(Theme.foreground)
+        .padding(Spacing.s2)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Theme.background, in: .rect(cornerRadius: Radius.md))
         .accessibilityHidden(true)
     }
 
-    private enum Bar {
-        case text(CGFloat)
-        case del(CGFloat)
-        case add(CGFloat)
-        case selected(CGFloat)
-    }
-
-    /// A line of bars, each a fraction of the line's width.
-    private func line(_ bars: [Bar]) -> some View {
-        GeometryReader { proxy in
-            HStack(spacing: Spacing.px) {
-                ForEach(Array(bars.enumerated()), id: \.offset) { _, bar in
-                    let (fraction, color) = style(bar)
-                    Capsule().fill(color).frame(width: proxy.size.width * fraction)
-                }
-            }
+    /// The sentence with the old word (red, struck through) and/or the new one (green).
+    private func sentence(removed: Bool, added: Bool, struck: Bool = true) -> AttributedString {
+        var text = AttributedString(Self.head)
+        if removed {
+            var word = AttributedString(Self.before)
+            word.foregroundColor = Theme.inkRed
+            word.backgroundColor = Theme.washRed
+            if struck { word.strikethroughStyle = .single }
+            text += word
         }
-        .frame(height: Spacing.s1_5)
+        if removed && added { text += AttributedString(" ") }
+        if added {
+            var word = AttributedString(Self.after)
+            word.foregroundColor = Theme.inkGreen
+            word.backgroundColor = Theme.washGreen
+            text += word
+        }
+        return text + AttributedString(Self.tail)
     }
 
-    /// A diff row: its line on the removal or addition wash.
-    private func row(removed: Bool, @ViewBuilder content: () -> some View) -> some View {
-        content()
+    /// "was → were" for the card.
+    private var change: AttributedString {
+        var old = AttributedString(Self.before)
+        old.foregroundColor = Theme.inkRed
+        old.strikethroughStyle = .single
+        var new = AttributedString(Self.after)
+        new.foregroundColor = Theme.inkGreen
+        return old + AttributedString(" → ") + new
+    }
+
+    private func diffRow(sign: String, text: AttributedString, wash: Color) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Spacing.s1) {
+            Text(verbatim: sign).foregroundStyle(Theme.mutedForeground)
+            Text(text).lineLimit(1)
+        }
+        .padding(.horizontal, Spacing.s1)
+        .padding(.vertical, Spacing.px)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(wash.opacity(0.6), in: .rect(cornerRadius: Radius.sm))
+    }
+
+    private func pill(_ label: String, filled: Bool) -> some View {
+        Text(verbatim: label)
+            .padding(.horizontal, Spacing.s1_5)
             .padding(.vertical, Spacing.px)
-            .padding(.horizontal, Spacing.s0_5)
-            .background(removed ? Theme.washRed : Theme.washGreen, in: .rect(cornerRadius: Radius.sm))
-    }
-
-    private func style(_ bar: Bar) -> (CGFloat, Color) {
-        switch bar {
-        case .text(let f): (f, Theme.mutedForeground.opacity(0.35))
-        case .del(let f): (f, Theme.inkRed.opacity(0.7))
-        case .add(let f): (f, Theme.inkGreen.opacity(0.8))
-        case .selected(let f): (f, Theme.selection)
-        }
+            .foregroundStyle(filled ? Theme.primaryForeground : Theme.foreground)
+            .background(filled ? Theme.primary : Theme.muted, in: .capsule)
     }
 }
 

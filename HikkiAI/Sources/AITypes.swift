@@ -103,6 +103,8 @@ public enum AIEvent: Equatable, Sendable {
 public enum AIError: Error, Equatable, Sendable {
     /// No key for the model's provider (Settings → AI).
     case missingKey(AIProvider)
+    /// The provider's base URL (Settings → AI) isn't usable: not a URL, or plain http to another machine.
+    case badBaseURL(AIProvider)
     /// The key was refused.
     case unauthorized
     /// Too many requests, or the account's quota is used up.
