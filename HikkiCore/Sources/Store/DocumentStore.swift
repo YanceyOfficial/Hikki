@@ -1,5 +1,6 @@
 import Foundation
 import GRDB
+import Synchronization
 
 public struct DocumentRecord: Codable, Sendable, Equatable, Identifiable, FetchableRecord, PersistableRecord {
     public static let databaseTableName = "document"
@@ -22,9 +23,16 @@ public struct DocumentRecord: Codable, Sendable, Equatable, Identifiable, Fetcha
     public var sortKey: Double
     /// Locked pages are read-only in the editor (title, body, icon, cover) until unlocked.
     public var lockedAt: Date? = nil
+    /// When anything about the page last changed — an edit, but also a move, reorder, trash, restore or favorite,
+    /// which leave `updatedAt` ("Edited") alone. Sync compares this one. nil in rows from before it existed: then
+    /// `updatedAt` is the last change.
+    public var changedAt: Date? = nil
 
     public var isFavorite: Bool { favoritedAt != nil }
     public var isLocked: Bool { lockedAt != nil }
+    /// The last change of any kind: the later of `changedAt` and `updatedAt` (a writer that predates `changedAt` only
+    /// moves `updatedAt`).
+    public var lastChange: Date { max(changedAt ?? updatedAt, updatedAt) }
 
     public func contentValue() throws -> JSONValue? {
         try content.map { try JSONValue(jsonData: Data($0.utf8)) }
@@ -186,6 +194,23 @@ public final class DocumentStore: Sendable {
                 t.add(column: "baseUpdatedAt", .datetime)
             }
         }
+        migrator.registerMigration("v9-changed-at") { db in
+            // Moves, reorders, trash and favorites aren't edits (`updatedAt` stays), but other devices must see them:
+            // `changedAt` is the time of the last change of any kind, and what sync compares. NULL = `updatedAt`.
+            try db.alter(table: "document") { t in
+                t.add(column: "changedAt", .datetime)
+            }
+        }
+        migrator.registerMigration("v10-file-stamps") { db in
+            // The page file as last seen (modification date, size, the change time it holds), so a launch doesn't
+            // decode every file again to find the few that changed. `baseUpdatedAt` now holds the last change
+            // (`changedAt`) both sides agreed on; before v9 that was `updatedAt`, which `changedAt` defaults to.
+            try db.alter(table: "pageFileState") { t in
+                t.add(column: "fileModified", .double)  // seconds since 1970: finer than a stored date
+                t.add(column: "fileSize", .integer)
+                t.add(column: "fileChangedAt", .datetime)
+            }
+        }
         return migrator
     }
 
@@ -197,7 +222,7 @@ public final class DocumentStore: Sendable {
             let last = try Double.fetchOne(db, sql: "SELECT MAX(sortKey) FROM document WHERE parentId IS ?", arguments: [parentId]) ?? -1
             let record = DocumentRecord(
                 id: id, title: "", content: nil, plainText: "", wordCount: 0, createdAt: now, updatedAt: now,
-                parentId: parentId, icon: nil, cover: nil, favoritedAt: nil, deletedAt: nil, sortKey: last + 1
+                parentId: parentId, icon: nil, cover: nil, favoritedAt: nil, deletedAt: nil, sortKey: last + 1, changedAt: now
             )
             try record.insert(db)
             return record
@@ -220,11 +245,10 @@ public final class DocumentStore: Sendable {
             copy.updatedAt = now
             copy.favoritedAt = nil
             copy.lockedAt = nil
-            try copy.insert(db)
-            for (position, sibling) in siblings.enumerated() {
-                try db.execute(sql: "UPDATE document SET sortKey = ? WHERE id = ?", arguments: [Double(position), sibling])
-            }
             copy.sortKey = Double(siblings.firstIndex(of: newId) ?? 0)
+            copy.changedAt = now
+            try copy.insert(db)
+            try Self.renumber(db, siblings, now: now)
             return copy
         }
     }
@@ -279,26 +303,36 @@ public final class DocumentStore: Sendable {
     // MARK: - Editor-owned writes
 
     /// Writes only the editor-owned columns. Returns false when the page no longer exists.
+    ///
+    /// `loaded`: the title and body the editor last loaded or saved. When the page's own have changed since (another
+    /// device's version was imported while the editor held unsaved edits), that version is kept as a conflicted copy
+    /// beside the page before the editor's replaces it — nothing either side wrote is lost. nil skips the check.
     @discardableResult
-    public func saveContent(_ snapshot: Snapshot, now: Date = .now) throws -> Bool {
+    public func saveContent(
+        _ snapshot: Snapshot, loaded: LoadedContent? = nil, conflictTitle: ConflictCopy.Title = ConflictCopy.defaultTitle,
+        now: Date = .now
+    ) throws -> Bool {
         let json = String(decoding: try snapshot.content.jsonData(), as: UTF8.self)
         return try writer.write { db in
-            let previousWords = try Int.fetchOne(db, sql: "SELECT wordCount FROM document WHERE id = ?", arguments: [snapshot.docId]) ?? 0
+            guard let row = try DocumentRecord.fetchOne(db, key: snapshot.docId) else { return false }
+            guard row.content != json || row.title != snapshot.title else { return true }
+            if let loaded, try !loaded.matches(row) {
+                let copy = ConflictCopy.make(
+                    from: try PageFile(record: row), source: ConflictCopy.source(device: nil, date: row.updatedAt), title: conflictTitle)
+                var record = try copy.record()
+                record.changedAt = now
+                try record.insert(db)
+                Log.warn("page changed under unsaved edits; conflicted copy kept", category: "store", context: ["id": row.id])
+            }
             try db.execute(
                 sql: """
-                    UPDATE document SET title = ?, content = ?, plainText = ?, wordCount = ?, updatedAt = ?
-                    WHERE id = ? AND (content IS NOT ? OR title IS NOT ?)
+                    UPDATE document SET title = ?, content = ?, plainText = ?, wordCount = ?, updatedAt = ?, changedAt = ?
+                    WHERE id = ?
                     """,
-                arguments: [
-                    snapshot.title, json, snapshot.text, snapshot.wordCount, now,
-                    snapshot.docId, json, snapshot.title,
-                ]
+                arguments: [snapshot.title, json, snapshot.text, snapshot.wordCount, now, now, snapshot.docId]
             )
-            if db.changesCount > 0 {
-                try Self.bumpActivity(db, day: now, edits: 1, words: max(0, snapshot.wordCount - previousWords))
-                return true
-            }
-            return try DocumentRecord.exists(db, key: snapshot.docId)
+            try Self.bumpActivity(db, day: now, edits: 1, words: max(0, snapshot.wordCount - row.wordCount))
+            return true
         }
     }
 
@@ -306,20 +340,24 @@ public final class DocumentStore: Sendable {
 
     public func setIcon(_ icon: String?, for id: String, now: Date = .now) throws {
         try writer.write { db in
-            try db.execute(sql: "UPDATE document SET icon = ?, updatedAt = ? WHERE id = ?", arguments: [icon, now, id])
+            try db.execute(
+                sql: "UPDATE document SET icon = ?, updatedAt = ?, changedAt = ? WHERE id = ?", arguments: [icon, now, now, id])
         }
     }
 
     public func setCover(_ cover: String?, for id: String, now: Date = .now) throws {
         try writer.write { db in
-            try db.execute(sql: "UPDATE document SET cover = ?, updatedAt = ? WHERE id = ?", arguments: [cover, now, id])
+            try db.execute(
+                sql: "UPDATE document SET cover = ?, updatedAt = ?, changedAt = ? WHERE id = ?", arguments: [cover, now, now, id])
         }
     }
 
-    /// Favoriting isn't an edit: `updatedAt` is left alone.
+    /// Favoriting isn't an edit: `updatedAt` is left alone (`changedAt` carries it to other devices).
     public func setFavorite(_ favorite: Bool, for id: String, now: Date = .now) throws {
         try writer.write { db in
-            try db.execute(sql: "UPDATE document SET favoritedAt = ? WHERE id = ?", arguments: [favorite ? now : nil, id])
+            try db.execute(
+                sql: "UPDATE document SET favoritedAt = ?, changedAt = ? WHERE id = ? AND (favoritedAt IS NULL) = ?",
+                arguments: [favorite ? now : nil, now, id, favorite])
         }
     }
 
@@ -328,7 +366,8 @@ public final class DocumentStore: Sendable {
     public func setLocked(_ locked: Bool, for id: String, now: Date = .now) throws {
         try writer.write { db in
             try db.execute(
-                sql: "UPDATE document SET lockedAt = ?, updatedAt = ? WHERE id = ?", arguments: [locked ? now : nil, now, id])
+                sql: "UPDATE document SET lockedAt = ?, updatedAt = ?, changedAt = ? WHERE id = ?",
+                arguments: [locked ? now : nil, now, now, id])
         }
     }
 
@@ -342,8 +381,9 @@ public final class DocumentStore: Sendable {
 
     /// Moves a page under `parentId` (nil = top level) at `index` among its new siblings (clamped).
     /// Siblings are renumbered 0…n, so order stays exact without fractional keys drifting.
-    /// Moving isn't an edit: `updatedAt` is left alone.
-    public func move(id: String, toParent parentId: String?, at index: Int) throws {
+    /// Moving isn't an edit: `updatedAt` is left alone (`changedAt` carries it to other devices). Only rows whose
+    /// place actually changed are written.
+    public func move(id: String, toParent parentId: String?, at index: Int, now: Date = .now) throws {
         try writer.write { db in
             guard try DocumentRecord.exists(db, key: id) else { throw MoveError.notFound(id) }
             if let parentId {
@@ -362,10 +402,19 @@ public final class DocumentStore: Sendable {
                     SELECT id FROM document WHERE parentId IS ? AND deletedAt IS NULL AND id != ? ORDER BY sortKey, createdAt, id
                     """, arguments: [parentId, id])
             siblings.insert(id, at: min(max(index, 0), siblings.count))
-            try db.execute(sql: "UPDATE document SET parentId = ? WHERE id = ?", arguments: [parentId, id])
-            for (position, sibling) in siblings.enumerated() {
-                try db.execute(sql: "UPDATE document SET sortKey = ? WHERE id = ?", arguments: [Double(position), sibling])
-            }
+            try db.execute(
+                sql: "UPDATE document SET parentId = ?, changedAt = ? WHERE id = ? AND parentId IS NOT ?",
+                arguments: [parentId, now, id, parentId])
+            try Self.renumber(db, siblings, now: now)
+        }
+    }
+
+    /// Gives `siblings` the sort keys 0…n, writing only rows whose key changes.
+    private static func renumber(_ db: Database, _ siblings: [String], now: Date) throws {
+        for (position, sibling) in siblings.enumerated() {
+            try db.execute(
+                sql: "UPDATE document SET sortKey = ?, changedAt = ? WHERE id = ? AND sortKey IS NOT ?",
+                arguments: [Double(position), now, sibling, Double(position)])
         }
     }
 
@@ -374,17 +423,106 @@ public final class DocumentStore: Sendable {
     /// Calls `onCommit` after every committed transaction that changed pages: the rows inserted or updated, and
     /// whether any row was deleted (the caller then reconciles by id — foreign-key cascades aren't reported row
     /// by row). Runs on the database's queue; keep it short and hand real work elsewhere.
+    /// The returned observation lasts as long as the database unless cancelled.
+    @discardableResult
     public func observePageCommits(
         _ onCommit: @escaping @Sendable (_ changed: [DocumentRecord], _ deletions: Bool, _ liveIDs: Set<String>?) -> Void
-    ) throws {
-        writer.add(transactionObserver: PageCommitObserver(onCommit: onCommit), extent: .databaseLifetime)
+    ) throws -> PageCommitObservation {
+        let observer = PageCommitObserver(onCommit: onCommit)
+        writer.add(transactionObserver: observer, extent: .databaseLifetime)
+        return PageCommitObservation(writer: writer, observer: observer)
     }
 
     /// Writes a page as it came from its file: no activity bump, no edited-time change.
     public func importPage(_ record: DocumentRecord) throws {
         try writer.write { db in
             try record.save(db)
-            try Self.setSyncBase(db, record.id, record.updatedAt)
+            try Self.setSyncBase(db, record.id, record.lastChange)
+        }
+    }
+
+    /// Writes a page as it came from its file, but only while the row is still as the caller saw it: `expected` is
+    /// its `lastChange` then (nil: there was no row). A save that landed meanwhile is never overwritten — returns
+    /// false, and the next pass finds both sides changed since they agreed (a conflicted copy, nothing lost).
+    @discardableResult
+    public func importPage(_ record: DocumentRecord, expecting expected: Date?, stamp: PageFiles.Stamp? = nil) throws -> Bool {
+        try writer.write { db in
+            let current = try Row.fetchOne(db, sql: "SELECT updatedAt, changedAt FROM document WHERE id = ?", arguments: [record.id])
+                .map { Self.lastChange(updatedAt: $0["updatedAt"], changedAt: $0["changedAt"]) }
+            switch (current, expected) {
+            case (nil, nil): break
+            case (let now?, let then?) where abs(now.timeIntervalSince(then)) < 0.0005: break
+            default: return false
+            }
+            try record.save(db)
+            try Self.setSyncBase(db, record.id, record.lastChange, stamp: stamp)
+            return true
+        }
+    }
+
+    /// A page from an imported page file (Settings → Import), as it was: dates, favorite, lock and body kept, no
+    /// activity counted. It goes last among `parentId`'s children.
+    public func insertImported(_ page: PageFile, id: String, parentId: String?, now: Date = .now) throws {
+        try writer.write { db in
+            var record = try page.record()
+            record.id = id
+            record.parentId = parentId
+            record.deletedAt = nil
+            record.changedAt = now
+            let last =
+                try Double.fetchOne(db, sql: "SELECT MAX(sortKey) FROM document WHERE parentId IS ?", arguments: [parentId]) ?? -1
+            record.sortKey = last + 1
+            try record.insert(db)
+        }
+    }
+
+    private static func lastChange(updatedAt: Date, changedAt: Date?) -> Date {
+        max(changedAt ?? updatedAt, updatedAt)
+    }
+
+    /// Every page's parent and last change — what a sync pass compares, without the bodies.
+    public func syncHeads() throws -> [String: SyncHead] {
+        try writer.read { db in
+            var heads: [String: SyncHead] = [:]
+            for row in try Row.fetchAll(db, sql: "SELECT id, parentId, updatedAt, changedAt FROM document") {
+                heads[row["id"]] = SyncHead(
+                    parentId: row["parentId"], lastChange: Self.lastChange(updatedAt: row["updatedAt"], changedAt: row["changedAt"]))
+            }
+            return heads
+        }
+    }
+
+    /// Parent loops (two devices nesting pages under each other at once) hide every page in them: each loop is
+    /// broken by moving its smallest id to the top level — the same choice on every device. Returns the pages moved.
+    @discardableResult
+    public func breakParentCycles(now: Date = .now) throws -> [String] {
+        try writer.write { db in
+            var parent: [String: String] = [:]
+            for row in try Row.fetchAll(db, sql: "SELECT id, parentId FROM document WHERE parentId IS NOT NULL") {
+                parent[row["id"]] = row["parentId"]
+            }
+            var moved: [String] = []
+            var settled = Set<String>()
+            for start in parent.keys.sorted() where !settled.contains(start) {
+                var path: [String] = []
+                var onPath = Set<String>()
+                var cursor: String? = start
+                while let id = cursor, !settled.contains(id), onPath.insert(id).inserted {
+                    path.append(id)
+                    cursor = parent[id]
+                }
+                if let id = cursor, onPath.contains(id), let index = path.firstIndex(of: id), let breaker = path[index...].min() {
+                    let last = try Double.fetchOne(db, sql: "SELECT MAX(sortKey) FROM document WHERE parentId IS NULL") ?? -1
+                    try db.execute(
+                        sql: "UPDATE document SET parentId = NULL, sortKey = ?, changedAt = ? WHERE id = ?",
+                        arguments: [last + 1, now, breaker])
+                    parent[breaker] = nil
+                    moved.append(breaker)
+                }
+                settled.formUnion(path)
+            }
+            if !moved.isEmpty { Log.warn("parent loop broken", category: "store", context: ["count": "\(moved.count)"]) }
+            return moved
         }
     }
 
@@ -401,12 +539,32 @@ public final class DocumentStore: Sendable {
         }
     }
 
-    /// Marks the page synced with its file holding exactly the row as of `updatedAt` (written or read just now).
-    public func markSynced(_ id: String, at updatedAt: Date) throws {
-        try writer.write { try Self.setSyncBase($0, id, updatedAt) }
+    /// Marks the page synced with its file holding exactly the row as of `changedAt` (its `lastChange`; written or
+    /// read just now), and remembers the file's stamp.
+    public func markSynced(_ id: String, at changedAt: Date, stamp: PageFiles.Stamp? = nil) throws {
+        try writer.write { try Self.setSyncBase($0, id, changedAt, stamp: stamp) }
     }
 
-    /// Per synced page, the `updatedAt` the row and its file last agreed on (absent until a page is next synced).
+    /// The page files as last seen, for pages synced with them (a launch reads only files that changed since).
+    public func fileStamps() throws -> [String: PageFiles.Stamp] {
+        try writer.read { db in
+            var stamps: [String: PageFiles.Stamp] = [:]
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT id, fileModified, fileSize, fileChangedAt FROM pageFileState
+                    WHERE fileModified IS NOT NULL AND fileSize IS NOT NULL AND fileChangedAt IS NOT NULL
+                    """)
+            for row in rows {
+                stamps[row["id"]] = PageFiles.Stamp(
+                    modified: Date(timeIntervalSince1970: row["fileModified"]), size: row["fileSize"], changedAt: row["fileChangedAt"])
+            }
+            return stamps
+        }
+    }
+
+    /// Per synced page, the last change (`lastChange`) the row and its file agreed on (absent until a page is next
+    /// synced).
     public func syncBases() throws -> [String: Date] {
         try writer.read { db in
             var bases: [String: Date] = [:]
@@ -417,12 +575,13 @@ public final class DocumentStore: Sendable {
         }
     }
 
-    private static func setSyncBase(_ db: Database, _ id: String, _ updatedAt: Date) throws {
+    private static func setSyncBase(_ db: Database, _ id: String, _ changedAt: Date, stamp: PageFiles.Stamp? = nil) throws {
         try db.execute(
             sql: """
-                INSERT INTO pageFileState (id, baseUpdatedAt) VALUES (?, ?)
-                ON CONFLICT(id) DO UPDATE SET baseUpdatedAt = excluded.baseUpdatedAt
-                """, arguments: [id, updatedAt])
+                INSERT INTO pageFileState (id, baseUpdatedAt, fileModified, fileSize, fileChangedAt) VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET baseUpdatedAt = excluded.baseUpdatedAt, fileModified = excluded.fileModified,
+                    fileSize = excluded.fileSize, fileChangedAt = excluded.fileChangedAt
+                """, arguments: [id, changedAt, stamp?.modified.timeIntervalSince1970, stamp?.size, stamp?.changedAt])
     }
 
     public func unmarkSynced(_ ids: some Sequence<String>) throws {
@@ -478,24 +637,29 @@ public final class DocumentStore: Sendable {
     public func moveToTrash(id: String, now: Date = .now) throws {
         try writer.write { db in
             try db.execute(
-                sql: "\(Self.subtreeCTE) UPDATE document SET deletedAt = ? WHERE id IN (SELECT id FROM sub) AND deletedAt IS NULL",
-                arguments: [id, now])
+                sql: """
+                    \(Self.subtreeCTE) UPDATE document SET deletedAt = ?, changedAt = ? WHERE id IN (SELECT id FROM sub) AND deletedAt IS NULL
+                    """,
+                arguments: [id, now, now])
         }
     }
 
     /// Restores the page and the descendants trashed along with it. If its parent is still in the trash,
     /// the page comes back at the top level rather than staying hidden under a deleted parent.
-    public func restore(id: String) throws {
+    public func restore(id: String, now: Date = .now) throws {
         try writer.write { db in
             guard let record = try DocumentRecord.fetchOne(db, key: id), let deletedAt = record.deletedAt else { return }
             try db.execute(
-                sql: "\(Self.subtreeCTE) UPDATE document SET deletedAt = NULL WHERE id IN (SELECT id FROM sub) AND deletedAt = ?",
-                arguments: [id, deletedAt])
+                sql: """
+                    \(Self.subtreeCTE) UPDATE document SET deletedAt = NULL, changedAt = ? WHERE id IN (SELECT id FROM sub) AND deletedAt = ?
+                    """,
+                arguments: [id, now, deletedAt])
             if let parentId = record.parentId,
                 try Bool.fetchOne(db, sql: "SELECT deletedAt IS NOT NULL FROM document WHERE id = ?", arguments: [parentId]) == true
             {
                 let last = try Double.fetchOne(db, sql: "SELECT MAX(sortKey) FROM document WHERE parentId IS NULL") ?? -1
-                try db.execute(sql: "UPDATE document SET parentId = NULL, sortKey = ? WHERE id = ?", arguments: [last + 1, id])
+                try db.execute(
+                    sql: "UPDATE document SET parentId = NULL, sortKey = ?, changedAt = ? WHERE id = ?", arguments: [last + 1, now, id])
             }
         }
     }
@@ -547,11 +711,63 @@ public final class DocumentStore: Sendable {
         """
 }
 
+/// A page's place and last change, as a sync pass compares them.
+public struct SyncHead: Equatable, Sendable {
+    public var parentId: String?
+    public var lastChange: Date
+}
+
+/// What the editor last loaded or saved of a page (title and body): a save checks the page still holds it.
+public struct LoadedContent: Equatable, Sendable {
+    public var title: String
+    public var content: JSONValue?
+
+    public init(title: String, content: JSONValue?) {
+        self.title = title
+        self.content = content
+    }
+
+    public init(_ record: DocumentRecord) throws {
+        self.init(title: record.title, content: try record.contentValue())
+    }
+
+    public init(_ snapshot: Snapshot) {
+        self.init(title: snapshot.title, content: snapshot.content)
+    }
+
+    func matches(_ record: DocumentRecord) throws -> Bool {
+        guard record.title == title else { return false }
+        guard let stored = record.content else { return content == nil }
+        guard let content else { return false }
+        if String(decoding: try content.jsonData(), as: UTF8.self) == stored { return true }
+        return try record.contentValue() == content
+    }
+}
+
+/// A commit observation (`DocumentStore.observePageCommits`); `cancel()` ends it.
+public final class PageCommitObservation: Sendable {
+    private let writer: any DatabaseWriter
+    private let observer: PageCommitObserver
+
+    fileprivate init(writer: any DatabaseWriter, observer: PageCommitObserver) {
+        self.writer = writer
+        self.observer = observer
+    }
+
+    public func cancel() {
+        observer.cancel()
+        writer.remove(transactionObserver: observer)
+    }
+}
+
 /// Collects page row changes in a transaction and reports them once it commits (see `observePageCommits`).
 private final class PageCommitObserver: TransactionObserver, @unchecked Sendable {
     private let onCommit: @Sendable ([DocumentRecord], Bool, Set<String>?) -> Void
     private var changed = Set<Int64>()
     private var deletions = false
+    private let cancelled = Mutex(false)
+
+    func cancel() { cancelled.withLock { $0 = true } }
 
     init(onCommit: @escaping @Sendable ([DocumentRecord], Bool, Set<String>?) -> Void) {
         self.onCommit = onCommit
@@ -570,7 +786,7 @@ private final class PageCommitObserver: TransactionObserver, @unchecked Sendable
             changed = []
             deletions = false
         }
-        guard !changed.isEmpty || deletions else { return }
+        guard !changed.isEmpty || deletions, !cancelled.withLock({ $0 }) else { return }
         let rowIDs = Array(changed)
         let records = (try? DocumentRecord.filter(rowIDs.contains(Column.rowID)).fetchAll(db)) ?? []
         let live = deletions ? (try? Set(String.fetchAll(db, sql: "SELECT id FROM document"))) : nil

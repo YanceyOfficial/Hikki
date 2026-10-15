@@ -181,8 +181,17 @@ HikkiUITests/                 XCUITest flows
   (`HikkiCore/Sources/Store/PageFile.swift`: `pages/<id>.json`, format-versioned, content as JSON); SQLite is a
   rebuildable cache/index. `HikkiCore/Sources/Store/WorkspaceSync.swift` reconciles on launch and app activation
   (newer side wins; a missing file deletes the page only if it was synced before — `pageFileState`) and writes every
-  committed page change through (a GRDB transaction observer). It also watches `pages/` (a dispatch source;
-  unchanged files are skipped by modification date + size) and posts `pagesChangedOnDisk`, so an open editor
+  committed page change through (a GRDB transaction observer). "Newer" is `changedAt` (`lastChange`): every write
+  method sets it — moves, reorders, trash, restore and favorites too, which leave `updatedAt` (the "Edited" date)
+  alone — and page files carry it as an optional key (format stays 1; absent = `updatedAt`). A pass compares ids,
+  parents and change times only (`syncHeads`), reading a full row just for pages it writes or replaces; an import
+  replaces a row only if it is still as compared (`importPage(_:expecting:)`), and a write-through never overwrites a
+  file that changed since it last agreed with the row (a pass then makes the conflicted copy). A remote deletion of
+  a page waits while a page under it still has a file (moved out elsewhere, its new file not read yet); parent loops
+  two devices made are broken (`breakParentCycles`: the smallest id goes to the top). It also watches `pages/` (a
+  dispatch source; unchanged files are skipped by modification date + size — stamps persisted in `pageFileState`, so a
+  launch reads only changed files — and a watched change that is only this device's own writes runs no pass) and
+  posts `pagesChangedOnDisk`, so an open editor
   reloads a page another device changed (`window.hikki.reload`, declined while it has unsaved edits). While files
   are still downloading (iCloud placeholders / half-written files) it passes again with backoff — kqueue events are
   unreliable in iOS file-provider folders. Assets live in `<folder>/assets`. **Conflict copies**: nothing two devices
@@ -190,7 +199,10 @@ HikkiUITests/                 XCUITest flows
   protocol in `HikkiCore/Sources/Store/FileConflicts.swift`; tests fake it), the newest edit wins as the page and every
   other version that says something different becomes a sibling page titled "<title> (conflicted copy <device>,
   <date>)" (`ConflictCopy`), then the conflicts are marked resolved. The same happens when the row and the file both
-  changed since they last agreed — `pageFileState.baseUpdatedAt`, set on every write and import (`syncBases`).
+  changed since they last agreed — `pageFileState.baseUpdatedAt` (the agreed `lastChange`), set on every write and
+  import (`syncBases`) — and when the editor saves over a title/body it never loaded (`saveContent(_:loaded:)` with
+  the `LoadedContent` it last loaded or saved). Pages deleted for good here go to `Options.onDeleted`, which takes
+  their history and comments along.
 - **Page history** (`HikkiCore/Sources/Store/PageHistory.swift`): versions are files in the workspace folder,
   `history/<page id>/<yyyyMMddTHHmmss.SSSZ>.json` (format-versioned, atomic writes), so they sync like pages. Policy
   (`PageHistoryPolicy`, Notion-like): the first save of an editing session (10 quiet minutes) keeps the page _as it
