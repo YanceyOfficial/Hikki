@@ -257,6 +257,7 @@ struct AIChatView: View {
     @State private var mentionIndex = 0
     @State private var pickingFiles = false
     @State private var dropTargeted = false
+    @State private var layerTargeted = false
     #if os(iOS)
         @State private var pickingPhotos = false
         @State private var photoItems: [PhotosPickerItem] = []
@@ -387,12 +388,27 @@ struct AIChatView: View {
             .background(Theme.background, in: .rect(cornerRadius: Radius.xl + Spacing.s1))
             .overlay(
                 RoundedRectangle(cornerRadius: Radius.xl + Spacing.s1)
-                    .strokeBorder(dropTargeted ? ColorTone.standard.fill : Theme.border, lineWidth: dropTargeted ? 2 : 1)
+                    .strokeBorder(
+                        dropTargeted || layerTargeted ? ColorTone.standard.fill : Theme.border,
+                        lineWidth: dropTargeted || layerTargeted ? 2 : 1)
             )
             .shadow(color: Theme.border, radius: Spacing.s2, y: Spacing.s0_5)
             .onDrop(of: [.fileURL, .image, .pdf], isTargeted: $dropTargeted) { providers in
                 receive(providers)
                 return true
+            }
+            // The field is a native text view that takes drops itself (it would type the file's path): while
+            // something is dragged over the card, a clear layer on top of everything takes the drop instead. It
+            // exists only during the drag, so clicks and typing never meet it.
+            .overlay {
+                if dropTargeted || layerTargeted {
+                    Color.clear
+                        .contentShape(.rect(cornerRadius: Radius.xl + Spacing.s1))
+                        .onDrop(of: [.fileURL, .image, .pdf], isTargeted: $layerTargeted) { providers in
+                            receive(providers)
+                            return true
+                        }
+                }
             }
             if let error = chat.attachError {
                 Text(verbatim: error).font(.hk(.xs)).foregroundStyle(.red).padding(.horizontal, Spacing.s1)
