@@ -12,6 +12,11 @@
         @Environment(AppModel.self) private var model
         @Bindable var navigator: Navigator
         @State private var isDrawerOpen = false
+        /// The recent pages, worked out when the tree changes (not on every redraw).
+        @State private var digest = HomeDigest(pages: [])
+        /// This week's writing and the workspace's totals (two queries), read when the tree changes.
+        @State private var activity: [DailyActivity] = []
+        @State private var stats = WorkspaceStats(pages: 0, words: 0)
 
         var body: some View {
             SideDrawer(isOpen: $isDrawerOpen, closeLabel: "app:drawer.close") {
@@ -24,6 +29,11 @@
             // Something opened from elsewhere (search, a link): the drawer is shut when Home shows again.
             .onChange(of: navigator.compactColumn) { _, column in
                 if column == .detail { isDrawerOpen = false }
+            }
+            .onChange(of: model.tree, initial: true) { _, tree in digest = HomeDigest(pages: tree.all) }
+            .task(id: model.tree) {
+                activity = model.activity(days: 7)
+                stats = model.stats()
             }
         }
 
@@ -183,13 +193,10 @@
         }
 
         /// Pages edited in the last 7 days, newest first.
-        private var weekPages: [PageSummary] {
-            let start = Calendar.current.date(byAdding: .day, value: -7, to: .now) ?? .now
-            return Array(model.tree.all.filter { $0.updatedAt >= start }.sorted { $0.updatedAt > $1.updatedAt }.prefix(10))
-        }
+        private var weekPages: [PageSummary] { digest.weekPages }
 
         /// This week's edits beyond the cards above, by day.
-        private var recentlyEdited: [PageSummary] { Array(weekPages.dropFirst(recents.count).prefix(10)) }
+        private var recentlyEdited: [PageSummary] { digest.recentlyEdited }
 
         private var recentList: some View {
             VStack(alignment: .leading, spacing: Spacing.s0) {
@@ -207,7 +214,6 @@
             let calendar = Calendar.current
             let today = calendar.startOfDay(for: .now)
             let start = calendar.date(byAdding: .day, value: -6, to: today) ?? today
-            let activity = model.activity(days: 7)
             let byDay = Dictionary(activity.map { (calendar.startOfDay(for: $0.day), $0.wordsAdded) }, uniquingKeysWith: +)
             let symbols = calendar.veryShortStandaloneWeekdaySymbols
             let days = (0..<7).map { offset -> WeekActivityCard.Day in
@@ -216,7 +222,6 @@
                     id: offset, label: symbols[calendar.component(.weekday, from: day) - 1], value: max(0, byDay[day] ?? 0),
                     isToday: offset == 6)
             }
-            let stats = model.stats()
             return WeekActivityCard(
                 title: "app:home.thisWeek", headline: days.map(\.value).reduce(0, +).formatted(),
                 caption: String(localized: "app:home.wordsWritten"), days: days,
@@ -226,9 +231,7 @@
         }
 
         /// The pages edited last, newest first.
-        private var recents: [PageSummary] {
-            Array(model.tree.all.sorted { $0.updatedAt > $1.updatedAt }.prefix(8))
-        }
+        private var recents: [PageSummary] { digest.recents }
 
         private var recentCards: some View {
             VStack(alignment: .leading, spacing: Spacing.s2_5) {

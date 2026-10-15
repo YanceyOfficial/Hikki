@@ -9,17 +9,6 @@ import WebKit
 extension AppModel {
     // MARK: - History
 
-    /// The page's kept versions, newest first.
-    func versions(of pageID: String) -> [PageVersion] {
-        guard let history else { return [] }
-        do {
-            return try history.versions(of: pageID)
-        } catch {
-            Log.error("page versions unreadable: \(error)", category: "history", context: ["docId": pageID])
-            return []
-        }
-    }
-
     /// Puts a version back as the page (title, body, icon, cover). Editors showing the page hand over their unsaved
     /// edits first, and the page as it is now is kept as a version — restoring can itself be undone from the history.
     func restore(_ version: PageVersion, editors: [EditorController]) async {
