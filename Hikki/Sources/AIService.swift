@@ -23,25 +23,15 @@ final class AIService {
 
     private func run(_ payload: AIRequestPayload, send: @escaping @MainActor ([String: Any]) -> Void) {
         let id = payload.id
-        let keys = Dictionary(uniqueKeysWithValues: AIProvider.allCases.compactMap { p in AIPreferences.key(p).map { (p, $0) } })
-        var bases: [AIProvider: URL] = [:]
-        for provider in AIProvider.allCases { bases[provider] = AIPreferences.base(provider) }
-        let choice = UserDefaults.standard.string(forKey: AIPreferences.modelKey)
-        guard let model = AIModelCatalog.resolve(choice, available: Set(keys.keys)) else {
-            // No key at all: name the provider of the model chosen (or Auto's first choice).
-            let provider = choice.flatMap(AIModelCatalog.model(id:))?.provider ?? .anthropic
-            send(Self.event(id, for: bases[provider] == nil ? .badBaseURL(provider) : .missingKey(provider)))
+        let client: any AIClient
+        let model: AIModel
+        switch Self.connect(UserDefaults.standard.string(forKey: AIPreferences.modelKey)) {
+        case .success(let connection): (model, client) = connection
+        case .failure(let error):
+            send(Self.event(id, for: error))
             return
         }
         let request = AIPrompts.request(for: Self.task(payload), model: model)
-        let client: any AIClient
-        do {
-            guard let base = bases[model.provider] else { throw AIError.badBaseURL(model.provider) }
-            client = try AIClients.client(for: model, keys: keys, bases: [model.provider: base])
-        } catch {
-            send(Self.event(id, for: error as? AIError ?? .invalidResponse))
-            return
-        }
         Log.info(
             "AI request", category: "ai",
             context: ["action": payload.action, "model": model.id, "units": "\(payload.units.count)"])
@@ -63,6 +53,38 @@ final class AIService {
                 }
             }
             self?.tasks[id] = nil
+        }
+    }
+
+    /// The model a choice ("auto", or a catalog id) runs on and its client — or why it can't: no key for it (Auto
+    /// with no key at all names the chosen model's provider, else Anthropic), or an unusable base URL.
+    static func connect(_ choice: String?) -> Result<(AIModel, any AIClient), AIError> {
+        let keys = Dictionary(uniqueKeysWithValues: AIProvider.allCases.compactMap { p in AIPreferences.key(p).map { (p, $0) } })
+        guard let model = AIModelCatalog.resolve(choice, available: Set(keys.keys)) else {
+            let provider = choice.flatMap(AIModelCatalog.model(id:))?.provider ?? .anthropic
+            return .failure(AIPreferences.base(provider) == nil ? .badBaseURL(provider) : .missingKey(provider))
+        }
+        guard let base = AIPreferences.base(model.provider) else { return .failure(.badBaseURL(model.provider)) }
+        do {
+            return .success((model, try AIClients.client(for: model, keys: keys, bases: [model.provider: base])))
+        } catch {
+            return .failure(error as? AIError ?? .invalidResponse)
+        }
+    }
+
+    /// What went wrong, in the user's words (the native Ask AI sheet; the page has its own strings).
+    static func message(for error: AIError) -> String {
+        switch error {
+        case .missingKey(let provider): String(localized: "app:ai.error.missingKey \(provider.name)")
+        case .badBaseURL(let provider): String(localized: "app:ai.error.badBaseURL \(provider.name)")
+        case .unauthorized: String(localized: "app:ai.error.unauthorized")
+        case .rateLimited: String(localized: "app:ai.error.rateLimited")
+        case .unavailable: String(localized: "app:ai.error.unavailable")
+        case .offline: String(localized: "app:ai.error.offline")
+        case .rejected(let message) where !message.isEmpty:
+            String(localized: "app:ai.error.rejectedWith \(String(message.prefix(300)))")
+        case .rejected: String(localized: "app:ai.error.rejected")
+        case .invalidResponse, .cancelled: String(localized: "app:ai.error.invalidResponse")
         }
     }
 

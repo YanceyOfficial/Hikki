@@ -11,7 +11,11 @@ struct SidebarView: View {
     var wide = false
 
     var body: some View {
-        PhoneSidebar(navigator: navigator, wideSidebar: wide)
+        #if os(iOS)
+            if wide { PhoneSidebar(navigator: navigator, wideSidebar: true) } else { PhoneHome(navigator: navigator) }
+        #else
+            PhoneSidebar(navigator: navigator, wideSidebar: wide)
+        #endif
     }
 }
 

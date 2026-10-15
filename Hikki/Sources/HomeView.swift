@@ -97,6 +97,14 @@ struct HomeView: View {
 
     var body: some View {
         let rows = self.rows
+        if compact {
+            phone(rows)
+        } else {
+            wide(rows)
+        }
+    }
+
+    private func wide(_ rows: [HomeRow]) -> some View {
         VStack(alignment: .leading, spacing: Spacing.s0) {
             header(count: rows.count)
                 .padding(.horizontal, Spacing.s6)
@@ -106,8 +114,6 @@ struct HomeView: View {
                 empty("app:home.empty")
             } else if rows.isEmpty {
                 empty("app:home.noMatches")
-            } else if compact {
-                list(rows)
             } else {
                 switch layout {
                 case .table: table(rows)
@@ -290,28 +296,126 @@ struct HomeView: View {
         }
     }
 
-    private func list(_ rows: [HomeRow]) -> some View {
-        List(rows) { row in
-            Button {
-                navigator.open(row.id)
-            } label: {
-                HStack(spacing: Spacing.s3) {
-                    PageIcon(row.icon, size: 18)
-                    VStack(alignment: .leading, spacing: Spacing.s0_5) {
-                        Text(row.title).font(.hk(.base)).foregroundStyle(Theme.foreground).lineLimit(1)
-                        if !row.location.isEmpty {
-                            Text(row.location).font(.hk(.xs)).foregroundStyle(Theme.mutedForeground).lineLimit(1)
-                        }
+    // MARK: iPhone
+
+    /// iPhone: a large title, the filter as a capsule, pages under day headings (when ordered by edit time) as plain
+    /// rows, the order in the bar's menu and New Page floating at the bottom right.
+    private func phone(_ rows: [HomeRow]) -> some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: Spacing.s0) {
+                HStack(alignment: .firstTextBaseline, spacing: Spacing.s2_5) {
+                    Text("app:home.allPages").font(.hk(.x3l, .bold)).foregroundStyle(Theme.foreground)
+                    Text(rows.count, format: .number).font(.hk(.lg)).foregroundStyle(Theme.mutedForeground)
+                }
+                .padding(.bottom, Spacing.s3)
+                HStack(spacing: Spacing.s2) {
+                    IconView(.magnifyingGlass, size: TextSize.base.rawValue).foregroundStyle(Theme.mutedForeground)
+                    TextField("app:home.filter", text: $filter)
+                        .font(.hk(.base))
+                        .accessibilityIdentifier("home-filter")
+                }
+                .padding(.horizontal, Spacing.s3_5)
+                .frame(height: Size.iconButton + Spacing.s3)
+                .background(Theme.muted, in: .capsule)
+                .padding(.bottom, Spacing.s2)
+                if model.tree.all.isEmpty {
+                    empty("app:home.empty").padding(.top, Spacing.s12)
+                } else if rows.isEmpty {
+                    empty("app:home.noMatches").padding(.top, Spacing.s12)
+                } else if sortField.wrappedValue == .edited {
+                    ForEach(RecencyGroup.grouped(rows, by: \.updatedAt), id: \.group) { group in
+                        Text(Self.heading(group.group))
+                            .font(.hk(.md, .semibold))
+                            .foregroundStyle(Theme.mutedForeground)
+                            .padding(.top, Spacing.s4)
+                            .padding(.bottom, Spacing.s1)
+                            .accessibilityAddTraits(.isHeader)
+                        ForEach(group.items) { phoneRow($0, group: group.group) }
                     }
-                    Spacer(minLength: Spacing.s2)
-                    Text(row.updatedAt, format: .relative(presentation: .named))
-                        .font(.hk(.xs))
-                        .foregroundStyle(Theme.mutedForeground)
+                } else {
+                    ForEach(rows) { phoneRow($0, group: nil) }
                 }
             }
-            .accessibilityIdentifier("home-row-\(row.title)")
+            .padding(.horizontal, Spacing.s4)
+            .padding(.bottom, Size.floatingBar + Spacing.s12)
         }
-        .listStyle(.plain)
+        .scrollDismissesKeyboard(.immediately)
+        .background(Theme.background)
+        .navigationTitle("")
+        #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+        #endif
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) { sortMenu }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            Button {
+                navigator.newPage()
+            } label: {
+                HStack(spacing: Spacing.s2) {
+                    IconView(.plus, size: TextSize.lg.rawValue)
+                    Text("app:page.new").font(.hk(.base, .semibold))
+                }
+                .foregroundStyle(ColorTone.standard.onFill)
+                .padding(.horizontal, Spacing.s5)
+                .frame(height: Size.floatingBar)
+                .contentShape(.capsule)
+            }
+            .buttonStyle(.plain)
+            .glassEffect(.regular.tint(ColorTone.standard.fill).interactive(), in: .capsule)
+            .padding(.trailing, Spacing.s4)
+            .padding(.bottom, Spacing.s2)
+            .accessibilityIdentifier("home-new-page")
+        }
+    }
+
+    private func phoneRow(_ row: HomeRow, group: RecencyGroup?) -> some View {
+        Button {
+            navigator.open(row.id)
+        } label: {
+            HStack(spacing: Spacing.s3) {
+                PageIcon(row.icon, size: TextSize.lg.rawValue)
+                    .frame(width: Size.iconButton + Spacing.s1_5, height: Size.iconButton + Spacing.s1_5)
+                    .background(Theme.muted, in: .rect(cornerRadius: Radius.lg))
+                VStack(alignment: .leading, spacing: Spacing.px) {
+                    Text(row.title).font(.hk(.base)).foregroundStyle(Theme.foreground).lineLimit(1)
+                    if !row.location.isEmpty {
+                        Text(row.location).font(.hk(.md)).foregroundStyle(Theme.mutedForeground).lineLimit(1)
+                    }
+                }
+                Spacer(minLength: Spacing.s2)
+                Text(Self.when(row.updatedAt, in: group))
+                    .font(.hk(.md))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.placeholder)
+            }
+            .frame(minHeight: Size.row + Spacing.s6)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            if let page = model.tree.page(row.id) { PageActions(page: page, navigator: navigator) }
+        }
+        .accessibilityIdentifier("home-row-\(row.title)")
+    }
+
+    private static func heading(_ group: RecencyGroup) -> String {
+        switch group {
+        case .today: String(localized: "app:home.today")
+        case .yesterday: String(localized: "app:home.yesterday")
+        case .thisWeek: String(localized: "app:home.thisWeek")
+        case .month(let month): Calendar.current.standaloneMonthSymbols[month - 1]
+        case .year(let year): String(year)
+        }
+    }
+
+    /// The edit time as its heading needs it: a time today and yesterday, a weekday within the week, else the date.
+    private static func when(_ date: Date, in group: RecencyGroup?) -> String {
+        switch group {
+        case .today, .yesterday: date.formatted(date: .omitted, time: .shortened)
+        case .thisWeek: date.formatted(.dateTime.weekday(.abbreviated))
+        default: date.formatted(.dateTime.month(.abbreviated).day())
+        }
     }
 }
 

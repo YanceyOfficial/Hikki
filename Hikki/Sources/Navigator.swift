@@ -48,6 +48,13 @@ final class Navigator {
         }
     }
     var isSearching = false
+    /// The Ask AI sheet (iPhone's bottom bar).
+    var isAskingAI = false
+    /// The page whose actions sheet is open (iPhone's ⋯).
+    var pageActionsID: String?
+    /// iPhone: which column of the collapsed split view shows — the home screen (sidebar) or the page (detail).
+    /// Opening anything shows the detail; the system's back sets it back.
+    var compactColumn: NavigationSplitViewColumn = .sidebar
     var isShowingSettings = false
     /// Page ⋯ → Page History…: the page whose versions the history sheet shows.
     var historyPageID: String?
@@ -102,6 +109,7 @@ final class Navigator {
 
     func go(_ route: Route) {
         tabs.navigate(to: route)
+        compactColumn = .detail
         syncSelection()
     }
 

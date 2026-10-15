@@ -147,7 +147,11 @@ struct SettingsView: View {
                         Section {
                             ForEach(group.pages) { page in
                                 NavigationLink(value: page) {
-                                    IconLabel(page.title, icon: page.icon)
+                                    if page == .workspace {
+                                        WorkspaceCardLabel()
+                                    } else {
+                                        IconLabel(page.title, icon: page.icon)
+                                    }
                                 }
                                 .accessibilityIdentifier("settings-page-\(page.rawValue)")
                             }
@@ -178,6 +182,33 @@ struct SettingsView: View {
         }
     #endif
 }
+
+#if os(iOS)
+    /// The hub's first row: the workspace itself — its badge, name, where it lives and how many pages it has.
+    private struct WorkspaceCardLabel: View {
+        @Environment(AppModel.self) private var model
+
+        var body: some View {
+            HStack(spacing: Spacing.s3) {
+                WorkspaceBadge(initial: model.workspace?.initial ?? "H", icon: model.workspace?.icon, size: Spacing.s12)
+                VStack(alignment: .leading, spacing: Spacing.s0_5) {
+                    // The user's workspace name.
+                    Text(verbatim: model.workspace?.name ?? "Hikki").font(.hk(.lg, .semibold))
+                    Text("app:settings.workspace.summary \(location) \(model.tree.all.count.formatted())")
+                        .font(.hk(.md))
+                        .foregroundStyle(Theme.mutedForeground)
+                        .lineLimit(1)
+                }
+            }
+            .padding(.vertical, Spacing.s1_5)
+        }
+
+        private var location: String {
+            if case .folder(_, let displayName) = model.workspace?.location { return displayName }
+            return String(localized: "app:onboarding.location.device")
+        }
+    }
+#endif
 
 /// One page's sections.
 private struct SettingsPageContent: View {

@@ -6,6 +6,9 @@ import SwiftUI
 /// The native shell's icons: SF Symbols where design/icons.json names one, else the bundled Phosphor asset
 /// (the web editor uses the Phosphor names via @phosphor-icons/react).
 public nonisolated enum Icon: String, CaseIterable, Sendable {
+    case globe = "globe"
+    case stop = "stop"
+    case arrowUp = "arrow-up"
     case caretUpDown = "caret-up-down"
     case slidersHorizontal = "sliders-horizontal"
     case info = "info"
@@ -80,6 +83,9 @@ public nonisolated enum Icon: String, CaseIterable, Sendable {
     /// The SF Symbol drawn for this icon, if any.
     public var systemName: String? {
         switch self {
+        case .globe: "globe"
+        case .stop: "stop.fill"
+        case .arrowUp: "arrow.up"
         case .caretUpDown: "chevron.up.chevron.down"
         case .slidersHorizontal: "slider.horizontal.3"
         case .info: "info.circle"

@@ -72,6 +72,12 @@
                             }
                         }
                     }
+                    Section("FloatingActionBar") {
+                        FloatingActionBar(
+                            leading: .init("Search", icon: .magnifyingGlass, identifier: "gallery-search") {}, prompt: "Ask AI",
+                            promptIdentifier: "gallery-ask", onPrompt: {},
+                            trailing: .init("New page", icon: .notePencil, identifier: "gallery-new") {})
+                    }
                     Section("AIGlyph") {
                         HStack(spacing: Spacing.s4) {
                             AIGlyph()

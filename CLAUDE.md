@@ -139,10 +139,19 @@ HikkiUITests/                 XCUITest flows
   layout hook to keep the traffic lights in place. The page scrolls under the toolbar (WKWebView
   `obscuredContentInsets` on macOS, an explicit scroll inset on iOS).
 - **Sidebar**: Mac/iPad draw our own rows in a `LazyVStack` (`Hikki/Sources/SidebarView.swift`) — a native `List`
-  paints selection in the system accent (not the colour tone) and swallowed row drops on iPad; iPhone keeps a `List`.
-  Fills on the sidebar use resolved colours (dynamic ones picked up the active window's vibrancy).
+  paints selection in the system accent (not the colour tone) and swallowed row drops on iPad. Fills on the sidebar use
+  resolved colours (dynamic ones picked up the active window's vibrancy).
+- **iPhone is its own layout**, not the Mac's squeezed (prototype: the "Hikki iPhone redesign" canvas): the collapsed
+  split view's sidebar column is `Hikki/Sources/PhoneHome.swift` (workspace, All pages / Trash tiles, "Jump back in"
+  cards, favorites, the page tree as plain rows) and opening anything shows the detail through
+  `Navigator.compactColumn` (`preferredCompactColumn`). Root screens and pages float one bottom bar —
+  `FloatingActionBar` (HikkiUI): Search · Ask AI · New page at home, Outline · Ask about this page · Edit on a page
+  (hidden while the keyboard is up); the page's ⋯ is a sheet (`Hikki/Sources/PhonePageActions.swift`: quick tiles,
+  history, export, move, facts). All pages groups by day (`RecencyGroup`, HikkiCore). Ask AI is a native chat sheet
+  (`Hikki/Sources/AIChat.swift`: the open page's text as context, model menu, web search, `AIPrompts.chat`). Left
+  out on iPhone: tabs, split view, the inspector panel, Home's table, Shortcuts settings.
 - **Data directory**: `HIKKI_DATA_DIR` overrides it (UI tests, demos). DEBUG hooks: `HIKKI_OPEN_TABS=a,b`,
-  `HIKKI_OPEN_SEARCH`, `HIKKI_OPEN_FIND`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SPOTLIGHT_QUERY=<text>` (logs the page ids Spotlight ranks), `HIKKI_OPEN_FILE=<asset>` (the PDF viewer), `HIKKI_OPEN_SPLIT=<page id>|file:<asset>|picker` (split view), `HIKKI_DEBUG_SIDEBAR` (hide + show the split view sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_ACTIVATE`, `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
+  `HIKKI_OPEN_SEARCH`, `HIKKI_OPEN_FIND`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SPOTLIGHT_QUERY=<text>` (logs the page ids Spotlight ranks), `HIKKI_OPEN_FILE=<asset>` (the PDF viewer), `HIKKI_OPEN_SPLIT=<page id>|file:<asset>|picker` (split view), `HIKKI_DEBUG_SIDEBAR` (hide + show the split view sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_OPEN_AI`, `HIKKI_OPEN_PAGE_ACTIONS`, `HIKKI_DEMO_PAGES` (an empty workspace gets sample pages, ids fixed per title — `Hikki/Sources/DemoPages.swift`), `HIKKI_ACTIVATE`, `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
   UI tests set it by default — pass `workspace: nil` to `launch()` to test onboarding).
 - **Storage (option C)**: the workspace folder is the source of truth — one JSON file per page
   (`HikkiCore/Sources/Store/PageFile.swift`: `pages/<id>.json`, format-versioned, content as JSON); SQLite is a

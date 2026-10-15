@@ -262,6 +262,17 @@ final class EditorController {
 
     /// Blurs the editor in JS (so ProseMirror's focus state stays truthful), then resigns the native first
     /// responder as a fallback in case the page is unresponsive.
+    /// The caret into the body (the iPhone's Edit button).
+    func focusBody() {
+        Task {
+            do {
+                _ = try await webView.callAsyncJavaScript("window.hikki.focus()", contentWorld: .page)
+            } catch {
+                Log.warn("focus failed: \(error)", category: "bridge")
+            }
+        }
+    }
+
     func dismissKeyboard() {
         Task {
             do {

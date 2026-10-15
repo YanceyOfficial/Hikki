@@ -24,6 +24,39 @@ final class EditorFlowTests: XCTestCase {
         return app
     }
 
+    /// iPhone's home screen: the tree opens a page's subpages, a row opens the page, ⋯ opens its actions sheet, and
+    /// All pages lists every page under day headings.
+    func testPhoneHomeOpensPagesAndTheirActions() throws {
+        #if os(iOS)
+            guard UIDevice.current.userInterfaceIdiom == .phone else { throw XCTSkip("the iPhone layout") }
+        #else
+            throw XCTSkip("the iPhone layout")
+        #endif
+        continueAfterFailure = false
+        let app = launch(environment: ["HIKKI_DEMO_PAGES": "1"])
+        let allPages = app.buttons["nav-home"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(allPages, in: app))
+
+        let child = app.buttons["page-row-N4 文法"].firstMatch
+        XCTAssertFalse(child.exists)
+        app.buttons["page-expand-日本語を勉強する"].firstMatch.tap()
+        XCTAssertTrue(child.waitForExistence(timeout: 5))
+        child.tap()
+
+        let more = app.buttons["page-more"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(more, in: app))
+        XCTAssertTrue(app.buttons["ask-ai-page"].firstMatch.exists)
+        more.tap()
+        XCTAssertTrue(app.buttons["page-history"].firstMatch.waitForExistence(timeout: 5))
+        app.swipeDown(velocity: .fast)
+        app.navigationBars.buttons.firstMatch.tap()
+
+        XCTAssertTrue(allPages.waitForExistence(timeout: 5))
+        allPages.tap()
+        XCTAssertTrue(app.buttons["home-row-Career Planning"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["home-new-page"].firstMatch.exists)
+    }
+
     /// First launch: welcome → name → "this device only" → the named workspace opens, and stays bound on relaunch.
     func testOnboardingCreatesNamedWorkspace() throws {
         continueAfterFailure = false

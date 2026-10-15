@@ -97,6 +97,8 @@
   --size-history-width: 880px;
   --size-history-height: 600px;
   --size-thumbnail: 84px;
+  --size-floating-bar: 52px;
+  --size-recent-card: 132px;
   --motion-pop-in: 200ms;
   --motion-pop-out: 150ms;
   --motion-loop: 1400ms;

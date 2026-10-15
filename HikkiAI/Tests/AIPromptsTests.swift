@@ -59,5 +59,18 @@ struct AIPromptsTests {
         #expect(AIPrompts.messages(for: ask).last?.text == "why?")
     }
 
+    @Test func aChatCarriesThePageAsDataAndKeepsTheTurns() {
+        let turns: [AIMessage] = [.user("What is そうです?"), .assistant("Hearsay."), .user("And the other one?")]
+        let request = AIPrompts.chat(
+            turns, page: (title: "N4 <b>", text: String(repeating: "あ", count: 40_000)), model: AIModelCatalog.sonnet,
+            webSearch: true)
+        #expect(request.messages == turns)
+        #expect(request.webSearch)
+        #expect(request.instructions.contains("<page title=\"N4 ‹b›\">"))
+        #expect(request.instructions.count < AIPrompts.chatInstructions.count + AIPrompts.maxPageText + 200)
+        let bare = AIPrompts.chat(turns, page: nil, model: AIModelCatalog.sonnet, webSearch: false)
+        #expect(!bare.instructions.contains("<page title"))
+    }
+
     private func request(_ task: AITask) -> String { AIPrompts.messages(for: task)[0].text }
 }

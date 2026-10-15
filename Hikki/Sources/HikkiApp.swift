@@ -28,6 +28,9 @@ struct HikkiApp: App {
             ])
         do {
             let store = try DocumentStore.onDisk(at: paths.database)
+            #if DEBUG
+                DemoPages.seed(store)
+            #endif
             _model = State(
                 initialValue: AppModel(
                     store: store, searchIndex: HikkiApp.searchIndex(paths), assets: AssetStore(directory: paths.assets),

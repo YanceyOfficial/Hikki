@@ -9,6 +9,10 @@ struct PageScreen: View {
     let editor: EditorController
     let navigator: Navigator
     let phoneToolbar: Bool
+    #if os(iOS)
+        /// The software keyboard is up: the bottom bar steps aside for the formatting bar.
+        @State private var keyboardShown = false
+    #endif
 
     var body: some View {
         let page = model.tree.page(pageID)
@@ -18,7 +22,8 @@ struct PageScreen: View {
             EditorView(controller: editor, topInset: proxy.safeAreaInsets.top)
                 .ignoresSafeArea(.container, edges: [.top, .bottom])
         }
-        .navigationTitle(page.map { Self.title($0) } ?? "")
+        // iPhone: the page shows its own title; the bar keeps only its glass buttons.
+        .navigationTitle(phoneToolbar ? "" : page.map { Self.title($0) } ?? "")
         #if os(macOS)
             // Breadcrumbs, natively: the path in the subtitle ("Parent › Child · Edited …")…
             .navigationSubtitle(page.map(subtitle) ?? Text(verbatim: ""))
@@ -41,10 +46,36 @@ struct PageScreen: View {
                         ToolbarItem(placement: .primaryAction) { LockIndicator(page: page) }
                     }
                     ToolbarItemGroup(placement: .primaryAction) {
-                        FavoriteButton(page: page)
-                        PageMoreMenu(page: page, navigator: navigator, editor: editor)
+                        FavoriteButton(page: page, toolbar: true)
+                        Button {
+                            navigator.pageActionsID = page.id
+                        } label: {
+                            IconLabel("app:common.more", icon: .dotsThree)
+                        }
+                        .accessibilityIdentifier("page-more")
                     }
                 }
+            }
+            .overlay(alignment: .bottom) {
+                if phoneToolbar && !keyboardShown {
+                    FloatingActionBar(
+                        leading: .init("app:inspector.outline", icon: .listBullets, identifier: "open-inspector") {
+                            navigator.toggleInspector(.outline)
+                        },
+                        prompt: "app:ai.askPage", promptIdentifier: "ask-ai-page",
+                        onPrompt: { navigator.isAskingAI = true },
+                        trailing: .init("app:page.edit", icon: .pencilSimple, identifier: "edit-page") { editor.focusBody() }
+                    )
+                    .padding(.bottom, Spacing.s2)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(Motion.easeOut(), value: keyboardShown)
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+                keyboardShown = true
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+                keyboardShown = false
             }
         #endif
     }

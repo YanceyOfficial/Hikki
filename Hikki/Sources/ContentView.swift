@@ -22,6 +22,8 @@ struct ContentView: View {
     @State private var splitEditor: EditorController?
     /// AI on the selection, for both editors.
     @State private var ai = AIService()
+    /// Ask AI's conversation (iPhone's bottom bar).
+    @State private var chat = AIChat()
     @State private var navigator = Navigator()
     @State private var columns: NavigationSplitViewVisibility = .all
     @SceneStorage("tabs") private var storedTabs: Data?
@@ -47,7 +49,7 @@ struct ContentView: View {
     private var layout: some View {
         @Bindable var navigator = navigator
         @Bindable var editor = editor
-        return NavigationSplitView(columnVisibility: $columns) {
+        return NavigationSplitView(columnVisibility: $columns, preferredCompactColumn: $navigator.compactColumn) {
             SidebarView(navigator: navigator, wide: wide)
                 .navigationSplitViewColumnWidth(min: Size.sidebarMin, ideal: Size.sidebarIdeal, max: Size.sidebarMax)
         } detail: {
@@ -82,6 +84,20 @@ struct ContentView: View {
         }
         #if os(iOS)
             .sheet(isPresented: $navigator.isShowingSettings) { SettingsView() }
+            .sheet(isPresented: $navigator.isAskingAI) { AIChatSheet(chat: chat) }
+            // Asked from a page: about that page; from the home screen: about nothing in particular.
+            .onChange(of: navigator.isAskingAI) { _, asking in
+                if asking { chat.pageID = navigator.compactColumn == .detail ? navigator.route.pageID : nil }
+            }
+            // iPhone: the page's ⋯ as a sheet.
+            .sheet(
+                isPresented: Binding(
+                    get: { navigator.pageActionsID != nil }, set: { if !$0 { navigator.pageActionsID = nil } })
+            ) {
+                if let id = navigator.pageActionsID, let page = model.tree.page(id) {
+                    PhonePageActions(page: page, navigator: navigator, editor: editor)
+                }
+            }
         #else
             .background(HideOnClose())
         #endif
@@ -357,6 +373,13 @@ struct ContentView: View {
                     let route: Route = id == "home" ? .home : .page(String(id))
                     if index == 0 { navigator.go(route) } else { navigator.openInNewTab(route) }
                 }
+            }
+            // HIKKI_OPEN_AI opens Ask AI, HIKKI_OPEN_PAGE_ACTIONS the open page's ⋯ sheet (iPhone screenshots).
+            if ProcessInfo.processInfo.environment["HIKKI_OPEN_AI"] != nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { navigator.isAskingAI = true }
+            }
+            if ProcessInfo.processInfo.environment["HIKKI_OPEN_PAGE_ACTIONS"] != nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { navigator.pageActionsID = navigator.route.pageID }
             }
         #endif
         if let initialPageID, model.tree.page(initialPageID) != nil { navigator.open(initialPageID) }

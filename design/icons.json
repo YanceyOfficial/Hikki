@@ -3,6 +3,15 @@
   "baseWeight": "regular",
   "strokeBoost": 4,
   "icons": {
+    "globe": {
+      "sf": "globe"
+    },
+    "stop": {
+      "sf": "stop.fill"
+    },
+    "arrow-up": {
+      "sf": "arrow.up"
+    },
     "caret-up-down": {
       "sf": "chevron.up.chevron.down"
     },
