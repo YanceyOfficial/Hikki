@@ -53,6 +53,22 @@ describe('shared motion', () => {
     expect(document.querySelector('.test-layer')).toBeNull()
   })
 
+  it('a layer follows its anchor when the page scrolls', async () => {
+    let top = 100
+    const layer = new FloatingLayer('t-follow')
+    layer.render(<div>hi</div>, () => new DOMRect(10, top, 1, 1))
+    await vi.waitFor(() => expect(layer.element.style.top).not.toBe(''))
+    const first = parseFloat(layer.element.style.top)
+    top = 40
+    window.dispatchEvent(new Event('scroll'))
+    await vi.waitFor(() => expect(parseFloat(layer.element.style.top)).toBe(first - 60))
+    layer.destroy()
+    top = 0
+    window.dispatchEvent(new Event('scroll'))
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(layer.element.isConnected).toBe(false)
+  })
+
   it('the dismiss bus: Escape or a press outside closes the newest layer, once', () => {
     const first = vi.fn()
     const second = vi.fn()

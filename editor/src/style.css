@@ -754,6 +754,12 @@
     background-position: -100% 0;
   }
 }
+/* While AI holds a range it is marked by the decorations alone: the browser's selection paint (which also tints list
+   markers and the gaps between blocks) gives way. */
+.tiptap.hk-ai-open ::selection,
+.tiptap.hk-ai-open::selection {
+  background: transparent;
+}
 .tiptap .hk-ai-subject {
   border-radius: 2px;
   background: var(--color-selection);

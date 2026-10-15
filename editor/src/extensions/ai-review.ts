@@ -23,6 +23,7 @@ import {
   textBetween
 } from '../lib/ai-content'
 import { changeCount, diffText, type DiffSegment } from '../lib/ai-diff'
+import { SelectionMenuKey } from './selection-menu'
 
 /** A preset or the user's own instruction. Edits replace the selection after review; answers explain it. */
 export type AIAction = { id: string; instruction?: string }
@@ -64,6 +65,8 @@ export type AISession = {
   style: AIReviewStyle
   units: AIUnit[]
   status: 'thinking' | 'review' | 'answer' | 'error'
+  /** The status the bar was last brought into view for (once per status: streaming text doesn't move the page). */
+  revealed?: AISession['status']
   /** The text received so far (the edit's JSON, or the answer's Markdown). */
   reply: string
   /** For edits: each unit's replacement, and its diff against the selection. */
@@ -134,6 +137,9 @@ export function AIReview(host: AIHost) {
           },
           props: {
             decorations: (state) => AIReviewKey.getState(state),
+            // While AI has the range, the browser's own selection paint (list markers and all) gives way to ours.
+            attributes: (): Record<string, string> =>
+              storage(editor).session ? { class: 'hk-ai-open' } : {},
             // While a review is open, Enter accepts and Escape discards (typing would close it anyway).
             handleKeyDown: (_view, event) => {
               const session = storage(editor).session
@@ -249,8 +255,14 @@ function start(
       ...(previous ? { previous } : {})
     }
   })
-  // The selection stays visible as the review's range; the formatting menu steps aside meanwhile.
-  editor.view.dispatch(editor.state.tr.setMeta(AIReviewKey, true).setMeta('addToHistory', false))
+  // The review's range stays marked (our decoration, not the selection); the formatting menu steps aside meanwhile
+  // (it re-checks only when the selection or the page changes, and asking changes neither).
+  editor.view.dispatch(
+    editor.state.tr
+      .setMeta(AIReviewKey, true)
+      .setMeta(SelectionMenuKey, 'hide')
+      .setMeta('addToHistory', false)
+  )
   draw(editor, host)
   return true
 }
@@ -343,6 +355,7 @@ function decorations(state: EditorState, session: AISession | null): DecorationS
       )
       continue
     }
+    decos.push(Decoration.inline(unit.from, unit.to, { class: 'hk-ai-subject' }))
     const edit = session.edits.get(unit.key)
     if (!edit) continue
     const { positions } = textBetween(state.doc, unit.from, unit.to)
@@ -468,4 +481,36 @@ function draw(editor: Editor, host: AIHost): void {
       return null
     }
   })
+  if (session.revealed !== session.status) {
+    session.revealed = session.status
+    const element = store.layer.element
+    // After the layer has been drawn (next frames), so its height is known; measured from the selection's end, where
+    // the bar belongs (with no room below, it would have flipped over the selection).
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        try {
+          const below = editor.view.coordsAtPos(Math.min(end, editor.state.doc.content.size)).bottom
+          revealBelow(element, below)
+        } catch {
+          // The page changed meanwhile.
+        }
+      })
+    )
+  }
+}
+
+/** Space kept under the bar when the page scrolls to show it. */
+const REVEAL_MARGIN = 24
+
+/**
+ * Scrolls the page up just enough that the bar fits under the selection's end (`anchorBottom`, in the window): a long
+ * selection otherwise leaves it below the window.
+ */
+export function revealBelow(element: HTMLElement, anchorBottom: number): void {
+  if (!element.isConnected) return
+  const height = element.getBoundingClientRect().height
+  const overflow = anchorBottom + height - (window.innerHeight - REVEAL_MARGIN)
+  if (overflow <= 0) return
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+  window.scrollBy({ top: overflow, behavior: reduce ? 'auto' : 'smooth' })
 }

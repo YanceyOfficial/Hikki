@@ -19,6 +19,7 @@ import type { AIReviewStyle } from './extensions/ai-review'
 import { findShortcut, type FindMode } from './extensions/find'
 import type { PageIndexEntry } from './extensions/page-links'
 import type { SplitDropMode } from './extensions/split-drop'
+import { installScrollContainment } from './lib/scroll-containment'
 import { Outline } from './page/outline'
 import { PageHeader } from './page/page-header'
 
@@ -26,6 +27,8 @@ const native = webkitTransport()
 const transport = native ?? devTransport()
 // Forward errors only when hosted natively; in the browser the devtools console already has them.
 if (native) installErrorForwarding(native)
+// A scroll over a popup never moves the page behind it.
+installScrollContainment()
 
 const bridge = new EditorBridge(document.getElementById('editor')!, transport)
 createRoot(document.getElementById('header')!).render(

@@ -61,6 +61,16 @@ export class FloatingLayer {
   private readonly bare: boolean
   private readonly onDismiss: (() => void) | null
   private dismissed = false
+  /** The anchor of the last render: the layer is placed against it again when the page scrolls under it. */
+  private anchor: FloatingAnchor | null = null
+  private frame = 0
+  private readonly follow = () => {
+    if (this.frame) return
+    this.frame = requestAnimationFrame(() => {
+      this.frame = 0
+      if (this.anchor) void this.position(this.anchor)
+    })
+  }
 
   /**
    * `bare`: only positioned — the content draws its own surface(s) and may overflow (a menu with a side
@@ -82,6 +92,9 @@ export class FloatingLayer {
     document.body.append(this.element)
     this.root = createRoot(this.element)
     if (onDismiss) register(this)
+    // The page scrolling (or the iOS keyboard moving the visual viewport) moves the anchor: the layer follows it.
+    window.addEventListener('scroll', this.follow, { capture: true, passive: true })
+    window.visualViewport?.addEventListener('resize', this.follow)
   }
 
   /** Escape or a press outside: once. */
@@ -93,6 +106,7 @@ export class FloatingLayer {
   }
 
   render(node: ReactElement, anchor: FloatingAnchor): void {
+    this.anchor = anchor
     flushSync(() => this.root.render(node))
     void this.position(anchor)
   }
@@ -100,6 +114,10 @@ export class FloatingLayer {
   /** Plays the leave motion, then takes the layer down. */
   destroy(): void {
     unregister(this)
+    this.anchor = null
+    cancelAnimationFrame(this.frame)
+    window.removeEventListener('scroll', this.follow, { capture: true })
+    window.visualViewport?.removeEventListener('resize', this.follow)
     leave(this.element, () => {
       this.root.unmount()
       this.element.remove()

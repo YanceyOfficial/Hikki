@@ -6,11 +6,13 @@ import { createEditor } from '../src/core/editor'
 import type { AIStreamEvent } from '../src/core/protocol'
 import {
   aiReviewOpen,
+  revealBelow,
   handleAIEvent,
   type AIHost,
   type AIReviewStyle,
   type AIRequestMessage
 } from '../src/extensions/ai-review'
+import { SelectionMenuKey } from '../src/extensions/selection-menu'
 
 let host: HTMLElement
 let editor: Editor
@@ -192,5 +194,36 @@ describe('AI review (style A)', () => {
     send({ type: 'done' })
     const items = [...document.querySelectorAll('[data-testid="ai-review-bubble"] li')]
     expect(items.map((li) => li.textContent)).toEqual(['quick fast '])
+  })
+
+  it('hides the formatting menu and marks the range itself while AI holds it', () => {
+    const metas: unknown[] = []
+    editor.on('transaction', ({ transaction }) => metas.push(transaction.getMeta(SelectionMenuKey)))
+    editor.commands.aiRun({ id: 'improve' })
+    expect(metas).toContain('hide')
+    expect(editor.view.dom.classList.contains('hk-ai-open')).toBe(true)
+    send({ type: 'text', delta: reply({ 'p1:0': 'the fast fox' }) })
+    send({ type: 'done' })
+    // Style A: the range stays marked under the changes.
+    expect(host.querySelector('.hk-ai-subject')).not.toBeNull()
+    editor.commands.aiDiscard()
+    expect(editor.view.dom.classList.contains('hk-ai-open')).toBe(false)
+  })
+
+  it('scrolls the page just enough to show a bar below the window', () => {
+    const calls: ScrollToOptions[] = []
+    const original = window.scrollBy
+    window.scrollBy = ((options: ScrollToOptions) =>
+      void calls.push(options)) as typeof window.scrollBy
+    const bar = document.createElement('div')
+    document.body.append(bar)
+    bar.getBoundingClientRect = () => new DOMRect(0, 0, 100, 150)
+    // The selection ends 50px above the window's bottom: the 150px bar needs 100 more, plus the margin.
+    revealBelow(bar, window.innerHeight - 50)
+    expect(calls[0]?.top).toBe(100 + 24)
+    revealBelow(bar, 10)
+    expect(calls).toHaveLength(1)
+    window.scrollBy = original
+    bar.remove()
   })
 })

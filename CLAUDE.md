@@ -197,7 +197,9 @@ HikkiUITests/                 XCUITest flows
 - **Popups close one way**: every `FloatingLayer` opened with `onDismiss` (`editor/src/components/floating.tsx`) joins
   one dismiss bus — a single pair of document listeners: Escape and a press outside every open layer dismiss the newest
   one, and the opener says what that means (the slash and block menus exit, the math and ruby panels cancel). No popup
-  installs its own outside-click or Escape listener. Base UI popups (shadcn) bring their own.
+  installs its own outside-click or Escape listener. Base UI popups (shadcn) bring their own. A layer follows its
+  anchor when the page scrolls, and a scroll over any popup (`hk-pop`) never reaches the page behind it
+  (`editor/src/lib/scroll-containment.ts`, one set of document listeners).
 - **Editor menus**: `editor/src/core/blocks.ts` is the one block catalog (groups, Markdown shortcuts, `turnInto`, `isActive`)
   behind the "/" menu (`editor/src/components/slash-menu.tsx`) and the selection menu's "Turn into"
   (`editor/src/components/selection-menu.tsx`, positioned by Tiptap's BubbleMenu; its side panels stay inside the menu element
