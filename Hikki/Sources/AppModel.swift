@@ -351,8 +351,8 @@ final class AppModel {
     }
 
     /// Word search, and search by meaning too when given the query's vector (`semantic.queryVector`).
-    func search(_ query: String, queryVector: [Float]? = nil) -> [SearchHit] {
-        perform("search") { try searchIndexer.search(query, queryVector: queryVector) } ?? []
+    func search(_ query: String, queryVector: [Float]? = nil, options: SearchOptions = .standard) -> [SearchHit] {
+        perform("search") { try searchIndexer.search(query, queryVector: queryVector, options: options) } ?? []
     }
 
     /// Home: this device's writing activity over the last `days` days, and the workspace's totals.

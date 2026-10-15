@@ -304,7 +304,10 @@ HikkiUITests/                 XCUITest flows
   PDFs through PDFKit, images through Vision's text recognition (`HikkiSearch/Sources/AttachmentText.swift`) — one
   file at a time at low priority after the page is indexed, once per file; a hit whose only match is in a file names
   it. The store has no search left in it. One ranked list ("Best matches"); a row shows the parent path, the excerpt
-  with the terms emphasized (`HighlightedText`) and the edited time. Pages also go into the device's Spotlight index
+  with the terms emphasized (`HighlightedText`) and the edited time. Under the field, scope chips (`FilterChip`:
+  All / Titles / Text / Files — `SearchScope` in `HikkiSearch/Sources/SearchOptions.swift`; the ranker and the index
+  only count matches where the scope looks, Files always shows the file's excerpt) and a sort menu (Best match / Last
+  edited, `SearchSort`); "Related" (by meaning) joins only an unfiltered search. Pages also go into the device's Spotlight index
   (Core Spotlight: `Hikki/Sources/SpotlightIndex.swift`, items shaped by `SpotlightItems` in HikkiSearch; Settings →
   Spotlight, default on, off empties it); a Spotlight result opens the page through `onContinueUserActivity`.
   On-device embeddings (`NLContextualEmbedding`) were measured and rejected for a "related" tier: related and

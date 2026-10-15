@@ -131,10 +131,12 @@ extension SearchIndex {
     /// Search by words and, given the query's vector, by meaning: the word matches as they rank (what was typed wins;
     /// a small model's sense of meaning shouldn't shuffle an exact title), then up to `relatedLimit` pages found only
     /// by meaning (`SearchHit.related`) — those that stand out from the rest — with their closest passage as the
-    /// excerpt.
-    public func search(_ query: String, queryVector: [Float]?, limit: Int = 30, now: Date = .now) throws -> [SearchHit] {
-        let hits = try search(query, limit: limit, now: now)
-        guard let queryVector, !queryVector.isEmpty else { return hits }
+    /// excerpt. Only an unfiltered search (scope `all`) adds those: a filter asks where the words are.
+    public func search(
+        _ query: String, queryVector: [Float]?, options: SearchOptions = .standard, limit: Int = 30, now: Date = .now
+    ) throws -> [SearchHit] {
+        let hits = try search(query, options: options, limit: limit, now: now)
+        guard options.scope == .all, let queryVector, !queryVector.isEmpty else { return hits }
         let all = try semanticMatches(queryVector, limit: .max)
         guard let closest = all.first?.similarity else { return hits }
         let median = all[all.count / 2].similarity

@@ -31,18 +31,21 @@ public enum SearchRanker {
         }
     }
 
-    /// nil when no term occurs in the title (also by pinyin), the headings, the text or an attachment. Higher is
-    /// better.
-    public static func score(_ query: SearchQuery, _ page: Page, now: Date = .now) -> Int? {
+    /// nil when no term occurs in the title (also by pinyin), the headings, the text or an attachment — only those
+    /// the scope looks at (titles; headings and text; attachments; or all). Higher is better.
+    public static func score(_ query: SearchQuery, _ page: Page, scope: SearchScope = .all, now: Date = .now) -> Int? {
         guard !query.isEmpty else { return nil }
-        let title = titleScore(query, page)
+        let looksAtTitle = scope == .all || scope == .titles
+        let looksAtText = scope == .all || scope == .text
+        let looksAtFiles = scope == .all || scope == .files
+        let title = looksAtTitle ? titleScore(query, page) : 0
         let headings =
-            page.headings.isEmpty
+            !looksAtText || page.headings.isEmpty
             ? 0 : termsScore(query.terms, in: SearchQuery.fold(page.headings), wordStarts: 320, anywhere: 300, each: 80)
-        let text = textScore(query, SearchQuery.fold(page.text))
+        let text = looksAtText ? textScore(query, SearchQuery.fold(page.text)) : 0
         // Text inside an attached file: a step below the page's own.
         let attachment =
-            page.attachmentText.isEmpty
+            !looksAtFiles || page.attachmentText.isEmpty
             ? 0 : termsScore(query.terms, in: SearchQuery.fold(page.attachmentText), wordStarts: 200, anywhere: 200, each: 40)
         guard title > 0 || headings > 0 || text > 0 || attachment > 0 else { return nil }
         let rank = headings > 0 || text > 0 ? page.textRank : 0

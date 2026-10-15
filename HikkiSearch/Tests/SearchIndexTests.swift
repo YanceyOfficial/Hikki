@@ -146,6 +146,53 @@ struct SearchIndexTests {
         #expect(try index.attachmentNames(of: "a").isEmpty)
     }
 
+    /// Three pages that each hold "roadmap" in one place only: the title, the text (a heading), an attached file.
+    private func scopedIndex() throws -> SearchIndex {
+        let index = try SearchIndex.inMemory()
+        try index.index([
+            page("title", "Roadmap", text: "nothing else here", at: 10),
+            page("text", "Notes", text: "Roadmap\nthe roadmap is due", headings: ["Roadmap"], at: 30),
+            page("file", "Trip", text: "photos below", at: 20),
+        ])
+        try index.index(attachments: [SearchAttachment(name: "f.pdf", pageId: "file", label: "Plan.pdf", text: "roadmap Q4")])
+        return index
+    }
+
+    @Test func scopesLimitWhereTheTermsMayMatch() throws {
+        let index = try scopedIndex()
+        #expect(try index.search("roadmap").map(\.id) == ["title", "text", "file"])
+        #expect(try index.search("roadmap", options: SearchOptions(scope: .titles)).map(\.id) == ["title"])
+        #expect(try index.search("roadmap", options: SearchOptions(scope: .text)).map(\.id) == ["text"])
+        let files = try index.search("roadmap", options: SearchOptions(scope: .files))
+        #expect(files.map(\.id) == ["file"])
+        // A file match always names the file and shows its text.
+        #expect(files[0].attachment?.label == "Plan.pdf")
+        #expect(files[0].snippet.contains("roadmap"))
+        // Short terms (the LIKE path) follow the scope too.
+        #expect(try index.search("Q4", options: SearchOptions(scope: .text)).isEmpty)
+        #expect(try index.search("Q4", options: SearchOptions(scope: .files)).map(\.id) == ["file"])
+    }
+
+    @Test func aFileScopeShowsTheFileEvenWhenThePageTextMatchesToo() throws {
+        let index = try SearchIndex.inMemory()
+        try index.index([page("a", "Notes", text: "budget talk")])
+        try index.index(attachments: [SearchAttachment(name: "b.pdf", pageId: "a", label: "Budget.pdf", text: "budget 2027")])
+        #expect(try index.search("budget").first?.attachment == nil)
+        let hit = try #require(try index.search("budget", options: SearchOptions(scope: .files)).first)
+        #expect(hit.attachment?.label == "Budget.pdf")
+        #expect(hit.snippet.contains("2027"))
+        // Titles show no excerpt.
+        try index.index([page("t", "Budget")])
+        #expect(try index.search("budget", options: SearchOptions(scope: .titles)).map(\.snippet) == [""])
+    }
+
+    @Test func sortingByEditedTimePutsTheNewestFirst() throws {
+        let index = try scopedIndex()
+        #expect(try index.search("roadmap", options: SearchOptions(sort: .edited)).map(\.id) == ["text", "file", "title"])
+        #expect(
+            try index.search("roadmap", options: SearchOptions(scope: .titles, sort: .edited)).map(\.id) == ["title"])
+    }
+
     @Test func emptyAndBlankQueriesFindNothing() throws {
         let index = try SearchIndex.inMemory()
         try index.index([page("a", "Roadmap")])

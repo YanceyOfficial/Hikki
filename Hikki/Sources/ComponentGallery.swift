@@ -57,6 +57,16 @@
                         DropTargetArea("Drag a page here", icon: .trayArrowDown, isTargeted: false).frame(height: 80)
                         DropTargetArea("Show here", isTargeted: true).frame(height: 80)
                     }
+                    Section("FilterChip") {
+                        HStack(spacing: Spacing.s1_5) {
+                            FilterChip("All", isSelected: true) {}
+                            FilterChip("Titles", isSelected: false) {}
+                        }
+                        HStack(spacing: Spacing.s2) {
+                            FilterChip("All", isSelected: true, look: .filled) {}
+                            FilterChip("Files", isSelected: false, look: .filled) {}
+                        }
+                    }
                     Section("toolTip") {
                         HStack {
                             Text(verbatim: "Hover").padding(Spacing.s2).background(Theme.muted).toolTip("Its own tooltip")
