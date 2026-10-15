@@ -53,14 +53,16 @@ struct ContentTextTests {
             ContentText.blocks(in: doc) == [
                 .init(id: "h1", isHeading: true, text: "ので表示理由"), .init(id: "p1", isHeading: false, text: "雨なので"),
                 .init(id: "p2", isHeading: false, text: "item"), .init(id: "p3", isHeading: false, text: "inside"),
-                .init(id: "code", isHeading: false, text: "let x = 1"),
+                // Stored without an id: found by search, nowhere to land.
+                .init(id: "", isHeading: false, text: "no id"), .init(id: "code", isHeading: false, text: "let x = 1"),
             ])
         #expect(ContentText.blocks(in: nil).isEmpty)
     }
 
     @Test func collectsAttachedAssetsOnceEachWithFileNames() {
         let image: JSONValue = .object([
-            "type": .string("image"), "attrs": .object(["src": .string("hikki-editor://assets/a1.png"), "alt": .string("")]),
+            "type": .string("image"),
+            "attrs": .object(["id": .string("img"), "src": .string("hikki-editor://assets/a1.png"), "alt": .string("")]),
         ])
         let file: JSONValue = .object([
             "type": .string("fileAttachment"),
@@ -74,7 +76,9 @@ struct ContentTextTests {
         ])
         let doc = node("doc", [node("paragraph", [text("x")]), image, node("toggle", [file, image]), web, video])
         #expect(
-            ContentText.assets(in: doc) == [AssetReference(name: "a1.png"), AssetReference(name: "f1.pdf", label: "Plan.pdf")])
+            ContentText.assets(in: doc) == [
+                AssetReference(name: "a1.png", blockId: "img"), AssetReference(name: "f1.pdf", label: "Plan.pdf"),
+            ])
         #expect(ContentText.assets(in: nil).isEmpty)
     }
 
@@ -86,5 +90,39 @@ struct ContentTextTests {
         #expect(record.headings.isEmpty)
         record.content = #"{"type":"doc","content":[{"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"H"}]}]}"#
         #expect(record.headings == ["H"])
+    }
+
+    @Test func blockTextReadsAsTheEditorsDoes() throws {
+        // design/fixtures/content-text.json: the editor's extract.ts is held to the same answers.
+        let url = URL(filePath: #filePath).deletingLastPathComponent()
+            .appending(path: "../../design/fixtures/content-text.json")
+        let fixture = try JSONValue(jsonData: Data(contentsOf: url))
+        guard case .object(let fields) = fixture, case .array(let expected)? = fields["blocks"] else {
+            Issue.record("fixture without blocks")
+            return
+        }
+        let pairs = expected.compactMap { item -> [String]? in
+            guard case .object(let block) = item, case .string(let id)? = block["id"], case .string(let text)? = block["text"]
+            else { return nil }
+            return [id, text]
+        }
+        #expect(pairs.count == 7)
+        #expect(ContentText.blocks(in: fields["doc"]).map { [$0.id, $0.text] } == pairs)
+        #expect(ContentText.headings(in: fields["doc"]) == ["Plan 2026"])
+    }
+
+    @Test func oneExtractHoldsHeadingsBlocksAndFiles() {
+        let heading: JSONValue = .object([
+            "type": .string("heading"), "attrs": .object(["id": .string("h")]), "content": .array([text("Title")]),
+        ])
+        let file: JSONValue = .object([
+            "type": .string("fileAttachment"),
+            "attrs": .object(["id": .string("f"), "src": .string("hikki-editor://assets/x.pdf"), "name": .string("X.pdf")]),
+        ])
+        #expect(
+            ContentText.extract(node("doc", [heading, file]))
+                == ContentText.Extract(
+                    headings: ["Title"], blocks: [.init(id: "h", isHeading: true, text: "Title")],
+                    assets: [AssetReference(name: "x.pdf", label: "X.pdf", blockId: "f")]))
     }
 }
