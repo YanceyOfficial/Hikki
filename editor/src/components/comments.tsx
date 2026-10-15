@@ -30,6 +30,8 @@ import {
 /** Card width in the margin, and the room the margin needs beside the text to hold one. */
 const CARD = 300
 const GAP = 40
+/** The room the outline rail keeps at the window's right edge (`editor/src/page/outline.tsx`): no card under it. */
+const RAIL = 48
 
 /** A thread anchored in the page, measured against the text column (the layer's box). */
 type Anchor = {
@@ -97,6 +99,20 @@ function useLayout(editor: Editor, column: HTMLElement): Layout {
   return useSyncExternalStore(subscribe, get, get)
 }
 
+/**
+ * Where comments go beside text ending at `textRight` in a window `viewport` wide, never under the outline rail:
+ * cards in the margin when one fits (`wide`), else a badge just right of the text, or just inside it when even that
+ * has no room. `offset` is from the text's right edge.
+ */
+export function marginPlacement(
+  viewport: number,
+  textRight: number
+): { wide: boolean; offset: number } {
+  const room = viewport - textRight
+  if (room >= CARD + GAP + RAIL) return { wide: true, offset: GAP }
+  return { wide: false, offset: room >= 56 + RAIL ? 12 : -44 }
+}
+
 function measure(editor: Editor, column: HTMLElement): Layout {
   const empty: Layout = { wide: false, marginLeft: 0, anchors: [], active: null, draft: null }
   if (editor.isDestroyed) return empty
@@ -105,7 +121,7 @@ function measure(editor: Editor, column: HTMLElement): Layout {
   const view = editor.view
   const columnRect = column.getBoundingClientRect()
   const text = view.dom.getBoundingClientRect()
-  const wide = window.innerWidth - text.right >= CARD + GAP + 16
+  const { wide, offset } = marginPlacement(window.innerWidth, text.right)
   const at = (pos: number) => {
     try {
       return view.coordsAtPos(Math.min(pos, editor.state.doc.content.size))
@@ -150,8 +166,7 @@ function measure(editor: Editor, column: HTMLElement): Layout {
   return {
     wide,
     // Narrow with no margin at all (a phone's slim one): the badge sits just inside the text's right edge.
-    marginLeft:
-      text.right - columnRect.left + (wide ? GAP : window.innerWidth - text.right >= 56 ? 12 : -44),
+    marginLeft: text.right - columnRect.left + offset,
     anchors,
     active: plugin.active,
     draft
@@ -270,7 +285,7 @@ function Narrow({ editor, host, layout }: { editor: Editor; host: CommentsHost; 
             data-testid="comment-badge"
             onClick={() => editor.commands.commentOpen(anchors[0].thread.id)}
           >
-            <ChatTeardropTextIcon aria-hidden />
+            <ChatTeardropTextIcon className="size-3.5" aria-hidden />
             {count}
           </Button>
         )
@@ -394,22 +409,22 @@ function ThreadCard({
           <div className="flex shrink-0 gap-0.5">
             <Button
               variant="ghost"
-              size="icon-xs"
+              size="icon-sm"
               aria-label={t('comments.resolve')}
               title={t('comments.resolve')}
               data-testid="comment-resolve"
               onClick={() => editor.commands.commentResolve(thread.id, true)}
             >
-              <CheckCircleIcon />
+              <CheckCircleIcon className="size-4.5" />
             </Button>
             <Button
               variant="ghost"
-              size="icon-xs"
+              size="icon-sm"
               aria-label={t('comments.delete')}
               title={t('comments.delete')}
               onClick={() => editor.commands.commentDelete(thread.id)}
             >
-              <TrashIcon />
+              <TrashIcon className="size-4.5" />
             </Button>
           </div>
         )}
@@ -485,7 +500,7 @@ function ReplyField({
           disabled={!value.trim()}
           onClick={send}
         >
-          <ArrowUpIcon aria-hidden />
+          <ArrowUpIcon className="size-4" weight="bold" aria-hidden />
         </InputGroupButton>
       </InputGroupAddon>
     </InputGroup>

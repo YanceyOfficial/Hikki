@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, screen } from '@testing-library/react'
 import type { Editor } from '@tiptap/core'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { marginPlacement } from '../src/components/comments'
 import { createEditor } from '../src/core/editor'
 import {
   commentRanges,
@@ -115,5 +116,14 @@ describe('comments', () => {
     expect(JSON.stringify(json)).toContain('"type":"comment"')
     editor.commands.setContent(json)
     expect(commentRanges(editor.state.doc).size).toBe(1)
+  })
+
+  it('cards and badges keep clear of the outline rail at the window edge', () => {
+    // 388 = a card (300) + its gap (40) + the rail's room (48).
+    expect(marginPlacement(1400, 1012)).toEqual({ wide: true, offset: 40 })
+    expect(marginPlacement(1400, 1013).wide).toBe(false)
+    // A badge beside the text only with the rail's room past it; else just inside the text.
+    expect(marginPlacement(1000, 896)).toEqual({ wide: false, offset: 12 })
+    expect(marginPlacement(1000, 960)).toEqual({ wide: false, offset: -44 })
   })
 })
