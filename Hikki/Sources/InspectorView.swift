@@ -69,16 +69,18 @@ struct InspectorView: View {
 
     var body: some View {
         VStack(spacing: Spacing.s0) {
-            // No title: the toolbar's marked button already says what the panel shows. The row keeps the content
-            // clear of the toolbar and holds the AI chat's New chat.
-            HStack(spacing: Spacing.s1) {
-                Spacer(minLength: Spacing.s2)
-                if navigator.inspectorMode == .ai {
+            // No title: the toolbar's marked button already says what the panel shows, and the content already
+            // starts below the toolbar. A slim row only for the AI chat's New chat, once there is one.
+            if navigator.inspectorMode == .ai && !chat.messages.isEmpty {
+                HStack(spacing: Spacing.s1) {
+                    Spacer(minLength: Spacing.s2)
                     AIChatActions(chat: chat).labelStyle(.iconOnly).buttonStyle(.borderless)
                 }
+                .padding(.horizontal, Spacing.s3)
+                .frame(height: Size.iconButton)
+            } else {
+                Color.clear.frame(height: Spacing.s2)
             }
-            .padding(.horizontal, Spacing.s4)
-            .frame(height: Size.pageBar)
             Group {
                 switch navigator.inspectorMode {
                 case .outline: OutlinePane(navigator: navigator, editor: editor)
