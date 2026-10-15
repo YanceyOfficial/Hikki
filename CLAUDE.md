@@ -364,7 +364,10 @@ HikkiUITests/                 XCUITest flows
   streams `AIEvent`s (text, searching, citation, finished); `HikkiAI/Sources/StreamDecoders.swift` reads each provider's events
   tolerantly (unknown events skipped, malformed lines ignored, only error events throw), `HTTPErrors` maps failures
   to `AIError`. Models are a fixed list (`AIModelCatalog`; "Auto" picks a balanced one among the providers with a
-  key). Each provider may have a base URL (blank: its own API; `HikkiAI/Sources/AIEndpoint.swift` — OpenAI's base
+  key). The model menu (`AIModelButton` in `Hikki/Sources/AISettings.swift` over `HikkiUI/Sources/ModelPickerList.swift`;
+  the chat's composer and Settings → AI) is Notion's: Auto, starred models under Favorites, Recommended, Other
+  models — a star on each row (`AIModelFavorites` in `HikkiAI/Sources/AIModelFavorites.swift`, UserDefaults
+  `ai.favoriteModels`); a pick in the chat is also the default, which the page's Ask AI runs on. Each provider may have a base URL (blank: its own API; `HikkiAI/Sources/AIEndpoint.swift` — OpenAI's base
   includes `/v1`, Anthropic's doesn't, as in their SDKs; https, or http only to loopback). Keys live in the Keychain
   (`AIPreferences`, `Hikki/Sources/AISettings.swift`), one per provider and origin (`AIEndpoint.keyAccount`), so a key
   only ever goes to the address it was entered for. The editor asks through `aiRequest` / `aiCancel` (selected parts of blocks as inline HTML + nearby

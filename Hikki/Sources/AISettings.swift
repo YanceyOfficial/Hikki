@@ -5,8 +5,11 @@ import SwiftUI
 /// Settings → AI: the providers' API keys (in the Keychain; each sent only to the origin it was entered for), an
 /// optional base URL per provider, and the model AI uses by default. The models are a fixed list (`AIModelCatalog`).
 enum AIPreferences {
-    /// The model chosen: an id from the catalog or "auto".
+    /// The model chosen: an id from the catalog or "auto". Settings → AI and the chat's model menu both set it, and
+    /// the page's own AI (Ask AI in the selection and block menus) runs on it too.
     static let modelKey = "ai.model"
+    /// The starred models, comma-separated in the order starred (`AIModelFavorites`).
+    static let favoritesKey = "ai.favoriteModels"
     /// How an AI edit is reviewed: `inline` (A, default), `diff` (B) or `bubble` (C) — `ReviewStyleThumbnail.Sketch`.
     static let reviewStyleKey = "ai.reviewStyle"
 
@@ -29,6 +32,12 @@ enum AIPreferences {
     /// The key for the provider's current base.
     static func key(_ provider: AIProvider) -> String? {
         keyAccount(provider, base: base(provider)).flatMap(Keychain.read).flatMap { $0.isEmpty ? nil : $0 }
+    }
+
+    /// A model choice's name: the model's, or "Auto".
+    static func modelName(_ choice: String) -> LocalizedStringKey {
+        if let model = AIModelCatalog.model(id: choice) { return "\(model.displayName)" }
+        return "app:ai.model.auto"
     }
 
     /// The providers that have a key for their current base.
@@ -59,14 +68,15 @@ struct AISettingsSection: View {
             Text(detail(ReviewStyleThumbnail.Sketch(rawValue: reviewStyle) ?? .inline))
         }
         Section {
-            Picker("app:ai.settings.model", selection: $model) {
-                Text("app:ai.model.auto").tag(AIModelCatalog.autoID)
-                Divider()
-                ForEach(AIModelCatalog.all) { model in
-                    Text(verbatim: "\(model.displayName) · \(model.provider.name)").tag(model.id)
+            LabeledContent("app:ai.settings.model") {
+                AIModelButton(selection: $model) {
+                    HStack(spacing: Spacing.s1) {
+                        Text(AIPreferences.modelName(model))
+                        IconView(.caretUpDown, size: TextSize.xs.rawValue).foregroundStyle(Theme.mutedForeground)
+                    }
                 }
+                .accessibilityIdentifier("settings-ai-model")
             }
-            .accessibilityIdentifier("settings-ai-model")
         } header: {
             Text("app:ai.settings.models")
         } footer: {
@@ -90,6 +100,61 @@ struct AISettingsSection: View {
         case .inline: "app:ai.review.inline.detail"
         case .diff: "app:ai.review.diff.detail"
         case .bubble: "app:ai.review.bubble.detail"
+        }
+    }
+}
+
+/// Notion's model menu behind a button (the chat's composer, Settings → AI): Auto, the starred models under
+/// "Favorites", then the recommended and the other ones; a star on each row stars or unstars it (kept in
+/// `AIPreferences.favoritesKey`). Picking a model closes the popover; starring leaves it open.
+struct AIModelButton<Label: View>: View {
+    @Binding var selection: String
+    @ViewBuilder let label: Label
+    @AppStorage(AIPreferences.favoritesKey) private var favoritesStored = ""
+    @State private var open = false
+
+    var body: some View {
+        Button {
+            open.toggle()
+        } label: {
+            label.contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $open, arrowEdge: .bottom) {
+            ModelPickerList(
+                autoID: AIModelCatalog.autoID, autoTitle: "app:ai.model.auto", autoDetail: "app:ai.model.auto.detail",
+                groups: groups, selection: selection,
+                onSelect: { id in
+                    selection = id
+                    open = false
+                },
+                onToggleFavorite: { id in
+                    withAnimation(Motion.easeOut()) { favoritesStored = favorites.toggling(id).stored }
+                }
+            )
+            .presentationCompactAdaptation(.popover)
+        }
+    }
+
+    private var favorites: AIModelFavorites { AIModelFavorites(stored: favoritesStored) }
+
+    private var groups: [ModelPickerList.Group] {
+        let favorites = favorites
+        return AIModelCatalog.sections(favorites: favorites).map { section in
+            ModelPickerList.Group(
+                id: section.kind.rawValue, title: Self.title(section.kind),
+                items: section.models.map {
+                    ModelPickerList.Item(
+                        id: $0.id, name: $0.displayName, detail: $0.provider.name, isFavorite: favorites.contains($0.id))
+                })
+        }
+    }
+
+    private static func title(_ kind: AIModelCatalog.Section.Kind) -> LocalizedStringKey {
+        switch kind {
+        case .favorites: "app:ai.model.favorites"
+        case .recommended: "app:ai.model.recommended"
+        case .other: "app:ai.model.other"
         }
     }
 }

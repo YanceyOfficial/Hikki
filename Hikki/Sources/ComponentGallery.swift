@@ -67,6 +67,15 @@
                             FilterChip("Files", isSelected: false, look: .filled) {}
                         }
                     }
+                    Section("ModelPickerList") {
+                        ModelPickerList(
+                            autoID: "auto", autoTitle: "Auto",
+                            groups: [
+                                .init(id: "f", title: "Favorites", items: [.init(id: "o", name: "Opus 5.5", isFavorite: true)]),
+                                .init(id: "r", title: "Recommended", items: [.init(id: "s", name: "Sonnet 5.5", detail: "Anthropic")]),
+                            ],
+                            selection: "s", onSelect: { _ in }, onToggleFavorite: { _ in })
+                    }
                     Section("toolTip") {
                         HStack {
                             Text(verbatim: "Hover").padding(Spacing.s2).background(Theme.muted).toolTip("Its own tooltip")
