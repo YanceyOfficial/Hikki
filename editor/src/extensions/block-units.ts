@@ -1,3 +1,4 @@
+import type { Editor } from '@tiptap/core'
 import type { Node as PMNode, ResolvedPos } from '@tiptap/pm/model'
 import { NodeSelection, TextSelection, type EditorState, type Transaction } from '@tiptap/pm/state'
 
@@ -131,4 +132,100 @@ export function unitTextRange(unit: BlockUnit): { from: number; to: number } | n
       return false
     })
   return from === null || to === null ? null : { from, to }
+}
+
+/** Something a menu or panel acts on later, followed through the edits made meanwhile. */
+export type Followed<T> = {
+  /** Where it is now; null once it is gone. */
+  readonly current: T | null
+  stop(): void
+}
+
+/**
+ * Follows the node at `pos` (a block unit, a formula) while a menu or panel is open on it, so an action
+ * runs on that node where it is *now* — a remote reload or an edit may have moved it. Found again by its
+ * block id when it has one (a reload replaces the whole page, which no mapping survives), else mapped like
+ * `block-highlight` does. `onGone` runs once when the node no longer exists or the editor goes away.
+ */
+export function followNode(editor: Editor, pos: number, onGone: () => void): Followed<BlockUnit> {
+  const start = editor.state.doc.nodeAt(pos)
+  const id = (start?.attrs.id as string | null | undefined) ?? null
+  let current: BlockUnit | null = start
+    ? { pos, node: start, depth: editor.state.doc.resolve(pos).depth + 1 }
+    : null
+  const gone = () => {
+    if (!current) return
+    current = null
+    stop()
+    onGone()
+  }
+  const onTransaction = ({ transaction: tr }: { transaction: Transaction }) => {
+    if (!current || !tr.docChanged) return
+    const { doc } = tr
+    let at: number | null = null
+    if (id) {
+      doc.descendants((node, offset) => {
+        if (at !== null) return false
+        if (node.attrs.id === id && node.type === current?.node.type) at = offset
+        return at === null
+      })
+    } else {
+      const from = tr.mapping.map(current.pos, 1)
+      const to = tr.mapping.map(current.pos + current.node.nodeSize, -1)
+      const node = from < to ? doc.nodeAt(from) : null
+      if (node && node.type === current.node.type && from + node.nodeSize === to) at = from
+    }
+    const node = at === null ? null : doc.nodeAt(at)
+    if (at === null || !node) return gone()
+    current = { pos: at, node, depth: doc.resolve(at).depth + 1 }
+  }
+  const stop = () => {
+    editor.off('transaction', onTransaction)
+    editor.off('destroy', gone)
+  }
+  if (!current) onGone()
+  else {
+    editor.on('transaction', onTransaction)
+    editor.on('destroy', gone)
+  }
+  return {
+    get current() {
+      return current
+    },
+    stop
+  }
+}
+
+/**
+ * Follows a caret position (where a panel will insert) through later edits; gone when the text around it
+ * was replaced (a remote reload) or the editor goes away.
+ */
+export function followPosition(editor: Editor, pos: number, onGone: () => void): Followed<number> {
+  let current: number | null = pos
+  const gone = () => {
+    if (current === null) return
+    current = null
+    stop()
+    onGone()
+  }
+  const onTransaction = ({ transaction: tr }: { transaction: Transaction }) => {
+    if (current === null || !tr.docChanged) return
+    const mapped = tr.mapping.mapResult(current, -1)
+    // Both sides deleted: the text around it was replaced. (One side alone is also a node being restamped —
+    // UniqueID setting an id replaces the block's opening token.)
+    if (mapped.deletedAcross) gone()
+    else current = mapped.pos
+  }
+  const stop = () => {
+    editor.off('transaction', onTransaction)
+    editor.off('destroy', gone)
+  }
+  editor.on('transaction', onTransaction)
+  editor.on('destroy', gone)
+  return {
+    get current() {
+      return current
+    },
+    stop
+  }
 }

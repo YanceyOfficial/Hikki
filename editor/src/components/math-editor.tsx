@@ -13,11 +13,10 @@ type Props = {
   /** Block formulas: Enter makes a new line, ⌘/Ctrl+Enter is Done. */
   multiline: boolean
   onDone: (latex: string) => void
-  onCancel: () => void
 }
 
 /** LaTeX source with a live KaTeX preview. KaTeX's output is markup it generates (no `trust`), so it is safe. */
-export function MathEditor({ initial, multiline, onDone, onCancel }: Props) {
+export function MathEditor({ initial, multiline, onDone }: Props) {
   const [latex, setLatex] = useState(initial)
   const preview = useMemo(() => {
     if (!latex.trim()) return null
@@ -41,10 +40,8 @@ export function MathEditor({ initial, multiline, onDone, onCancel }: Props) {
         onChange={(e) => setLatex(e.target.value)}
         onKeyDown={(e) => {
           if (e.nativeEvent.isComposing) return
-          if (e.key === 'Escape') {
-            e.preventDefault()
-            onCancel()
-          } else if (e.key === 'Enter' && (!multiline || e.metaKey || e.ctrlKey)) {
+          // Escape is the layers' bus (onDismiss cancels): it never reaches the field.
+          if (e.key === 'Enter' && (!multiline || e.metaKey || e.ctrlKey)) {
             e.preventDefault()
             onDone(latex)
           }

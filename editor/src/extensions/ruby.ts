@@ -6,6 +6,7 @@ import type { NodeView } from '@tiptap/pm/view'
 import { FloatingLayer } from '../components/floating'
 import { renderRubyPanel } from '../components/ruby-panel'
 import { tiptapShortcut } from '../core/shortcuts'
+import { followNode, followPosition } from './block-units'
 
 /** A run of the selection: kanji with their reading, or kana/punctuation left bare. */
 export type RubySegment = { text: string; reading?: string }
@@ -65,9 +66,10 @@ export function rubySegmentsFrom(reply: unknown): RubySegment[] | null {
   return segments
 }
 
-let openPanel: FloatingLayer | null = null
+let openPanel: { layer: FloatingLayer; stop: () => void } | null = null
 const closePanel = () => {
-  openPanel?.destroy()
+  openPanel?.stop()
+  openPanel?.layer.destroy()
   openPanel = null
 }
 
@@ -277,27 +279,50 @@ export function openRubyPanel(editor: Editor, host: RubyHost | null): void {
   if (!base.trim()) return
   const finish = () => {
     closePanel()
-    editor.commands.focus()
+    if (!editor.isDestroyed) editor.commands.focus()
   }
   // Escape or a press outside cancels (the layers' bus).
   const layer = new FloatingLayer('hk-ruby-panel w-[320px] max-w-[calc(100vw-16px)] p-2', {
     onDismiss: finish
   })
-  openPanel = layer
-  const anchorPos = existing ? existing.pos : state.selection.from
+  // What the panel acts on — the ruby, or the selected text — followed through edits meanwhile (a remote
+  // reload): the commands run on it where it is then, and the panel closes when it is gone.
+  const gone = () => closePanel()
+  const ruby = existing ? followNode(editor, existing.pos, gone) : null
+  const start = existing ? null : followPosition(editor, state.selection.from, gone)
+  const end = existing ? null : followPosition(editor, state.selection.to, gone)
+  openPanel = {
+    layer,
+    stop: () => [ruby, start, end].forEach((f) => f?.stop())
+  }
+  const anchorPos = () => (ruby ? ruby.current?.pos : start?.current) ?? 0
   const anchor = () => {
-    const dom = editor.view.nodeDOM(anchorPos)
+    const dom = editor.view.nodeDOM(anchorPos())
     if (dom instanceof HTMLElement) return dom.getBoundingClientRect()
-    const coords = editor.view.coordsAtPos(anchorPos)
+    const coords = editor.view.coordsAtPos(anchorPos())
     return new DOMRect(coords.left, coords.top, 1, coords.bottom - coords.top)
   }
+  /** Puts the selection back on what the panel was opened for; false when it is gone. */
+  const reselect = (): boolean => {
+    const range = ruby
+      ? ruby.current && { from: ruby.current.pos + 1, to: ruby.current.pos + 1 }
+      : typeof start?.current === 'number' &&
+        typeof end?.current === 'number' && { from: start.current, to: end.current }
+    if (!range) return false
+    openPanel?.stop()
+    editor.commands.setTextSelection(range)
+    return true
+  }
   const done = (reading: string) => {
-    if (reading.trim()) editor.commands.setRuby(reading)
-    else if (existing) editor.commands.unsetRuby()
+    if (reselect()) {
+      if (reading.trim()) editor.commands.setRuby(reading)
+      else if (existing) editor.commands.unsetRuby()
+    }
     finish()
   }
   const doneSegments = (segments: RubySegment[]) => {
-    if (!editor.commands.setRubySegments(segments)) editor.commands.setRuby(wholeReading(segments))
+    if (reselect() && !editor.commands.setRubySegments(segments))
+      editor.commands.setRuby(wholeReading(segments))
     finish()
   }
   const render = (segments: RubySegment[] | null, suggesting: boolean) =>
@@ -311,8 +336,7 @@ export function openRubyPanel(editor: Editor, host: RubyHost | null): void {
         canRemove: existing !== null,
         onDone: done,
         onDoneSegments: doneSegments,
-        onRemove: () => done(''),
-        onCancel: finish
+        onRemove: () => done('')
       },
       anchor
     )
@@ -323,10 +347,10 @@ export function openRubyPanel(editor: Editor, host: RubyHost | null): void {
     host
       .suggestReading(base)
       .then((segments) => {
-        if (openPanel === layer) render(segments, false)
+        if (openPanel?.layer === layer) render(segments, false)
       })
       .catch(() => {
-        if (openPanel === layer) render(null, false)
+        if (openPanel?.layer === layer) render(null, false)
       })
   }
 }

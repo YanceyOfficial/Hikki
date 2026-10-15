@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { Editor } from '@tiptap/core'
+import { Profiler } from 'react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -150,6 +151,38 @@ describe('SelectionMenu', () => {
     expect(screen.queryByRole('menu', { name: 'Color' })).not.toBeNull()
     act(() => void editor.commands.setTextSelection({ from: 7, to: 12 }))
     expect(screen.queryByRole('menu', { name: 'Color' })).toBeNull()
+  })
+
+  it('a link being typed is dropped with its selection, never applied to the next one', () => {
+    show()
+    selectHello()
+    fireEvent.click(screen.getByRole('button', { name: 'Link' }))
+    fireEvent.change(screen.getByPlaceholderText('Paste or type a link'), {
+      target: { value: 'example.com' }
+    })
+    // A click elsewhere in the page: the selection collapses (the menu hides), then "world" is selected.
+    act(() => void editor.commands.setTextSelection(3))
+    act(() => void editor.commands.setTextSelection({ from: 7, to: 12 }))
+    expect(screen.queryByPlaceholderText('Paste or type a link')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Link' }))
+    const input = screen.getByPlaceholderText('Paste or type a link') as HTMLInputElement
+    expect(input.value).toBe('')
+    expect(JSON.stringify(editor.getJSON())).not.toContain('example.com')
+  })
+
+  it('stays still while the caret only moves (typing): the hidden menu does not re-render', () => {
+    let renders = 0
+    render(
+      <Profiler id="menu" onRender={() => renders++}>
+        <TooltipProvider>
+          <SelectionMenu editor={editor} />
+        </TooltipProvider>
+      </Profiler>
+    )
+    act(() => void editor.commands.setTextSelection(3))
+    const before = renders
+    for (const ch of 'typing') act(() => void editor.commands.insertContent(ch))
+    expect(renders).toBe(before)
   })
 })
 

@@ -3,6 +3,7 @@ import type { Node as PMNode } from '@tiptap/pm/model'
 import type { Transaction } from '@tiptap/pm/state'
 
 import { setBlockLinkBuilder } from '../components/block-menu'
+import { dismissAllLayers } from '../components/floating'
 import { handleAIEvent, type AIHost, type AIReviewStyle } from '../extensions/ai-review'
 import {
   commentRanges,
@@ -223,6 +224,8 @@ export class EditorBridge {
   }
 
   loadDocument(payload: PagePayload): void {
+    // Menus and panels belong to the page being replaced.
+    dismissAllLayers()
     // Never drop a pending edit of the previous page, nor where it was last scrolled to.
     this.flushPending()
     if (this.scrollTimer) this.sendScroll()

@@ -142,7 +142,10 @@ function cellCount(selection: CellSelection): number {
 type Pointer = { onMouseEnter: () => void; onMouseLeave: () => void }
 
 const gripClass =
-  'fixed z-30 grid cursor-pointer place-items-center rounded-sm border border-border bg-background text-muted-foreground shadow-xs hover:bg-accent hover:text-foreground data-[popup-open]:bg-primary data-[popup-open]:text-primary-foreground'
+  'fixed z-30 grid min-w-0 cursor-pointer place-items-center rounded-sm border border-border bg-background p-0 text-muted-foreground shadow-xs hover:bg-accent hover:text-foreground data-[popup-open]:bg-primary data-[popup-open]:text-primary-foreground dark:hover:bg-accent'
+
+/** The "+" bars are shadcn Buttons stripped to the surface their own classes draw. */
+const plusBase = 'h-auto min-w-0 rounded-none border-0 p-0 hover:bg-accent dark:hover:bg-accent'
 
 function RowGrip({
   hover,
@@ -164,8 +167,8 @@ function RowGrip({
     <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
         render={
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             aria-label={t('table.rowMenu')}
             className={cn(gripClass, 'h-6 w-3.5')}
             style={{ left: table.left - 18, top: row.top + row.height / 2 - 12 }}
@@ -203,8 +206,8 @@ function ColumnGrip({
     <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
         render={
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             aria-label={t('table.columnMenu')}
             className={cn(gripClass, 'h-3.5 w-6')}
             style={{ left: center - 12, top: table.top - 9 }}
@@ -410,10 +413,10 @@ function EdgeButton({
     <Tooltip>
       <TooltipTrigger
         render={
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             aria-label={label}
-            className={className}
+            className={cn(plusBase, className)}
             style={style}
             onMouseDown={(e) => e.preventDefault()}
             onClick={onClick}

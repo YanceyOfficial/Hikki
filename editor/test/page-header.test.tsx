@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { EditorBridge } from '../src/core/bridge'
@@ -155,6 +155,56 @@ describe('PageHeader', () => {
     fireEvent.click(screen.getByText('Cancel'))
     expect(position()).toBe('50% 25%')
     expect(bridge.page.get().cover).toBe('hikki-editor://assets/a.png#y=25')
+  })
+
+  it('another page starts out of reposition mode, its icon picker closed — the draft stays behind', async () => {
+    render(<PageHeader bridge={bridge} />)
+    load({ icon: '🌊', cover: 'hikki-editor://assets/a.png' })
+    fireEvent.click(screen.getByText('Reposition'))
+    const cover = screen.getByTestId('cover')
+    fireEvent.pointerDown(cover, { pointerId: 1, button: 0, clientY: 100 })
+    fireEvent.pointerMove(cover, { pointerId: 1, clientY: 150 })
+    fireEvent.pointerUp(cover, { pointerId: 1 })
+    fireEvent.click(screen.getByLabelText('Change icon'))
+    act(() => bridge.loadDocument(page('b', { icon: '🌸', cover: 'hikki-editor://assets/b.png' })))
+    expect(screen.queryByText('Drag image to reposition')).toBeNull()
+    expect(screen.queryByText('Save position')).toBeNull()
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Choose icon' })).toBeNull())
+    expect(position()).toBe('50% 50%')
+    expect(bridge.page.get().cover).toBe('hikki-editor://assets/b.png')
+  })
+
+  it('a drag travels the picture’s overflow as it is drawn now, measured again when Reposition starts', () => {
+    render(<PageHeader bridge={bridge} />)
+    load({ cover: 'hikki-editor://assets/tall.png' })
+    const cover = screen.getByTestId('cover')
+    let width = 800
+    cover.getBoundingClientRect = () => new DOMRect(0, 0, width, 200)
+    const img = screen.getByTestId('cover-image') as HTMLImageElement
+    Object.defineProperty(img, 'naturalWidth', { value: 800 })
+    Object.defineProperty(img, 'naturalHeight', { value: 1000 })
+    fireEvent.load(img)
+    // The window narrowed after the picture loaded: 400 wide, the picture shows 500 px tall, 300 beyond the cover.
+    width = 400
+    fireEvent.click(screen.getByText('Reposition'))
+    fireEvent.pointerDown(cover, { pointerId: 1, button: 0, clientY: 100 })
+    fireEvent.pointerMove(cover, { pointerId: 1, clientY: 130 })
+    expect(position()).toBe('50% 40%')
+  })
+
+  it('the icon picker is a popover: Escape or a press outside closes it', async () => {
+    render(<PageHeader bridge={bridge} />)
+    load({ icon: '🌊' })
+    fireEvent.click(screen.getByLabelText('Change icon'))
+    const dialog = await screen.findByRole('dialog', { name: 'Choose icon' })
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Choose icon' })).toBeNull())
+    fireEvent.click(screen.getByLabelText('Change icon'))
+    await screen.findByRole('dialog', { name: 'Choose icon' })
+    fireEvent.pointerDown(document.body)
+    fireEvent.mouseDown(document.body)
+    fireEvent.click(document.body)
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Choose icon' })).toBeNull())
   })
 
   it('cover picker swaps the gradient and Remove clears it', () => {

@@ -1,7 +1,6 @@
 import {
   ArrowsClockwiseIcon,
   CaretRightIcon,
-  CheckIcon,
   CopyIcon,
   LinkSimpleIcon,
   PaintBrushIcon,
@@ -15,7 +14,6 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 
 import { Input } from '@/components/ui/input'
 
-import { BLOCK_TYPES } from '../core/blocks'
 import { t } from '../core/i18n'
 import { shortcutLabel } from '../core/shortcuts'
 import type { AIAction } from '../extensions/ai-review'
@@ -24,17 +22,20 @@ import {
   deleteUnit,
   duplicateUnit,
   firstTextPos,
+  followNode,
   unitTextRange,
-  type BlockUnit
+  type BlockUnit,
+  type Followed
 } from '../extensions/block-units'
-import { BLOCK_COLOR_TYPES, colorLabel, PALETTE, type PaletteColor } from '../extensions/colors'
+import { BLOCK_COLOR_TYPES, type PaletteColor } from '../extensions/colors'
 import { blockLabel, copyLink } from '../extensions/page-links'
 import { AIPanel } from './ai-panel'
+import { BlockTypeList, TURN_INTO } from './block-type-list'
+import { ColorList } from './color-list'
 import { FloatingLayer, usePresence } from './floating'
 import { GlidingHighlight } from './gliding-highlight'
 import { IconProvider } from './icons'
-
-const TURN_INTO = BLOCK_TYPES.filter((b) => b.turnInto)
+import { MenuRow } from './menu-row'
 
 let open: { layer: FloatingLayer; close: () => void } | null = null
 
@@ -49,11 +50,26 @@ export function setBlockLinkBuilder(builder: ((blockId: string) => BlockLink | n
 /** Opens the block menu for `unit` below `anchor` (the grip). One at a time. */
 export function openBlockMenu(editor: Editor, unit: BlockUnit, anchor: DOMRect): void {
   open?.close()
+  // What Escape means inside the menu (a submenu closes first); set by the menu while it is mounted.
+  let escape: (() => boolean) | null = null
   // Escape or a press anywhere outside closes it (and the press does what it does): the layers' bus.
-  const layer = new FloatingLayer('hk-block-menu', { bare: true, onDismiss: () => close() })
+  const layer = new FloatingLayer('hk-block-menu', {
+    bare: true,
+    onDismiss: (reason) => {
+      if (reason === 'escape' && escape?.()) return 'keep'
+      close()
+      if (reason === 'escape' && !editor.isDestroyed) editor.view.focus()
+    }
+  })
+  // The block, wherever later edits (a remote reload) put it; gone with it, or with the editor, the menu goes.
+  const follow = followNode(editor, unit.pos, () => close())
   // The block is tinted while its menu is open (a decoration: the same for every block type).
   setBlockHighlight(editor.view, { menu: { from: unit.pos, to: unit.pos + unit.node.nodeSize } })
+  let closed = false
   function close() {
+    if (closed) return
+    closed = true
+    follow.stop()
     if (!editor.isDestroyed) setBlockHighlight(editor.view, { menu: null })
     layer.destroy()
     if (open?.layer === layer) open = null
@@ -61,7 +77,15 @@ export function openBlockMenu(editor: Editor, unit: BlockUnit, anchor: DOMRect):
   open = { layer, close }
   layer.render(
     <IconProvider>
-      <BlockMenu editor={editor} unit={unit} onClose={close} />
+      <BlockMenu
+        editor={editor}
+        unit={unit}
+        follow={follow}
+        onEscape={(handler) => {
+          escape = handler
+        }}
+        onClose={close}
+      />
     </IconProvider>,
     () => anchor
   )
@@ -82,10 +106,17 @@ type Item = {
 function BlockMenu({
   editor,
   unit,
+  follow,
+  onEscape,
   onClose
 }: {
   editor: Editor
+  /** The block as it was when the menu opened: what the menu shows. */
   unit: BlockUnit
+  /** The block now: what actions run on. */
+  follow: Followed<BlockUnit>
+  /** Gives the menu's answer to Escape (true when it handled it: closed a submenu); the bus asks it. */
+  onEscape: (handler: (() => boolean) | null) => void
   onClose: () => void
 }) {
   const [query, setQuery] = useState('')
@@ -115,20 +146,40 @@ function BlockMenu({
   useEffect(() => {
     inputRef.current?.focus()
   }, [])
+  useEffect(() => {
+    onEscape(() => {
+      if (!submenu) return false
+      setSubmenu(null)
+      return true
+    })
+    return () => onEscape(null)
+  }, [onEscape, submenu])
 
-  const act = (run: () => void) => () => {
-    run()
+  /** Colours the block where it is now. */
+  const paint = (attrs: Record<string, PaletteColor | null>) =>
+    act((now) =>
+      editor.view.dispatch(
+        editor.state.tr.setNodeMarkup(now.pos, undefined, { ...now.node.attrs, ...attrs })
+      )
+    )()
+
+  /** Runs on the block where it is now (the menu closed itself if it is gone), then closes. */
+  const act = (run: (unit: BlockUnit) => void) => () => {
+    const now = follow.current
+    if (now) run(now)
     onClose()
-    editor.view.focus()
+    if (!editor.isDestroyed) editor.view.focus()
   }
   const blockId = unit.node.attrs.id as string | null | undefined
   const link = blockId ? blockLink?.(blockId) : null
 
   // AI works on the block's text (not on code).
-  const aiRange = unitTextRange(unit)
+  const hasAIText = unitTextRange(unit) !== null
   const runAI = (action: AIAction) => {
-    if (!aiRange) return
+    const now = follow.current
+    const aiRange = now ? unitTextRange(now) : null
     onClose()
+    if (!aiRange) return
     editor.view.dispatch(
       editor.state.tr.setSelection(TextSelection.create(editor.state.doc, aiRange.from, aiRange.to))
     )
@@ -137,7 +188,7 @@ function BlockMenu({
   }
 
   const items: Item[] = [
-    ...(aiRange
+    ...(hasAIText
       ? [
           {
             id: 'ai',
@@ -170,7 +221,7 @@ function BlockMenu({
             label: t('blockMenu.copyLink'),
             icon: <LinkSimpleIcon size={18} />,
             // A ready hyperlink (the block's text) plus the URL: pasting it lands as a link.
-            run: act(() => void copyLink(link.href, blockLabel(unit.node) ?? link.pageLabel))
+            run: act((now) => void copyLink(link.href, blockLabel(now.node) ?? link.pageLabel))
           }
         ]
       : []),
@@ -179,7 +230,7 @@ function BlockMenu({
       label: t('blockMenu.duplicate'),
       icon: <CopyIcon size={18} />,
       keys: shortcutLabel('duplicateBlock'),
-      run: act(() => editor.view.dispatch(duplicateUnit(editor.state, unit)))
+      run: act((now) => editor.view.dispatch(duplicateUnit(editor.state, now)))
     },
     {
       id: 'delete',
@@ -187,7 +238,7 @@ function BlockMenu({
       icon: <TrashIcon size={18} />,
       keys: 'Del',
       destructive: true,
-      run: act(() => editor.view.dispatch(deleteUnit(editor.state, unit)))
+      run: act((now) => editor.view.dispatch(deleteUnit(editor.state, now)))
     }
   ]
 
@@ -199,7 +250,7 @@ function BlockMenu({
       id: `turn-${block.id}`,
       label: `${t('blockMenu.turnInto')} › ${block.label()}`,
       icon: <block.icon size={18} />,
-      run: act(() => turnUnitInto(editor, unit, block.id))
+      run: act((now) => turnUnitInto(editor, now, block.id))
     }))
     return [...items.filter((i) => !i.submenu), ...turnInto].filter((i) =>
       i.label.toLowerCase().includes(q)
@@ -218,14 +269,8 @@ function BlockMenu({
       className="relative"
       onKeyDown={(e) => {
         if (e.nativeEvent.isComposing) return
-        if (e.key === 'Escape') {
-          e.preventDefault()
-          if (submenu) setSubmenu(null)
-          else {
-            onClose()
-            editor.view.focus()
-          }
-        } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        // Escape is the layers' bus (onDismiss in openBlockMenu): it never reaches here.
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
           e.preventDefault()
           const step = e.key === 'ArrowDown' ? 1 : -1
           setSelected((i) => (i + step + visible.length) % Math.max(1, visible.length))
@@ -266,15 +311,15 @@ function BlockMenu({
             <div className="px-2 py-1.5 text-sm text-muted-foreground">{t('editor.noResults')}</div>
           )}
           {visible.map((item, i) => (
-            <button
+            <MenuRow
               key={item.id}
-              type="button"
+              glide
               role="menuitem"
               aria-haspopup={item.submenu ? 'menu' : undefined}
               aria-expanded={item.submenu ? submenu === item.submenu : undefined}
               data-index={i}
               className={cn(
-                'relative flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 text-left text-sm select-none [&_svg]:text-subtle-foreground',
+                '[&_svg]:text-subtle-foreground',
                 item.destructive && 'text-destructive [&_svg]:text-destructive'
               )}
               onMouseMove={() => {
@@ -290,7 +335,7 @@ function BlockMenu({
               <span className="flex-1 truncate">{item.label}</span>
               {item.keys && <span className="text-xs text-placeholder">{item.keys}</span>}
               {item.submenu && <CaretRightIcon size={14} aria-hidden />}
-            </button>
+            </MenuRow>
           ))}
         </div>
       </div>
@@ -307,10 +352,20 @@ function BlockMenu({
             </div>
           )}
           {shownSubmenu === 'turnInto' && (
-            <TurnIntoList editor={editor} unit={unit} onDone={act(() => {})} />
+            <BlockTypeList
+              title={t('blockMenu.turnInto')}
+              current={unitTypeId(editor, unit)}
+              onPick={(block) => act((now) => turnUnitInto(editor, now, block.id))()}
+            />
           )}
           {shownSubmenu === 'color' && (
-            <ColorList editor={editor} unit={unit} onDone={act(() => {})} />
+            <ColorList
+              kind="block"
+              text={unit.node.attrs.blockColor as PaletteColor | null}
+              background={unit.node.attrs.blockBackground as PaletteColor | null}
+              onText={(color) => paint({ blockColor: color })}
+              onBackground={(color) => paint({ blockBackground: color })}
+            />
           )}
         </div>
       )}
@@ -360,126 +415,4 @@ function turnUnitInto(editor: Editor, unit: BlockUnit, id: string) {
   withCaretIn(editor, unit)
   block.turnInto?.(editor.chain().focus()).run()
   block.after?.(editor)
-}
-
-function TurnIntoList({
-  editor,
-  unit,
-  onDone
-}: {
-  editor: Editor
-  unit: BlockUnit
-  onDone: () => void
-}) {
-  const current = unitTypeId(editor, unit)
-  return (
-    <>
-      <div className="px-2 pt-1.5 pb-1 text-xs font-medium text-muted-foreground">
-        {t('blockMenu.turnInto')}
-      </div>
-      {TURN_INTO.map((block) => (
-        <button
-          key={block.id}
-          type="button"
-          role="menuitemradio"
-          aria-checked={block.id === current}
-          className="flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 text-left text-sm transition-colors duration-(--motion-pop-out) ease-out hover:bg-accent"
-          onClick={() => {
-            turnUnitInto(editor, unit, block.id)
-            onDone()
-          }}
-        >
-          <block.icon size={18} className="text-subtle-foreground" aria-hidden />
-          <span className="flex-1 truncate">{block.label()}</span>
-          {block.id === current && <CheckIcon size={14} aria-hidden />}
-        </button>
-      ))}
-    </>
-  )
-}
-
-function ColorRow({
-  label,
-  checked,
-  onClick,
-  children
-}: {
-  label: string
-  checked: boolean
-  onClick: () => void
-  children: ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      role="menuitemradio"
-      aria-checked={checked}
-      className="flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-1 text-left text-sm hover:bg-accent"
-      onClick={onClick}
-    >
-      {children}
-      <span className="flex-1 truncate">{label}</span>
-      {checked && <CheckIcon size={14} aria-hidden />}
-    </button>
-  )
-}
-
-function ColorList({
-  editor,
-  unit,
-  onDone
-}: {
-  editor: Editor
-  unit: BlockUnit
-  onDone: () => void
-}) {
-  const set = (attrs: Record<string, PaletteColor | null>) => {
-    const node = editor.state.doc.nodeAt(unit.pos)
-    if (!node) return
-    editor.view.dispatch(
-      editor.state.tr.setNodeMarkup(unit.pos, undefined, { ...node.attrs, ...attrs })
-    )
-    onDone()
-  }
-  const text = unit.node.attrs.blockColor as PaletteColor | null
-  const background = unit.node.attrs.blockBackground as PaletteColor | null
-  return (
-    <>
-      <div className="px-2 pt-1.5 pb-1 text-xs font-medium text-muted-foreground">
-        {t('color.text')}
-      </div>
-      {[null, ...PALETTE].map((color) => (
-        <ColorRow
-          key={`t-${color}`}
-          label={colorLabel(color)}
-          checked={text === color}
-          onClick={() => set({ blockColor: color })}
-        >
-          <span
-            className="grid size-5 place-items-center rounded-[5px] border border-border text-xs font-semibold"
-            data-text-color={color ?? undefined}
-          >
-            A
-          </span>
-        </ColorRow>
-      ))}
-      <div className="mx-1 my-1 h-px bg-border" />
-      <div className="px-2 pt-1.5 pb-1 text-xs font-medium text-muted-foreground">
-        {t('color.background')}
-      </div>
-      {[null, ...PALETTE].map((color) => (
-        <ColorRow
-          key={`b-${color}`}
-          label={colorLabel(color)}
-          checked={background === color}
-          onClick={() => set({ blockBackground: color })}
-        >
-          <span
-            className="size-5 rounded-[5px] border border-border"
-            data-block-bg={color ?? undefined}
-          />
-        </ColorRow>
-      ))}
-    </>
-  )
 }

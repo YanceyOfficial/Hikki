@@ -34,7 +34,9 @@ These rules are mandatory. Automated ones are noted.
   then oxfmt). Prefer a shadcn component over a hand-rolled one;
   editor-specific pieces live in `editor/src/components/`. Fields, buttons, toggles, tooltips and popovers are always the shadcn
   components (`Input`, `InputGroup`, `Textarea`, `Button`, `Toggle`, `Kbd`…) restyled with classes — never a bare
-  `<input>` / `<button>`; Phosphor icons are imported by their `…Icon` names. Files under `editor/src` are
+  `<input>` / `<button>` (_checked by `make lint-design`_); a row in a menu, list or panel is `MenuRow`
+  (`editor/src/components/menu-row.tsx`: a ghost `Button` as a full-width row, `glide` in lists with a gliding
+  highlight); Phosphor icons are imported by their `…Icon` names. Files under `editor/src` are
   kebab-case (`editor/src/components/find-panel.tsx`; the component inside stays PascalCase), and a folder holds either
   `.tsx` or `.ts`, never both: React lives in `editor/src/components/` and `editor/src/page/`; `editor/src/core/`
   (bridge, protocol, editor setup, catalogs), `editor/src/extensions/`, `editor/src/lib/` and `editor/src/hooks/` are
@@ -251,14 +253,18 @@ HikkiUITests/                 XCUITest flows
   out, the folder's imported — nothing deleted).
 - **Popups close one way**: every `FloatingLayer` opened with `onDismiss` (`editor/src/components/floating.tsx`) joins
   one dismiss bus — a single pair of document listeners: Escape and a press outside every open layer dismiss the newest
-  one, and the opener says what that means (the slash and block menus exit, the math and ruby panels cancel). No popup
-  installs its own outside-click or Escape listener. Base UI popups (shadcn) bring their own. A layer follows its
+  one, and the opener says what that means (the slash and block menus exit, the math and ruby panels cancel; it gets
+  the reason and may answer `'keep'` — Escape in the block menu closes its submenu first). No popup installs its own
+  outside-click or Escape listener. `dismissAllLayers` runs as `loadDocument` starts, so nothing outlives its page, and a
+  menu or panel acting on a block later follows it through edits meanwhile (`followNode` / `followPosition` in
+  `editor/src/extensions/block-units.ts`: by block id, else mapped; gone → it closes). Base UI popups (shadcn) bring their own. A layer follows its
   anchor when the page scrolls, and a scroll over any popup (`hk-pop`) never reaches the page behind it
   (`editor/src/lib/scroll-containment.ts`, one set of document listeners).
 - **Editor menus**: `editor/src/core/blocks.ts` is the one block catalog (groups, Markdown shortcuts, `turnInto`, `isActive`)
   behind the "/" menu (`editor/src/components/slash-menu.tsx`) and the selection menu's "Turn into"
   (`editor/src/components/selection-menu.tsx`, positioned by Tiptap's BubbleMenu; its side panels stay inside the menu element
-  or BubbleMenu hides on blur). Text/background colors are stored as palette names (`editor/src/extensions/colors.ts`) and
+  or BubbleMenu hides on blur). The selection menu and the block menu share "Turn into"
+  (`editor/src/components/block-type-list.tsx`) and the colour list (`editor/src/components/color-list.tsx`). Text/background colors are stored as palette names (`editor/src/extensions/colors.ts`) and
   styled from the `ink-*` / `wash-*` tokens — never raw CSS colors in the document.
 - **Code blocks** (`editor/src/extensions/code-block.ts`): lowlight with the `common` grammars, colored by the
   `syntax-*` tokens (Xcode's Default Light/Dark); new blocks use the last picked language

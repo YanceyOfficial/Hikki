@@ -7,11 +7,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
+import { reportError } from '../core/errors'
 import { t } from '../core/i18n'
 import { filterLanguages, findLanguage } from '../extensions/code-languages'
 import { handleListKey } from './command-list'
 import { GlidingHighlight } from './gliding-highlight'
 import { IconProvider } from './icons'
+import { MenuRow } from './menu-row'
 
 type Props = {
   language: string
@@ -94,7 +96,10 @@ export function CodeBlockHeader({
           copied && 'opacity-100'
         )}
         onClick={() => {
-          void navigator.clipboard?.writeText(getText()).then(() => setCopied(true))
+          navigator.clipboard
+            ?.writeText(getText())
+            .then(() => setCopied(true))
+            .catch((e: unknown) => reportError('copyFailed', e))
         }}
       >
         {copied ? <CheckIcon size={12} aria-hidden /> : <CopyIcon size={12} aria-hidden />}
@@ -148,19 +153,19 @@ function LanguageList({ current, onPick }: { current: string; onPick: (id: strin
           <div className="px-2 py-1.5 text-sm text-muted-foreground">{t('editor.noResults')}</div>
         )}
         {items.map((language, i) => (
-          <button
+          <MenuRow
             key={language.id}
-            type="button"
+            glide
             role="option"
             aria-selected={i === selected}
             data-index={i}
-            className="relative flex h-8 w-full cursor-pointer items-center justify-between rounded-md px-2 text-left text-sm"
+            className="justify-between"
             onMouseMove={() => i !== selected && setSelected(i)}
             onClick={() => onPick(language.id)}
           >
             {languageLabel(language.id)}
             {language.id === current && <CheckIcon size={14} aria-hidden />}
-          </button>
+          </MenuRow>
         ))}
       </div>
     </div>

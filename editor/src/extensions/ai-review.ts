@@ -304,6 +304,31 @@ export function handleAIEvent(editor: Editor, host: AIHost, event: AIStreamEvent
       session.error = { code: event.code, provider: event.provider, message: event.message }
       break
   }
+  // Text streams in many small pieces: one redraw per frame (an answer's Markdown is parsed whole each time).
+  // Anything else redraws at once, taking a pending frame's place.
+  const pending = pendingRedraws.get(session)
+  if (event.type === 'text') {
+    if (pending === undefined)
+      pendingRedraws.set(
+        session,
+        requestAnimationFrame(() => {
+          pendingRedraws.delete(session)
+          if (!editor.isDestroyed && storage(editor).session === session) redraw(editor, host)
+        })
+      )
+    return
+  }
+  if (pending !== undefined) {
+    cancelAnimationFrame(pending)
+    pendingRedraws.delete(session)
+  }
+  redraw(editor, host)
+}
+
+/** A session's redraw waiting for the next frame (text streaming in). */
+const pendingRedraws = new WeakMap<AISession, number>()
+
+function redraw(editor: Editor, host: AIHost): void {
   editor.view.dispatch(editor.state.tr.setMeta(AIReviewKey, true).setMeta('addToHistory', false))
   draw(editor, host)
 }

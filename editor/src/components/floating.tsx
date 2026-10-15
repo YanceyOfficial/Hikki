@@ -15,10 +15,17 @@ export type FloatingAnchor = (() => DOMRect | null) | null | undefined
  */
 const openLayers: FloatingLayer[] = []
 
+/**
+ * Why a layer is dismissed: Escape, a press outside it, or `all` — the page it belongs to is going away
+ * (`dismissAllLayers`). Its `onDismiss` may answer `'keep'` to stay open (Escape closing a submenu first).
+ */
+export type DismissReason = 'escape' | 'press' | 'all'
+type OnDismiss = (reason: DismissReason) => 'keep' | void
+
 function dismissOnPress(event: PointerEvent): void {
   const top = openLayers.at(-1)
   if (!top || openLayers.some((layer) => layer.element.contains(event.target as Node))) return
-  top.dismiss()
+  top.dismiss('press')
 }
 
 function dismissOnEscape(event: KeyboardEvent): void {
@@ -27,7 +34,15 @@ function dismissOnEscape(event: KeyboardEvent): void {
   if (!top) return
   event.preventDefault()
   event.stopPropagation()
-  top.dismiss()
+  top.dismiss('escape')
+}
+
+/**
+ * Dismisses every open layer, newest first: the page they point into is about to be replaced
+ * (`loadDocument`), so a menu or panel must not outlive it and act on the next page.
+ */
+export function dismissAllLayers(): void {
+  for (const layer of openLayers.toReversed()) layer.dismiss('all')
 }
 
 function register(layer: FloatingLayer): void {
@@ -59,7 +74,7 @@ export class FloatingLayer {
   readonly element: HTMLDivElement
   private readonly root: Root
   private readonly bare: boolean
-  private readonly onDismiss: (() => void) | null
+  private readonly onDismiss: OnDismiss | null
   private dismissed = false
   /** The anchor of the last render: the layer is placed against it again when the page scrolls under it. */
   private anchor: FloatingAnchor | null = null
@@ -75,11 +90,11 @@ export class FloatingLayer {
   /**
    * `bare`: only positioned — the content draws its own surface(s) and may overflow (a menu with a side
    * preview). Its height budget is then the `--hk-available-height` variable instead of max-height.
-   * `onDismiss`: what Escape or a press outside does (the caller closes the layer in it).
+   * `onDismiss`: what Escape or a press outside does (the caller closes the layer in it, or answers `'keep'`).
    */
   constructor(
     className: string,
-    { bare = false, onDismiss = null }: { bare?: boolean; onDismiss?: (() => void) | null } = {}
+    { bare = false, onDismiss = null }: { bare?: boolean; onDismiss?: OnDismiss | null } = {}
   ) {
     this.bare = bare
     this.onDismiss = onDismiss
@@ -97,12 +112,15 @@ export class FloatingLayer {
     window.visualViewport?.addEventListener('resize', this.follow)
   }
 
-  /** Escape or a press outside: once. */
-  dismiss(): void {
+  /** Escape or a press outside: once — unless `onDismiss` keeps the layer open (`'keep'`, never for `all`). */
+  dismiss(reason: DismissReason = 'escape'): void {
     if (this.dismissed) return
     this.dismissed = true
+    if (this.onDismiss?.(reason) === 'keep' && reason !== 'all') {
+      this.dismissed = false
+      return
+    }
     unregister(this)
-    this.onDismiss?.()
   }
 
   render(node: ReactElement, anchor: FloatingAnchor): void {

@@ -16,6 +16,7 @@ import {
   type EmbedProvider,
   type EmbedSource
 } from '../lib/embeds'
+import { followPosition, type Followed } from './block-units'
 
 /** What embeds need from the host: where the original page opens, and the BFF that shims YouTube (or null). */
 export type EmbedHost = {
@@ -397,10 +398,11 @@ function hostOf(url: string): string {
   }
 }
 
-let open: FloatingLayer | null = null
+let open: { layer: FloatingLayer; at: Followed<number> } | null = null
 
 function close() {
-  open?.destroy()
+  open?.at.stop()
+  open?.layer.destroy()
   open = null
 }
 
@@ -410,10 +412,11 @@ function close() {
  */
 export function openEmbedPanel(editor: Editor, provider: EmbedProvider | 'html'): void {
   close()
-  const { from } = editor.state.selection
+  // Where the embed goes, followed through edits meanwhile (a remote reload replacing it closes the panel).
+  const at = followPosition(editor, editor.state.selection.from, () => close())
   const anchor = () => {
     try {
-      const coords = editor.view.coordsAtPos(from)
+      const coords = editor.view.coordsAtPos(at.current ?? 0)
       return new DOMRect(coords.left, coords.top, 1, coords.bottom - coords.top)
     } catch {
       return null
@@ -421,24 +424,25 @@ export function openEmbedPanel(editor: Editor, provider: EmbedProvider | 'html')
   }
   const cancel = () => {
     close()
-    editor.commands.focus()
+    if (!editor.isDestroyed) editor.commands.focus()
   }
   const layer = new FloatingLayer('hk-embed-panel w-[400px] max-w-[calc(100vw-16px)] p-2', {
     onDismiss: cancel
   })
-  open = layer
+  open = { layer, at }
   renderEmbedPanel(
     layer,
     {
       provider,
       onDone: (source) => {
+        const pos = at.current
         close()
+        if (pos === null) return
         // A link card just added stores what it reads about its page (an edit the user made).
         if (source.kind === 'iframe' && source.provider === 'generic')
           freshCards.add(source.original)
-        editor.chain().focus().insertEmbed(source).run()
-      },
-      onCancel: cancel
+        editor.chain().focus().setTextSelection(pos).insertEmbed(source).run()
+      }
     },
     anchor
   )

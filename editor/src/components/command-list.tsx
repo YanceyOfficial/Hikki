@@ -1,8 +1,8 @@
-import { cn } from 'cn'
 import { useEffect, useRef } from 'react'
 
 import type { FloatingAnchor, FloatingLayer } from './floating'
 import { GlidingHighlight } from './gliding-highlight'
+import { MenuRow } from './menu-row'
 
 export type CommandListItem = {
   id: string
@@ -45,16 +45,14 @@ export function CommandList({ items, selectedIndex, emptyText, onSelect, onHover
         <div className="hk-command-empty p-2 text-md text-muted-foreground">{emptyText}</div>
       ) : (
         items.map((item, index) => (
-          <button
+          <MenuRow
             key={item.id}
-            type="button"
+            glide
             role="option"
             aria-selected={index === selectedIndex}
             aria-label={item.title}
             data-index={index}
-            className={cn(
-              'hk-command-item relative flex min-h-10 cursor-pointer select-none items-center gap-2.5 rounded-md px-2 py-1 text-left coarse:min-h-12'
-            )}
+            className="hk-command-item h-auto min-h-10 py-1 coarse:h-auto coarse:min-h-12"
             // Keep editor focus (and the iOS keyboard) when tapping an item.
             onMouseDown={(e) => e.preventDefault()}
             onMouseEnter={() => onHover?.(index)}
@@ -74,7 +72,7 @@ export function CommandList({ items, selectedIndex, emptyText, onSelect, onHover
                 <span className="truncate text-xs text-muted-foreground">{item.hint}</span>
               )}
             </span>
-          </button>
+          </MenuRow>
         ))
       )}
     </div>

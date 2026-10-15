@@ -5,15 +5,17 @@ import 'katex/dist/katex.min.css'
 
 import { FloatingLayer } from '../components/floating'
 import { renderMathEditor } from '../components/math-editor'
+import { followNode, type BlockUnit, type Followed } from './block-units'
 
 export type MathKind = 'inline' | 'block'
 
-let open: FloatingLayer | null = null
+let open: { layer: FloatingLayer; formula: Followed<BlockUnit> } | null = null
 
 function close(editor?: Editor) {
-  open?.destroy()
+  open?.formula.stop()
+  open?.layer.destroy()
   open = null
-  editor?.commands.focus()
+  if (editor && !editor.isDestroyed) editor.commands.focus()
 }
 
 /**
@@ -25,22 +27,29 @@ export function openMathEditor(editor: Editor, pos: number, kind: MathKind): voi
   const node = editor.state.doc.nodeAt(pos)
   const dom = editor.view.nodeDOM(pos)
   if (!node || !(dom instanceof HTMLElement)) return
+  // The formula where it is now: an edit meanwhile (a remote reload) may have moved it; gone, the panel goes.
+  const formula = followNode(editor, pos, () => close())
+  const at = () => formula.current?.pos ?? null
   const cancel = () => {
     // A formula that was never written (just inserted) goes away again.
-    if (!(node.attrs.latex as string).trim())
-      editor.chain().setNodeSelection(pos).deleteSelection().run()
+    const now = at()
+    if (now !== null && !(node.attrs.latex as string).trim())
+      editor.chain().setNodeSelection(now).deleteSelection().run()
     close(editor)
   }
   // Escape or a press outside cancels (the layers' bus).
   const layer = new FloatingLayer('hk-math-editor w-[360px] max-w-[calc(100vw-16px)] p-2', {
     onDismiss: cancel
   })
-  open = layer
+  open = { layer, formula }
   const commit = (latex: string) => {
+    const now = at()
     // The update commands read `pos`, not the chain's selection.
-    if (!latex.trim()) editor.chain().setNodeSelection(pos).deleteSelection().run()
-    else if (kind === 'inline') editor.commands.updateInlineMath({ latex, pos })
-    else editor.commands.updateBlockMath({ latex, pos })
+    if (now === null) return close(editor)
+    formula.stop()
+    if (!latex.trim()) editor.chain().setNodeSelection(now).deleteSelection().run()
+    else if (kind === 'inline') editor.commands.updateInlineMath({ latex, pos: now })
+    else editor.commands.updateBlockMath({ latex, pos: now })
     close(editor)
   }
   renderMathEditor(
@@ -48,10 +57,13 @@ export function openMathEditor(editor: Editor, pos: number, kind: MathKind): voi
     {
       initial: node.attrs.latex as string,
       multiline: kind === 'block',
-      onDone: commit,
-      onCancel: cancel
+      onDone: commit
     },
-    () => dom.getBoundingClientRect()
+    () => {
+      const now = at()
+      const el = now === null ? null : editor.view.nodeDOM(now)
+      return el instanceof HTMLElement ? el.getBoundingClientRect() : dom.getBoundingClientRect()
+    }
   )
 }
 
