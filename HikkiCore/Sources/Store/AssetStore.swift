@@ -92,6 +92,20 @@ public final class AssetStore: @unchecked Sendable {
         return Self.urlPrefix + target.lastPathComponent
     }
 
+    /// Copies a file (an imported page's picture or attachment) into the store and returns the editor URL.
+    public func importCopy(of source: URL) throws -> String {
+        let ext = source.pathExtension.lowercased()
+        guard Self.kind(ofExtension: ext) != nil else { throw AssetError.unsupportedType(ext) }
+        let temporary = FileManager.default.temporaryDirectory.appending(path: "hikki-import-\(UUID().uuidString).\(ext)")
+        try FileManager.default.copyItem(at: source, to: temporary)
+        do {
+            return try importFile(at: temporary, fileExtension: ext)
+        } catch {
+            try? FileManager.default.removeItem(at: temporary)
+            throw error
+        }
+    }
+
     /// Moves a finished upload into the store under a fresh unique name and returns the editor URL.
     public func importFile(at source: URL, fileExtension: String) throws -> String {
         guard let kind = Self.kind(ofExtension: fileExtension) else { throw AssetError.unsupportedType(fileExtension) }

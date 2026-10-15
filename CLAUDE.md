@@ -186,8 +186,11 @@ HikkiUITests/                 XCUITest flows
   `PageExport` (`HikkiCore/Sources/Store/PageExport.swift`): one file, or — when the page attaches files — a folder
   with the document and `assets/` it links into relatively; saved with `.fileExporter` on both platforms. PDF renders
   the HTML export in an offscreen light web view (`createPDF`: one tall page). Import (File → Import…, the workspace
-  menu) takes .md/.html/.txt as new top-level pages; whatever the file holds, the body fits the schema (text fallback).
-  Not yet: dropping files on the sidebar, relative images in imported Markdown. DEBUG: `HIKKI_EXPORT_DIR=<folder>`
+  menu) takes .md/.html/.txt — or a folder of them, such as an export — as new top-level pages; pictures and
+  attachments a document links by relative path inside its folder are copied into the workspace's assets
+  (`HikkiCore/Sources/Store/PageImport.swift`; nothing outside the folder), and Markdown's inline pictures are lifted
+  into blocks (`liftBlockMedia`). Whatever the file holds, the body fits the schema (text fallback, its reason logged).
+  Not yet: dropping files on the sidebar. DEBUG: `HIKKI_EXPORT_DIR=<folder>`
   skips the save panel, `HIKKI_IMPORT_FILE=<path>` imports at launch (UI tests).
 - **Workspace identity** lives in the folder (a workspace.json next to `pages/`: id, name, icon — `WorkspaceIdentity`); the per-device
   record (`AppPaths.workspace`) only adds the location. A device picking a folder that has one _opens_ that workspace

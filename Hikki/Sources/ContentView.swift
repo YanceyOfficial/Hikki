@@ -172,8 +172,8 @@ struct ContentView: View {
             }
     }
 
-    /// Markdown, HTML and plain text.
-    private static let importTypes: [UTType] = [UTType("net.daringfireball.markdown"), .html, .plainText].compactMap { $0 }
+    /// Markdown, HTML and plain text files, or a folder of them (with the pictures they link inside it).
+    private static let importTypes: [UTType] = [UTType("net.daringfireball.markdown"), .html, .plainText, .folder].compactMap { $0 }
 
     /// Imported files become pages; the last one opens.
     private func importFiles(_ urls: [URL]) async {

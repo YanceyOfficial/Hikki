@@ -107,6 +107,27 @@ describe('import', () => {
     ).toEqual([false, true])
   })
 
+  it('lifts a picture out of its paragraph (Markdown inlines them; the page holds them as blocks)', () => {
+    const page = importDocument(
+      '# Trip\n\nThe temple:\n\n![temple](assets/pic.png)\n\nOutside: ![gate](assets/gate.png) at dusk.\n',
+      'markdown',
+      'Trip'
+    )
+    const blocks = (page.content.content ?? []).map((b) =>
+      b.type === 'image'
+        ? `image:${b.attrs?.src}`
+        : `${b.type}:${(b.content ?? []).map((c) => c.text).join('')}`
+    )
+    expect(blocks).toEqual([
+      'paragraph:The temple:',
+      'image:assets/pic.png',
+      'paragraph:Outside:',
+      'image:assets/gate.png',
+      'paragraph:at dusk.'
+    ])
+    expect(page.title).toBe('Trip')
+  })
+
   it('falls back to the file name without a leading H1', () => {
     const page = importDocument('## Not a title\n\ntext', 'markdown', 'notes')
     expect(page.title).toBe('notes')

@@ -115,7 +115,7 @@ export function importDocument(
   let docTitle = ''
   try {
     if (format === 'markdown') {
-      content = markdown.parse(text)
+      content = liftBlockMedia(markdown.parse(text))
     } else if (format === 'html') {
       const parsed = new DOMParser().parseFromString(text, 'text/html')
       docTitle = parsed.title.trim()
@@ -124,7 +124,11 @@ export function importDocument(
       content = textDocument(text)
     }
     PMNode.fromJSON(schema, content).check()
-  } catch {
+  } catch (error) {
+    // Into the native log (the reason only — never the file's text).
+    console.warn(
+      `import fell back to text: ${error instanceof Error ? error.message : String(error)}`
+    )
     content = textDocument(text)
   }
   const blocks = [...(content.content ?? [])]
@@ -147,6 +151,51 @@ export function importDocument(
     text: plain,
     wordCount: wordCount(`${pageTitle}\n${plain}`)
   }
+}
+
+/** Media nodes that are blocks in the page's schema. */
+const BLOCK_MEDIA = new Set(['image', 'video', 'audio', 'fileAttachment'])
+
+/**
+ * Markdown puts a picture inside a paragraph (`Text ![x](a.png) more`); the page's pictures are blocks of their own.
+ * Each one is lifted out where it stands — the paragraph split around it, empty halves dropped.
+ */
+export function liftBlockMedia(node: JSONContent): JSONContent {
+  if (!node.content) return node
+  const content: JSONContent[] = []
+  for (const child of node.content.map(liftBlockMedia)) {
+    if (child.type !== 'paragraph' || !child.content?.some((c) => BLOCK_MEDIA.has(c.type ?? ''))) {
+      content.push(child)
+      continue
+    }
+    let run: JSONContent[] = []
+    const flush = () => {
+      const trimmed = trimRun(run)
+      if (trimmed.length > 0) content.push({ ...child, content: trimmed })
+      run = []
+    }
+    for (const inline of child.content) {
+      if (BLOCK_MEDIA.has(inline.type ?? '')) {
+        flush()
+        content.push(inline)
+      } else run.push(inline)
+    }
+    flush()
+  }
+  return { ...node, content }
+}
+
+/** A paragraph's piece without the spaces and line breaks left at its edges by the lifted picture. */
+function trimRun(run: JSONContent[]): JSONContent[] {
+  const out = [...run]
+  while (out[0]?.type === 'hardBreak') out.shift()
+  while (out.at(-1)?.type === 'hardBreak') out.pop()
+  if (out[0]?.type === 'text')
+    out[0] = { ...out[0], text: (out[0].text ?? '').replace(/^\s+/u, '') }
+  const last = out.at(-1)
+  if (last?.type === 'text')
+    out[out.length - 1] = { ...last, text: (last.text ?? '').replace(/\s+$/u, '') }
+  return out.filter((n) => n.type !== 'text' || (n.text ?? '') !== '')
 }
 
 /** Plain text: a paragraph per run of lines, blank lines between them; lines inside one keep their breaks. */
