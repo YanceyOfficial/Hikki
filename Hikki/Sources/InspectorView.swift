@@ -2,19 +2,11 @@ import HikkiCore
 import HikkiUI
 import SwiftUI
 
-/// What the side panel shows, each opened by its own toolbar button: the page's outline or AI (comments later).
+/// What the side panel shows, each opened by its own toolbar button (which, marked, names it): the outline, comments, AI.
 enum InspectorMode: String, CaseIterable, Identifiable {
     case outline, comments, ai
 
     var id: String { rawValue }
-
-    var title: LocalizedStringKey {
-        switch self {
-        case .outline: "app:inspector.outline"
-        case .comments: "app:inspector.comments"
-        case .ai: "app:inspector.ai"
-        }
-    }
 }
 
 enum InspectorPreferences {
@@ -77,11 +69,9 @@ struct InspectorView: View {
 
     var body: some View {
         VStack(spacing: Spacing.s0) {
+            // No title: the toolbar's marked button already says what the panel shows. The row keeps the content
+            // clear of the toolbar and holds the AI chat's New chat.
             HStack(spacing: Spacing.s1) {
-                Text(navigator.inspectorMode.title)
-                    .font(.hk(.sm, .medium))
-                    .foregroundStyle(Theme.mutedForeground)
-                    .accessibilityIdentifier("inspector-header")
                 Spacer(minLength: Spacing.s2)
                 if navigator.inspectorMode == .ai {
                     AIChatActions(chat: chat).labelStyle(.iconOnly).buttonStyle(.borderless)
