@@ -3,6 +3,9 @@
   "baseWeight": "regular",
   "strokeBoost": 4,
   "icons": {
+    "image": {
+      "sf": "photo"
+    },
     "chat-teardrop-text": {
       "sf": "text.bubble"
     },

@@ -34,6 +34,8 @@ enum RequestBuilders {
                 ["type": message.role == .assistant ? "output_text" : "input_text", "text": text]
             case .image(let data, let mimeType):
                 ["type": "input_image", "image_url": "data:\(mimeType);base64,\(data.base64EncodedString())"]
+            case .document(let data, let mimeType, let name):
+                ["type": "input_file", "filename": name, "file_data": "data:\(mimeType);base64,\(data.base64EncodedString())"]
             }
         }
         return ["role": message.role.rawValue, "content": content]
@@ -67,6 +69,11 @@ enum RequestBuilders {
             case .image(let data, let mimeType):
                 [
                     "type": "image",
+                    "source": ["type": "base64", "media_type": mimeType, "data": data.base64EncodedString()],
+                ]
+            case .document(let data, let mimeType, _):
+                [
+                    "type": "document",
                     "source": ["type": "base64", "media_type": mimeType, "data": data.base64EncodedString()],
                 ]
             }

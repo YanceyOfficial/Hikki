@@ -87,7 +87,7 @@ struct ContentView: View {
             .sheet(isPresented: $navigator.isAskingAI) { AIChatSheet(chat: chat) }
             // Asked from a page: about that page; from the home screen: about nothing in particular.
             .onChange(of: navigator.isAskingAI) { _, asking in
-                if asking { chat.pageID = navigator.compactColumn == .detail ? navigator.route.pageID : nil }
+                if asking { chat.show(page: navigator.compactColumn == .detail ? navigator.route.pageID : nil) }
             }
             // iPhone: the page's ⋯ as a sheet.
             .sheet(

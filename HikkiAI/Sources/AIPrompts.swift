@@ -100,15 +100,19 @@ public enum AIPrompts {
     /// Longest page text a chat sends as context (characters); the rest is cut.
     static let maxPageText = 30_000
 
-    /// A conversation with AI (the Ask AI sheet): the turns so far, and the page it was opened on as context.
+    /// A conversation with AI (Ask AI): the turns so far, and as context the page it was opened on plus any the user
+    /// @-mentioned (first one first; together at most `maxPageText` characters).
     public static func chat(
-        _ turns: [AIMessage], page: (title: String, text: String)?, selection: String? = nil, model: AIModel,
+        _ turns: [AIMessage], pages: [(title: String, text: String)] = [], selection: String? = nil, model: AIModel,
         webSearch: Bool, language: String? = nil
     ) -> AIRequest {
         var instructions = chatInstructions + languageLine(language)
-        if let page {
-            let text = String(page.text.prefix(maxPageText))
-            instructions += "\n\nThe page the user has open:\n<page title=\"\(escape(page.title))\">\n\(escape(text))\n</page>"
+        var budget = maxPageText
+        for (index, page) in pages.enumerated() where budget > 0 {
+            let text = String(page.text.prefix(budget))
+            budget -= text.count
+            let intro = index == 0 ? "The page the user has open" : "A page the user added"
+            instructions += "\n\n\(intro):\n<page title=\"\(escape(page.title))\">\n\(escape(text))\n</page>"
         }
         if let selection, !selection.isEmpty {
             instructions +=

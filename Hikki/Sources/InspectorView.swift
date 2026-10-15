@@ -88,8 +88,8 @@ struct InspectorView: View {
                 case .ai:
                     // About the page beside it (cleared from the composer to ask without it).
                     AIChatView(chat: chat)
-                        .onAppear { chat.pageID = navigator.route.pageID }
-                        .onChange(of: navigator.route.pageID) { _, id in chat.pageID = id }
+                        .onAppear { chat.show(page: navigator.route.pageID) }
+                        .onChange(of: navigator.route.pageID) { _, id in chat.show(page: id) }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)

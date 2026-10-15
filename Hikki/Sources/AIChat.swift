@@ -3,6 +3,23 @@ import HikkiCore
 import HikkiUI
 import Observation
 import SwiftUI
+import UniformTypeIdentifiers
+
+#if os(iOS)
+    import PhotosUI
+#endif
+
+/// A file attached to a question (a picture or a PDF), ready for the model.
+struct ChatAttachment: Identifiable, Equatable {
+    let id = UUID()
+    let name: String
+    let part: AIMessage.Part
+
+    /// The picture's data, for its thumbnail; nil for a document.
+    var imageData: Data? {
+        if case .image(let data, _) = part { data } else { nil }
+    }
+}
 
 /// A conversation with AI (Ask AI): the turns, the model picked for it, web search on or off, and the page it is
 /// about. One per window; the answer streams into the last message. Page text goes to the model only as context, and
@@ -15,6 +32,8 @@ final class AIChat {
         let id = UUID()
         let role: Role
         var text: String
+        /// Files sent with a question (shown in its bubble; sent with that turn only).
+        var attachments: [ChatAttachment] = []
         var citations: [AICitation] = []
         /// A web search under way (its query, when the provider says it).
         var searching: String?
@@ -28,27 +47,96 @@ final class AIChat {
     var modelChoice = UserDefaults.standard.string(forKey: AIPreferences.modelKey) ?? AIModelCatalog.autoID
     /// The page the chat is about (cleared from the composer to ask without it).
     var pageID: String?
+    /// The page open beside the chat (offered first by @, even after its chip was removed).
+    private(set) var openPageID: String?
+
+    /// The chat now sits beside `id`: it becomes the page asked about (mentions of other pages stay).
+    func show(page id: String?) {
+        guard id != openPageID else { return }
+        openPageID = id
+        pageID = id
+        extraPageIDs.removeAll { $0 == id }
+    }
+
+    /// Other pages the user @-mentioned, in the order added.
+    var extraPageIDs: [String] = []
     /// The passage selected in that page (follows the selection; cleared from the composer to ask without it).
     var selection: String?
+    /// Files to send with the next question.
+    var attachments: [ChatAttachment] = []
+    /// Why the last file couldn't be attached (shown under the composer until the next attempt).
+    var attachError: String?
     private(set) var isStreaming = false
     @ObservationIgnored private var task: Task<Void, Never>?
 
-    /// Sends `text` (or the draft), with the page's title and text as context.
+    /// Adds a file to the next question: a picture (scaled down) or a PDF; anything else is refused with a reason.
+    func attach(_ data: Data, type: UTType, name: String) {
+        attachError = nil
+        guard attachments.count < AIAttachments.maxCount else {
+            attachError = String(localized: "app:ai.attach.tooMany")
+            return
+        }
+        do {
+            attachments.append(ChatAttachment(name: name, part: try AIAttachments.part(data, type: type, name: name)))
+        } catch AIAttachments.Failure.tooLarge {
+            attachError = String(localized: "app:ai.attach.tooLarge")
+        } catch AIAttachments.Failure.unsupported {
+            attachError = String(localized: "app:ai.attach.unsupported")
+        } catch {
+            attachError = String(localized: "app:ai.attach.unreadable")
+        }
+    }
+
+    /// A file on disk (picked or dropped), read and attached.
+    func attach(fileAt url: URL) {
+        let access = url.startAccessingSecurityScopedResource()
+        defer { if access { url.stopAccessingSecurityScopedResource() } }
+        guard let data = try? Data(contentsOf: url) else {
+            attachError = String(localized: "app:ai.attach.unreadable")
+            return
+        }
+        attach(data, type: UTType(filenameExtension: url.pathExtension) ?? .data, name: url.lastPathComponent)
+    }
+
+    /// Adds a page the user @-mentioned (the open one back, if it was removed).
+    func mention(_ id: String) {
+        if id == openPageID {
+            pageID = id
+        } else if !extraPageIDs.contains(id) {
+            extraPageIDs.append(id)
+        }
+    }
+
+    /// Sends `text` (or the draft) with the attached files, the open page, the @-mentioned pages and the selection as
+    /// context.
     func send(_ text: String? = nil, store: DocumentStore?) {
         let question = (text ?? draft).trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !question.isEmpty, !isStreaming else { return }
+        guard !question.isEmpty || !attachments.isEmpty, !isStreaming else { return }
         draft = ""
-        messages.append(Message(role: .user, text: question))
+        attachError = nil
+        messages.append(Message(role: .user, text: question, attachments: attachments))
+        attachments = []
         messages.append(Message(role: .assistant, text: ""))
-        let turns: [AIMessage] = messages.dropLast().map { $0.role == .user ? .user($0.text) : .assistant($0.text) }
-        let page = pageID.flatMap { try? store?.document(id: $0) }.map { (title: $0.title, text: $0.plainText) }
+        let turns: [AIMessage] = messages.dropLast().map { message in
+            message.role == .assistant
+                ? .assistant(message.text)
+                : AIMessage(role: .user, parts: [.text(message.text)] + message.attachments.map(\.part))
+        }
+        let pages = ([pageID].compactMap { $0 } + extraPageIDs)
+            .compactMap { try? store?.document(id: $0) }
+            .map { (title: $0.title, text: $0.plainText) }
         switch AIService.connect(modelChoice) {
         case .failure(let error):
             finish(error: error)
         case .success(let (model, client)):
             let request = AIPrompts.chat(
-                turns, page: page, selection: selection, model: model, webSearch: webSearch, language: AIService.appLanguage)
-            Log.info("AI chat", category: "ai", context: ["model": model.id, "turns": "\(turns.count)", "page": page == nil ? "0" : "1"])
+                turns, pages: pages, selection: selection, model: model, webSearch: webSearch, language: AIService.appLanguage)
+            Log.info(
+                "AI chat", category: "ai",
+                context: [
+                    "model": model.id, "turns": "\(turns.count)", "pages": "\(pages.count)",
+                    "files": "\(messages[messages.count - 2].attachments.count)",
+                ])
             isStreaming = true
             task = Task { [weak self] in
                 do {
@@ -69,7 +157,7 @@ final class AIChat {
         task?.cancel()
         task = nil
         isStreaming = false
-        messages[messages.count - 1].searching = nil
+        if let last = messages.indices.last { messages[last].searching = nil }
     }
 
     /// A new conversation (same page and model).
@@ -166,6 +254,13 @@ struct AIChatView: View {
     @Environment(AppModel.self) private var model
     @Bindable var chat: AIChat
     @FocusState private var composing: Bool
+    @State private var mentionIndex = 0
+    @State private var pickingFiles = false
+    @State private var dropTargeted = false
+    #if os(iOS)
+        @State private var pickingPhotos = false
+        @State private var photoItems: [PhotosPickerItem] = []
+    #endif
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -212,11 +307,14 @@ struct AIChatView: View {
             : ["app:ai.suggest.summarize", "app:ai.suggest.quiz", "app:ai.suggest.keyPoints"]
     }
 
-    /// Notion's composer: a card on the page's surface — what the question is about as chips on top (the page, the
-    /// passage selected in it), the field, then web search, the model and send along the bottom.
+    /// Notion's composer: a card on the page's surface — the attached files, then what the question is about as
+    /// chips (the open page, @-mentioned pages, the selected passage), the field, then attach, web search, the model
+    /// and send along the bottom. Typing @ offers pages to add; files can be dropped or pasted on it.
     private var composer: some View {
         VStack(alignment: .leading, spacing: Spacing.s2) {
-            if chat.messages.isEmpty {
+            if let query = mentionQuery {
+                MentionList(query: query, chat: chat, highlighted: $mentionIndex) { pick($0) }
+            } else if chat.messages.isEmpty {
                 ScrollView(.horizontal) {
                     HStack(spacing: Spacing.s1_5) {
                         ForEach(suggestions, id: \.key) { suggestion in
@@ -231,12 +329,25 @@ struct AIChatView: View {
                 }
                 .scrollIndicators(.hidden)
             }
-            VStack(alignment: .leading, spacing: Spacing.s2) {
-                if contextPage != nil || chat.selection != nil {
+            VStack(alignment: .leading, spacing: Spacing.s3) {
+                if !chat.attachments.isEmpty {
+                    ScrollView(.horizontal) {
+                        HStack(spacing: Spacing.s2) {
+                            ForEach(chat.attachments) { attachment in
+                                AttachmentThumbnail(attachment: attachment) {
+                                    chat.attachments.removeAll { $0.id == attachment.id }
+                                }
+                            }
+                        }
+                        .padding(.top, Spacing.s1)
+                    }
+                    .scrollIndicators(.hidden)
+                }
+                if !contextPages.isEmpty || chat.selection != nil {
                     ScrollView(.horizontal) {
                         HStack(spacing: Spacing.s1_5) {
-                            if let page = contextPage {
-                                ContextChip(label: "app:ai.chat.removePage", remove: { chat.pageID = nil }) {
+                            ForEach(contextPages) { page in
+                                ContextChip(label: "app:ai.chat.removePage", remove: { remove(page.id) }) {
                                     PageIcon(page.icon, size: TextSize.sm.rawValue)
                                     Text(verbatim: page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
                                 }
@@ -254,15 +365,9 @@ struct AIChatView: View {
                     }
                     .scrollIndicators(.hidden)
                 }
-                TextField("app:ai.chat.placeholder", text: $chat.draft, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .font(.hk(.base))
-                    .lineLimit(2...8)
-                    .focused($composing)
-                    .submitLabel(.send)
-                    .onSubmit { chat.send(store: model.store) }
-                    .accessibilityIdentifier("ai-chat-field")
-                HStack(spacing: Spacing.s1_5) {
+                field
+                HStack(spacing: Spacing.s1) {
+                    attachButton
                     Toggle(isOn: $chat.webSearch) {
                         IconLabel("app:ai.chat.web", icon: .globe).labelStyle(.iconOnly)
                     }
@@ -280,13 +385,164 @@ struct AIChatView: View {
             }
             .padding(Spacing.s3)
             .background(Theme.background, in: .rect(cornerRadius: Radius.xl + Spacing.s1))
-            .overlay(RoundedRectangle(cornerRadius: Radius.xl + Spacing.s1).strokeBorder(Theme.border))
+            .overlay(
+                RoundedRectangle(cornerRadius: Radius.xl + Spacing.s1)
+                    .strokeBorder(dropTargeted ? ColorTone.standard.fill : Theme.border, lineWidth: dropTargeted ? 2 : 1)
+            )
             .shadow(color: Theme.border, radius: Spacing.s2, y: Spacing.s0_5)
+            .onDrop(of: [.fileURL, .image, .pdf], isTargeted: $dropTargeted) { providers in
+                receive(providers)
+                return true
+            }
+            if let error = chat.attachError {
+                Text(verbatim: error).font(.hk(.xs)).foregroundStyle(.red).padding(.horizontal, Spacing.s1)
+            }
         }
         .padding(.horizontal, Spacing.s3)
         .padding(.bottom, Spacing.s3)
         .padding(.top, Spacing.s1)
         .background(Theme.background)
+        .fileImporter(isPresented: $pickingFiles, allowedContentTypes: [.image, .pdf], allowsMultipleSelection: true) { result in
+            if case .success(let urls) = result { urls.forEach(chat.attach(fileAt:)) }
+        }
+        #if os(iOS)
+            .photosPicker(isPresented: $pickingPhotos, selection: $photoItems, maxSelectionCount: AIAttachments.maxCount, matching: .images)
+            .onChange(of: photoItems) { _, items in
+                for item in items {
+                    Task {
+                        if let data = try? await item.loadTransferable(type: Data.self) {
+                            chat.attach(data, type: .image, name: String(localized: "app:ai.attach.photo"))
+                        }
+                    }
+                }
+                photoItems = []
+            }
+        #endif
+    }
+
+    /// The question field: a little smaller than body text, as Notion's; Return sends, or picks a page while the @ list
+    /// is open (arrows move in it).
+    private var field: some View {
+        TextField("app:ai.chat.placeholder", text: $chat.draft, axis: .vertical)
+            .textFieldStyle(.plain)
+            .font(.hk(.sm))
+            .lineLimit(2...8)
+            .focused($composing)
+            .submitLabel(.send)
+            .onSubmit { mentionQuery == nil ? chat.send(store: model.store) : pickHighlighted() }
+            .onKeyPress(.downArrow) { moveMention(1) }
+            .onKeyPress(.upArrow) { moveMention(-1) }
+            .onKeyPress(.return) {
+                guard mentionQuery != nil else { return .ignored }
+                pickHighlighted()
+                return .handled
+            }
+            .onKeyPress(.escape) {
+                guard mentionQuery != nil else { return .ignored }
+                if let range = chat.draft.range(of: "@", options: .backwards) { chat.draft.removeSubrange(range) }
+                return .handled
+            }
+            .onChange(of: mentionQuery) { mentionIndex = 0 }
+            #if os(macOS)
+                .onPasteCommand(of: [.fileURL, .image, .pdf]) { receive($0) }
+            #endif
+            .accessibilityIdentifier("ai-chat-field")
+    }
+
+    private var attachButton: some View {
+        #if os(iOS)
+            Menu {
+                Button {
+                    pickingPhotos = true
+                } label: {
+                    IconLabel("app:ai.attach.photos", icon: .image)
+                }
+                Button {
+                    pickingFiles = true
+                } label: {
+                    IconLabel("app:ai.attach.files", icon: .folderSimple)
+                }
+            } label: {
+                attachGlyph
+            }
+            .accessibilityIdentifier("ai-chat-attach")
+        #else
+            Button {
+                pickingFiles = true
+            } label: {
+                attachGlyph
+            }
+            .buttonStyle(.plain)
+            .help("app:ai.attach")
+            .accessibilityIdentifier("ai-chat-attach")
+        #endif
+    }
+
+    private var attachGlyph: some View {
+        IconView(.plus, size: TextSize.lg.rawValue)
+            .foregroundStyle(Theme.subtleForeground)
+            .frame(width: Size.iconButton + Spacing.s1, height: Size.iconButton + Spacing.s1)
+            .contentShape(.circle)
+            .accessibilityLabel(Text("app:ai.attach"))
+    }
+
+    // MARK: Context
+
+    /// The open page (unless removed) and the @-mentioned ones.
+    private var contextPages: [PageSummary] {
+        ([chat.pageID].compactMap { $0 } + chat.extraPageIDs).compactMap(model.tree.page)
+    }
+
+    private func remove(_ id: String) {
+        if id == chat.pageID { chat.pageID = nil } else { chat.extraPageIDs.removeAll { $0 == id } }
+    }
+
+    /// What follows an @ at the end of the draft (at its start or after a space), while a page is being picked.
+    private var mentionQuery: String? {
+        guard let match = chat.draft.firstMatch(of: #/(?:^|\s)@([^\s@]*)$/#) else { return nil }
+        return String(match.1)
+    }
+
+    private func pick(_ id: String) {
+        if let range = chat.draft.range(of: "@", options: .backwards) { chat.draft.removeSubrange(range.lowerBound...) }
+        chat.mention(id)
+        composing = true
+    }
+
+    private func pickHighlighted() {
+        guard let query = mentionQuery else { return }
+        let ids = MentionList.candidates(query: query, chat: chat, pages: model.tree.all).map(\.id)
+        if ids.indices.contains(mentionIndex) { pick(ids[mentionIndex]) }
+    }
+
+    private func moveMention(_ step: Int) -> KeyPress.Result {
+        guard let query = mentionQuery else { return .ignored }
+        let count = MentionList.candidates(query: query, chat: chat, pages: model.tree.all).count
+        guard count > 0 else { return .handled }
+        mentionIndex = (mentionIndex + step + count) % count
+        return .handled
+    }
+
+    /// Dropped or pasted files: file URLs read from disk, pictures and PDFs as data.
+    private func receive(_ providers: [NSItemProvider]) {
+        for provider in providers {
+            if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+                _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                    guard let url else { return }
+                    Task { @MainActor in chat.attach(fileAt: url) }
+                }
+            } else if let type = [UTType.pdf, .image].first(where: { provider.hasItemConformingToTypeIdentifier($0.identifier) }) {
+                provider.loadDataRepresentation(forTypeIdentifier: type.identifier) { data, _ in
+                    guard let data else { return }
+                    let name = provider.suggestedName ?? String(localized: "app:ai.attach.photo")
+                    Task { @MainActor in chat.attach(data, type: type, name: name) }
+                }
+            }
+        }
+    }
+
+    private var canSend: Bool {
+        !chat.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !chat.attachments.isEmpty
     }
 
     private var sendButton: some View {
@@ -299,10 +555,145 @@ struct AIChatView: View {
                 .background(ColorTone.standard.fill, in: .circle)
         }
         .buttonStyle(.plain)
-        .disabled(!chat.isStreaming && chat.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        .opacity(!chat.isStreaming && chat.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.4 : 1)
+        .disabled(!chat.isStreaming && !canSend)
+        .opacity(!chat.isStreaming && !canSend ? 0.4 : 1)
         .accessibilityLabel(Text(chat.isStreaming ? "app:ai.stop" : "app:ai.send"))
         .accessibilityIdentifier("ai-chat-send")
+    }
+}
+
+/// Typing @ in the composer: the open page first ("Current page"), then other pages matching what follows the @
+/// ("Link to page"), each with where it sits; a few at most, the rest counted.
+private struct MentionList: View {
+    let query: String
+    let chat: AIChat
+    @Binding var highlighted: Int
+    let pick: (String) -> Void
+    @Environment(AppModel.self) private var model
+
+    static let limit = 6
+
+    /// The pages offered, in order: the open page (when it matches and isn't added), then others by last edit.
+    static func candidates(query: String, chat: AIChat, pages: [PageSummary]) -> [PageSummary] {
+        let added = Set([chat.pageID].compactMap { $0 } + chat.extraPageIDs)
+        let matches = { (page: PageSummary) in query.isEmpty || page.title.localizedStandardContains(query) }
+        let current = pages.first { $0.id == chat.openPageID && !added.contains($0.id) && matches($0) }
+        let others =
+            pages
+            .filter { $0.id != chat.openPageID && !added.contains($0.id) && matches($0) }
+            .sorted { $0.updatedAt > $1.updatedAt }
+        return ([current].compactMap { $0 } + others).prefix(limit).map { $0 }
+    }
+
+    var body: some View {
+        let all = model.tree.all
+        let shown = Self.candidates(query: query, chat: chat, pages: all)
+        let total = all.filter { $0.id != chat.openPageID && (query.isEmpty || $0.title.localizedStandardContains(query)) }.count
+        VStack(alignment: .leading, spacing: Spacing.s0) {
+            if shown.isEmpty {
+                Text("app:ai.mention.none").font(.hk(.sm)).foregroundStyle(Theme.mutedForeground).padding(Spacing.s2)
+            }
+            ForEach(Array(shown.enumerated()), id: \.element.id) { index, page in
+                if index == 0, page.id == chat.openPageID {
+                    header("app:ai.mention.current")
+                }
+                if page.id != chat.openPageID, index == 0 || shown[index - 1].id == chat.openPageID {
+                    header("app:ai.mention.link")
+                }
+                Button {
+                    pick(page.id)
+                } label: {
+                    HStack(spacing: Spacing.s2_5) {
+                        PageIcon(page.icon, size: TextSize.base.rawValue)
+                        VStack(alignment: .leading, spacing: Spacing.px) {
+                            Text(verbatim: page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
+                                .font(.hk(.sm))
+                                .foregroundStyle(Theme.foreground)
+                            let path = model.tree.path(to: page.id).dropLast().map(\.title).joined(separator: " › ")
+                            if !path.isEmpty {
+                                Text(verbatim: path).font(.hk(.xs)).foregroundStyle(Theme.mutedForeground)
+                            }
+                        }
+                        .lineLimit(1)
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, Spacing.s2)
+                    .padding(.vertical, Spacing.s1_5)
+                    .background(index == highlighted ? Theme.accent : .clear, in: .rect(cornerRadius: Radius.md))
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .onHover { if $0 { highlighted = index } }
+                .accessibilityIdentifier("ai-mention-\(page.title)")
+            }
+            let more = total - shown.filter { $0.id != chat.openPageID }.count
+            if more > 0 {
+                Text("app:ai.mention.more \(more.formatted())")
+                    .font(.hk(.xs))
+                    .foregroundStyle(Theme.mutedForeground)
+                    .padding(.horizontal, Spacing.s2)
+                    .padding(.vertical, Spacing.s1)
+            }
+        }
+        .padding(Spacing.s1_5)
+        .background(Theme.popover, in: .rect(cornerRadius: Radius.xl))
+        .overlay(RoundedRectangle(cornerRadius: Radius.xl).strokeBorder(Theme.border))
+        .shadow(color: Theme.border, radius: Spacing.s3, y: Spacing.s1)
+    }
+
+    private func header(_ title: LocalizedStringKey) -> some View {
+        Text(title)
+            .font(.hk(.xs, .medium))
+            .foregroundStyle(Theme.mutedForeground)
+            .padding(.horizontal, Spacing.s2)
+            .padding(.top, Spacing.s1_5)
+            .padding(.bottom, Spacing.s0_5)
+    }
+}
+
+/// A file waiting to be sent: a picture's thumbnail, or a document's icon and name; × removes it.
+private struct AttachmentThumbnail: View {
+    let attachment: ChatAttachment
+    var remove: (() -> Void)?
+
+    var body: some View {
+        Group {
+            if let data = attachment.imageData, let image = platformImage(data) {
+                image.resizable().scaledToFill()
+            } else {
+                VStack(spacing: Spacing.s1) {
+                    IconView(.fileText, size: TextSize.x2l.rawValue).foregroundStyle(Theme.subtleForeground)
+                    Text(verbatim: attachment.name).font(.hk(.x2s)).foregroundStyle(Theme.mutedForeground).lineLimit(1)
+                }
+                .padding(Spacing.s1)
+            }
+        }
+        .frame(width: Spacing.s16, height: Spacing.s16)
+        .background(Theme.muted)
+        .clipShape(.rect(cornerRadius: Radius.lg))
+        .overlay(RoundedRectangle(cornerRadius: Radius.lg).strokeBorder(Theme.border))
+        .overlay(alignment: .topTrailing) {
+            if let remove {
+                Button(action: remove) {
+                    IconView(.x, size: TextSize.x2s.rawValue)
+                        .foregroundStyle(Theme.primaryForeground)
+                        .frame(width: Spacing.s5, height: Spacing.s5)
+                        .background(Theme.primary.opacity(0.75), in: .circle)
+                }
+                .buttonStyle(.plain)
+                .padding(Spacing.s1)
+                .accessibilityLabel(Text("app:ai.attach.remove"))
+            }
+        }
+        .accessibilityLabel(Text(verbatim: attachment.name))
+    }
+
+    private func platformImage(_ data: Data) -> Image? {
+        #if os(iOS)
+            UIImage(data: data).map(Image.init(uiImage:))
+        #else
+            NSImage(data: data).map(Image.init(nsImage:))
+        #endif
     }
 }
 
@@ -381,13 +772,16 @@ private struct ChatBubble: View {
     var body: some View {
         switch message.role {
         case .user:
-            Text(verbatim: message.text)
-                .font(.hk(.base))
-                .padding(.horizontal, Spacing.s3_5)
-                .padding(.vertical, Spacing.s2_5)
-                .background(Theme.muted, in: .rect(cornerRadius: Radius.xl + Spacing.s2))
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .padding(.leading, Spacing.s12)
+            VStack(alignment: .trailing, spacing: Spacing.s1_5) {
+                if !message.attachments.isEmpty {
+                    HStack(spacing: Spacing.s1_5) {
+                        ForEach(message.attachments) { AttachmentThumbnail(attachment: $0) }
+                    }
+                }
+                if !message.text.isEmpty { userText }
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .padding(.leading, Spacing.s12)
         case .assistant:
             VStack(alignment: .leading, spacing: Spacing.s2_5) {
                 if !message.text.isEmpty {
@@ -436,6 +830,14 @@ private struct ChatBubble: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    private var userText: some View {
+        Text(verbatim: message.text)
+            .font(.hk(.sm))
+            .padding(.horizontal, Spacing.s3_5)
+            .padding(.vertical, Spacing.s2_5)
+            .background(Theme.muted, in: .rect(cornerRadius: Radius.xl + Spacing.s2))
     }
 
     private var working: some View {

@@ -39,6 +39,8 @@ public struct AIMessage: Equatable, Sendable {
         case text(String)
         /// An image the user attached (PNG / JPEG / GIF / WebP).
         case image(Data, mimeType: String)
+        /// A document the user attached (PDF), with its file name.
+        case document(Data, mimeType: String, name: String)
     }
 
     public var role: Role

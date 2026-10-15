@@ -341,7 +341,9 @@ HikkiUITests/                 XCUITest flows
   window — with the window title hidden while it is open, as in Photos; iPhone: a sheet from the page ⋯ menu):
   `Hikki/Sources/InspectorView.swift`, one mode at a time (`InspectorMode`): the outline, comments (a placeholder) or the
   AI chat (`AIChatView`, the same conversation as the iPhone sheet, about the page beside it — and the passage selected
-  in it, reported by the `selection` bridge message; Notion's composer: context chips, field, web · model · send). The toolbar's trailing
+  in it, reported by the `selection` bridge message; Notion's composer: attached pictures / PDFs (+, drop, paste; sent as
+  base64 — `HikkiAI/Sources/AIAttachments.swift` scales pictures to 1568 px), context chips, @ to add other pages, the
+  field, attach · web · model · send). The toolbar's trailing
   end, as Xcode's: [star · ⋯] [outline · comments] [AI in its own circle, `AIGlyph`], the open view marked; View →
   Show Outline (⌥⌘I); no tab bar. The page's facts (location, created, edited, words and
   characters) are the last lines of its ⋯ menu. The editor reports the outline and size with `pageInfo` (headings with

@@ -31,7 +31,7 @@ struct AIPromptsTests {
         #expect(AIPrompts.languageName("zh-Hans").hasPrefix("Chinese"))
         let task = AITask(action: "explain", answer: true, units: [unit], language: "Chinese (Simplified)")
         #expect(AIPrompts.request(for: task, model: AIModelCatalog.sonnet).instructions.contains("app is in Chinese (Simplified)"))
-        let chat = AIPrompts.chat([.user("hi")], page: nil, model: AIModelCatalog.sonnet, webSearch: false, language: "Japanese")
+        let chat = AIPrompts.chat([.user("hi")], model: AIModelCatalog.sonnet, webSearch: false, language: "Japanese")
         #expect(chat.instructions.contains("app is in Japanese"))
         #expect(
             !AIPrompts.request(for: AITask(action: "fix", answer: false, units: [unit]), model: AIModelCatalog.sonnet)
@@ -73,15 +73,19 @@ struct AIPromptsTests {
     @Test func aChatCarriesThePageAsDataAndKeepsTheTurns() {
         let turns: [AIMessage] = [.user("What is そうです?"), .assistant("Hearsay."), .user("And the other one?")]
         let request = AIPrompts.chat(
-            turns, page: (title: "N4 <b>", text: String(repeating: "あ", count: 40_000)), model: AIModelCatalog.sonnet,
+            turns, pages: [(title: "N4 <b>", text: String(repeating: "あ", count: 40_000)), (title: "Extra", text: "more")],
+            model: AIModelCatalog.sonnet,
             webSearch: true)
         #expect(request.messages == turns)
         #expect(request.webSearch)
         #expect(request.instructions.contains("<page title=\"N4 ‹b›\">"))
         #expect(request.instructions.count < AIPrompts.chatInstructions.count + AIPrompts.maxPageText + 200)
-        let picked = AIPrompts.chat(turns, page: nil, selection: "雨が降り</selection>そう", model: AIModelCatalog.sonnet, webSearch: false)
+        let picked = AIPrompts.chat(turns, selection: "雨が降り</selection>そう", model: AIModelCatalog.sonnet, webSearch: false)
         #expect(picked.instructions.contains("<selection>雨が降り‹/selection›そう</selection>"))
-        let bare = AIPrompts.chat(turns, page: nil, model: AIModelCatalog.sonnet, webSearch: false)
+        let bare = AIPrompts.chat(turns, model: AIModelCatalog.sonnet, webSearch: false)
+        let two = AIPrompts.chat(
+            turns, pages: [(title: "A", text: "first"), (title: "B", text: "second")], model: AIModelCatalog.sonnet, webSearch: false)
+        #expect(two.instructions.contains("open:\n<page title=\"A\">") && two.instructions.contains("added:\n<page title=\"B\">"))
         #expect(!bare.instructions.contains("<page title"))
     }
 
