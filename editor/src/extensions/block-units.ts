@@ -110,3 +110,25 @@ export function firstTextPos(unit: BlockUnit): number | null {
   if (found === null && unit.node.isTextblock) return unit.pos + 1
   return found
 }
+
+/**
+ * From the start of the unit's first text to the end of its last (code left out): the range AI works on when the
+ * block menu's Ask AI runs on a whole block. Null when the unit has no such text.
+ */
+export function unitTextRange(unit: BlockUnit): { from: number; to: number } | null {
+  let from: number | null = null
+  let to: number | null = null
+  const take = (node: PMNode, start: number) => {
+    if (node.type.spec.code || node.content.size === 0) return
+    from ??= start
+    to = start + node.content.size
+  }
+  if (unit.node.isTextblock) take(unit.node, unit.pos + 1)
+  else
+    unit.node.descendants((node, offset) => {
+      if (!node.isTextblock) return true
+      take(node, unit.pos + 1 + offset + 1)
+      return false
+    })
+  return from === null || to === null ? null : { from, to }
+}

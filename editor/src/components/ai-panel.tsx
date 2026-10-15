@@ -52,8 +52,11 @@ const AI_GROUPS: { label: () => string; actions: { id: string; label: () => stri
 
 export function AIPanel({
   onRun,
-  onCancel
+  onCancel,
+  autoFocus = true
 }: {
+  /** Focus the instruction field on open (off where the panel opens on hover). */
+  autoFocus?: boolean
   onRun: (action: AIAction) => void
   onCancel: () => void
 }) {
@@ -68,7 +71,7 @@ export function AIPanel({
         <InputGroup className="h-8 shadow-none">
           <InputGroupInput
             // oxlint-disable-next-line jsx-a11y/no-autofocus -- the panel opens to type an instruction
-            autoFocus
+            autoFocus={autoFocus}
             className="md:text-sm"
             placeholder={t('ai.editPlaceholder')}
             aria-label={t('ai.editPlaceholder')}

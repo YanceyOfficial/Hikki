@@ -5,7 +5,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { openBlockMenu } from '../src/components/block-menu'
 import { createEditor } from '../src/core/editor'
 import { BlockHighlightKey, setBlockHighlight } from '../src/extensions/block-highlight'
-import { deleteUnit, duplicateUnit, moveUnit, unitAtPos } from '../src/extensions/block-units'
+import {
+  deleteUnit,
+  duplicateUnit,
+  moveUnit,
+  unitAtPos,
+  unitTextRange
+} from '../src/extensions/block-units'
 import { doc, settle, stripIds } from './helpers'
 
 let host: HTMLElement
@@ -80,6 +86,30 @@ describe('block units', () => {
     expect(unitAtPos(editor.state, posOf('cell'))?.node.type.name).toBe('table')
     expect(unitAtPos(editor.state, posOf('summary'))?.node.type.name).toBe('details')
     expect(unitAtPos(editor.state, posOf('inside'))?.node.type.name).toBe('paragraph')
+  })
+
+  it('the text range of a unit spans its text blocks and leaves code out', () => {
+    editor = createEditor(host, {
+      type: 'doc',
+      content: [
+        {
+          type: 'bulletList',
+          content: [
+            {
+              type: 'listItem',
+              content: [
+                para('first'),
+                { type: 'bulletList', content: [{ type: 'listItem', content: [para('nested')] }] }
+              ]
+            }
+          ]
+        },
+        { type: 'codeBlock', content: [{ type: 'text', text: 'code' }] }
+      ]
+    })
+    const range = unitTextRange(unitAtPos(editor.state, posOf('first'))!)!
+    expect(editor.state.doc.textBetween(range.from, range.to, '|')).toBe('first|nested')
+    expect(unitTextRange(unitAtPos(editor.state, posOf('code'))!)).toBeNull()
   })
 
   it('moves a block to a gap, never into itself', () => {
@@ -179,6 +209,29 @@ describe('block menu', () => {
     act(() => red[1].click())
     expect(editor.getJSON().content?.[0].attrs?.blockBackground).toBe('red')
     expect(editor.getHTML()).toContain('data-block-bg="red"')
+  })
+
+  it('asks AI about the whole block: its text is selected and the request carries it', () => {
+    const requests: { action: string; units: { html: string }[] }[] = []
+    editor = createEditor(host, doc('fix this sentense'), {
+      ai: { request: (m) => requests.push(m), cancel: () => {}, title: () => 'Notes' }
+    })
+    openMenu('fix this')
+    act(() => void fireEvent.mouseMove(screen.getByRole('menuitem', { name: /Ask AI/u })))
+    act(() => screen.getByRole('menuitem', { name: /Fix spelling/u }).click())
+    expect(requests).toHaveLength(1)
+    expect(requests[0].action).toBe('fix')
+    expect(requests[0].units.map((u) => u.html)).toEqual(['fix this sentense'])
+    expect(document.querySelector('.hk-block-menu')).toBeNull()
+  })
+
+  it('offers no AI for a block without text it can edit', () => {
+    editor = createEditor(host, {
+      type: 'doc',
+      content: [{ type: 'codeBlock', content: [{ type: 'text', text: 'let x = 1' }] }]
+    })
+    openMenu('let x')
+    expect(screen.queryByRole('menuitem', { name: /Ask AI/u })).toBeNull()
   })
 
   it('search finds actions and turn-into targets; Enter runs the first', () => {

@@ -5,6 +5,7 @@ import {
   CopyIcon,
   LinkSimpleIcon,
   PaintBrushIcon,
+  SparkleIcon,
   TrashIcon
 } from '@phosphor-icons/react'
 import type { Editor } from '@tiptap/core'
@@ -17,10 +18,18 @@ import { Input } from '@/components/ui/input'
 import { BLOCK_TYPES } from '../core/blocks'
 import { t } from '../core/i18n'
 import { shortcutLabel } from '../core/shortcuts'
+import type { AIAction } from '../extensions/ai-review'
 import { setBlockHighlight } from '../extensions/block-highlight'
-import { deleteUnit, duplicateUnit, firstTextPos, type BlockUnit } from '../extensions/block-units'
+import {
+  deleteUnit,
+  duplicateUnit,
+  firstTextPos,
+  unitTextRange,
+  type BlockUnit
+} from '../extensions/block-units'
 import { BLOCK_COLOR_TYPES, colorLabel, PALETTE, type PaletteColor } from '../extensions/colors'
 import { blockLabel, copyLink } from '../extensions/page-links'
+import { AIPanel } from './ai-panel'
 import { FloatingLayer, usePresence } from './floating'
 import { GlidingHighlight } from './gliding-highlight'
 import { IconProvider } from './icons'
@@ -58,12 +67,14 @@ export function openBlockMenu(editor: Editor, unit: BlockUnit, anchor: DOMRect):
   )
 }
 
+type Submenu = 'ai' | 'turnInto' | 'color'
+
 type Item = {
   id: string
   label: string
   icon: ReactNode
   keys?: string
-  submenu?: 'turnInto' | 'color'
+  submenu?: Submenu
   destructive?: boolean
   run?: () => void
 }
@@ -79,7 +90,7 @@ function BlockMenu({
 }) {
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState(0)
-  const [submenu, setSubmenu] = useState<'turnInto' | 'color' | null>(null)
+  const [submenu, setSubmenu] = useState<Submenu | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const submenuRef = useRef<HTMLDivElement>(null)
   // The submenu stays in the tree through its leave motion, showing whatever it last showed.
@@ -113,7 +124,29 @@ function BlockMenu({
   const blockId = unit.node.attrs.id as string | null | undefined
   const link = blockId ? blockLink?.(blockId) : null
 
+  // AI works on the block's text (not on code).
+  const aiRange = unitTextRange(unit)
+  const runAI = (action: AIAction) => {
+    if (!aiRange) return
+    onClose()
+    editor.view.dispatch(
+      editor.state.tr.setSelection(TextSelection.create(editor.state.doc, aiRange.from, aiRange.to))
+    )
+    editor.view.focus()
+    editor.commands.aiRun(action)
+  }
+
   const items: Item[] = [
+    ...(aiRange
+      ? [
+          {
+            id: 'ai',
+            label: t('ai.menu'),
+            icon: <SparkleIcon size={18} />,
+            submenu: 'ai' as const
+          }
+        ]
+      : []),
     {
       id: 'turnInto',
       label: t('blockMenu.turnInto'),
@@ -267,9 +300,16 @@ function BlockMenu({
           role="menu"
           className="hk-pop absolute top-0 left-full ml-1.5 flex max-h-[min(460px,calc(100vh-120px))] w-56 flex-col overflow-y-auto overscroll-contain rounded-xl bg-popover p-1 text-popover-foreground shadow-popover"
         >
-          {shownSubmenu === 'turnInto' ? (
+          {shownSubmenu === 'ai' && (
+            // Its field keeps its own keys (the menu's arrows and Escape stay out of the typing).
+            <div onKeyDown={(e) => e.stopPropagation()}>
+              <AIPanel autoFocus={false} onRun={runAI} onCancel={() => setSubmenu(null)} />
+            </div>
+          )}
+          {shownSubmenu === 'turnInto' && (
             <TurnIntoList editor={editor} unit={unit} onDone={act(() => {})} />
-          ) : (
+          )}
+          {shownSubmenu === 'color' && (
             <ColorList editor={editor} unit={unit} onDone={act(() => {})} />
           )}
         </div>
