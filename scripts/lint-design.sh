@@ -18,8 +18,7 @@ if [ -n "$css" ]; then echo "✗ literal color in web code — use a Tailwind to
 motion=$(grep -rnE 'animate-(in|out)\b|\b(fade|zoom)-(in|out)-|\bslide-(in-from|out-to)-|\btransition-all\b|\bduration-[0-9]|[^a-zA-Z0-9_-][0-9]+ms\b' editor/src --include='*.css' --include='*.tsx' --include='*.ts' | grep -v 'editor/src/theme.css' | grep -v 'design-lint: allow')
 if [ -n "$motion" ]; then echo "✗ one-off motion in web code — hk-pop / hk-pop-toggle, duration-(--motion-pop-in), ease-out (CLAUDE.md: Motion)"; echo "$motion" | sed 's/^/    /'; status=1; fi
 # Web UI is shadcn: rows are MenuRow (editor/src/components/menu-row.tsx), the rest Button / Input… (CLAUDE.md).
-# Pending: the outline's heading rows (editor/src/page/outline.tsx) — drop the exclusion once they are MenuRows.
-bare=$(grep -rnE '<(button|input)\b' editor/src/components editor/src/page --include='*.tsx' | grep -v '^editor/src/components/ui/' | grep -v '^editor/src/page/outline.tsx:' | grep -v 'design-lint: allow')
+bare=$(grep -rnE '<(button|input)\b' editor/src/components editor/src/page --include='*.tsx' | grep -v '^editor/src/components/ui/' | grep -v 'design-lint: allow')
 if [ -n "$bare" ]; then echo "✗ bare <button> / <input> in web UI — use the shadcn components (MenuRow, Button, Input…)"; echo "$bare" | sed 's/^/    /'; status=1; fi
 [ $status -eq 0 ] && echo "design lint: ok"
 exit $status

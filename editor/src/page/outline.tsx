@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { GlidingHighlight } from '../components/gliding-highlight'
+import { MenuRow } from '../components/menu-row'
 import type { EditorBridge } from '../core/bridge'
 
 /** The closed rail never shows more bars than this (Notion's stays a loose stack on long pages too). */
@@ -99,15 +100,15 @@ export function Outline({ bridge }: { bridge: EditorBridge }) {
               style={{ paddingLeft: `${(h.level - minLevel) * 12}px` }}
               onMouseEnter={() => setHovered(index)}
             >
-              <button
-                type="button"
+              <MenuRow
+                glide
                 data-index={index}
                 aria-current={index === activeHeading ? 'location' : undefined}
-                className="relative block w-full cursor-pointer truncate rounded-md px-2 py-1 text-left text-md text-subtle-foreground hover:text-foreground aria-[current=location]:text-foreground"
+                className="block h-auto truncate px-2 py-1 text-md text-subtle-foreground hover:text-foreground aria-[current=location]:text-foreground coarse:h-auto"
                 onClick={() => bridge.scrollToHeading(index)}
               >
                 {h.text}
-              </button>
+              </MenuRow>
             </li>
           ))}
         </ol>
