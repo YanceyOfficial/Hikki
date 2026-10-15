@@ -65,30 +65,42 @@ extension AppModel {
     }
 
     private func importDocument(_ url: URL, parentId: String?, editor: EditorController) async -> String? {
-        let format = ImportFormat(fileExtension: url.pathExtension) ?? .text
         do {
-            let data = try Data(contentsOf: url)
-            guard data.count <= Self.importLimit else {
-                Log.warn("import skipped: file too large", category: "import", context: ["bytes": "\(data.count)"])
-                return nil
-            }
-            let text = String(decoding: data, as: UTF8.self)
-            let page = try await editor.importDocument(text, format: format, fallbackTitle: url.deletingPathExtension().lastPathComponent)
-            // Pictures beside the document (inside its folder only) become the page's own.
-            let (content, copied) = PageImport.relinkLocalFiles(in: page.content, base: url.deletingLastPathComponent()) { file in
-                try assets.importCopy(of: file)
-            }
-            let record = try store.create(parentId: parentId)
-            try store.saveContent(
-                Snapshot(docId: record.id, content: content, title: page.title, text: page.text, wordCount: page.wordCount))
-            Log.info(
-                "page imported", category: "import",
-                context: ["docId": record.id, "format": format.rawValue, "bytes": "\(data.count)", "files": "\(copied)"])
-            return record.id
+            return try await importConverted(url, parentId: parentId, editor: editor)
         } catch {
-            Toasts.report(.importFailed, error, category: "import", context: ["format": format.rawValue])
+            let code: ErrorCode = (error as? ImportError) == .tooLarge ? .fileTooLarge : .importFailed
+            Toasts.report(code, error, category: "import", context: ["extension": url.pathExtension.lowercased()])
             return nil
         }
+    }
+
+    enum ImportError: Error {
+        case tooLarge
+    }
+
+    /// One Markdown / HTML / text file as a new page under `parentId`, converted by the editor. Files it links
+    /// relatively come along when they are inside `root` (the folder the user chose; the file's own folder when nil).
+    func importConverted(_ url: URL, root: URL? = nil, parentId: String?, editor: EditorController) async throws -> String {
+        let format = ImportFormat(fileExtension: url.pathExtension) ?? .text
+        let data = try Data(contentsOf: url)
+        guard data.count <= Self.importLimit else {
+            Log.warn("import skipped: file too large", category: "import", context: ["bytes": "\(data.count)"])
+            throw ImportError.tooLarge
+        }
+        let text = String(decoding: data, as: UTF8.self)
+        let page = try await editor.importDocument(text, format: format, fallbackTitle: url.deletingPathExtension().lastPathComponent)
+        // Pictures beside the document (inside the chosen folder only) become the page's own.
+        let (content, copied) = PageImport.relinkLocalFiles(in: page.content, base: url.deletingLastPathComponent(), root: root) {
+            file in
+            try assets.importCopy(of: file)
+        }
+        let record = try store.create(parentId: parentId)
+        try store.saveContent(
+            Snapshot(docId: record.id, content: content, title: page.title, text: page.text, wordCount: page.wordCount))
+        Log.info(
+            "page imported", category: "import",
+            context: ["docId": record.id, "format": format.rawValue, "bytes": "\(data.count)", "files": "\(copied)"])
+        return record.id
     }
 
     // MARK: - Export

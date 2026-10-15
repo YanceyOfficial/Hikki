@@ -101,3 +101,20 @@ struct ByteRangeTests {
         #expect(ByteRange.parse("bytes=0-1", size: 0) == 0..<0)
     }
 }
+
+struct AssetSymlinkTests {
+    @Test func aSymbolicLinkIsNeverCopiedIntoTheStore() throws {
+        let store = AssetStore(directory: try makeTempDirectory())
+        let dir = try makeTempDirectory()
+        let secret = dir.appending(path: "secret.txt")
+        try Data("secret".utf8).write(to: secret)
+        let link = dir.appending(path: "photo.png")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: secret)
+        #expect(throws: AssetStore.AssetError.notAFile) { try store.importCopy(of: link) }
+        #expect(throws: AssetStore.AssetError.notAFile) { try store.importCopy(of: link, named: "a1b2c3d4.png") }
+        // A real picture still comes in.
+        let real = dir.appending(path: "real.png")
+        try Data([0x89, 0x50, 0x4E, 0x47]).write(to: real)
+        #expect(try store.importCopy(of: real).hasPrefix(AssetStore.urlPrefix))
+    }
+}

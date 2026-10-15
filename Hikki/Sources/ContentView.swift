@@ -426,6 +426,8 @@ struct ContentView: View {
         editor.setAIReviewStyle(aiReviewStyle)
         editor.attach(store: model.store, assets: model.assets) { [weak model] in model?.history }
         editor.comments = { [weak model] in model?.comments }
+        // Settings' bulk import / export converts Markdown and HTML with a window's editor.
+        model.bulkTransfer.register(editor, model: model)
         editor.deviceName = AppModel.deviceKind
         editor.onOpenPage = { id, block in
             guard model.tree.page(id) != nil else { return }

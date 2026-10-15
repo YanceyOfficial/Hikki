@@ -38,6 +38,15 @@ public final class AssetStore: @unchecked Sendable {
     public enum AssetError: Error, Equatable {
         case unsupportedType(String)
         case tooLarge(Int)
+        /// Not a regular file — a symbolic link (which could point at any file on the disk) or a folder.
+        case notAFile
+    }
+
+    /// Only a regular file comes in: copying a symbolic link would keep the link, and the editor would then serve
+    /// whatever it points at.
+    static func requireRegularFile(_ source: URL) throws {
+        let values = try source.resourceValues(forKeys: [.isSymbolicLinkKey, .isRegularFileKey])
+        guard values.isSymbolicLink != true, values.isRegularFile == true else { throw AssetError.notAFile }
     }
 
     private let lock = NSLock()
@@ -94,6 +103,7 @@ public final class AssetStore: @unchecked Sendable {
 
     /// Copies a file (an imported page's picture or attachment) into the store and returns the editor URL.
     public func importCopy(of source: URL) throws -> String {
+        try Self.requireRegularFile(source)
         let ext = source.pathExtension.lowercased()
         guard Self.kind(ofExtension: ext) != nil else { throw AssetError.unsupportedType(ext) }
         let temporary = FileManager.default.temporaryDirectory.appending(path: "hikki-import-\(UUID().uuidString).\(ext)")
@@ -104,6 +114,23 @@ public final class AssetStore: @unchecked Sendable {
             try? FileManager.default.removeItem(at: temporary)
             throw error
         }
+    }
+
+    /// Copies an attachment exported from a workspace back in under its own name, so the pages' links to it stay as
+    /// they are; a file of that name already in the store is the same attachment (names are unique) and is kept.
+    /// Returns the editor URL.
+    public func importCopy(of source: URL, named name: String) throws -> String {
+        guard Self.isValidName(name) else { return try importCopy(of: source) }
+        try Self.requireRegularFile(source)
+        if file(named: name) != nil { return Self.urlPrefix + name }
+        let ext = (name as NSString).pathExtension.lowercased()
+        guard let kind = Self.kind(ofExtension: ext) else { throw AssetError.unsupportedType(ext) }
+        let size = (try? source.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        guard size <= Self.maxBytes(for: kind) else { throw AssetError.tooLarge(size) }
+        let directory = directory
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: source, to: directory.appending(path: name))
+        return Self.urlPrefix + name
     }
 
     /// Moves a finished upload into the store under a fresh unique name and returns the editor URL.

@@ -122,6 +122,10 @@
                             .init(id: 3, style: .paragraph, change: .removed, runs: [.init("An old note", .removed)]),
                         ])
                     }
+                    Section("TaskProgressRow") {
+                        TaskProgressRow(Text(verbatim: "Importing 3 of 20"), done: 3, total: 20, cancelTitle: "Cancel") {}
+                        TaskProgressRow(Text(verbatim: "Reading files…"), done: 0, total: 0, cancelTitle: "Cancel") {}
+                    }
                     Section("SearchResultRow") {
                         SearchResultRow(
                             title: "Weekly sync", icon: "🗓️", path: "Work / Meetings", terms: ["week"], updatedAt: .now,

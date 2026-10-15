@@ -16,6 +16,8 @@ final class AppModel {
     let assets: AssetStore
     let crashReporter: CrashReporter
     let workspaceStore: WorkspaceStore
+    /// Settings → Import & Export: the bulk import / export job (BulkTransfer.swift).
+    let bulkTransfer = BulkTransfer()
     /// nil until onboarding creates one (first launch).
     private(set) var workspace: Workspace?
     private(set) var tree = PageTree([])
@@ -41,6 +43,7 @@ final class AppModel {
         self.assets = assets
         self.crashReporter = crashReporter
         self.workspaceStore = workspaceStore
+        bulkTransfer.onFinish = Self.announce
         do {
             workspace = try workspaceStore.load()
         } catch {
@@ -397,6 +400,22 @@ final class AppModel {
 
     func stats() -> WorkspaceStats {
         perform("load stats") { try store.stats() } ?? WorkspaceStats(pages: 0, words: 0)
+    }
+
+    /// A bulk import or export ended (Settings → Workspace): a toast says how it went, wherever the user is now.
+    private static func announce(_ summary: BulkTransfer.Summary) {
+        let importing = summary.kind == .importing
+        let context = ["count": String(summary.count), "skipped": String(summary.skipped.count)]
+        if summary.failed {
+            Toasts.report(importing ? .importFailed : .exportFailed, category: "transfer", context: context)
+        } else if !summary.cancelled {
+            if importing, !summary.skipped.isEmpty { Toasts.report(.importPartial, category: "transfer", context: context) }
+            let count = summary.count.formatted()
+            Toasts.shared.show(
+                .success,
+                importing
+                    ? String(localized: "app:toast.imported \(count)") : String(localized: "app:toast.exported \(count)"))
+        }
     }
 
     /// Runs a store change; a failure is logged and — given its `code` — shown to the user (a toast with the code).
