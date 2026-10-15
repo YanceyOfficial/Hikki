@@ -381,6 +381,7 @@ struct AIChatView: View {
                     .accessibilityIdentifier("ai-chat-web")
                     Spacer(minLength: Spacing.s1)
                     AIModelMenu(chat: chat).foregroundStyle(Theme.subtleForeground)
+                        .padding(.trailing, Spacing.s2)
                     sendButton
                 }
             }
