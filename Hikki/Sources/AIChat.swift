@@ -60,14 +60,18 @@ final class AIChat {
 
     /// Other pages the user @-mentioned, in the order added.
     var extraPageIDs: [String] = []
-    /// The passage selected in that page (follows the selection; cleared from the composer to ask without it).
-    var selection: String?
+    /// The passage last selected in the window's page (follows the selection; cleared from the composer to ask without
+    /// it), with the page it was selected in.
+    var selection: EditorSelection?
+    /// The passage that goes with the question: only one selected in the page asked about.
+    var contextSelection: String? { selection?.text(in: pageID) }
     /// Files to send with the next question.
     var attachments: [ChatAttachment] = []
     /// Why the last file couldn't be attached (shown under the composer until the next attempt).
     var attachError: String?
     private(set) var isStreaming = false
-    @ObservationIgnored private var task: Task<Void, Never>?
+    /// The answer streaming in (one at a time; a stopped one ends silently).
+    @ObservationIgnored private let run = AIStreamRun()
 
     /// Adds a file to the next question: a picture (scaled down) or a PDF; anything else is refused with a reason.
     func attach(_ data: Data, type: UTType, name: String) {
@@ -130,7 +134,7 @@ final class AIChat {
             finish(error: error)
         case .success(let (model, client)):
             let request = AIPrompts.chat(
-                turns, pages: pages, selection: selection, model: model, webSearch: webSearch, language: AIService.appLanguage)
+                turns, pages: pages, selection: contextSelection, model: model, webSearch: webSearch, language: AIService.appLanguage)
             Log.info(
                 "AI chat", category: "ai",
                 context: [
@@ -138,24 +142,14 @@ final class AIChat {
                     "files": "\(messages[messages.count - 2].attachments.count)",
                 ])
             isStreaming = true
-            task = Task { [weak self] in
-                do {
-                    for try await event in client.stream(request) {
-                        guard let self, !Task.isCancelled else { return }
-                        self.apply(event)
-                    }
-                    self?.finish(error: nil)
-                } catch {
-                    let failure = error as? AIError ?? .invalidResponse
-                    self?.finish(error: failure == .cancelled ? nil : failure)
-                }
-            }
+            run.start(
+                client.stream(request), onEvent: { [weak self] event in self?.apply(event) },
+                onEnd: { [weak self] error in self?.finish(error: error) })
         }
     }
 
     func stop() {
-        task?.cancel()
-        task = nil
+        run.stop()
         isStreaming = false
         if let last = messages.indices.last { messages[last].searching = nil }
     }
@@ -188,7 +182,6 @@ final class AIChat {
 
     private func finish(error: AIError?) {
         isStreaming = false
-        task = nil
         guard let last = messages.indices.last else { return }
         messages[last].searching = nil
         if let error {
@@ -344,7 +337,7 @@ struct AIChatView: View {
                     }
                     .scrollIndicators(.hidden)
                 }
-                if !contextPages.isEmpty || chat.selection != nil {
+                if !contextPages.isEmpty || chat.contextSelection != nil {
                     ScrollView(.horizontal) {
                         HStack(spacing: Spacing.s1_5) {
                             ForEach(contextPages) { page in
@@ -353,7 +346,7 @@ struct AIChatView: View {
                                     Text(verbatim: page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
                                 }
                             }
-                            if let selection = chat.selection {
+                            if let selection = chat.contextSelection {
                                 ContextChip(label: "app:ai.chat.removeSelection", remove: { chat.selection = nil }) {
                                     IconView(.textT, size: TextSize.sm.rawValue).foregroundStyle(Theme.mutedForeground)
                                     // The passage's own words, shown as-is.
