@@ -52,12 +52,15 @@ public enum SearchListItem: Identifiable, Equatable, Sendable {
     public static let firstMatches = 5
 
     /// Every line in order: each page, then — for a page with other matches — the toggle, after the matches shown
-    /// when the page is `expanded` (the first few, or all of them when it is `showingAll`).
+    /// when the page is `expanded` (the first few, or all those listed when it is `showingAll`). The closed toggle
+    /// counts every other match, listed or not.
     public static func list(_ hits: [SearchHit], expanded: Set<String>, showingAll: Set<String>) -> [SearchListItem] {
         hits.flatMap { hit -> [SearchListItem] in
             let more = hit.moreMatches
             guard !more.isEmpty, hit.attachment == nil else { return [.page(hit)] }
-            guard expanded.contains(hit.id) else { return [.page(hit), .toggle(hit, .expand(count: more.count))] }
+            guard expanded.contains(hit.id) else {
+                return [.page(hit), .toggle(hit, .expand(count: max(hit.moreMatchCount, more.count)))]
+            }
             let shown = showingAll.contains(hit.id) ? more : Array(more.prefix(firstMatches))
             let toggle: Toggle = shown.count < more.count ? .showAll(remaining: more.count - shown.count) : .collapse
             return [.page(hit)] + shown.map { .match(hit, $0) } + [.toggle(hit, toggle)]

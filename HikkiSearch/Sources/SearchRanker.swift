@@ -1,62 +1,66 @@
 import Foundation
 
-/// Orders search results — the title first, then the headings, then the page text, recent pages ahead on
-/// ties — and cuts the excerpt a result shows. Pure, so the order is testable without an index.
+/// Orders search results — the title first, then the headings, then the page text, then attached files, recent
+/// pages ahead on ties — and cuts the excerpt a result shows. Pure, so the order is testable without an index.
 public enum SearchRanker {
-    /// What a page offers the ranker.
+    /// What a page offers the ranker: its title, and how many of the query's terms the index found where.
     public struct Page: Sendable {
-        public var title: String
+        /// The title as `SearchQuery.fold` gives it.
+        public var foldedTitle: String
         /// `Pinyin.searchKey(for: title)` — "chanpinluxiantu cplxt" — or "" for a title without Han characters.
         public var titlePinyin: String
-        /// The page's headings, one per line.
-        public var headings: String
-        public var text: String
-        /// The text of the attached file that matched best, "" without one.
-        public var attachmentText: String
+        /// Terms found in a heading.
+        public var headingTerms: Int
+        /// Terms found anywhere in the page's text (headings included).
+        public var textTerms: Int
+        /// Terms found in the attached file that matched best.
+        public var fileTerms: Int
         public var updatedAt: Date
-        /// 0…40 from the index's BM25 order among the query's candidates (the best gets 40); 0 without an index.
+        /// 0…40 from the index's BM25 order among the query's text matches (the best gets 40); 0 without an index.
         public var textRank: Int
 
         public init(
-            title: String, titlePinyin: String = "", headings: String = "", text: String = "", attachmentText: String = "",
+            foldedTitle: String, titlePinyin: String = "", headingTerms: Int = 0, textTerms: Int = 0, fileTerms: Int = 0,
             updatedAt: Date = .distantPast, textRank: Int = 0
         ) {
-            self.title = title
+            self.foldedTitle = foldedTitle
             self.titlePinyin = titlePinyin
-            self.headings = headings
-            self.text = text
-            self.attachmentText = attachmentText
+            self.headingTerms = headingTerms
+            self.textTerms = textTerms
+            self.fileTerms = fileTerms
             self.updatedAt = updatedAt
             self.textRank = textRank
         }
     }
 
     /// nil when no term occurs in the title (also by pinyin), the headings, the text or an attachment — only those
-    /// the scope looks at (titles; headings and text; attachments; or all). Higher is better.
+    /// the scope looks at (titles; headings and text; attachments; or all) — and the title isn't a close enough
+    /// subsequence of the query either. Higher is better.
     public static func score(_ query: SearchQuery, _ page: Page, scope: SearchScope = .all, now: Date = .now) -> Int? {
         guard !query.isEmpty else { return nil }
         let looksAtTitle = scope == .all || scope == .titles
         let looksAtText = scope == .all || scope == .text
         let looksAtFiles = scope == .all || scope == .files
+        let count = query.terms.count
         let title = looksAtTitle ? titleScore(query, page) : 0
-        let headings =
-            !looksAtText || page.headings.isEmpty
-            ? 0 : termsScore(query.terms, in: SearchQuery.fold(page.headings), wordStarts: 320, anywhere: 300, each: 80)
-        let text = looksAtText ? textScore(query, SearchQuery.fold(page.text)) : 0
+        let headings = looksAtText ? found(page.headingTerms, of: count, all: 300, each: 80) : 0
+        let text = looksAtText ? found(page.textTerms, of: count, all: 250, each: 50) : 0
         // Text inside an attached file: a step below the page's own.
-        let attachment =
-            !looksAtFiles || page.attachmentText.isEmpty
-            ? 0 : termsScore(query.terms, in: SearchQuery.fold(page.attachmentText), wordStarts: 200, anywhere: 200, each: 40)
-        guard title > 0 || headings > 0 || text > 0 || attachment > 0 else { return nil }
+        let file = looksAtFiles ? found(page.fileTerms, of: count, all: 200, each: 40) : 0
+        var total = title + headings + text + file
+        if total == 0 {
+            // Nothing holds a term: the quick switcher's loose match on the title, if it is a close one.
+            guard looksAtTitle, let fuzzy = fuzzyTitleScore(query, page) else { return nil }
+            total = fuzzy
+        }
         let rank = headings > 0 || text > 0 ? page.textRank : 0
-        return title + headings + text + attachment + rank + recency(page.updatedAt, now: now)
+        return total + rank + recency(page.updatedAt, now: now)
     }
 
     /// The whole title (1000), its start (700), every term at a word start (500) or anywhere in it (400), some of
-    /// the terms (60 each); the pinyin keys the same way a step lower; failing all that, an fzf-style subsequence
-    /// ("wkly" → Weekly) for the quick switcher.
+    /// the terms (60 each); the pinyin keys the same way a step lower.
     static func titleScore(_ query: SearchQuery, _ page: Page) -> Int {
-        let title = SearchQuery.fold(page.title)
+        let title = page.foldedTitle
         guard !title.isEmpty else { return 0 }
         let joined = query.joined
         if title == joined { return 1000 }
@@ -66,11 +70,24 @@ public enum SearchRanker {
             // "chanpinluxiantu cplxt": a term at the start of either key (chanpin, cplxt) or inside one (lxt).
             score = max(score, termsScore(query.terms, in: page.titlePinyin, wordStarts: 450, anywhere: 350, each: 40))
         }
-        if score == 0 {
-            let fuzzy = [page.title, page.titlePinyin].compactMap { $0.isEmpty ? nil : FuzzyMatch.score(joined, in: $0) }.max()
-            if let fuzzy { score = 100 + max(0, min(fuzzy, 400)) / 4 }
-        }
         return score
+    }
+
+    /// An fzf-style subsequence of the title or its pinyin ("wkly" → Weekly): 100…200, nil for a query under three
+    /// characters or a loose match (scattered letters, mid-word) — two letters are a subsequence of most titles.
+    static func fuzzyTitleScore(_ query: SearchQuery, _ page: Page) -> Int? {
+        let letters = query.joined.filter { !$0.isWhitespace }.count
+        guard letters >= 3 else { return nil }
+        let best = [page.foldedTitle, page.titlePinyin].compactMap { $0.isEmpty ? nil : FuzzyMatch.score(query.joined, in: $0) }
+            .max()
+        // A letter on its own scores 10 (less the length difference); a run or a word start 40–60 or more.
+        guard let best, best >= letters * 25 else { return nil }
+        return 100 + min(best, 400) / 4
+    }
+
+    /// `all` when every term was found, `each` per term otherwise, 0 for none.
+    static func found(_ terms: Int, of count: Int, all: Int, each: Int) -> Int {
+        terms >= count ? all : terms * each
     }
 
     /// `wordStarts` when every term starts a word of `text`, `anywhere` when every term is somewhere in it,
@@ -91,15 +108,6 @@ public enum SearchRanker {
         return (starts + inside) * each
     }
 
-    /// Every term in the (folded) text (250) or some of them (50 each); how well beyond that is the index's
-    /// BM25 order (`Page.textRank`).
-    static func textScore(_ query: SearchQuery, _ text: String) -> Int {
-        guard !text.isEmpty else { return 0 }
-        let found = query.terms.count { text.contains($0) }
-        guard found > 0 else { return 0 }
-        return found == query.terms.count ? 250 : found * 50
-    }
-
     /// Edited today, this week, this month: a little ahead.
     static func recency(_ updatedAt: Date, now: Date) -> Int {
         let age = now.timeIntervalSince(updatedAt)
@@ -109,26 +117,18 @@ public enum SearchRanker {
         return 0
     }
 
-    /// The block a result shows and opens at: the one holding the most terms; among those a heading ahead of body
-    /// text, then one that starts with a term ("ので表示理由" for ので), then the earliest. nil when no block holds one.
-    public static func bestBlock(_ terms: [String], in blocks: [SearchBlock]) -> Int? {
+    /// The block a result shows and opens at, among blocks given folded: the one holding the most terms; among
+    /// those a heading ahead of body text, then one that starts with a term ("ので表示理由" for ので), then the
+    /// earliest. nil when no block holds one.
+    public static func bestBlock(_ terms: [String], in blocks: [(folded: String, isHeading: Bool)]) -> Int? {
         var best: (index: Int, score: Int)?
         for (index, block) in blocks.enumerated() {
-            let text = SearchQuery.fold(block.text)
-            let found = terms.count { text.contains($0) }
+            let found = terms.count { block.folded.contains($0) }
             guard found > 0 else { continue }
-            let score = found * 100 + (block.isHeading ? 40 : 0) + (terms.contains { text.hasPrefix($0) } ? 20 : 0)
+            let score = found * 100 + (block.isHeading ? 40 : 0) + (terms.contains { block.folded.hasPrefix($0) } ? 20 : 0)
             if best == nil || score > best!.score { best = (index, score) }
         }
         return best?.index
-    }
-
-    /// Every block holding a term, in reading order.
-    public static func matchingBlocks(_ terms: [String], in blocks: [SearchBlock]) -> [Int] {
-        blocks.indices.filter { index in
-            let text = SearchQuery.fold(blocks[index].text)
-            return terms.contains { text.contains($0) }
-        }
     }
 
     /// The text around the first term that occurs in it, about `width` characters, cut at word boundaries where

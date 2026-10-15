@@ -52,15 +52,31 @@ struct SearchQueryTests {
 struct SearchRankerTests {
     private let now = Date(timeIntervalSince1970: 1_700_000_000)
 
+    /// A page as the index would offer it for `query`: the terms found in each of its parts.
+    private func page(
+        _ query: String, title: String = "", pinyin: String = "", headings: String = "", text: String = "",
+        attachmentText: String = "", age: TimeInterval = 0, textRank: Int = 0
+    ) -> SearchRanker.Page {
+        let terms = SearchQuery(query).terms
+        func found(_ text: String) -> Int {
+            let folded = SearchQuery.fold(text)
+            return terms.count { folded.contains($0) }
+        }
+        return SearchRanker.Page(
+            foldedTitle: SearchQuery.fold(title), titlePinyin: pinyin, headingTerms: found(headings),
+            textTerms: found(headings + " " + text), fileTerms: found(attachmentText), updatedAt: now.addingTimeInterval(-age),
+            textRank: textRank)
+    }
+
     private func score(
         _ query: String, title: String = "", pinyin: String = "", headings: String = "", text: String = "",
         attachmentText: String = "", age: TimeInterval = 0, textRank: Int = 0
     ) -> Int? {
         SearchRanker.score(
             SearchQuery(query),
-            SearchRanker.Page(
-                title: title, titlePinyin: pinyin, headings: headings, text: text, attachmentText: attachmentText,
-                updatedAt: now.addingTimeInterval(-age), textRank: textRank),
+            page(
+                query, title: title, pinyin: pinyin, headings: headings, text: text, attachmentText: attachmentText, age: age,
+                textRank: textRank),
             now: now)
     }
 
@@ -87,9 +103,9 @@ struct SearchRankerTests {
         func scoped(_ scope: SearchScope, _ page: SearchRanker.Page) -> Int? {
             SearchRanker.score(SearchQuery("roadmap"), page, scope: scope, now: now)
         }
-        let inTitle = SearchRanker.Page(title: "Roadmap", text: "nothing", textRank: 40)
-        let inText = SearchRanker.Page(title: "Notes", headings: "Roadmap", text: "the roadmap", textRank: 40)
-        let inFile = SearchRanker.Page(title: "Notes", attachmentText: "roadmap")
+        let inTitle = page("roadmap", title: "Roadmap", text: "nothing", textRank: 40)
+        let inText = page("roadmap", title: "Notes", headings: "Roadmap", text: "the roadmap", textRank: 40)
+        let inFile = page("roadmap", title: "Notes", attachmentText: "roadmap")
         #expect(scoped(.titles, inTitle) != nil)
         #expect(scoped(.titles, inText) == nil)
         #expect(scoped(.titles, inFile) == nil)
@@ -100,7 +116,7 @@ struct SearchRankerTests {
         #expect(scoped(.files, inText) == nil)
         #expect(scoped(.files, inFile) != nil)
         // A page matching in its title and its text scores only the text part under Text.
-        let both = SearchRanker.Page(title: "Roadmap", text: "the roadmap")
+        let both = page("roadmap", title: "Roadmap", text: "the roadmap")
         #expect(try #require(scoped(.text, both)) < (try #require(scoped(.all, both))))
     }
 
@@ -130,6 +146,18 @@ struct SearchRankerTests {
         #expect(fresh > old)
     }
 
+    @Test func aLooseTitleMatchCountsOnlyWhenNothingElseMatches() throws {
+        // Two letters are a subsequence of most titles.
+        #expect(score("ey", title: "Easy yoga") == nil)
+        // Scattered letters are no match either.
+        #expect(score("abc", title: "xaxxbxxcx") == nil)
+        #expect(score("wkly", title: "Weekly sync") != nil)
+        // A page whose text holds the term gets nothing for a title that loosely resembles it.
+        let plain = try #require(score("rdmp", title: "Notes", text: "rdmp"))
+        let resembling = try #require(score("rdmp", title: "Roadmap", text: "rdmp"))
+        #expect(plain == resembling)
+    }
+
     @Test func caseAndAccentsDoNotMatter() {
         #expect(score("cafe", title: "Café notes") != nil)
         #expect(score("CAFÉ", text: "a cafe downtown") != nil)
@@ -148,29 +176,23 @@ struct SearchRankerTests {
 }
 
 struct BestBlockTests {
+    /// Blocks as the index holds them: folded, with whether each is a heading.
+    private func folded(_ blocks: [(String, Bool)]) -> [(folded: String, isHeading: Bool)] {
+        blocks.map { (SearchQuery.fold($0.0), $0.1) }
+    }
+
     @Test func prefersMoreTermsThenHeadingsThenAStartThenTheEarliest() {
-        let blocks = [
-            SearchBlock(id: "a", text: "它是 のですか 的普通形"),
-            SearchBlock(id: "b", text: "ので、早く着くでしょう"),
-            SearchBlock(id: "c", isHeading: true, text: "名词化的の ので"),
-            SearchBlock(id: "d", isHeading: true, text: "ので表示理由"),
-            SearchBlock(id: "e", text: "Weekly sync notes"),
-        ]
+        let blocks = folded([
+            ("它是 のですか 的普通形", false), ("ので、早く着くでしょう", false), ("名词化的の ので", true), ("ので表示理由", true),
+            ("Weekly sync notes", false),
+        ])
         #expect(SearchRanker.bestBlock(["ので"], in: blocks) == 3)
         #expect(SearchRanker.bestBlock(["ので"], in: Array(blocks[0...1])) == 1)
         #expect(SearchRanker.bestBlock(["ので"], in: [blocks[0], blocks[0]]) == 0)
-        #expect(SearchRanker.bestBlock(["weekly", "notes"], in: blocks + [SearchBlock(id: "f", isHeading: true, text: "Weekly")]) == 4)
+        #expect(SearchRanker.bestBlock(["weekly", "notes"], in: blocks + folded([("Weekly", true)])) == 4)
+        #expect(SearchRanker.bestBlock(["cafe"], in: folded([("nothing", false), ("Café", false)])) == 1)
         #expect(SearchRanker.bestBlock(["missing"], in: blocks) == nil)
         #expect(SearchRanker.bestBlock(["ので"], in: []) == nil)
-    }
-
-    @Test func listsEveryMatchingBlockInReadingOrder() {
-        let blocks = [
-            SearchBlock(id: "a", text: "Café notes"), SearchBlock(id: "b", text: "nothing"),
-            SearchBlock(id: "c", isHeading: true, text: "More cafe"),
-        ]
-        #expect(SearchRanker.matchingBlocks(["cafe"], in: blocks) == [0, 2])
-        #expect(SearchRanker.matchingBlocks(["zzz"], in: blocks).isEmpty)
     }
 }
 

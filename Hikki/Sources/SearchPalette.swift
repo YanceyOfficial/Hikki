@@ -329,9 +329,12 @@ struct SearchPalette: View {
     }
 
     /// A result whose excerpt is the page's own text opens at its block (or, indexed without one, the first place
-    /// its words occur), the words selected; a title or attachment match at the top.
+    /// its words occur), the words selected; a file match at the block showing the file (no words to select there);
+    /// a title match at the top.
     private func open(_ hit: SearchHit) {
-        if !hit.snippet.isEmpty, hit.attachment == nil {
+        if hit.attachment != nil, let block = hit.blockId {
+            navigator.open(hit.id, at: block, revealing: [])
+        } else if !hit.snippet.isEmpty, hit.attachment == nil {
             navigator.open(hit.id, at: hit.blockId, revealing: hit.terms)
         } else {
             navigator.open(hit.id)

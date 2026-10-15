@@ -388,18 +388,18 @@ final class AppModel {
         perform("empty trash", code: .trashEmptyFailed) { try store.emptyTrash() }
     }
 
-    /// ⌘K's search, off the main thread: the index may be busy writing (a page saved, an attachment read), and
-    /// typing must never wait for it.
+    /// ⌘K's search, off the main thread and beside the index's writes (WAL), so typing never waits for a save or an
+    /// attachment being read. Cancelling the calling task (a newer query) stops it; that is no failure.
     func search(_ query: String, options: SearchOptions = .standard) async -> [SearchHit] {
-        let indexer = searchIndexer
-        return await Task.detached(priority: .userInitiated) {
-            do {
-                return try indexer.search(query, options: options)
-            } catch {
-                Toasts.report(.searchFailed, error, category: "store")
-                return []
-            }
-        }.value
+        do {
+            return try await searchIndexer.search(query, options: options)
+        } catch is CancellationError {
+            return []
+        } catch {
+            if Task.isCancelled { return [] }
+            Toasts.report(.searchFailed, error, category: "search")
+            return []
+        }
     }
 
     /// Home: this device's writing activity over the last `days` days, and the workspace's totals.

@@ -8,14 +8,18 @@ struct SpotlightItemsTests {
     @Test func aPageBecomesASearchableItemWithItsTextHeadingsAndTime() {
         let t0 = Date(timeIntervalSince1970: 1_700_000_000)
         let document = SearchDocument(
-            id: "p1", title: "Roadmap", headings: ["Q4", "Risks"], text: "The roadmap is due Friday.\nMore text.", updatedAt: t0)
+            id: "p1", title: "Roadmap",
+            blocks: [
+                SearchBlock(id: "h1", isHeading: true, text: "Q4"), SearchBlock(id: "p1", text: "The roadmap is due Friday."),
+                SearchBlock(id: "h2", isHeading: true, text: "Risks"), SearchBlock(id: "p2", text: "More text."),
+            ], updatedAt: t0)
         let item = SpotlightItems.item(for: document, untitled: "Untitled")
         #expect(item.uniqueIdentifier == "p1")
         #expect(item.domainIdentifier == "pages")
         #expect(item.expirationDate == .distantFuture)
         #expect(item.attributeSet.title == "Roadmap")
-        #expect(item.attributeSet.textContent == "The roadmap is due Friday.\nMore text.")
-        #expect(item.attributeSet.contentDescription == "The roadmap is due Friday. More text.")
+        #expect(item.attributeSet.textContent == "Q4\nThe roadmap is due Friday.\nRisks\nMore text.")
+        #expect(item.attributeSet.contentDescription == "Q4 The roadmap is due Friday. Risks More text.")
         #expect(item.attributeSet.displayName == "Roadmap")
         #expect(item.attributeSet.keywords == ["Roadmap", "Q4", "Risks"])
         #expect(item.attributeSet.contentModificationDate == t0)
@@ -28,7 +32,9 @@ struct SpotlightItemsTests {
         #expect(empty.attributeSet.displayName == "Untitled")
         #expect(empty.attributeSet.keywords == ["Untitled"])
         let long = SearchDocument(
-            id: "l", title: "Long", text: String(repeating: "word ", count: SpotlightItems.maxTextCharacters), updatedAt: .now)
+            id: "l", title: "Long",
+            blocks: [SearchBlock(id: "", text: String(repeating: "word ", count: SpotlightItems.maxTextCharacters))],
+            updatedAt: .now)
         let item = SpotlightItems.item(for: long, untitled: "Untitled")
         #expect(item.attributeSet.textContent?.count == SpotlightItems.maxTextCharacters)
         let description = item.attributeSet.contentDescription ?? ""
