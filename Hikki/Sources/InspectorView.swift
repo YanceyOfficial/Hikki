@@ -4,13 +4,14 @@ import SwiftUI
 
 /// What the side panel shows, each opened by its own toolbar button: the page's outline or AI (comments later).
 enum InspectorMode: String, CaseIterable, Identifiable {
-    case outline, ai
+    case outline, comments, ai
 
     var id: String { rawValue }
 
     var title: LocalizedStringKey {
         switch self {
         case .outline: "app:inspector.outline"
+        case .comments: "app:inspector.comments"
         case .ai: "app:inspector.ai"
         }
     }
@@ -28,11 +29,12 @@ enum InspectorPreferences {
 struct InspectorPanel: View {
     let navigator: Navigator
     let editor: EditorController
+    let chat: AIChat
     @AppStorage(InspectorPreferences.widthKey) private var width = Double(Size.inspectorIdeal)
     @State private var dragStart: Double?
 
     var body: some View {
-        InspectorView(navigator: navigator, editor: editor)
+        InspectorView(navigator: navigator, editor: editor, chat: chat)
             .frame(width: CGFloat(width))
             .overlay(alignment: .leading) {
                 // Apple's inspector: full height on the right, the hairline from the window's top edge.
@@ -66,24 +68,36 @@ struct InspectorPanel: View {
 }
 
 /// The trailing panel: a quiet header naming what it shows, then the open page's outline — a table of contents that
-/// stays put and follows the reading, unlike the page's hover rail — or AI.
+/// stays put and follows the reading, unlike the page's hover rail — comments (to come), or a chat with AI about the
+/// page.
 struct InspectorView: View {
     let navigator: Navigator
     let editor: EditorController
+    let chat: AIChat
 
     var body: some View {
         VStack(spacing: Spacing.s0) {
-            Text(navigator.inspectorMode.title)
-                .font(.hk(.sm, .medium))
-                .foregroundStyle(Theme.mutedForeground)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, Spacing.s4)
-                .frame(height: Size.pageBar)
-                .accessibilityIdentifier("inspector-header")
+            HStack(spacing: Spacing.s1) {
+                Text(navigator.inspectorMode.title)
+                    .font(.hk(.sm, .medium))
+                    .foregroundStyle(Theme.mutedForeground)
+                    .accessibilityIdentifier("inspector-header")
+                Spacer(minLength: Spacing.s2)
+                if navigator.inspectorMode == .ai {
+                    AIChatActions(chat: chat).labelStyle(.iconOnly).buttonStyle(.borderless)
+                }
+            }
+            .padding(.horizontal, Spacing.s4)
+            .frame(height: Size.pageBar)
             Group {
                 switch navigator.inspectorMode {
                 case .outline: OutlinePane(navigator: navigator, editor: editor)
-                case .ai: AIPane()
+                case .comments: CommentsPane()
+                case .ai:
+                    // About the page beside it (cleared from the composer to ask without it).
+                    AIChatView(chat: chat)
+                        .onAppear { chat.pageID = navigator.route.pageID }
+                        .onChange(of: navigator.route.pageID) { _, id in chat.pageID = id }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -192,11 +206,12 @@ private struct OutlineRow: View {
 }
 
 /// AI for the open page (the next feature): for now it says what will be here.
-private struct AIPane: View {
+/// Comments on the page and on passages: to come (the panel's place for them is ready).
+private struct CommentsPane: View {
     var body: some View {
         VStack(spacing: Spacing.s3) {
-            AIGlyph(size: TextSize.x2l.rawValue)
-            Text("app:inspector.ai.soon")
+            IconView(.chatTeardropText, size: TextSize.x2l.rawValue).foregroundStyle(Theme.mutedForeground)
+            Text("app:inspector.comments.soon")
                 .font(.hk(.md))
                 .foregroundStyle(Theme.mutedForeground)
                 .multilineTextAlignment(.center)

@@ -60,7 +60,7 @@ struct ContentView: View {
                     DetailView(navigator: navigator, editor: editor, phoneToolbar: !wide)
                 }
                 if wide && navigator.isShowingInspector && navigator.route.pageID != nil {
-                    InspectorPanel(navigator: navigator, editor: editor)
+                    InspectorPanel(navigator: navigator, editor: editor, chat: chat)
                         .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
             }
@@ -78,7 +78,7 @@ struct ContentView: View {
                     get: { !wide && navigator.isShowingInspector && navigator.route.pageID != nil },
                     set: { navigator.isShowingInspector = $0 })
             ) {
-                InspectorView(navigator: navigator, editor: editor)
+                InspectorView(navigator: navigator, editor: editor, chat: chat)
                     .presentationDetents([.medium, .large])
             }
         }
@@ -539,13 +539,13 @@ private struct NativeDetailToolbar: ToolbarContent {
                 PageMoreMenu(page: page, navigator: navigator, editor: editor, toolbar: true).disabled(navigator.isSplit)
             }
         }
-        // The side panel's modes, at the trailing end as in Xcode, in a glass group of their own: the outline and AI
-        // (comments later), each a toggle that shows as on while the panel shows it. Only where there is a page; off
-        // while split (the panel belongs to the left page). Split view itself opens by drag, ⌘\ or "Open in Split
-        // View".
+        // The side panel's views at the trailing end, as in Xcode: the outline and comments in one glass group (the
+        // one showing carries the selected pill), then AI in a glass circle of its own. Only where there is a page;
+        // off while split (the panel belongs to the left page). Split view itself opens by drag, ⌘\ or "Open in
+        // Split View".
         if navigator.route.pageID != nil {
             ToolbarSpacer(.fixed, placement: .primaryAction)
-            ToolbarItem(placement: .primaryAction) {
+            ToolbarItemGroup(placement: .primaryAction) {
                 Toggle(isOn: inspectorBinding(.outline)) {
                     IconLabel("app:inspector.outline", icon: .listBullets)
                 }
@@ -553,7 +553,15 @@ private struct NativeDetailToolbar: ToolbarContent {
                 .help("app:inspector.outline")
                 .disabled(navigator.isSplit)
                 .accessibilityIdentifier("inspector-toggle")
+                Toggle(isOn: inspectorBinding(.comments)) {
+                    IconLabel("app:inspector.comments", icon: .chatTeardropText)
+                }
+                .toggleStyle(.button)
+                .help("app:inspector.comments")
+                .disabled(navigator.isSplit)
+                .accessibilityIdentifier("comments-toggle")
             }
+            ToolbarSpacer(.fixed, placement: .primaryAction)
             ToolbarItem(placement: .primaryAction) {
                 Toggle(isOn: inspectorBinding(.ai)) {
                     Label {

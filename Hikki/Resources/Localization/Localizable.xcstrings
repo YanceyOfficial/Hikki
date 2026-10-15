@@ -1973,19 +1973,36 @@
         }
       }
     },
-    "app:inspector.ai.soon": {
+    "app:inspector.comments": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ask AI about this page — coming soon."
+            "value": "Comments"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "针对这篇页面向 AI 提问——即将推出。"
+            "value": "评论"
+          }
+        }
+      }
+    },
+    "app:inspector.comments.soon": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comments on the page and on passages are coming soon."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "页面和段落评论即将推出。"
           }
         }
       }

@@ -109,64 +109,83 @@ final class AIChat {
     }
 }
 
-/// The Ask AI sheet: the conversation, suggestions to start one about the open page, and the composer — the page as
-/// a removable chip, web search on or off, the model menu (Auto, the recommended models, then the others).
+/// Ask AI on iPhone: the conversation (`AIChatView`) in a sheet, with close, a new chat and the model menu on top.
 struct AIChatSheet: View {
-    @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Bindable var chat: AIChat
+
+    var body: some View {
+        NavigationStack {
+            AIChatView(chat: chat)
+                .navigationTitle(Text("app:ai.ask"))
+                #if os(iOS)
+                    .navigationBarTitleDisplayMode(.inline)
+                #endif
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button {
+                            dismiss()
+                        } label: {
+                            IconLabel("app:common.close", icon: .x)
+                        }
+                        .accessibilityIdentifier("ai-chat-close")
+                    }
+                    ToolbarItemGroup(placement: .primaryAction) {
+                        AIChatActions(chat: chat)
+                    }
+                }
+        }
+        .presentationDragIndicator(.visible)
+        .presentationBackground(Theme.background)
+    }
+}
+
+/// A new chat (once there is one) and the model menu — the sheet's toolbar, the side panel's header.
+struct AIChatActions: View {
+    @Bindable var chat: AIChat
+
+    var body: some View {
+        if !chat.messages.isEmpty {
+            Button {
+                chat.clear()
+            } label: {
+                IconLabel("app:ai.newChat", icon: .notePencil)
+            }
+            .help("app:ai.newChat")
+        }
+        AIModelMenu(chat: chat)
+    }
+}
+
+/// The conversation: the turns, suggestions to start one about the open page, and the composer — the page as a
+/// removable chip, web search on or off. Shared by the iPhone sheet and the Mac/iPad side panel.
+struct AIChatView: View {
+    @Environment(AppModel.self) private var model
     @Bindable var chat: AIChat
     @FocusState private var composing: Bool
 
     var body: some View {
-        NavigationStack {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: Spacing.s5) {
-                        ForEach(chat.messages) { message in
-                            ChatBubble(message: message, isStreaming: chat.isStreaming && message == chat.messages.last)
-                                .id(message.id)
-                        }
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: Spacing.s5) {
+                    ForEach(chat.messages) { message in
+                        ChatBubble(message: message, isStreaming: chat.isStreaming && message == chat.messages.last)
+                            .id(message.id)
                     }
-                    .padding(.horizontal, Spacing.s4)
-                    .padding(.vertical, Spacing.s3)
                 }
-                .scrollDismissesKeyboard(.interactively)
-                .defaultScrollAnchor(.bottom)
-                .onChange(of: chat.messages.last?.text) {
-                    if let id = chat.messages.last?.id { proxy.scrollTo(id, anchor: .bottom) }
-                }
-                .overlay {
-                    if chat.messages.isEmpty { empty }
-                }
+                .padding(.horizontal, Spacing.s4)
+                .padding(.vertical, Spacing.s3)
             }
-            .safeAreaInset(edge: .bottom) { composer }
-            .navigationTitle(Text("app:ai.ask"))
-            #if os(iOS)
-                .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        IconLabel("app:common.close", icon: .x)
-                    }
-                    .accessibilityIdentifier("ai-chat-close")
-                }
-                ToolbarItemGroup(placement: .primaryAction) {
-                    if !chat.messages.isEmpty {
-                        Button {
-                            chat.clear()
-                        } label: {
-                            IconLabel("app:ai.newChat", icon: .notePencil)
-                        }
-                    }
-                    modelMenu
-                }
+            .scrollDismissesKeyboard(.interactively)
+            .defaultScrollAnchor(.bottom)
+            .onChange(of: chat.messages.last?.text) {
+                if let id = chat.messages.last?.id { proxy.scrollTo(id, anchor: .bottom) }
+            }
+            .overlay {
+                if chat.messages.isEmpty { empty }
             }
         }
-        .presentationDragIndicator(.visible)
-        .presentationBackground(Theme.background)
+        .safeAreaInset(edge: .bottom) { composer }
     }
 
     // MARK: Parts
@@ -214,6 +233,7 @@ struct AIChatSheet: View {
             }
             VStack(alignment: .leading, spacing: Spacing.s1_5) {
                 TextField("app:ai.chat.placeholder", text: $chat.draft, axis: .vertical)
+                    .textFieldStyle(.plain)
                     .font(.hk(.base))
                     .lineLimit(1...6)
                     .focused($composing)
@@ -278,9 +298,13 @@ struct AIChatSheet: View {
         .accessibilityLabel(Text(chat.isStreaming ? "app:ai.stop" : "app:ai.send"))
         .accessibilityIdentifier("ai-chat-send")
     }
+}
 
-    /// Notion's: Auto, the recommended models, then the rest under "Other models".
-    private var modelMenu: some View {
+/// Notion's model menu: Auto, the recommended models, then the rest under "Other models".
+struct AIModelMenu: View {
+    @Bindable var chat: AIChat
+
+    var body: some View {
         Menu {
             Picker(selection: $chat.modelChoice) {
                 Text("app:ai.model.auto").tag(AIModelCatalog.autoID)
@@ -297,6 +321,7 @@ struct AIChatSheet: View {
         } label: {
             Text(modelName).font(.hk(.sm))
         }
+        .fixedSize()
         .accessibilityIdentifier("ai-chat-model")
     }
 
