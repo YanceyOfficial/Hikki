@@ -48,6 +48,30 @@ export function openToggleAtSelection(editor: Editor): void {
   }
 }
 
+/**
+ * Opens every closed toggle around `pos`, so what is there can be seen, measured and scrolled to (a closed
+ * toggle's content is `hidden`) — arriving by a search result, a link to a block, the outline or a comment.
+ * Done as the node view's own toggle does it, minus its button's focus(): arriving must not focus the page (or
+ * raise the keyboard), and a dispatch from inside a command would leave that command's transaction stale.
+ */
+export function openTogglesAround(editor: Editor, pos: number): void {
+  const $pos = editor.state.doc.resolve(pos)
+  for (let depth = $pos.depth; depth > 0; depth--) {
+    if ($pos.node(depth).type.name !== 'details') continue
+    const dom = editor.view.nodeDOM($pos.before(depth))
+    if (!(dom instanceof HTMLElement) || dom.classList.contains('is-open')) continue
+    dom.classList.add('is-open')
+    const button = dom.querySelector<HTMLButtonElement>(':scope > button')
+    if (button) {
+      button.setAttribute('aria-label', t('toggle.collapse'))
+      button.setAttribute('aria-expanded', 'true')
+    }
+    dom
+      .querySelector(':scope > div > [data-type="detailsContent"]')
+      ?.dispatchEvent(new Event('toggleDetailsContent'))
+  }
+}
+
 /** A small rounded triangle (rotated by CSS when open). Static markup, built with DOM APIs. */
 function caret(): SVGSVGElement {
   const ns = 'http://www.w3.org/2000/svg'

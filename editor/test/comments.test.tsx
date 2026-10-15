@@ -89,6 +89,47 @@ function commentOnQuick(): string {
 }
 
 describe('comments', () => {
+  it('a page without comments does no layout work as it is edited', () => {
+    const measured = vi.spyOn(editor.view.dom, 'getBoundingClientRect')
+    act(() => {
+      for (const char of 'typing') editor.commands.insertContent(char)
+      editor.commands.setTextSelection(3)
+    })
+    expect(measured).not.toHaveBeenCalled()
+  })
+
+  it('moving the caret does not walk the page for comment passages again', () => {
+    commentOnQuick()
+    const walked = vi.spyOn(editor.state.doc, 'descendants')
+    act(() => {
+      for (const pos of [2, 3, 4, 12, 14]) editor.commands.setTextSelection(pos)
+    })
+    expect(walked).not.toHaveBeenCalled()
+  })
+
+  it('margin cards are observed once, not again on every height report', async () => {
+    let observed = 0
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(private readonly callback: ResizeObserverCallback) {}
+        observe(target: Element) {
+          observed++
+          // As the spec does: a newly observed element is reported once.
+          queueMicrotask(() =>
+            this.callback([{ target } as ResizeObserverEntry], this as unknown as ResizeObserver)
+          )
+        }
+        unobserve() {}
+        disconnect() {}
+      }
+    )
+    commentOnQuick()
+    for (let i = 0; i < 10; i++) await act(async () => await Promise.resolve())
+    expect(screen.getAllByTestId('comment-thread')).toHaveLength(1)
+    expect(observed).toBeLessThanOrEqual(1)
+  })
+
   it('a comment on a selection: a draft first, the passage marked only once it is sent', async () => {
     act(() => {
       editor.commands.setTextSelection({ from: 5, to: 10 })

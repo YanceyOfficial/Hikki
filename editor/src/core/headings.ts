@@ -17,7 +17,8 @@ export function collectHeadings(editor: Editor): HeadingItem[] {
         })
       return false
     }
-    return true
+    // Headings don't nest in other text blocks; only containers (toggles, callouts, columns…) are looked into.
+    return !node.isTextblock
   })
   return items
 }

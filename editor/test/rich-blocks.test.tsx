@@ -81,6 +81,49 @@ describe('toggle list', () => {
   })
 })
 
+const toggle = () => host.querySelector('.hk-toggle') as HTMLElement
+const toggleContent = () => toggle().querySelector('[data-type=detailsContent]') as HTMLElement
+
+describe('arriving inside a closed toggle', () => {
+  const stored = {
+    type: 'doc',
+    content: [
+      {
+        type: 'details',
+        content: [
+          { type: 'detailsSummary', content: [{ type: 'text', text: 'More' }] },
+          {
+            type: 'detailsContent',
+            content: [
+              {
+                type: 'paragraph',
+                attrs: { id: 'p1' },
+                content: [{ type: 'text', text: 'needle' }]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+
+  it('a search result opens the toggle around its words', () => {
+    editor = createEditor(host, stored)
+    window.scrollTo = vi.fn()
+    expect(toggle().classList.contains('is-open')).toBe(false)
+    expect(editor.commands.revealText(['needle'], 'p1')).toBe(true)
+    expect(toggle().classList.contains('is-open')).toBe(true)
+    expect(toggleContent().hasAttribute('hidden')).toBe(false)
+  })
+
+  it('a link to a block inside it opens the toggle too', () => {
+    editor = createEditor(host, stored)
+    HTMLElement.prototype.scrollIntoView = vi.fn()
+    expect(editor.commands.scrollToBlock('p1')).toBe(true)
+    expect(toggle().classList.contains('is-open')).toBe(true)
+  })
+})
+
 describe('quote', () => {
   it('moves to the `" ` shortcut, straight or curly', () => {
     editor = createEditor(host, null)

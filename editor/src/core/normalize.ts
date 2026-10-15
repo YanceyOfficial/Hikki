@@ -7,7 +7,8 @@ const textOf = (node: JSONContent): string =>
  * Brings stored body content up to the current schema before it is loaded. The title is a page
  * property now, so older documents that carried it inside the body lose that leading node:
  * - a `title` node (previous build),
- * - a leading level-1 heading whose text equals the page title (first build, title derived from it).
+ * - a leading level-1 heading whose text equals the page title (first build, title derived from it) — only one
+ *   without a block id: block ids came after the first build, so an H1 with one is the user's own.
  * Returns the cleaned body and the title recovered from it (used only when the stored title is empty).
  */
 export function normalizeBody(
@@ -23,6 +24,7 @@ export function normalizeBody(
   } else if (
     first?.type === 'heading' &&
     first.attrs?.level === 1 &&
+    !first.attrs?.id &&
     textOf(first).trim() === storedTitle.trim() &&
     storedTitle.trim()
   ) {

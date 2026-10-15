@@ -16,6 +16,7 @@ import { pageLinkHref, type PageIndexEntry, type PageLinksHost } from '../extens
 import { notifyPageIndexChanged } from '../extensions/page-mention'
 import { rubySegmentsFrom, type RubyHost } from '../extensions/ruby'
 import type { SplitDropHost, SplitDropMode } from '../extensions/split-drop'
+import { openTogglesAround } from '../extensions/toggle'
 import { linkCardFrom } from '../lib/embeds'
 import { activeCommands, createEditor, runCommand } from './editor'
 import { plainText, wordCount } from './extract'
@@ -427,6 +428,7 @@ export class EditorBridge {
     const range = commentRanges(editor.state.doc).get(threadId)?.[0]
     editor.commands.commentOpen(threadId)
     if (range) {
+      openTogglesAround(editor, range.from)
       const dom = editor.view.domAtPos(range.from).node
       ;(dom instanceof Element ? dom : dom.parentElement)?.scrollIntoView({ block: 'center' })
     }
@@ -622,6 +624,7 @@ export class EditorBridge {
 
   scrollToHeading(pos: number): void {
     if (!this.editor) return
+    openTogglesAround(this.editor, pos)
     const dom = this.editor.view.nodeDOM(pos)
     if (dom instanceof HTMLElement) dom.scrollIntoView({ behavior: 'smooth', block: 'start' })
     this.editor.commands.setTextSelection(pos + 1)

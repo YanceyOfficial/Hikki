@@ -127,6 +127,29 @@ describe('table of contents block', () => {
     ;(host.querySelectorAll('.hk-toc-item')[1] as HTMLElement).click()
     expect(editor.state.selection.$from.parent.textContent).toBe('Details')
   })
+
+  it('two headings that read the same each lead to their own', () => {
+    HTMLElement.prototype.scrollIntoView = () => {}
+    editor = createEditor(host, {
+      type: 'doc',
+      content: [
+        { type: 'tableOfContents' },
+        {
+          type: 'heading',
+          attrs: { level: 2, id: 'a' },
+          content: [{ type: 'text', text: 'Notes' }]
+        },
+        { type: 'paragraph', content: [{ type: 'text', text: 'between' }] },
+        {
+          type: 'heading',
+          attrs: { level: 2, id: 'b' },
+          content: [{ type: 'text', text: 'Notes' }]
+        }
+      ]
+    })
+    ;(host.querySelectorAll('.hk-toc-item')[1] as HTMLElement).click()
+    expect(editor.state.selection.$from.parent.attrs.id).toBe('b')
+  })
 })
 
 describe('outline rail', () => {

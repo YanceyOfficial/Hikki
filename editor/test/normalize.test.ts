@@ -37,6 +37,18 @@ describe('normalizeBody', () => {
     expect(normalizeBody({ type: 'doc', content: [h1] }, '').body.content).toEqual([h1])
   })
 
+  it("keeps an H1 the user wrote with the title's words (it has a block id; the first build's had none)", () => {
+    const h1 = {
+      type: 'heading',
+      attrs: { level: 1, id: 'h' },
+      content: [{ type: 'text', text: 'Plan' }]
+    }
+    expect(normalizeBody({ type: 'doc', content: [h1, p('x')] }, 'Plan').body.content).toEqual([
+      h1,
+      p('x')
+    ])
+  })
+
   it('is idempotent', () => {
     const once = normalizeBody({ type: 'doc', content: [{ type: 'title' }, p('a')] }, 'T')
     expect(normalizeBody(once.body, once.title)).toEqual(once)

@@ -80,8 +80,19 @@ export const CommentMark = Mark.create({
   }
 })
 
+/** Documents are immutable: each one's comment ranges are found once (decorations, the layer and every caret move
+ * ask again). */
+const rangesByDoc = new WeakMap<
+  PMNode,
+  ReadonlyMap<string, readonly { from: number; to: number }[]>
+>()
+
 /** Where each thread's passage is in the document: its ranges, in order. */
-export function commentRanges(doc: PMNode): Map<string, { from: number; to: number }[]> {
+export function commentRanges(
+  doc: PMNode
+): ReadonlyMap<string, readonly { from: number; to: number }[]> {
+  const known = rangesByDoc.get(doc)
+  if (known) return known
   const ranges = new Map<string, { from: number; to: number }[]>()
   doc.descendants((node, pos) => {
     if (!node.isText) return true
@@ -95,6 +106,7 @@ export function commentRanges(doc: PMNode): Map<string, { from: number; to: numb
     }
     return false
   })
+  rangesByDoc.set(doc, ranges)
   return ranges
 }
 

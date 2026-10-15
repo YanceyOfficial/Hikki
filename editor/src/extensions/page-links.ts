@@ -5,6 +5,7 @@ import type { EditorView } from '@tiptap/pm/view'
 
 import { isSafeHref } from '../core/links'
 import { setBlockHighlight } from './block-highlight'
+import { openTogglesAround } from './toggle'
 
 /** A page as the sidebar knows it, for naming links (`window.hikki.setPages`). */
 export type PageIndexEntry = { id: string; title: string; icon: string | null }
@@ -42,11 +43,12 @@ export function blockLabel(node: PMNode): string | null {
   return text.length > MAX_LABEL ? `${text.slice(0, MAX_LABEL - 1)}…` : text
 }
 
-function findBlock(doc: PMNode, id: string): PMNode | null {
-  let found: PMNode | null = null
-  doc.descendants((node) => {
+/** The node with this block id and where it starts, or null when the page has none. */
+export function findBlockById(doc: PMNode, id: string): { node: PMNode; pos: number } | null {
+  let found: { node: PMNode; pos: number } | null = null
+  doc.descendants((node, pos) => {
     if (found) return false
-    if (node.attrs.id === id) found = node
+    if (node.attrs.id === id) found = { node, pos }
     return !found
   })
   return found
@@ -59,7 +61,7 @@ function findBlock(doc: PMNode, id: string): PMNode | null {
  */
 export function linkLabel(editor: Editor, target: PageLinkTarget, host: PageLinksHost): string {
   if (target.blockId && target.pageId === host.currentPageId()) {
-    const block = findBlock(editor.state.doc, target.blockId)
+    const block = findBlockById(editor.state.doc, target.blockId)?.node ?? null
     const label = block && blockLabel(block)
     if (label) return label
   }
@@ -109,6 +111,14 @@ declare module '@tiptap/core' {
 
 /** How long an arrived-at block stays tinted. */
 const ARRIVAL_TINT_MS = 1400
+
+/** The block arrived at (by a link, a search result) is tinted for a moment. */
+function tintArrival(editor: Editor, range: { from: number; to: number }): void {
+  setBlockHighlight(editor.view, { menu: range })
+  setTimeout(() => {
+    if (!editor.isDestroyed) setBlockHighlight(editor.view, { menu: null })
+  }, ARRIVAL_TINT_MS)
+}
 
 /**
  * Search folds case and accents away as Foundation's `.caseInsensitive, .diacriticInsensitive` does
@@ -161,18 +171,8 @@ export function findTextMatch(
   terms: string[],
   blockId: string | null = null
 ): { from: number; to: number } | null {
-  if (blockId) {
-    let block: { node: PMNode; pos: number } | null = null
-    doc.descendants((node, pos) => {
-      if (block) return false
-      if (node.attrs.id === blockId) block = { node, pos }
-      return !block
-    })
-    if (block) {
-      const { node, pos } = block as { node: PMNode; pos: number }
-      return node.isTextblock ? matchInBlock(node, pos, terms) : null
-    }
-  }
+  const block = blockId ? findBlockById(doc, blockId) : null
+  if (block) return block.node.isTextblock ? matchInBlock(block.node, block.pos, terms) : null
   let found: { from: number; to: number } | null = null
   doc.descendants((node, pos) => {
     if (found) return false
@@ -220,25 +220,20 @@ export function PageLinks(host: PageLinksHost) {
               .unsetMark('link')
               .run()
           },
+        // Both arrivals open toggles and tint the block (each a dispatch of its own), so they dispatch from the
+        // view's current state and keep Tiptap from dispatching the command's transaction, stale by then.
         scrollToBlock:
           (blockId) =>
-          ({ editor, view }) => {
-            let pos: number | null = null
-            editor.state.doc.descendants((node, p) => {
-              if (pos !== null) return false
-              if (node.attrs.id === blockId) pos = p
-              return pos === null
-            })
-            if (pos === null) return false
-            const node = editor.state.doc.nodeAt(pos)!
+          ({ editor, view, tr }) => {
+            const block = findBlockById(editor.state.doc, blockId)
+            if (!block) return false
+            tr.setMeta('preventDispatch', true)
+            const { node, pos } = block
+            openTogglesAround(editor, pos)
             const dom = view.nodeDOM(pos)
             if (dom instanceof HTMLElement)
               dom.scrollIntoView({ behavior: 'smooth', block: 'center' })
-            const range = { from: pos, to: pos + node.nodeSize }
-            setBlockHighlight(view, { menu: range })
-            setTimeout(() => {
-              if (!editor.isDestroyed) setBlockHighlight(view, { menu: null })
-            }, ARRIVAL_TINT_MS)
+            tintArrival(editor, { from: pos, to: pos + node.nodeSize })
             if (node.isTextblock) {
               view.dispatch(
                 view.state.tr.setSelection(TextSelection.create(view.state.doc, pos + 1))
@@ -251,19 +246,18 @@ export function PageLinks(host: PageLinksHost) {
           ({ editor, view, tr }) => {
             const match = findTextMatch(editor.state.doc, terms, blockId)
             if (!match) return false
+            tr.setMeta('preventDispatch', true)
+            openTogglesAround(editor, match.from)
             const $from = editor.state.doc.resolve(match.from)
-            const block = { from: $from.before(), to: $from.after() }
             const coords = view.coordsAtPos(match.from)
             window.scrollTo({
               top: Math.max(0, window.scrollY + coords.top - window.innerHeight / 3),
               behavior: 'smooth'
             })
-            setBlockHighlight(view, { menu: block })
-            setTimeout(() => {
-              if (!editor.isDestroyed) setBlockHighlight(view, { menu: null })
-            }, ARRIVAL_TINT_MS)
-            // On the command's own transaction: Tiptap dispatches it after this returns.
-            tr.setSelection(TextSelection.create(tr.doc, match.from, match.to))
+            tintArrival(editor, { from: $from.before(), to: $from.after() })
+            view.dispatch(
+              view.state.tr.setSelection(TextSelection.create(view.state.doc, match.from, match.to))
+            )
             return true
           }
       }

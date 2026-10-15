@@ -30,6 +30,21 @@ export const CodeBlock = CodeBlockLowlight.extend({
   addNodeView() {
     return ({ node, editor, getPos }) =>
       new CodeBlockView(node, editor, getPos as () => number | undefined)
+  },
+
+  // Tiptap's highlighting plugin walks the old and the new document on every transaction — caret moves included —
+  // only to map its decorations through an empty mapping when the document didn't change. Same result, no walks.
+  addProseMirrorPlugins() {
+    const plugins = this.parent?.() ?? []
+    for (const plugin of plugins) {
+      const field = plugin.spec.state
+      if (!field || !(plugin.spec.key as { key?: string } | undefined)?.key?.startsWith('lowlight'))
+        continue
+      const apply = field.apply.bind(field)
+      field.apply = (tr, value, oldState, newState) =>
+        tr.docChanged ? apply(tr, value, oldState, newState) : value
+    }
+    return plugins
   }
 })
 

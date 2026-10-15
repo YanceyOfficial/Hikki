@@ -12,7 +12,7 @@ import {
 import type { Editor } from '@tiptap/core'
 import { cn } from 'cn'
 import i18n from 'i18next'
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import { Button } from '@/components/ui/button'
@@ -100,17 +100,22 @@ export function renderComments(editor: Editor, host: CommentsHost): () => void {
 /** The layout's inputs change with every transaction and with the window's size. */
 function useLayout(editor: Editor, column: HTMLElement): Layout {
   const cache = useRef<{ key: string; layout: Layout } | null>(null)
-  const subscribe = (notify: () => void) => {
-    editor.on('transaction', notify)
-    window.addEventListener('resize', notify)
-    column.addEventListener('hk-relayout', notify)
-    return () => {
-      editor.off('transaction', notify)
-      window.removeEventListener('resize', notify)
-      column.removeEventListener('hk-relayout', notify)
-    }
-  }
+  const subscribe = useCallback(
+    (notify: () => void) => {
+      editor.on('transaction', notify)
+      window.addEventListener('resize', notify)
+      column.addEventListener('hk-relayout', notify)
+      return () => {
+        editor.off('transaction', notify)
+        window.removeEventListener('resize', notify)
+        column.removeEventListener('hk-relayout', notify)
+      }
+    },
+    [editor, column]
+  )
   const get = () => {
+    // Nothing to place (most pages): no layout is read at all.
+    if (!hasPassages(editor)) return EMPTY_LAYOUT
     const layout = measure(editor, column)
     const key = JSON.stringify(layout, (k, v) =>
       k === 'thread' ? `${v.id}:${v.comments.length}:${v.resolved}` : v
@@ -136,11 +141,23 @@ export function marginPlacement(
   return { wide: false, offset: room >= 56 + RAIL ? 12 : -44 }
 }
 
-function measure(editor: Editor, column: HTMLElement): Layout {
-  const empty: Layout = { wide: false, marginLeft: 0, anchors: [], active: null, draft: null }
-  if (editor.isDestroyed) return empty
+const EMPTY_LAYOUT: Layout = { wide: false, marginLeft: 0, anchors: [], active: null, draft: null }
+
+/** Whether the page shows anything of comments: a draft, or an open thread's marked passage. */
+function hasPassages(editor: Editor): boolean {
+  if (editor.isDestroyed) return false
   const plugin = commentsState(editor.state)
-  if (!plugin) return empty
+  if (!plugin) return false
+  if (plugin.draft) return true
+  for (const id of commentRanges(editor.state.doc).keys()) {
+    if (plugin.threads.get(id)?.resolved === false) return true
+  }
+  return false
+}
+
+function measure(editor: Editor, column: HTMLElement): Layout {
+  const plugin = commentsState(editor.state)
+  if (editor.isDestroyed || !plugin) return EMPTY_LAYOUT
   const view = editor.view
   const columnRect = column.getBoundingClientRect()
   const text = view.dom.getBoundingClientRect()
@@ -247,16 +264,28 @@ function Margin({ editor, host, layout }: { editor: Editor; host: CommentsHost; 
     () =>
       new ResizeObserver((entries) =>
         setHeights((current) => {
-          const next = { ...current }
+          let next = current
           for (const entry of entries) {
             const id = (entry.target as HTMLElement).dataset.thread
-            if (id) next[id] = (entry.target as HTMLElement).offsetHeight
+            const height = (entry.target as HTMLElement).offsetHeight
+            if (id && current[id] !== height) next = { ...next, [id]: height }
           }
+          // Unchanged heights keep the same object: no render (a new one each time looped forever).
           return next
         })
       )
   )
   useEffect(() => () => observer.disconnect(), [observer])
+  // One ref callback for every card: a new function per render would make React detach and attach it each commit,
+  // observing the card again — and a newly observed element is always reported.
+  const observe = useCallback(
+    (element: HTMLDivElement | null) => {
+      if (!element) return
+      observer.observe(element)
+      return () => observer.unobserve(element)
+    },
+    [observer]
+  )
   const items: { id: string; top: number; node: React.ReactNode }[] = []
   const entries = [
     ...layout.anchors.map((a) => ({ id: a.thread.id, top: a.top, anchor: a })),
@@ -289,11 +318,7 @@ function Margin({ editor, host, layout }: { editor: Editor; host: CommentsHost; 
         <div
           key={item.id}
           data-thread={item.id}
-          ref={(element) => {
-            if (!element) return
-            observer.observe(element)
-            return () => observer.unobserve(element)
-          }}
+          ref={observe}
           className="absolute"
           style={{ left: layout.marginLeft, top: item.top, width: CARD }}
         >
