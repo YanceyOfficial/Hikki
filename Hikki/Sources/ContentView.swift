@@ -47,6 +47,20 @@ struct ContentView: View {
             .focusedSceneValue(\.lockedPage, navigator.currentPage?.isLocked)
     }
 
+    #if os(iOS)
+        /// ⌘K / the search button: full screen on iPhone, a sheet on iPad.
+        private var phoneSearch: Binding<Bool> {
+            Binding(
+                get: { navigator.isSearching && UIDevice.current.userInterfaceIdiom == .phone },
+                set: { if !$0 { navigator.isSearching = false } })
+        }
+        private var padSearch: Binding<Bool> {
+            Binding(
+                get: { navigator.isSearching && UIDevice.current.userInterfaceIdiom != .phone },
+                set: { if !$0 { navigator.isSearching = false } })
+        }
+    #endif
+
     /// Opens Settings at a page (the Mac's Settings window, the sheet elsewhere).
     private func openSettingsPage(_ page: SettingsPage) {
         UserDefaults.standard.set(page.rawValue, forKey: SettingsPage.storageKey)
@@ -100,6 +114,12 @@ struct ContentView: View {
             // Asked from a page: about that page; from the home screen: about nothing in particular.
             .onChange(of: navigator.isAskingAI) { _, asking in
                 if asking { chat.show(page: navigator.compactColumn == .detail ? navigator.route.pageID : nil) }
+                // A suggestion from Home: its pages as context, the question sent.
+                if asking, let question = navigator.pendingAIQuestion {
+                    navigator.pendingAIQuestion = nil
+                    chat.extraPageIDs = question.pageIDs
+                    chat.send(question.text, store: model.store)
+                }
             }
             // iPhone: the page's ⋯ as a sheet.
             .sheet(
@@ -113,9 +133,20 @@ struct ContentView: View {
         #else
             .background(HideOnClose())
         #endif
-        .sheet(isPresented: $navigator.isSearching) {
-            SearchPalette(navigator: navigator) { navigator.isSearching = false }
-        }
+        #if os(iOS)
+            // iPhone: search takes the whole screen (a sheet's large corner and its keyboard avoidance hid the field);
+            // a page-sized sheet on iPad.
+            .fullScreenCover(isPresented: phoneSearch) {
+                SearchPalette(navigator: navigator) { navigator.isSearching = false }
+            }
+            .sheet(isPresented: padSearch) {
+                SearchPalette(navigator: navigator) { navigator.isSearching = false }
+            }
+        #else
+            .sheet(isPresented: $navigator.isSearching) {
+                SearchPalette(navigator: navigator) { navigator.isSearching = false }
+            }
+        #endif
         .animation(.snappy(duration: 0.18), value: navigator.isSearching)
         // Attachments opened from the editor.
         .quickLookPreview($editor.previewURL)

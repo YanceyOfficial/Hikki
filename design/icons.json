@@ -3,6 +3,7 @@
   "baseWeight": "regular",
   "strokeBoost": 4,
   "icons": {
+    "clipboard-text": { "sf": "doc.on.clipboard" },
     "warning-circle": { "sf": "exclamationmark.circle.fill" },
     "x-circle": { "sf": "xmark.circle.fill" },
     "list": {

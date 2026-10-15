@@ -2908,6 +2908,57 @@
         }
       }
     },
+    "app:home.ai.quiz": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quiz me on my recent notes"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用最近的笔记出几道题考考我"
+          }
+        }
+      }
+    },
+    "app:home.ai.summarizeWeek": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Summarize what I wrote this week"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "总结我这周写的内容"
+          }
+        }
+      }
+    },
+    "app:home.ai.today": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What did I work on today?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我今天都写了什么？"
+          }
+        }
+      }
+    },
     "app:home.allPages": {
       "extractionState": "manual",
       "localizations": {
@@ -2921,6 +2972,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "全部页面"
+          }
+        }
+      }
+    },
+    "app:home.askAI": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ask AI"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "问问 AI"
+          }
+        }
+      }
+    },
+    "app:home.blankPage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blank page"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "空白页面"
+          }
+        }
+      }
+    },
+    "app:home.clipboardEmpty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing to paste: copy some text or a link first."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "剪贴板是空的：先复制一段文字或链接。"
           }
         }
       }
@@ -3061,6 +3163,23 @@
         }
       }
     },
+    "app:home.fromClipboard": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From clipboard"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从剪贴板"
+          }
+        }
+      }
+    },
     "app:home.jumpBackIn": {
       "extractionState": "manual",
       "localizations": {
@@ -3163,6 +3282,40 @@
         }
       }
     },
+    "app:home.quickCreate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quick create"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速新建"
+          }
+        }
+      }
+    },
+    "app:home.recentlyEdited": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recently edited"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近编辑"
+          }
+        }
+      }
+    },
     "app:home.sort": {
       "extractionState": "manual",
       "localizations": {
@@ -3186,13 +3339,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Previous 7 days"
+            "value": "This week"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "过去 7 天"
+            "value": "本周"
           }
         }
       }
@@ -3214,6 +3367,40 @@
         }
       }
     },
+    "app:home.todayNote": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today's note"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今日笔记"
+          }
+        }
+      }
+    },
+    "app:home.totals %@ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ pages · %2$@ words in all"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共 %1$@ 个页面 · %2$@ 字"
+          }
+        }
+      }
+    },
     "app:home.words %@": {
       "extractionState": "manual",
       "localizations": {
@@ -3227,6 +3414,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ 字"
+          }
+        }
+      }
+    },
+    "app:home.wordsWritten": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "words written"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "写下的字数"
           }
         }
       }
@@ -4111,6 +4315,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "在其中添加页面"
+          }
+        }
+      }
+    },
+    "app:page.addSubpage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add subpage"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加子页面"
           }
         }
       }

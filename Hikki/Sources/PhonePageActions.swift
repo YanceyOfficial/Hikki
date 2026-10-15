@@ -64,7 +64,7 @@
                     model.setLocked(!page.isLocked, id: page.id)
                 }
                 .accessibilityIdentifier("lock-toggle")
-                QuickTile(title: "app:page.addInside", icon: .plus) {
+                QuickTile(title: "app:page.addSubpage", icon: .plus) {
                     dismiss()
                     navigator.newPage(parentId: page.id)
                 }

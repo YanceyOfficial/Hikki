@@ -91,9 +91,11 @@ window.hikki = {
   setOutlineRail: (visible: boolean) => bridge.setOutlineRail(visible),
   // Height of the native toolbar over the page: fixed panels (find) sit below it. `bottom`: the native bar floating
   // over the page's foot (iPhone, keyboard down) — a bottom sheet keeps its field above it.
-  setInsets: (insets: { top: number; bottom?: number }) => {
+  // `bleed` (iPhone): no native inset — the page itself makes the room, a cover filling it (`--hk-bleed-top`).
+  setInsets: (insets: { top: number; bottom?: number; bleed?: boolean }) => {
     const root = document.documentElement.style
     root.setProperty('--hk-inset-top', `${Math.max(0, insets.top)}px`)
+    root.setProperty('--hk-bleed-top', insets.bleed ? `${Math.max(0, insets.top)}px` : '0px')
     root.setProperty('--hk-inset-bottom', `${Math.max(0, insets.bottom ?? 0)}px`)
   },
   setLocale: (tag: string) => setLocale(tag),

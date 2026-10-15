@@ -279,14 +279,7 @@ final class EditorFlowTests: XCTestCase {
     func testSettingsRenamesWorkspace() throws {
         continueAfterFailure = false
         let app = launch(workspace: "Old Name")
-        let header = app.buttons["workspace-menu"].firstMatch
-        let more = app.buttons["workspace-more"].firstMatch
-        let menu = header.waitForExistence(timeout: 5) ? header : more
-        XCTAssertTrue(waitOrDumpTree(menu, in: app))
-        menu.tap()
-        let open = app.buttons["settings-open"].firstMatch
-        XCTAssertTrue(waitOrDumpTree(open, in: app))
-        open.tap()
+        openSettings(app)
 
         app.descendants(matching: .any)["settings-page-workspace"].firstMatch.tap()
         let name = app.textFields["settings-name"].firstMatch
@@ -307,12 +300,7 @@ final class EditorFlowTests: XCTestCase {
         func testSettingsRebindsAShortcut() throws {
             continueAfterFailure = false
             let app = launch(shortcutOverrides: #"{"bold":{"key":"j","modifiers":["command","shift"]}}"#)
-            let header = app.buttons["workspace-menu"].firstMatch
-            let more = app.buttons["workspace-more"].firstMatch
-            let menu = header.waitForExistence(timeout: 5) ? header : more
-            XCTAssertTrue(waitOrDumpTree(menu, in: app))
-            menu.tap()
-            app.buttons["settings-open"].firstMatch.tap()
+            openSettings(app)
             app.descendants(matching: .any)["settings-page-shortcuts"].firstMatch.tap()
 
             let search = app.textFields["shortcuts-search"].firstMatch
@@ -857,18 +845,25 @@ final class EditorFlowTests: XCTestCase {
         let app = launch(environment: ["HIKKI_DEMO_PAGES": "1", "HIKKI_DEBUG_NAV": "demo-46ffce8"])
         let body = app.webViews.textViews["Page content"].firstMatch
         XCTAssertTrue(waitOrDumpTree(body, in: app, timeout: 30))
-        let line = body.staticTexts["山へ行くんですか。"].firstMatch
+        // By its start: a draft's highlight splits the line into runs.
+        let line = body.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "山へ行く")).firstMatch
         XCTAssertTrue(waitOrDumpTree(line, in: app))
-        line.tap()
-        // A fresh simulator's keyboard first shows its "slide to type" tip.
-        let tip = app.buttons["Continue"].firstMatch
-        if tip.waitForExistence(timeout: 2) { tip.tap() }
-        sleep(1)
-        // The whole line, from the keyboard, then Comment's shortcut.
-        body.typeKey(.rightArrow, modifierFlags: .command)
-        body.typeKey(.leftArrow, modifierFlags: [.shift, .command])
-        body.typeKey("m", modifierFlags: [.command, .shift])
         let composer = app.webViews.textFields["Add a comment…"].firstMatch
+        // Keys the simulator sends right after a tap are sometimes lost while the keyboard comes up: tap and try again.
+        for attempt in 0..<3 where !composer.exists {
+            line.tap()
+            if attempt == 0 {
+                // A fresh simulator's keyboard first shows its "slide to type" tip.
+                let tip = app.buttons["Continue"].firstMatch
+                if tip.waitForExistence(timeout: 2) { tip.tap() }
+            }
+            sleep(2)
+            // The whole line, from the keyboard, then Comment's shortcut.
+            body.typeKey(.rightArrow, modifierFlags: .command)
+            body.typeKey(.leftArrow, modifierFlags: [.shift, .command])
+            body.typeKey("m", modifierFlags: [.command, .shift])
+            _ = composer.waitForExistence(timeout: 4)
+        }
         XCTAssertTrue(waitOrDumpTree(composer, in: app), "no comment sheet")
         composer.typeText("Hearsay or appearance?\n")
         let reply = app.webViews.textFields["Reply…"].firstMatch
@@ -881,7 +876,8 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertFalse(app.keyboards.firstMatch.exists, "the keyboard stayed up after the sheet closed")
 
         // A tap on the passage: the thread, and no keyboard.
-        let passage = body.staticTexts["山へ行くんですか。"].firstMatch
+        // The commented part of the line (its own text run once marked; the keys may have caught part of the line).
+        let passage = body.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "山へ行く")).firstMatch
         passage.tap()
         XCTAssertTrue(waitOrDumpTree(reply, in: app), "a tap on the passage didn't open its thread")
         sleep(1)
@@ -1111,6 +1107,22 @@ final class EditorFlowTests: XCTestCase {
     }
 
     /// On iPhone the page tree is in Home's side drawer: opens it (no-op elsewhere, or when it is open).
+    /// Settings: the workspace menu's Settings on Mac/iPad, the drawer's on iPhone.
+    private func openSettings(_ app: XCUIApplication) {
+        let header = app.buttons["workspace-menu"].firstMatch
+        if header.waitForExistence(timeout: 5) {
+            header.tap()
+            let open = app.buttons["settings-open"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(open, in: app))
+            open.tap()
+        } else {
+            openDrawerIfNeeded(app)
+            let open = app.buttons["drawer-settings"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(open, in: app))
+            open.tap()
+        }
+    }
+
     private func openDrawerIfNeeded(_ app: XCUIApplication) {
         let toggle = app.buttons["drawer-toggle"].firstMatch
         guard toggle.waitForExistence(timeout: 3), !app.buttons["drawer-all-pages"].firstMatch.exists else { return }

@@ -84,8 +84,11 @@ struct SearchPalette: View {
                     .padding(Spacing.s1_5)
                 }
                 .scrollIndicators(.automatic)
-                .frame(maxHeight: Size.searchResults)
-                .fixedSize(horizontal: false, vertical: true)
+                // A phone fills the screen: the results take the rest of it, so the field never moves (results
+                // sized to their content shifted the whole screen with every keystroke, and the keyboard pushed
+                // the field out of sight). Elsewhere the card grows with its results.
+                .frame(maxHeight: phone ? .infinity : Size.searchResults)
+                .fixedSize(horizontal: false, vertical: !phone)
                 .onChange(of: selection) { _, index in
                     if rows.indices.contains(index) { proxy.scrollTo(rows[index].id) }
                 }
@@ -103,9 +106,9 @@ struct SearchPalette: View {
                 .frame(height: 34)
             #endif
         }
-        .background(Theme.popover)
+        .background(phone ? Theme.background : Theme.popover)
         #if os(iOS)
-            // A phone sheet: the field at the top, not floating mid-way above the keyboard; a page-sized one on iPad.
+            // A phone: the whole screen (presented full screen by ContentView); a page-sized sheet on iPad.
             .frame(maxHeight: .infinity, alignment: .top)
             .presentationSizing(.page)
         #else
@@ -196,7 +199,10 @@ struct SearchPalette: View {
     }
 
     /// iPhone: the larger, filled chips of the phone's search sheet.
-    private var phoneChips: Bool {
+    private var phoneChips: Bool { phone }
+
+    /// iPhone: search fills the screen.
+    private var phone: Bool {
         #if os(iOS)
             UIDevice.current.userInterfaceIdiom == .phone
         #else

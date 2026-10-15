@@ -32,6 +32,10 @@
                 VStack(alignment: .leading, spacing: Spacing.s6) {
                     places
                     if !recents.isEmpty { recentCards }
+                    quickCreate
+                    askAI
+                    weekCard.padding(.horizontal, Spacing.s4)
+                    if !recentlyEdited.isEmpty { recentList }
                     if !model.tree.favorites.isEmpty {
                         section("app:sidebar.favorites") {
                             ForEach(model.tree.favorites) { page in
@@ -86,28 +90,6 @@
                     .lineLimit(1)
                     .accessibilityAddTraits(.isHeader)
                 Spacer(minLength: Spacing.s2)
-                Menu {
-                    Button {
-                        navigator.isImporting = true
-                    } label: {
-                        IconLabel("app:import.menu", icon: .downloadSimple)
-                    }
-                    .accessibilityIdentifier("import-files")
-                    Button {
-                        navigator.isShowingSettings = true
-                    } label: {
-                        IconLabel("app:settings.open", icon: .gearSix)
-                    }
-                    .accessibilityIdentifier("settings-open")
-                } label: {
-                    IconView(.dotsThree, size: TextSize.xl.rawValue)
-                        .foregroundStyle(Theme.foreground)
-                        .frame(width: Size.iconButton + Spacing.s3, height: Size.iconButton + Spacing.s3)
-                        .contentShape(.circle)
-                }
-                .glassEffect(.regular.interactive(), in: .circle)
-                .accessibilityLabel(Text("app:common.more"))
-                .accessibilityIdentifier("workspace-more")
             }
             .padding(.horizontal, Spacing.s4)
             .padding(.vertical, Spacing.s2)
@@ -127,6 +109,120 @@
                 .accessibilityIdentifier("nav-trash")
             }
             .padding(.horizontal, Spacing.s4)
+        }
+
+        // MARK: Quick create, Ask AI, recently edited
+
+        /// A page in one tap: blank, today's note (opened again if it exists), or what the clipboard holds.
+        private var quickCreate: some View {
+            VStack(alignment: .leading, spacing: Spacing.s2_5) {
+                SectionTitle("app:home.quickCreate").padding(.horizontal, Spacing.s4)
+                HStack(spacing: Spacing.s2_5) {
+                    QuickCreateTile(title: "app:home.blankPage", icon: .notePencil) { navigator.newPage() }
+                        .accessibilityIdentifier("home-new-blank")
+                    QuickCreateTile(title: "app:home.todayNote", icon: .calendarDots) { openTodayNote() }
+                        .accessibilityIdentifier("home-new-today")
+                    QuickCreateTile(title: "app:home.fromClipboard", icon: .clipboardText) { pasteNote() }
+                        .accessibilityIdentifier("home-new-clipboard")
+                }
+                .padding(.horizontal, Spacing.s4)
+            }
+        }
+
+        /// Today's note: a top-level page titled with the date — the one made today if there is one.
+        private func openTodayNote() {
+            let title = Date.now.formatted(date: .long, time: .omitted)
+            if let page = model.tree.all.first(where: {
+                $0.parentId == nil && $0.title == title && Calendar.current.isDateInToday($0.createdAt)
+            }) {
+                navigator.open(page.id)
+            } else {
+                navigator.newPage(QuickNote(title: title, lines: []))
+            }
+        }
+
+        private func pasteNote() {
+            guard let text = UIPasteboard.general.string, let note = QuickNote.fromClipboard(text) else {
+                Toasts.shared.show(.info, String(localized: "app:home.clipboardEmpty"))
+                return
+            }
+            navigator.newPage(note)
+        }
+
+        /// Questions for Ask AI about what was written lately, sent with those pages as context.
+        private var askAI: some View {
+            VStack(alignment: .leading, spacing: Spacing.s2_5) {
+                SectionTitle("app:home.askAI").padding(.horizontal, Spacing.s4)
+                ScrollView(.horizontal) {
+                    HStack(spacing: Spacing.s2) {
+                        suggestion("app:home.ai.summarizeWeek", pages: weekPages)
+                        suggestion("app:home.ai.quiz", pages: Array(recents.prefix(5)))
+                        suggestion("app:home.ai.today", pages: recents.filter { Calendar.current.isDateInToday($0.updatedAt) })
+                    }
+                    .padding(.horizontal, Spacing.s4)
+                }
+                .scrollIndicators(.hidden)
+            }
+        }
+
+        private func suggestion(_ title: String.LocalizationValue, pages: [PageSummary]) -> some View {
+            Button {
+                navigator.pendingAIQuestion = (String(localized: title), pages.map(\.id))
+                navigator.isAskingAI = true
+            } label: {
+                HStack(spacing: Spacing.s1_5) {
+                    AIGlyph(size: TextSize.sm.rawValue)
+                    Text(String(localized: title)).font(.hk(.sm)).foregroundStyle(Theme.foreground).lineLimit(1)
+                }
+                .padding(.horizontal, Spacing.s3)
+                .frame(height: Size.iconButton + Spacing.s3)
+                .background(Theme.muted, in: .capsule)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("home-ai-suggestion")
+        }
+
+        /// Pages edited in the last 7 days, newest first.
+        private var weekPages: [PageSummary] {
+            let start = Calendar.current.date(byAdding: .day, value: -7, to: .now) ?? .now
+            return Array(model.tree.all.filter { $0.updatedAt >= start }.sorted { $0.updatedAt > $1.updatedAt }.prefix(10))
+        }
+
+        /// This week's edits beyond the cards above, by day.
+        private var recentlyEdited: [PageSummary] { Array(weekPages.dropFirst(recents.count).prefix(10)) }
+
+        private var recentList: some View {
+            VStack(alignment: .leading, spacing: Spacing.s0) {
+                SectionTitle("app:home.recentlyEdited").padding(.horizontal, Spacing.s4).padding(.bottom, Spacing.s1)
+                ForEach(RecencyGroup.grouped(recentlyEdited, by: \.updatedAt), id: \.group) { group in
+                    ForEach(group.items) { page in
+                        PhonePageRow(page: page, navigator: navigator)
+                    }
+                }
+            }
+        }
+
+        /// This week's writing (the store's daily activity): words added over the last 7 days, a bar per day, totals.
+        private var weekCard: some View {
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: .now)
+            let start = calendar.date(byAdding: .day, value: -6, to: today) ?? today
+            let activity = model.activity(days: 7)
+            let byDay = Dictionary(activity.map { (calendar.startOfDay(for: $0.day), $0.wordsAdded) }, uniquingKeysWith: +)
+            let symbols = calendar.veryShortStandaloneWeekdaySymbols
+            let days = (0..<7).map { offset -> WeekActivityCard.Day in
+                let day = calendar.date(byAdding: .day, value: offset, to: start) ?? start
+                return WeekActivityCard.Day(
+                    id: offset, label: symbols[calendar.component(.weekday, from: day) - 1], value: max(0, byDay[day] ?? 0),
+                    isToday: offset == 6)
+            }
+            let stats = model.stats()
+            return WeekActivityCard(
+                title: "app:home.thisWeek", headline: days.map(\.value).reduce(0, +).formatted(),
+                caption: String(localized: "app:home.wordsWritten"), days: days,
+                footnote: String(localized: "app:home.totals \(stats.pages.formatted()) \(stats.words.formatted())")
+            )
+            .accessibilityIdentifier("home-week")
         }
 
         /// The pages edited last, newest first.
@@ -172,6 +268,28 @@
     }
 
     /// All pages / Trash: an icon over the name and a count.
+    /// A small tile that makes a page (Home → Quick create).
+    private struct QuickCreateTile: View {
+        let title: LocalizedStringKey
+        let icon: Icon
+        let action: () -> Void
+
+        var body: some View {
+            Button(action: action) {
+                VStack(alignment: .leading, spacing: Spacing.s2) {
+                    IconView(icon, size: TextSize.lg.rawValue).foregroundStyle(Theme.subtleForeground)
+                    Text(title).font(.hk(.sm, .medium)).foregroundStyle(Theme.foreground).lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+                .padding(Spacing.s3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.muted, in: .rect(cornerRadius: Radius.xl))
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
     private struct PlaceTile: View {
         let title: LocalizedStringKey
         let icon: Icon

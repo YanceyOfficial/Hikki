@@ -6,6 +6,7 @@ import SwiftUI
 /// The native shell's icons: SF Symbols where design/icons.json names one, else the bundled Phosphor asset
 /// (the web editor uses the Phosphor names via @phosphor-icons/react).
 public nonisolated enum Icon: String, CaseIterable, Sendable {
+    case clipboardText = "clipboard-text"
     case warningCircle = "warning-circle"
     case xCircle = "x-circle"
     case list = "list"
@@ -88,6 +89,7 @@ public nonisolated enum Icon: String, CaseIterable, Sendable {
     /// The SF Symbol drawn for this icon, if any.
     public var systemName: String? {
         switch self {
+        case .clipboardText: "doc.on.clipboard"
         case .warningCircle: "exclamationmark.circle.fill"
         case .xCircle: "xmark.circle.fill"
         case .list: "line.3.horizontal"

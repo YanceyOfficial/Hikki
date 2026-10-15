@@ -56,6 +56,9 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
 
   return (
     <header className="group/header relative">
+      {/* iPhone: the page runs to the top of the screen (no native inset); a cover fills the room behind the
+          status bar and the glass buttons, a page without one starts below them. */}
+      {!background && <div aria-hidden style={{ height: 'var(--hk-bleed-top, 0px)' }} />}
       {background && (
         <Cover
           background={background}
@@ -335,7 +338,7 @@ function Cover({
     <div
       ref={ref}
       className={cn(
-        'group/cover relative h-[30vh] max-h-[280px] min-h-[140px]',
+        'hk-cover group/cover relative',
         repositioning && 'cursor-grab touch-none select-none active:cursor-grabbing'
       )}
       style={image ? undefined : { background }}
@@ -412,7 +415,7 @@ function CoverActions({ className, children }: { className?: string; children: R
       role="group"
       data-slot="cover-actions"
       className={cn(
-        'absolute top-3 right-3 flex items-center gap-0.5 rounded-md bg-popover p-0.5 text-popover-foreground shadow-sm ring-1 ring-foreground/10',
+        'absolute top-[calc(var(--hk-bleed-top,0px)+0.75rem)] right-3 flex items-center gap-0.5 rounded-md bg-popover p-0.5 text-popover-foreground shadow-sm ring-1 ring-foreground/10',
         className
       )}
     >

@@ -220,6 +220,7 @@ public nonisolated enum Size {
     public static let recentCard: CGFloat = 132
     public static let modelMenu: CGFloat = 280
     public static let toastWidth: CGFloat = 420
+    public static let weekBar: CGFloat = 40
     public static let drawer: CGFloat = 360
 }
 

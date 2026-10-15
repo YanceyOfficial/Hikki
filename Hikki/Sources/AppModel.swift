@@ -324,6 +324,16 @@ final class AppModel {
         perform("create page", code: .pageCreateFailed) { try store.create(parentId: parentId).id }
     }
 
+    /// A page with a title and plain lines already in it (Home's quick notes).
+    func createPage(_ note: QuickNote, parentId: String? = nil) -> String? {
+        perform("create page", code: .pageCreateFailed) {
+            let record = try store.create(parentId: parentId)
+            try store.saveContent(
+                Snapshot(docId: record.id, content: note.content, title: note.title, text: note.text, wordCount: note.text.count))
+            return record.id
+        }
+    }
+
     func setFavorite(_ favorite: Bool, id: String) {
         perform("set favorite", id, code: .pageUpdateFailed) { try store.setFavorite(favorite, for: id) }
     }

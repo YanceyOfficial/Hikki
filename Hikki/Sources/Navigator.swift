@@ -135,6 +135,15 @@ final class Navigator {
         syncSelection()
     }
 
+    /// A page made from a quick note (Home), opened.
+    func newPage(_ note: QuickNote) {
+        guard let id = model?.createPage(note) else { return }
+        go(.page(id))
+    }
+
+    /// Ask AI opened with a question to send at once, about these pages (Home's suggestions); ContentView sends it.
+    var pendingAIQuestion: (text: String, pageIDs: [String])?
+
     func newPage(parentId: String? = nil) {
         guard let id = model?.createPage(parentId: parentId) else { return }
         if let parentId { expanded.insert(parentId) }

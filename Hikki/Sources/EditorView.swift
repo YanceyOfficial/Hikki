@@ -19,15 +19,14 @@ struct EditorView: PlatformViewRepresentable {
     #if os(iOS)
         func makeUIView(context: Context) -> HikkiWebView { controller.webView }
         func updateUIView(_ view: HikkiWebView, context: Context) {
-            controller.setInsets(top: topInset, bottom: bottomInset)
-            // Set explicitly: WKWebView's scroll view didn't inset for the toolbar on its own (the cover's
-            // buttons sat under the glass at rest).
+            // The page runs to the top of the screen and makes the toolbar's room itself (`bleed`): a cover fills
+            // it behind the status bar and the glass buttons (immersive), a page without one starts below them.
+            controller.setInsets(top: topInset, bottom: bottomInset, bleed: true)
             let scroll = view.scrollView
-            guard scroll.contentInset.top != topInset else { return }
             scroll.contentInsetAdjustmentBehavior = .never
-            scroll.contentInset.top = topInset
+            guard scroll.contentInset.top != 0 else { return }
+            scroll.contentInset.top = 0
             scroll.verticalScrollIndicatorInsets.top = topInset
-            if scroll.contentOffset.y <= 0 { scroll.contentOffset.y = -topInset }
         }
     #else
         func makeNSView(context: Context) -> HikkiWebView { controller.webView }

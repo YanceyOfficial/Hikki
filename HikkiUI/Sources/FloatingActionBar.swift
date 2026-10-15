@@ -64,6 +64,9 @@ public struct FloatingActionBar: View {
         Button(action: action.perform) {
             IconView(action.icon, size: TextSize.xl.rawValue)
                 .foregroundStyle(tinted ? tone.onFill : Theme.foreground)
+                // square.and.pencil's pencil reaches up-right, leaving the square low-left of the symbol's centre:
+                // nudged so the square sits centred in the circle.
+                .offset(action.icon == .notePencil ? CGSize(width: 1.5, height: -1.5) : .zero)
                 .frame(width: Size.floatingBar, height: Size.floatingBar)
                 .contentShape(.circle)
         }

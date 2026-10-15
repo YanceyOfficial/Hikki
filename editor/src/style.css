@@ -824,6 +824,11 @@
     margin-right: auto;
   }
 }
+/* A page's cover: 30% of the window (140–280px), plus — on iPhone, where the page runs to the top of the screen — the
+   room behind the status bar and the glass buttons, so the picture fills it (--hk-bleed-top, from setInsets). */
+.hk-cover {
+  height: calc(clamp(140px, 30vh, 280px) + var(--hk-bleed-top, 0px));
+}
 /* The comments layer sits in the text column (margin cards, badges, the open thread), above the page. */
 .hk-comments-layer {
   position: absolute;

@@ -58,6 +58,14 @@
                         DropTargetArea("Drag a page here", icon: .trayArrowDown, isTargeted: false).frame(height: 80)
                         DropTargetArea("Show here", isTargeted: true).frame(height: 80)
                     }
+                    Section("WeekActivityCard") {
+                        WeekActivityCard(
+                            title: "app:home.thisWeek", headline: "2,481", caption: "words written",
+                            days: (0..<7).map {
+                                .init(id: $0, label: "MTWTFSS".map(String.init)[$0], value: [1, 0, 8, 3, 0, 12, 0][$0], isToday: $0 == 5)
+                            },
+                            footnote: "32 pages · 41,203 words in all")
+                    }
                     Section("ToastView") {
                         ToastView(kind: .success, message: "Link copied", close: {})
                         ToastView(

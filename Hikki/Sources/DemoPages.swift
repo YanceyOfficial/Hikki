@@ -35,7 +35,10 @@
             _ = page("初级下", "📝", parent: homework, minutesAgo: 240)
             _ = page("文法专栏", "📚", parent: japanese, minutesAgo: 320)
             let travel = page("Travel", "✈️", minutesAgo: 2000)
-            _ = page("Kyoto in spring", "🌸", parent: travel, minutesAgo: 2100)
+            // A cover too: screenshots of a page's top (the cover runs under the iPhone's bar).
+            if let kyoto = page("Kyoto in spring", "🌸", parent: travel, minutesAgo: 2100, text: ["Philosopher's Path at dawn."]) {
+                try? store.setCover("gradient:dusk", for: kyoto, now: now.addingTimeInterval(-2100 * 60))
+            }
             _ = page("Career Planning", "🌱", minutesAgo: 290)
             _ = page("English Learning", "🏴", minutesAgo: 360)
             _ = page("OKRs", "🎯", minutesAgo: 3000)

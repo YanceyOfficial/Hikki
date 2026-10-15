@@ -187,8 +187,8 @@
     /// The drawer's numbers, free of SwiftUI and UIKit (exodus-ios's `DrawerPhysics`). The card's offset runs from 0
     /// (closed) to the drawer's width (open); the closed end is a hard wall, the open end rubber-bands.
     public enum DrawerPhysics {
-        /// Most of the screen, never wider than `Size.drawer` (a landscape phone, an iPad window).
-        public static func width(for screen: CGFloat) -> CGFloat { min(screen * 0.85, Size.drawer) }
+        /// Three quarters of the screen (as exodus-ios), never wider than `Size.drawer` (a landscape phone).
+        public static func width(for screen: CGFloat) -> CGFloat { min(screen * 0.75, Size.drawer) }
 
         /// UIScrollView's deceleration rate, used to project where a flick is heading.
         static let decelerationRate: CGFloat = 0.998

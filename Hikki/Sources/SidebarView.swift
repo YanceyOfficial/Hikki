@@ -99,8 +99,8 @@ private struct WorkspaceSwitcher: View {
 
     var body: some View {
         Menu {
+            // Settings only: import lives in Settings → Workspace (and File → Import…).
             Section {
-                ImportMenuItem(navigator: navigator)
                 SettingsMenuItem(navigator: navigator)
             } header: {
                 // The user's workspace name and where it lives.

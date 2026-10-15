@@ -157,18 +157,23 @@ HikkiUITests/                 XCUITest flows
   `Navigator.importDrop` → `AppModel.importFiles(_:parentId:)`. A page row's own drag carries a page link, never a
   file, so the two never mix; iPad drags (typed documents, no file URL) load as a temporary copy.
 - **iPhone is its own layout**, not the Mac's squeezed (prototype: the "Hikki iPhone redesign" canvas): the collapsed
-  split view's sidebar column is `Hikki/Sources/PhoneHome.swift` (a ☰ · Home · ⋯ top bar, All pages / Trash tiles,
-  "Jump back in" cards, favorites) and opening anything shows the detail through `Navigator.compactColumn`
+  split view's sidebar column is `Hikki/Sources/PhoneHome.swift` (a ☰ · Home top bar, All pages / Trash tiles,
+  "Jump back in" cards, Quick create — a blank page, today's note titled with the date, a page from the clipboard
+  (`QuickNote`, HikkiCore) — Ask AI suggestions sent with this week's pages (`Navigator.pendingAIQuestion`), This
+  week — HikkiUI's `WeekActivityCard` over the store's daily activity — recently edited, and favorites) and opening anything shows the detail through `Navigator.compactColumn`
   (`preferredCompactColumn`). The page tree is Notion's side drawer: `Hikki/Sources/PhoneDrawer.swift` (workspace +
   search, favorites, the tree with + / ⋯ per row, Add a page, then All pages · Trash · Settings fixed at the bottom)
-  inside HikkiUI's `SideDrawer` (`HikkiUI/Sources/SideDrawer.swift`, exodus-ios's drawer: the content is a card pushed
+  inside HikkiUI's `SideDrawer` (`HikkiUI/Sources/SideDrawer.swift`, exodus-ios's drawer, 75 % of the width: the content is a card pushed
   right and dimmed; a UIKit pan takes horizontal drags anywhere — flick projection, rubber band past open — and lets a
   horizontal list keep its drags unless it sits at its leading edge; ☰ or a tap on the card toggles; `Motion.easeOut()`). Root screens and pages float one bottom bar —
   `FloatingActionBar` (HikkiUI): Search · Ask AI · New page at home, Outline · Ask about this page · Edit on a page
   (hidden while the keyboard is up); the page's ⋯ is a sheet (`Hikki/Sources/PhonePageActions.swift`: quick tiles,
   history, export, move, facts). All pages groups by day (`RecencyGroup`, HikkiCore). Ask AI is a native chat sheet
   (`Hikki/Sources/AIChat.swift`: the open page's text as context, model menu, web search, `AIPrompts.chat`; answers render through `AIMarkdown`, which keeps only http(s) links). Left
-  out on iPhone: tabs, split view, the inspector panel, Home's table, Shortcuts settings.
+  out on iPhone: tabs, split view, the inspector panel, Home's table, Shortcuts settings. Search is a full-screen cover
+  (the field fixed at the top, results filling the rest). A page runs to the top of the screen: the scroll view has no
+  top inset and the editor makes that room itself (`setInsets` with `bleed`, `--hk-bleed-top`), so a cover fills it
+  behind the status bar and the glass buttons (`.hk-cover`) and a page without one starts below them.
 - **Data directory**: `HIKKI_DATA_DIR` overrides it (UI tests, demos). DEBUG hooks: `HIKKI_OPEN_TABS=a,b`,
   `HIKKI_OPEN_SEARCH`, `HIKKI_OPEN_FIND`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SPOTLIGHT_QUERY=<text>` (logs the page ids Spotlight ranks), `HIKKI_OPEN_FILE=<asset>` (the PDF viewer), `HIKKI_OPEN_SPLIT=<page id>|file:<asset>|picker` (split view), `HIKKI_DEBUG_SIDEBAR` (hide + show the split view sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_DEBUG_TOAST` (a sample failure toast), `HIKKI_OPEN_AI`, `HIKKI_OPEN_PAGE_ACTIONS`, `HIKKI_DEMO_PAGES` (an empty workspace gets sample pages, ids fixed per title — `Hikki/Sources/DemoPages.swift`), `HIKKI_ACTIVATE`, `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
   UI tests set it by default — pass `workspace: nil` to `launch()` to test onboarding).
