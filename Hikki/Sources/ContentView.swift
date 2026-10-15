@@ -289,8 +289,10 @@ struct ContentView: View {
         editor.onOpenDocument = { [navigator] name, label in navigator.openDocument(name: name, label: label) }
         // A page dropped on the page's right edge opens beside it (split view).
         editor.onOpenInSplit = { [navigator] id in
+            navigator.splitDropHover = false
             if model.tree.page(id) != nil { navigator.openInSplit(.page(id)) }
         }
+        editor.onSplitDropHover = { [navigator] active in navigator.splitDropHover = active }
         editor.setSplitDrop(mainSplitDrop)
         ai.attach(editor)
         // The inspector starts closed in every window (its tab is remembered); `-inspector.visible YES` opens it

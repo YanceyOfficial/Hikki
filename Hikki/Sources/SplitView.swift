@@ -90,14 +90,17 @@ private struct SplitPane: View {
         }
         .overlay {
             // An empty pane's picker has a drop area of its own; a page or PDF gets one over it while a page is over.
-            if dropTargeted && navigator.split != nil {
-                DropTargetArea("app:split.drop.here", isTargeted: true)
-                    .padding(Spacing.s2)
-                    .allowsHitTesting(false)
-                    .transition(.opacity)
+            if dropTargeted && navigator.split != nil || navigator.splitDropHover {
+                DropTargetArea(
+                    navigator.splitDropHover ? "app:split.drop.replace" : "app:split.drop.here", isTargeted: true
+                )
+                .padding(Spacing.s2)
+                .allowsHitTesting(false)
+                .transition(.opacity)
             }
         }
         .animation(Motion.easeOut(), value: dropTargeted)
+        .animation(Motion.easeOut(), value: navigator.splitDropHover)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("split-pane")
     }
@@ -329,7 +332,8 @@ private struct EdgeDrop: ViewModifier {
                 content
                     .onDrop(of: PageDrop.types, delegate: Delegate(width: proxy.size.width, navigator: navigator, showing: $showing))
                     .overlay(alignment: .trailing) {
-                        if showing {
+                        // Split already: the right side outlines itself whole (`Navigator.splitDropHover`).
+                        if showing && !navigator.isSplit {
                             // Opens beside it, or — split already — replaces what the right side shows.
                             DropTargetArea(navigator.isSplit ? "app:split.drop.replace" : "app:split.drop.open", isTargeted: true)
                                 .background(Theme.background.opacity(0.6), in: .rect(cornerRadius: Radius.lg))
@@ -361,13 +365,18 @@ private struct EdgeDrop: ViewModifier {
         func dropUpdated(info: DropInfo) -> DropProposal? {
             let inside = inZone(info)
             if showing != inside { showing = inside }
+            if navigator.isSplit, navigator.splitDropHover != inside { navigator.splitDropHover = inside }
             return DropProposal(operation: inside ? .copy : .cancel)
         }
 
-        func dropExited(info: DropInfo) { showing = false }
+        func dropExited(info: DropInfo) {
+            showing = false
+            navigator.splitDropHover = false
+        }
 
         func performDrop(info: DropInfo) -> Bool {
             showing = false
+            navigator.splitDropHover = false
             guard inZone(info) else { return false }
             return PageDrop.page(from: info.itemProviders(for: PageDrop.types), navigator: navigator) { id in
                 navigator.openInSplit(.page(id))

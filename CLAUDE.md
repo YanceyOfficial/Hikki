@@ -330,7 +330,9 @@ HikkiUITests/                 XCUITest flows
   dropped on the right edge of the left side — the right quarter, 96–240 pt — opens beside it: native content
   (Home, a PDF) through `EdgeDrop` in `Hikki/Sources/SplitView.swift`, a page through the editor's own edge
   (`editor/src/extensions/split-drop.ts`, `openInSplit` bridge message, `window.hikki.setSplitDrop`), since the web
-  view takes the drags over it. iPadOS keeps the screen's very edge for "open in a new window".
+  view takes the drags over it. Split already, that edge replaces the right side, so the right pane outlines itself
+  whole (`Navigator.splitDropHover`, set by `EdgeDrop` and the editor's `splitDropHover` message) — a half-width zone
+  on the left read as a third column. iPadOS keeps the screen's very edge for "open in a new window".
 - **PDF viewer**: a PDF attachment opens in a pane of its own in a tab (`Route.file`), drawn natively by
   `HikkiUI/Sources/PDFViewer.swift` (PDFKit: continuous pages, zoom/fit, page number, find, thumbnails, an unlock prompt
   for password-protected files — the password is never stored); other attachments still open in Quick Look. Panes are

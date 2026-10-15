@@ -171,7 +171,7 @@ export function editorExtensions(options: EditorOptions = {}): AnyExtension[] {
     PageLinks(options.pageLinks ?? noPageLinks),
     // "@" mentions a page; ":" suggests emoji.
     PageMention(options.pageLinks ?? noPageLinks),
-    SplitDrop(options.splitDrop ?? { mode: () => 'off', open: () => {} }),
+    SplitDrop(options.splitDrop ?? { mode: () => 'off', open: () => {}, hover: () => {} }),
     AIReview(options.ai ?? { request: () => {}, cancel: () => {}, title: () => '' }),
     Comments(options.comments ?? noComments),
     EmojiSuggestion,

@@ -75,6 +75,9 @@ final class Navigator {
     private(set) var isSplit = false
     /// What the second pane shows — a page or a file; nil while it offers a picker.
     private(set) var split: Route?
+    /// While split: a page is held over the left side's right edge, so dropping it replaces the right side — which
+    /// outlines itself whole (the left side draws no zone of its own; a half-width one read as a third column).
+    var splitDropHover = false
     /// The trailing inspector (outline, info, calendar) — remembered across launches by ContentView.
     var isShowingInspector = false
     var inspectorMode: InspectorMode = .outline

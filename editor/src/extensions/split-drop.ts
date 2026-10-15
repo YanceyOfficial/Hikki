@@ -16,6 +16,9 @@ export type SplitDropHost = {
   mode: () => SplitDropMode
   /** Open this page in the pane on the right. */
   open: (pageId: string) => void
+  /** `replace`: a page is held over the edge (or no longer) — the app outlines the whole right side instead of this
+   * editor drawing a half-width zone that reads as a third column. */
+  hover: (active: boolean) => void
 }
 
 /** The zone's label, spelled out per mode so the l10n audit sees every key. */
@@ -78,8 +81,15 @@ export function SplitDrop(host: SplitDropHost) {
             hint.append(label)
             document.body.append(hint)
 
+            let hovering = false
             const show = (open: boolean) => {
               const mode = host.mode()
+              if (mode === 'replace' || hovering) {
+                const active = open && mode === 'replace'
+                if (active !== hovering) host.hover(active)
+                hovering = active
+                if (mode === 'replace') open = false
+              }
               if (open && mode !== 'off') label.textContent = HINT[mode]()
               if (hint.dataset.open !== String(open)) hint.dataset.open = String(open)
             }

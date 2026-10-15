@@ -367,7 +367,8 @@ export class EditorBridge {
 
   readonly splitDropHost: SplitDropHost = {
     mode: () => this.splitDrop,
-    open: (pageId) => void this.send({ type: 'openInSplit', id: pageId })
+    open: (pageId) => void this.send({ type: 'openInSplit', id: pageId }),
+    hover: (active) => void this.send({ type: 'splitDropHover', active })
   }
 
   /** AI on the selection: requests go to the native AI service; its answer comes back through `aiEvent`. */

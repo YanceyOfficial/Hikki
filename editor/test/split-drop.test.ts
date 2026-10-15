@@ -46,15 +46,21 @@ describe('dropping a page on the right edge', () => {
   let editor: Editor
   let mode: 'off' | 'open' | 'replace' | 'here'
   let opened: string[]
+  let hovers: boolean[]
 
   beforeEach(() => {
     mode = 'open'
     opened = []
+    hovers = []
     Object.defineProperty(window, 'innerWidth', { value: 800, configurable: true })
     element = document.createElement('div')
     document.body.append(element)
     editor = createEditor(element, doc('a page'), {
-      splitDrop: { mode: () => mode, open: (id) => void opened.push(id) }
+      splitDrop: {
+        mode: () => mode,
+        open: (id) => void opened.push(id),
+        hover: (active) => void hovers.push(active)
+      }
     })
   })
   afterEach(() => {
@@ -76,10 +82,21 @@ describe('dropping a page on the right edge', () => {
     expect(editor.getText()).toBe('a page')
   })
 
-  it('says what the drop does: replace the right side from the left page, show here on the right one', () => {
+  it('split already: the right side is outlined by the app, not a half-width zone here', () => {
     mode = 'replace'
     editor.view.dom.dispatchEvent(drag('dragover', 700, link))
-    expect(hint().textContent).toBe('Replace the right side')
+    editor.view.dom.dispatchEvent(drag('dragover', 710, link))
+    expect(hint().dataset.open).toBe('false')
+    expect(hovers).toEqual([true])
+    editor.view.dom.dispatchEvent(drag('dragover', 300, link))
+    expect(hovers).toEqual([true, false])
+    editor.view.dom.dispatchEvent(drag('dragover', 700, link))
+    editor.view.dom.dispatchEvent(drag('drop', 700, link))
+    expect(opened).toEqual(['notes'])
+    expect(hovers).toEqual([true, false, true, false])
+  })
+
+  it('says what the drop does: show here on the right one', () => {
     mode = 'here'
     editor.view.dom.dispatchEvent(drag('dragover', 700, link))
     expect(hint().textContent).toBe('Show here')

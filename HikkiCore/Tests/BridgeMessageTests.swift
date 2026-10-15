@@ -134,6 +134,7 @@ struct BridgeMessageTests {
         #expect(try decode(["type": "openPage", "id": "p1"]) == .openPage(id: "p1", block: nil))
         #expect(try decode(["type": "openPage", "id": "p1", "block": "b2"]) == .openPage(id: "p1", block: "b2"))
         #expect(try decode(["type": "openInSplit", "id": "p1"]) == .openInSplit(id: "p1"))
+        #expect(try decode(["type": "splitDropHover", "active": true]) == .splitDropHover(active: true))
         #expect(try decode(["type": "activeHeading", "docId": "p1", "id": "h2"]) == .activeHeading(docId: "p1", id: "h2"))
         #expect(try decode(["type": "scroll", "docId": "p1", "top": 840]) == .scroll(docId: "p1", top: 840))
         #expect(try decode(["type": "aiCancel", "id": "r1"]) == .aiCancel(id: "r1"))

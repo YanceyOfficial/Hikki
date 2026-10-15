@@ -188,6 +188,8 @@ final class EditorController {
     @ObservationIgnored var onOpenPage: ((String, String?) -> Void)?
     /// A page dropped on the page's right edge (split view); nil where there is no split view (iPhone).
     @ObservationIgnored var onOpenInSplit: ((String) -> Void)?
+    /// `splitDropHover`: a page held over the edge would replace the right side (or no longer).
+    @ObservationIgnored var onSplitDropHover: ((Bool) -> Void)?
 
     /// Pages the editor names links with (`window.hikki.setPages`), kept to resend after a reload.
     @ObservationIgnored private var pages: [[String: Any]] = []
@@ -674,6 +676,8 @@ final class EditorController {
             onOpenPage?(id, block)
         case .openInSplit(let id):
             onOpenInSplit?(id)
+        case .splitDropHover(let active):
+            onSplitDropHover?(active)
         case .openLink(let url):
             // Clicked in the page: only web/mail/phone links leave the app; nothing else is opened.
             guard let target = URL(string: url), let scheme = target.scheme?.lowercased(),

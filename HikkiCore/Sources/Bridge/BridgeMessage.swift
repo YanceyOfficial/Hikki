@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 22
+    public static let version = 23
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -85,6 +85,8 @@ public enum BridgeMessage: Sendable, Equatable {
     case openPage(id: String, block: String?)
     /// A page was dropped on the right edge of the page: open it in the split pane.
     case openInSplit(id: String)
+    /// While split: a page held over the left page's right edge (it would replace the right side), or no longer.
+    case splitDropHover(active: Bool)
     /// Any other link was clicked: the system opens it.
     case openLink(url: String)
     /// Furigana: expects `text` split into runs — `[{text, reading?}]`, a reading per kanji run — as the reply (nil
@@ -234,6 +236,8 @@ extension BridgeMessage: Decodable {
             self = .openPage(id: try c.decode(String.self, forKey: .id), block: try c.decodeIfPresent(String.self, forKey: .block))
         case "openInSplit":
             self = .openInSplit(id: try c.decode(String.self, forKey: .id))
+        case "splitDropHover":
+            self = .splitDropHover(active: try c.decode(Bool.self, forKey: .active))
         case "openLink": self = .openLink(url: try c.decode(String.self, forKey: .url))
         case "suggestReading": self = .suggestReading(text: try c.decode(String.self, forKey: .text))
         case "linkPreview": self = .linkPreview(url: try c.decode(String.self, forKey: .url))
