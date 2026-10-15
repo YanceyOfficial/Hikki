@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 import { LazyLoadImage } from '../components/lazy-load-image'
+import { reportError } from '../core/errors'
 import { GRADIENTS, gradientCover } from '../lib/covers'
 import {
   bffURL,
@@ -81,15 +82,17 @@ function UploadPane({ onUpload }: { onUpload: Props['onUpload'] }) {
   const { t } = useTranslation()
   const input = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
   const upload = async (file: File | undefined) => {
     if (!file) return
     setBusy(true)
-    setError(null)
+    setFailed(false)
     try {
       await onUpload(file)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      // The app shows it (a toast with its code); the pane only says it didn't work.
+      reportError('uploadFailed', e)
+      setFailed(true)
     } finally {
       setBusy(false)
     }
@@ -105,7 +108,7 @@ function UploadPane({ onUpload }: { onUpload: Props['onUpload'] }) {
         {busy ? t('cover.uploading') : t('cover.uploadFile')}
       </Button>
       <p className="m-0 text-xs text-muted-foreground">{t('cover.uploadHint')}</p>
-      {error && <p className="m-0 text-xs text-destructive">{error}</p>}
+      {failed && <p className="m-0 text-xs text-destructive">{t('cover.uploadFailed')}</p>}
       <input
         ref={input}
         type="file"

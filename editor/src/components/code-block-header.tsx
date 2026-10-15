@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
+import { reportError } from '../core/errors'
 import { t } from '../core/i18n'
 import { filterLanguages, findLanguage } from '../extensions/code-languages'
 import { handleListKey } from './command-list'
@@ -94,7 +95,10 @@ export function CodeBlockHeader({
           copied && 'opacity-100'
         )}
         onClick={() => {
-          void navigator.clipboard?.writeText(getText()).then(() => setCopied(true))
+          navigator.clipboard
+            ?.writeText(getText())
+            .then(() => setCopied(true))
+            .catch((e: unknown) => reportError('copyFailed', e))
         }}
       >
         {copied ? <CheckIcon size={12} aria-hidden /> : <CopyIcon size={12} aria-hidden />}

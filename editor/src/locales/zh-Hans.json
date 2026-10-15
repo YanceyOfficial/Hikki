@@ -158,6 +158,7 @@
     "uploadFile": "上传文件",
     "uploading": "上传中…",
     "uploadHint": "宽度超过 1500 像素的图片效果最好。",
+    "uploadFailed": "无法上传这张图片。",
     "linkPlaceholder": "粘贴图片链接…",
     "linkLabel": "图片链接",
     "linkSubmit": "确定",
