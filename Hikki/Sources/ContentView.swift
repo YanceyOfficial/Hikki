@@ -40,9 +40,21 @@ struct ContentView: View {
     var body: some View {
         // Split in two so the type checker copes: the layout, then the scene's events.
         transfers(sceneEvents(layout))
+            // Failures and confirmations (Toasts): at the bottom, above the iPhone's floating bar.
+            .toastHost(bottomInset: wide ? Spacing.s4 : Size.floatingBar + Spacing.s8)
             .focusedSceneValue(\.editor, editor)
             .focusedSceneValue(\.navigator, navigator)
             .focusedSceneValue(\.lockedPage, navigator.currentPage?.isLocked)
+    }
+
+    /// Opens Settings at a page (the Mac's Settings window, the sheet elsewhere).
+    private func openSettingsPage(_ page: SettingsPage) {
+        UserDefaults.standard.set(page.rawValue, forKey: SettingsPage.storageKey)
+        #if os(macOS)
+            openSettings()
+        #else
+            navigator.isShowingSettings = true
+        #endif
     }
 
     /// The system split view and window toolbar (the sidebar is native rows, see SidebarView), sheets.
@@ -151,7 +163,7 @@ struct ContentView: View {
                     exportFile = file
                     isExporting = true
                 } catch {
-                    Log.error("export failed: \(error)", category: "export", context: ["docId": request.pageID])
+                    Toasts.report(.exportFailed, error, category: "export", context: ["docId": request.pageID])
                     navigator.exportRequest = nil
                 }
             }
@@ -318,6 +330,20 @@ struct ContentView: View {
             #if os(macOS)
                 if ProcessInfo.processInfo.environment["HIKKI_ACTIVATE"] != nil { NSApp.activate() }
             #endif
+            #if DEBUG
+                // HIKKI_DEBUG_TOAST shows a reported failure and a confirmation (screenshots, UI tests).
+                if ProcessInfo.processInfo.environment["HIKKI_DEBUG_TOAST"] != nil {
+                    Toasts.report(.pageSaveFailed, CocoaError(.fileWriteNoPermission), category: "debug")
+                    Toasts.shared.show(.success, String(localized: "app:toast.close"))
+                }
+            #endif
+            // The run before crashed: say so once, with the way to the diagnostics to send.
+            if model.crashReporter.pendingCrash() {
+                let incident = Incident.report(.crashedLastTime, category: "crash")
+                Toasts.shared.show(
+                    .warning, incident.code.message, actionTitle: "app:toast.diagnostics",
+                    action: { openSettingsPage(.about) })
+            }
             // HIKKI_OPEN_SETTINGS opens Settings (screenshots); a page name (`SettingsPage`) as its value opens that page.
             if let value = ProcessInfo.processInfo.environment["HIKKI_OPEN_SETTINGS"] {
                 if SettingsPage(rawValue: value) != nil { UserDefaults.standard.set(value, forKey: SettingsPage.storageKey) }

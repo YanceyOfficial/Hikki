@@ -113,7 +113,7 @@ final class EditorController {
             try change(store)
             Log.info("comment changed", category: "comments", context: ["docId": pageId])
         } catch {
-            Log.error("comment change failed: \(error)", category: "comments", context: ["docId": pageId])
+            Toasts.report(.commentFailed, error, category: "comments", context: ["docId": pageId])
         }
         NotificationCenter.default.post(name: .pageCommentsChanged, object: nil, userInfo: ["id": pageId])
     }
@@ -364,7 +364,7 @@ final class EditorController {
             else { return }
             save(try Snapshot.decode(scriptResult: result))
         } catch {
-            Log.error("flush failed: \(error)", category: "bridge", context: ["reason": reason])
+            Toasts.report(.pageSaveFailed, error, category: "bridge", context: ["reason": reason])
         }
     }
 
@@ -577,7 +577,7 @@ final class EditorController {
                 await callScrollToBlock(pending.blockID)
             }
         } catch {
-            Log.error("load failed: \(error)", category: "bridge", context: ["docId": id])
+            Toasts.report(.pageLoadFailed, error, category: "bridge", context: ["docId": id])
         }
     }
 
@@ -640,6 +640,13 @@ final class EditorController {
             onAICancel?(id)
         case .log(let level, let message, let context):
             Log.write(level, message, category: "web", context: context)
+        case .toast(let kind, let message):
+            let kinds: [String: ToastView.Kind] = ["success": .success, "info": .info, "warning": .warning, "error": .error]
+            Toasts.shared.show(kinds[kind] ?? .info, message)
+        case .reportError(let number, let detail, let context):
+            var fields = context ?? [:]
+            if let detail { fields["detail"] = String(detail.prefix(500)) }
+            Toasts.report(ErrorCode(number: number) ?? .unknown, category: "editor", context: fields)
         case .setIcon(let docId, let icon):
             try store?.setIcon(icon, for: docId)
         case .setCover(let docId, let cover):
@@ -716,12 +723,12 @@ final class EditorController {
                 NotificationCenter.default.post(name: .pageSavedInEditor, object: self, userInfo: ["id": snapshot.docId])
             }
         } catch {
-            Log.error("save failed: \(error)", category: "store", context: ["docId": snapshot.docId])
+            Toasts.report(.pageSaveFailed, error, category: "store", context: ["docId": snapshot.docId])
         }
     }
 
     fileprivate func webContentProcessDidTerminate() {
-        Log.error("web content process terminated; reloading editor", category: "bridge", context: ["docId": currentDocumentID ?? "-"])
+        Toasts.report(.editorCrashed, category: "bridge", context: ["docId": currentDocumentID ?? "-"])
         isReady = false
         pendingDocumentID = .some(currentDocumentID)
         loadStartedAt = .now

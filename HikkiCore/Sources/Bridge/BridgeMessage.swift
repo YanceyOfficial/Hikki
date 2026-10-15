@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 23
+    public static let version = 24
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -69,6 +69,10 @@ public enum BridgeMessage: Sendable, Equatable {
     /// Stop that AI request.
     case aiCancel(id: String)
     case log(level: LogLevel, message: String, context: [String: String]?)
+    /// A confirmation or note for the user, already in the page's language (shown as a toast).
+    case toast(kind: String, message: String)
+    /// A failure with its code (`ErrorCode.number`): logged with an incident id and shown with its message.
+    case reportError(code: Int, detail: String?, context: [String: String]?)
     case setIcon(docId: String, icon: String?)
     case setCover(docId: String, cover: String?)
     /// Expects the asset URL as the reply.
@@ -161,7 +165,7 @@ extension BridgeMessage: Decodable {
     private enum CodingKeys: String, CodingKey {
         case type, protocolVersion, snapshot, active, level, message, context, docId, icon, cover, fileExtension, dataBase64
         case size, id, url, block, text, headings, words, characters, name, top
-        case threadId, quote, body, resolved, commentId
+        case threadId, quote, body, resolved, commentId, kind, code, detail
     }
 
     public init(from decoder: Decoder) throws {
@@ -205,6 +209,12 @@ extension BridgeMessage: Decodable {
             self = .pageInfo(
                 docId: try c.decode(String.self, forKey: .docId), headings: try c.decode([OutlineHeading].self, forKey: .headings),
                 words: try c.decode(Int.self, forKey: .words), characters: try c.decode(Int.self, forKey: .characters))
+        case "toast":
+            self = .toast(kind: try c.decode(String.self, forKey: .kind), message: try c.decode(String.self, forKey: .message))
+        case "reportError":
+            self = .reportError(
+                code: try c.decode(Int.self, forKey: .code), detail: try c.decodeIfPresent(String.self, forKey: .detail),
+                context: try c.decodeIfPresent([String: String].self, forKey: .context))
         case "log":
             self = .log(
                 level: try c.decode(LogLevel.self, forKey: .level),

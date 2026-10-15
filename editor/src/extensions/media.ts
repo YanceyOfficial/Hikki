@@ -5,6 +5,7 @@ import type { Node as PMNode } from '@tiptap/pm/model'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet, type NodeView } from '@tiptap/pm/view'
 
+import { reportError } from '../core/errors'
 import { t } from '../core/i18n'
 import { mediaToolbarExtension } from './media-toolbar'
 
@@ -308,9 +309,7 @@ export function insertFiles(editor: Editor, host: MediaHost, files: File[], pos:
         editor.view.dispatch(tr)
       })
       .catch((error: unknown) => {
-        console.warn(
-          `upload failed (${kind}): ${error instanceof Error ? error.message : String(error)}`
-        )
+        reportError('uploadFailed', error, { kind })
         update({ failed: true })
         setTimeout(() => {
           if (!editor.isDestroyed)

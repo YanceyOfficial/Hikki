@@ -38,7 +38,7 @@ extension AppModel {
             // Every editor showing the page shows the restored version.
             NotificationCenter.default.post(name: .pageSavedInEditor, object: nil, userInfo: ["id": id])
         } catch {
-            Log.error("restore failed: \(error)", category: "history", context: ["docId": id])
+            Toasts.report(.historyRestoreFailed, error, category: "history", context: ["docId": id])
         }
     }
 
@@ -86,7 +86,7 @@ extension AppModel {
                 context: ["docId": record.id, "format": format.rawValue, "bytes": "\(data.count)", "files": "\(copied)"])
             return record.id
         } catch {
-            Log.error("import failed: \(error)", category: "import", context: ["format": format.rawValue])
+            Toasts.report(.importFailed, error, category: "import", context: ["format": format.rawValue])
             return nil
         }
     }

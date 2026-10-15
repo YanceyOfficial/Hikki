@@ -2,6 +2,7 @@ import { Hono, type Context } from 'hono'
 import { env } from 'hono/adapter'
 import { cors } from 'hono/cors'
 
+import { errorBody, fail, onError, requestIdOf, requestLog } from './http.js'
 import { listPhotos, triggerDownload, type ProxyResult } from './unsplash.js'
 
 /**
@@ -10,11 +11,18 @@ import { listPhotos, triggerDownload, type ProxyResult } from './unsplash.js'
  */
 const app = new Hono()
 
+app.use('*', requestLog())
+app.onError(onError)
+
 // The editor runs in a WKWebView (origin hikki-editor://app) and in a browser during development;
 // no cookies or credentials are involved, so any origin may call these read-only endpoints.
 app.use(
   '/api/*',
-  cors({ origin: '*', allowMethods: ['GET', 'POST'], exposeHeaders: ['X-Ratelimit-Remaining'] })
+  cors({
+    origin: '*',
+    allowMethods: ['GET', 'POST'],
+    exposeHeaders: ['X-Ratelimit-Remaining', 'X-Request-Id']
+  })
 )
 
 app.get('/', (c) => c.text('hikki-bff'))
@@ -26,7 +34,7 @@ const YOUTUBE_ID = /^[\w-]{6,20}$/u
 
 app.get('/embed/youtube/:id', (c) => {
   const id = c.req.param('id')
-  if (!YOUTUBE_ID.test(id)) return c.text('bad id', 400)
+  if (!YOUTUBE_ID.test(id)) return fail(c, 'badRequest')
   const start = Number.parseInt(c.req.query('start') ?? '', 10)
   const src = `https://www.youtube-nocookie.com/embed/${id}${start > 0 ? `?start=${start}` : ''}`
   c.header('Cache-Control', 'public, max-age=86400')
@@ -45,27 +53,34 @@ function accessKey(c: Context): string | null {
   return env<{ UNSPLASH_ACCESS_KEY?: string }>(c).UNSPLASH_ACCESS_KEY || null
 }
 
-function send(result: ProxyResult): Response {
+function send(c: Context, result: ProxyResult): Response {
   const headers = new Headers(result.headers)
-  if (result.body === null) return new Response(null, { status: result.status, headers })
+  if (result.body === null && !result.error)
+    return new Response(null, { status: result.status, headers })
+  // A failure from the proxy names its code; the body gets this request's id.
+  const body = result.error ? errorBody(result.error, requestIdOf(c)) : result.body
   headers.set('Content-Type', 'application/json')
   headers.set('Cache-Control', result.status === 200 ? 'public, max-age=300' : 'no-store')
-  return new Response(JSON.stringify(result.body), { status: result.status, headers })
+  return new Response(JSON.stringify(body), { status: result.status, headers })
 }
 
 app.get('/api/unsplash/photos', async (c) => {
   const key = accessKey(c)
-  if (!key) return c.json({ error: 'unsplash_not_configured' }, 503)
+  if (!key) return fail(c, 'unsplashNotConfigured')
   return send(
+    c,
     await listPhotos(key, c.req.query('query') ?? '', Number(c.req.query('page') ?? 1) || 1)
   )
 })
 
 app.post('/api/unsplash/download', async (c) => {
   const key = accessKey(c)
-  if (!key) return c.json({ error: 'unsplash_not_configured' }, 503)
+  if (!key) return fail(c, 'unsplashNotConfigured')
   const body = await c.req.json().catch(() => ({}))
-  return send(await triggerDownload(key, (body as { downloadLocation?: unknown }).downloadLocation))
+  return send(
+    c,
+    await triggerDownload(key, (body as { downloadLocation?: unknown }).downloadLocation)
+  )
 })
 
 export default app

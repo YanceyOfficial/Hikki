@@ -15,6 +15,7 @@
     "editor/public/",
     "editor/src/theme.css",
     "editor/src/generated/",
+    "bff/src/generated/",
     "HikkiUI/Sources/Generated/",
     "*.xcodeproj/",
     "*.xcworkspace/",

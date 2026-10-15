@@ -30,6 +30,7 @@ import {
   InputGroupInput
 } from '@/components/ui/input-group'
 
+import { notify as toast, reportError } from '../core/errors'
 import { t } from '../core/i18n'
 import {
   commentRanges,
@@ -489,7 +490,11 @@ function CommentRow({
               <DropdownMenuItem
                 onClick={() => {
                   const link = host.link(thread.id)
-                  if (link) void navigator.clipboard?.writeText(link).catch(() => {})
+                  if (!link) return
+                  void navigator.clipboard
+                    ?.writeText(link)
+                    .then(() => toast('success', t('comments.linkCopied')))
+                    .catch((error: unknown) => reportError('copyFailed', error))
                 }}
               >
                 <LinkSimpleIcon aria-hidden />

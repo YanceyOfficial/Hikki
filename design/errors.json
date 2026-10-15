@@ -1,0 +1,287 @@
+{
+  "$comment": "Error codes, one list for the app, the editor and the BFF (`make errors`). A code is HK-<number>: 1xxx app, 2xxx pages & workspace, 3xxx editor, 4xxx import/export & files, 5xxx AI, 6xxx search, 7xxx network & BFF. Never reuse a number. `severity`: error (failed, the user should know), warning (partly failed / degraded), info. `http`: the BFF's status for the codes it answers with. Messages are what the user reads (en + zh-Hans); the generator writes them into both string catalogs.",
+  "errors": {
+    "unknown": {
+      "code": 1000,
+      "severity": "error",
+      "en": "Something went wrong.",
+      "zh": "出了点问题。"
+    },
+    "crashedLastTime": {
+      "code": 1001,
+      "severity": "warning",
+      "en": "Hikki quit unexpectedly last time.",
+      "zh": "Hikki 上次意外退出。"
+    },
+    "diagnosticsExportFailed": {
+      "code": 1002,
+      "severity": "error",
+      "en": "Couldn't put the diagnostics together.",
+      "zh": "无法生成诊断包。"
+    },
+
+    "pageSaveFailed": {
+      "code": 2001,
+      "severity": "error",
+      "en": "Couldn't save the page.",
+      "zh": "无法保存页面。"
+    },
+    "pageLoadFailed": {
+      "code": 2002,
+      "severity": "error",
+      "en": "Couldn't open the page.",
+      "zh": "无法打开页面。"
+    },
+    "pageCreateFailed": {
+      "code": 2003,
+      "severity": "error",
+      "en": "Couldn't create the page.",
+      "zh": "无法新建页面。"
+    },
+    "pageMoveFailed": {
+      "code": 2004,
+      "severity": "error",
+      "en": "Couldn't move the page.",
+      "zh": "无法移动页面。"
+    },
+    "pageDeleteFailed": {
+      "code": 2005,
+      "severity": "error",
+      "en": "Couldn't delete the page.",
+      "zh": "无法删除页面。"
+    },
+    "pageRestoreFailed": {
+      "code": 2006,
+      "severity": "error",
+      "en": "Couldn't restore the page.",
+      "zh": "无法恢复页面。"
+    },
+    "pageUpdateFailed": {
+      "code": 2007,
+      "severity": "error",
+      "en": "Couldn't change the page.",
+      "zh": "无法修改页面。"
+    },
+    "trashEmptyFailed": {
+      "code": 2008,
+      "severity": "error",
+      "en": "Couldn't empty the trash.",
+      "zh": "无法清空废纸篓。"
+    },
+    "historyRestoreFailed": {
+      "code": 2009,
+      "severity": "error",
+      "en": "Couldn't restore that version.",
+      "zh": "无法恢复该版本。"
+    },
+    "commentFailed": {
+      "code": 2010,
+      "severity": "error",
+      "en": "Couldn't save the comment.",
+      "zh": "无法保存评论。"
+    },
+    "workspaceUnavailable": {
+      "code": 2101,
+      "severity": "error",
+      "en": "The workspace folder can't be reached.",
+      "zh": "无法访问工作区文件夹。"
+    },
+    "workspaceSyncFailed": {
+      "code": 2102,
+      "severity": "warning",
+      "en": "Couldn't sync with the workspace folder.",
+      "zh": "无法与工作区文件夹同步。"
+    },
+    "workspaceOpenFailed": {
+      "code": 2103,
+      "severity": "error",
+      "en": "Couldn't open the workspace.",
+      "zh": "无法打开工作区。"
+    },
+    "databaseOpenFailed": {
+      "code": 2104,
+      "severity": "error",
+      "en": "Couldn't open the local database.",
+      "zh": "无法打开本地数据库。"
+    },
+
+    "editorCrashed": {
+      "code": 3001,
+      "severity": "warning",
+      "en": "The editor stopped and was reloaded.",
+      "zh": "编辑器意外停止，已重新加载。"
+    },
+    "editorScriptError": {
+      "code": 3002,
+      "severity": "error",
+      "en": "The editor hit an error.",
+      "zh": "编辑器出错了。"
+    },
+    "pageReadOnly": {
+      "code": 3003,
+      "severity": "warning",
+      "en": "This page opened read-only: its content isn't something this version can edit.",
+      "zh": "页面以只读方式打开：此版本无法编辑其内容。"
+    },
+    "copyFailed": {
+      "code": 3004,
+      "severity": "error",
+      "en": "Couldn't copy to the clipboard.",
+      "zh": "无法复制到剪贴板。"
+    },
+
+    "importFailed": {
+      "code": 4001,
+      "severity": "error",
+      "en": "Couldn't import the file.",
+      "zh": "无法导入文件。"
+    },
+    "importPartial": {
+      "code": 4002,
+      "severity": "warning",
+      "en": "Some files weren't imported.",
+      "zh": "部分文件未能导入。"
+    },
+    "exportFailed": {
+      "code": 4003,
+      "severity": "error",
+      "en": "Couldn't export.",
+      "zh": "无法导出。"
+    },
+    "uploadFailed": {
+      "code": 4004,
+      "severity": "error",
+      "en": "Couldn't add the file.",
+      "zh": "无法添加文件。"
+    },
+    "fileTooLarge": {
+      "code": 4005,
+      "severity": "error",
+      "en": "The file is too large.",
+      "zh": "文件太大。"
+    },
+    "fileOpenFailed": {
+      "code": 4006,
+      "severity": "error",
+      "en": "Couldn't open the file.",
+      "zh": "无法打开文件。"
+    },
+
+    "aiMissingKey": {
+      "code": 5001,
+      "severity": "warning",
+      "en": "Add an API key in Settings → AI first.",
+      "zh": "请先在 设置 → AI 中添加 API 密钥。"
+    },
+    "aiBadBaseURL": {
+      "code": 5002,
+      "severity": "error",
+      "en": "The AI provider's address in Settings isn't usable.",
+      "zh": "设置中的 AI 服务地址不可用。"
+    },
+    "aiUnauthorized": {
+      "code": 5003,
+      "severity": "error",
+      "en": "The API key was refused.",
+      "zh": "API 密钥被拒绝。"
+    },
+    "aiRateLimited": {
+      "code": 5004,
+      "severity": "warning",
+      "en": "Too many requests — try again in a moment.",
+      "zh": "请求太频繁，请稍后再试。"
+    },
+    "aiUnavailable": {
+      "code": 5005,
+      "severity": "warning",
+      "en": "The AI provider is busy or down.",
+      "zh": "AI 服务繁忙或不可用。"
+    },
+    "aiOffline": {
+      "code": 5006,
+      "severity": "warning",
+      "en": "No internet connection.",
+      "zh": "没有网络连接。"
+    },
+    "aiRejected": {
+      "code": 5007,
+      "severity": "error",
+      "en": "The AI provider refused the request.",
+      "zh": "AI 服务拒绝了请求。"
+    },
+    "aiInvalidResponse": {
+      "code": 5008,
+      "severity": "error",
+      "en": "The AI's reply couldn't be read.",
+      "zh": "无法读取 AI 的回复。"
+    },
+
+    "searchFailed": {
+      "code": 6001,
+      "severity": "warning",
+      "en": "Search isn't available right now.",
+      "zh": "搜索暂时不可用。"
+    },
+    "searchIndexFailed": {
+      "code": 6002,
+      "severity": "warning",
+      "en": "Couldn't update the search index.",
+      "zh": "无法更新搜索索引。"
+    },
+
+    "offline": {
+      "code": 7001,
+      "severity": "warning",
+      "en": "No internet connection.",
+      "zh": "没有网络连接。"
+    },
+    "serviceUnavailable": {
+      "code": 7002,
+      "severity": "warning",
+      "en": "The service isn't available right now.",
+      "zh": "服务暂时不可用。",
+      "http": 503
+    },
+    "badRequest": {
+      "code": 7003,
+      "severity": "error",
+      "en": "The request wasn't valid.",
+      "zh": "请求无效。",
+      "http": 400
+    },
+    "notFound": {
+      "code": 7004,
+      "severity": "error",
+      "en": "Not found.",
+      "zh": "未找到。",
+      "http": 404
+    },
+    "upstreamFailed": {
+      "code": 7005,
+      "severity": "warning",
+      "en": "A service Hikki relies on failed.",
+      "zh": "Hikki 依赖的服务出错了。",
+      "http": 502
+    },
+    "rateLimited": {
+      "code": 7006,
+      "severity": "warning",
+      "en": "Too many requests — try again in a moment.",
+      "zh": "请求太频繁，请稍后再试。",
+      "http": 429
+    },
+    "unsplashNotConfigured": {
+      "code": 7101,
+      "severity": "warning",
+      "en": "Unsplash isn't set up on the server.",
+      "zh": "服务器未配置 Unsplash。",
+      "http": 503
+    },
+    "linkPreviewFailed": {
+      "code": 7102,
+      "severity": "info",
+      "en": "Couldn't read the link's details.",
+      "zh": "无法读取链接信息。"
+    }
+  }
+}

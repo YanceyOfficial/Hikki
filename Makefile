@@ -3,7 +3,7 @@ export PATH := $(shell echo "$$PATH" | tr ':' '\n' | grep -v swiftly | paste -sd
 
 IOS_SIM ?= generic/platform=iOS Simulator
 
-.PHONY: bootstrap test-bff tokens icons lint lint-design lint-docs lint-l10n fmt fmt-check editor generate test test-web test-core test-core-ios build-mac build-ios check
+.PHONY: bootstrap test-bff tokens icons errors lint lint-design lint-docs lint-l10n fmt fmt-check editor generate test test-web test-core test-core-ios build-mac build-ios check
 
 bootstrap:
 	bun install
@@ -21,11 +21,16 @@ icons:
 shortcuts:
 	node scripts/gen-shortcuts.mjs
 
+# Error codes for every side: edit design/errors.json, then regenerate the Swift/TS tables and the messages.
+errors:
+	node scripts/gen-errors.mjs
+
 # Fails on stale generated tokens or on literal colors/fonts/spacing in view code.
 lint-design:
 	node scripts/gen-tokens.mjs --check
 	node scripts/gen-icons.mjs --check
 	node scripts/gen-shortcuts.mjs --check
+	node scripts/gen-errors.mjs --check
 	scripts/lint-design.sh
 
 SWIFT_DIRS := Hikki HikkiCore HikkiUI HikkiUITests Project.swift Tuist.swift

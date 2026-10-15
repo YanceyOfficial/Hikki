@@ -23,12 +23,15 @@ export type UnsplashPage = { photos: UnsplashPhoto[]; totalPages: number | null 
 export class UnsplashError extends Error {
   constructor(
     message: string,
-    readonly status: number
+    readonly status: number,
+    /** The BFF's error code (design/errors.json), when it sent one. */
+    readonly code: ErrorId = 'unknown'
   ) {
     super(message)
   }
 }
 
+import { errorForCode, type ErrorId } from '../generated/errors'
 import { bffURL } from './bff'
 
 export { bffURL }
@@ -44,11 +47,13 @@ export async function searchUnsplash(
   url.searchParams.set('query', query.trim())
   url.searchParams.set('page', String(page))
   const response = await fetcher(url)
-  if (!response.ok)
-    throw new UnsplashError(
-      response.status === 403 ? 'rate_limited' : 'unsplash_error',
-      response.status
-    )
+  if (!response.ok) {
+    // `{ error: { code, … }, requestId }` from the BFF; an older one answered 403 for Unsplash's hourly limit.
+    const body = (await response.json().catch(() => null)) as { error?: { code?: number } } | null
+    const code = errorForCode(body?.error?.code)
+    const limited = code === 'rateLimited' || response.status === 403 || response.status === 429
+    throw new UnsplashError(limited ? 'rate_limited' : 'unsplash_error', response.status, code)
+  }
   return (await response.json()) as UnsplashPage
 }
 

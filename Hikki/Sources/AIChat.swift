@@ -193,7 +193,7 @@ final class AIChat {
         messages[last].searching = nil
         if let error {
             messages[last].error = AIService.message(for: error)
-            Log.warn("AI chat failed: \(AIService.code(error))", category: "ai")
+            if let code = error.errorCode { Incident.report(code, error, category: "ai") }
         } else if messages[last].text.isEmpty {
             messages[last].error = AIService.message(for: .invalidResponse)
         }

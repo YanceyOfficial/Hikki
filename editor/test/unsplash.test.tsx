@@ -44,6 +44,14 @@ describe('unsplash client', () => {
       status: 403
     })
     await expect(searchUnsplash('x', 1, null)).rejects.toBeInstanceOf(UnsplashError)
+    // The BFF names the failure with a code.
+    const coded = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ error: { code: 7006 }, requestId: 'r' }), { status: 429 })
+    )
+    await expect(
+      searchUnsplash('x', 1, 'https://bff.example', coded as unknown as typeof fetch)
+    ).rejects.toMatchObject({ message: 'rate_limited', code: 'rateLimited' })
   })
 
   it('reports a pick to the download endpoint', () => {

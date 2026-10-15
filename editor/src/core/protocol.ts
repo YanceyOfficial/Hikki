@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 23
+export const PROTOCOL_VERSION = 24
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -104,6 +104,11 @@ export type ToNativeMessage =
   /** The selected text (debounced; "" when nothing is): Ask AI offers it as context. Capped at 4000 characters. */
   | { type: 'selection'; docId: string; text: string }
   | { type: 'log'; level: LogLevel; message: string; context?: Record<string, string> }
+  /** A confirmation or note for the user ("Link copied"), already in the page's language: the app shows it as a toast. */
+  | { type: 'toast'; kind: 'success' | 'info' | 'warning' | 'error'; message: string }
+  /** A failure with its code (design/errors.json): the app logs it with an incident id and shows its message. `detail`
+   * is technical (an error's own message), never page content. */
+  | { type: 'reportError'; code: number; detail?: string; context?: Record<string, string> }
   /** Saved immediately (not debounced) — metadata has its own write path. */
   | { type: 'setIcon'; docId: string; icon: string | null }
   | { type: 'setCover'; docId: string; cover: string | null }

@@ -1,3 +1,5 @@
+import { ERRORS, type ErrorId } from './generated/errors.js'
+
 /**
  * Unsplash proxy logic (kept apart from the Hono app so it is unit-testable with a fake fetch).
  * Unsplash API guidelines this enforces: the Access Key never leaves the server, images are
@@ -52,7 +54,14 @@ export function toPhoto(raw: RawPhoto): Photo {
 
 type Fetch = (input: string | URL, init?: RequestInit) => Promise<Response>
 
-export type ProxyResult = { status: number; body: unknown; headers: Record<string, string> }
+/** What a proxied call answers with; `error` (a code from design/errors.json) for a failure, its body then built
+ * with the request's id. */
+export type ProxyResult = {
+  status: number
+  body: unknown
+  headers: Record<string, string>
+  error?: ErrorId
+}
 
 function rateHeaders(response: Response): Record<string, string> {
   const headers: Record<string, string> = {}
@@ -82,11 +91,10 @@ export async function listPhotos(
     headers: { Authorization: `Client-ID ${accessKey}`, 'Accept-Version': 'v1' }
   })
   if (!upstream.ok) {
-    return {
-      status: upstream.status,
-      body: { error: 'unsplash_error', status: upstream.status },
-      headers: rateHeaders(upstream)
-    }
+    // Unsplash says 403 when the hourly limit is used up.
+    const error: ErrorId =
+      upstream.status === 403 || upstream.status === 429 ? 'rateLimited' : 'upstreamFailed'
+    return { status: ERRORS[error].status, body: null, error, headers: rateHeaders(upstream) }
   }
   const json = (await upstream.json()) as RawPhoto[] | { results: RawPhoto[]; total_pages: number }
   const raw = Array.isArray(json) ? json : json.results
@@ -108,14 +116,14 @@ export async function triggerDownload(
   try {
     url = new URL(String(downloadLocation))
   } catch {
-    return { status: 400, body: { error: 'invalid_download_location' }, headers: {} }
+    return { status: 400, body: null, error: 'badRequest', headers: {} }
   }
   if (
     url.protocol !== 'https:' ||
     url.host !== 'api.unsplash.com' ||
     !/^\/photos\/[\w-]+\/download$/u.test(url.pathname)
   ) {
-    return { status: 400, body: { error: 'invalid_download_location' }, headers: {} }
+    return { status: 400, body: null, error: 'badRequest', headers: {} }
   }
   const upstream = await fetcher(url, {
     headers: { Authorization: `Client-ID ${accessKey}`, 'Accept-Version': 'v1' }

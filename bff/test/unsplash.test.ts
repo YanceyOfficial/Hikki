@@ -70,8 +70,12 @@ describe('listPhotos', () => {
       1,
       fakeFetch({ errors: ['Rate Limit Exceeded'] }, 403)
     )
-    expect(result.status).toBe(403)
-    expect(JSON.stringify(result.body)).not.toContain('KEY')
+    // Unsplash's 403 is its hourly limit: our rateLimited code (429); anything else is upstreamFailed (502).
+    expect(result.status).toBe(429)
+    expect(result.error).toBe('rateLimited')
+    expect(JSON.stringify(result)).not.toContain('KEY')
+    const broken = await listPhotos('KEY', 'x', 1, fakeFetch({}, 500))
+    expect(broken).toMatchObject({ status: 502, error: 'upstreamFailed' })
   })
 })
 
@@ -96,7 +100,7 @@ describe('triggerDownload', () => {
       42
     ]) {
       const result = await triggerDownload('KEY', bad, fakeFetch({}))
-      expect(result.status).toBe(400)
+      expect(result).toMatchObject({ status: 400, error: 'badRequest' })
     }
   })
 })

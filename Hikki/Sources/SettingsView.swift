@@ -1,3 +1,4 @@
+import HikkiAI
 import HikkiCore
 import HikkiUI
 import SwiftUI
@@ -615,18 +616,65 @@ private struct LanguageSection: View {
 
 private struct AboutSection: View {
     @Environment(AppModel.self) private var model
+    @State private var showingLogs = false
 
     var body: some View {
         Section {
             LabeledContent("app:settings.version") {
                 Text(verbatim: Self.version).textSelection(.enabled)
             }
-            ShareLink("app:workspace.exportLogs", items: model.exportableFiles)
         } header: {
             Text("app:settings.about")
-        } footer: {
-            Text("app:settings.logs.detail")
         }
+        Section {
+            ShareLink(item: diagnostics, preview: SharePreview(Text("app:diagnostics.export"))) {
+                Text("app:diagnostics.export")
+            }
+            .accessibilityIdentifier("settings-diagnostics")
+            #if os(macOS)
+                // The Mac's Settings pages aren't in a navigation stack: the logs open as a sheet.
+                Button("app:diagnostics.logs") { showingLogs = true }
+                    .accessibilityIdentifier("settings-logs")
+                    .sheet(isPresented: $showingLogs) {
+                        NavigationStack {
+                            LogsView()
+                                .toolbar {
+                                    ToolbarItem(placement: .confirmationAction) {
+                                        Button("app:settings.done") { showingLogs = false }
+                                    }
+                                }
+                        }
+                        .frame(minWidth: Size.settingsWidth, minHeight: Size.settingsHeight)
+                    }
+            #else
+                NavigationLink {
+                    LogsView()
+                } label: {
+                    Text("app:diagnostics.logs")
+                }
+                .accessibilityIdentifier("settings-logs")
+            #endif
+        } header: {
+            Text("app:diagnostics.header")
+        } footer: {
+            Text("app:diagnostics.detail")
+        }
+    }
+
+    /// Logs, crash reports and what describes this install — counts and settings, never content or keys.
+    private var diagnostics: DiagnosticsFile {
+        let defaults = UserDefaults.standard
+        var facts: [String: String] = [
+            "pages": String(model.tree.all.count),
+            "spotlight": defaults.object(forKey: SpotlightPreferences.enabledKey) as? Bool == false ? "off" : "on",
+            "ai.model": defaults.string(forKey: AIPreferences.modelKey) ?? "auto",
+            "ai.reviewStyle": defaults.string(forKey: AIPreferences.reviewStyleKey) ?? "inline",
+        ]
+        for provider in AIProvider.allCases {
+            facts["ai.\(provider.rawValue)"] = AIPreferences.key(provider) == nil ? "no key" : "key set"
+            if AIPreferences.base(provider) != nil { facts["ai.\(provider.rawValue).baseURL"] = "custom" }
+        }
+        return DiagnosticsFile(logs: Log.files, reports: model.crashReporter.reports, app: .current(), facts: facts)
     }
 
     private static var version: String {

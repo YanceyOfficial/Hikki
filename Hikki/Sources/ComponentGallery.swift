@@ -57,6 +57,12 @@
                         DropTargetArea("Drag a page here", icon: .trayArrowDown, isTargeted: false).frame(height: 80)
                         DropTargetArea("Show here", isTargeted: true).frame(height: 80)
                     }
+                    Section("ToastView") {
+                        ToastView(kind: .success, message: "Link copied", close: {})
+                        ToastView(
+                            kind: .error, message: "Couldn't save the page.", reference: "HK-2001 · W7RM2D",
+                            actionTitle: "app:toast.copyDetails", action: {}, close: {})
+                    }
                     Section("FilterChip") {
                         HStack(spacing: Spacing.s1_5) {
                             FilterChip("All", isSelected: true) {}

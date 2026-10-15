@@ -374,7 +374,7 @@ public final class WorkspaceSync: @unchecked Sendable {
             }
             ensureWatching()  // the first page written may have just created the folder
         } catch {
-            Log.error("workspace write-through failed: \(error)", category: "workspace")
+            Incident.report(.workspaceSyncFailed, error, category: "workspace")
         }
     }
 

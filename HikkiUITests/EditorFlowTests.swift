@@ -134,6 +134,21 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertLessThan(abs(gap() - before), 40, "the body moved away from the title after relaunching")
     }
 
+    /// A reported failure shows as a toast with its code and incident id; "Copy details" and × take it away.
+    func testAFailureShowsAToastWithItsCode() throws {
+        continueAfterFailure = false
+        let app = launch(environment: ["HIKKI_DEBUG_TOAST": "1"])
+        let toast = app.descendants(matching: .any).matching(identifier: "toast").firstMatch
+        XCTAssertTrue(waitOrDumpTree(toast, in: app))
+        XCTAssertTrue(app.staticTexts["Couldn't save the page."].firstMatch.exists)
+        let reference = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "HK-2001 · ")).firstMatch
+        XCTAssertTrue(reference.exists, "the toast names its code and incident")
+        attachScreenshot(app, "toasts")
+        app.buttons["toast-action"].firstMatch.tap()
+        let gone = NSPredicate(format: "exists == false")
+        wait(for: [expectation(for: gone, evaluatedWith: reference)], timeout: 5)
+    }
+
     /// First launch: welcome → name → "this device only" → the named workspace opens, and stays bound on relaunch.
     func testOnboardingCreatesNamedWorkspace() throws {
         continueAfterFailure = false

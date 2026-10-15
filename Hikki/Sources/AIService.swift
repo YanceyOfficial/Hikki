@@ -48,7 +48,8 @@ final class AIService {
             } catch {
                 let failure = error as? AIError ?? (error is CancellationError ? .cancelled : .invalidResponse)
                 if failure != .cancelled, !Task.isCancelled {
-                    Log.warn("AI request failed: \(Self.code(failure))", category: "ai")
+                    // Shown in the page's own AI panel; logged with its code and an incident id.
+                    if let code = failure.errorCode { Incident.report(code, failure, category: "ai") }
                     send(Self.event(id, for: failure))
                 }
             }
@@ -120,8 +121,29 @@ final class AIService {
         return event
     }
 
-    static func code(_ error: AIError) -> String {
-        switch error {
+    /// The name the editor's `ai.error.*` strings key on.
+    static func code(_ error: AIError) -> String { error.legacyName }
+}
+
+extension AIError {
+    /// The code a failure is logged and reported under (nil: cancelled, nothing went wrong).
+    var errorCode: ErrorCode? {
+        switch self {
+        case .missingKey: .aiMissingKey
+        case .badBaseURL: .aiBadBaseURL
+        case .unauthorized: .aiUnauthorized
+        case .rateLimited: .aiRateLimited
+        case .unavailable: .aiUnavailable
+        case .offline: .aiOffline
+        case .rejected: .aiRejected
+        case .invalidResponse: .aiInvalidResponse
+        case .cancelled: nil
+        }
+    }
+
+    /// The pre-registry names (the editor's `ai.error.*` strings key on them).
+    var legacyName: String {
+        switch self {
         case .missingKey: "missingKey"
         case .badBaseURL: "badBaseURL"
         case .unauthorized: "unauthorized"

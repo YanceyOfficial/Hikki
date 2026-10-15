@@ -3,6 +3,8 @@
   "baseWeight": "regular",
   "strokeBoost": 4,
   "icons": {
+    "warning-circle": { "sf": "exclamationmark.circle.fill" },
+    "x-circle": { "sf": "xmark.circle.fill" },
     "image": {
       "sf": "photo"
     },

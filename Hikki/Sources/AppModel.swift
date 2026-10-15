@@ -44,7 +44,7 @@ final class AppModel {
         do {
             workspace = try workspaceStore.load()
         } catch {
-            Log.error("workspace load failed: \(error)", category: "workspace")
+            Toasts.report(.workspaceOpenFailed, error, category: "workspace")
         }
         startWorkspaceSync()
         searchIndexer.start()
@@ -138,7 +138,7 @@ final class AppModel {
                 }
             }
         } catch {
-            Log.error("workspace folder unavailable: \(error)", category: "workspace")
+            Toasts.report(.workspaceUnavailable, error, category: "workspace")
             syncError = error.localizedDescription
         }
     }
@@ -318,44 +318,46 @@ final class AppModel {
     // MARK: - Page operations (errors are logged; the UI keeps showing the last good state)
 
     func createPage(parentId: String? = nil) -> String? {
-        perform("create page") { try store.create(parentId: parentId).id }
+        perform("create page", code: .pageCreateFailed) { try store.create(parentId: parentId).id }
     }
 
     func setFavorite(_ favorite: Bool, id: String) {
-        perform("set favorite", id) { try store.setFavorite(favorite, for: id) }
+        perform("set favorite", id, code: .pageUpdateFailed) { try store.setFavorite(favorite, for: id) }
     }
 
     func setLocked(_ locked: Bool, id: String) {
-        perform("set locked", id) { try store.setLocked(locked, for: id) }
+        perform("set locked", id, code: .pageUpdateFailed) { try store.setLocked(locked, for: id) }
     }
 
     func duplicate(id: String) {
-        perform("duplicate", id) { try store.duplicate(id: id) }
+        perform("duplicate", id, code: .pageCreateFailed) { try store.duplicate(id: id) }
     }
 
     func moveToTrash(id: String) {
-        perform("move to trash", id) { try store.moveToTrash(id: id) }
+        perform("move to trash", id, code: .pageDeleteFailed) { try store.moveToTrash(id: id) }
     }
 
     func restore(id: String) {
-        perform("restore", id) { try store.restore(id: id) }
+        perform("restore", id, code: .pageRestoreFailed) { try store.restore(id: id) }
     }
 
     /// Sidebar drag and drop. Returns false when the drop is invalid (onto itself / its own subtree).
     @discardableResult
     func movePage(_ dragged: String, onto target: String, zone: DropZone) -> Bool {
         guard let destination = tree.destination(dropping: dragged, onto: target, zone: zone) else { return false }
-        return perform("move page", dragged) { try store.move(id: dragged, toParent: destination.parentId, at: destination.index) } != nil
+        return perform("move page", dragged, code: .pageMoveFailed) {
+            try store.move(id: dragged, toParent: destination.parentId, at: destination.index)
+        } != nil
     }
 
     /// Drop onto a section header: to the end of the top level.
     @discardableResult
     func movePageToTopLevel(_ dragged: String) -> Bool {
-        perform("move page", dragged) { try store.move(id: dragged, toParent: nil, at: .max) } != nil
+        perform("move page", dragged, code: .pageMoveFailed) { try store.move(id: dragged, toParent: nil, at: .max) } != nil
     }
 
     func deletePermanently(id: String) {
-        perform("delete permanently", id) { try store.deletePermanently(id: id) }
+        perform("delete permanently", id, code: .pageDeleteFailed) { try store.deletePermanently(id: id) }
         comments?.removeAll(pageId: id)
     }
 
@@ -364,13 +366,13 @@ final class AppModel {
     func purgeTrash(now: Date = .now) {
         let days = TrashPreferences.keepDays
         guard days > 0, let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: now) else { return }
-        if let count = perform("purge trash", nil, { try store.purgeTrash(deletedBefore: cutoff) }), count > 0 {
+        if let count = perform("purge trash", nil, code: .trashEmptyFailed, { try store.purgeTrash(deletedBefore: cutoff) }), count > 0 {
             Log.info("trash purged", category: "store", context: ["pages": "\(count)", "days": "\(days)"])
         }
     }
 
     func emptyTrash() {
-        perform("empty trash") { try store.emptyTrash() }
+        perform("empty trash", code: .trashEmptyFailed) { try store.emptyTrash() }
     }
 
     /// ⌘K's search, off the main thread: the index may be busy writing (a page saved, an attachment read), and
@@ -381,7 +383,7 @@ final class AppModel {
             do {
                 return try indexer.search(query, options: options)
             } catch {
-                Log.error("search failed: \(error)", category: "store")
+                Toasts.report(.searchFailed, error, category: "store")
                 return []
             }
         }.value
@@ -397,16 +399,20 @@ final class AppModel {
         perform("load stats") { try store.stats() } ?? WorkspaceStats(pages: 0, words: 0)
     }
 
-    var exportableFiles: [URL] {
-        Log.files + crashReporter.reports
-    }
-
+    /// Runs a store change; a failure is logged and — given its `code` — shown to the user (a toast with the code).
+    /// Without a code (background reads: activity, stats) it is only logged.
     @discardableResult
-    private func perform<T>(_ action: String, _ id: String? = nil, _ body: () throws -> T) -> T? {
+    private func perform<T>(_ action: String, _ id: String? = nil, code: ErrorCode? = nil, _ body: () throws -> T) -> T? {
         do {
             return try body()
         } catch {
-            Log.error("\(action) failed: \(error)", category: "store", context: id.map { ["docId": $0] })
+            var context = ["action": action]
+            if let id { context["docId"] = id }
+            if let code {
+                Toasts.report(code, error, category: "store", context: context)
+            } else {
+                Log.error("\(action) failed: \(Incident.describe(error))", category: "store", context: context)
+            }
             return nil
         }
     }

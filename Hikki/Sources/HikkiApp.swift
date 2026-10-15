@@ -20,12 +20,9 @@ struct HikkiApp: App {
         }
         let crashReporter = CrashReporter(directory: paths.diagnostics)
         crashReporter.start()
-        Log.info(
-            "launch",
-            context: [
-                "version": Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?",
-                "build": Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?",
-            ])
+        // Version, build, OS, device, language and the bridge protocol: what every report needs (the session id is on
+        // every line).
+        Log.info("launch", context: AppInfo.current().context)
         do {
             let store = try DocumentStore.onDisk(at: paths.database)
             #if DEBUG
@@ -36,7 +33,7 @@ struct HikkiApp: App {
                     store: store, searchIndex: HikkiApp.searchIndex(paths), assets: AssetStore(directory: paths.assets),
                     crashReporter: crashReporter, workspaceStore: HikkiApp.workspaceStore(paths)))
         } catch {
-            Log.error("cannot open database: \(error)", category: "store")
+            Toasts.report(.databaseOpenFailed, error, category: "store")
             fatalError("Cannot open database: \(error)")
         }
     }
@@ -47,7 +44,7 @@ struct HikkiApp: App {
         do {
             return try SearchIndex(url: paths.searchIndex)
         } catch {
-            Log.error("cannot open search index: \(error)", category: "search")
+            Toasts.report(.searchIndexFailed, error, category: "search")
             try? FileManager.default.removeItem(at: paths.searchIndex)
             if let fresh = try? SearchIndex(url: paths.searchIndex) { return fresh }
             return try! SearchIndex.inMemory()  // swiftlint:disable:this force_try

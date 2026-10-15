@@ -78,6 +78,15 @@ These rules are mandatory. Automated ones are noted.
 - **Concurrency.** The app and `HikkiUI` default to MainActor isolation. Anything AppKit/UIKit may call off the main
   thread (dynamic color providers, KVO callbacks) must be `nonisolated` / `@Sendable`.
 - **Logs never contain page content.** Use `Log.info` / `Log.warn` / `Log.error` with a category; IDs and counts only.
+- **Failures have codes and reach the user as toasts.** Every user-visible failure has a code in `design/errors.json`
+  (`make errors` generates `ErrorCode` in `HikkiCore/Sources/Errors/ErrorCode.swift`, its messages in
+  `Hikki/Sources/Generated/ErrorMessages.swift`, `editor/src/generated/errors.ts`, `bff/src/generated/errors.ts` and both
+  string catalogs; numbers by area: 1xxx app, 2xxx pages & workspace, 3xxx editor, 4xxx files, 5xxx AI, 6xxx search,
+  7xxx network — never reused). Report with `Toasts.report(code, error, category:)` natively (logs it with an incident
+  id via `Incident.report`, then a toast with the code and "Copy details"), `reportError(id, error)` in the editor
+  (`editor/src/core/errors.ts`, over the `reportError` bridge message); confirmations are `Toasts.shared.show` /
+  `notify`. The BFF answers failures as `{error: {code, id, message}, requestId}` (`bff/src/http.ts`). No ad-hoc alerts
+  or silent catches for something the user should know. _Checked by `make lint-design` (`gen-errors.mjs --check`)._
 - **Keep this file current.** Architecture or directory changes update CLAUDE.md in the same commit.
   _Paths are checked by `make lint-docs` (`scripts/check-claude-md.mjs`)._
 
@@ -87,6 +96,7 @@ These rules are mandatory. Automated ones are noted.
 make bootstrap      # bun install + tuist install (first clone)
 make generate       # build the editor bundle and generate Hikki.xcworkspace
 make tokens         # regenerate design tokens after editing design/tokens.json
+make errors         # regenerate the error-code tables and messages after editing design/errors.json
 make lint           # oxlint + swift-format lint --strict
 make fmt            # oxfmt + swift-format format
 make test           # lint, format check, design + docs lint, web + BFF typecheck/tests, HikkiCore tests (macOS)
@@ -105,6 +115,7 @@ design/icon/                  app icon (Hi✦): layered SVGs for Icon Composer (
 design/logo/                  wordmark + lockups (generate.mjs: text → outlines with fontkit, sparkle i-dot)
 scripts/gen-tokens.mjs        tokens → Swift + Tailwind theme
 scripts/lint-design.sh        no literal colors/fonts/spacing/radii in view code
+design/errors.json            error codes for app, editor and BFF (single source; scripts/gen-errors.mjs)
 Configs/Version.xcconfig      MARKETING_VERSION / CURRENT_PROJECT_VERSION
 Project.swift                 Tuist manifest (targets: Hikki, HikkiCore, HikkiSearch, HikkiAI, HikkiUI + their tests, HikkiUITests)
 Hikki/Sources/                app: SwiftUI shell, navigation (tabs), sidebar, page bar, search, editor host
@@ -155,7 +166,7 @@ HikkiUITests/                 XCUITest flows
   (`Hikki/Sources/AIChat.swift`: the open page's text as context, model menu, web search, `AIPrompts.chat`; answers render through `AIMarkdown`, which keeps only http(s) links). Left
   out on iPhone: tabs, split view, the inspector panel, Home's table, Shortcuts settings.
 - **Data directory**: `HIKKI_DATA_DIR` overrides it (UI tests, demos). DEBUG hooks: `HIKKI_OPEN_TABS=a,b`,
-  `HIKKI_OPEN_SEARCH`, `HIKKI_OPEN_FIND`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SPOTLIGHT_QUERY=<text>` (logs the page ids Spotlight ranks), `HIKKI_OPEN_FILE=<asset>` (the PDF viewer), `HIKKI_OPEN_SPLIT=<page id>|file:<asset>|picker` (split view), `HIKKI_DEBUG_SIDEBAR` (hide + show the split view sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_OPEN_AI`, `HIKKI_OPEN_PAGE_ACTIONS`, `HIKKI_DEMO_PAGES` (an empty workspace gets sample pages, ids fixed per title — `Hikki/Sources/DemoPages.swift`), `HIKKI_ACTIVATE`, `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
+  `HIKKI_OPEN_SEARCH`, `HIKKI_OPEN_FIND`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SPOTLIGHT_QUERY=<text>` (logs the page ids Spotlight ranks), `HIKKI_OPEN_FILE=<asset>` (the PDF viewer), `HIKKI_OPEN_SPLIT=<page id>|file:<asset>|picker` (split view), `HIKKI_DEBUG_SIDEBAR` (hide + show the split view sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_DEBUG_TOAST` (a sample failure toast), `HIKKI_OPEN_AI`, `HIKKI_OPEN_PAGE_ACTIONS`, `HIKKI_DEMO_PAGES` (an empty workspace gets sample pages, ids fixed per title — `Hikki/Sources/DemoPages.swift`), `HIKKI_ACTIVATE`, `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
   UI tests set it by default — pass `workspace: nil` to `launch()` to test onboarding).
 - **Storage (option C)**: the workspace folder is the source of truth — one JSON file per page
   (`HikkiCore/Sources/Store/PageFile.swift`: `pages/<id>.json`, format-versioned, content as JSON); SQLite is a
@@ -416,6 +427,14 @@ HikkiUITests/                 XCUITest flows
 - **Workspace**: first launch shows `Hikki/Sources/OnboardingView.swift` until the workspace file (`AppPaths.workspace`) exists
   (`HikkiCore/Sources/Store/Workspace.swift`). A folder location stores a security-scoped bookmark
   (`HikkiCore/Sources/Store/FolderBookmark.swift`); page data does not live in that folder yet.
+- **Diagnostics** (local only, nothing leaves the device by itself): every log line carries the run's `Log.session`;
+  the launch line has `AppInfo` (version, build, OS, device, language, protocol). `CrashReporter` keeps MetricKit
+  reports and drops a marker on a fatal signal or uncaught exception (`crash.marker.running`, written with `write(2)`
+  only), so the next launch toasts "Hikki quit unexpectedly" (`pendingCrash`; an iOS background kill leaves no marker).
+  Settings → About → Diagnostics: Export diagnostics (`DiagnosticsBundle`: logs, reports and an about file — counts and
+  non-sensitive settings, never content or keys — zipped through `NSFileCoordinator` when shared) and Logs
+  (`Hikki/Sources/LogsView.swift`, newest entries with a level filter). A toast's "Copy details" gives the code, the
+  incident id (grep it in the logs) and the app summary.
 - **Demos and screenshots** on the Mac: launch the built binary with `HIKKI_DATA_DIR` and
   `-ApplePersistenceIgnoreState YES` (otherwise saved-state restoration can leave no window), capture by window id. Never
   `pkill -f Hikki` — the developer runs their own instance of the same binary (shared DerivedData).
