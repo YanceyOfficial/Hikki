@@ -230,7 +230,6 @@ private struct SettingsPageContent: View {
         case .ai:
             AISettingsSection()
         case .search:
-            SemanticSection()
             SpotlightSection()
         case .about:
             AboutSection()
@@ -541,104 +540,6 @@ private struct ShortcutsSection: View {
         let display = store.combo(shortcut).display
         return String(localized: shortcut.title).localizedCaseInsensitiveContains(needle)
             || display.localizedCaseInsensitiveContains(needle)
-    }
-}
-
-/// Settings → Search → Semantic search: where the embedding model runs (Ollama on this Mac by default), which model,
-/// an optional key, and how far the pages are embedded. Changes apply once typing in a field pauses.
-private struct SemanticSection: View {
-    @Environment(AppModel.self) private var model
-    @AppStorage(SemanticPreferences.enabledKey) private var enabled = false
-    @AppStorage(SemanticPreferences.endpointKey) private var endpoint = SemanticPreferences.defaultEndpoint
-    @AppStorage(SemanticPreferences.modelKey) private var modelName = SemanticPreferences.defaultModel
-    /// The key for the address shown (keys are kept per origin).
-    @State private var apiKey = ""
-    @State private var available: [String] = []
-
-    var body: some View {
-        Section {
-            Toggle("app:semantic.toggle", isOn: $enabled)
-                .accessibilityIdentifier("settings-semantic")
-            if enabled {
-                TextField("app:semantic.endpoint", text: $endpoint, prompt: Text(verbatim: SemanticPreferences.defaultEndpoint))
-                    .autocorrectionDisabled()
-                    .accessibilityIdentifier("settings-semantic-endpoint")
-                LabeledContent("app:semantic.model") {
-                    HStack(spacing: Spacing.s2) {
-                        TextField("app:semantic.model", text: $modelName, prompt: Text(verbatim: SemanticPreferences.defaultModel))
-                            .labelsHidden()
-                            .autocorrectionDisabled()
-                            .accessibilityIdentifier("settings-semantic-model")
-                        if !available.isEmpty {
-                            Menu {
-                                ForEach(available, id: \.self) { name in
-                                    Button(name) { modelName = name }
-                                }
-                            } label: {
-                                Text("app:semantic.installed")
-                            }
-                            .fixedSize()
-                            .accessibilityIdentifier("settings-semantic-installed")
-                        }
-                    }
-                }
-                if SemanticPreferences.isWeak(modelName) {
-                    LabeledContent {
-                        Button("app:semantic.useRecommended \(SemanticPreferences.defaultModel)") {
-                            modelName = SemanticPreferences.defaultModel
-                        }
-                        .accessibilityIdentifier("settings-semantic-recommended")
-                    } label: {
-                        Text("app:semantic.weakModel \(SemanticPreferences.defaultModel)")
-                            .foregroundStyle(Theme.subtleForeground)
-                    }
-                }
-                SecureField("app:semantic.apiKey", text: $apiKey, prompt: Text("app:semantic.apiKey.prompt"))
-                    .accessibilityIdentifier("settings-semantic-key")
-                LabeledContent("app:semantic.status") {
-                    Text(statusText).foregroundStyle(isFailing ? Theme.destructive : Theme.subtleForeground)
-                        .accessibilityIdentifier("settings-semantic-status")
-                }
-            }
-        } header: {
-            Text("app:semantic.header")
-        } footer: {
-            Text("app:semantic.detail")
-        }
-        // Another address shows its own key (usually none): a key typed for one host never goes to another.
-        .onChange(of: endpoint, initial: true) { _, address in
-            apiKey = SemanticPreferences.apiKey(for: address) ?? ""
-        }
-        .onChange(of: apiKey) { _, key in
-            // Stored under the address it was typed for.
-            if let account = SemanticPreferences.apiKeyAccount(for: endpoint) {
-                Keychain.write(key.trimmingCharacters(in: .whitespaces), for: account)
-            }
-        }
-        .task(id: [String(enabled), endpoint, modelName, apiKey]) {
-            // Once typing pauses: point the indexer at the new settings, list the endpoint's models.
-            try? await Task.sleep(for: .milliseconds(600))
-            guard !Task.isCancelled else { return }
-            model.semantic.reconfigure()
-            available = enabled ? ((try? await model.semantic.availableModels()) ?? []) : []
-        }
-    }
-
-    private var isFailing: Bool {
-        if case .failed = model.semantic.status { return true }
-        return false
-    }
-
-    private var statusText: String {
-        switch model.semantic.status {
-        case .off: String(localized: "app:semantic.status.off")
-        case .working(let done, let total): String(localized: "app:semantic.status.working \(done.formatted()) \(total.formatted())")
-        case .ready(let pages): String(localized: "app:semantic.status.ready \(pages.formatted())")
-        case .failed(.unreachable): String(localized: "app:semantic.error.unreachable")
-        case .failed(.http(404)): String(localized: "app:semantic.error.noModel")
-        case .failed(.http(let code)): String(localized: "app:semantic.error.http \(String(code))")
-        case .failed(.badResponse): String(localized: "app:semantic.error.badResponse")
-        }
     }
 }
 

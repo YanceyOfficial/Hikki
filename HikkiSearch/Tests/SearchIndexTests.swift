@@ -1,10 +1,26 @@
 import Foundation
+import GRDB
 import Testing
 
 @testable import HikkiSearch
 
 struct SearchIndexTests {
     private let t0 = Date(timeIntervalSince1970: 1_700_000_000)
+
+    @Test func semanticSearchsLeftoverTablesAreDropped() throws {
+        let url = FileManager.default.temporaryDirectory.appending(path: "search-\(UUID().uuidString).sqlite")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let old = try DatabaseQueue(path: url.path)
+        try old.write { db in
+            try db.execute(sql: "CREATE TABLE chunk (pageId TEXT, vector BLOB)")
+            try db.execute(sql: "PRAGMA user_version = \(SearchIndex.version)")
+        }
+        try old.close()
+        let index = try SearchIndex(url: url)
+        try index.index([page("a", "Kept")])
+        #expect(try index.queue.read { try $0.tableExists("chunk") } == false)
+        #expect(try index.search("kept").map(\.id) == ["a"])
+    }
 
     private func page(
         _ id: String, _ title: String, text: String = "", headings: [String] = [], at: TimeInterval = 0

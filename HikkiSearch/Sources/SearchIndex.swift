@@ -62,14 +62,10 @@ public struct SearchHit: Sendable, Equatable, Identifiable {
     public var terms: [String]
     /// Set when the excerpt is an attachment's text.
     public var attachment: Attachment?
-    /// Found by meaning only (semantic search), not by the words typed: the excerpt is the closest passage.
-    public var related: Bool
-    /// A related hit's whole closest passage (its excerpt is cut short), for picking the sentence it shows.
-    public var passage: String?
 
     public init(
         id: String, title: String, icon: String?, snippet: String, updatedAt: Date, terms: [String],
-        attachment: Attachment? = nil, related: Bool = false
+        attachment: Attachment? = nil
     ) {
         self.id = id
         self.title = title
@@ -78,7 +74,6 @@ public struct SearchHit: Sendable, Equatable, Identifiable {
         self.updatedAt = updatedAt
         self.terms = terms
         self.attachment = attachment
-        self.related = related
     }
 }
 
@@ -112,7 +107,7 @@ public final class SearchIndex: Sendable {
             if version != Self.version {
                 // Older layouts go whole: the app refills the index from the store.
                 for table in [
-                    "pageFts", "attachmentFts", "page", "attachment", "embeddingInfo", "embeddedPage", "chunk",
+                    "pageFts", "attachmentFts", "page", "attachment",
                 ] {
                     try db.execute(sql: "DROP TABLE IF EXISTS \(table)")
                 }
@@ -149,7 +144,8 @@ public final class SearchIndex: Sendable {
                     t.column("text")
                 }
             }
-            try Self.createSemanticTables(db)
+            // Semantic search's tables (removed 2026-10-15) go wherever they are left.
+            for table in ["embeddingInfo", "embeddedPage", "chunk"] { try db.execute(sql: "DROP TABLE IF EXISTS \(table)") }
             if version != Self.version {
                 try db.execute(sql: "PRAGMA user_version = \(Self.version)")
             }
@@ -177,7 +173,7 @@ public final class SearchIndex: Sendable {
         }
     }
 
-    /// Forgets these pages (trashed, deleted), their attachments and passages with them.
+    /// Forgets these pages (trashed, deleted) and their attachments.
     public func remove(_ ids: some Sequence<String>) throws {
         let ids = Array(ids)
         guard !ids.isEmpty else { return }
@@ -185,8 +181,6 @@ public final class SearchIndex: Sendable {
             for id in ids {
                 try db.execute(sql: "DELETE FROM attachment WHERE pageId = ?", arguments: [id])
                 try db.execute(sql: "DELETE FROM page WHERE id = ?", arguments: [id])
-                try db.execute(sql: "DELETE FROM chunk WHERE pageId = ?", arguments: [id])
-                try db.execute(sql: "DELETE FROM embeddedPage WHERE pageId = ?", arguments: [id])
             }
         }
     }

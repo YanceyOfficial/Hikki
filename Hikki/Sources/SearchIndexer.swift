@@ -14,15 +14,12 @@ nonisolated final class SearchIndexer: Sendable {
     private let queue = DispatchQueue(label: "app.yancey.hikki.search-index", qos: .utility)
     private let attachments: AttachmentReader
     private let spotlight = SpotlightIndex()
-    /// Semantic search's vectors (Settings → Search): edited pages go to it too.
-    let semantic: SemanticIndexer
 
     init(index: SearchIndex, store: DocumentStore, assets: AssetStore) {
         self.index = index
         self.store = store
         self.assets = assets
         attachments = AttachmentReader(index: index, assets: assets)
-        semantic = SemanticIndexer(index: index, store: store)
     }
 
     /// Starts writing changes through, then reconciles once (in that order, so nothing slips between).
@@ -37,8 +34,8 @@ nonisolated final class SearchIndexer: Sendable {
         queue.async { [self] in reconcile() }
     }
 
-    func search(_ query: String, queryVector: [Float]? = nil, options: SearchOptions = .standard) throws -> [SearchHit] {
-        try index.search(query, queryVector: queryVector, options: options)
+    func search(_ query: String, options: SearchOptions = .standard) throws -> [SearchHit] {
+        try index.search(query, options: options)
     }
 
     /// Settings → Spotlight: on pushes every page, off empties Spotlight.
@@ -103,9 +100,6 @@ nonisolated final class SearchIndexer: Sendable {
             spotlight.index(kept.map(Self.document))
             spotlight.remove(Array(gone))
             readAttachments(of: kept)
-            let semantic = semantic
-            let edited = kept.map(\.id)
-            Task { await semantic.pagesChanged(edited) }
         } catch {
             Log.error("search index update failed: \(error)", category: "search")
         }

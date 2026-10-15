@@ -284,23 +284,6 @@ HikkiUITests/                 XCUITest flows
   an attribute); ⇧⌘R or Format → More → Ruby opens the reading panel, prefilled from the native tokenizer
   (`HikkiCore/Sources/Text/JapaneseReading.swift`, `suggestReading` message): a phrase comes back as kanji runs with
   readings and bare kana (役に立ちます → 役(やく)に立(た)ちます), one ruby per run; "Whole" puts one reading over all of it.
-- **Semantic search** (Settings → Search, off by default): Hikki only reads and writes vectors; the model runs
-  outside it behind `EmbeddingProvider` (`HikkiSearch/Sources/Embeddings.swift`) — one implementation, the
-  OpenAI-compatible embeddings API (Ollama at `http://localhost:11434/v1` by default, LM Studio, llama.cpp, OpenAI with
-  a key in the Keychain), so a better model is a setting, not code. Model-specific prefixes (e5's "query: "/"passage: ")
-  come from the model name; loopback requests skip the proxy. Pages are cut into passages with the title in front
-  (`Chunker`), stored with their vectors in `search.sqlite` under the model's identity (a new model starts over;
-  `HikkiSearch/Sources/SemanticIndex.swift`, brute-force cosine with vDSP). `SemanticIndexer`
-  (`Hikki/Sources/SemanticSearch.swift`) embeds a page once it has been quiet for 30 s, backfills at launch and after a
-  settings change by edited time, re-sends only changed passages, and retries in 5 min when the model is unreachable.
-  ⌘K shows word matches at once and, a quarter second later, the few pages that stand out by meaning under
-  "Similar in meaning" (`SearchIndex.standouts`: 1.6 standard deviations and 0.03 above the average page, at least five
-  pages with text; empty pages and one- or two-letter queries never count), each showing the sentence of its passage
-  closest to the query (`SearchIndex.closestSentence`, re-embedding that passage's sentences); word matches keep
-  their order, and "No results" still shows when only meaning found something. Default model `bge-m3` (measured
-  2026-10-15 on a Japanese/Chinese/English workspace: "parents" → 「両親と兄が一人います。」); the qllama build of
-  multilingual-e5-small gave every short text one vector ("parents" = "Q2" = "2024"), so Settings offers bge-m3
-  whenever it is set (`SemanticPreferences.isWeak`). Qwen3-Embedding gets its query instruction from the model name.
 - **Search** (⌘K, `Hikki/Sources/SearchPalette.swift`) is the `HikkiSearch` package: `SearchIndex`
   (`HikkiSearch/Sources/SearchIndex.swift`) keeps its own SQLite file (`search.sqlite` next to the database) with every
   page's title, pinyin keys, headings and text under a trigram FTS5 index; `Hikki/Sources/SearchIndexer.swift` feeds it
@@ -317,11 +300,13 @@ HikkiUITests/                 XCUITest flows
   with the terms emphasized (`HighlightedText`) and the edited time. Under the field, scope chips (`FilterChip`:
   All / Titles / Text / Files — `SearchScope` in `HikkiSearch/Sources/SearchOptions.swift`; the ranker and the index
   only count matches where the scope looks, Files always shows the file's excerpt) and a sort menu (Best match / Last
-  edited, `SearchSort`); "Similar in meaning" joins only an unfiltered search. Pages also go into the device's Spotlight index
+  edited, `SearchSort`). The palette searches off the main thread (`AppModel.search` is async; a newer query cancels
+  the older one), so a busy index never freezes typing. Pages also go into the device's Spotlight index
   (Core Spotlight: `Hikki/Sources/SpotlightIndex.swift`, items shaped by `SpotlightItems` in HikkiSearch; Settings →
   Spotlight, default on, off empties it); a Spotlight result opens the page through `onContinueUserActivity`.
-  On-device embeddings (`NLContextualEmbedding`) were measured and rejected for a "related" tier: related and
-  unrelated sentence pairs overlap too much (2026-10-14).
+  No search by meaning: on-device embeddings (`NLContextualEmbedding`, 2026-10-14) separated related from unrelated
+  sentences too poorly, and semantic search over Ollama embeddings (bge-m3, e5) was built and removed on 2026-10-15 —
+  one-word queries across languages ("busy" → 忙しい) still missed, and its indexer competed with word search.
 - **Full screen (macOS)**: Xcode's way, in `Hikki/Sources/FullScreenChrome.swift` — the toolbar stays and gets its
   background while in full screen (that is what puts the columns below the toolbar row instead of under it); the
   traffic lights come down with the menu bar into that row. Measured, not guessed: in full screen AppKit moves the
@@ -438,8 +423,8 @@ HikkiUITests/                 XCUITest flows
   menu bar — then Workspace, Shortcuts, Search, AI, About; iPhone has no Shortcuts) as the classic toolbar tabs of the
   Mac Settings window and a hub list on iPhone/iPad; each page is a grouped form of sections, the last page opened is
   remembered.
-  `HIKKI_OPEN_SETTINGS=<page>` opens that page (screenshots). Optional integrations (a local Ollama for semantic
-  search, later) get pages here with a detected/not-detected status, exodus's way.
+  `HIKKI_OPEN_SETTINGS=<page>` opens that page (screenshots). Optional integrations get pages here with a
+  detected/not-detected status, exodus's way.
 - **Appearance** (Settings → General → Theme) is applied app-wide (`NSApp.appearance` / window `overrideUserInterfaceStyle`),
   not with `preferredColorScheme`, which left parts of windows in the old scheme after switching back.
 - **macOS windows**: closing the last main window only hides it (Dock click restores it) and closes Settings —

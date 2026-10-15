@@ -13,7 +13,6 @@ final class AppModel {
     let store: DocumentStore
     let searchIndexer: SearchIndexer
     /// Search by meaning (Settings → Search): the query's vector and the indexer's status.
-    let semantic: SemanticSearch
     let assets: AssetStore
     let crashReporter: CrashReporter
     let workspaceStore: WorkspaceStore
@@ -37,7 +36,8 @@ final class AppModel {
     ) {
         self.store = store
         self.searchIndexer = SearchIndexer(index: searchIndex, store: store, assets: assets)
-        semantic = SemanticSearch(indexer: searchIndexer.semantic)
+        // Semantic search was removed (2026-10-15): its settings go too.
+        for key in ["semantic.enabled", "semantic.endpoint", "semantic.model"] { UserDefaults.standard.removeObject(forKey: key) }
         self.assets = assets
         self.crashReporter = crashReporter
         self.workspaceStore = workspaceStore
@@ -373,9 +373,18 @@ final class AppModel {
         perform("empty trash") { try store.emptyTrash() }
     }
 
-    /// Word search, and search by meaning too when given the query's vector (`semantic.queryVector`).
-    func search(_ query: String, queryVector: [Float]? = nil, options: SearchOptions = .standard) -> [SearchHit] {
-        perform("search") { try searchIndexer.search(query, queryVector: queryVector, options: options) } ?? []
+    /// ⌘K's search, off the main thread: the index may be busy writing (a page saved, an attachment read), and
+    /// typing must never wait for it.
+    func search(_ query: String, options: SearchOptions = .standard) async -> [SearchHit] {
+        let indexer = searchIndexer
+        return await Task.detached(priority: .userInitiated) {
+            do {
+                return try indexer.search(query, options: options)
+            } catch {
+                Log.error("search failed: \(error)", category: "store")
+                return []
+            }
+        }.value
     }
 
     /// Home: this device's writing activity over the last `days` days, and the workspace's totals.
