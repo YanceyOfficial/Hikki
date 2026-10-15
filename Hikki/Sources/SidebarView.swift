@@ -2,19 +2,18 @@ import HikkiCore
 import HikkiUI
 import SwiftUI
 
-/// Mac/iPad get a custom, Notion-like sidebar (full control over density and highlight);
-/// iPhone keeps a List so rows push the page with native navigation.
+/// Mac/iPad get a custom, Notion-like sidebar (full control over density and highlight); the iPhone's sidebar column
+/// is its Home screen (`PhoneHome`), the page tree in its drawer (`PhoneDrawer`).
 struct SidebarView: View {
     @Bindable var navigator: Navigator
-    /// The window is wide (Mac / regular iPad): our own rows in a stack, the workspace switcher at the bottom.
-    /// iPhone: a native List that pushes pages.
+    /// The window is wide (Mac / regular iPad): the page sidebar. iPhone (compact): Home.
     var wide = false
 
     var body: some View {
         #if os(iOS)
-            if wide { PhoneSidebar(navigator: navigator, wideSidebar: true) } else { PhoneHome(navigator: navigator) }
+            if wide { PageSidebar(navigator: navigator) } else { PhoneHome(navigator: navigator) }
         #else
-            PhoneSidebar(navigator: navigator, wideSidebar: wide)
+            PageSidebar(navigator: navigator)
         #endif
     }
 }
@@ -126,46 +125,38 @@ private struct WorkspaceSwitcher: View {
     }
 }
 
-// MARK: - iPhone
+// MARK: - The sidebar
 
-private struct PhoneSidebar: View {
+/// Mac/iPad: a plain scrolling stack of our own rows. A native List painted its selection in the system accent and
+/// swallowed row drops on iPad; selection, chevrons and icons are ours anyway, and the sidebar material comes from the
+/// split view column.
+private struct PageSidebar: View {
     @Environment(AppModel.self) private var model
     @Bindable var navigator: Navigator
-    let wideSidebar: Bool
     @State private var privateTargeted = false
     /// Files from outside are over the sidebar (not over a row): it is outlined in the colour tone.
     @State private var filesTargeted = false
     @Environment(\.colorTone) private var colorTone
 
     var body: some View {
-        Group {
-            if wideSidebar {
-                // Mac/iPad: a plain scrolling stack of our own rows. A native List painted its selection in the
-                // system accent and swallowed row drops on iPad; selection, chevrons and icons are ours anyway,
-                // and the sidebar material comes from the split view column.
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: Spacing.px) { sections }
-                        .padding(.horizontal, Spacing.s4)
-                        .padding(.vertical, Spacing.s1)
-                }
-                .scrollIndicators(.never)
-                .overlay {
-                    if filesTargeted {
-                        RoundedRectangle(cornerRadius: Radius.lg)
-                            .fill(colorTone.selectionFill.opacity(0.35))
-                            .strokeBorder(colorTone.fill.opacity(0.7), lineWidth: 2)
-                            .padding(Spacing.s2)
-                            .allowsHitTesting(false)
-                    }
-                }
-                .animation(Motion.easeOut(), value: filesTargeted)
-                .onDrop(of: SidebarFileDrop.types, delegate: SidebarFileDropDelegate(navigator: navigator, isTargeted: $filesTargeted))
-            } else {
-                List(selection: $navigator.sidebarSelection) { sections }
-                    .listStyle(.sidebar)
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: Spacing.px) { sections }
+                .padding(.horizontal, Spacing.s4)
+                .padding(.vertical, Spacing.s1)
+        }
+        .scrollIndicators(.never)
+        .overlay {
+            if filesTargeted {
+                RoundedRectangle(cornerRadius: Radius.lg)
+                    .fill(colorTone.selectionFill.opacity(0.35))
+                    .strokeBorder(colorTone.fill.opacity(0.7), lineWidth: 2)
+                    .padding(Spacing.s2)
+                    .allowsHitTesting(false)
             }
         }
-        .modifier(NativeSidebarChrome(navigator: navigator, isWide: wideSidebar))
+        .animation(Motion.easeOut(), value: filesTargeted)
+        .onDrop(of: SidebarFileDrop.types, delegate: SidebarFileDropDelegate(navigator: navigator, isTargeted: $filesTargeted))
+        .modifier(NativeSidebarChrome(navigator: navigator))
         .navigationTitle(model.workspace?.name ?? "Hikki")  // l10n: allow (the user's workspace name)
         .toolbar {
             // Both trailing, side by side; with default placement the first item stretched and pushed the
@@ -177,67 +168,29 @@ private struct PhoneSidebar: View {
                     IconLabel("app:page.new", icon: .notePencil).labelStyle(.iconOnly)
                 }
                 .accessibilityIdentifier("new-page")
-                // The workspace menu (iPhone has no sidebar header; Mac/iPad have the footer switcher).
-                if !wideSidebar {
-                    Menu {
-                        ImportMenuItem(navigator: navigator)
-                        SettingsMenuItem(navigator: navigator)
-                    } label: {
-                        IconLabel("app:common.more", icon: .dotsThreeCircle).labelStyle(.iconOnly)
-                    }
-                    .accessibilityIdentifier("workspace-more")
-                }
             }
         }
-    }
-
-    /// iPhone: Home and Trash as list rows.
-    @ViewBuilder private var phonePlaces: some View {
-        SidebarDestination(route: .home, navigator: navigator, wide: false) {
-            NativeSymbolLabel("app:nav.home", icon: .house)
-        }
-        .accessibilityIdentifier("nav-home")
-        SidebarDestination(route: .trash, navigator: navigator, wide: false) {
-            NativeSymbolLabel("app:nav.trash", icon: .trash)
-        }
-        .badge(model.trash.count)
-        .accessibilityIdentifier("nav-trash")
     }
 
     @ViewBuilder private var sections: some View {
         Section {
-            // Mac/iPad: search is the glass field pinned above the list (NativeSidebarChrome).
-            if !wideSidebar {
-                Button {
-                    navigator.isSearching = true
-                } label: {
-                    NativeSymbolLabel("app:nav.search", icon: .magnifyingGlass)
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("sidebar-search")
-            }
-            if wideSidebar {
-                // Notion's top row: the places as icons side by side, the open one widening into a pill with its name.
-                HStack(spacing: Spacing.s1) {
-                    SidebarPlace(route: .home, title: "app:nav.home", icon: .house, navigator: navigator)
-                        .accessibilityIdentifier("nav-home")
-                    SidebarPlace(
-                        route: .trash, title: "app:nav.trash", icon: .trash, navigator: navigator, count: model.trash.count
-                    )
+            // Search is the glass field pinned above the list (NativeSidebarChrome). Notion's top row: the places as
+            // icons side by side, the open one widening into a pill with its name.
+            HStack(spacing: Spacing.s1) {
+                SidebarPlace(route: .home, title: "app:nav.home", icon: .house, navigator: navigator)
+                    .accessibilityIdentifier("nav-home")
+                SidebarPlace(route: .trash, title: "app:nav.trash", icon: .trash, navigator: navigator, count: model.trash.count)
                     .accessibilityIdentifier("nav-trash")
-                    Spacer(minLength: 0)
-                }
-                .padding(.vertical, Spacing.s1)
-            } else {
-                phonePlaces
+                Spacer(minLength: 0)
             }
+            .padding(.vertical, Spacing.s1)
         }
 
         if !model.tree.favorites.isEmpty {
             Section {
                 ForEach(model.tree.favorites) { page in
                     // A shortcut: the selection shows on the page's own row in the tree, once (like a native list).
-                    SidebarDestination(route: .page(page.id), navigator: navigator, wide: wideSidebar, showsSelection: false) {
+                    SidebarDestination(route: .page(page.id), navigator: navigator, showsSelection: false) {
                         NativePageLabel(page: page)
                     }
                     .contextMenu { PageActions(page: page, navigator: navigator) }
@@ -256,7 +209,7 @@ private struct PhoneSidebar: View {
                 }
                 .buttonStyle(.plain)
             }
-            PhoneTree(nodes: model.tree.roots, depth: 0, navigator: navigator, wide: wideSidebar)
+            PageTreeRows(nodes: model.tree.roots, depth: 0, navigator: navigator)
         } header: {
             // No title (Notion's sidebar has none here either): a thin gap that still takes a dropped page to the
             // end of the top level.
@@ -273,53 +226,30 @@ private struct PhoneSidebar: View {
 
 }
 
-private struct PhoneTree: View {
+/// The page tree's rows: our own chevron inside the row, so it can turn white on the tone-filled selection (the system
+/// disclosure triangle can't be recoloured); children follow as their own rows.
+private struct PageTreeRows: View {
     let nodes: [PageNode]
     let depth: Int
     @Bindable var navigator: Navigator
-    var wide = false
 
     var body: some View {
         ForEach(nodes) { node in
-            if wide {
-                // Mac/iPad: our own chevron inside the row, so it can turn white on the tone-filled selection
-                // (the system disclosure triangle can't be recoloured); children follow as their own rows.
-                row(node, chevron: node.children.isEmpty ? nil : expansion(node.id))
-                if !node.children.isEmpty, navigator.expanded.contains(node.id) {
-                    PhoneTree(nodes: node.children, depth: depth + 1, navigator: navigator, wide: wide)
-                }
-            } else if node.children.isEmpty {
-                row(node, chevron: nil)
-            } else {
-                // iPhone: the system disclosure triangle for subpages.
-                DisclosureGroup(isExpanded: expansion(node.id)) {
-                    PhoneTree(nodes: node.children, depth: depth + 1, navigator: navigator, wide: wide)
-                } label: {
-                    row(node, chevron: nil)
-                }
+            row(node, chevron: node.children.isEmpty ? nil : expansion(node.id))
+            if !node.children.isEmpty, navigator.expanded.contains(node.id) {
+                PageTreeRows(nodes: node.children, depth: depth + 1, navigator: navigator)
             }
         }
     }
 
-    @ViewBuilder private func row(_ node: PageNode, chevron: Binding<Bool>?) -> some View {
-        if wide {
-            destination(node, chevron: chevron).modifier(PageRowDragDrop(page: node.page, depth: depth, navigator: navigator))
-        } else {
-            destination(node, chevron: chevron)
-        }
-    }
-
-    private func destination(_ node: PageNode, chevron: Binding<Bool>?) -> some View {
-        SidebarDestination(route: .page(node.id), navigator: navigator, wide: wide, reservesChevron: false) {
-            if wide {
-                HoverPageRow(page: node.page, isExpanded: chevron, navigator: navigator)
-                    .padding(.leading, CGFloat(depth) * Spacing.s4)
-            } else {
-                NativePageLabel(page: node.page)
-            }
+    private func row(_ node: PageNode, chevron: Binding<Bool>?) -> some View {
+        SidebarDestination(route: .page(node.id), navigator: navigator, reservesChevron: false) {
+            HoverPageRow(page: node.page, isExpanded: chevron, navigator: navigator)
+                .padding(.leading, CGFloat(depth) * Spacing.s4)
         }
         .contextMenu { PageActions(page: node.page, navigator: navigator) }
         .accessibilityIdentifier("page-row-\(node.page.title)")
+        .modifier(PageRowDragDrop(page: node.page, depth: depth, navigator: navigator))
     }
 
     private func expansion(_ id: String) -> Binding<Bool> {
@@ -330,12 +260,11 @@ private struct PhoneTree: View {
     }
 }
 
-/// A sidebar row that goes somewhere. iPhone: a NavigationLink (pushes). Mac/iPad: a button with a grey
-/// selection pill — the List's own selection would be painted in the system accent, not the colour tone.
+/// A sidebar row that goes somewhere: a button with a grey selection pill — a List's own selection would be painted in
+/// the system accent, not the colour tone.
 private struct SidebarDestination<Label: View>: View {
     let route: Route
     let navigator: Navigator
-    let wide: Bool
     var showsSelection = true
     /// Rows without a chevron of their own (Home, Trash, favorites) leave its slot empty, so icons line up
     /// with the tree's.
@@ -346,43 +275,39 @@ private struct SidebarDestination<Label: View>: View {
     @State private var hovering = false
 
     var body: some View {
-        if wide {
-            let selected = showsSelection && navigator.route == route
-            Button {
-                // Mac/iPad: the row's page joins the tab strip (or its tab gets focus).
-                navigator.openFromSidebar(route)
-            } label: {
-                label
-                    .padding(.leading, reservesChevron ? Size.sidebarIcon + Spacing.s1 + Spacing.s2 : 0)
-                    // ~32pt rows, like Apple Music.
-                    .padding(.vertical, Spacing.s1_5)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, Spacing.s2)
-                    .contentShape(.rect)
-                    .environment(\.sidebarRowSelected, selected)
-                    .foregroundStyle(Theme.foreground)
-            }
-            .buttonStyle(.plain)
-            // A grey selection pill, as in Apple Music (icons keep the colour tone), drawn flat behind the row:
-            // as a list row background the sidebar rendered it raised, with a shadow.
-            .background {
-                // Resolved to a concrete colour: a dynamic one picked up the active sidebar's vibrancy.
-                // Hover: the same grey, lighter.
-                RoundedRectangle(cornerRadius: Radius.lg)
-                    .fill(
-                        selected
-                            ? Color(Theme.sidebarAccent.resolve(in: environment))
-                            : hovering ? Color(Theme.sidebarAccent.resolve(in: environment)).opacity(0.55) : .clear)
-            }
-            .onHover { hovering = $0 }
-            .animation(Motion.easeOut(Motion.popOut), value: hovering)
-            // The padding moved inside the button for the pill; pull it back so content keeps its place.
-            .padding(.horizontal, -Spacing.s2)
-            .listRowBackground(Color.clear)
-            .accessibilityAddTraits(selected ? .isSelected : [])
-        } else {
-            NavigationLink(value: route) { label }
+        let selected = showsSelection && navigator.route == route
+        Button {
+            // Mac/iPad: the row's page joins the tab strip (or its tab gets focus).
+            navigator.openFromSidebar(route)
+        } label: {
+            label
+                .padding(.leading, reservesChevron ? Size.sidebarIcon + Spacing.s1 + Spacing.s2 : 0)
+                // ~32pt rows, like Apple Music.
+                .padding(.vertical, Spacing.s1_5)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, Spacing.s2)
+                .contentShape(.rect)
+                .environment(\.sidebarRowSelected, selected)
+                .foregroundStyle(Theme.foreground)
         }
+        .buttonStyle(.plain)
+        // A grey selection pill, as in Apple Music (icons keep the colour tone), drawn flat behind the row:
+        // as a list row background the sidebar rendered it raised, with a shadow.
+        .background {
+            // Resolved to a concrete colour: a dynamic one picked up the active sidebar's vibrancy.
+            // Hover: the same grey, lighter.
+            RoundedRectangle(cornerRadius: Radius.lg)
+                .fill(
+                    selected
+                        ? Color(Theme.sidebarAccent.resolve(in: environment))
+                        : hovering ? Color(Theme.sidebarAccent.resolve(in: environment)).opacity(0.55) : .clear)
+        }
+        .onHover { hovering = $0 }
+        .animation(Motion.easeOut(Motion.popOut), value: hovering)
+        // The padding moved inside the button for the pill; pull it back so content keeps its place.
+        .padding(.horizontal, -Spacing.s2)
+        .listRowBackground(Color.clear)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 
@@ -587,28 +512,6 @@ private struct HoverPageRow: View {
 
 // MARK: - Shared
 
-/// ⋯ button on a sidebar row.
-struct PageRowMenu: View {
-    let page: PageSummary
-    let navigator: Navigator
-
-    var body: some View {
-        Menu {
-            PageActions(page: page, navigator: navigator)
-        } label: {
-            IconView(.dotsThree, size: TextSize.xs.rawValue)
-                .foregroundStyle(Theme.mutedForeground)
-                .frame(width: 22, height: 22)
-                .contentShape(.rect)
-        }
-        .menuStyle(.button)
-        .buttonStyle(HoverHighlightStyle())
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .help("app:sidebar.rowMenuHelp")
-    }
-}
-
 /// Shared page actions for the ⋯ menu, context menus and the page bar.
 struct PageActions: View {
     @Environment(AppModel.self) private var model
@@ -734,20 +637,6 @@ extension PageLink {
     }
 }
 
-/// "Import…" in the workspace menus (File → Import… on Mac/iPad): Markdown, HTML or text files as new pages.
-private struct ImportMenuItem: View {
-    let navigator: Navigator
-
-    var body: some View {
-        Button {
-            navigator.isImporting = true
-        } label: {
-            IconLabel("app:import.menu", icon: .downloadSimple)
-        }
-        .accessibilityIdentifier("import-files")
-    }
-}
-
 /// "Settings…" in the workspace menus: the Settings window on macOS, the settings sheet on iOS.
 private struct SettingsMenuItem: View {
     let navigator: Navigator
@@ -769,35 +658,30 @@ private struct SettingsMenuItem: View {
     }
 }
 
-/// EXPERIMENT: Mac/iPad sidebar chrome for the native look.
+/// The sidebar's chrome: the glass search field pinned on top, the workspace switcher at the bottom.
 private struct NativeSidebarChrome: ViewModifier {
     let navigator: Navigator
-    let isWide: Bool
     @Environment(\.fullScreenSlack) private var fullScreenSlack
 
     func body(content: Content) -> some View {
-        if isWide {
-            content
-                // Bars (not plain insets): rows scrolling under them fade out (the scroll edge effect) instead
-                // of running into their content.
-                .safeAreaBar(edge: .top) {
-                    GlassSearchField("app:nav.search", shortcut: "⌘K") { navigator.isSearching = true }
-                        .accessibilityIdentifier("sidebar-search")
-                        .padding(.horizontal, Spacing.s3)
-                        .padding(.bottom, Spacing.s1)
-                        // Full screen: room for the toolbar row to slide down with the menu bar (FullScreenChrome.swift),
-                        // plus a breath so the field never touches the row once it has come down.
-                        .padding(.top, fullScreenSlack > 0 ? fullScreenSlack + Spacing.s3 : 0)
-                }
-                .safeAreaBar(edge: .bottom) {
-                    WorkspaceSwitcher(navigator: navigator)
-                        .padding(.horizontal, Spacing.s2)
-                        .padding(.top, Spacing.s1_5)
-                        .padding(.bottom, Spacing.s2)
-                }
-        } else {
-            content.scrollContentBackground(.hidden).background(Theme.sidebar)
-        }
+        content
+            // Bars (not plain insets): rows scrolling under them fade out (the scroll edge effect) instead
+            // of running into their content.
+            .safeAreaBar(edge: .top) {
+                GlassSearchField("app:nav.search", shortcut: "⌘K") { navigator.isSearching = true }
+                    .accessibilityIdentifier("sidebar-search")
+                    .padding(.horizontal, Spacing.s3)
+                    .padding(.bottom, Spacing.s1)
+                    // Full screen: room for the toolbar row to slide down with the menu bar (FullScreenChrome.swift),
+                    // plus a breath so the field never touches the row once it has come down.
+                    .padding(.top, fullScreenSlack > 0 ? fullScreenSlack + Spacing.s3 : 0)
+            }
+            .safeAreaBar(edge: .bottom) {
+                WorkspaceSwitcher(navigator: navigator)
+                    .padding(.horizontal, Spacing.s2)
+                    .padding(.top, Spacing.s1_5)
+                    .padding(.bottom, Spacing.s2)
+            }
     }
 
 }

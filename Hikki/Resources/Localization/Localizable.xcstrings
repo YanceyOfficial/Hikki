@@ -7600,23 +7600,6 @@
         }
       }
     },
-    "app:sidebar.rowMenuHelp": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete, favorite and more…"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "删除、收藏等更多操作…"
-          }
-        }
-      }
-    },
     "app:split.change": {
       "extractionState": "manual",
       "localizations": {
