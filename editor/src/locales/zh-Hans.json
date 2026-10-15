@@ -478,6 +478,7 @@
     "workspaceSyncFailed": "无法与工作区文件夹同步。",
     "workspaceOpenFailed": "无法打开工作区。",
     "databaseOpenFailed": "无法打开本地数据库。",
+    "workspaceSaveFailed": "无法保存工作区设置。",
     "editorCrashed": "编辑器意外停止，已重新加载。",
     "editorScriptError": "编辑器出错了。",
     "pageReadOnly": "页面以只读方式打开：此版本无法编辑其内容。",

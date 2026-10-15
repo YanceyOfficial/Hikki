@@ -25,6 +25,7 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
     case workspaceSyncFailed
     case workspaceOpenFailed
     case databaseOpenFailed
+    case workspaceSaveFailed
     case editorCrashed
     case editorScriptError
     case pageReadOnly
@@ -73,6 +74,7 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .workspaceSyncFailed: 2102
         case .workspaceOpenFailed: 2103
         case .databaseOpenFailed: 2104
+        case .workspaceSaveFailed: 2105
         case .editorCrashed: 3001
         case .editorScriptError: 3002
         case .pageReadOnly: 3003
@@ -141,6 +143,7 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .workspaceSyncFailed: .warning
         case .workspaceOpenFailed: .error
         case .databaseOpenFailed: .error
+        case .workspaceSaveFailed: .error
         case .editorCrashed: .warning
         case .editorScriptError: .error
         case .pageReadOnly: .warning

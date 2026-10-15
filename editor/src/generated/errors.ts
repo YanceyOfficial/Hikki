@@ -23,6 +23,7 @@ export const ERRORS = {
   workspaceSyncFailed: { code: 2102, severity: 'warning' },
   workspaceOpenFailed: { code: 2103, severity: 'error' },
   databaseOpenFailed: { code: 2104, severity: 'error' },
+  workspaceSaveFailed: { code: 2105, severity: 'error' },
   editorCrashed: { code: 3001, severity: 'warning' },
   editorScriptError: { code: 3002, severity: 'error' },
   pageReadOnly: { code: 3003, severity: 'warning' },
@@ -101,6 +102,8 @@ export function errorMessage(id: ErrorId): string {
       return t('error.workspaceOpenFailed')
     case 'databaseOpenFailed':
       return t('error.databaseOpenFailed')
+    case 'workspaceSaveFailed':
+      return t('error.workspaceSaveFailed')
     case 'editorCrashed':
       return t('error.editorCrashed')
     case 'editorScriptError':

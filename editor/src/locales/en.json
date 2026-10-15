@@ -478,6 +478,7 @@
     "workspaceSyncFailed": "Couldn't sync with the workspace folder.",
     "workspaceOpenFailed": "Couldn't open the workspace.",
     "databaseOpenFailed": "Couldn't open the local database.",
+    "workspaceSaveFailed": "Couldn't save the workspace's settings.",
     "editorCrashed": "The editor stopped and was reloaded.",
     "editorScriptError": "The editor hit an error.",
     "pageReadOnly": "This page opened read-only: its content isn't something this version can edit.",

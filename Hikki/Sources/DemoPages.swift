@@ -22,7 +22,7 @@
                 _ = try? store.saveContent(
                     Snapshot(
                         docId: record.id, content: .object(["type": .string("doc"), "content": .array(paragraphs)]), title: title,
-                        text: body, wordCount: body.count),
+                        text: body, wordCount: WordCount.count(title: title, text: body)),
                     now: edited)
                 try? store.setIcon(icon, for: record.id, now: edited)
                 return record.id
