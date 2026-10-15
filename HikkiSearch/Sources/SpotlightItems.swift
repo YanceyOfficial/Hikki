@@ -7,6 +7,14 @@ import Foundation
 public enum SpotlightItems {
     /// The domain every page item is filed under (so they can all be removed at once).
     public static let domain = "pages"
+
+    /// Whether this run may write to the device's Spotlight index. Not a run on a data folder of its own
+    /// (`HIKKI_DATA_DIR`: UI tests, demos): the index is shared by every run of the app, and their sample pages
+    /// showed up in the user's Spotlight. `HIKKI_SPOTLIGHT=1` allows it anyway (testing Spotlight itself).
+    public static func writesAllowed(environment: [String: String]) -> Bool {
+        guard let dir = environment["HIKKI_DATA_DIR"], !dir.isEmpty else { return true }
+        return environment["HIKKI_SPOTLIGHT"] == "1"
+    }
     /// How much page text Spotlight gets to search.
     public static let maxTextCharacters = 50_000
     /// How much of it shows under the title.

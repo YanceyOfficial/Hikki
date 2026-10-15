@@ -326,7 +326,10 @@ HikkiUITests/                 XCUITest flows
   edited, `SearchSort`). The palette searches off the main thread (`AppModel.search` is async; a newer query cancels
   the older one), so a busy index never freezes typing. Pages also go into the device's Spotlight index
   (Core Spotlight: `Hikki/Sources/SpotlightIndex.swift`, items shaped by `SpotlightItems` in HikkiSearch; Settings →
-  Spotlight, default on, off empties it); a Spotlight result opens the page through `onContinueUserActivity`.
+  Spotlight, default on, off empties it); a Spotlight result opens the page through `onContinueUserActivity`. The
+  index is shared by every run of the app, so a run on its own data folder (`HIKKI_DATA_DIR`: UI tests, demos) never
+  writes to it (`SpotlightItems.writesAllowed`; `HIKKI_SPOTLIGHT=1` to test Spotlight itself), and a new item format
+  (`SpotlightPreferences.version`) empties the domain before pushing every page again (`reseed`).
   No search by meaning: on-device embeddings (`NLContextualEmbedding`, 2026-10-14) separated related from unrelated
   sentences too poorly, and semantic search over Ollama embeddings (bge-m3, e5) was built and removed on 2026-10-15 —
   one-word queries across languages ("busy" → 忙しい) still missed, and its indexer competed with word search.

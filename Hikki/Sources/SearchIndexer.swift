@@ -43,8 +43,7 @@ nonisolated final class SearchIndexer: Sendable {
         queue.async { [self] in
             if enabled {
                 do {
-                    spotlight.index(try store.allDocuments().filter { $0.deletedAt == nil }.map(Self.document))
-                    spotlight.isSeeded = true
+                    spotlight.reseed(try store.allDocuments().filter { $0.deletedAt == nil }.map(Self.document))
                 } catch {
                     Log.error("spotlight seeding failed: \(error)", category: "search")
                 }
@@ -74,9 +73,12 @@ nonisolated final class SearchIndexer: Sendable {
             try index.remove(gone)
             // Spotlight follows: every page once per format, then only what changed.
             if spotlight.isEnabled {
-                spotlight.index((spotlight.isSeeded ? stale : live).map(Self.document))
-                spotlight.remove(gone)
-                spotlight.isSeeded = true
+                if spotlight.isSeeded {
+                    spotlight.index(stale.map(Self.document))
+                    spotlight.remove(gone)
+                } else {
+                    spotlight.reseed(live.map(Self.document))
+                }
             }
             Log.info(
                 "search index reconciled", category: "search",

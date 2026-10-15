@@ -6,9 +6,10 @@ import HikkiSearch
 nonisolated enum SpotlightPreferences {
     /// Settings → Editor → Spotlight (default on).
     static let enabledKey = "spotlightIndexing"
-    /// The item format last pushed in full; a different `version` pushes every page again.
+    /// The item format last pushed in full; a different `version` empties the index and pushes every page again.
     static let seededKey = "spotlightSeededVersion"
-    static let version = 1
+    /// 2: emptied once — UI test and demo runs had added their sample pages to the user's Spotlight (2026-10-16).
+    static let version = 2
 }
 
 /// The device's Spotlight index of pages (Core Spotlight), fed beside the search index by `SearchIndexer`:
@@ -17,15 +18,18 @@ nonisolated enum SpotlightPreferences {
 nonisolated final class SpotlightIndex: Sendable {
     /// Core Spotlight's index is safe to call from any thread; the type just isn't marked so.
     private nonisolated(unsafe) let index = CSSearchableIndex.default()
+    /// Not on a test's or demo's own data folder (`SpotlightItems.writesAllowed`).
+    private let writable = SpotlightItems.writesAllowed(environment: ProcessInfo.processInfo.environment)
 
     var isEnabled: Bool {
-        UserDefaults.standard.object(forKey: SpotlightPreferences.enabledKey) as? Bool ?? true
+        writable && UserDefaults.standard.object(forKey: SpotlightPreferences.enabledKey) as? Bool ?? true
     }
 
     /// Whether every page has been pushed once in the current format.
     var isSeeded: Bool {
         get { UserDefaults.standard.integer(forKey: SpotlightPreferences.seededKey) == SpotlightPreferences.version }
         set {
+            guard writable else { return }
             UserDefaults.standard.set(newValue ? SpotlightPreferences.version : 0, forKey: SpotlightPreferences.seededKey)
         }
     }
@@ -40,16 +44,27 @@ nonisolated final class SpotlightIndex: Sendable {
     }
 
     func remove(_ ids: [String]) {
-        guard !ids.isEmpty, CSSearchableIndex.isIndexingAvailable() else { return }
+        guard writable, !ids.isEmpty, CSSearchableIndex.isIndexingAvailable() else { return }
         index.deleteSearchableItems(withIdentifiers: ids) { error in
             if let error { Log.error("spotlight removal failed: \(error)", category: "search") }
         }
     }
 
     /// Everything out (the switch turned off, or the format changed).
+    /// Every page anew: the domain emptied first, so nothing left from another format (or another run) stays.
+    func reseed(_ documents: [SearchDocument]) {
+        guard isEnabled, CSSearchableIndex.isIndexingAvailable() else { return }
+        index.deleteSearchableItems(withDomainIdentifiers: [SpotlightItems.domain]) { [self] error in
+            if let error { Log.error("spotlight clearing failed: \(error)", category: "search") }
+            index(documents)
+            Log.info("spotlight reseeded", category: "search", context: ["pages": String(documents.count)])
+        }
+        isSeeded = true
+    }
+
     func removeAll() {
         isSeeded = false
-        guard CSSearchableIndex.isIndexingAvailable() else { return }
+        guard writable, CSSearchableIndex.isIndexingAvailable() else { return }
         index.deleteSearchableItems(withDomainIdentifiers: [SpotlightItems.domain]) { error in
             if let error { Log.error("spotlight clearing failed: \(error)", category: "search") }
         }

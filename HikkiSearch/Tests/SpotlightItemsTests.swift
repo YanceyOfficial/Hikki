@@ -32,4 +32,11 @@ struct SpotlightItemsTests {
         let description = item.attributeSet.contentDescription ?? ""
         #expect(description.hasSuffix("…") && description.count <= SpotlightItems.descriptionCharacters + 1)
     }
+
+    @Test func onlyTheRealDataFolderWritesToSpotlight() {
+        #expect(SpotlightItems.writesAllowed(environment: [:]))
+        #expect(SpotlightItems.writesAllowed(environment: ["HIKKI_DATA_DIR": ""]))
+        #expect(!SpotlightItems.writesAllowed(environment: ["HIKKI_DATA_DIR": "/tmp/uitest"]))
+        #expect(SpotlightItems.writesAllowed(environment: ["HIKKI_DATA_DIR": "/tmp/uitest", "HIKKI_SPOTLIGHT": "1"]))
+    }
 }
