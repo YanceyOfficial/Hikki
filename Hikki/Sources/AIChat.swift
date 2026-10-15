@@ -325,7 +325,7 @@ private struct ChatBubble: View {
         case .assistant:
             VStack(alignment: .leading, spacing: Spacing.s2_5) {
                 if !message.text.isEmpty {
-                    Text(Self.markdown(message.text))
+                    Text(AIMarkdown.attributed(message.text))
                         .font(.hk(.base))
                         .textSelection(.enabled)
                 }
@@ -383,14 +383,6 @@ private struct ChatBubble: View {
         }
         .font(.hk(.sm))
         .foregroundStyle(Theme.mutedForeground)
-    }
-
-    /// The answer's Markdown (inline styles, links, line breaks kept); plain text if it doesn't parse.
-    static func markdown(_ text: String) -> AttributedString {
-        (try? AttributedString(
-            markdown: text,
-            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace, failurePolicy: .returnPartiallyParsedIfPossible)))
-            ?? AttributedString(text)
     }
 }
 
