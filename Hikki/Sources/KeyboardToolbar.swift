@@ -7,7 +7,9 @@
 
     /// Editor formatting bar shown above the iPhone/iPad software keyboard.
     struct KeyboardToolbar: View {
-        let controller: EditorController
+        /// Weak: the bar lives in the controller's own web view, so a strong reference kept the editor (and its web
+        /// process) alive after its window closed.
+        weak var controller: EditorController?
 
         static let commands: [EditorCommand] = [
             .heading1, .heading2, .bold, .italic, .strike, .code,
@@ -15,17 +17,21 @@
         ]
 
         var body: some View {
-            KeyboardAccessoryBar(onDismiss: controller.dismissKeyboard) {
+            KeyboardAccessoryBar(onDismiss: dismiss) {
                 ForEach(Self.commands) { command in
                     ToolbarIconButton(
                         LocalizedStringKey(command.title),
                         symbol: command.icon,
-                        isActive: controller.activeFormats.contains(command.rawValue)
+                        isActive: controller?.activeFormats.contains(command.rawValue) == true
                     ) {
-                        controller.exec(command)
+                        controller?.exec(command)
                     }
                 }
             }
+        }
+
+        private func dismiss() {
+            controller?.dismissKeyboard()
         }
     }
 

@@ -240,7 +240,11 @@ private struct CommentsPane: View {
                                 editor.openComment(thread.id)
                             } reopen: {
                                 guard let pageID else { return }
-                                try? model.comments?.setResolved(false, pageId: pageID, threadId: thread.id)
+                                do {
+                                    try model.comments?.setResolved(false, pageId: pageID, threadId: thread.id)
+                                } catch {
+                                    Toasts.report(.commentFailed, error, category: "comments", context: ["docId": pageID])
+                                }
                                 NotificationCenter.default.post(name: .pageCommentsChanged, object: nil, userInfo: ["id": pageID])
                             }
                         }

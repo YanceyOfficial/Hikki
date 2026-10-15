@@ -9,17 +9,6 @@ import WebKit
 extension AppModel {
     // MARK: - History
 
-    /// The page's kept versions, newest first.
-    func versions(of pageID: String) -> [PageVersion] {
-        guard let history else { return [] }
-        do {
-            return try history.versions(of: pageID)
-        } catch {
-            Log.error("page versions unreadable: \(error)", category: "history", context: ["docId": pageID])
-            return []
-        }
-    }
-
     /// Puts a version back as the page (title, body, icon, cover). Editors showing the page hand over their unsaved
     /// edits first, and the page as it is now is kept as a version — restoring can itself be undone from the history.
     func restore(_ version: PageVersion, editors: [EditorController]) async {
@@ -45,7 +34,7 @@ extension AppModel {
     // MARK: - Import
 
     /// Files larger than this aren't read as text.
-    static let importLimit = 20 * 1024 * 1024
+    nonisolated static let importLimit = 20 * 1024 * 1024
 
     /// Each Markdown / HTML / text file as a new page at the top level, or as the last children of `parentId` (files
     /// dropped on a sidebar row), converted by the editor — and for a chosen
@@ -56,8 +45,7 @@ extension AppModel {
         for url in urls {
             let access = url.startAccessingSecurityScopedResource()
             defer { if access { url.stopAccessingSecurityScopedResource() } }
-            let isFolder = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
-            for file in isFolder ? PageImport.documents(in: url) : [url] {
+            for file in await Self.documents(at: url) {
                 if let id = await importDocument(file, parentId: parentId, editor: editor) { created.append(id) }
             }
         }
@@ -74,32 +62,49 @@ extension AppModel {
         }
     }
 
-    enum ImportError: Error {
+    nonisolated enum ImportError: Error {
         case tooLarge
+    }
+
+    /// A file, or the documents in a folder (listed off the main thread: a big folder takes a while).
+    @concurrent nonisolated private static func documents(at url: URL) async -> [URL] {
+        let isFolder = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+        return isFolder ? PageImport.documents(in: url) : [url]
+    }
+
+    /// The file's text, read off the main thread (up to `importLimit`, 20 MB).
+    @concurrent nonisolated private static func readText(_ url: URL) async throws -> (text: String, bytes: Int) {
+        let data = try Data(contentsOf: url)
+        guard data.count <= importLimit else {
+            Log.warn("import skipped: file too large", category: "import", context: ["bytes": "\(data.count)"])
+            throw ImportError.tooLarge
+        }
+        return (String(decoding: data, as: UTF8.self), data.count)
+    }
+
+    /// The files a document links relatively, copied into the workspace's assets off the main thread; the content
+    /// pointing at the copies.
+    @concurrent nonisolated private static func relink(
+        _ content: JSONValue, base: URL, root: URL?, assets: AssetStore
+    ) async -> (content: JSONValue, copied: Int) {
+        PageImport.relinkLocalFiles(in: content, base: base, root: root) { file in try assets.importCopy(of: file) }
     }
 
     /// One Markdown / HTML / text file as a new page under `parentId`, converted by the editor. Files it links
     /// relatively come along when they are inside `root` (the folder the user chose; the file's own folder when nil).
     func importConverted(_ url: URL, root: URL? = nil, parentId: String?, editor: EditorController) async throws -> String {
         let format = ImportFormat(fileExtension: url.pathExtension) ?? .text
-        let data = try Data(contentsOf: url)
-        guard data.count <= Self.importLimit else {
-            Log.warn("import skipped: file too large", category: "import", context: ["bytes": "\(data.count)"])
-            throw ImportError.tooLarge
-        }
-        let text = String(decoding: data, as: UTF8.self)
+        let (text, bytes) = try await Self.readText(url)
+        // Only the conversion runs on the main thread (in the editor's web view).
         let page = try await editor.importDocument(text, format: format, fallbackTitle: url.deletingPathExtension().lastPathComponent)
         // Pictures beside the document (inside the chosen folder only) become the page's own.
-        let (content, copied) = PageImport.relinkLocalFiles(in: page.content, base: url.deletingLastPathComponent(), root: root) {
-            file in
-            try assets.importCopy(of: file)
-        }
+        let (content, copied) = await Self.relink(page.content, base: url.deletingLastPathComponent(), root: root, assets: assets)
         let record = try store.create(parentId: parentId)
         try store.saveContent(
             Snapshot(docId: record.id, content: content, title: page.title, text: page.text, wordCount: page.wordCount))
         Log.info(
             "page imported", category: "import",
-            context: ["docId": record.id, "format": format.rawValue, "bytes": "\(data.count)", "files": "\(copied)"])
+            context: ["docId": record.id, "format": format.rawValue, "bytes": "\(bytes)", "files": "\(copied)"])
         return record.id
     }
 

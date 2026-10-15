@@ -12,7 +12,6 @@ import Observation
 final class AppModel {
     let store: DocumentStore
     let searchIndexer: SearchIndexer
-    /// Search by meaning (Settings → Search): the query's vector and the indexer's status.
     let assets: AssetStore
     let crashReporter: CrashReporter
     let workspaceStore: WorkspaceStore
@@ -52,7 +51,14 @@ final class AppModel {
         startWorkspaceSync()
         searchIndexer.start()
         purgeTrash()
+        // One observation for the app (every window reads the same tree): it was a task per window, each writing it.
+        observation = Task { [weak self] in await self?.observe() }
+        Self.current = self
     }
+
+    /// The app's model, for what has no window to ask (quitting: `AppDelegate`).
+    static weak var current: AppModel?
+    @ObservationIgnored private var observation: Task<Void, Never>?
 
     // MARK: Workspace folder (storage option C)
 
@@ -141,7 +147,7 @@ final class AppModel {
                         self?.syncError = nil
                     }
                 } catch {
-                    Log.error("workspace sync failed to start: \(error)", category: "workspace")
+                    Toasts.report(.workspaceSyncFailed, error, category: "workspace")
                     Task { @MainActor in self?.syncError = error.localizedDescription }
                 }
             }
@@ -209,7 +215,7 @@ final class AppModel {
             do {
                 Self.log("workspace reconciled", try sync.reconcile())
             } catch {
-                Log.error("workspace reconcile failed: \(error)", category: "workspace")
+                Toasts.report(.workspaceSyncFailed, error, category: "workspace")
             }
         }
     }
@@ -265,7 +271,7 @@ final class AppModel {
             Log.info("workspace created", category: "workspace", context: ["location": kind])
             startWorkspaceSync()
         } catch {
-            Log.error("workspace save failed: \(error)", category: "workspace")
+            Toasts.report(.workspaceSaveFailed, error, category: "workspace")
         }
     }
 
@@ -279,7 +285,7 @@ final class AppModel {
             try writeIdentity()
             Log.info("workspace renamed", category: "workspace")
         } catch {
-            Log.error("workspace save failed: \(error)", category: "workspace")
+            Toasts.report(.workspaceSaveFailed, error, category: "workspace")
         }
     }
 
@@ -295,12 +301,12 @@ final class AppModel {
                 "workspace icon set", category: "workspace",
                 context: ["kind": icon.map { if case .image = $0 { "image" } else { "emoji" } } ?? "none"])
         } catch {
-            Log.error("workspace save failed: \(error)", category: "workspace")
+            Toasts.report(.workspaceSaveFailed, error, category: "workspace")
         }
     }
 
-    /// Keeps `tree` and `trash` in sync with the database for the lifetime of the calling task.
-    func observe() async {
+    /// Keeps `tree` and `trash` in sync with the database for the lifetime of the calling task (`observation`).
+    private func observe() async {
         await withDiscardingTaskGroup { group in
             group.addTask { await self.observePages() }
             group.addTask { await self.observeTrash() }
@@ -334,7 +340,7 @@ final class AppModel {
         perform("create page", code: .pageCreateFailed) {
             let record = try store.create(parentId: parentId)
             try store.saveContent(
-                Snapshot(docId: record.id, content: note.content, title: note.title, text: note.text, wordCount: note.text.count))
+                Snapshot(docId: record.id, content: note.content, title: note.title, text: note.text, wordCount: note.wordCount))
             return record.id
         }
     }

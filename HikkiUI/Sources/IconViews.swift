@@ -43,3 +43,16 @@ public struct IconLabel: View {
         }
     }
 }
+
+#Preview {
+    VStack(alignment: .leading, spacing: Spacing.s3) {
+        HStack(spacing: Spacing.s3) {
+            IconView(.house)
+            IconView(.magnifyingGlass, size: TextSize.lg.rawValue)
+            IconView(.notePencil, size: TextSize.xl.rawValue).foregroundStyle(Theme.mutedForeground)
+        }
+        IconLabel("Home", icon: .house)
+        IconLabel("Settings", icon: .gearSix).labelStyle(.iconOnly)
+    }
+    .padding()
+}

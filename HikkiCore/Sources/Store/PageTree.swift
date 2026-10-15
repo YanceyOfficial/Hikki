@@ -26,24 +26,25 @@ public struct PageTree: Equatable, Sendable {
                 return PageNode(page: page, children: build(page.id, visited.union([page.id])))
             }
         }
-        self.roots = build(nil, [])
-        self.byId = byId
-    }
-
-    public func page(_ id: String) -> PageSummary? { byId[id] }
-
-    /// Every live page, in tree order (depth first): the index the editor names links with.
-    public var all: [PageSummary] {
-        var result: [PageSummary] = []
+        let roots = build(nil, [])
+        var all: [PageSummary] = []
         func walk(_ nodes: [PageNode]) {
             for node in nodes {
-                result.append(node.page)
+                all.append(node.page)
                 walk(node.children)
             }
         }
         walk(roots)
-        return result
+        self.roots = roots
+        self.byId = byId
+        self.all = all
     }
+
+    public func page(_ id: String) -> PageSummary? { byId[id] }
+
+    /// Every live page, in tree order (depth first): the index the editor names links with. Built once with the tree
+    /// (views and the editors read it on every tree change).
+    public let all: [PageSummary]
 
     /// "Move to" choices for a page, depth-first in sidebar order with their depth: every page except the
     /// page itself and its own subtree (it can't move inside itself) and its current parent (a no-op).

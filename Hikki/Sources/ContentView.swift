@@ -13,13 +13,13 @@ struct ContentView: View {
     #if os(iOS)
         @Environment(\.horizontalSizeClass) private var sizeClass
     #endif
-    // One editor (and one WKWebView) per window, reused across pages and tabs.
-    @State private var editor = EditorController()
+    /// One editor (and one WKWebView) per window, reused across pages and tabs; the split pane's second one.
+    @State private var editors = WindowEditors()
+    private var editor: EditorController { editors.main }
+    private var splitEditor: EditorController? { editors.split }
     /// Where each tab's page was scrolled when another tab took over (session only), and the tab the editor shows.
     @State private var tabScroll: [UUID: (docId: String, top: Double)] = [:]
     @State private var shownTab: UUID?
-    /// The split pane's editor (a second web view), made the first time a page opens in the pane.
-    @State private var splitEditor: EditorController?
     /// AI on the selection, for both editors.
     @State private var ai = AIService()
     /// Ask AI's conversation (iPhone's bottom bar).
@@ -36,6 +36,12 @@ struct ContentView: View {
     #if os(macOS)
         @Environment(\.openSettings) private var openSettings
     #endif
+
+    /// What both of the window's editors show the same way; each holds it and replays it when its page comes up.
+    private var editorSettings: EditorSettings {
+        EditorSettings(
+            tone: tone, spellcheck: spellcheck, aiReviewStyle: aiReviewStyle, shortcuts: ShortcutStore.shared.overrides)
+    }
 
     var body: some View {
         // Split in two so the type checker copes: the layout, then the scene's events.
@@ -151,7 +157,8 @@ struct ContentView: View {
         // Attachments opened from the editor.
         .quickLookPreview($editor.previewURL)
         // The passage selected in the page (the main editor's) rides along to Ask AI as context, as in Notion.
-        .onChange(of: editor.selection) { _, selection in chat.selection = selection?.text }
+        // It keeps the page it was selected in: a question about another page goes without it.
+        .onChange(of: editor.selection) { _, selection in chat.selection = selection }
         // "Open in Split View" wherever page actions are (sidebar, Home, ⋯): by the window's width, not a column's.
         .environment(\.splitAvailable, wide)
     }
@@ -235,8 +242,15 @@ struct ContentView: View {
     /// Setup, routing to the editor, settings, deep links, tab persistence, backgrounding.
     private func sceneEvents(_ content: some View) -> some View {
         content
-            .task { await model.observe() }
             .onAppear(perform: setUp)
+            // The window closed: its editors hand over what was typed in the last moments (nothing else keeps them
+            // alive to save it later).
+            .onDisappear {
+                let editors = [editor] + (splitEditor.map { [$0] } ?? [])
+                Task {
+                    for editor in editors { await editor.flush(reason: "window-closed") }
+                }
+            }
             .onChange(of: navigator.route) { _, route in
                 // Each tab keeps its place: the page leaving is remembered for its tab, and a tab shown again goes back
                 // to where it was — another page opened inside a tab starts at its top.
@@ -252,18 +266,11 @@ struct ContentView: View {
             }
             .onChange(of: wide) { editor.setSplitDrop(mainSplitDrop) }
             .onChange(of: navigator.isSplit) { editor.setSplitDrop(mainSplitDrop) }
-            .onChange(of: spellcheck) { _, on in
-                editor.setSpellcheck(on)
-                splitEditor?.setSpellcheck(on)
-            }
-            .onChange(of: aiReviewStyle) { _, style in
-                editor.setAIReviewStyle(style)
-                splitEditor?.setAIReviewStyle(style)
-            }
-            // Settings → Shortcuts: the page handles the editor's own keys, so it hears about rebindings.
-            .onChange(of: ShortcutStore.shared.overrides) {
-                editor.updateShortcuts()
-                splitEditor?.updateShortcuts()
+            // Tone, spelling, the AI review style and Settings → Shortcuts' rebindings (the page handles the editor's
+            // own keys): both editors, as they change.
+            .onChange(of: editorSettings, initial: true) { _, settings in
+                editor.apply(settings)
+                splitEditor?.apply(settings)
             }
             // The split pane's page: its own editor, made on first use and wired like the main one.
             .onChange(of: navigator.split) { _, split in
@@ -279,8 +286,6 @@ struct ContentView: View {
                 UserDefaults.standard.set(mode.rawValue, forKey: InspectorPreferences.tabKey)
                 editor.setOutlineRail(!(navigator.isShowingInspector && mode == .outline))
             }
-            // Lock / unlock while the page is open (the load payload carries it otherwise).
-            .onChange(of: navigator.currentPage?.isLocked) { _, locked in editor.setLocked(locked ?? false) }
             .onChange(of: navigator.titleFocusRequest) { _, request in
                 if let request { editor.focusTitle(of: request.pageID) }
             }
@@ -305,12 +310,14 @@ struct ContentView: View {
             .fullScreenChrome()
             .onChange(of: navigator.tabs) { _, _ in storedTabs = navigator.encodedTabs() }
             .onChange(of: model.tree) { _, tree in
-                // Pages trashed here or in another window disappear from every tab's history.
+                // Pages trashed here or in another window disappear from every tab's history. Each step changes
+                // nothing (and so re-renders nothing) when nothing it shows changed — this runs on every save.
                 navigator.prune { tree.page($0) != nil }
                 navigator.pruneSplit { tree.page($0) != nil }
-                splitEditor?.setPages(tree.all)
                 navigator.revealCurrent()
-                editor.setPages(tree.all)
+                // Each editor: its link index when a title or icon changed, its page's lock when that changed.
+                editor.setPages(tree)
+                splitEditor?.setPages(tree)
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {
@@ -319,26 +326,26 @@ struct ContentView: View {
                     // Other devices may have commented meanwhile (their files synced in).
                     NotificationCenter.default.post(name: .pageCommentsChanged, object: nil)
                 } else {
-                    Task {
-                        await editor.flush(reason: "scenePhase-\(phase)")
-                        await splitEditor?.flush(reason: "scenePhase-\(phase)")
-                        model.flushWorkspace()
-                    }
+                    let editors = [editor] + (splitEditor.map { [$0] } ?? [])
+                    SaveOnExit.flush(editors, model: model, reason: "scenePhase-\(phase)")
                 }
             }
     }
 
-    /// First appearance: tabs, the editor's settings and store, DEBUG hooks, the first page.
+    /// First appearance: tabs, the editor's store and callbacks, the last run's crash, DEBUG hooks, the first page.
     private func setUp() {
         navigator.attach(model)
         navigator.restoreTabs(from: storedTabs)
-        editor.onOpenDocument = { [navigator] name, label in navigator.openDocument(name: name, label: label) }
+        // The editor's callbacks hold the navigator, the model and the editor weakly (each owns none of them): a
+        // strong capture kept every closed window's editor and web process alive.
+        let editor = editor
+        editor.onOpenDocument = { [weak navigator] name, label in navigator?.openDocument(name: name, label: label) }
         // A page dropped on the page's right edge opens beside it (split view).
-        editor.onOpenInSplit = { [navigator] id in
-            navigator.splitDropHover = false
-            if model.tree.page(id) != nil { navigator.openInSplit(.page(id)) }
+        editor.onOpenInSplit = { [weak navigator, weak model] id in
+            navigator?.splitDropHover = false
+            if model?.tree.page(id) != nil { navigator?.openInSplit(.page(id)) }
         }
-        editor.onSplitDropHover = { [navigator] active in navigator.splitDropHover = active }
+        editor.onSplitDropHover = { [weak navigator] active in navigator?.splitDropHover = active }
         editor.setSplitDrop(mainSplitDrop)
         ai.attach(editor)
         // The inspector starts closed in every window (its tab is remembered); `-inspector.visible YES` opens it
@@ -352,34 +359,57 @@ struct ContentView: View {
             navigator.inspectorMode = mode
         }
         editor.setOutlineRail(!(navigator.isShowingInspector && navigator.inspectorMode == .outline))
+        announcePreviousCrash()
         #if DEBUG
-            // Screenshot/test hooks: HIKKI_OPEN_TABS=pageA,pageB opens those pages as tabs; HIKKI_OPEN_SEARCH opens ⌘K
-            // (with its value as the query).
-            if ProcessInfo.processInfo.environment["HIKKI_OPEN_SEARCH"] != nil { navigator.isSearching = true }
+            runDebugHooks()
+        #endif
+        if let initialPageID, model.tree.page(initialPageID) != nil { navigator.open(initialPageID) }
+        editor.apply(editorSettings)
+        editor.attach(store: model.store, assets: model.assets) { [weak model] in model?.history }
+        editor.comments = { [weak model] in model?.comments }
+        // Settings' bulk import / export converts Markdown and HTML with a window's editor.
+        model.bulkTransfer.register(editor, model: model)
+        editor.deviceName = AppModel.deviceKind
+        editor.onOpenPage = { [weak navigator, weak model, weak editor] id, block in
+            guard let navigator, model?.tree.page(id) != nil else { return }
+            navigator.open(id)
+            if let block { editor?.scrollToBlock(block, in: id) }
+        }
+        editor.setPages(model.tree)
+        shownTab = navigator.tabs.activeID
+        editor.open(documentID: navigator.route.pageID)
+    }
+
+    /// The run before crashed: say so once (in every build), with the way to the diagnostics to send.
+    private func announcePreviousCrash() {
+        guard model.crashReporter.pendingCrash() else { return }
+        let incident = Incident.report(.crashedLastTime, category: "crash")
+        Toasts.shared.show(
+            .warning, incident.code.message, actionTitle: "app:toast.diagnostics",
+            action: { openSettingsPage(.about) })
+    }
+
+    #if DEBUG
+        /// Screenshot and test hooks, set in the environment.
+        private func runDebugHooks() {
+            let environment = ProcessInfo.processInfo.environment
+            // HIKKI_OPEN_SEARCH opens ⌘K.
+            if environment["HIKKI_OPEN_SEARCH"] != nil { navigator.isSearching = true }
             // HIKKI_OPEN_FIND opens find in page once the page is up (screenshots of its place under the toolbar).
-            if ProcessInfo.processInfo.environment["HIKKI_OPEN_FIND"] != nil {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 5) { editor.find(.find) }
+            if environment["HIKKI_OPEN_FIND"] != nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak editor] in editor?.find(.find) }
             }
             // HIKKI_ACTIVATE brings the window to the front (screenshots of the active-window look).
             #if os(macOS)
-                if ProcessInfo.processInfo.environment["HIKKI_ACTIVATE"] != nil { NSApp.activate() }
+                if environment["HIKKI_ACTIVATE"] != nil { NSApp.activate() }
             #endif
-            #if DEBUG
-                // HIKKI_DEBUG_TOAST shows a reported failure and a confirmation (screenshots, UI tests).
-                if ProcessInfo.processInfo.environment["HIKKI_DEBUG_TOAST"] != nil {
-                    Toasts.report(.pageSaveFailed, CocoaError(.fileWriteNoPermission), category: "debug")
-                    Toasts.shared.show(.success, String(localized: "app:toast.close"))
-                }
-            #endif
-            // The run before crashed: say so once, with the way to the diagnostics to send.
-            if model.crashReporter.pendingCrash() {
-                let incident = Incident.report(.crashedLastTime, category: "crash")
-                Toasts.shared.show(
-                    .warning, incident.code.message, actionTitle: "app:toast.diagnostics",
-                    action: { openSettingsPage(.about) })
+            // HIKKI_DEBUG_TOAST shows a reported failure and a confirmation (screenshots, UI tests).
+            if environment["HIKKI_DEBUG_TOAST"] != nil {
+                Toasts.report(.pageSaveFailed, CocoaError(.fileWriteNoPermission), category: "debug")
+                Toasts.shared.show(.success, String(localized: "app:toast.close"))
             }
             // HIKKI_OPEN_SETTINGS opens Settings (screenshots); a page name (`SettingsPage`) as its value opens that page.
-            if let value = ProcessInfo.processInfo.environment["HIKKI_OPEN_SETTINGS"] {
+            if let value = environment["HIKKI_OPEN_SETTINGS"] {
                 if SettingsPage(rawValue: value) != nil { UserDefaults.standard.set(value, forKey: SettingsPage.storageKey) }
                 #if os(macOS)
                     openSettings()
@@ -389,14 +419,14 @@ struct ContentView: View {
             }
             // HIKKI_DEBUG_SPOTLIGHT_QUERY=<text> asks Spotlight for pages once indexing settled and logs the ids it
             // ranks (judging its semantic matching).
-            if let text = ProcessInfo.processInfo.environment["HIKKI_DEBUG_SPOTLIGHT_QUERY"] {
+            if let text = environment["HIKKI_DEBUG_SPOTLIGHT_QUERY"] {
                 Task {
                     try? await Task.sleep(for: .seconds(8))
                     await model.searchIndexer.debugSpotlightQuery(text)
                 }
             }
             // HIKKI_OPEN_SPLIT=<page id> | file:<asset name> | picker opens the split pane on it (screenshots).
-            if let value = ProcessInfo.processInfo.environment["HIKKI_OPEN_SPLIT"] {
+            if let value = environment["HIKKI_OPEN_SPLIT"] {
                 if value == "picker" {
                     navigator.showSplitPicker()
                 } else if value.hasPrefix("file:") {
@@ -408,18 +438,18 @@ struct ContentView: View {
             }
             // HIKKI_IMPORT_FILE=<path> imports that file once the editor is up (UI tests: the file picker runs out of
             // process).
-            if let path = ProcessInfo.processInfo.environment["HIKKI_IMPORT_FILE"] {
+            if let path = environment["HIKKI_IMPORT_FILE"] {
                 Task {
                     for _ in 0..<100 where !editor.isReady { try? await Task.sleep(for: .milliseconds(100)) }
                     await importFiles([URL(filePath: path)])
                 }
             }
             // HIKKI_OPEN_FILE=<asset name> opens that attachment in the viewer pane (screenshots of the PDF viewer).
-            if let name = ProcessInfo.processInfo.environment["HIKKI_OPEN_FILE"] {
+            if let name = environment["HIKKI_OPEN_FILE"] {
                 navigator.openDocument(name: name, label: name)
             }
             // HIKKI_DEBUG_NAV=a,b,c visits those pages one per second (reproduces page-switch bugs).
-            if let ids = ProcessInfo.processInfo.environment["HIKKI_DEBUG_NAV"]?.split(separator: ",") {
+            if let ids = environment["HIKKI_DEBUG_NAV"]?.split(separator: ",") {
                 Task {
                     for id in ids {
                         try? await Task.sleep(for: .seconds(1))
@@ -428,7 +458,7 @@ struct ContentView: View {
                 }
             }
             // HIKKI_DEBUG_SIDEBAR: hides the sidebar after 2s and shows it again after 4s (title-bar layout bugs).
-            if ProcessInfo.processInfo.environment["HIKKI_DEBUG_SIDEBAR"] != nil {
+            if environment["HIKKI_DEBUG_SIDEBAR"] != nil {
                 Task {
                     #if os(macOS)
                         NSApp.activate()  // the bug shows on a key window
@@ -439,66 +469,50 @@ struct ContentView: View {
                     withAnimation { columns = .all }
                 }
             }
-            // "home" opens Home (screenshots of it on iPhone, where the root is the sidebar).
-            if let ids = ProcessInfo.processInfo.environment["HIKKI_OPEN_TABS"]?.split(separator: ",") {
+            // HIKKI_OPEN_TABS=pageA,pageB opens those pages as tabs; "home" opens Home (screenshots of it on iPhone,
+            // where the root is the sidebar).
+            if let ids = environment["HIKKI_OPEN_TABS"]?.split(separator: ",") {
                 for (index, id) in ids.enumerated() {
                     let route: Route = id == "home" ? .home : .page(String(id))
                     if index == 0 { navigator.go(route) } else { navigator.openInNewTab(route) }
                 }
             }
             // HIKKI_OPEN_AI opens Ask AI, HIKKI_OPEN_PAGE_ACTIONS the open page's ⋯ sheet (iPhone screenshots).
-            if ProcessInfo.processInfo.environment["HIKKI_OPEN_AI"] != nil {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { navigator.isAskingAI = true }
+            if environment["HIKKI_OPEN_AI"] != nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak navigator] in navigator?.isAskingAI = true }
             }
-            if ProcessInfo.processInfo.environment["HIKKI_OPEN_PAGE_ACTIONS"] != nil {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { navigator.pageActionsID = navigator.route.pageID }
+            if environment["HIKKI_OPEN_PAGE_ACTIONS"] != nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak navigator] in
+                    navigator?.pageActionsID = navigator?.route.pageID
+                }
             }
-        #endif
-        if let initialPageID, model.tree.page(initialPageID) != nil { navigator.open(initialPageID) }
-        editor.setTone(tone)
-        editor.setSpellcheck(spellcheck)
-        editor.setAIReviewStyle(aiReviewStyle)
-        editor.attach(store: model.store, assets: model.assets) { [weak model] in model?.history }
-        editor.comments = { [weak model] in model?.comments }
-        // Settings' bulk import / export converts Markdown and HTML with a window's editor.
-        model.bulkTransfer.register(editor, model: model)
-        editor.deviceName = AppModel.deviceKind
-        editor.onOpenPage = { id, block in
-            guard model.tree.page(id) != nil else { return }
-            navigator.open(id)
-            if let block { editor.scrollToBlock(block, in: id) }
         }
-        editor.setPages(model.tree.all)
-        shownTab = navigator.tabs.activeID
-        editor.open(documentID: navigator.route.pageID)
-    }
+    #endif
 
     /// The split pane's editor, made and wired on first use: same store, assets, pages and settings as the main one; a
     /// link clicked in it opens in the pane, a PDF attachment in a tab.
     private func splitPaneEditor() -> EditorController {
         if let splitEditor { return splitEditor }
         let pane = EditorController()
-        pane.setTone(tone)
-        pane.setSpellcheck(spellcheck)
-        pane.setAIReviewStyle(aiReviewStyle)
+        pane.apply(editorSettings)
         pane.setAutoFocus(false)
         pane.comments = { [weak model] in model?.comments }
         pane.deviceName = AppModel.deviceKind
         pane.attach(store: model.store, assets: model.assets) { [weak model] in model?.history }
-        pane.onOpenPage = { [navigator] id, block in
-            guard model.tree.page(id) != nil else { return }
+        pane.onOpenPage = { [weak navigator, weak model, weak pane] id, block in
+            guard let navigator, model?.tree.page(id) != nil else { return }
             navigator.openInSplit(.page(id))
-            if let block { pane.scrollToBlock(block, in: id) }
+            if let block { pane?.scrollToBlock(block, in: id) }
         }
-        pane.onOpenDocument = { [navigator] name, label in navigator.openInSplit(.file(name: name, label: label)) }
+        pane.onOpenDocument = { [weak navigator] name, label in navigator?.openInSplit(.file(name: name, label: label)) }
         // Dropped on the pane's own right edge: it shows that page instead.
-        pane.onOpenInSplit = { [navigator] id in
-            if model.tree.page(id) != nil { navigator.openInSplit(.page(id)) }
+        pane.onOpenInSplit = { [weak navigator, weak model] id in
+            if model?.tree.page(id) != nil { navigator?.openInSplit(.page(id)) }
         }
         pane.setSplitDrop(.here)
         ai.attach(pane)
-        pane.setPages(model.tree.all)
-        splitEditor = pane
+        pane.setPages(model.tree)
+        editors.split = pane
         return pane
     }
 
@@ -703,4 +717,13 @@ private struct DocumentPane: View {
         }
         .navigationTitle(label)
     }
+}
+
+/// A window's editors, each made once: the main one on first use, the split pane's when a page first opens there.
+/// (`@State var editor = EditorController()` built a web view on every init of ContentView, which RootView re-inits
+/// whenever the workspace or the appearance changes.)
+@Observable
+final class WindowEditors {
+    @ObservationIgnored private(set) lazy var main = EditorController()
+    var split: EditorController?
 }

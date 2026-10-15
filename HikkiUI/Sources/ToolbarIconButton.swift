@@ -20,7 +20,7 @@ public struct ToolbarIconButton: View {
         Button(action: action) {
             IconLabel(title, icon: symbol, size: TextSize.lg.rawValue)
                 .labelStyle(.iconOnly)
-                .frame(width: 40, height: 36)
+                .frame(width: Size.toolbarButtonWidth, height: Size.toolbarButtonHeight)
                 .foregroundStyle(isActive ? tone.ink : .primary)
                 .background(isActive ? tone.selectionFill : .clear, in: .rect(cornerRadius: Radius.lg))
                 .contentShape(.rect)

@@ -18,6 +18,8 @@ struct PageHistoryView: View {
     @State private var showsChanges = true
     @State private var loaded = false
     @State private var restoring = false
+    /// The page as it is now, flattened once for every version's comparison.
+    @State private var current: CurrentPage?
 
     var body: some View {
         NavigationStack {
@@ -68,7 +70,12 @@ struct PageHistoryView: View {
             .frame(minWidth: Size.historyWidth, minHeight: Size.historyHeight)
         #endif
         .task {
-            versions = model.versions(of: pageID)
+            // Every version file is read and decoded, and the page flattened, off the main thread.
+            let record = try? model.store.document(id: pageID)
+            async let loadedVersions = Self.load(model.history, pageID: pageID)
+            async let now = Self.flatten(record)
+            versions = await loadedVersions
+            current = await now
             selection = versions.first?.id
             loaded = true
         }
@@ -80,6 +87,26 @@ struct PageHistoryView: View {
         #else
             false
         #endif
+    }
+
+    nonisolated struct CurrentPage: Sendable {
+        let title: String
+        let blocks: [TextBlock]
+    }
+
+    @concurrent nonisolated private static func load(_ history: PageHistory?, pageID: String) async -> [PageVersion] {
+        guard let history else { return [] }
+        do {
+            return try history.versions(of: pageID)
+        } catch {
+            Log.error("page versions unreadable: \(error)", category: "history", context: ["docId": pageID])
+            return []
+        }
+    }
+
+    @concurrent nonisolated private static func flatten(_ record: DocumentRecord?) async -> CurrentPage? {
+        guard let record else { return nil }
+        return CurrentPage(title: record.title, blocks: TextBlock.blocks(in: try? record.contentValue()))
     }
 
     private var selected: PageVersion? {
@@ -127,37 +154,61 @@ struct PageHistoryView: View {
                 .padding(.bottom, Spacing.s2)
             }
             Divider()
-            ScrollView {
+            VersionPreview(version: version, current: current, showsChanges: showsChanges)
+                .accessibilityIdentifier("history-preview")
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+}
+
+/// A version's title and body marked against the page now — what restoring would bring back, and what it would
+/// remove. The comparison runs off the main thread, once per version shown (not on every redraw).
+private struct VersionPreview: View {
+    let version: PageVersion
+    let current: PageHistoryView.CurrentPage?
+    let showsChanges: Bool
+    @State private var diff: Diff?
+
+    nonisolated struct Diff: Sendable {
+        let versionID: PageVersion.ID
+        let title: [DiffRun]?
+        let blocks: [BlockDiff]
+    }
+
+    var body: some View {
+        ScrollView {
+            if let diff, diff.versionID == version.id {
                 VStack(alignment: .leading, spacing: Spacing.s4) {
                     VersionTitleView(
-                        title: version.title, runs: titleRuns(for: version), placeholder: String(localized: "app:page.untitled"),
-                        showsChanges: showsChanges)
-                    VersionDiffView(blocks: blocks(for: version), showsChanges: showsChanges)
+                        title: version.title, runs: diff.title?.map { VersionDiffView.Run($0.text, Self.change($0.change)) },
+                        placeholder: String(localized: "app:page.untitled"), showsChanges: showsChanges)
+                    VersionDiffView(blocks: Self.blocks(diff.blocks), showsChanges: showsChanges)
                 }
                 .padding(Spacing.s6)
                 .frame(maxWidth: Size.column, alignment: .leading)
                 .frame(maxWidth: .infinity)
             }
-            .accessibilityIdentifier("history-preview")
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .task(id: version.id) {
+            diff = await Self.compare(version, with: current)
+        }
     }
 
-    /// The version's title marked against the page's title now, or nil when it hasn't changed.
-    private func titleRuns(for version: PageVersion) -> [VersionDiffView.Run]? {
-        guard let current = try? model.store.document(id: pageID) else { return nil }
-        return PageDiff.title(old: current.title, new: version.title)?.map { VersionDiffView.Run($0.text, Self.change($0.change)) }
+    @concurrent nonisolated private static func compare(_ version: PageVersion, with current: PageHistoryView.CurrentPage?) async
+        -> Diff
+    {
+        Diff(
+            versionID: version.id,
+            title: current.flatMap { PageDiff.title(old: $0.title, new: version.title) },
+            blocks: PageDiff.compare(old: current?.blocks ?? [], new: TextBlock.blocks(in: version.content)))
     }
 
-    /// The version's blocks marked against the page now: what restoring would bring back, and what it would remove.
-    private func blocks(for version: PageVersion) -> [VersionDiffView.Block] {
-        let current = (try? model.store.document(id: pageID)).flatMap { try? $0.contentValue() }
-        let diff = PageDiff.compare(old: TextBlock.blocks(in: current), new: TextBlock.blocks(in: version.content))
-        return diff.enumerated().map { index, entry in
+    private static func blocks(_ diff: [BlockDiff]) -> [VersionDiffView.Block] {
+        diff.enumerated().map { index, entry in
             VersionDiffView.Block(
-                id: index, style: Self.style(entry.block.kind), depth: entry.block.depth,
+                id: index, style: style(entry.block.kind), depth: entry.block.depth,
                 change: entry.status == .added ? .added : entry.status == .removed ? .removed : .same,
-                runs: entry.runs.map { VersionDiffView.Run($0.text, Self.change($0.change)) })
+                runs: entry.runs.map { VersionDiffView.Run($0.text, change($0.change)) })
         }
     }
 

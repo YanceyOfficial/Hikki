@@ -104,6 +104,12 @@
       "en": "Couldn't open the local database.",
       "zh": "无法打开本地数据库。"
     },
+    "workspaceSaveFailed": {
+      "code": 2105,
+      "severity": "error",
+      "en": "Couldn't save the workspace's settings.",
+      "zh": "无法保存工作区设置。"
+    },
 
     "editorCrashed": {
       "code": 3001,

@@ -161,7 +161,8 @@ HikkiUITests/                 XCUITest flows
   split view's sidebar column is `Hikki/Sources/PhoneHome.swift` (a ☰ · Home top bar, All pages / Trash tiles,
   "Jump back in" cards, Quick create — a blank page, today's note titled with the date, a page from the clipboard
   (`QuickNote`, HikkiCore) — Ask AI suggestions sent with this week's pages (`Navigator.pendingAIQuestion`), This
-  week — HikkiUI's `WeekActivityCard` over the store's daily activity — recently edited, and favorites) and opening anything shows the detail through `Navigator.compactColumn`
+  week — HikkiUI's `WeekActivityCard` over the store's daily activity — recently edited, and favorites; the lists come
+  from a `HomeDigest` (HikkiCore) worked out per tree change, the activity read in a task) and opening anything shows the detail through `Navigator.compactColumn`
   (`preferredCompactColumn`). The page tree is Notion's side drawer: `Hikki/Sources/PhoneDrawer.swift` (workspace +
   search, favorites, the tree — its actions on a long press, Add a page, then All pages · Trash · Settings fixed at the bottom)
   inside HikkiUI's `SideDrawer` (`HikkiUI/Sources/SideDrawer.swift`, exodus-ios's drawer, 75 % of the width: the content is a card pushed
@@ -443,6 +444,16 @@ HikkiUITests/                 XCUITest flows
 - **Tabs keep their place**: the editor reports where the page is scrolled (`scroll` message, throttled); ContentView
   remembers it per tab when another tab takes over and, when a tab is shown again, loads its page and scrolls back
   (`window.hikki.restoreScroll`). Another page opened inside a tab starts at its top (`loadDocument`).
+- **A window's editors** (`WindowEditors` in `Hikki/Sources/ContentView.swift`): the main one made once per window, the
+  split pane's on first use. Each holds the window's `EditorSettings` (tone, spelling, AI review style, shortcuts —
+  ContentView sets both at once) and replays them on ready; bridge calls go through its `call` helper. The tree
+  changes on every save, so nothing on that path may re-render or re-send for nothing: the navigator assigns tabs /
+  expanded rows only when they changed (`NavigationTabs.pruned`), and each editor sends the page index and its own
+  page's lock only when they changed (`EditorPageState`, `HikkiCore/Sources/Bridge/EditorPageState.swift`). Editor
+  callbacks capture weakly (a strong capture kept closed windows' web processes alive; DEBUG logs "editor released").
+  Unsaved typing is flushed when a window goes to the background or closes and on ⌘Q (`Hikki/Sources/SaveOnExit.swift`:
+  every editor, then the workspace folder, 3 s cap; iOS under a background-task assertion). The page / trash
+  observation runs once for the app (`AppModel.observation`).
 - **AI** (Settings → AI; `HikkiAI/Sources/`): the provider HTTP APIs directly over URLSession with SSE — the Swift client
   packages tried (SwiftOpenAI, SwiftAnthropic) dropped web-search citations and error bodies. `AIClients.client(for:keys:)`
   streams `AIEvent`s (text, searching, citation, finished); `HikkiAI/Sources/StreamDecoders.swift` reads each provider's events
@@ -482,7 +493,8 @@ HikkiUITests/                 XCUITest flows
   block ids, remote reloads) never count as edits; continuous typing still saves every 2 s (`maxWaitMs`).
 - **Lock page** (Page menu ⇧⌘L, the page ⋯ menu, the sidebar context menu): `lockedAt` on the page
   (`DocumentStore.setLocked`; it bumps `updatedAt` like icon/cover so other devices pick it up). The load payload
-  carries `locked`, `window.hikki.setLocked` flips it while open; title, body, icon and cover refuse changes meanwhile
+  carries `locked`, `window.hikki.setLocked` flips it while open (each editor, split pane included, for the page it
+  shows — `EditorController.setPages`); title, body, icon and cover refuse changes meanwhile
   (`EditorBridge.frozen`) and a toolbar lock (`LockIndicator`) unlocks.
 - **Workspace**: first launch shows `Hikki/Sources/OnboardingView.swift` until the workspace file (`AppPaths.workspace`) exists
   (`HikkiCore/Sources/Store/Workspace.swift`). A folder location stores a security-scoped bookmark

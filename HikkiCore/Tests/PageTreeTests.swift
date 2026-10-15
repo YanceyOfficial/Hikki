@@ -15,6 +15,8 @@ struct PageTreeTests {
         #expect(tree.roots.map(\.id) == ["a", "b"])
         #expect(tree.roots[0].children.map(\.id) == ["a1", "a2"])
         #expect(tree.roots[0].children[0].children.map(\.id) == ["a1x"])
+        // Every page, depth first (the editors' link index).
+        #expect(tree.all.map(\.id) == ["a", "a1", "a1x", "a2", "b"])
     }
 
     @Test func moveTargetsSkipTheSubtreeAndCurrentParent() {

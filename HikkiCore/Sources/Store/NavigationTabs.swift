@@ -159,6 +159,14 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
         }
     }
 
+    /// `prune` on a copy: equal to `self` when nothing was gone, so an observed owner can skip the assignment (every
+    /// assignment of an `@Observable` property notifies, equal or not).
+    public func pruned(fallback: Route, isGone: (Route) -> Bool) -> Self {
+        var copy = self
+        copy.prune(fallback: fallback, isGone: isGone)
+        return copy
+    }
+
     private mutating func touch(_ id: UUID) {
         recency.removeAll { $0 == id }
         recency.insert(id, at: 0)

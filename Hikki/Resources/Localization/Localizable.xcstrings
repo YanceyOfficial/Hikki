@@ -2245,6 +2245,23 @@
         }
       }
     },
+    "app:error.workspaceSaveFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't save the workspace's settings."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法保存工作区设置。"
+          }
+        }
+      }
+    },
     "app:error.workspaceSyncFailed": {
       "extractionState": "manual",
       "localizations": {
@@ -7630,23 +7647,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "收藏"
-          }
-        }
-      }
-    },
-    "app:sidebar.rowMenuHelp": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete, favorite and more…"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "删除、收藏等更多操作…"
           }
         }
       }

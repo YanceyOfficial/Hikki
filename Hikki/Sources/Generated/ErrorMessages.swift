@@ -23,6 +23,7 @@ extension ErrorCode {
         case .workspaceSyncFailed: String(localized: "app:error.workspaceSyncFailed")
         case .workspaceOpenFailed: String(localized: "app:error.workspaceOpenFailed")
         case .databaseOpenFailed: String(localized: "app:error.databaseOpenFailed")
+        case .workspaceSaveFailed: String(localized: "app:error.workspaceSaveFailed")
         case .editorCrashed: String(localized: "app:error.editorCrashed")
         case .editorScriptError: String(localized: "app:error.editorScriptError")
         case .pageReadOnly: String(localized: "app:error.pageReadOnly")

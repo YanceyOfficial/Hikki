@@ -16,7 +16,7 @@ public struct SidebarIconButton: View {
             IconLabel(title, icon: symbol, size: TextSize.base.rawValue)
                 .labelStyle(.iconOnly)
                 .foregroundStyle(Theme.mutedForeground)
-                .frame(width: 22, height: 22)
+                .frame(width: Size.iconButtonSm, height: Size.iconButtonSm)
                 .contentShape(.rect)
         }
         .buttonStyle(HoverHighlightStyle())
@@ -56,4 +56,15 @@ public struct HoverHighlightStyle: ButtonStyle {
                 .animation(Motion.easeOut(Motion.popOut), value: hovering)
         }
     }
+}
+
+#Preview {
+    HStack(spacing: Spacing.s2) {
+        SidebarIconButton("New page", symbol: .plus) {}
+        SidebarIconButton("More", symbol: .dotsThree) {}
+        Button("Hover me") {}
+            .padding(Spacing.s1)
+            .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.xl, hoverFill: Theme.sidebarAccent))
+    }
+    .padding()
 }

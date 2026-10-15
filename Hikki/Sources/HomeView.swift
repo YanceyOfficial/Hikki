@@ -83,6 +83,9 @@ struct HomeView: View {
     @State private var filter = ""
     @State private var sortOrder = [HomeSort(field: .edited, order: .reverse)]
     @State private var selection: Set<HomeRow.ID> = []
+    /// The rows as shown: built (a path per page) and sorted when the pages, the filter or the order change — not on
+    /// every redraw.
+    @State private var rows: [HomeRow] = []
     #if os(iOS)
         @Environment(\.horizontalSizeClass) private var sizeClass
     #endif
@@ -96,12 +99,16 @@ struct HomeView: View {
     }
 
     var body: some View {
-        let rows = self.rows
-        if compact {
-            phone(rows)
-        } else {
-            wide(rows)
+        Group {
+            if compact {
+                phone(rows)
+            } else {
+                wide(rows)
+            }
         }
+        .onChange(of: model.tree, initial: true) { rebuildRows() }
+        .onChange(of: filter) { rebuildRows() }
+        .onChange(of: sortOrder) { rebuildRows() }
     }
 
     private func wide(_ rows: [HomeRow]) -> some View {
@@ -132,10 +139,10 @@ struct HomeView: View {
 
     // MARK: Rows
 
-    private var rows: [HomeRow] {
+    private func rebuildRows() {
         let query = filter.trimmingCharacters(in: .whitespaces)
         let untitled = String(localized: "app:page.untitled")
-        return model.tree.all
+        rows = model.tree.all
             .map { page in
                 HomeRow(
                     id: page.id, title: page.title.isEmpty ? untitled : page.title, icon: page.icon,

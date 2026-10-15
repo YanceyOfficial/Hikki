@@ -51,6 +51,9 @@ public struct QuickNote: Equatable, Sendable {
         ])
     }
 
-    /// The body's plain text (search, word counts until the editor recounts).
+    /// The body's plain text (search; the editor recounts words when the page is edited).
     public var text: String { lines.joined(separator: "\n") }
+
+    /// Title and body in words, counted as the editor counts them (`WordCount`).
+    public var wordCount: Int { WordCount.count(title: title, text: text) }
 }
