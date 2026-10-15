@@ -8,6 +8,7 @@ import SwiftUI
 public nonisolated enum Icon: String, CaseIterable, Sendable {
     case warningCircle = "warning-circle"
     case xCircle = "x-circle"
+    case list = "list"
     case image = "image"
     case chatTeardropText = "chat-teardrop-text"
     case globe = "globe"
@@ -89,6 +90,7 @@ public nonisolated enum Icon: String, CaseIterable, Sendable {
         switch self {
         case .warningCircle: "exclamationmark.circle.fill"
         case .xCircle: "xmark.circle.fill"
+        case .list: "line.3.horizontal"
         case .image: "photo"
         case .chatTeardropText: "text.bubble"
         case .globe: "globe"

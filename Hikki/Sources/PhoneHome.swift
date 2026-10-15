@@ -3,35 +3,49 @@
     import HikkiUI
     import SwiftUI
 
-    /// The iPhone's first screen (the collapsed split view's sidebar column): the workspace, All pages and Trash as two
-    /// tiles, the pages last edited as cards, favorites and the page tree — no grouped list, no dividers — over the
-    /// floating bar (Search · Ask AI · New page). Rows open their page through the navigator, which shows the detail
-    /// column (`Navigator.compactColumn`).
+    /// The iPhone's first screen (the collapsed split view's sidebar column), Notion's: a top bar with ☰ and the title,
+    /// All pages and Trash as two tiles, the pages last edited as cards and favorites — no grouped list, no dividers —
+    /// over the floating bar (Search · Ask AI · New page). The page tree lives in the side drawer (`PhoneDrawer`), which
+    /// ☰ or a swipe from the left slides out (`SideDrawer`). Rows open their page through the navigator, which shows the
+    /// detail column (`Navigator.compactColumn`).
     struct PhoneHome: View {
         @Environment(AppModel.self) private var model
         @Bindable var navigator: Navigator
+        @State private var isDrawerOpen = false
 
         var body: some View {
+            SideDrawer(isOpen: $isDrawerOpen, closeLabel: "app:drawer.close") {
+                PhoneDrawer(navigator: navigator) { setDrawer(open: false) }
+            } content: {
+                home
+            }
+            .background(Theme.sidebar)
+            .toolbar(.hidden, for: .navigationBar)
+            // Something opened from elsewhere (search, a link): the drawer is shut when Home shows again.
+            .onChange(of: navigator.compactColumn) { _, column in
+                if column == .detail { isDrawerOpen = false }
+            }
+        }
+
+        private var home: some View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Spacing.s6) {
-                    header
                     places
                     if !recents.isEmpty { recentCards }
                     if !model.tree.favorites.isEmpty {
                         section("app:sidebar.favorites") {
                             ForEach(model.tree.favorites) { page in
-                                PhonePageRow(page: page, depth: 0, isExpanded: nil, navigator: navigator)
+                                PhonePageRow(page: page, navigator: navigator)
                             }
                         }
                     }
-                    pages
                 }
                 .padding(.top, Spacing.s2)
                 .padding(.bottom, Size.floatingBar + Spacing.s12)
             }
             .scrollIndicators(.hidden)
             .background(Theme.background)
-            .toolbar(.hidden, for: .navigationBar)
+            .safeAreaInset(edge: .top, spacing: Spacing.s0) { topBar }
             .safeAreaInset(edge: .bottom) {
                 FloatingActionBar(
                     leading: .init("app:nav.search", icon: .magnifyingGlass, identifier: "sidebar-search") {
@@ -45,16 +59,32 @@
             }
         }
 
+        private func setDrawer(open: Bool) {
+            withAnimation(Motion.easeOut()) { isDrawerOpen = open }
+        }
+
         // MARK: Parts
 
-        private var header: some View {
+        /// ☰ (the drawer), the title, and ⋯ (import, settings).
+        private var topBar: some View {
             HStack(spacing: Spacing.s2_5) {
-                WorkspaceBadge(
-                    initial: model.workspace?.initial ?? "H", icon: model.workspace?.icon, size: Size.iconButton + Spacing.s0_5)
-                // The user's workspace name.
-                Text(verbatim: model.workspace?.name ?? "Hikki")
+                Button {
+                    setDrawer(open: !isDrawerOpen)
+                } label: {
+                    IconView(.list, size: TextSize.xl.rawValue)
+                        .foregroundStyle(Theme.foreground)
+                        .frame(width: Size.iconButton + Spacing.s3, height: Size.iconButton + Spacing.s3)
+                        .contentShape(.circle)
+                }
+                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive(), in: .circle)
+                .accessibilityLabel(Text("app:drawer.open"))
+                .accessibilityIdentifier("drawer-toggle")
+                Text("app:nav.home")
                     .font(.hk(.lg, .semibold))
+                    .foregroundStyle(Theme.foreground)
                     .lineLimit(1)
+                    .accessibilityAddTraits(.isHeader)
                 Spacer(minLength: Spacing.s2)
                 Menu {
                     Button {
@@ -80,6 +110,8 @@
                 .accessibilityIdentifier("workspace-more")
             }
             .padding(.horizontal, Spacing.s4)
+            .padding(.vertical, Spacing.s2)
+            .background(Theme.background)
         }
 
         /// All pages and Trash, side by side.
@@ -118,28 +150,6 @@
             }
         }
 
-        private var pages: some View {
-            VStack(alignment: .leading, spacing: Spacing.s0) {
-                HStack {
-                    SectionTitle("app:home.pages")
-                    Spacer()
-                    Button {
-                        navigator.newPage()
-                    } label: {
-                        IconView(.plus, size: TextSize.lg.rawValue)
-                            .foregroundStyle(Theme.mutedForeground)
-                            .frame(width: Size.iconButton + Spacing.s2, height: Size.iconButton + Spacing.s2)
-                            .contentShape(.rect)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(Text("app:sidebar.addPage"))
-                }
-                .padding(.leading, Spacing.s4)
-                .padding(.trailing, Spacing.s2)
-                PhonePageTree(nodes: model.tree.roots, depth: 0, navigator: navigator)
-            }
-        }
-
         private func section(_ title: LocalizedStringKey, @ViewBuilder rows: () -> some View) -> some View {
             VStack(alignment: .leading, spacing: Spacing.s0) {
                 SectionTitle(title).padding(.horizontal, Spacing.s4).padding(.bottom, Spacing.s1)
@@ -149,7 +159,7 @@
     }
 
     /// A small grey section label ("Jump back in", "Pages").
-    private struct SectionTitle: View {
+    struct SectionTitle: View {
         let title: LocalizedStringKey
         init(_ title: LocalizedStringKey) { self.title = title }
 
@@ -240,58 +250,12 @@
         }
     }
 
-    /// The page tree as plain rows: a chevron to open a page's subpages, its icon and title; deeper rows indent.
-    private struct PhonePageTree: View {
-        let nodes: [PageNode]
-        let depth: Int
-        @Bindable var navigator: Navigator
-
-        var body: some View {
-            ForEach(nodes) { node in
-                PhonePageRow(
-                    page: node.page, depth: depth, isExpanded: node.children.isEmpty ? nil : expansion(node.id),
-                    navigator: navigator)
-                if !node.children.isEmpty, navigator.expanded.contains(node.id) {
-                    PhonePageTree(nodes: node.children, depth: depth + 1, navigator: navigator)
-                }
-            }
-        }
-
-        private func expansion(_ id: String) -> Binding<Bool> {
-            Binding(
-                get: { navigator.expanded.contains(id) },
-                set: { open in if open { navigator.expanded.insert(id) } else { navigator.expanded.remove(id) } }
-            )
-        }
-    }
-
     private struct PhonePageRow: View {
         let page: PageSummary
-        let depth: Int
-        /// Nil for a page without subpages (no chevron, its slot kept so icons line up).
-        let isExpanded: Binding<Bool>?
         let navigator: Navigator
 
         var body: some View {
             HStack(spacing: Spacing.s1) {
-                Group {
-                    if let isExpanded {
-                        Button {
-                            withAnimation(Motion.easeOut()) { isExpanded.wrappedValue.toggle() }
-                        } label: {
-                            IconView(.caretRight, size: TextSize.xs.rawValue)
-                                .foregroundStyle(Theme.placeholder)
-                                .rotationEffect(.degrees(isExpanded.wrappedValue ? 90 : 0))
-                                .frame(width: Size.iconButton, height: Size.row + Spacing.s3)
-                                .contentShape(.rect)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(Text(isExpanded.wrappedValue ? "app:sidebar.collapse" : "app:sidebar.expand"))
-                        .accessibilityIdentifier("page-expand-\(page.title)")
-                    } else {
-                        Color.clear.frame(width: Size.iconButton)
-                    }
-                }
                 Button {
                     navigator.open(page.id)
                 } label: {
@@ -300,7 +264,7 @@
                             .frame(width: Size.iconButton)
                         Text(verbatim: page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
                             .font(.hk(.base))
-                            .foregroundStyle(depth == 0 ? Theme.foreground : Theme.subtleForeground)
+                            .foregroundStyle(Theme.foreground)
                             .lineLimit(1)
                         Spacer(minLength: 0)
                     }
@@ -310,7 +274,7 @@
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("page-row-\(page.title)")
             }
-            .padding(.leading, Spacing.s2 + CGFloat(depth) * Spacing.s5)
+            .padding(.leading, Spacing.s4)
             .padding(.trailing, Spacing.s4)
             .contextMenu { PageActions(page: page, navigator: navigator) }
         }

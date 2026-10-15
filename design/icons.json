@@ -5,6 +5,9 @@
   "icons": {
     "warning-circle": { "sf": "exclamationmark.circle.fill" },
     "x-circle": { "sf": "xmark.circle.fill" },
+    "list": {
+      "sf": "line.3.horizontal"
+    },
     "image": {
       "sf": "photo"
     },

@@ -12,6 +12,7 @@
         @State private var active: Set<String> = ["bold"]
         @State private var recording = false
         @State private var recorded = "⌘B"
+        @State private var drawerOpen = true
 
         var body: some View {
             NavigationStack {
@@ -103,6 +104,29 @@
                             promptIdentifier: "gallery-ask", onPrompt: {},
                             trailing: .init("New page", icon: .notePencil, identifier: "gallery-new") {})
                     }
+                    #if os(iOS)
+                        Section("SideDrawer") {
+                            SideDrawer(isOpen: $drawerOpen, closeLabel: "Close sidebar") {
+                                VStack(alignment: .leading, spacing: Spacing.s2) {
+                                    Text(verbatim: "Workspace").font(.hk(.base, .semibold))
+                                    Text(verbatim: "Getting started")
+                                    Text(verbatim: "Reading list")
+                                }
+                                .padding(Spacing.s3)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                            } content: {
+                                Button {
+                                    withAnimation(Motion.easeOut()) { drawerOpen.toggle() }
+                                } label: {
+                                    IconView(.list, size: TextSize.xl.rawValue)
+                                }
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                                .padding(Spacing.s3)
+                            }
+                            .frame(height: 240)
+                            .listRowInsets(EdgeInsets())
+                        }
+                    #endif
                     Section("AIGlyph") {
                         HStack(spacing: Spacing.s4) {
                             AIGlyph()

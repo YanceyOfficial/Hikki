@@ -1480,6 +1480,40 @@
         }
       }
     },
+    "app:drawer.close": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close sidebar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭侧边栏"
+          }
+        }
+      }
+    },
+    "app:drawer.open": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open sidebar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开侧边栏"
+          }
+        }
+      }
+    },
     "app:error.aiBadBaseURL": {
       "extractionState": "manual",
       "localizations": {
