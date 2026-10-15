@@ -8,9 +8,10 @@ final class EditorFlowTests: XCTestCase {
     /// `workspace: nil` starts from a fresh install (onboarding); otherwise a device workspace is seeded.
     private func launch(
         language: String? = nil, workspace: String? = "Test", shortcutOverrides: String = "{}",
-        environment: [String: String] = [:]
+        environment: [String: String] = [:], arguments: [String] = []
     ) -> XCUIApplication {
         let app = XCUIApplication()
+        app.launchArguments += arguments
         app.launchEnvironment["HIKKI_DATA_DIR"] = dataDir
         app.launchEnvironment.merge(environment) { _, new in new }
         if let workspace { app.launchEnvironment["HIKKI_WORKSPACE"] = workspace }
@@ -22,6 +23,43 @@ final class EditorFlowTests: XCTestCase {
         if let language { app.launchArguments += ["-AppleLanguages", "(\(language))", "-AppleLocale", language] }
         app.launch()
         return app
+    }
+
+    /// Ask AI's model menu (iPhone sheet): starring a model lists it first under Favorites, the star stays when the
+    /// menu opens again, and picking a model names it in the composer.
+    func testStarringAModelPutsItFirst() throws {
+        #if os(iOS)
+            guard UIDevice.current.userInterfaceIdiom == .phone else { throw XCTSkip("the iPhone Ask AI sheet") }
+        #else
+            throw XCTSkip("the iPhone Ask AI sheet")
+        #endif
+        // The stars live in UserDefaults, which outlive a run (a launch argument would pin them: the argument domain
+        // wins over what the app writes), so an earlier run's star is taken off first.
+        let app = launch(environment: ["HIKKI_OPEN_AI": "1"], arguments: ["-ai.model", "auto"])
+        let menu = app.buttons["ai-chat-model"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(menu, in: app), "the model menu is missing")
+        menu.tap()
+        let haiku = app.buttons["model-claude-haiku-5-5"].firstMatch
+        let sonnet = app.buttons["model-claude-sonnet-5-5"].firstMatch
+        let star = app.buttons["model-star-claude-haiku-5-5"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(haiku, in: app))
+        if haiku.frame.minY < sonnet.frame.minY {
+            star.tap()
+            let unstarred = NSPredicate { _, _ in haiku.frame.minY > sonnet.frame.minY }
+            wait(for: [expectation(for: unstarred, evaluatedWith: nil)], timeout: 5)
+        }
+        // Haiku sits under "Other models", below the recommended Sonnet.
+        XCTAssertGreaterThan(haiku.frame.minY, sonnet.frame.minY)
+        star.tap()
+        let first = NSPredicate { _, _ in haiku.frame.minY < sonnet.frame.minY }
+        wait(for: [expectation(for: first, evaluatedWith: nil)], timeout: 5)
+        attachScreenshot(app, "model-starred")
+        haiku.tap()
+        let named = NSPredicate { _, _ in menu.label.contains("Haiku") && !haiku.exists }
+        wait(for: [expectation(for: named, evaluatedWith: nil)], timeout: 5)
+        menu.tap()
+        XCTAssertTrue(waitOrDumpTree(haiku, in: app))
+        XCTAssertLessThan(haiku.frame.minY, sonnet.frame.minY, "the star was kept")
     }
 
     /// iPhone's home screen: the tree opens a page's subpages, a row opens the page, ⋯ opens its actions sheet, and
