@@ -69,7 +69,9 @@ struct SemanticIndexTests {
         let index = try SearchIndex.inMemory()
         try store(index, "kitten", "Kitten care", unit(1, 0), text: "feeding a young cat")
         try store(index, "word", "Cat words", unit(0, 1), text: "the word cat in other languages")
-        try store(index, "far", "Taxes", unit(-1, 0), text: "receipts")
+        try store(index, "far", "Taxes", unit(0, 1), text: "receipts")
+        try store(index, "far2", "Trains", unit(0, 1), text: "timetables")
+        try store(index, "far3", "Bread", unit(0, 1), text: "flour")
         // Word matches keep their order (the title match first) however close in meaning the others are.
         let hits = try index.search("cat", queryVector: unit(1, 0.05))
         #expect(hits.map(\.id) == ["word", "kitten"])
@@ -79,6 +81,7 @@ struct SemanticIndexTests {
         #expect(byMeaning.map(\.id) == ["kitten"])
         #expect(byMeaning[0].related)
         #expect(byMeaning[0].snippet == "feeding a young cat")
+        #expect(byMeaning[0].passage == "feeding a young cat")
         // Without a vector it is the word search alone.
         #expect(try index.search("小猫", queryVector: nil).isEmpty)
     }
@@ -99,6 +102,42 @@ struct SemanticIndexTests {
             try store(flat, id, id.uppercased(), at(cosine), text: "x")
         }
         #expect(try flat.search("预算", queryVector: [1, 0]).isEmpty)
+    }
+
+    @Test func emptyPagesAreNeverRelated() throws {
+        // A model that gives short texts one vector (qllama's e5 build did: "parents" = "Q2" = "2024") made every
+        // empty page "related" to every one-word query.
+        let index = try SearchIndex.inMemory()
+        for id in ["q1", "q2", "2024"] { try store(index, id, id, at(1), text: "") }
+        for (id, cosine) in [("a", 0.5), ("b", 0.49), ("c", 0.48), ("d", 0.47), ("e", 0.46)] as [(String, Float)] {
+            try store(index, id, id.uppercased(), at(cosine), text: "notes")
+        }
+        #expect(try index.semanticMatches([1, 0], limit: .max).map(\.pageId).sorted() == ["a", "b", "c", "d", "e"])
+        #expect(try index.search("parents", queryVector: [1, 0]).isEmpty)
+    }
+
+    @Test func tooFewPagesOrAFragmentOfAWordFindNothingByMeaning() throws {
+        let index = try SearchIndex.inMemory()
+        for (id, cosine) in [("a", 0.95), ("b", 0.2), ("c", 0.1)] as [(String, Float)] {
+            try store(index, id, id.uppercased(), at(cosine), text: "x")
+        }
+        #expect(try index.search("宠物", queryVector: [1, 0]).isEmpty)
+        #expect(!SearchIndex.meansSomething("be"))
+        #expect(!SearchIndex.meansSomething("  "))
+        #expect(SearchIndex.meansSomething("cat"))
+        #expect(SearchIndex.meansSomething("親"))
+    }
+
+    @Test func aRelatedHitShowsItsClosestSentence() async {
+        let passage = "練習B\n数字\nすみません、あちらに止めてください。\n￼\nイーさんのご家族は。両親と兄が一人います。"
+        #expect(Chunker.sentences(of: passage) == ["練習B", "すみません、あちらに止めてください。", "イーさんのご家族は。", "両親と兄が一人います。"])
+        let sentence = await SearchIndex.closestSentence(in: passage, to: [1, 0]) { sentences in
+            sentences.map { $0.contains("両親") ? [1, 0] : [0, 1] }
+        }
+        #expect(sentence == "両親と兄が一人います。")
+        // One sentence, or a failing model: the excerpt stays as it was.
+        #expect(await SearchIndex.closestSentence(in: "一つだけ。", to: [1, 0]) { $0.map { _ in [1, 0] } } == nil)
+        #expect(await SearchIndex.closestSentence(in: passage, to: [1, 0]) { _ in throw EmbeddingError.unreachable } == nil)
     }
 
     @Test func removingAPageForgetsItsPassages() throws {
@@ -181,6 +220,13 @@ struct EmbeddingProviderTests {
         let sent = try JSONSerialization.jsonObject(with: request.httpBody!) as! [String: Any]
         #expect(sent["input"] as? [String] == ["query: cats"])
         #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer sk-test")
+    }
+
+    @Test func qwen3ReadsAnInstructionBeforeAQuery() {
+        let prefixes = EmbeddingPrefixes.forModel("qwen3-embedding:0.6b")
+        #expect(prefixes.query.hasPrefix("Instruct: ") && prefixes.query.hasSuffix("\nQuery: "))
+        #expect(prefixes.passage.isEmpty)
+        #expect(EmbeddingPrefixes.forModel("bge-m3") == .none)
     }
 
     @Test func modelsWithoutPrefixesGetTheTextAsIs() {

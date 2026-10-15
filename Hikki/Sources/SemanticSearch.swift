@@ -11,7 +11,11 @@ enum SemanticPreferences {
     static let endpointKey = "semantic.endpoint"
     static let modelKey = "semantic.model"
     static let defaultEndpoint = "http://localhost:11434/v1"
-    static let defaultModel = "qllama/multilingual-e5-small"
+    /// bge-m3: measured on a Japanese/Chinese/English workspace (2026-10-15) it finds a passage across languages
+    /// from one word ("parents" → 両親); qllama's multilingual-e5-small build gave every short text the same vector.
+    static let defaultModel = "bge-m3"
+    /// Models known to be poor at search, and what Settings suggests instead.
+    static func isWeak(_ model: String) -> Bool { model.lowercased().contains("multilingual-e5-small") }
     /// Keychain account of the optional API key (OpenAI and other hosted endpoints; Ollama needs none), one per
     /// origin: a key is only ever sent back to the scheme, host and port it was entered for — editing the address
     /// (half-typed hosts included) never carries it somewhere else.
@@ -109,6 +113,20 @@ final class SemanticSearch {
         let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let provider, !query.isEmpty else { return nil }
         return try? await provider.embed([query], kind: .query).first
+    }
+
+    /// Hits found by meaning show the sentence of their passage closest to the query, so they say why they are there.
+    func sharpen(_ hits: [SearchHit], queryVector: [Float]) async -> [SearchHit] {
+        guard let provider else { return hits }
+        var out = hits
+        for (index, hit) in hits.enumerated() where hit.related {
+            guard let passage = hit.passage,
+                let sentence = await SearchIndex.closestSentence(
+                    in: passage, to: queryVector, embed: { try await provider.embed($0, kind: .passage) })
+            else { continue }
+            out[index].snippet = sentence.count > 160 ? String(sentence.prefix(160)) + "…" : sentence
+        }
+        return out
     }
 
     /// The models the configured endpoint offers.

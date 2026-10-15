@@ -26,6 +26,12 @@ public struct EmbeddingPrefixes: Sendable, Equatable {
     public static func forModel(_ model: String) -> EmbeddingPrefixes {
         let name = model.lowercased()
         if name.contains("e5") { return EmbeddingPrefixes(query: "query: ", passage: "passage: ") }
+        if name.contains("qwen3-embedding") {
+            // Qwen3-Embedding reads an instruction before a query; passages go as they are.
+            return EmbeddingPrefixes(
+                query: "Instruct: Given a search query, retrieve passages of the user's notes that answer it\nQuery: ",
+                passage: "")
+        }
         if name.contains("nomic-embed") {
             return EmbeddingPrefixes(query: "search_query: ", passage: "search_document: ")
         }

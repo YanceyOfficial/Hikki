@@ -15,11 +15,16 @@ public struct SemanticMatch: Sendable, Equatable {
 /// Brute force over every passage — a few thousand 384-wide vectors take well under a millisecond with vDSP.
 extension SearchIndex {
     /// How many pages found only by meaning are listed after the matches.
-    static let relatedLimit = 5
-    /// A page counts as related only when it stands out from the rest: above the median page by this much at least,
-    /// and by half the distance to the closest page. Similarities sit in a narrow band for many models (e5's are all
-    /// around 0.85), so a fixed threshold would let everything or nothing through.
-    static let relatedMargin: Float = 0.015
+    static let relatedLimit = 3
+    /// A page counts as related only when it stands out from the rest: this many standard deviations above the
+    /// average page… Similarities sit in a band of their own for every model (e5's around 0.9, bge-m3's around 0.45),
+    /// so a fixed threshold would let everything or nothing through, and a query that means nothing in particular
+    /// ("be") lifts no page above the others.
+    static let relatedDeviations: Float = 1.6
+    /// …and this much above it at least (a pack of near-equal pages has a spread too small to mean anything).
+    static let relatedMargin: Float = 0.03
+    /// Below this many pages with text there is no "rest" to stand out from.
+    static let relatedMinimumPages = 5
 
     static func createSemanticTables(_ db: Database) throws {
         try db.create(table: "embeddingInfo", ifNotExists: true) { t in
@@ -113,10 +118,13 @@ extension SearchIndex {
         guard !query.isEmpty else { return [] }
         return try queue.read { db in
             var best: [String: SemanticMatch] = [:]
-            let rows = try Row.fetchCursor(db, sql: "SELECT pageId, text, vector FROM chunk")
+            let rows = try Row.fetchCursor(
+                db, sql: "SELECT chunk.pageId, chunk.text, chunk.vector, page.title FROM chunk JOIN page ON page.id = chunk.pageId")
             while let row = try rows.next() {
                 let vector = Self.floats(row["vector"])
                 guard vector.count == query.count else { continue }
+                // A passage that is only the title (an empty page) says nothing about what the page holds.
+                guard !Self.body(row["text"], title: row["title"]).isEmpty else { continue }
                 var similarity: Float = 0
                 vDSP_dotpr(query, 1, vector, 1, &similarity, vDSP_Length(query.count))
                 let pageId: String = row["pageId"]
@@ -129,17 +137,13 @@ extension SearchIndex {
     }
 
     /// Search by words and, given the query's vector, by meaning: the word matches as they rank (what was typed wins;
-    /// a small model's sense of meaning shouldn't shuffle an exact title), then up to `relatedLimit` pages found only
-    /// by meaning (`SearchHit.related`) — those that stand out from the rest — with their closest passage as the
-    /// excerpt.
+    /// a model's sense of meaning shouldn't shuffle an exact title), then up to `relatedLimit` pages found only by
+    /// meaning (`SearchHit.related`) — those that stand out from the rest (`standouts`) — with their closest passage
+    /// as the excerpt (`SearchHit.passage` keeps all of it for `closestSentence`).
     public func search(_ query: String, queryVector: [Float]?, limit: Int = 30, now: Date = .now) throws -> [SearchHit] {
         let hits = try search(query, limit: limit, now: now)
-        guard let queryVector, !queryVector.isEmpty else { return hits }
-        let all = try semanticMatches(queryVector, limit: .max)
-        guard let closest = all.first?.similarity else { return hits }
-        let median = all[all.count / 2].similarity
-        let floor = median + max(Self.relatedMargin, (closest - median) / 2)
-        let matches = Array(all.filter { $0.similarity >= floor }.prefix(limit))
+        guard let queryVector, !queryVector.isEmpty, Self.meansSomething(query) else { return hits }
+        let matches = Self.standouts(try semanticMatches(queryVector, limit: .max))
         let matched = Set(hits.map(\.id))
         let related = matches.filter { !matched.contains($0.pageId) }.prefix(Self.relatedLimit)
         guard !related.isEmpty else { return hits }
@@ -154,19 +158,65 @@ extension SearchIndex {
         let extra: [SearchHit] = related.compactMap { match in
             guard let row = pages[match.pageId] else { return nil }
             let title: String = row["title"]
-            return SearchHit(
+            var hit = SearchHit(
                 id: match.pageId, title: title, icon: row["icon"], snippet: Self.excerpt(match.passage, title: title),
                 updatedAt: row["updatedAt"], terms: [], related: true)
+            hit.passage = Self.body(match.passage, title: title)
+            return hit
         }
         return hits + extra
     }
 
-    /// A passage without the title line it was embedded with, cut to an excerpt's length.
-    static func excerpt(_ passage: String, title: String) -> String {
+    /// The pages that stand out from the rest, closest first: `relatedDeviations` standard deviations and
+    /// `relatedMargin` above the average similarity. Nothing when there are too few pages to tell.
+    static func standouts(_ matches: [SemanticMatch]) -> [SemanticMatch] {
+        guard matches.count >= relatedMinimumPages else { return [] }
+        let count = Float(matches.count)
+        let mean = matches.reduce(0) { $0 + $1.similarity } / count
+        let deviation = (matches.reduce(0) { $0 + ($1.similarity - mean) * ($1.similarity - mean) } / count).squareRoot()
+        let floor = mean + max(relatedMargin, relatedDeviations * deviation)
+        return matches.filter { $0.similarity >= floor }.sorted { $0.similarity > $1.similarity }
+    }
+
+    /// Whether a query is worth asking by meaning: not a word fragment of one or two letters ("be", "of" — every page
+    /// is as close to them as any other). One or two CJK characters do mean something (親, 両親).
+    public static func meansSomething(_ query: String) -> Bool {
+        let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return false }
+        return text.count >= 3 || !text.allSatisfy(\.isASCII)
+    }
+
+    /// The sentence of a passage closest in meaning to the query, given a way to embed sentences — what a hit
+    /// found by meaning shows, so it explains itself ("両親と兄が一人います。" rather than the passage's start).
+    /// nil when the passage has a single sentence or embedding fails.
+    public static func closestSentence(
+        in passage: String, to queryVector: [Float], embed: ([String]) async throws -> [[Float]]
+    ) async -> String? {
+        let sentences = Chunker.sentences(of: passage)
+        guard sentences.count > 1, let vectors = try? await embed(sentences), vectors.count == sentences.count else {
+            return nil
+        }
+        var best: (similarity: Float, index: Int)?
+        for (index, vector) in vectors.enumerated() where vector.count == queryVector.count {
+            var similarity: Float = 0
+            vDSP_dotpr(queryVector, 1, vector, 1, &similarity, vDSP_Length(vector.count))
+            if similarity > best?.similarity ?? -.infinity { best = (similarity, index) }
+        }
+        return best.map { sentences[$0.index] }
+    }
+
+    /// A passage without the title line it was embedded with.
+    static func body(_ passage: String, title: String) -> String {
         var body = Substring(passage)
         let heading = title.trimmingCharacters(in: .whitespacesAndNewlines)
         if !heading.isEmpty, body.hasPrefix(heading) { body = body.dropFirst(heading.count) }
-        let text = body.split(whereSeparator: \.isNewline).joined(separator: " ").trimmingCharacters(in: .whitespaces)
+        return body.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// A passage without the title line it was embedded with, cut to an excerpt's length.
+    static func excerpt(_ passage: String, title: String) -> String {
+        let text = body(passage, title: title).split(whereSeparator: \.isNewline).joined(separator: " ")
+            .trimmingCharacters(in: .whitespaces)
         return text.count > 160 ? String(text.prefix(160)) + "…" : text
     }
 

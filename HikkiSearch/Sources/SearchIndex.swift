@@ -64,6 +64,8 @@ public struct SearchHit: Sendable, Equatable, Identifiable {
     public var attachment: Attachment?
     /// Found by meaning only (semantic search), not by the words typed: the excerpt is the closest passage.
     public var related: Bool
+    /// A related hit's whole closest passage (its excerpt is cut short), for picking the sentence it shows.
+    public var passage: String?
 
     public init(
         id: String, title: String, icon: String?, snippet: String, updatedAt: Date, terms: [String],

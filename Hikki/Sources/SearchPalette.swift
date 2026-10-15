@@ -5,7 +5,8 @@ import SwiftUI
 
 /// ⌘K search (Notion's): one list of best matches — titles, also by pinyin, ahead of page text (`SearchRanker`) —
 /// each with its path, an excerpt around the match and the edited time; recent pages while the field is empty. With
-/// semantic search on, pages related by meaning follow under "Related".
+/// semantic search on, the few pages that stand out by meaning follow under "Similar in meaning", each showing its
+/// closest sentence; nothing at all is listed when nothing matches.
 /// Mac/iPad show it as a centered overlay card; iPhone as a sheet.
 struct SearchPalette: View {
     @Environment(AppModel.self) private var model
@@ -49,12 +50,13 @@ struct SearchPalette: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: Spacing.px) {
-                        if rows.isEmpty {
+                        // No page has the words: said so, also above pages that are only close in meaning.
+                        if rows.isEmpty || !query.isEmpty && rows.allSatisfy(\.related) {
                             Text(query.isEmpty ? "app:search.noPages" : "app:search.noResults \(query)")
                                 .font(.hk(.md))
                                 .foregroundStyle(Theme.mutedForeground)
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, Spacing.s7)
+                                .padding(.vertical, rows.isEmpty ? Spacing.s7 : Spacing.s4)
                         }
                         ForEach(sections, id: \.title) { section in
                             Text(section.title)
@@ -121,12 +123,15 @@ struct SearchPalette: View {
         // and pages related only by meaning follow under their own heading.
         .task(id: query) {
             let text = query
-            guard model.semantic.isEnabled, !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+            guard model.semantic.isEnabled, SearchIndex.meansSomething(text) else { return }
             try? await Task.sleep(for: .milliseconds(250))
             guard !Task.isCancelled, let vector = await model.semantic.queryVector(text), !Task.isCancelled,
                 text == query
             else { return }
-            results = model.search(text, queryVector: vector)
+            let found = model.search(text, queryVector: vector)
+            let sharpened = await model.semantic.sharpen(found, queryVector: vector)
+            guard !Task.isCancelled, text == query else { return }
+            results = sharpened
             selection = min(selection, max(results.count - 1, 0))
         }
         // While an input method is composing, its candidates own the arrows and Escape.

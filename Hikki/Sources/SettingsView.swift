@@ -582,6 +582,17 @@ private struct SemanticSection: View {
                         }
                     }
                 }
+                if SemanticPreferences.isWeak(modelName) {
+                    LabeledContent {
+                        Button("app:semantic.useRecommended \(SemanticPreferences.defaultModel)") {
+                            modelName = SemanticPreferences.defaultModel
+                        }
+                        .accessibilityIdentifier("settings-semantic-recommended")
+                    } label: {
+                        Text("app:semantic.weakModel \(SemanticPreferences.defaultModel)")
+                            .foregroundStyle(Theme.subtleForeground)
+                    }
+                }
                 SecureField("app:semantic.apiKey", text: $apiKey, prompt: Text("app:semantic.apiKey.prompt"))
                     .accessibilityIdentifier("settings-semantic-key")
                 LabeledContent("app:semantic.status") {

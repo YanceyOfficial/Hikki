@@ -287,10 +287,14 @@ HikkiUITests/                 XCUITest flows
   `HikkiSearch/Sources/SemanticIndex.swift`, brute-force cosine with vDSP). `SemanticIndexer`
   (`Hikki/Sources/SemanticSearch.swift`) embeds a page once it has been quiet for 30 s, backfills at launch and after a
   settings change by edited time, re-sends only changed passages, and retries in 5 min when the model is unreachable.
-  ⌘K shows word matches at once and, a quarter second later, pages related only by meaning under "Related" — only
-  those that stand out from the median page (similarities sit in a narrow band for small models); word matches keep
-  their order. The qllama build of multilingual-e5-small on Ollama tokenizes many single words to the same vector (measured
-  2026-10-14: "money" = "cooking"); sentences work.
+  ⌘K shows word matches at once and, a quarter second later, the few pages that stand out by meaning under
+  "Similar in meaning" (`SearchIndex.standouts`: 1.6 standard deviations and 0.03 above the average page, at least five
+  pages with text; empty pages and one- or two-letter queries never count), each showing the sentence of its passage
+  closest to the query (`SearchIndex.closestSentence`, re-embedding that passage's sentences); word matches keep
+  their order, and "No results" still shows when only meaning found something. Default model `bge-m3` (measured
+  2026-10-15 on a Japanese/Chinese/English workspace: "parents" → 「両親と兄が一人います。」); the qllama build of
+  multilingual-e5-small gave every short text one vector ("parents" = "Q2" = "2024"), so Settings offers bge-m3
+  whenever it is set (`SemanticPreferences.isWeak`). Qwen3-Embedding gets its query instruction from the model name.
 - **Search** (⌘K, `Hikki/Sources/SearchPalette.swift`) is the `HikkiSearch` package: `SearchIndex`
   (`HikkiSearch/Sources/SearchIndex.swift`) keeps its own SQLite file (`search.sqlite` next to the database) with every
   page's title, pinyin keys, headings and text under a trigram FTS5 index; `Hikki/Sources/SearchIndexer.swift` feeds it

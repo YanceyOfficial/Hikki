@@ -55,6 +55,27 @@ public enum Chunker {
         return out
     }
 
+    /// A passage's sentences, in order: cut at line breaks and after sentence ends, at most `limit` of them;
+    /// attachment placeholders and scraps of one or two characters (a heading like 「数字」) dropped.
+    public static func sentences(of passage: String, limit: Int = 24) -> [String] {
+        var out: [String] = []
+        for line in passage.split(whereSeparator: \.isNewline) {
+            var current = ""
+            for character in line {
+                current.append(character)
+                if "。！？.!?".contains(character) {
+                    out.append(current)
+                    current = ""
+                }
+            }
+            out.append(current)
+        }
+        return Array(
+            out.map { $0.replacingOccurrences(of: "\u{FFFC}", with: "").trimmingCharacters(in: .whitespaces) }
+                .filter { $0.count > 2 }
+                .prefix(limit))
+    }
+
     static func hash(_ text: String) -> String {
         SHA256.hash(data: Data(text.utf8)).prefix(12).map { String(format: "%02x", $0) }.joined()
     }

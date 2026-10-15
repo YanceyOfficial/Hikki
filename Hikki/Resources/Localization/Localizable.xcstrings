@@ -3798,13 +3798,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Related"
+            "value": "Similar in meaning"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "相关"
+            "value": "意思相近"
           }
         }
       }
@@ -3849,13 +3849,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Find pages by what they mean, not only by the words you type. Hikki sends page text to the model at this address and keeps only the resulting vectors on this device. The model runs outside Hikki, so you can switch to a better one at any time. Ollama on this Mac works as is: install Ollama, then run `ollama pull qllama/multilingual-e5-small`. Any OpenAI-compatible address works too (LM Studio, llama.cpp, or OpenAI with an API key)."
+            "value": "Find pages by what they mean, not only by the words you type. Hikki sends page text to the model at this address and keeps only the resulting vectors on this device. The model runs outside Hikki, so you can switch to a better one at any time. Ollama on this Mac works as is: install Ollama, then run `ollama pull bge-m3` (it reads Chinese, Japanese, English and more, across languages). Any OpenAI-compatible address works too (LM Studio, llama.cpp, or OpenAI with an API key)."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "按含义查找页面，而不只是匹配输入的文字。Hikki 会把页面文字发送给该地址上的模型，只在本设备保存生成的向量。模型在 Hikki 之外运行，随时可以换成更好的模型。本机的 Ollama 可直接使用：安装 Ollama 后运行 `ollama pull qllama/multilingual-e5-small`。任何兼容 OpenAI 的地址也可以（LM Studio、llama.cpp，或带 API 密钥的 OpenAI）。"
+            "value": "按含义查找页面，而不只是匹配输入的文字。Hikki 会把页面文字发送给该地址上的模型，只在本设备保存生成的向量。模型在 Hikki 之外运行，随时可以换成更好的模型。本机的 Ollama 可直接使用：安装 Ollama 后运行 `ollama pull bge-m3`（支持中文、日语、英语等，并能跨语言查找）。任何兼容 OpenAI 的地址也可以（LM Studio、llama.cpp，或带 API 密钥的 OpenAI）。"
           }
         }
       }
@@ -4077,6 +4077,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "按含义搜索"
+          }
+        }
+      }
+    },
+    "app:semantic.useRecommended %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "改用 %@"
+          }
+        }
+      }
+    },
+    "app:semantic.weakModel %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This model gives short searches the same meaning, so they find unrelated pages. %@ works far better: pull it in Ollama, then use it."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个模型会把短的搜索词理解成同一个意思，结果会混入无关页面。%@ 效果好得多：在 Ollama 里下载后改用它。"
           }
         }
       }
