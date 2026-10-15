@@ -342,6 +342,25 @@ final class EditorController {
         Task { await applySpellcheck() }
     }
 
+    @ObservationIgnored private var autoFocus = true
+
+    /// Whether a new, empty page takes the caret when it loads — off for the split pane's editor, so its page
+    /// loading never takes the keyboard from the page being typed in beside it.
+    func setAutoFocus(_ on: Bool) {
+        autoFocus = on
+        guard isReady else { return }
+        Task { await applyAutoFocus() }
+    }
+
+    private func applyAutoFocus() async {
+        do {
+            _ = try await webView.callAsyncJavaScript(
+                "window.hikki.setAutoFocus(on)", arguments: ["on": autoFocus], contentWorld: .page)
+        } catch {
+            Log.warn("setAutoFocus failed: \(error)", category: "bridge")
+        }
+    }
+
     @ObservationIgnored private var aiReviewStyle = "inline"
 
     /// Settings → AI → Review: how the page shows an AI edit (`inline`, `diff`, `bubble`).
@@ -516,6 +535,7 @@ final class EditorController {
                 await applyTone()
                 await applySpellcheck()
                 await applyAIReviewStyle()
+                await applyAutoFocus()
                 await applyShortcuts()
                 await applySplitDrop()
                 await applyInsets()

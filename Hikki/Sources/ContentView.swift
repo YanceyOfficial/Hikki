@@ -405,6 +405,7 @@ struct ContentView: View {
         pane.setTone(tone)
         pane.setSpellcheck(spellcheck)
         pane.setAIReviewStyle(aiReviewStyle)
+        pane.setAutoFocus(false)
         pane.attach(store: model.store, assets: model.assets) { [weak model] in model?.history }
         pane.onOpenPage = { [navigator] id, block in
             guard model.tree.page(id) != nil else { return }

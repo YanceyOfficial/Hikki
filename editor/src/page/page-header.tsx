@@ -162,6 +162,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
           title={page.title}
           focusRequest={page.focusTitleRequest}
           selectOnFocus={page.selectTitle}
+          autoFocus={page.autoFocus}
           docId={page.docId}
         />
       </div>
@@ -194,11 +195,13 @@ function TitleField({
   title,
   focusRequest,
   selectOnFocus,
+  autoFocus,
   docId,
   readOnly
 }: {
   bridge: EditorBridge
   readOnly: boolean
+  autoFocus: boolean
   title: string
   focusRequest: number
   selectOnFocus: boolean
@@ -228,7 +231,8 @@ function TitleField({
 
   // New, empty pages start with the caret in the title.
   useEffect(() => {
-    if (!title && ref.current && !matchMedia?.('(pointer: coarse)').matches) ref.current.focus()
+    if (autoFocus && !title && ref.current && !matchMedia?.('(pointer: coarse)').matches)
+      ref.current.focus()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docId])
 

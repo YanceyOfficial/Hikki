@@ -40,6 +40,11 @@ export type PageState = {
   /** With the latest request: select the whole title (Rename) instead of a caret at its end. */
   selectTitle: boolean
   /**
+   * A new, empty page puts the caret in its title when it loads. Off for the split pane's editor: its page loading
+   * must not take the keyboard from the page being typed in beside it.
+   */
+  autoFocus: boolean
+  /**
    * The stored content didn't fit the schema (corrupt, or written by a newer Hikki): the page is shown
    * as far as possible but never saved, so the original stays intact on disk.
    */
@@ -83,6 +88,7 @@ export class EditorBridge {
     headings: [],
     focusTitleRequest: 0,
     selectTitle: false,
+    autoFocus: true,
     readOnly: false,
     locked: false,
     railHidden: false,
@@ -462,6 +468,11 @@ export class EditorBridge {
     if (!this.editor) return false
     runFind(this.editor, mode)
     return true
+  }
+
+  /** `window.hikki.setAutoFocus`: whether a loading empty page takes the caret (see `autoFocus`). */
+  setAutoFocus(on: boolean): void {
+    this.page.set({ autoFocus: on })
   }
 
   setSpellcheck(on: boolean): void {

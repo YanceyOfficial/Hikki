@@ -636,6 +636,32 @@ final class EditorFlowTests: XCTestCase {
     }
 
     /// iPad / Mac: split view puts a second page beside the first, each in its own editor; the pane closes again.
+    /// Split view: once the pane's page has loaded, the left page still takes typing — and the pane's too.
+    func testBothSidesOfASplitTakeTyping() throws {
+        continueAfterFailure = false
+        let app = launch(environment: [
+            "HIKKI_DEMO_PAGES": "1", "HIKKI_OPEN_TABS": "demo-46ffce8", "HIKKI_OPEN_SPLIT": "demo-dba8e9bf",
+        ])
+        guard app.buttons["nav-home"].waitForExistence(timeout: 10) else {
+            throw XCTSkip("needs a wide window — run on iPad or Mac")
+        }
+        let second = app.webViews.element(boundBy: 1)
+        XCTAssertTrue(second.waitForExistence(timeout: 20), "no second editor in the pane")
+        sleep(2)
+        let views = [app.webViews.element(boundBy: 0), second].sorted { $0.frame.minX < $1.frame.minX }
+        for (side, word) in [(views[0], "Zebra"), (views[1], "Quokka")] {
+            let body = side.textViews["Page content"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(body, in: app))
+            body.tap()
+            sleep(1)
+            body.typeText(word)
+            let typed = expectation(
+                for: NSPredicate { _, _ in (body.value as? String)?.contains(word) == true }, evaluatedWith: nil)
+            wait(for: [typed], timeout: 5)
+        }
+        attachScreenshot(app, "split-typing")
+    }
+
     func testSplitViewShowsTwoPages() throws {
         continueAfterFailure = false
         let app = launch()

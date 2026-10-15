@@ -325,7 +325,8 @@ HikkiUITests/                 XCUITest flows
   holding a page or a PDF (`Navigator.split`, `isSplit`). The pane's page has its own editor (a second web view, made
   on first use and wired like the main one in `ContentView`). Opened from the
   View → Show Split View (⌘\\) (no toolbar button: drag is the way) — an empty pane offers the left page's PDF attachments, PDFs
-  open in tabs and recent pages — or a page's "Open in Split View". The divider drags (fraction remembered); the pane's
+  open in tabs and recent pages — or a page's "Open in Split View". The divider drags (fraction remembered); the pane's editor never takes the keyboard when its page loads
+  (`window.hikki.setAutoFocus(false)` — an empty page's title would otherwise grab it from the page beside); the pane's
   bar closes it, and its title is a chooser (recent pages, More… for the picker) to show another page; the same page may be on both sides (write left, read right — each editor reloads the other's saves, `pageSavedInEditor`). The inspector belongs to the left page, so it
   closes when the window splits; its toggle, ⌥⌘I and the page's star / ⋯ / lock buttons are off while split. By drag: a sidebar row or a page's tab dropped onto the pane shows there (`PageDrop`), and
   dropped on the right edge of the left side — the right quarter, 96–240 pt — opens beside it: native content

@@ -75,6 +75,8 @@ window.hikki = {
   find: (mode: FindMode) => bridge.find(mode),
   // Settings → Editor → Check spelling.
   setSpellcheck: (on: boolean) => bridge.setSpellcheck(on),
+  // The split pane's editor: a loading page never takes the keyboard from the page beside it.
+  setAutoFocus: (on: boolean) => bridge.setAutoFocus(on),
   // Settings → AI → Review style: inline (A), diff (B) or bubble (C).
   setAIReviewStyle: (style: AIReviewStyle) => bridge.setAIReviewStyle(style),
   // Split view (Mac, a wide iPad): what a page dropped on the right edge does — open / replace / here / off.

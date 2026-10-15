@@ -37,6 +37,18 @@ describe('PageHeader', () => {
 
   const load = (patch = {}) => act(() => bridge.loadDocument(page('a', patch)))
 
+  it('an empty page takes the caret in its title — unless the editor is the split pane beside another', () => {
+    render(<PageHeader bridge={bridge} />)
+    load({ title: '' })
+    const title = screen.getByLabelText('Page title') as HTMLTextAreaElement
+    expect(document.activeElement).toBe(title)
+    title.blur()
+
+    bridge.setAutoFocus(false)
+    act(() => bridge.loadDocument(page('b', { title: '' })))
+    expect(document.activeElement).not.toBe(title)
+  })
+
   it('focusTitle (native Rename) focuses the title with all of it selected', () => {
     render(<PageHeader bridge={bridge} />)
     load({ title: 'Trip to Iceland' })
