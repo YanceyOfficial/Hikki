@@ -20,7 +20,15 @@ type Props = {
   onDone: (reading: string) => void
   onDoneSegments: (segments: RubySegment[]) => void
   onRemove: () => void
-  onCancel: () => void
+}
+
+/** Enter saves; Escape is the layers' bus (onDismiss cancels), it never reaches the fields. */
+function keys(e: React.KeyboardEvent, save: () => void) {
+  if (e.nativeEvent.isComposing) return
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    save()
+  }
 }
 
 /** The panel's fields are a size smaller than the default form control. */
@@ -40,8 +48,7 @@ export function RubyPanel({
   canRemove,
   onDone,
   onDoneSegments,
-  onRemove,
-  onCancel
+  onRemove
 }: Props) {
   const [typed, setTyped] = useState<Record<string, string>>({})
   const [wholeChosen, setWholeChosen] = useState(false)
@@ -50,16 +57,6 @@ export function RubyPanel({
   const perKanji = segmented && !wholeChosen
   const whole = typed.whole ?? (initial || (segments ? wholeReading(segments) : ''))
 
-  const keys = (e: React.KeyboardEvent, save: () => void) => {
-    if (e.nativeEvent.isComposing) return
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      save()
-    } else if (e.key === 'Escape') {
-      e.preventDefault()
-      onCancel()
-    }
-  }
   const saveSegments = () =>
     onDoneSegments(
       segments!.map((s, i) =>

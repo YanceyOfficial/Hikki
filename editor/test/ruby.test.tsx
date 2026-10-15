@@ -112,6 +112,29 @@ describe('ruby (furigana)', () => {
     expect(document.querySelector('.hk-ruby-panel')).toBeNull()
   })
 
+  it('saves onto the text it was opened for, even after the page changed under it', async () => {
+    editor.commands.setTextSelection({ from: 3, to: 5 }) // 漢字
+    act(() => void editor.commands.editRuby())
+    const input = (await screen.findByLabelText('Reading')) as HTMLInputElement
+    await waitFor(() => expect(input.value).toBe('かんじ'))
+    // A remote reload put a line first; the editor's selection is somewhere else now.
+    act(() => {
+      editor.view.dispatch(
+        editor.state.tr
+          .insert(0, editor.schema.nodes.paragraph.create(null, editor.schema.text('前')))
+          .setMeta('addToHistory', false)
+      )
+      editor.commands.setTextSelection({ from: 3, to: 5 })
+    })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(editor.getJSON().content?.[0].content).toEqual([{ type: 'text', text: '前' }])
+    expect(editor.getJSON().content?.[1].content?.[1]).toMatchObject({
+      type: 'ruby',
+      attrs: { reading: 'かんじ' },
+      content: [{ type: 'text', text: '漢字' }]
+    })
+  })
+
   it('a press outside the panel, or Escape anywhere, closes it without a ruby', async () => {
     editor.commands.setTextSelection({ from: 3, to: 5 })
     act(() => void editor.commands.editRuby())

@@ -2,6 +2,7 @@ import type { Editor } from '@tiptap/core'
 import type { Transaction } from '@tiptap/pm/state'
 
 import { setBlockLinkBuilder } from '../components/block-menu'
+import { dismissAllLayers } from '../components/floating'
 import { handleAIEvent, type AIHost, type AIReviewStyle } from '../extensions/ai-review'
 import {
   commentRanges,
@@ -209,6 +210,8 @@ export class EditorBridge {
   }
 
   loadDocument(payload: PagePayload): void {
+    // Menus and panels belong to the page being replaced.
+    dismissAllLayers()
     // Never drop a pending edit of the previous page.
     this.flushPending()
     // Another page starts at its top (the web view's scroll would otherwise carry over from the last one).

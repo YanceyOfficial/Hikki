@@ -1,8 +1,12 @@
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { openBlockMenu } from '../src/components/block-menu'
+import { openFloatingLayers } from '../src/components/floating'
 import { EditorBridge, type Transport } from '../src/core/bridge'
 import type { ToNativeMessage } from '../src/core/protocol'
+import { unitAtPos } from '../src/extensions/block-units'
+import { openEmbedPanel } from '../src/extensions/embed'
 import { doc, page, stripIds } from './helpers'
 
 const heading = (level: number, text: string) => ({
@@ -307,6 +311,19 @@ describe('EditorBridge', () => {
     bridge.loadDocument(page('a', { content: doc('') }))
     bridge.enterFromTitle()
     expect(stripIds(editor().getJSON().content)).toEqual([{ type: 'paragraph' }])
+  })
+
+  it('loading another page takes down the menus and panels of the one before', () => {
+    bridge.loadDocument(page('a', { content: doc('one', 'two') }))
+    const ed = editor()
+    act(() => openBlockMenu(ed, unitAtPos(ed.state, 1)!, new DOMRect(0, 0, 10, 10)))
+    act(() => openEmbedPanel(ed, 'generic'))
+    expect(document.querySelector('.hk-block-menu')).not.toBeNull()
+    expect(document.querySelector('.hk-embed-panel')).not.toBeNull()
+    act(() => bridge.loadDocument(page('b', { content: doc('three') })))
+    expect(document.querySelector('.hk-block-menu')).toBeNull()
+    expect(document.querySelector('.hk-embed-panel')).toBeNull()
+    expect(openFloatingLayers()).toHaveLength(0)
   })
 
   it('rejects unknown commands', () => {

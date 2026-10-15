@@ -168,6 +168,35 @@ describe('formulas', () => {
     expect(JSON.stringify(editor.getJSON())).not.toContain('blockMath')
   })
 
+  it('the panel edits its formula where it is now, after the page changed under it', async () => {
+    editor = createEditor(host, inline('x^2'))
+    act(() => (host.querySelector('[data-type="inline-math"]') as HTMLElement).click())
+    const input = await screen.findByLabelText('Formula (LaTeX)')
+    // A remote reload put a line before it (outside the undo history).
+    act(() => {
+      const tr = editor.state.tr.insert(
+        0,
+        editor.schema.nodes.paragraph.create(null, editor.schema.text('new'))
+      )
+      editor.view.dispatch(tr.setMeta('addToHistory', false))
+    })
+    fireEvent.change(input, { target: { value: 'y_1' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(editor.getJSON().content?.[1].content?.[1]).toMatchObject({
+      type: 'inlineMath',
+      attrs: { latex: 'y_1' }
+    })
+    expect(editor.getText()).toContain('new')
+  })
+
+  it('the panel closes when its formula is gone', async () => {
+    editor = createEditor(host, inline('x^2'))
+    act(() => (host.querySelector('[data-type="inline-math"]') as HTMLElement).click())
+    await screen.findByLabelText('Formula (LaTeX)')
+    act(() => void editor.commands.setContent(doc('replaced')))
+    expect(document.querySelector('.hk-math-editor')).toBeNull()
+  })
+
   it('the selection menu turns selected text into an inline formula', () => {
     editor = createEditor(host, doc('a^2 + b^2'))
     render(

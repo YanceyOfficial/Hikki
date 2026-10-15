@@ -38,6 +38,7 @@ const press = (init: KeyboardEventInit) => {
 const mod = /Mac|iPhone|iPad/u.test(navigator.platform) ? { metaKey: true } : { ctrlKey: true }
 
 const para = (text: string) => ({ type: 'paragraph', content: [{ type: 'text', text }] })
+const withId = (id: string, text: string) => ({ ...para(text), attrs: { id } })
 const texts = () =>
   stripIds(editor.getJSON()).content.map(
     (n: JSONContent) => editor.schema.nodeFromJSON(n).textContent
@@ -272,6 +273,54 @@ describe('block menu', () => {
     expect(document.querySelector('.hk-block-menu')).not.toBeNull()
     act(() => void fireEvent.pointerDown(document.body))
     expect(document.querySelector('.hk-block-menu')).toBeNull()
+  })
+
+  it('acts on its block where it is now, after the page was replaced under it', () => {
+    // A saved page: its blocks carry ids.
+    const saved = [withId('a', 'alpha'), withId('b', 'bravo'), withId('c', 'charlie')]
+    editor = createEditor(host, { type: 'doc', content: saved })
+    openMenu('bravo')
+    // A remote reload (as bridge.reload applies it): the same blocks with a line prepended.
+    const reloaded = { type: 'doc', content: [withId('n', 'NEW FIRST LINE'), ...saved] }
+    act(() => void editor.chain().setMeta('addToHistory', false).setContent(reloaded).run())
+    act(() => screen.getByRole('menuitem', { name: /Delete/u }).click())
+    expect(texts()).toEqual(['NEW FIRST LINE', 'alpha', 'charlie'])
+  })
+
+  it('closes when its block is gone', () => {
+    editor = createEditor(host, doc('alpha', 'bravo'))
+    openMenu('bravo')
+    const unit = unitAtPos(editor.state, posOf('bravo'))!
+    act(() => editor.view.dispatch(deleteUnit(editor.state, unit)))
+    expect(document.querySelector('.hk-block-menu')).toBeNull()
+  })
+
+  it('goes with its editor', () => {
+    editor = createEditor(host, doc('alpha'))
+    openMenu('alpha')
+    act(() => editor.destroy())
+    expect(document.querySelector('.hk-block-menu')).toBeNull()
+  })
+
+  it('Escape closes the submenu first, then the menu, giving the page its focus back', () => {
+    editor = createEditor(host, doc('alpha'))
+    openMenu('alpha')
+    act(() => void fireEvent.mouseMove(screen.getByRole('menuitem', { name: /Turn into/u })))
+    expect(screen.queryByRole('menuitemradio', { name: /Heading 2/u })).not.toBeNull()
+    act(
+      () =>
+        void fireEvent.keyDown(screen.getByPlaceholderText('Search actions…'), { key: 'Escape' })
+    )
+    expect(document.querySelector('.hk-block-menu')).not.toBeNull()
+    expect(screen.getByRole('menuitem', { name: /Turn into/u }).getAttribute('aria-expanded')).toBe(
+      'false'
+    )
+    act(
+      () =>
+        void fireEvent.keyDown(screen.getByPlaceholderText('Search actions…'), { key: 'Escape' })
+    )
+    expect(document.querySelector('.hk-block-menu')).toBeNull()
+    expect(editor.view.hasFocus()).toBe(true)
   })
 })
 

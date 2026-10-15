@@ -27,11 +27,10 @@ type Props = {
   /** Which "/" item opened it: the placeholder names the service; `html` takes a snippet instead of a link. */
   provider: EmbedProvider | 'html'
   onDone: (source: EmbedSource) => void
-  onCancel: () => void
 }
 
 /** Where the link goes in; the panel checks it and inserts, or says the link can't be embedded. */
-export function EmbedPanel({ provider, onDone, onCancel }: Props) {
+export function EmbedPanel({ provider, onDone }: Props) {
   const [value, setValue] = useState('')
   const [invalid, setInvalid] = useState(false)
   const html = provider === 'html'
@@ -42,10 +41,8 @@ export function EmbedPanel({ provider, onDone, onCancel }: Props) {
   }
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.nativeEvent.isComposing) return
-    if (e.key === 'Escape') {
-      e.preventDefault()
-      onCancel()
-    } else if (e.key === 'Enter' && (!html || e.metaKey || e.ctrlKey)) {
+    // Escape is the layers' bus (onDismiss cancels): it never reaches the field.
+    if (e.key === 'Enter' && (!html || e.metaKey || e.ctrlKey)) {
       e.preventDefault()
       submit()
     }
