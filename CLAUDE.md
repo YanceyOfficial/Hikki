@@ -341,10 +341,19 @@ HikkiUITests/                 XCUITest flows
   `HikkiUI/Sources/PDFViewer.swift` (PDFKit: continuous pages, zoom/fit, page number, find, thumbnails, an unlock prompt
   for password-protected files — the password is never stored); other attachments still open in Quick Look. Panes are
   the unit the planned split view will put side by side.
+- **Comments** (Notion's): ⇧⌘M or the selection menu's Comment starts a thread on the selected passage. The passage
+  carries a `comment` mark with the thread's id (`editor/src/extensions/comments.ts`), so it moves with edits; the
+  words live natively in `comments/<page id>.json` in the workspace folder (`HikkiCore/Sources/Store/PageComments.swift`:
+  format-versioned, merged by id with tombstones, iCloud conflict versions folded in), written through the
+  `commentCreate` / `commentReply` / `commentResolve` / `commentDelete` bridge messages and pushed back with
+  `window.hikki.setComments`. A draft is only a highlight until it is sent. `editor/src/components/comments.tsx` draws
+  cards in the right margin when the window is wide (`#page[data-comments]` shifts the page left at ≥ 1240 px), count
+  badges with a thread card under the passage otherwise; resolved threads lose their highlight. The page column is
+  `.hk-column` alone in `editor/index.html` (fixed 96 px side margins).
 - **Inspector** (Mac/iPad: a full-height trailing panel inside the detail column — SwiftUI's `.inspector` widened the
   window — with the window title hidden while it is open, as in Photos; iPhone: a sheet from the page ⋯ menu):
-  `Hikki/Sources/InspectorView.swift`, one mode at a time (`InspectorMode`): the outline, comments (a placeholder) or the
-  AI chat (`AIChatView`, the same conversation as the iPhone sheet, about the page beside it — and the passage selected
+  `Hikki/Sources/InspectorView.swift`, one mode at a time (`InspectorMode`): the outline, the page's comments (open /
+  resolved threads, Reopen) or the AI chat (`AIChatView`, the same conversation as the iPhone sheet, about the page beside it — and the passage selected
   in it, reported by the `selection` bridge message; Notion's composer: attached pictures / PDFs (+, drop, paste; sent as
   base64 — `HikkiAI/Sources/AIAttachments.swift` scales pictures to 1568 px), context chips, @ to add other pages, the
   field, attach · web · model · send). The toolbar's trailing

@@ -804,6 +804,36 @@
   animation: hk-fade-in var(--motion-pop-in) var(--ease-out);
 }
 /* AI at work: three dots rising in turn, over one --motion-loop. */
+/* Commented passages (comments.ts): a warm underline on a faint wash; the open thread's passage darker. Resolved
+   threads are not marked. */
+.tiptap .hk-comment {
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--color-wash-yellow) 70%, transparent);
+  box-shadow: inset 0 -2px 0 var(--color-ink-yellow);
+  cursor: pointer;
+  transition: background-color var(--motion-pop-out) var(--ease-out);
+}
+.tiptap .hk-comment-active {
+  background: var(--color-wash-yellow);
+}
+/* A page with open comments, in a window that can hold the column and a margin of cards: the column moves left so
+   the cards fit beside it (Notion's). 1240px = the column (708 + 2 × 96) + a card's room (340). */
+@media (min-width: 1240px) {
+  #page[data-comments] .hk-column {
+    margin-left: max(0px, calc((100vw - var(--size-column) - 192px - 340px) / 2));
+    margin-right: auto;
+  }
+}
+/* The comments layer sits in the text column (margin cards, badges, the open thread), above the page. */
+.hk-comments-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.hk-comments-layer > * {
+  pointer-events: auto;
+}
+
 /* An AI answer drawn as page blocks, at the card's size. */
 .hk-ai-answer > * + * {
   @apply mt-2;

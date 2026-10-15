@@ -84,7 +84,7 @@ struct InspectorView: View {
             Group {
                 switch navigator.inspectorMode {
                 case .outline: OutlinePane(navigator: navigator, editor: editor)
-                case .comments: CommentsPane()
+                case .comments: CommentsPane(pageID: navigator.route.pageID, editor: editor)
                 case .ai:
                     // About the page beside it (cleared from the composer to ask without it).
                     AIChatView(chat: chat)
@@ -198,17 +198,129 @@ private struct OutlineRow: View {
 }
 
 /// AI for the open page (the next feature): for now it says what will be here.
-/// Comments on the page and on passages: to come (the panel's place for them is ready).
+/// Every thread on the page, open or resolved (Notion's comments panel): what each is about, its first comment and
+/// replies; picking one opens it in the page, its passage in view. Threads change when the page writes them (here or in
+/// the other editor), when this panel reopens one, and when the app comes back (other devices).
 private struct CommentsPane: View {
+    @Environment(AppModel.self) private var model
+    let pageID: String?
+    let editor: EditorController
+    @State private var threads: [CommentThread] = []
+    @State private var showResolved = false
+
+    private var shown: [CommentThread] {
+        threads.filter { ($0.resolvedAt != nil) == showResolved }.sorted { $0.updatedAt > $1.updatedAt }
+    }
+
     var body: some View {
-        VStack(spacing: Spacing.s3) {
-            IconView(.chatTeardropText, size: TextSize.x2l.rawValue).foregroundStyle(Theme.mutedForeground)
-            Text("app:inspector.comments.soon")
-                .font(.hk(.md))
-                .foregroundStyle(Theme.mutedForeground)
-                .multilineTextAlignment(.center)
+        VStack(alignment: .leading, spacing: Spacing.s2) {
+            HStack(spacing: Spacing.s1_5) {
+                filter("app:comments.filter.open \(threads.filter { $0.resolvedAt == nil }.count.formatted())", resolved: false)
+                filter("app:comments.filter.resolved \(threads.filter { $0.resolvedAt != nil }.count.formatted())", resolved: true)
+            }
+            .padding(.horizontal, Spacing.s3)
+            if shown.isEmpty {
+                Text(showResolved ? "app:comments.noneResolved" : "app:comments.empty")
+                    .font(.hk(.md))
+                    .foregroundStyle(Theme.mutedForeground)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(Spacing.s6)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: Spacing.s2) {
+                        ForEach(shown) { thread in
+                            ThreadRow(thread: thread) {
+                                editor.openComment(thread.id)
+                            } reopen: {
+                                guard let pageID else { return }
+                                try? model.comments?.setResolved(false, pageId: pageID, threadId: thread.id)
+                                NotificationCenter.default.post(name: .pageCommentsChanged, object: nil, userInfo: ["id": pageID])
+                            }
+                        }
+                    }
+                    .padding(.horizontal, Spacing.s3)
+                    .padding(.bottom, Spacing.s4)
+                }
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(Spacing.s6)
+        .task(id: pageID) { reload() }
+        .onReceive(NotificationCenter.default.publisher(for: .pageCommentsChanged)) { note in
+            let id = note.userInfo?["id"] as? String
+            if id == nil || id == pageID { reload() }
+        }
+        .accessibilityIdentifier("comments-pane")
+    }
+
+    private func reload() {
+        threads = pageID.flatMap { try? model.comments?.threads(of: $0) } ?? []
+    }
+
+    private func filter(_ title: LocalizedStringKey, resolved: Bool) -> some View {
+        Button {
+            showResolved = resolved
+        } label: {
+            Text(title)
+                .font(.hk(.md))
+                .foregroundStyle(showResolved == resolved ? Theme.background : Theme.subtleForeground)
+                .padding(.horizontal, Spacing.s3)
+                .frame(height: Size.iconButton)
+                .background(showResolved == resolved ? Theme.foreground : Theme.muted, in: .capsule)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// A thread in the panel: the passage (a warm bar), who wrote the first comment and when, the comment, its replies.
+private struct ThreadRow: View {
+    let thread: CommentThread
+    let open: () -> Void
+    let reopen: () -> Void
+
+    var body: some View {
+        let first = thread.comments.first
+        Button(action: open) {
+            VStack(alignment: .leading, spacing: Spacing.s1_5) {
+                if !thread.quote.isEmpty {
+                    // The passage's own words.
+                    Text(verbatim: thread.quote)
+                        .font(.hk(.md))
+                        .foregroundStyle(Theme.subtleForeground)
+                        .lineLimit(2)
+                        .padding(.leading, Spacing.s2_5)
+                        .overlay(alignment: .leading) { Capsule().fill(Theme.inkYellow).frame(width: Spacing.s0_5) }
+                }
+                if let first {
+                    HStack(alignment: .firstTextBaseline, spacing: Spacing.s2) {
+                        // The author's own name.
+                        Text(verbatim: first.author ?? String(localized: "app:comments.you")).font(.hk(.md, .semibold))
+                        Text(first.createdAt, format: .relative(presentation: .named))
+                            .font(.hk(.xs))
+                            .foregroundStyle(Theme.mutedForeground)
+                    }
+                    // The comment, as written.
+                    Text(verbatim: first.body).font(.hk(.sm)).foregroundStyle(Theme.foreground).lineLimit(4)
+                }
+                HStack {
+                    if thread.comments.count > 1 {
+                        Text("app:comments.replies \((thread.comments.count - 1).formatted())")
+                            .font(.hk(.xs))
+                            .foregroundStyle(Theme.mutedForeground)
+                    }
+                    Spacer(minLength: 0)
+                    if thread.resolvedAt != nil {
+                        Button("app:comments.reopen", action: reopen)
+                            .font(.hk(.xs))
+                            .buttonStyle(.borderless)
+                    }
+                }
+            }
+            .padding(Spacing.s3)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.muted.opacity(0.5), in: .rect(cornerRadius: Radius.xl))
+            .contentShape(.rect(cornerRadius: Radius.xl))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("comment-row")
     }
 }

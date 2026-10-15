@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 20
+    public static let version = 21
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -54,6 +54,12 @@ public enum BridgeMessage: Sendable, Equatable {
     case activeHeading(docId: String, id: String?)
     /// The selected text ("" when nothing is): Ask AI offers it as context.
     case selection(docId: String, text: String)
+    /// Comments (`PageComments`): a thread started on a passage with its first comment, a reply, resolving / reopening,
+    /// deleting a comment or (`commentId` nil) the whole thread.
+    case commentCreate(docId: String, threadId: String, quote: String, body: String)
+    case commentReply(docId: String, threadId: String, body: String)
+    case commentResolve(docId: String, threadId: String, resolved: Bool)
+    case commentDelete(docId: String, threadId: String, commentId: String?)
     /// Where the page is scrolled (throttled), so a tab shown again gets its place back.
     case scroll(docId: String, top: Double)
     /// AI on the selection (see `AIRequestPayload`); replies go back through `window.hikki.aiEvent`.
@@ -151,6 +157,7 @@ extension BridgeMessage: Decodable {
     private enum CodingKeys: String, CodingKey {
         case type, protocolVersion, snapshot, active, level, message, context, docId, icon, cover, fileExtension, dataBase64
         case size, id, url, block, text, headings, words, characters, name, top
+        case threadId, quote, body, resolved, commentId
     }
 
     public init(from decoder: Decoder) throws {
@@ -166,6 +173,22 @@ extension BridgeMessage: Decodable {
             self = .aiRequest(try AIRequestPayload(from: decoder))
         case "aiCancel":
             self = .aiCancel(id: try c.decode(String.self, forKey: .id))
+        case "commentCreate":
+            self = .commentCreate(
+                docId: try c.decode(String.self, forKey: .docId), threadId: try c.decode(String.self, forKey: .threadId),
+                quote: try c.decode(String.self, forKey: .quote), body: try c.decode(String.self, forKey: .body))
+        case "commentReply":
+            self = .commentReply(
+                docId: try c.decode(String.self, forKey: .docId), threadId: try c.decode(String.self, forKey: .threadId),
+                body: try c.decode(String.self, forKey: .body))
+        case "commentResolve":
+            self = .commentResolve(
+                docId: try c.decode(String.self, forKey: .docId), threadId: try c.decode(String.self, forKey: .threadId),
+                resolved: try c.decode(Bool.self, forKey: .resolved))
+        case "commentDelete":
+            self = .commentDelete(
+                docId: try c.decode(String.self, forKey: .docId), threadId: try c.decode(String.self, forKey: .threadId),
+                commentId: try c.decodeIfPresent(String.self, forKey: .commentId))
         case "selection":
             self = .selection(docId: try c.decode(String.self, forKey: .docId), text: try c.decode(String.self, forKey: .text))
         case "activeHeading":

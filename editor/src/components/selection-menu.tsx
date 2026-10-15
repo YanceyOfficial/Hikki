@@ -1,5 +1,6 @@
 import {
   CaretRightIcon,
+  ChatTeardropTextIcon,
   CheckIcon,
   CodeIcon,
   DotsThreeIcon,
@@ -126,6 +127,19 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
           <SparkleIcon size={18} weight="fill" className="text-primary" aria-hidden />
           <span className="flex-1 truncate">{t('ai.menu')}</span>
           <CaretRightIcon size={14} className="text-muted-foreground" aria-hidden />
+        </button>
+        <button
+          type="button"
+          className={rowClass}
+          data-testid="selection-menu-comment"
+          onMouseEnter={() => {
+            if (panel === 'ai' || panel === 'turnInto') setPanel(null)
+          }}
+          onClick={() => editor.commands.commentStart()}
+        >
+          <ChatTeardropTextIcon size={18} className="text-subtle-foreground" aria-hidden />
+          <span className="flex-1 truncate">{t('comments.menu')}</span>
+          <span className="text-xs text-placeholder">{shortcutLabel('comment')}</span>
         </button>
         <button
           type="button"

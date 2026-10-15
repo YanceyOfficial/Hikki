@@ -38,6 +38,15 @@ final class EditorController {
             let ids = note.userInfo?["ids"] as? [String] ?? []
             MainActor.assumeIsolated { self?.reloadIfShowing(ids) }
         }
+        // A page's comments changed (here, in the other editor, or from the side panel): the page shows them.
+        commentChanges = NotificationCenter.default.addObserver(forName: .pageCommentsChanged, object: nil, queue: .main) {
+            [weak self] note in
+            let id = note.userInfo?["id"] as? String
+            MainActor.assumeIsolated {
+                guard let self, id == nil || id == self.currentDocumentID else { return }
+                self.pushComments()
+            }
+        }
         // The same page open in another editor (split view's other side) was saved: show it here too.
         siblingSaves = NotificationCenter.default.addObserver(forName: .pageSavedInEditor, object: nil, queue: .main) {
             [weak self] note in
@@ -52,6 +61,61 @@ final class EditorController {
 
     @ObservationIgnored private var diskChanges: (any NSObjectProtocol)?
     @ObservationIgnored private var siblingSaves: (any NSObjectProtocol)?
+    @ObservationIgnored private var commentChanges: (any NSObjectProtocol)?
+
+    // MARK: - Comments
+
+    /// The workspace's comment store (`comments/<page id>.json`), set by ContentView once the folder is known.
+    @ObservationIgnored var comments: (() -> PageComments?) = { nil }
+    /// This device's name, shown on comments written elsewhere ("on iPhone").
+    @ObservationIgnored var deviceName: String?
+
+    /// Sends the open page's threads to the page (after loading it, after a change here or elsewhere).
+    func pushComments() {
+        guard isReady, let id = currentDocumentID else { return }
+        let threads = (try? comments()?.threads(of: id)) ?? []
+        let payload: [[String: Any]] = threads.map { thread in
+            [
+                "id": thread.id, "quote": thread.quote, "resolved": thread.resolvedAt != nil,
+                "comments": thread.comments.map { comment in
+                    [
+                        "id": comment.id, "body": comment.body, "author": comment.author ?? NSNull(),
+                        "device": comment.device ?? NSNull(), "createdAt": comment.createdAt.timeIntervalSince1970 * 1000,
+                    ] as [String: Any]
+                },
+            ]
+        }
+        Task {
+            do {
+                _ = try await webView.callAsyncJavaScript(
+                    "window.hikki.setComments(docId, threads, device)",
+                    arguments: ["docId": id, "threads": payload, "device": deviceName ?? NSNull()], contentWorld: .page)
+            } catch {
+                Log.warn("setComments failed: \(error)", category: "bridge")
+            }
+        }
+    }
+
+    /// A thread picked in the side panel: opened in the page, its passage in view.
+    func openComment(_ threadId: String) {
+        guard isReady else { return }
+        Task {
+            _ = try? await webView.callAsyncJavaScript(
+                "window.hikki.openComment(id)", arguments: ["id": threadId], contentWorld: .page)
+        }
+    }
+
+    /// A comment change from the page, into the store; every editor showing the page (and the side panel) hears.
+    private func applyComment(pageId: String, _ change: (PageComments) throws -> Void) {
+        guard let store = comments() else { return }
+        do {
+            try change(store)
+            Log.info("comment changed", category: "comments", context: ["docId": pageId])
+        } catch {
+            Log.error("comment change failed: \(error)", category: "comments", context: ["docId": pageId])
+        }
+        NotificationCenter.default.post(name: .pageCommentsChanged, object: nil, userInfo: ["id": pageId])
+    }
 
     /// Another device changed the open page (the workspace folder): show the new version in place. The editor
     /// declines while it holds unsaved edits — those win and are saved over it.
@@ -500,6 +564,7 @@ final class EditorController {
                 arguments: ["page": try PagePayload.make(from: record)],
                 contentWorld: .page
             )
+            pushComments()
             if titleFocusPageID == id {
                 titleFocusPageID = nil
                 await callFocusTitle()
@@ -552,6 +617,14 @@ final class EditorController {
             pageInfo = PageInfo(docId: docId, headings: headings, words: words, characters: characters)
         case .activeHeading(let docId, let id):
             activeHeading = (docId, id)
+        case .commentCreate(let docId, let threadId, let quote, let body):
+            applyComment(pageId: docId) { try $0.create(pageId: docId, threadId: threadId, quote: quote, body: body) }
+        case .commentReply(let docId, let threadId, let body):
+            applyComment(pageId: docId) { try $0.reply(pageId: docId, threadId: threadId, body: body) }
+        case .commentResolve(let docId, let threadId, let resolved):
+            applyComment(pageId: docId) { try $0.setResolved(resolved, pageId: docId, threadId: threadId) }
+        case .commentDelete(let docId, let threadId, let commentId):
+            applyComment(pageId: docId) { try $0.delete(pageId: docId, threadId: threadId, commentId: commentId) }
         case .selection(let docId, let text):
             selection = text.isEmpty ? nil : EditorSelection(docId: docId, text: text)
         case .scroll(let docId, let top):
@@ -808,6 +881,9 @@ private final class NavigationDelegate: NSObject, WKNavigationDelegate {
 extension Notification.Name {
     /// An editor saved a page (`userInfo["id"]`, the editor as `object`): another editor showing it reloads.
     static let pageSavedInEditor = Notification.Name("app.yancey.hikki.pageSavedInEditor")
+    /// A page's comments changed (`userInfo["id"]`; none: any page — the app came back and other devices may have
+    /// written): editors showing it and the side panel reload them.
+    static let pageCommentsChanged = Notification.Name("app.yancey.hikki.pageCommentsChanged")
 }
 
 /// Text selected in a page (`selection` bridge message).

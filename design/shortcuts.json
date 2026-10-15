@@ -228,6 +228,12 @@
       "modifiers": ["command", "shift"],
       "bound": "editor",
       "group": "format"
+    },
+    "comment": {
+      "key": "m",
+      "modifiers": ["command", "shift"],
+      "bound": "editor",
+      "group": "format"
     }
   }
 }

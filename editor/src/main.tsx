@@ -16,6 +16,7 @@ import {
 import { applyShortcutOverrides, type ShortcutOverride } from './core/shortcuts'
 import { devTransport, webkitTransport } from './core/transport'
 import type { AIReviewStyle } from './extensions/ai-review'
+import type { ThreadItem } from './extensions/comments'
 import { findShortcut, type FindMode } from './extensions/find'
 import type { PageIndexEntry } from './extensions/page-links'
 import type { SplitDropMode } from './extensions/split-drop'
@@ -75,6 +76,10 @@ window.hikki = {
   find: (mode: FindMode) => bridge.find(mode),
   // Settings → Editor → Check spelling.
   setSpellcheck: (on: boolean) => bridge.setSpellcheck(on),
+  // Comments: the open page's threads (native store), and a thread picked in the side panel.
+  setComments: (docId: string, threads: ThreadItem[], device: string | null) =>
+    bridge.setComments(docId, threads, device),
+  openComment: (threadId: string) => bridge.openComment(threadId),
   // The split pane's editor: a loading page never takes the keyboard from the page beside it.
   setAutoFocus: (on: boolean) => bridge.setAutoFocus(on),
   // Settings → AI → Review style: inline (A), diff (B) or bubble (C).

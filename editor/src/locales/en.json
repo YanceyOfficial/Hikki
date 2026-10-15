@@ -431,5 +431,20 @@
     "removed": "(removed)",
     "changesInLines_one": "{{count}} change in {{changed}} of {{total}} lines",
     "changesInLines_other": "{{count}} changes in {{changed}} of {{total}} lines"
+  },
+  "comments": {
+    "menu": "Comment",
+    "reply": "Reply…",
+    "add": "Add a comment…",
+    "send": "Send",
+    "resolve": "Resolve",
+    "delete": "Delete thread",
+    "you": "You",
+    "justNow": "Just now",
+    "onDevice": "on {{device}} · {{when}}",
+    "replies_one": "{{count}} reply",
+    "replies_other": "{{count}} replies",
+    "count_one": "{{count}} comment",
+    "count_other": "{{count}} comments"
   }
 }

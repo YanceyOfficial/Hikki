@@ -264,6 +264,8 @@ struct ContentView: View {
                 if phase == .active {
                     model.reconcileWorkspace()  // pick up other devices' changes
                     model.purgeTrash()
+                    // Other devices may have commented meanwhile (their files synced in).
+                    NotificationCenter.default.post(name: .pageCommentsChanged, object: nil)
                 } else {
                     Task {
                         await editor.flush(reason: "scenePhase-\(phase)")
@@ -389,6 +391,8 @@ struct ContentView: View {
         editor.setSpellcheck(spellcheck)
         editor.setAIReviewStyle(aiReviewStyle)
         editor.attach(store: model.store, assets: model.assets) { [weak model] in model?.history }
+        editor.comments = { [weak model] in model?.comments }
+        editor.deviceName = AppModel.deviceKind
         editor.onOpenPage = { id, block in
             guard model.tree.page(id) != nil else { return }
             navigator.open(id)
@@ -408,6 +412,8 @@ struct ContentView: View {
         pane.setSpellcheck(spellcheck)
         pane.setAIReviewStyle(aiReviewStyle)
         pane.setAutoFocus(false)
+        pane.comments = { [weak model] in model?.comments }
+        pane.deviceName = AppModel.deviceKind
         pane.attach(store: model.store, assets: model.assets) { [weak model] in model?.history }
         pane.onOpenPage = { [navigator] id, block in
             guard model.tree.page(id) != nil else { return }

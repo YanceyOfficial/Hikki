@@ -43,6 +43,7 @@ enum Shortcut: String, CaseIterable {
     case moveBlockUp
     case moveBlockDown
     case ruby
+    case comment
 
     /// Who handles the key: the native menu (`app`), the page (`editor` — menus only display it), or
     /// the page when it has focus and the menu otherwise (`both`).
@@ -97,6 +98,7 @@ enum Shortcut: String, CaseIterable {
         case .moveBlockUp: .editor
         case .moveBlockDown: .editor
         case .ruby: .editor
+        case .comment: .editor
         }
     }
 
@@ -140,6 +142,7 @@ enum Shortcut: String, CaseIterable {
         case .moveBlockUp: .blocks
         case .moveBlockDown: .blocks
         case .ruby: .format
+        case .comment: .format
         }
     }
 
@@ -184,6 +187,7 @@ enum Shortcut: String, CaseIterable {
         case .moveBlockUp: KeyCombo("arrowUp", [.shift, .command])
         case .moveBlockDown: KeyCombo("arrowDown", [.shift, .command])
         case .ruby: KeyCombo("r", [.shift, .command])
+        case .comment: KeyCombo("m", [.shift, .command])
         }
     }
 
@@ -228,6 +232,7 @@ enum Shortcut: String, CaseIterable {
         case .moveBlockUp: "app:shortcut.moveBlockUp"
         case .moveBlockDown: "app:shortcut.moveBlockDown"
         case .ruby: "app:shortcut.ruby"
+        case .comment: "app:shortcut.comment"
         }
     }
 }

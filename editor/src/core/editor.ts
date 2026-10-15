@@ -13,6 +13,7 @@ import { Callout } from '../extensions/callout'
 import { CodeBlock } from '../extensions/code-block'
 import { Colors, ColorTextStyle } from '../extensions/colors'
 import { Column, Columns, ColumnsKeymap } from '../extensions/columns'
+import { Comments, type CommentsHost } from '../extensions/comments'
 import { EdgeNavigation } from '../extensions/edge-navigation'
 import { Embed } from '../extensions/embed'
 import { EmojiSuggestion } from '../extensions/emoji-suggestion'
@@ -66,6 +67,8 @@ type EditorOptions = {
   splitDrop?: SplitDropHost
   /** AI on the selection (the native AI service); without it the AI actions do nothing. */
   ai?: AIHost
+  /** Comments on passages (the native store); without it the threads stay empty and nothing is written. */
+  comments?: CommentsHost
 }
 
 /**
@@ -96,6 +99,14 @@ export const BLOCK_ID_TYPES = [
 ]
 
 /** The page body editor. `content` must already be normalized (see normalizeBody). */
+const noComments: CommentsHost = {
+  create: () => {},
+  reply: () => {},
+  resolve: () => {},
+  remove: () => {},
+  device: () => null
+}
+
 export function createEditor(
   element: HTMLElement,
   content: JSONContent | null,
@@ -158,6 +169,7 @@ export function editorExtensions(options: EditorOptions = {}): AnyExtension[] {
     PageMention(options.pageLinks ?? noPageLinks),
     SplitDrop(options.splitDrop ?? { mode: () => 'off', open: () => {} }),
     AIReview(options.ai ?? { request: () => {}, cancel: () => {}, title: () => '' }),
+    Comments(options.comments ?? noComments),
     EmojiSuggestion,
     // "--" → —, "..." → …, "->" → →, "(c)" → ©… Quotes stay straight and fractions stay typed (notes, code-ish text, CJK).
     Typography.configure({

@@ -139,6 +139,18 @@ struct BridgeMessageTests {
         #expect(try decode(["type": "aiCancel", "id": "r1"]) == .aiCancel(id: "r1"))
         #expect(try decode(["type": "selection", "docId": "p1", "text": "いいえ"]) == .selection(docId: "p1", text: "いいえ"))
         #expect(
+            try decode(["type": "commentCreate", "docId": "p1", "threadId": "t", "quote": "そうです", "body": "样态"])
+                == .commentCreate(docId: "p1", threadId: "t", quote: "そうです", body: "样态"))
+        #expect(
+            try decode(["type": "commentReply", "docId": "p1", "threadId": "t", "body": "ok"])
+                == .commentReply(docId: "p1", threadId: "t", body: "ok"))
+        #expect(
+            try decode(["type": "commentResolve", "docId": "p1", "threadId": "t", "resolved": true])
+                == .commentResolve(docId: "p1", threadId: "t", resolved: true))
+        #expect(
+            try decode(["type": "commentDelete", "docId": "p1", "threadId": "t"])
+                == .commentDelete(docId: "p1", threadId: "t", commentId: nil))
+        #expect(
             try decode([
                 "type": "aiRequest", "id": "r1", "action": "tone:casual", "answer": false, "explain": true,
                 "units": [["key": "p1:0", "html": "Hello <strong>there</strong>"]],

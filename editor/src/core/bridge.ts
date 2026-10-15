@@ -3,6 +3,12 @@ import type { Transaction } from '@tiptap/pm/state'
 
 import { setBlockLinkBuilder } from '../components/block-menu'
 import { handleAIEvent, type AIHost, type AIReviewStyle } from '../extensions/ai-review'
+import {
+  commentRanges,
+  setThreads,
+  type CommentsHost,
+  type ThreadItem
+} from '../extensions/comments'
 import { runFind, type FindMode } from '../extensions/find'
 import type { MediaHost } from '../extensions/media'
 import { pageLinkHref, type PageIndexEntry, type PageLinksHost } from '../extensions/page-links'
@@ -226,6 +232,7 @@ export class EditorBridge {
       pageLinks: this.pageLinks,
       splitDrop: this.splitDropHost,
       ai: this.aiHost,
+      comments: this.commentsHost,
       ruby: this.ruby,
       linkPreview: async (url) =>
         linkCardFrom(await this.transport.post({ type: 'linkPreview', url })),
@@ -367,6 +374,50 @@ export class EditorBridge {
     cancel: (id) => void this.send({ type: 'aiCancel', id }),
     title: () => this.page.get().title,
     style: () => this.aiReviewStyle
+  }
+
+  /** Comments on passages: written to the native store, which sends the page's threads back (`setComments`). */
+  readonly commentsHost: CommentsHost = {
+    create: (threadId, quote, body) =>
+      this.sendComment({ type: 'commentCreate', threadId, quote, body }),
+    reply: (threadId, body) => this.sendComment({ type: 'commentReply', threadId, body }),
+    resolve: (threadId, resolved) =>
+      this.sendComment({ type: 'commentResolve', threadId, resolved }),
+    remove: (threadId, commentId) =>
+      this.sendComment({ type: 'commentDelete', threadId, ...(commentId ? { commentId } : {}) }),
+    device: () => this.device
+  }
+
+  /** This device's name ("Mac", "iPhone"), from `setComments`. */
+  private device: string | null = null
+
+  private sendComment(
+    message:
+      | { type: 'commentCreate'; threadId: string; quote: string; body: string }
+      | { type: 'commentReply'; threadId: string; body: string }
+      | { type: 'commentResolve'; threadId: string; resolved: boolean }
+      | { type: 'commentDelete'; threadId: string; commentId?: string }
+  ): void {
+    const docId = this.page.get().docId
+    if (docId) void this.send({ ...message, docId } as ToNativeMessage)
+  }
+
+  /** `window.hikki.setComments`: the page's threads from the native store (after loading it, and after each change). */
+  setComments(docId: string, threads: ThreadItem[], device: string | null): void {
+    this.device = device
+    if (this.editor && docId === this.page.get().docId) setThreads(this.editor, threads)
+  }
+
+  /** `window.hikki.openComment`: a thread picked in the side panel — open, and its passage in view. */
+  openComment(threadId: string): void {
+    const editor = this.editor
+    if (!editor) return
+    const range = commentRanges(editor.state.doc).get(threadId)?.[0]
+    editor.commands.commentOpen(threadId)
+    if (range) {
+      const dom = editor.view.domAtPos(range.from).node
+      ;(dom instanceof Element ? dom : dom.parentElement)?.scrollIntoView({ block: 'center' })
+    }
   }
 
   /** Settings → AI → Review style: how the next edit is shown. */

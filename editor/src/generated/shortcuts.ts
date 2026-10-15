@@ -39,6 +39,7 @@ export type ShortcutId =
   | 'moveBlockUp'
   | 'moveBlockDown'
   | 'ruby'
+  | 'comment'
 
 export type Shortcut = {
   /** A character (lower case) or a DOM key name (ArrowUp, Tab…). */
@@ -91,5 +92,6 @@ export const SHORTCUTS: Record<ShortcutId, Shortcut> = {
   duplicateBlock: { key: 'd', command: true, shift: false, option: false, control: false, bound: 'editor', display: '⌘D' },
   moveBlockUp: { key: 'ArrowUp', command: true, shift: true, option: false, control: false, bound: 'editor', display: '⇧⌘↑' },
   moveBlockDown: { key: 'ArrowDown', command: true, shift: true, option: false, control: false, bound: 'editor', display: '⇧⌘↓' },
-  ruby: { key: 'r', command: true, shift: true, option: false, control: false, bound: 'editor', display: '⇧⌘R' }
+  ruby: { key: 'r', command: true, shift: true, option: false, control: false, bound: 'editor', display: '⇧⌘R' },
+  comment: { key: 'm', command: true, shift: true, option: false, control: false, bound: 'editor', display: '⇧⌘M' }
 }

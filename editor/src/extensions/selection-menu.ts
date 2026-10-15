@@ -5,6 +5,7 @@ import { createRoot, type Root } from 'react-dom/client'
 
 import { renderSelectionMenu } from '../components/selection-menu'
 import { aiReviewOpen } from './ai-review'
+import { commentsState } from './comments'
 import { SlashCommandKey } from './slash-command'
 
 export const SelectionMenuKey = new PluginKey('selectionMenu')
@@ -58,6 +59,8 @@ export const SelectionMenuExtension = Extension.create<
           if (SlashCommandKey.getState(state)?.active) return false
           // Not while AI works on the selection or shows its review.
           if (aiReviewOpen(editor)) return false
+          // Nor while a comment on the selection is being written.
+          if (commentsState(state)?.draft) return false
           return true
         }
       })

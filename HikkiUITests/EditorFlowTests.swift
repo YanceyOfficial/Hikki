@@ -635,7 +635,37 @@ final class EditorFlowTests: XCTestCase {
         toggle.tap()
     }
 
-    /// iPad / Mac: split view puts a second page beside the first, each in its own editor; the pane closes again.
+    /// Comments end to end: a word selected in the page, Comment, a comment sent — it lands in the workspace's store
+    /// and the side panel lists it.
+    func testCommentingOnAPassage() throws {
+        continueAfterFailure = false
+        let app = launch(environment: ["HIKKI_DEMO_PAGES": "1", "HIKKI_OPEN_TABS": "demo-46ffce8"])
+        guard app.buttons["nav-home"].waitForExistence(timeout: 10) else {
+            throw XCTSkip("needs a wide window — run on iPad or Mac")
+        }
+        let body = app.webViews.textViews["Page content"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(body, in: app, timeout: 30))
+        sleep(1)
+        // A word selected from the keyboard (a double tap in the web view selects unreliably on the simulator),
+        // then Comment's shortcut.
+        body.staticTexts.element(boundBy: 1).tap()
+        body.typeKey(.rightArrow, modifierFlags: .command)
+        body.typeKey(.leftArrow, modifierFlags: [.shift, .alternate])
+        body.typeKey("m", modifierFlags: [.command, .shift])
+        let field = app.webViews.textFields["Add a comment…"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(field, in: app), "no comment composer")
+        field.tap()
+        field.typeText("Hearsay or appearance?\n")
+        sleep(1)
+
+        let toggle = app.descendants(matching: .any)["comments-toggle"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(toggle, in: app))
+        toggle.tap()
+        let row = app.descendants(matching: .any)["comment-row"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(row, in: app), "the side panel lists no thread")
+        XCTAssertTrue(app.staticTexts["Hearsay or appearance?"].firstMatch.exists)
+    }
+
     /// Split view: once the pane's page has loaded, the left page still takes typing — and the pane's too.
     func testBothSidesOfASplitTakeTyping() throws {
         continueAfterFailure = false
@@ -662,6 +692,7 @@ final class EditorFlowTests: XCTestCase {
         attachScreenshot(app, "split-typing")
     }
 
+    /// iPad / Mac: split view puts a second page beside the first, each in its own editor; the pane closes again.
     func testSplitViewShowsTwoPages() throws {
         continueAfterFailure = false
         let app = launch()

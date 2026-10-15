@@ -56,6 +56,8 @@ final class AppModel {
     @ObservationIgnored private var sync: WorkspaceSync?
     /// Versions of pages (Page ⋯ → Page History…), in the workspace folder; nil until the folder is known.
     @ObservationIgnored private(set) var history: PageHistory?
+    /// Comment threads (`comments/<page id>.json`), in the folder too so they sync with the pages.
+    @ObservationIgnored private(set) var comments: PageComments?
 
     /// Notion-like: a version per editing session (10 quiet minutes apart), all of the last day, then one a day for
     /// 30 days. DEBUG: `HIKKI_HISTORY_INTERVAL=<seconds>` shortens the session (UI tests).
@@ -92,6 +94,7 @@ final class AppModel {
             // Page history lives in the folder too (`history/<page id>/`), so versions sync with the pages.
             let history = PageHistory(root: folder, policy: Self.historyPolicy, device: Self.deviceName)
             self.history = history
+            comments = PageComments(root: folder, author: Self.authorName, device: Self.deviceKind)
             // Every pass — launch, activation, or the folder watcher noticing another device — tells open
             // editors which pages came from disk, so one showing such a page reloads it.
             // The losing side of a conflict becomes a page of its own, titled in the app's language; a page
@@ -226,6 +229,25 @@ final class AppModel {
         #endif
     }
 
+    /// The kind of device a comment was written on ("Mac", "iPhone", "iPad").
+    static var deviceKind: String {
+        #if os(macOS)
+            "Mac"
+        #else
+            UIDevice.current.model
+        #endif
+    }
+
+    /// The name comments carry: the user's full name where the system has one (macOS); none on iOS ("You").
+    static var authorName: String? {
+        #if os(macOS)
+            let name = NSFullUserName()
+            return name.isEmpty ? nil : name
+        #else
+            return nil
+        #endif
+    }
+
     func createWorkspace(name: String, location: Workspace.Location) {
         let workspace = Workspace(name: name, location: location)
         do {
@@ -334,6 +356,7 @@ final class AppModel {
 
     func deletePermanently(id: String) {
         perform("delete permanently", id) { try store.deletePermanently(id: id) }
+        comments?.removeAll(pageId: id)
     }
 
     /// Deletes what has been in the trash longer than Settings → Keep deleted pages allows (at launch and when the
