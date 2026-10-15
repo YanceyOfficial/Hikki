@@ -198,6 +198,18 @@ HikkiUITests/                 XCUITest flows
   Files dropped on the sidebar import the same way (see Sidebar; a dropped file's name is reduced to its last
   component before it is copied). DEBUG: `HIKKI_EXPORT_DIR=<folder>`
   skips the save panel, `HIKKI_IMPORT_FILE=<path>` imports at launch (UI tests).
+  **Bulk** (Settings → Workspace → Import & Export, `TransferSection` → `Hikki/Sources/BulkTransfer.swift`, one job
+  per app on `AppModel.bulkTransfer`, running on when Settings closes: progress with Cancel, then a summary with the
+  skipped files and why; `onFinish` is the hook for app-wide notices). Import takes many files and folders:
+  `WorkspaceImport` (`HikkiCore/Sources/Store/WorkspaceTransfer.swift`) plans the tree — a chosen folder's contents
+  go to the top level, a subfolder is a page (empty, its name) unless a document beside it has its name, `assets/`
+  is attachments; Markdown/HTML/text go through the editor (`AppModel.importConverted`, relative links may climb to
+  the chosen folder, not out), Hikki page files (JSON) come back as they were, keeping their id when it is free and
+  their place by `parentId` too (a flat `pages/` folder rebuilds its tree). Export writes every live page into a new
+  folder (`WorkspaceExport`: `Title.<ext>` plus `Title/` for subpages, sibling names safe and unique ignoring case,
+  attachments once in the top `assets/` linked with `../`); Markdown/HTML through any window's editor (each window
+  registers its own), JSON = the page files with attachments kept by name, so a JSON export imported into an empty
+  workspace is the same workspace. DEBUG: `HIKKI_BULK_IMPORT=<path>|<path>`, `HIKKI_BULK_EXPORT=<format>|<folder>`.
 - **Workspace identity** lives in the folder (a workspace.json next to `pages/`: id, name, icon — `WorkspaceIdentity`); the per-device
   record (`AppPaths.workspace`) only adds the location. A device picking a folder that has one _opens_ that workspace
   (onboarding says so), and a newer identity from another device replaces the local name/icon on activation. Settings →

@@ -16,6 +16,8 @@ final class AppModel {
     let assets: AssetStore
     let crashReporter: CrashReporter
     let workspaceStore: WorkspaceStore
+    /// Settings → Import & Export: the bulk import / export job (BulkTransfer.swift).
+    let bulkTransfer = BulkTransfer()
     /// nil until onboarding creates one (first launch).
     private(set) var workspace: Workspace?
     private(set) var tree = PageTree([])

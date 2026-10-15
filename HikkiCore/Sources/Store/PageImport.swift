@@ -55,18 +55,20 @@ public enum PageImport {
             .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
     }
 
-    /// The file a relative link in a document points at — only inside `base` (the document's folder): no scheme, no
-    /// absolute path, nothing that climbs out with `..`; nil otherwise or when no such file exists.
-    public static func localFile(_ link: String, base: URL) -> URL? {
+    /// The file a relative link in a document points at, resolved against `base` (the document's folder) — only
+    /// inside `root` (the folder the user chose; `base` itself when nil): no scheme, no absolute path, nothing that
+    /// climbs out with `..`; nil otherwise or when no such file exists.
+    public static func localFile(_ link: String, base: URL, root: URL? = nil) -> URL? {
         let raw = link.trimmingCharacters(in: .whitespaces)
         guard !raw.isEmpty, !raw.hasPrefix("/"), !raw.hasPrefix("#"), URL(string: raw)?.scheme == nil,
             raw.range(of: #"^[a-zA-Z][a-zA-Z0-9+.\-]*:"#, options: .regularExpression) == nil
         else { return nil }
         let path = (raw.split(separator: "#").first.map(String.init) ?? raw).split(separator: "?").first.map(String.init) ?? raw
         let decoded = path.removingPercentEncoding ?? path
-        let root = base.standardizedFileURL.resolvingSymlinksInPath()
-        let file = root.appending(path: decoded).standardizedFileURL.resolvingSymlinksInPath()
-        guard file.path.hasPrefix(root.path + "/") else { return nil }
+        let boundary = (root ?? base).standardizedFileURL.resolvingSymlinksInPath()
+        let file = base.standardizedFileURL.resolvingSymlinksInPath().appending(path: decoded).standardizedFileURL
+            .resolvingSymlinksInPath()
+        guard file.path.hasPrefix(boundary.path + "/") else { return nil }
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: file.path, isDirectory: &isDirectory), !isDirectory.boolValue else {
             return nil
@@ -77,11 +79,11 @@ public enum PageImport {
     /// Node types whose `src` is a file (pictures, video, audio, attachments).
     static let fileNodes: Set<String> = ["image", "video", "audio", "fileAttachment"]
 
-    /// The content with every relative `src` that names a file inside `base` replaced by what `copy` makes of that
-    /// file (its asset URL); one copy per file, however often it appears. A link `copy` can't take (nil, or an error)
-    /// is left as it was.
+    /// The content with every relative `src` that names a file inside `root` (`base` when nil), resolved against
+    /// `base`, replaced by what `copy` makes of that file (its asset URL); one copy per file, however often it
+    /// appears. A link `copy` can't take (nil, or an error) is left as it was.
     public static func relinkLocalFiles(
-        in content: JSONValue, base: URL, copy: (URL) throws -> String?
+        in content: JSONValue, base: URL, root: URL? = nil, copy: (URL) throws -> String?
     ) -> (content: JSONValue, copied: Int) {
         var copied: [URL: String] = [:]
         func walk(_ value: JSONValue) -> JSONValue {
@@ -91,7 +93,7 @@ public enum PageImport {
             case .object(var object):
                 if case .string(let type) = object["type"], fileNodes.contains(type),
                     case .object(var attrs) = object["attrs"], case .string(let src) = attrs["src"],
-                    let file = localFile(src, base: base)
+                    let file = localFile(src, base: base, root: root)
                 {
                     if let url = copied[file] ?? (try? copy(file)) ?? nil {
                         copied[file] = url

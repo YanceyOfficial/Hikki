@@ -218,6 +218,7 @@ private struct SettingsPageContent: View {
         switch page {
         case .workspace:
             WorkspaceSection()
+            TransferSection()
         case .general:
             AppearanceSection()
             LanguageSection()
@@ -333,6 +334,157 @@ private struct WorkspaceSection: View {
         switch model.workspace?.location {
         case .folder(_, let displayName): Text(verbatim: displayName)  // the folder path, as-is
         default: Text("app:onboarding.location.device")
+        }
+    }
+}
+
+/// Settings → Workspace → Import & Export: many files and folders in at once, or the whole workspace out to a folder
+/// (BulkTransfer). The job runs on when Settings closes; its progress and its summary show here.
+private struct TransferSection: View {
+    @Environment(AppModel.self) private var model
+    @AppStorage("transfer.format") private var format = WorkspaceExport.Format.markdown
+    @State private var isPicking = false
+    @State private var picking = Picking.importFiles
+
+    private enum Picking {
+        case importFiles, exportFolder
+    }
+
+    /// Markdown, HTML, text and JSON page files, and folders of them.
+    private static let importTypes: [UTType] =
+        [UTType("net.daringfireball.markdown"), .html, .plainText, .json, .folder].compactMap { $0 }
+
+    private var transfer: BulkTransfer { model.bulkTransfer }
+
+    var body: some View {
+        Section {
+            if let progress = transfer.progress {
+                TaskProgressRow(
+                    label(progress), done: progress.done, total: progress.total, cancelTitle: "app:common.cancel",
+                    onCancel: transfer.cancel)
+            } else {
+                LabeledContent("app:settings.transfer.import") {
+                    Button("app:import.menu") { pick(.importFiles) }
+                        .accessibilityIdentifier("settings-import")
+                }
+                LabeledContent("app:settings.transfer.export") {
+                    HStack(spacing: Spacing.s2) {
+                        Picker(selection: $format) {
+                            ForEach(WorkspaceExport.Format.allCases) { Text(Self.title(of: $0)).tag($0) }
+                        } label: {
+                            Text("app:settings.transfer.format")
+                        }
+                        .labelsHidden()
+                        .fixedSize()
+                        .accessibilityIdentifier("settings-export-format")
+                        Button("app:settings.transfer.exportButton") { pick(.exportFolder) }
+                            .accessibilityIdentifier("settings-export")
+                    }
+                }
+            }
+            if let summary = transfer.summary {
+                SummaryRow(summary: summary, onDismiss: transfer.dismissSummary)
+            }
+        } header: {
+            Text("app:settings.transfer")
+        } footer: {
+            Text("app:settings.transfer.detail")
+        }
+        .fileImporter(
+            isPresented: $isPicking, allowedContentTypes: picking == .importFiles ? Self.importTypes : [.folder],
+            allowsMultipleSelection: picking == .importFiles
+        ) { result in
+            guard case .success(let urls) = result, !urls.isEmpty else { return }
+            switch picking {
+            case .importFiles: transfer.startImport(urls, model: model)
+            case .exportFolder: transfer.startExport(format, to: urls[0], model: model)
+            }
+        }
+    }
+
+    private func pick(_ mode: Picking) {
+        picking = mode
+        isPicking = true
+    }
+
+    private func label(_ progress: BulkTransfer.Progress) -> Text {
+        guard progress.total > 0 else { return Text("app:settings.transfer.preparing") }
+        let done = progress.done.formatted()
+        let total = progress.total.formatted()
+        return progress.kind == .importing
+            ? Text("app:settings.transfer.importing \(done) \(total)") : Text("app:settings.transfer.exporting \(done) \(total)")
+    }
+
+    private static func title(of format: WorkspaceExport.Format) -> LocalizedStringKey {
+        switch format {
+        case .markdown: "app:export.markdown"
+        case .html: "app:export.html"
+        case .json: "app:export.json"
+        }
+    }
+
+    /// How the last job ended: pages imported / exported, what was left out and why, where the export went.
+    private struct SummaryRow: View {
+        let summary: BulkTransfer.Summary
+        let onDismiss: () -> Void
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: Spacing.s2) {
+                Text(headline)
+                    .font(.hk(.sm, .medium))
+                    .foregroundStyle(summary.failed ? Theme.destructive : Theme.foreground)
+                    .accessibilityIdentifier("settings-transfer-result")
+                if !summary.skipped.isEmpty {
+                    DisclosureGroup {
+                        ForEach(Array(summary.skipped.enumerated()), id: \.offset) { _, item in
+                            LabeledContent {
+                                Text(Self.reason(item.reason))
+                            } label: {
+                                Text(verbatim: item.name)  // a file's name or a page's title, as-is
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                            }
+                            .font(.hk(.xs))
+                        }
+                    } label: {
+                        Text("app:settings.transfer.skipped \(summary.skipped.count.formatted())")
+                            .font(.hk(.xs))
+                            .foregroundStyle(Theme.mutedForeground)
+                    }
+                }
+                HStack(spacing: Spacing.s2) {
+                    #if os(macOS)
+                        if let folder = summary.destination, !summary.failed {
+                            Button("app:settings.transfer.reveal") { NSWorkspace.shared.activateFileViewerSelecting([folder]) }
+                        }
+                    #endif
+                    Button("app:settings.transfer.clear", action: onDismiss)
+                        .accessibilityIdentifier("settings-transfer-clear")
+                }
+            }
+            .padding(.vertical, Spacing.s1)
+        }
+
+        private var headline: LocalizedStringKey {
+            let count = summary.count.formatted()
+            switch (summary.kind, summary.failed, summary.cancelled) {
+            case (.exporting, true, _): return "app:settings.transfer.exportFailed"
+            case (.importing, _, true): return "app:settings.transfer.importCancelled \(count)"
+            case (.exporting, _, true): return "app:settings.transfer.exportCancelled \(count)"
+            case (.importing, _, false): return "app:settings.transfer.imported \(count)"
+            case (.exporting, _, false): return "app:settings.transfer.exported \(count)"
+            }
+        }
+
+        private static func reason(_ reason: WorkspaceImport.Reason) -> LocalizedStringKey {
+            switch reason {
+            case .unsupported: "app:settings.transfer.reason.unsupported"
+            case .tooLarge: "app:settings.transfer.reason.tooLarge"
+            case .notAPage: "app:settings.transfer.reason.notAPage"
+            case .newerFormat: "app:settings.transfer.reason.newerFormat"
+            case .inTrash: "app:settings.transfer.reason.inTrash"
+            case .failed: "app:settings.transfer.reason.failed"
+            }
         }
     }
 }

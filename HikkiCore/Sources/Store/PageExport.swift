@@ -49,9 +49,10 @@ public enum PageExport {
         return name.isEmpty ? fallback : name
     }
 
-    /// Rewrites every attachment URL (`hikki-editor://assets/<name>`) in an exported document to `assets/<name>`
-    /// and returns the names it found, in order, each once.
-    public static func relinkAssets(in text: String) -> (text: String, assets: [String]) {
+    /// Rewrites every attachment URL (`hikki-editor://assets/<name>`) in an exported document to `<prefix><name>`
+    /// (`assets/<name>`; a page deeper in a workspace export climbs to the export's one `assets/` with `../`) and
+    /// returns the names it found, in order, each once.
+    public static func relinkAssets(in text: String, prefix: String = "assets/") -> (text: String, assets: [String]) {
         var names: [String] = []
         var seen = Set<String>()
         // `AssetStore.urlPrefix`, then the name.
@@ -59,7 +60,7 @@ public enum PageExport {
             let name = String(match.output.1)
             guard AssetStore.isValidName(name) else { return String(match.output.0) }
             if seen.insert(name).inserted { names.append(name) }
-            return "assets/\(name)"
+            return prefix + name
         }
         return (relinked, names)
     }

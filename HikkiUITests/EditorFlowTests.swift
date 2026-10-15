@@ -514,6 +514,40 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(waitOrDumpTree(app.webViews.staticTexts["bold"].firstMatch, in: app), "imported body missing")
     }
 
+    /// Settings → Import & Export, by its launch stand-ins for the pickers: a folder imports as a page tree (a folder
+    /// is a page, `Trip.md` beside `Trip/` is that folder's page), and the workspace exports as JSON mirroring it.
+    func testBulkImportThenExportMirrorsTheTree() throws {
+        continueAfterFailure = false
+        let fm = FileManager.default
+        let source = dataDir + "-bulk"
+        let exportDir = dataDir + "-bulk-export"
+        try fm.createDirectory(atPath: source + "/Trip", withIntermediateDirectories: true)
+        try fm.createDirectory(atPath: source + "/Recipes", withIntermediateDirectories: true)
+        try fm.createDirectory(atPath: exportDir, withIntermediateDirectories: true)
+        try "# Trip\n\nPlans.\n".write(toFile: source + "/Trip.md", atomically: true, encoding: .utf8)
+        try "# Day one\n\nMuseum.\n".write(toFile: source + "/Trip/Day 1.md", atomically: true, encoding: .utf8)
+        try "<h1>Soup</h1><p>Miso.</p>".write(toFile: source + "/Recipes/Soup.html", atomically: true, encoding: .utf8)
+
+        let app = launch(environment: ["HIKKI_BULK_IMPORT": source, "HIKKI_BULK_EXPORT": "json|" + exportDir])
+        XCTAssertTrue(waitOrDumpTree(app.descendants(matching: .any)["page-row-Trip"].firstMatch, in: app, timeout: 30))
+        XCTAssertTrue(waitOrDumpTree(app.descendants(matching: .any)["page-row-Recipes"].firstMatch, in: app))
+
+        // The export: one new folder in the destination, the tree inside it.
+        var folder: String?
+        let written = expectation(
+            for: NSPredicate { _, _ in
+                guard let name = try? fm.contentsOfDirectory(atPath: exportDir).first else { return false }
+                folder = exportDir + "/" + name
+                return fm.fileExists(atPath: exportDir + "/" + name + "/Recipes/Soup.json")
+                    && fm.fileExists(atPath: exportDir + "/" + name + "/Trip/Day one.json")
+            }, evaluatedWith: nil)
+        wait(for: [written], timeout: 20)
+        let root = try XCTUnwrap(folder)
+        XCTAssertEqual(try fm.contentsOfDirectory(atPath: root).sorted(), ["Recipes", "Recipes.json", "Trip", "Trip.json"])
+        let day = try String(contentsOfFile: root + "/Trip/Day one.json", encoding: .utf8)
+        XCTAssertTrue(day.contains("Museum."), day)
+    }
+
     /// Regression: on iPhone, tag-based List selection didn't navigate; rows must be NavigationLinks.
     func testSidebarRowsNavigate() throws {
         continueAfterFailure = false

@@ -106,6 +106,22 @@ public final class AssetStore: @unchecked Sendable {
         }
     }
 
+    /// Copies an attachment exported from a workspace back in under its own name, so the pages' links to it stay as
+    /// they are; a file of that name already in the store is the same attachment (names are unique) and is kept.
+    /// Returns the editor URL.
+    public func importCopy(of source: URL, named name: String) throws -> String {
+        guard Self.isValidName(name) else { return try importCopy(of: source) }
+        if file(named: name) != nil { return Self.urlPrefix + name }
+        let ext = (name as NSString).pathExtension.lowercased()
+        guard let kind = Self.kind(ofExtension: ext) else { throw AssetError.unsupportedType(ext) }
+        let size = (try? source.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        guard size <= Self.maxBytes(for: kind) else { throw AssetError.tooLarge(size) }
+        let directory = directory
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: source, to: directory.appending(path: name))
+        return Self.urlPrefix + name
+    }
+
     /// Moves a finished upload into the store under a fresh unique name and returns the editor URL.
     public func importFile(at source: URL, fileExtension: String) throws -> String {
         guard let kind = Self.kind(ofExtension: fileExtension) else { throw AssetError.unsupportedType(fileExtension) }
