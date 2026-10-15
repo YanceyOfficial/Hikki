@@ -754,10 +754,20 @@
     background-position: -100% 0;
   }
 }
-/* While AI holds a range it is marked by the decorations alone: the browser's selection paint (which also tints list
-   markers and the gaps between blocks) gives way. */
-.tiptap.hk-ai-open ::selection,
-.tiptap.hk-ai-open::selection {
+/* The page paints its text selection itself (selection-paint.ts) — the browser's paint covers whole line boxes across
+   blocks (list numbers, the gaps between items). Fields inside the page keep the browser's. While AI holds a range,
+   its decorations mark it and the selection isn't painted at all. */
+.tiptap.hk-own-selection ::selection,
+.tiptap.hk-own-selection::selection {
+  background: transparent;
+}
+.tiptap.hk-own-selection :is(input, textarea)::selection {
+  background: var(--color-selection);
+}
+.tiptap .hk-selection {
+  background: var(--color-selection);
+}
+.tiptap.hk-ai-open .hk-selection {
   background: transparent;
 }
 .tiptap .hk-ai-subject {

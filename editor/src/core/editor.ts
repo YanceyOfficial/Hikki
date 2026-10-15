@@ -24,6 +24,7 @@ import { PageLinks, type PageLinksHost } from '../extensions/page-links'
 import { PageMention } from '../extensions/page-mention'
 import { Ruby, type RubyHost } from '../extensions/ruby'
 import { SelectionMenuExtension } from '../extensions/selection-menu'
+import { SelectionPaint } from '../extensions/selection-paint'
 import { BlockShortcuts, ShortcutOverrides } from '../extensions/shortcuts'
 import { SlashCommand } from '../extensions/slash-command'
 import { SplitDrop, type SplitDropHost } from '../extensions/split-drop'
@@ -204,6 +205,7 @@ export function editorExtensions(options: EditorOptions = {}): AnyExtension[] {
     EdgeNavigation.configure({ onExitTop: options.onExitTop ?? (() => {}) }),
     SlashCommand,
     SelectionMenuExtension,
+    SelectionPaint,
     UniqueID.configure({ types: BLOCK_ID_TYPES }),
     BlockControls
   ]
