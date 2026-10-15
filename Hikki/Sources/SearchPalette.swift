@@ -129,9 +129,11 @@ struct SearchPalette: View {
             results = model.search(text, queryVector: vector)
             selection = min(selection, max(results.count - 1, 0))
         }
-        .onKeyPress(.downArrow) { move(1) }
-        .onKeyPress(.upArrow) { move(-1) }
+        // While an input method is composing, its candidates own the arrows and Escape.
+        .onKeyPress(.downArrow) { TextComposition.isActive ? .ignored : move(1) }
+        .onKeyPress(.upArrow) { TextComposition.isActive ? .ignored : move(-1) }
         .onKeyPress(.escape) {
+            guard !TextComposition.isActive else { return .ignored }
             dismiss()
             return .handled
         }

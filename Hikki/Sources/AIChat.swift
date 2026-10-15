@@ -446,15 +446,16 @@ struct AIChatView: View {
             .focused($composing)
             .submitLabel(.send)
             .onSubmit { mentionQuery == nil ? chat.send(store: model.store) : pickHighlighted() }
-            .onKeyPress(.downArrow) { moveMention(1) }
-            .onKeyPress(.upArrow) { moveMention(-1) }
+            // While an input method is composing, its candidates own these keys.
+            .onKeyPress(.downArrow) { TextComposition.isActive ? .ignored : moveMention(1) }
+            .onKeyPress(.upArrow) { TextComposition.isActive ? .ignored : moveMention(-1) }
             .onKeyPress(.return) {
-                guard mentionQuery != nil else { return .ignored }
+                guard mentionQuery != nil, !TextComposition.isActive else { return .ignored }
                 pickHighlighted()
                 return .handled
             }
             .onKeyPress(.escape) {
-                guard mentionQuery != nil else { return .ignored }
+                guard mentionQuery != nil, !TextComposition.isActive else { return .ignored }
                 if let range = chat.draft.range(of: "@", options: .backwards) { chat.draft.removeSubrange(range) }
                 return .handled
             }
