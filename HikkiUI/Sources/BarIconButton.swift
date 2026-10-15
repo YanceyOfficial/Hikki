@@ -18,10 +18,18 @@ public struct BarIconButton: View {
             IconLabel(title, icon: symbol, size: TextSize.base.rawValue)
                 .labelStyle(.iconOnly)
                 .foregroundStyle(tint ?? Theme.subtleForeground)
-                .frame(width: 28, height: 28)
+                .frame(width: Size.iconButton, height: Size.iconButton)
                 .contentShape(.rect)
         }
         .buttonStyle(HoverHighlightStyle())
         .help(Text(title))
     }
+}
+
+#Preview {
+    HStack(spacing: Spacing.s1) {
+        BarIconButton("Back", symbol: .caretLeft) {}
+        BarIconButton("Favorite", symbol: .starFill, tint: Theme.primary) {}
+    }
+    .padding()
 }

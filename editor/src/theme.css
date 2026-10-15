@@ -74,6 +74,9 @@
   --size-column: 708px;
   --size-icon-button: 28px;
   --size-icon-button-sm: 22px;
+  --size-toolbar-button-width: 40px;
+  --size-toolbar-button-height: 36px;
+  --size-keyboard-bar: 48px;
   --size-sidebar-icon: 18px;
   --size-onboarding-badge: 64px;
   --size-heatmap-cell: 12px;

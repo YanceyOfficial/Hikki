@@ -13,6 +13,13 @@
         @State private var recording = false
         @State private var recorded = "⌘B"
         @State private var drawerOpen = true
+        private let galleryTabs = [UUID(), UUID()]
+        private let galleryToasts = [GalleryToast(message: "Page duplicated"), GalleryToast(message: "Link copied")]
+
+        private struct GalleryToast: Identifiable {
+            let id = UUID()
+            let message: String
+        }
 
         var body: some View {
             NavigationStack {
@@ -157,6 +164,55 @@
                     Section("TaskProgressRow") {
                         TaskProgressRow(Text(verbatim: "Importing 3 of 20"), done: 3, total: 20, cancelTitle: "Cancel") {}
                         TaskProgressRow(Text(verbatim: "Reading files…"), done: 0, total: 0, cancelTitle: "Cancel") {}
+                    }
+                    Section("BarIconButton + SidebarIconButton") {
+                        HStack(spacing: Spacing.s2) {
+                            BarIconButton("Back", symbol: .caretLeft) {}
+                            BarIconButton("Favorite", symbol: .starFill, tint: Theme.primary) {}
+                            SidebarIconButton("New page", symbol: .plus) {}
+                            SidebarIconButton("More", symbol: .dotsThree) {}
+                        }
+                    }
+                    Section("PageIcon") {
+                        HStack(spacing: Spacing.s3) {
+                            PageIcon("🌱")
+                            PageIcon("📚", size: TextSize.xl.rawValue)
+                            PageIcon(nil, size: TextSize.lg.rawValue)
+                        }
+                    }
+                    Section("SelectableCard") {
+                        HStack(spacing: Spacing.s2) {
+                            SelectableCard("On this device", detail: "Only here", icon: .house, isSelected: true) {}
+                            SelectableCard("In a folder", detail: "iCloud Drive", icon: .folderSimple, isSelected: false) {}
+                        }
+                    }
+                    Section("GlassSearchField + SidebarFooterLabel") {
+                        GlassSearchField("Search", shortcut: "⌘K") {}
+                        SidebarFooterLabel(title: "My notebook") {
+                            Circle().fill(Theme.muted).frame(width: Size.iconButtonSm, height: Size.iconButtonSm)
+                        }
+                    }
+                    Section("TabStrip") {
+                        TabStrip(
+                            items: [
+                                TabStripItem(id: galleryTabs[0], title: "Welcome to Hikki", icon: "👋"),
+                                TabStripItem(id: galleryTabs[1], title: "Home", symbol: .house),
+                            ],
+                            activeID: galleryTabs[0], canGoBack: true, canGoForward: false,
+                            onSelect: { _ in }, onClose: { _ in }, onNew: {}, onBack: {}, onForward: {})
+                    }
+                    Section("ToastStack") {
+                        ToastStack(galleryToasts) { toast in
+                            ToastView(kind: .info, message: toast.message, close: {})
+                        }
+                    }
+                    Section("ColorToneSwatch") {
+                        HStack(spacing: Spacing.s2) {
+                            ForEach(ColorTone.allCases) { ColorToneSwatch($0) }
+                        }
+                    }
+                    Section("HighlightedText") {
+                        HighlightedText("The roadmap is due Friday, after the review", terms: ["roadmap", "friday"])
                     }
                     Section("SearchResultRow") {
                         SearchResultRow(

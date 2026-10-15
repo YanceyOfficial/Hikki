@@ -3,7 +3,7 @@ import SwiftUI
 /// Bar for above the software keyboard: scrolling tools on the leading side, a hide-keyboard button pinned
 /// trailing so it is always reachable however many tools there are.
 public struct KeyboardAccessoryBar<Tools: View>: View {
-    public static var height: CGFloat { 48 }
+    public static var height: CGFloat { Size.keyboardBar }
 
     private let onDismiss: () -> Void
     private let tools: Tools
