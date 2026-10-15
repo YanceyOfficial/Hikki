@@ -82,7 +82,12 @@ public final class PageComments: @unchecked Sendable {
         self.device = device
     }
 
-    func url(for pageId: String) -> URL { folder.appending(path: "\(pageId).json") }
+    /// The page's comments file; the id comes from the editor, so one that could leave the folder ("../pages/x")
+    /// is refused, as page files refuse it.
+    func url(for pageId: String) throws -> URL {
+        guard PageFiles.isValid(pageId) else { throw PageFiles.PageFileError.invalidID(pageId) }
+        return folder.appending(path: "\(pageId).json")
+    }
 
     /// The page's threads still there (not deleted), oldest first, each with its remaining comments.
     public func threads(of pageId: String) throws -> [CommentThread] {
@@ -142,7 +147,8 @@ public final class PageComments: @unchecked Sendable {
 
     /// The page is gone for good: its comments go too.
     public func removeAll(pageId: String) {
-        lock.withLock { _ = try? FileManager.default.removeItem(at: url(for: pageId)) }
+        guard let file = try? url(for: pageId) else { return }
+        lock.withLock { _ = try? FileManager.default.removeItem(at: file) }
     }
 
     // MARK: Reading, writing, merging
@@ -167,7 +173,7 @@ public final class PageComments: @unchecked Sendable {
 
     /// The file's threads, with any conflicting versions iCloud kept merged in (and then let go).
     private func read(_ pageId: String) throws -> [CommentThread] {
-        let file = url(for: pageId)
+        let file = try url(for: pageId)
         guard FileManager.default.fileExists(atPath: file.path) else { return [] }
         var threads = try decode(Data(contentsOf: file))
         let conflicts = NSFileVersion.unresolvedConflictVersionsOfItem(at: file) ?? []
@@ -198,7 +204,7 @@ public final class PageComments: @unchecked Sendable {
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(File(format: Self.currentFormat, pageId: pageId, threads: threads))
-        try data.write(to: url(for: pageId), options: .atomic)
+        try data.write(to: try url(for: pageId), options: .atomic)
     }
 
     /// Two devices' versions as one: every thread and comment of either, by id; for a thread on both, the newer

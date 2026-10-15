@@ -31,7 +31,7 @@ struct PageCommentsTests {
         try comments.delete(pageId: "p", threadId: "t")
         #expect(try comments.threads(of: "p").isEmpty)
         // The tombstone stays in the file.
-        #expect(try String(contentsOf: comments.url(for: "p"), encoding: .utf8).contains("deletedAt"))
+        #expect(try String(contentsOf: try comments.url(for: "p"), encoding: .utf8).contains("deletedAt"))
     }
 
     @Test func emptyCommentsAndUnknownThreadsAreRefused() throws {
@@ -42,6 +42,17 @@ struct PageCommentsTests {
         }
         #expect(throws: PageComments.Failure.unknownThread) { try comments.reply(pageId: "p", threadId: "x", body: "hi") }
         #expect(try comments.threads(of: "nothing").isEmpty)
+    }
+
+    @Test func aPageIdThatWouldLeaveTheFolderIsRefused() throws {
+        let (comments, root) = store()
+        defer { try? FileManager.default.removeItem(at: root) }
+        for id in ["../pages/x", "a/b", "..", ""] {
+            #expect(throws: PageFiles.PageFileError.self) {
+                try comments.create(pageId: id, threadId: "t", quote: "", body: "hi")
+            }
+        }
+        #expect(!FileManager.default.fileExists(atPath: root.appending(path: "pages").path))
     }
 
     @Test func twoDevicesVersionsMergeWithoutLosingAComment() {
