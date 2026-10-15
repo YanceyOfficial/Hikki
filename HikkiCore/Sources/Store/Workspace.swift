@@ -181,7 +181,7 @@ public enum WorkspaceFolder {
 
     /// How many pages a folder holds (downloaded or not) — "Open ‘Yancey’s Space’ (12 pages)".
     public static func pageCount(in root: URL) -> Int {
-        (try? PageFiles(root: root).scan().present.count) ?? 0
+        PageFiles(root: root).presentIDs().count  // names only: no file is read
     }
 
     /// Runs `body` with the folder's page files, holding security-scoped access to a picked folder meanwhile.

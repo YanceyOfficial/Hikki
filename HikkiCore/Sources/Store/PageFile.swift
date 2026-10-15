@@ -18,7 +18,12 @@ public struct PageFile: Codable, Equatable, Sendable {
     public var parentId: String?
     public var sortKey: Double
     public var createdAt: Date
+    /// Last edited (title, body, icon, cover, lock): the "Edited" date.
     public var updatedAt: Date
+    /// Last change of any kind (an edit, or a move, reorder, trash, restore, favorite) — what devices compare to
+    /// pick the newer side. Absent in files from before it existed: then `updatedAt`. Optional, so the format stays 1
+    /// (older readers ignore it).
+    public var changedAt: Date?
     public var favoritedAt: Date?
     public var deletedAt: Date?
     /// Set while the page is locked (read-only everywhere); absent in files from before locking existed.
@@ -39,6 +44,7 @@ public struct PageFile: Codable, Equatable, Sendable {
         sortKey = record.sortKey
         createdAt = record.createdAt
         updatedAt = record.updatedAt
+        changedAt = record.changedAt
         favoritedAt = record.favoritedAt
         deletedAt = record.deletedAt
         lockedAt = record.lockedAt
@@ -52,8 +58,13 @@ public struct PageFile: Codable, Equatable, Sendable {
         DocumentRecord(
             id: id, title: title, content: try content.map { String(decoding: try $0.jsonData(), as: UTF8.self) },
             plainText: plainText, wordCount: wordCount, createdAt: createdAt, updatedAt: updatedAt, parentId: parentId,
-            icon: icon, cover: cover, favoritedAt: favoritedAt, deletedAt: deletedAt, sortKey: sortKey, lockedAt: lockedAt)
+            icon: icon, cover: cover, favoritedAt: favoritedAt, deletedAt: deletedAt, sortKey: sortKey, lockedAt: lockedAt,
+            changedAt: changedAt)
     }
+
+    /// The last change of any kind: the later of `changedAt` and `updatedAt` (a writer that predates `changedAt` only
+    /// moves `updatedAt`).
+    public var lastChange: Date { max(changedAt ?? updatedAt, updatedAt) }
 }
 
 /// Reads and writes the page files of one workspace folder.
@@ -102,12 +113,18 @@ public struct PageFiles: Sendable {
         return (listing.pages, listing.skipped)
     }
 
-    /// A page file as last seen: when it was modified, its size, and the `updatedAt` it holds. A file whose
-    /// date and size still match needn't be read again.
+    /// A page file as last seen: when it was modified, its size, and the last change it holds (`lastChange`). A
+    /// file whose date and size still match needn't be read again.
     public struct Stamp: Equatable, Sendable {
         public var modified: Date
         public var size: Int
-        public var updatedAt: Date
+        public var changedAt: Date
+
+        public init(modified: Date, size: Int, changedAt: Date) {
+            self.modified = modified
+            self.size = size
+            self.changedAt = changedAt
+        }
     }
 
     /// What the folder holds. `present` names every page the folder has *any* trace of — a readable file, one
@@ -143,13 +160,15 @@ public struct PageFiles: Sendable {
                 let id = String(name.dropLast(".json".count))
                 if Self.isValid(id) { listing.present.insert(id) }
                 let attributes = Self.attributes(of: url)
-                if let attributes, let stamp = known[id], stamp.modified == attributes.modified, stamp.size == attributes.size {
+                if let attributes, let stamp = known[id], stamp.size == attributes.size,
+                    abs(stamp.modified.timeIntervalSince(attributes.modified)) < 0.000_01
+                {
                     listing.stamps[id] = stamp
                 } else if let page = try? Self.decode(Data(contentsOf: url)), Self.isValid(page.id), page.id == id {
                     listing.pages.append(page)
                     listing.present.insert(page.id)
                     if let attributes {
-                        listing.stamps[id] = Stamp(modified: attributes.modified, size: attributes.size, updatedAt: page.updatedAt)
+                        listing.stamps[id] = Stamp(modified: attributes.modified, size: attributes.size, changedAt: page.lastChange)
                     }
                 } else {
                     listing.skipped.append(url)
@@ -161,9 +180,23 @@ public struct PageFiles: Sendable {
     }
 
     /// The stamp of a page's file as it is now (after this device wrote it).
-    public func stamp(of id: String, updatedAt: Date) -> Stamp? {
+    public func stamp(of id: String, changedAt: Date) -> Stamp? {
         guard let url = try? url(for: id), let attributes = Self.attributes(of: url) else { return nil }
-        return Stamp(modified: attributes.modified, size: attributes.size, updatedAt: updatedAt)
+        return Stamp(modified: attributes.modified, size: attributes.size, changedAt: changedAt)
+    }
+
+    /// The ids of the pages the folder has any trace of (files and iCloud placeholders), without reading a file.
+    public func presentIDs() -> Set<String> {
+        guard let names = try? FileManager.default.contentsOfDirectory(atPath: directory.path) else { return [] }
+        var ids = Set<String>()
+        for name in names {
+            if let id = Self.placeholderID(name) {
+                ids.insert(id)
+            } else if name.hasSuffix(".json"), case let id = String(name.dropLast(".json".count)), Self.isValid(id) {
+                ids.insert(id)
+            }
+        }
+        return ids
     }
 
     private static func attributes(of url: URL) -> (modified: Date, size: Int)? {

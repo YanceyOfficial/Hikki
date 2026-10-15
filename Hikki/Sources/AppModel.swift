@@ -97,7 +97,8 @@ final class AppModel {
             // Page history lives in the folder too (`history/<page id>/`), so versions sync with the pages.
             let history = PageHistory(root: folder, policy: Self.historyPolicy, device: Self.deviceName)
             self.history = history
-            comments = PageComments(root: folder, author: Self.authorName, device: Self.deviceKind)
+            let comments = PageComments(root: folder, author: Self.authorName, device: Self.deviceKind)
+            self.comments = comments
             // Every pass — launch, activation, or the folder watcher noticing another device — tells open
             // editors which pages came from disk, so one showing such a page reloads it.
             // The losing side of a conflict becomes a page of its own, titled in the app's language; a page
@@ -115,8 +116,12 @@ final class AppModel {
                         Log.warn("page version not kept: \(error)", category: "history", context: ["docId": row.id])
                     }
                 },
+                // Every page deleted for good here — emptied or purged trash, subpages that went with a parent too.
                 onDeleted: { ids in
-                    for id in ids { try? history.forget(pageID: id) }
+                    for id in ids {
+                        try? history.forget(pageID: id)
+                        comments.removeAll(pageId: id)
+                    }
                 })
             let sync = WorkspaceSync(store: store, files: PageFiles(root: folder), options: options) { [weak self] report in
                 let ids = report.importedIDs

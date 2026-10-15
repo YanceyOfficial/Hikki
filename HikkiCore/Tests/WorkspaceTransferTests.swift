@@ -153,7 +153,9 @@ struct WorkspaceTransferTests {
         let sourceAssets = AssetStore(directory: scratch.appending(path: "source-assets"))
         let picture = try sourceAssets.save(Data([1, 2, 3]), fileExtension: "png")
         func page(_ title: String, parent: String? = nil, icon: String? = nil, body: String, image: String? = nil) throws -> String {
-            let record = try source.create(parentId: parent)
+            // Written long ago: the import must keep these dates, not stamp its own.
+            let created = Date(timeIntervalSince1970: 1_700_000_000)
+            let record = try source.create(parentId: parent, now: created)
             var blocks: [JSONValue] = [
                 .object(["type": .string("paragraph"), "content": .array([.object(["type": .string("text"), "text": .string(body)])])])
             ]
@@ -161,8 +163,8 @@ struct WorkspaceTransferTests {
             try source.saveContent(
                 Snapshot(
                     docId: record.id, content: .object(["type": .string("doc"), "content": .array(blocks)]), title: title, text: body,
-                    wordCount: 1))
-            if let icon { try source.setIcon(icon, for: record.id) }
+                    wordCount: 1), now: created.addingTimeInterval(3_600))
+            if let icon { try source.setIcon(icon, for: record.id, now: created.addingTimeInterval(7_200)) }
             return record.id
         }
         let trip = try page("Trip", icon: "🧭", body: "plans", image: picture)
@@ -204,11 +206,13 @@ struct WorkspaceTransferTests {
                 let record = try #require(try store.document(id: page.id))
                 return [
                     page.id, page.parentId ?? "-", page.title, page.icon ?? "-", record.cover ?? "-", record.content ?? "-",
+                    "\(Int(record.createdAt.timeIntervalSince1970))", "\(Int(record.updatedAt.timeIntervalSince1970))",
                 ].joined(separator: "|")
             }
             .sorted()
         }
         #expect(try shape(target) == shape(source))
+        #expect(try target.activity(since: .distantPast).isEmpty)  // bringing pages back isn't writing in them
         #expect(targetAssets.file(named: AssetStore.name(fromURL: picture)!) != nil)
         // Sibling order survives too.
         #expect(try target.pages().filter { $0.parentId == nil }.map(\.title) == ["Trip", "Trip"])

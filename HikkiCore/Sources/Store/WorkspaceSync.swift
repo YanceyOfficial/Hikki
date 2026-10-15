@@ -61,6 +61,12 @@ public final class WorkspaceSync: @unchecked Sendable {
 
     // Confined to `queue`.
     private var stamps: [String: PageFiles.Stamp] = [:]
+    /// Whether `stamps` was seeded from the store's (persisted) ones yet.
+    private var seeded = false
+    /// The ids the folder held after the last pass and this device's own writes since: a watched change that
+    /// leaves it, and every stamp, as they were is this device's own write, and needs no pass.
+    private var lastPresent: Set<String>?
+    private var commits: PageCommitObservation?
     private var watcher: DispatchSourceFileSystemObject?
     private var pendingWatchPass: DispatchWorkItem?
     private var retry: DispatchWorkItem?
@@ -89,6 +95,8 @@ public final class WorkspaceSync: @unchecked Sendable {
 
     /// Ends watching and write-through (the workspace moved to another folder; a new sync takes over).
     public func stop() {
+        commits?.cancel()
+        commits = nil
         queue.sync {
             stopped = true
             watcher?.cancel()
@@ -108,7 +116,7 @@ public final class WorkspaceSync: @unchecked Sendable {
     /// made while reconciling aren't missed; the reconcile's own imports write back identical bytes — skipped),
     /// then watches the folder.
     public func start() throws -> Report {
-        try store.observePageCommits { [weak self] changed, deletions, live in
+        commits = try store.observePageCommits { [weak self] changed, deletions, live in
             self?.queue.async { self?.writeThrough(changed: changed, deletions: deletions, live: live) }
         }
         return try queue.sync {
@@ -127,17 +135,41 @@ public final class WorkspaceSync: @unchecked Sendable {
         try queue.sync { try reconcileOnQueue() }
     }
 
+    /// A pass that stops after listing the folder when nothing in it changed since the last pass, apart from this
+    /// device's own writes (nil then) — what the folder watcher runs.
+    func reconcile(onlyIfFolderChanged: Bool) throws -> Report? {
+        try queue.sync { try reconcileOnQueue(onlyIfFolderChanged: onlyIfFolderChanged) }
+    }
+
+    @discardableResult
     private func reconcileOnQueue() throws -> Report {
+        try reconcileOnQueue(onlyIfFolderChanged: false) ?? Report()  // never nil: the pass always runs
+    }
+
+    private func reconcileOnQueue(onlyIfFolderChanged: Bool) throws -> Report? {
+        if !seeded {
+            // Stamps persist with the sync state: a launch reads only the files that changed since.
+            stamps.merge(try store.fileStamps()) { current, _ in current }
+            seeded = true
+        }
         var report = Report()
         let listing = try files.scan(known: stamps)
         stamps = listing.stamps
+        if onlyIfFolderChanged, listing.pages.isEmpty, listing.skipped.isEmpty, listing.placeholders.isEmpty,
+            listing.present == lastPresent
+        {
+            return nil
+        }
+        lastPresent = listing.present
         report.skippedFiles = listing.skipped.count
         report.waitingForDownload = listing.placeholders.count
         // Ask iCloud for pages that aren't on this device yet; they're imported on a later pass.
         for placeholder in listing.placeholders {
             try? FileManager.default.startDownloadingUbiquitousItem(at: placeholder)
         }
-        let rows = Dictionary(try store.allDocuments().map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        // Ids, parents and last changes only: a full row (with its body) is read only for a page this pass writes,
+        // replaces or copies.
+        let rows = try store.syncHeads()
         let synced = try store.syncedIDs()
         let bases = try store.syncBases()
         var read = Dictionary(listing.pages.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
@@ -160,18 +192,18 @@ public final class WorkspaceSync: @unchecked Sendable {
             }
             // A file unchanged since the last pass is only read again when the store lost its row.
             guard let page = read[id] ?? (row == nil ? try? files.read(id) : nil) else {
-                if let row, row.updatedAt > stamp.updatedAt.addingTimeInterval(0.001) {
-                    try write(row)  // edited here; write-through missed it (e.g. it failed)
+                if let row, row.lastChange > stamp.changedAt.addingTimeInterval(0.001), let record = try store.document(id: id) {
+                    try write(record)  // changed here; write-through missed it (e.g. it failed)
                     report.exported += 1
                 }
                 continue
             }
             if let row {
-                let fileNewer = page.updatedAt > row.updatedAt.addingTimeInterval(0.001)
-                let rowNewer = row.updatedAt > page.updatedAt.addingTimeInterval(0.001)
-                if fileNewer || rowNewer, let base = bases[id], row.updatedAt > base.addingTimeInterval(0.001),
-                    page.updatedAt > base.addingTimeInterval(0.001), let local = try? PageFile(record: row),
-                    ConflictCopy.differ(local, page)
+                let fileNewer = page.lastChange > row.lastChange.addingTimeInterval(0.001)
+                let rowNewer = row.lastChange > page.lastChange.addingTimeInterval(0.001)
+                if fileNewer || rowNewer, let base = bases[id], row.lastChange > base.addingTimeInterval(0.001),
+                    page.lastChange > base.addingTimeInterval(0.001), let record = try store.document(id: id),
+                    let local = try? PageFile(record: record), ConflictCopy.differ(local, page)
                 {
                     // Both sides changed since they last agreed (this device's edit never reached the file): the
                     // newer wins, the other is kept as a conflicted copy.
@@ -184,23 +216,44 @@ public final class WorkspaceSync: @unchecked Sendable {
                 if fileNewer {
                     imports.append(page)
                 } else if rowNewer {
-                    try write(row)
-                    report.exported += 1
+                    if let record = try store.document(id: id) {
+                        try write(record)
+                        report.exported += 1
+                    }
                 } else {
-                    try store.markSynced(id, at: row.updatedAt)
+                    try store.markSynced(id, at: row.lastChange, stamp: stamp)
                 }
             } else {
                 imports.append(page)
             }
         }
         let ordered = Self.parentsFirst(imports, inStore: Set(rows.keys), inFolder: listing.present)
+        var raced = 0
         for page in ordered.ready {
-            if let willReplace, let row = rows[page.id], let local = try? PageFile(record: row), ConflictCopy.differ(local, page) {
+            let expected = rows[page.id]?.lastChange
+            if let willReplace, expected != nil, let row = try store.document(id: page.id), let local = try? PageFile(record: row),
+                ConflictCopy.differ(local, page)
+            {
                 willReplace(row)
             }
-            try store.importPage(try page.record())
-            report.imported += 1
-            report.importedIDs.append(page.id)
+            // Only over the row this pass compared: a save that landed since is never overwritten.
+            if try store.importPage(try page.record(), expecting: expected, stamp: listing.stamps[page.id]) {
+                report.imported += 1
+                report.importedIDs.append(page.id)
+            } else {
+                stamps[page.id] = nil  // read it again: the next pass sees both sides changed (a conflict)
+                raced += 1
+            }
+        }
+        if raced > 0 {
+            Log.info(
+                "page changed here while its file was imported; next pass decides", category: "workspace",
+                context: ["count": "\(raced)"])
+            if started && !stopped { scheduleWatchPass() }
+        }
+        if report.imported > 0 {
+            // Two devices nesting pages under each other at once make a loop no tree can show: broken (and written).
+            try store.breakParentCycles()
         }
         if ordered.waiting > 0 {
             // Their parents are still on their way (placeholders, half-written files): next pass.
@@ -208,14 +261,22 @@ public final class WorkspaceSync: @unchecked Sendable {
         }
         // Rows the folder has no trace of: deleted elsewhere if they were synced, otherwise never written.
         let missing = rows.keys.filter { !listing.present.contains($0) }
-        let deletedElsewhere = missing.filter { synced.contains($0) }
-        for id in missing where !synced.contains(id) {
-            guard let row = rows[id] else { continue }
-            try write(row)
+        var deletedElsewhere = Set(missing.filter { synced.contains($0) })
+        for id in missing.sorted() where !synced.contains(id) {
+            guard let record = try store.document(id: id) else { continue }
+            try write(record)
             report.exported += 1
         }
         if Self.deletionLooksSafe(deletedElsewhere.count, synced: synced.count, folderExists: listing.folderExists) {
-            for id in deletedElsewhere { try store.deletePage(id: id) }
+            // A page still in the folder under a page deleted elsewhere (moved out of it there, its new file not
+            // read yet) would go with it: that deletion waits until the page's file says where it lives now.
+            let spared = try heldBack(deletedElsewhere, present: listing.present)
+            if !spared.isEmpty {
+                deletedElsewhere.subtract(spared)
+                report.deletionsHeldBack += spared.count
+                Log.info("remote deletion waits for a subpage's file", category: "workspace", context: ["count": "\(spared.count)"])
+            }
+            for id in deletedElsewhere.sorted() { try store.deletePage(id: id) }
             report.deletedHere = deletedElsewhere.count
         } else if !deletedElsewhere.isEmpty {
             // Fail closed: a missing or mostly-empty folder (iCloud still syncing, a moved bookmark) must
@@ -229,6 +290,30 @@ public final class WorkspaceSync: @unchecked Sendable {
         scheduleDownloadRetry(after: report)
         onReconcile?(report)
         return report
+    }
+
+    /// The pages among `deleted` whose subtree (as the store has it now) holds a page the folder still has and
+    /// that isn't deleted itself: deleting them would cascade to that page.
+    private func heldBack(_ deleted: Set<String>, present: Set<String>) throws -> Set<String> {
+        guard !deleted.isEmpty else { return [] }
+        var children: [String: [String]] = [:]
+        for (id, head) in try store.syncHeads() {
+            if let parent = head.parentId { children[parent, default: []].append(id) }
+        }
+        var held = Set<String>()
+        for id in deleted {
+            var stack = children[id] ?? []
+            var seen = Set<String>()
+            while let child = stack.popLast() {
+                guard seen.insert(child).inserted else { continue }
+                if present.contains(child) && !deleted.contains(child) {
+                    held.insert(id)
+                    break
+                }
+                stack += children[child] ?? []
+            }
+        }
+        return held
     }
 
     /// iCloud kept other versions of the page's file (two devices saved it at once): the newest (by its edited
@@ -259,7 +344,7 @@ public final class WorkspaceSync: @unchecked Sendable {
         }
         if winnerIndex != 0 {
             try files.write(winner)
-            stamps[winner.id] = files.stamp(of: winner.id, updatedAt: winner.updatedAt)
+            stamps[winner.id] = files.stamp(of: winner.id, changedAt: winner.lastChange)
         }
         try fileVersions.resolveConflicts(at: url)
         Log.warn(
@@ -273,7 +358,8 @@ public final class WorkspaceSync: @unchecked Sendable {
         let copy = ConflictCopy.make(
             from: loser, source: ConflictCopy.source(device: device, date: loser.updatedAt), title: conflictTitle)
         try files.write(copy)
-        stamps[copy.id] = files.stamp(of: copy.id, updatedAt: copy.updatedAt)
+        stamps[copy.id] = files.stamp(of: copy.id, changedAt: copy.lastChange)
+        lastPresent?.insert(copy.id)
         report.conflictCopies += 1
         return copy
     }
@@ -358,33 +444,80 @@ public final class WorkspaceSync: @unchecked Sendable {
 
     private func writeThrough(changed: [DocumentRecord], deletions: Bool, live: Set<String>?) {
         guard !stopped else { return }
+        // Each page on its own: one file that can't be written never holds back the rest.
+        var bases: [String: Date] = [:]
+        var changedInFolder = false
         do {
-            for record in changed { try write(record) }
+            bases = try store.syncBases()
+        } catch {
+            Incident.report(.workspaceSyncFailed, error, category: "workspace")
+        }
+        for record in changed {
+            do {
+                if try !write(record, base: bases[record.id]) { changedInFolder = true }
+            } catch PageFiles.PageFileError.unsupportedFormat(let id, let format) {
+                Log.warn("page file from a newer Hikki left alone", category: "workspace", context: ["id": id, "format": "\(format)"])
+            } catch {
+                Incident.report(.workspaceSyncFailed, error, category: "workspace", context: ["id": record.id])
+            }
+        }
+        do {
             if deletions, let live {
                 // Files of pages deleted here (or cascaded with a parent): only pages this device has synced —
                 // a file another device just added isn't in the store yet, and must not be taken for one.
                 let synced = try store.syncedIDs()
-                let gone = try files.scan(known: stamps).present.filter { synced.contains($0) && !live.contains($0) }
+                let gone = files.presentIDs().filter { synced.contains($0) && !live.contains($0) }
                 for id in gone {
                     try files.delete(id)
                     stamps[id] = nil
+                    lastPresent?.remove(id)
                 }
                 try store.unmarkSynced(gone)
                 if !gone.isEmpty { onDeleted?(Array(gone)) }
             }
             ensureWatching()  // the first page written may have just created the folder
+            // Another device's version reached a file before this device's change to the page: a pass keeps both.
+            if changedInFolder { try reconcileOnQueue() }
         } catch {
             Incident.report(.workspaceSyncFailed, error, category: "workspace")
         }
     }
 
     /// Writes the page's file unless it already holds exactly these bytes (no churn for iCloud), and records it
-    /// as synced.
-    private func write(_ record: DocumentRecord) throws {
+    /// as synced. With `base` (the last change row and file agreed on), a file that changed since — another
+    /// device's version not taken in yet — isn't overwritten: returns false, and a pass decides (conflicted copy).
+    /// A file that can't be read is left for a later pass too (it may still be downloading).
+    @discardableResult
+    private func write(_ record: DocumentRecord, base: Date? = nil) throws -> Bool {
         let page = try PageFile(record: record)
-        if try files.read(record.id) != page { try files.write(page) }
-        stamps[record.id] = files.stamp(of: record.id, updatedAt: record.updatedAt)
-        try store.markSynced(record.id, at: record.updatedAt)
+        let existing: PageFile?
+        do {
+            existing = try files.read(record.id)
+        } catch let error as PageFiles.PageFileError {
+            throw error
+        } catch {
+            Log.warn("page file unreadable; not overwritten", category: "workspace", context: ["id": record.id])
+            stamps[record.id] = nil
+            return true
+        }
+        if let existing, existing != page {
+            if let base, existing.lastChange > base.addingTimeInterval(0.001),
+                abs(existing.lastChange.timeIntervalSince(page.lastChange)) > 0.001
+            {
+                stamps[record.id] = nil
+                return false
+            }
+            try files.write(page)
+        } else if existing == nil {
+            // Unchanged since it last agreed with its file, and the file is gone: deleted on another device (a pass
+            // applies that) — not something to write back.
+            if let base, abs(base.timeIntervalSince(page.lastChange)) <= 0.001 { return true }
+            try files.write(page)
+        }
+        stamps[record.id] = files.stamp(of: record.id, changedAt: record.lastChange)
+        lastPresent?.insert(record.id)
+        try store.markSynced(record.id, at: record.lastChange, stamp: stamps[record.id])
+        return true
     }
 
     // MARK: - Watching the folder
@@ -419,7 +552,7 @@ public final class WorkspaceSync: @unchecked Sendable {
             guard let self else { return }
             pendingWatchPass = nil
             do {
-                _ = try reconcileOnQueue()
+                _ = try reconcileOnQueue(onlyIfFolderChanged: true)
             } catch {
                 Log.error("workspace watch pass failed: \(error)", category: "workspace")
             }
