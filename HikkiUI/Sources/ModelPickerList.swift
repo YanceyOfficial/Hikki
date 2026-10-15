@@ -57,10 +57,9 @@ public struct ModelPickerList: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.px) {
                 Row(
-                    title: Text(autoTitle), detail: autoDetail.map { Text($0) }, isSelected: selection == autoID, star: nil,
+                    id: autoID, title: Text(autoTitle), detail: autoDetail.map { Text($0) }, isSelected: selection == autoID, star: nil,
                     onSelect: { onSelect(autoID) }
                 )
-                .accessibilityIdentifier("model-\(autoID)")
                 ForEach(groups) { group in
                     Text(group.title)
                         .font(.hk(.xs, .medium))
@@ -71,11 +70,10 @@ public struct ModelPickerList: View {
                         .accessibilityAddTraits(.isHeader)
                     ForEach(group.items) { item in
                         Row(
-                            title: Text(verbatim: item.name), detail: item.detail.map { Text(verbatim: $0) },
+                            id: item.id, title: Text(verbatim: item.name), detail: item.detail.map { Text(verbatim: $0) },
                             isSelected: selection == item.id, star: item.isFavorite,
                             onSelect: { onSelect(item.id) }, onStar: { onToggleFavorite(item.id) }
                         )
-                        .accessibilityIdentifier("model-\(item.id)")
                     }
                 }
             }
@@ -87,7 +85,9 @@ public struct ModelPickerList: View {
         .background(Theme.popover)
     }
 
+    /// A row; its pick button is `model-<id>`, its star `model-star-<id>` (UI tests).
     private struct Row: View {
+        let id: String
         let title: Text
         let detail: Text?
         let isSelected: Bool
@@ -113,6 +113,7 @@ public struct ModelPickerList: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(isSelected ? .isSelected : [])
+                .accessibilityIdentifier("model-\(id)")
                 if let star {
                     Button(action: onStar) {
                         IconView(star ? .starFill : .star, size: TextSize.sm.rawValue)
@@ -123,7 +124,7 @@ public struct ModelPickerList: View {
                     }
                     .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.sm))
                     .accessibilityLabel(star ? "app:ai.model.unstar" : "app:ai.model.star")
-                    .accessibilityIdentifier("model-star")
+                    .accessibilityIdentifier("model-star-\(id)")
                 }
             }
             .padding(.horizontal, Spacing.s2)
