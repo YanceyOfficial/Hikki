@@ -1,9 +1,18 @@
 import Foundation
 import Testing
+import UniformTypeIdentifiers
 
 @testable import HikkiCore
 
 struct PageExportTests {
+    @Test func eachFormatTellsTheSavePanelItsExtension() {
+        for format in PageExport.Format.allCases {
+            #expect(format.contentType.preferredFilenameExtension == format.fileExtension, "\(format)")
+            #expect(PageExport.writableContentTypes.contains(format.contentType))
+        }
+        #expect(PageExport.writableContentTypes.contains(.folder))
+    }
+
     @Test func fileNamesComeFromTheTitleWithoutPathTricks() {
         #expect(PageExport.fileName(for: "Trip / Plan: 2026", fallback: "Untitled") == "Trip - Plan- 2026")
         #expect(PageExport.fileName(for: "  ..hidden", fallback: "Untitled") == "hidden")

@@ -1,4 +1,5 @@
 import Foundation
+import UniformTypeIdentifiers
 
 /// Exporting a page to files. Markdown and HTML come from the editor (`window.hikki.exportPage`); this names the
 /// export, points its attachments at copies next to it and packs the result: a single file when the page attaches
@@ -18,7 +19,21 @@ public enum PageExport {
             case .pdf: "pdf"
             }
         }
+
+        /// The file type the save panel is told about: it adds (and hides) the extension from it, so a name typed
+        /// without one still ends up as `name.md`.
+        public var contentType: UTType {
+            switch self {
+            case .markdown: UTType("net.daringfireball.markdown") ?? UTType(filenameExtension: "md", conformingTo: .plainText) ?? .plainText
+            case .html: .html
+            case .json: .json
+            case .pdf: .pdf
+            }
+        }
     }
+
+    /// Every type an export can be saved as (the formats', and a folder for a page with attachments).
+    public static var writableContentTypes: [UTType] { Format.allCases.map(\.contentType) + [.folder] }
 
     /// A file name from the page's title: no path separators, colons or control characters, not hidden, not too
     /// long; `fallback` when nothing is left.

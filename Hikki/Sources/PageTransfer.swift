@@ -87,18 +87,19 @@ extension AppModel {
         switch request.format {
         case .json:
             return ExportFile(
-                wrapper: PageExport.package(document: try PageExport.json(record), name: name, fileExtension: "json", assets: []))
+                wrapper: PageExport.package(document: try PageExport.json(record), name: name, fileExtension: "json", assets: []),
+                format: .json)
         case .markdown, .html:
             let text = try await editor.exportText(record, format: request.format == .markdown ? .markdown : .html)
             let (relinked, names) = PageExport.relinkAssets(in: text)
             let files = names.compactMap { name in assets.file(named: name).map { (name: name, file: $0) } }
             let wrapper = PageExport.package(
                 document: Data(relinked.utf8), name: name, fileExtension: request.format.fileExtension, assets: files)
-            return ExportFile(wrapper: wrapper)
+            return ExportFile(wrapper: wrapper, format: request.format)
         case .pdf:
             let html = try await editor.exportText(record, format: .html)
             let pdf = try await PDFExporter.render(html: html, assets: assets)
-            return ExportFile(wrapper: PageExport.package(document: pdf, name: name, fileExtension: "pdf", assets: []))
+            return ExportFile(wrapper: PageExport.package(document: pdf, name: name, fileExtension: "pdf", assets: []), format: .pdf)
         }
     }
 
@@ -110,24 +111,26 @@ extension AppModel {
 /// An export, for `.fileExporter`: a single file or a folder (the page's document and its `assets/`).
 struct ExportFile: FileDocument, @unchecked Sendable {
     static let readableContentTypes: [UTType] = [.data]
+    /// The save panel only writes a type the document declares: with just `.data` (the default, from the readable
+    /// types) it saved the file without an extension.
+    static var writableContentTypes: [UTType] { PageExport.writableContentTypes }
     let wrapper: FileWrapper
+    let format: PageExport.Format
 
-    init(wrapper: FileWrapper) {
+    init(wrapper: FileWrapper, format: PageExport.Format) {
         self.wrapper = wrapper
+        self.format = format
     }
 
     init(configuration: ReadConfiguration) throws {
         wrapper = configuration.file
+        format = .json
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper { wrapper }
 
     /// What the save panel offers: a folder, or the document's own type.
-    var contentType: UTType {
-        if wrapper.isDirectory { return .folder }
-        let ext = (wrapper.preferredFilename as NSString?)?.pathExtension ?? ""
-        return UTType(filenameExtension: ext) ?? .data
-    }
+    var contentType: UTType { wrapper.isDirectory ? .folder : format.contentType }
 
     /// The name the save panel starts with (without the extension it adds itself).
     var defaultFilename: String {
