@@ -70,6 +70,9 @@ class TableControlsView {
   private hover: TableHover | null = null
   private menuOpen = false
   private hideTimer: ReturnType<typeof setTimeout> | null = null
+  /** The last render showed nothing (no hovered table, no cell selection): another empty one is skipped. */
+  private drewNothing = false
+  private frame = 0
 
   constructor(
     private readonly view: EditorView,
@@ -81,8 +84,8 @@ class TableControlsView {
     this.root = createRoot(this.element)
     view.dom.addEventListener('mousemove', this.onMove)
     view.dom.addEventListener('mouseleave', this.scheduleHide)
-    window.addEventListener('scroll', this.render, true)
-    window.addEventListener('resize', this.render)
+    window.addEventListener('scroll', this.follow, { capture: true, passive: true })
+    window.addEventListener('resize', this.follow)
     this.render()
   }
 
@@ -96,8 +99,9 @@ class TableControlsView {
   destroy() {
     this.view.dom.removeEventListener('mousemove', this.onMove)
     this.view.dom.removeEventListener('mouseleave', this.scheduleHide)
-    window.removeEventListener('scroll', this.render, true)
-    window.removeEventListener('resize', this.render)
+    window.removeEventListener('scroll', this.follow, { capture: true })
+    window.removeEventListener('resize', this.follow)
+    cancelAnimationFrame(this.frame)
     if (this.hideTimer) clearTimeout(this.hideTimer)
     const root = this.root
     queueMicrotask(() => root.unmount())
@@ -149,12 +153,26 @@ class TableControlsView {
     this.hideTimer = null
   }
 
+  /** Scrolling or resizing moves the controls with their table: once per frame at most. */
+  private follow = () => {
+    if (this.frame) return
+    this.frame = requestAnimationFrame(() => {
+      this.frame = 0
+      this.render()
+    })
+  }
+
+  /** Draws the controls — every transaction and scroll calls it, so nothing to show twice draws nothing. */
   private render = () => {
     const selection = this.view.state.selection
+    const cellSelection = selection instanceof CellSelection ? selection : null
+    const nothing = !this.hover && !cellSelection
+    if (nothing && this.drewNothing) return
+    this.drewNothing = nothing
     renderTableOverlay(this.root, {
       editor: this.editor,
       hover: this.hover,
-      cellSelection: selection instanceof CellSelection ? selection : null,
+      cellSelection,
       onPointerEnter: this.cancelHide,
       onPointerLeave: this.scheduleHide,
       onMenuChange: (open) => {

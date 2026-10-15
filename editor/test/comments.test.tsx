@@ -25,7 +25,7 @@ const thread = (id: string, resolved = false): ThreadItem => ({
   ]
 })
 
-beforeEach(() => {
+beforeEach(async () => {
   calls = []
   host = document.createElement('div')
   const column = document.createElement('div')
@@ -55,6 +55,8 @@ beforeEach(() => {
       }
     }
   )
+  // The comments layer's first render was scheduled outside act: let it land before the test.
+  await act(async () => {})
 })
 afterEach(() => {
   cleanup()
