@@ -16,6 +16,8 @@
     "editor/src/theme.css",
     "editor/src/generated/",
     "bff/src/generated/",
+    "website/src/routeTree.gen.ts",
+    "website/.output/",
     "HikkiUI/Sources/Generated/",
     "*.xcodeproj/",
     "*.xcworkspace/",

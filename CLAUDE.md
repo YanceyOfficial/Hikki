@@ -111,6 +111,7 @@ make test-ui-ios    # XCUITest on the iOS simulator
 make test-ui-mac    # XCUITest on macOS — takes over the screen; don't run while someone is using the Mac
 make check          # test + macOS and iOS builds
 cd editor && bun run dev   # the editor alone in a browser (console-logging bridge)
+cd website && bun run dev  # the website locally (TanStack/Solid docs: bunx @tanstack/intent@latest list)
 cd bff && bun run dev      # the BFF locally (needs UNSPLASH_ACCESS_KEY); the editor reads VITE_HIKKI_BFF_URL (editor/.env.*; prod: unsplash.yancey.app)
 ```
 
@@ -146,6 +147,9 @@ editor/src/hooks/             React hooks (useEditorSnapshot)
 editor/src/lib/               data helpers: cover catalog, Unsplash client, emoji data, icon markup; shadcn's utils re-export
 editor/test/                  vitest
 bff/                          backend-for-frontend (Hono, Vercel): Unsplash proxy, YouTube embed shim; tests with `bun test`
+website/                      the site at hikki.yancey.app (TanStack Start + Solid, SSR on Vercel, Tailwind v4 with its
+                              own Mondrian palette — not the app's tokens): src/routes/, screenshots in public/shots/;
+                              APP_STORE_URL in src/site.ts turns "Coming to the App Store" into the store link
 HikkiUITests/                 XCUITest flows
 ```
 

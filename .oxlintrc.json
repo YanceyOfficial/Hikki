@@ -18,6 +18,8 @@
   "ignorePatterns": [
     "editor/src/theme.css",
     "editor/src/generated/",
+    "website/src/routeTree.gen.ts",
+    "website/.output/**",
     "Hikki/Resources/**",
     "**/node_modules/**",
     "**/dist/**"

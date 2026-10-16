@@ -3,7 +3,8 @@
   "private": true,
   "workspaces": [
     "editor",
-    "bff"
+    "bff",
+    "website"
   ],
   "scripts": {
     "prepare": "husky",
@@ -11,7 +12,7 @@
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
-    "typecheck": "bun run --cwd editor typecheck && bun run --cwd bff typecheck",
+    "typecheck": "bun run --cwd editor typecheck && bun run --cwd bff typecheck && bun run --cwd website typecheck",
     "test": "bun run --cwd editor test"
   },
   "devDependencies": {
