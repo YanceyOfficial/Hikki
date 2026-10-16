@@ -242,6 +242,17 @@ struct PageMoreMenu: View {
                 IconLabel("app:find.inPage", icon: .magnifyingGlass)
             }
             .accessibilityIdentifier("find-in-page")
+            #if os(iOS)
+                // Touch screens have no cover buttons over the picture (a long press, or this).
+                if !page.isLocked {
+                    Button {
+                        editor.editCover()
+                    } label: {
+                        IconLabel("app:page.cover", icon: .image)
+                    }
+                    .accessibilityIdentifier("page-cover")
+                }
+            #endif
             Divider()
         }
         Button {

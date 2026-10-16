@@ -251,6 +251,31 @@ describe('PageHeader', () => {
     expect(sent).toContainEqual(expect.objectContaining({ type: 'setCover', cover: null }))
   })
 
+  it('the page ⋯ menu’s Cover… opens the cover sheet: its actions with a cover, the picker without', async () => {
+    render(<PageHeader bridge={bridge} />)
+    load({ cover: 'gradient:dusk' })
+    let opened = false
+    act(() => {
+      opened = bridge.editCover()
+    })
+    expect(opened).toBe(true)
+    expect(await screen.findByTestId('cover-sheet-change')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('cover-sheet-remove'))
+    await settle()
+    act(() => {
+      bridge.editCover()
+    })
+    // No cover now: the picker itself (its gradients).
+    expect(await screen.findByRole('button', { name: 'Ocean' })).toBeTruthy()
+  })
+
+  it('a locked page refuses Cover…', () => {
+    render(<PageHeader bridge={bridge} />)
+    load({ cover: 'gradient:dusk', locked: true })
+    expect(bridge.editCover()).toBe(false)
+    expect(screen.queryByTestId('cover-sheet')).toBeNull()
+  })
+
   it('clicking the icon opens the picker; Remove clears the icon', () => {
     render(<PageHeader bridge={bridge} />)
     load({ icon: '🌊' })

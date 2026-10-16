@@ -78,6 +78,8 @@ window.hikki = {
   focusTitle: () => bridge.focusTitle(),
   // Edit → Find… / Find and Replace… / Find Next / Find Previous.
   find: (mode: FindMode) => bridge.find(mode),
+  // The page ⋯ menu's Cover…: the cover's sheet (its actions, or the picker on a page without a cover).
+  editCover: () => bridge.editCover(),
   // Settings → Editor → Check spelling.
   setSpellcheck: (on: boolean) => bridge.setSpellcheck(on),
   // Comments: the open page's threads (native store), and a thread picked in the side panel.

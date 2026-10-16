@@ -115,11 +115,12 @@ struct ContentView: View {
             ) {
                 InspectorView(navigator: navigator, editor: editor, chat: chat, isSheet: true)
                     .presentationDetents([.medium, .large])
+                    .sheetOverVerticalBar()
             }
         }
         #if os(iOS)
-            .sheet(isPresented: $navigator.isShowingSettings) { SettingsView() }
-            .sheet(isPresented: $navigator.isAskingAI) { AIChatSheet(chat: chat) }
+            .sheet(isPresented: $navigator.isShowingSettings) { SettingsView().sheetOverVerticalBar() }
+            .sheet(isPresented: $navigator.isAskingAI) { AIChatSheet(chat: chat).sheetOverVerticalBar() }
             // Asked from a page: about that page; from the home screen: about nothing in particular.
             .onChange(of: navigator.isAskingAI) { _, asking in
                 if asking { chat.show(page: navigator.compactColumn == .detail ? navigator.route.pageID : nil) }
@@ -136,7 +137,7 @@ struct ContentView: View {
                     get: { navigator.pageActionsID != nil }, set: { if !$0 { navigator.pageActionsID = nil } })
             ) {
                 if let id = navigator.pageActionsID, let page = model.tree.page(id) {
-                    PhonePageActions(page: page, navigator: navigator, editor: editor)
+                    PhonePageActions(page: page, navigator: navigator, editor: editor).sheetOverVerticalBar()
                 }
             }
         #else
@@ -191,6 +192,7 @@ struct ContentView: View {
                     }
                     // Room for the list beside the preview on iPad.
                     .presentationSizing(.page)
+                    .sheetOverVerticalBar()
                 }
             }
             // An export is made first (the editor converts, attachments are packed), then offered to save.

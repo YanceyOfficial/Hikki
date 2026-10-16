@@ -594,6 +594,23 @@ export class EditorBridge {
   }
 
   /** Find in page (⌘F etc., or the native Edit menu). Returns whether there was an editor to search. */
+  /** Listeners for `editCover` (the page header opens its cover sheet). */
+  private readonly coverRequests = new Set<() => void>()
+
+  onCoverRequest(listener: () => void): () => void {
+    this.coverRequests.add(listener)
+    return () => {
+      this.coverRequests.delete(listener)
+    }
+  }
+
+  /** `window.hikki.editCover`: the page ⋯ menu's Cover… — the cover's sheet opens (false on a locked page). */
+  editCover(): boolean {
+    if (!this.editor || this.frozen || this.page.get().readOnly) return false
+    for (const listener of this.coverRequests) listener()
+    return this.coverRequests.size > 0
+  }
+
   find(mode: FindMode): boolean {
     if (!this.editor) return false
     runFind(this.editor, mode)

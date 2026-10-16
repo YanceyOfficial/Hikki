@@ -442,6 +442,11 @@ final class EditorController {
     /// Edit → Find… / Find and Replace… / Find Next / Find Previous (mirrors FindMode in the editor).
     enum FindMode: String { case find, replace, next, previous }
 
+    /// The page ⋯ menu's Cover…: the editor's cover sheet (the cover's actions, or the picker for a page without one).
+    func editCover() {
+        send("window.hikki.editCover()", label: "editCover")
+    }
+
     func find(_ mode: FindMode) {
         guard isReady else {
             Log.warn("find before the editor was ready", category: "bridge", context: ["mode": mode.rawValue])

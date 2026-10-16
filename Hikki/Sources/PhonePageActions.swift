@@ -73,6 +73,14 @@
 
         private var rows: some View {
             VStack(spacing: Spacing.s0) {
+                if !page.isLocked {
+                    ActionRow(title: "app:page.cover", icon: .image) {
+                        dismiss()
+                        // After this sheet has gone, so the editor's own sheet isn't covered by it.
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { editor.editCover() }
+                    }
+                    .accessibilityIdentifier("page-cover")
+                }
                 ActionRow(title: "app:history.open", icon: .clockCounterClockwise) {
                     dismiss()
                     navigator.historyPageID = page.id

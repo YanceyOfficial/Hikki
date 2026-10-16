@@ -58,4 +58,25 @@ struct RootView: View {
         /// See `VerticalBarReader`.
         @Entry var verticalBarEdge: HorizontalEdge?
     }
+
+    /// A sheet covers the system's vertical bar (an iPhone Duo's strip beside the camera), yet it is handed the
+    /// window's inset on that side, so its content stopped short of its edge. Inside a sheet that inset goes.
+    private struct SheetOverVerticalBar: ViewModifier {
+        @Environment(\.verticalBarEdge) private var edge
+
+        func body(content: Content) -> some View {
+            content.ignoresSafeArea(.container, edges: edge == .leading ? .leading : edge == .trailing ? .trailing : [])
+        }
+    }
 #endif
+
+extension View {
+    /// A sheet's content, laid out to the sheet's own edges where a vertical bar would otherwise inset it (iOS).
+    func sheetOverVerticalBar() -> some View {
+        #if os(iOS)
+            modifier(SheetOverVerticalBar())
+        #else
+            self
+        #endif
+    }
+}

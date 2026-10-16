@@ -53,6 +53,12 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
     setIconOpen(false)
     setCoverSheet(null)
   }
+  // The page ⋯ menu's Cover…: its actions when there is a cover, the picker when there isn't.
+  const hasCover = page.cover !== null
+  useEffect(
+    () => bridge.onCoverRequest(() => setCoverSheet(hasCover ? 'actions' : 'picker')),
+    [bridge, hasCover]
+  )
   const cover = draftY !== null && page.cover ? withCoverPosition(page.cover, draftY) : page.cover
   const background = coverBackground(cover)
   // Nothing in the header may change on a locked (or unreadable) page.
@@ -125,7 +131,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
           )}
         </Cover>
       )}
-      {touch && (
+      {(touch || coverSheet !== null) && (
         <CoverSheet
           mode={frozen ? null : coverSheet}
           current={page.cover}
