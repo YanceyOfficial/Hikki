@@ -13,6 +13,8 @@
     "changeIcon": "Change icon",
     "chooseIcon": "Choose icon",
     "changeCover": "Change cover",
+    "removeCover": "Remove cover",
+    "coverOptions": "Cover options",
     "outline": "Outline",
     "readOnlyTitle": "Can't edit this page here",
     "readOnlyDescription": "Its content was made with a newer version of Hikki or couldn't be read completely. It's shown as far as possible and left unchanged — update Hikki to edit it.",

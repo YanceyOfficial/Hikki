@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { EmojiPickerPanel } from '../components/emoji-picker-panel'
 import { LazyLoadImage } from '../components/lazy-load-image'
 import type { EditorBridge } from '../core/bridge'
+import { useMediaQuery } from '../hooks/use-media-query'
 import {
   coverBackground,
   coverImage,
@@ -31,6 +32,7 @@ import {
   withCoverPosition
 } from '../lib/covers'
 import { CoverPicker } from './cover-picker'
+import { CoverSheet, type CoverSheetMode } from './cover-sheet'
 
 /** Notion-style page header: cover, icon, hover actions and the page title (a page property, not body content). */
 export function PageHeader({ bridge }: { bridge: EditorBridge }) {
@@ -39,6 +41,9 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
   const [iconOpen, setIconOpen] = useState(false)
   // Reposition: the position being dragged (null when not repositioning).
   const [draftY, setDraftY] = useState<number | null>(null)
+  // A touch screen (no hover): the cover's controls are a sheet a long press opens, not buttons over the picture.
+  const touch = useMediaQuery('(pointer: coarse)')
+  const [coverSheet, setCoverSheet] = useState<CoverSheetMode | null>(null)
   // The header stays mounted from page to page: another page starts with nothing of the last one's in progress
   // (a reposition draft would otherwise be saved into the next page's cover).
   const [shownDoc, setShownDoc] = useState(page.docId)
@@ -46,6 +51,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
     setShownDoc(page.docId)
     setDraftY(null)
     setIconOpen(false)
+    setCoverSheet(null)
   }
   const cover = draftY !== null && page.cover ? withCoverPosition(page.cover, draftY) : page.cover
   const background = coverBackground(cover)
@@ -70,6 +76,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
           image={coverImage(cover)}
           repositioning={draftY !== null}
           onDrag={setDraftY}
+          onLongPress={touch && !frozen ? () => setCoverSheet('actions') : undefined}
         >
           {draftY !== null ? (
             <CoverActions>
@@ -87,9 +94,10 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
               </CoverAction>
             </CoverActions>
           ) : (
-            // Visible on hover (always on touch / while open).
-            !frozen && (
-              <CoverActions className="opacity-0 transition-opacity group-focus-within/cover:opacity-100 group-hover/cover:opacity-100 has-aria-expanded:opacity-100 touch:opacity-100">
+            // Visible on hover (or while open). Touch screens have no hover: a long press opens the cover's sheet.
+            !frozen &&
+            !touch && (
+              <CoverActions className="opacity-0 transition-opacity group-focus-within/cover:opacity-100 group-hover/cover:opacity-100 has-aria-expanded:opacity-100">
                 <Popover>
                   <PopoverTrigger render={<CoverAction />}>{t('page.changeCover')}</PopoverTrigger>
                   <PopoverContent
@@ -116,6 +124,19 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
             )
           )}
         </Cover>
+      )}
+      {touch && (
+        <CoverSheet
+          mode={frozen ? null : coverSheet}
+          current={page.cover}
+          canReposition={isImageCover(page.cover)}
+          onClose={() => setCoverSheet(null)}
+          onMode={setCoverSheet}
+          onReposition={() => setDraftY(coverPosition(page.cover))}
+          onSelect={(next) => bridge.setCover(next)}
+          onRemove={() => bridge.setCover(null)}
+          onUpload={uploadCover}
+        />
       )}
       <div className={cn('hk-column', background ? 'pt-0' : 'pt-18')}>
         {page.icon && (
@@ -293,6 +314,9 @@ function TitleField({
   )
 }
 
+/** How long a press on the cover is held before its sheet opens. */
+const LONG_PRESS_MS = 500
+
 /**
  * The cover picture (or gradient) with the controls over it. While repositioning, dragging it moves the
  * picture vertically, one pixel per pixel of drag (the image's overflow beyond the cover is measured from the
@@ -304,6 +328,7 @@ function Cover({
   image,
   repositioning,
   onDrag,
+  onLongPress,
   children
 }: {
   background: string
@@ -311,6 +336,8 @@ function Cover({
   image: { src: string; y: number } | null
   repositioning: boolean
   onDrag: (y: number) => void
+  /** Touch screens: a press held still on the cover (its controls live in a sheet there). */
+  onLongPress?: () => void
   children: ReactNode
 }) {
   const { t } = useTranslation()
@@ -318,7 +345,34 @@ function Cover({
   const drag = useRef<{ pointerId: number; startY: number; startClientY: number } | null>(null)
   const { overflow, measure } = useCoverOverflow(ref, image?.src ?? null, repositioning)
 
+  // A long press: held ~0.5 s within a few points of where it started (a scroll or a drag cancels it).
+  const press = useRef<{ pointerId: number; x: number; y: number; timer: number } | null>(null)
+  const endPress = () => {
+    if (press.current) window.clearTimeout(press.current.timer)
+    press.current = null
+  }
+  // A press still held when the cover goes away (another page): its timer goes with it.
+  useEffect(
+    () => () => {
+      if (press.current) window.clearTimeout(press.current.timer)
+    },
+    []
+  )
+
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (onLongPress && !repositioning && event.isPrimary) {
+      endPress()
+      const { pointerId, clientX: x, clientY: y } = event
+      press.current = {
+        pointerId,
+        x,
+        y,
+        timer: window.setTimeout(() => {
+          press.current = null
+          onLongPress()
+        }, LONG_PRESS_MS)
+      }
+    }
     if (!repositioning || event.button !== 0) return
     // A press on the controls is theirs: capturing the pointer here would steal their click.
     if ((event.target as HTMLElement).closest('[data-slot="cover-actions"]')) return
@@ -331,12 +385,20 @@ function Cover({
     event.preventDefault()
   }
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const p = press.current
+    if (
+      p &&
+      p.pointerId === event.pointerId &&
+      Math.hypot(event.clientX - p.x, event.clientY - p.y) > 8
+    )
+      endPress()
     const d = drag.current
     if (!d || d.pointerId !== event.pointerId) return
     const height = event.currentTarget.getBoundingClientRect().height
     onDrag(repositionedCover(d.startY, event.clientY - d.startClientY, height, overflow))
   }
   const onPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (press.current?.pointerId === event.pointerId) endPress()
     if (drag.current?.pointerId === event.pointerId) drag.current = null
   }
 
@@ -345,6 +407,8 @@ function Cover({
       ref={ref}
       className={cn(
         'hk-cover group/cover relative',
+        // No system callout or text selection on a held press (it opens the cover's sheet).
+        onLongPress && 'select-none [-webkit-touch-callout:none]',
         repositioning && 'cursor-grab touch-none select-none active:cursor-grabbing'
       )}
       style={image ? undefined : { background }}
@@ -353,6 +417,7 @@ function Cover({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
+      onContextMenu={onLongPress ? (event) => event.preventDefault() : undefined}
     >
       {/* A picture as a CSS background was re-rasterized at every size while the window was resized (the cover
           flickered); an <img> on its own compositing layer is decoded once and scaled by the GPU. */}

@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { EditorBridge } from '../src/core/bridge'
 import type { ToNativeMessage } from '../src/core/protocol'
@@ -33,6 +33,7 @@ describe('PageHeader', () => {
   afterEach(() => {
     cleanup()
     host.remove()
+    vi.unstubAllGlobals()
   })
 
   const load = (patch = {}) => act(() => bridge.loadDocument(page('a', patch)))
@@ -216,6 +217,38 @@ describe('PageHeader', () => {
     fireEvent.click(screen.getAllByText('Remove')[0])
     expect(bridge.page.get().cover).toBeNull()
     expect(screen.queryByTestId('cover')).toBeNull()
+  })
+
+  it('on a touch screen the cover has no buttons over it: a long press opens its sheet', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query === '(pointer: coarse)',
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {}
+    }))
+    vi.useFakeTimers()
+    try {
+      render(<PageHeader bridge={bridge} />)
+      load({ cover: 'https://images.unsplash.com/photo-1?w=1080#y=40' })
+      expect(screen.queryByText('Change cover')).toBeNull()
+      expect(screen.queryByText('Reposition')).toBeNull()
+      const cover = screen.getByTestId('cover')
+      // A press that moves (a scroll) opens nothing.
+      fireEvent.pointerDown(cover, { pointerId: 1, isPrimary: true, clientX: 10, clientY: 10 })
+      fireEvent.pointerMove(cover, { pointerId: 1, clientX: 10, clientY: 40 })
+      act(() => vi.advanceTimersByTime(600))
+      expect(screen.queryByTestId('cover-sheet')).toBeNull()
+      // Held still: the sheet with Change cover, Reposition and Remove cover.
+      fireEvent.pointerDown(cover, { pointerId: 2, isPrimary: true, clientX: 10, clientY: 10 })
+      act(() => vi.advanceTimersByTime(600))
+    } finally {
+      vi.useRealTimers()
+    }
+    expect(await screen.findByTestId('cover-sheet-change')).toBeTruthy()
+    expect(screen.getByTestId('cover-sheet-reposition')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('cover-sheet-remove'))
+    await settle()
+    expect(sent).toContainEqual(expect.objectContaining({ type: 'setCover', cover: null }))
   })
 
   it('clicking the icon opens the picker; Remove clears the icon', () => {

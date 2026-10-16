@@ -13,6 +13,8 @@
     "changeIcon": "更换图标",
     "chooseIcon": "选择图标",
     "changeCover": "更换封面",
+    "removeCover": "移除封面",
+    "coverOptions": "封面选项",
     "outline": "目录",
     "readOnlyTitle": "此页面暂时无法编辑",
     "readOnlyDescription": "它的内容来自更新版本的 Hikki，或未能完整读取。这里尽量显示并保持原样不做改动——更新 Hikki 后即可编辑。",
