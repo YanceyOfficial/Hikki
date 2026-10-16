@@ -161,6 +161,10 @@
                             .init(id: 3, style: .paragraph, change: .removed, runs: [.init("An old note", .removed)]),
                         ])
                     }
+                    Section("SkeletonLines") {
+                        SkeletonLines([0.45], height: Spacing.s6, label: "app:history.loading")
+                        SkeletonLines([1, 0.94, 0.62], label: "app:history.loading")
+                    }
                     Section("TaskProgressRow") {
                         TaskProgressRow(Text(verbatim: "Importing 3 of 20"), done: 3, total: 20, cancelTitle: "Cancel") {}
                         TaskProgressRow(Text(verbatim: "Reading files…"), done: 0, total: 0, cancelTitle: "Cancel") {}

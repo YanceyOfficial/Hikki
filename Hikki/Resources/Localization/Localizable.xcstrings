@@ -2806,6 +2806,23 @@
         }
       }
     },
+    "app:history.loading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading versions"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在载入版本"
+          }
+        }
+      }
+    },
     "app:history.open": {
       "extractionState": "manual",
       "localizations": {

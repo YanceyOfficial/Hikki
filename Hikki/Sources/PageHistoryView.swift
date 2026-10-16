@@ -24,7 +24,9 @@ struct PageHistoryView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if loaded && versions.isEmpty {
+                if !loaded {
+                    HistorySkeleton(compact: compact)
+                } else if versions.isEmpty {
                     ContentUnavailableView {
                         IconLabel("app:history.empty", icon: .clockCounterClockwise)
                     } description: {
@@ -187,6 +189,9 @@ private struct VersionPreview: View {
                 .padding(Spacing.s6)
                 .frame(maxWidth: Size.column, alignment: .leading)
                 .frame(maxWidth: .infinity)
+            } else {
+                // Still comparing (a long page, or another version just picked).
+                PreviewSkeleton()
             }
         }
         .task(id: version.id) {
@@ -236,6 +241,47 @@ private struct VersionPreview: View {
         case .media: .media
         case .rule: .rule
         }
+    }
+}
+
+/// The list and the preview while the versions are read: rows of the list's shape beside a page of grey lines.
+private struct HistorySkeleton: View {
+    let compact: Bool
+
+    var body: some View {
+        if compact {
+            rows.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        } else {
+            HStack(spacing: Spacing.s0) {
+                rows.frame(width: Size.historyList).frame(maxHeight: .infinity, alignment: .top)
+                Divider()
+                PreviewSkeleton().frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            }
+        }
+    }
+
+    private var rows: some View {
+        VStack(alignment: .leading, spacing: Spacing.s5) {
+            ForEach(0..<5, id: \.self) { _ in
+                SkeletonLines([0.75, 0.4, 0.6], height: Spacing.s2_5, spacing: Spacing.s1_5, label: "app:history.loading")
+            }
+        }
+        .padding(Spacing.s4)
+    }
+}
+
+/// A page of grey lines where a version's preview will be.
+private struct PreviewSkeleton: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.s6) {
+            SkeletonLines([0.45], height: Spacing.s6, label: "app:history.loading")
+            SkeletonLines([1, 0.94, 0.62], label: "app:history.loading")
+            SkeletonLines([0.3], height: Spacing.s4, label: "app:history.loading")
+            SkeletonLines([0.97, 0.88, 1, 0.4], label: "app:history.loading")
+        }
+        .padding(Spacing.s6)
+        .frame(maxWidth: Size.column, alignment: .leading)
+        .frame(maxWidth: .infinity)
     }
 }
 
