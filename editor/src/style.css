@@ -586,8 +586,11 @@
   .tiptap ul[data-type='taskList'] li {
     @apply flex items-start gap-2;
   }
+  /* The box sits in a box one text line tall, below the same padding as the item's paragraph, so it centres on the
+     first line in any font and engine (a fixed margin-top left it a pixel or two low, more on iOS). 3px: the
+     paragraph's own padding (.tiptap p), which the item's paragraph gets inside its div. */
   .tiptap ul[data-type='taskList'] li > label {
-    margin-top: 0.38em;
+    @apply mt-[3px] flex h-lh shrink-0 items-center;
   }
   .tiptap ul[data-type='taskList'] input[type='checkbox'] {
     @apply m-0 size-4 accent-primary;
