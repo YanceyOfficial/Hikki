@@ -28,6 +28,14 @@ function Home() {
   )
 }
 
+/** The first screen's short list: what Hikki is, one line each. */
+const HERO_FACTS = [
+  { title: 'Local-first', text: 'Pages are files in a folder you choose.' },
+  { title: 'No telemetry', text: 'Nothing about how you use it leaves the device.' },
+  { title: 'Native', text: 'SwiftUI on iPhone, iPad and Mac.' },
+  { title: 'AI on your key', text: 'OpenAI or Anthropic, only when you ask.' }
+]
+
 function Hero() {
   return (
     <section class={`${row} grid-cols-1 lg:grid-cols-12 lg:grid-rows-[1fr_auto]`}>
@@ -35,6 +43,16 @@ function Hero() {
         <ruby class="furigana self-start text-[clamp(6rem,13vw,10.5rem)]" aria-label="Hikki (筆記)">
           筆記<rt>ひっき</rt>
         </ruby>
+        <dl class="hero-facts m-0 grid grid-cols-2 lg:hidden 2xl:grid">
+          <For each={HERO_FACTS}>
+            {(fact) => (
+              <div class="p-4">
+                <dt class="expanded text-[15px] font-[800]">{fact.title}</dt>
+                <dd class="m-0 mt-1 text-[14px] leading-snug text-muted">{fact.text}</dd>
+              </div>
+            )}
+          </For>
+        </dl>
         <div class="max-w-[34rem]">
           <h1 class="expanded text-[clamp(2.2rem,3.4vw,3.4rem)] leading-[1.04] font-[850] tracking-[-0.02em]">
             Notes that stay on your devices.
