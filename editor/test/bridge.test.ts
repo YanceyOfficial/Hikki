@@ -393,6 +393,15 @@ describe('EditorBridge', () => {
     expect(openFloatingLayers()).toHaveLength(0)
   })
 
+  it('demoAI selects the words and asks AI to edit them, as the selection menu would', () => {
+    bridge.loadDocument(page('a', { content: doc('Notes stay on your own devices.') }))
+    expect(bridge.demoAI(['stay on your own'], 'improve')).toBe(true)
+    const request = sent.find((m) => m.type === 'aiRequest')
+    expect(request).toMatchObject({ type: 'aiRequest', action: 'improve', answer: false })
+    expect(JSON.stringify(request)).toContain('stay on your own')
+    expect(bridge.demoAI(['not in the page'], 'improve')).toBe(false)
+  })
+
   it('rejects unknown commands', () => {
     bridge.loadDocument(page('a'))
     expect(bridge.exec('rm -rf')).toBe(false)

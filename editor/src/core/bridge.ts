@@ -501,6 +501,13 @@ export class EditorBridge {
     )
   }
 
+  /** Selects `terms` as a search result would and runs an AI action on them, as the selection menu does. */
+  demoAI(terms: string[], action: string): boolean {
+    const editor = this.editor
+    if (!editor || this.frozen || !editor.commands.revealText(terms, null)) return false
+    return editor.commands.aiRun({ id: action })
+  }
+
   /** Uploads and attachments for the editor's media blocks. */
   readonly media: MediaHost = {
     upload: (file, onProgress) => this.uploadFile(file, onProgress),

@@ -298,6 +298,24 @@ final class EditorController {
         }
     }
 
+    #if DEBUG
+        /// `HIKKI_DEBUG_AI_EDIT`: selects `words` and runs "Improve writing" on them, as the selection menu would; tries
+        /// again while the page is still loading.
+        func debugImprove(_ words: String, attempts: Int = 10) {
+            Task {
+                for _ in 0..<attempts {
+                    if isReady,
+                        await call("return window.hikki.demoAI([words], 'improve')", ["words": words.lowercased()], label: "debugImprove")
+                            as? Bool == true
+                    {
+                        return
+                    }
+                    try? await Task.sleep(for: .seconds(1))
+                }
+            }
+        }
+    #endif
+
     private func callRevealText(_ terms: [String], at blockID: String?) async {
         await call(
             "window.hikki.revealText(terms, block)", ["terms": terms, "block": blockID ?? NSNull()], label: "revealText")

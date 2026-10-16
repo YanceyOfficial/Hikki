@@ -402,6 +402,17 @@ struct ContentView: View {
             if environment["HIKKI_OPEN_FIND"] != nil {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak editor] in editor?.find(.find) }
             }
+            // HIKKI_DEBUG_AI_ASK=<question> asks the AI panel about the open page, and HIKKI_DEBUG_AI_EDIT=<words> selects
+            // those words in it and runs "Improve writing" (screenshots of AI at work; they need a provider key).
+            if let question = environment["HIKKI_DEBUG_AI_ASK"] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak chat, weak model, weak navigator] in
+                    chat?.show(page: navigator?.route.pageID)
+                    chat?.send(question, store: model?.store)
+                }
+            }
+            if let words = environment["HIKKI_DEBUG_AI_EDIT"] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak editor] in editor?.debugImprove(words) }
+            }
             // HIKKI_ACTIVATE brings the window to the front (screenshots of the active-window look).
             #if os(macOS)
                 if environment["HIKKI_ACTIVATE"] != nil { NSApp.activate() }

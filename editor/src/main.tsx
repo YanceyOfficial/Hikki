@@ -59,6 +59,8 @@ window.hikki = {
   scrollToBlock: (id: string) => bridge.scrollToBlock(id),
   // A search result opened: land on its block, its words selected (folded terms, as the search index matched them).
   revealText: (terms: string[], blockId: string | null) => bridge.revealText(terms, blockId),
+  // Screenshots (the native DEBUG hook HIKKI_DEBUG_AI_EDIT): those words selected and an AI action run on them.
+  demoAI: (terms: string[], action: string) => bridge.demoAI(terms, action),
   // AI on the selection: the answer to an `aiRequest`, one event at a time.
   aiEvent: (event: AIStreamEvent) => bridge.aiEvent(event),
   // A tab shown again scrolls back to where it was.
