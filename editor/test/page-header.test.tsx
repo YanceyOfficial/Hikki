@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { EditorBridge } from '../src/core/bridge'
@@ -267,6 +267,22 @@ describe('PageHeader', () => {
     })
     // No cover now: the picker itself (its gradients).
     expect(await screen.findByRole('button', { name: 'Ocean' })).toBeTruthy()
+  })
+
+  it('on a touch screen the icon picker is a bottom sheet', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query === '(pointer: coarse)' || query === '(any-pointer: coarse)',
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {}
+    }))
+    render(<PageHeader bridge={bridge} />)
+    load({ icon: '🌸' })
+    fireEvent.click(screen.getByLabelText('Change icon'))
+    const sheet = await screen.findByTestId('icon-sheet')
+    fireEvent.click(within(sheet).getByLabelText('Random'))
+    await settle()
+    expect(sent).toContainEqual(expect.objectContaining({ type: 'setIcon' }))
   })
 
   it('a locked page refuses Cover…', () => {

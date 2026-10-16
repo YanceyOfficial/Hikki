@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 
+import { BottomSheet } from '../components/bottom-sheet'
 import { EmojiPickerPanel } from '../components/emoji-picker-panel'
 import { LazyLoadImage } from '../components/lazy-load-image'
 import type { EditorBridge } from '../core/bridge'
@@ -68,6 +69,25 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
   const frozen = page.readOnly || page.locked
 
   if (!page.docId) return null
+
+  const iconButtonClass = cn(
+    '-ml-0.5 mb-1 flex size-[78px] rounded-lg p-0 font-emoji text-[78px] leading-none disabled:opacity-100',
+    !frozen && 'cursor-pointer hover:bg-accent',
+    background && 'relative -mt-[39px]'
+  )
+  const iconPicker = (
+    <EmojiPickerPanel
+      onSelect={(emoji) => {
+        bridge.setIcon(emoji)
+        setIconOpen(false)
+      }}
+      onRandom={() => bridge.setIcon(randomIcon())}
+      onRemove={() => {
+        bridge.setIcon(null)
+        setIconOpen(false)
+      }}
+    />
+  )
 
   const uploadCover = async (file: File) => {
     const ext = file.name.split('.').pop()?.toLowerCase() || file.type.split('/')[1] || 'png'
@@ -146,43 +166,51 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
         />
       )}
       <div className={cn('hk-column', background ? 'pt-0' : 'pt-18')}>
-        {page.icon && (
-          <Popover open={iconOpen && !frozen} onOpenChange={setIconOpen}>
-            <PopoverTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  className={cn(
-                    '-ml-0.5 mb-1 flex size-[78px] rounded-lg p-0 font-emoji text-[78px] leading-none disabled:opacity-100',
-                    !frozen && 'cursor-pointer hover:bg-accent',
-                    background && 'relative -mt-[39px]'
-                  )}
-                  aria-label={t('page.changeIcon')}
-                  disabled={frozen}
-                />
-              }
-            >
-              {page.icon}
-            </PopoverTrigger>
-            <PopoverContent
-              align="start"
-              aria-label={t('page.chooseIcon')}
-              className="w-[400px] max-w-[calc(100vw-16px)] gap-0 p-0"
-            >
-              <EmojiPickerPanel
-                onSelect={(emoji) => {
-                  bridge.setIcon(emoji)
-                  setIconOpen(false)
-                }}
-                onRandom={() => bridge.setIcon(randomIcon())}
-                onRemove={() => {
-                  bridge.setIcon(null)
-                  setIconOpen(false)
-                }}
-              />
-            </PopoverContent>
-          </Popover>
-        )}
+        {page.icon &&
+          (touch ? (
+            // A touch screen: the picker is a bottom sheet the screen's width, not a popover under the icon.
+            <>
+              <Button
+                variant="ghost"
+                className={iconButtonClass}
+                aria-label={t('page.changeIcon')}
+                disabled={frozen}
+                onClick={() => setIconOpen(true)}
+              >
+                {page.icon}
+              </Button>
+              <BottomSheet
+                open={iconOpen && !frozen}
+                onClose={() => setIconOpen(false)}
+                title={t('page.chooseIcon')}
+                testId="icon-sheet"
+              >
+                {iconPicker}
+              </BottomSheet>
+            </>
+          ) : (
+            <Popover open={iconOpen && !frozen} onOpenChange={setIconOpen}>
+              <PopoverTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    className={iconButtonClass}
+                    aria-label={t('page.changeIcon')}
+                    disabled={frozen}
+                  />
+                }
+              >
+                {page.icon}
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                aria-label={t('page.chooseIcon')}
+                className="w-[400px] max-w-[calc(100vw-16px)] gap-0 p-0"
+              >
+                {iconPicker}
+              </PopoverContent>
+            </Popover>
+          ))}
         <div className="mt-2 mb-1 -ml-1.5 flex min-h-7 gap-1 opacity-0 transition-opacity group-hover/header:opacity-100 focus-within:opacity-100 touch:opacity-100">
           {!page.icon && !frozen && (
             <Button

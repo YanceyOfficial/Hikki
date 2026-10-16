@@ -313,7 +313,10 @@ HikkiUITests/                 XCUITest flows
 - **Covers**: the stored value is `gradient:<id>` or an image URL, and an image's vertical position rides along
   as a `#y=<0-100>` fragment (`editor/src/lib/covers.ts`: `coverPosition`, `withCoverPosition`), so the store and
   the protocol keep a plain string. "Reposition" on the cover (`editor/src/page/page-header.tsx`) drags the picture
-  one pixel per pixel over its overflow and saves or cancels.
+  one pixel per pixel over its overflow and saves or cancels — Mac only. Touch screens (`pointer: coarse`) have no
+  buttons over the cover and no Reposition: a long press on it, or the page ⋯ menu's Cover… (`window.hikki.editCover`),
+  opens its sheet (Change cover, Remove; `editor/src/page/cover-sheet.tsx`), and the page and callout icon pickers open
+  as the same bottom sheet (`editor/src/components/bottom-sheet.tsx`, keyboard-aware) instead of popovers.
 - **Embeds** (`editor/src/extensions/embed.ts`, transforms in `editor/src/lib/embeds.ts`): one `embed` block — an
   `<iframe>` on a third-party page (sandboxed, keeps its origin) or on a snippet of HTML (`srcdoc`, no origin) — behind
   the "/" menu's Embeds group (Embed, HTML, Google Drive, Tweet, Gist, Google Maps, Figma). `embedFromURL` turns a

@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next'
 
-import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
-
+import { BottomSheet } from '../components/bottom-sheet'
 import { MenuRow } from '../components/menu-row'
 import { CoverPicker } from './cover-picker'
 
@@ -32,59 +31,45 @@ export function CoverSheet({
 }) {
   const { t } = useTranslation()
   return (
-    <Drawer
+    <BottomSheet
       open={mode !== null}
-      onOpenChange={(open) => {
-        if (!open) onClose()
-      }}
-      showSwipeHandle
+      onClose={onClose}
+      title={t('page.coverOptions')}
+      testId="cover-sheet"
     >
-      <DrawerContent
-        data-testid="cover-sheet"
-        className="pt-1 [--drawer-content-height:auto]"
-        style={
-          {
-            '--drawer-content-max-height': 'calc(100dvh - var(--hk-inset-top, 0px) - 12px)',
-            paddingBottom:
-              'calc(env(safe-area-inset-bottom, 0px) + var(--hk-inset-bottom, 0px) + var(--spacing) * 2)'
-          } as React.CSSProperties
-        }
-      >
-        <DrawerTitle className="sr-only">{t('page.coverOptions')}</DrawerTitle>
-        {mode === 'picker' ? (
-          <CoverPicker
-            current={current}
-            onSelect={(cover) => {
-              onSelect(cover)
-              onClose()
-            }}
-            onRemove={() => {
+      {mode === 'picker' ? (
+        <CoverPicker
+          current={current}
+          onSelect={(cover) => {
+            onSelect(cover)
+            onClose()
+          }}
+          onRemove={() => {
+            onRemove()
+            onClose()
+          }}
+          onUpload={async (file) => {
+            await onUpload(file)
+            onClose()
+          }}
+        />
+      ) : (
+        <div className="flex flex-col p-2">
+          <MenuRow data-testid="cover-sheet-change" onClick={() => onMode('picker')}>
+            {t('page.changeCover')}
+          </MenuRow>
+          <MenuRow
+            data-testid="cover-sheet-remove"
+            className="text-destructive hover:text-destructive"
+            onClick={() => {
               onRemove()
               onClose()
             }}
-            onUpload={async (file) => {
-              await onUpload(file)
-              onClose()
-            }}
-          />
-        ) : (
-          <div className="flex flex-col p-2">
-            <MenuRow data-testid="cover-sheet-change" onClick={() => onMode('picker')}>
-              {t('page.changeCover')}
-            </MenuRow>
-            <MenuRow
-              data-testid="cover-sheet-remove"
-              className="text-destructive hover:text-destructive"
-              onClick={() => {
-                onRemove()
-                onClose()
-              }}
-            >
-              {t('page.removeCover')}
-            </MenuRow>
-          </div>
-        )}
-      </DrawerContent>
-    </Drawer>
+          >
+            {t('page.removeCover')}
+          </MenuRow>
+        </div>
+      )}
+    </BottomSheet>
   )
 }
