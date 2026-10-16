@@ -1,4 +1,4 @@
-import { ArrowUp02Icon } from '@hugeicons/core-free-icons'
+import { ArrowUpIcon } from '@phosphor-icons/react'
 import { useState } from 'react'
 
 import {
@@ -10,7 +10,6 @@ import {
 
 import { t } from '../core/i18n'
 import type { AIAction } from '../extensions/ai-review'
-import { Icon } from './icons'
 import { MenuRow, MenuTitle } from './menu-row'
 
 /** The AI actions: what the user types, then presets (edits replace the selection after review; Ask explains it). */
@@ -97,7 +96,7 @@ export function AIPanel({
               disabled={!value.trim()}
               onClick={submit}
             >
-              <Icon icon={ArrowUp02Icon} aria-hidden />
+              <ArrowUpIcon aria-hidden />
             </InputGroupButton>
           </InputGroupAddon>
         </InputGroup>

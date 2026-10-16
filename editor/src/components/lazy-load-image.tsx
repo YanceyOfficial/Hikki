@@ -1,4 +1,4 @@
-import { ImageNotFound01Icon } from '@hugeicons/core-free-icons'
+import { ImageBrokenIcon } from '@phosphor-icons/react'
 import { cn } from 'cn'
 import {
   type CSSProperties,
@@ -8,8 +8,6 @@ import {
 } from 'react'
 
 import { Skeleton } from '@/components/ui/skeleton'
-
-import { Icon } from './icons'
 
 /**
  * Every image fetched from the network (exodus's `LazyLoadImage`, the owner's rule): a skeleton while it loads, a fade
@@ -84,7 +82,7 @@ export function LazyLoadImage({
       )}
       {status === 'failed' && (
         <div className="flex size-full items-center justify-center bg-muted text-muted-foreground">
-          <Icon icon={ImageNotFound01Icon} className="size-1/3 max-h-12 max-w-12" aria-hidden />
+          <ImageBrokenIcon className="size-1/3 max-h-12 max-w-12" aria-hidden />
         </div>
       )}
     </div>

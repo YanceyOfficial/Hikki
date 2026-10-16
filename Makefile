@@ -13,7 +13,7 @@ bootstrap:
 tokens:
 	node scripts/gen-tokens.mjs
 
-# Icons for the native app: edit design/icons.json, then regenerate the Icon enum + Hugeicons fallback assets.
+# Phosphor icons for the native app: edit design/icons.json, then regenerate the asset catalog + Icon enum.
 icons:
 	node scripts/gen-icons.mjs
 

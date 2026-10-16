@@ -1,4 +1,4 @@
-import { ShuffleIcon } from '@hugeicons/core-free-icons'
+import { ShuffleIcon } from '@phosphor-icons/react'
 import { cn } from 'cn'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,7 +13,6 @@ import {
   searchEmoji,
   type EmojiCategory
 } from '../lib/emoji-data'
-import { Icon } from './icons'
 
 type Props = {
   onSelect: (emoji: string) => void
@@ -98,7 +97,7 @@ export function EmojiPickerPanel({ onSelect, onRemove, onRandom, locale: localeP
             title={text.random}
             aria-label={text.random}
           >
-            <Icon icon={ShuffleIcon} size={16} aria-hidden />
+            <ShuffleIcon size={16} aria-hidden />
           </Button>
         )}
         {onRemove && (

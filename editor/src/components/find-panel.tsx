@@ -1,11 +1,11 @@
 import {
-  ArrowDataTransferHorizontalIcon,
-  ArrowDown02Icon,
-  ArrowUp02Icon,
-  Cancel01Icon,
-  TextFontIcon,
-  TextIcon
-} from '@hugeicons/core-free-icons'
+  ArrowDownIcon,
+  ArrowUpIcon,
+  ArrowsLeftRightIcon,
+  TextAaIcon,
+  TextTIcon,
+  XIcon
+} from '@phosphor-icons/react'
 import type { Editor } from '@tiptap/core'
 import { cn } from 'cn'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
@@ -28,7 +28,7 @@ import { shortcutLabel } from '../core/shortcuts'
 import { revealCurrentMatch } from '../extensions/find'
 import { useEditorSnapshot } from '../hooks/use-editor-snapshot'
 import { usePresence } from './floating'
-import { Icon } from './icons'
+import { IconProvider } from './icons'
 
 type Props = {
   editor: Editor
@@ -141,14 +141,14 @@ export function FindPanel({ editor, open, replace, initialText, onReplaceToggle,
             pressed={state.caseSensitive}
             onChange={(on) => editor.commands.setCaseSensitive(on)}
           >
-            <Icon icon={TextFontIcon} aria-hidden />
+            <TextAaIcon aria-hidden />
           </Option>
           <Option
             label={t('find.wholeWord')}
             pressed={state.wholeWord}
             onChange={(on) => editor.commands.setWholeWord(on)}
           >
-            <Icon icon={TextIcon} aria-hidden />
+            <TextTIcon aria-hidden />
           </Option>
           <Option
             label={t('find.regex')}
@@ -167,14 +167,14 @@ export function FindPanel({ editor, open, replace, initialText, onReplaceToggle,
             keys={shortcutLabel('findPrevious')}
             onClick={() => editor.commands.goToPreviousResult()}
           >
-            <Icon icon={ArrowUp02Icon} aria-hidden />
+            <ArrowUpIcon aria-hidden />
           </Action>
           <Action
             label={t('find.next')}
             keys={shortcutLabel('findNext')}
             onClick={() => editor.commands.goToNextResult()}
           >
-            <Icon icon={ArrowDown02Icon} aria-hidden />
+            <ArrowDownIcon aria-hidden />
           </Action>
           <Separator orientation="vertical" className="mx-1 data-[orientation=vertical]:h-4" />
           <Option
@@ -183,10 +183,10 @@ export function FindPanel({ editor, open, replace, initialText, onReplaceToggle,
             onChange={onReplaceToggle}
             className="aria-pressed:bg-primary/10 aria-pressed:text-primary"
           >
-            <Icon icon={ArrowDataTransferHorizontalIcon} aria-hidden />
+            <ArrowsLeftRightIcon aria-hidden />
           </Option>
           <Action label={t('find.close')} keys="esc" onClick={onClose}>
-            <Icon icon={Cancel01Icon} aria-hidden />
+            <XIcon aria-hidden />
           </Action>
         </InputGroupAddon>
       </InputGroup>
@@ -298,8 +298,10 @@ function Option({
 /** Draws the panel into the find extension's React root; a new `request` remounts it (refocus, prefill). */
 export function renderFindPanel(root: Root, request: number, props: Props): void {
   root.render(
-    <TooltipProvider delay={500}>
-      <FindPanel key={request} {...props} />
-    </TooltipProvider>
+    <IconProvider>
+      <TooltipProvider delay={500}>
+        <FindPanel key={request} {...props} />
+      </TooltipProvider>
+    </IconProvider>
   )
 }

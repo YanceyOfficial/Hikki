@@ -1,12 +1,12 @@
 import {
-  ArrowRight01Icon,
-  Copy01Icon,
-  Delete02Icon,
-  Link01Icon,
-  PaintBrush01Icon,
-  RepeatIcon,
-  SparklesIcon
-} from '@hugeicons/core-free-icons'
+  ArrowsClockwiseIcon,
+  CaretRightIcon,
+  CopyIcon,
+  LinkSimpleIcon,
+  PaintBrushIcon,
+  SparkleIcon,
+  TrashIcon
+} from '@phosphor-icons/react'
 import type { Editor } from '@tiptap/core'
 import { TextSelection } from '@tiptap/pm/state'
 import { cn } from 'cn'
@@ -34,7 +34,7 @@ import { BlockTypeList, TURN_INTO } from './block-type-list'
 import { ColorList } from './color-list'
 import { FloatingLayer, usePresence } from './floating'
 import { GlidingHighlight } from './gliding-highlight'
-import { Icon } from './icons'
+import { IconProvider } from './icons'
 import { MenuRow } from './menu-row'
 
 let open: { layer: FloatingLayer; close: () => void } | null = null
@@ -76,15 +76,17 @@ export function openBlockMenu(editor: Editor, unit: BlockUnit, anchor: DOMRect):
   }
   open = { layer, close }
   layer.render(
-    <BlockMenu
-      editor={editor}
-      unit={unit}
-      follow={follow}
-      onEscape={(handler) => {
-        escape = handler
-      }}
-      onClose={close}
-    />,
+    <IconProvider>
+      <BlockMenu
+        editor={editor}
+        unit={unit}
+        follow={follow}
+        onEscape={(handler) => {
+          escape = handler
+        }}
+        onClose={close}
+      />
+    </IconProvider>,
     () => anchor
   )
 }
@@ -191,7 +193,7 @@ function BlockMenu({
           {
             id: 'ai',
             label: t('ai.menu'),
-            icon: <Icon icon={SparklesIcon} size={18} />,
+            icon: <SparkleIcon size={18} />,
             submenu: 'ai' as const
           }
         ]
@@ -199,7 +201,7 @@ function BlockMenu({
     {
       id: 'turnInto',
       label: t('blockMenu.turnInto'),
-      icon: <Icon icon={RepeatIcon} size={18} />,
+      icon: <ArrowsClockwiseIcon size={18} />,
       submenu: 'turnInto'
     },
     ...(colorable
@@ -207,7 +209,7 @@ function BlockMenu({
           {
             id: 'color',
             label: t('blockMenu.color'),
-            icon: <Icon icon={PaintBrush01Icon} size={18} />,
+            icon: <PaintBrushIcon size={18} />,
             submenu: 'color' as const
           }
         ]
@@ -217,7 +219,7 @@ function BlockMenu({
           {
             id: 'copyLink',
             label: t('blockMenu.copyLink'),
-            icon: <Icon icon={Link01Icon} size={18} />,
+            icon: <LinkSimpleIcon size={18} />,
             // A ready hyperlink (the block's text) plus the URL: pasting it lands as a link.
             run: act((now) => void copyLink(link.href, blockLabel(now.node) ?? link.pageLabel))
           }
@@ -226,14 +228,14 @@ function BlockMenu({
     {
       id: 'duplicate',
       label: t('blockMenu.duplicate'),
-      icon: <Icon icon={Copy01Icon} size={18} />,
+      icon: <CopyIcon size={18} />,
       keys: shortcutLabel('duplicateBlock'),
       run: act((now) => editor.view.dispatch(duplicateUnit(editor.state, now)))
     },
     {
       id: 'delete',
       label: t('blockMenu.delete'),
-      icon: <Icon icon={Delete02Icon} size={18} />,
+      icon: <TrashIcon size={18} />,
       keys: 'Del',
       destructive: true,
       run: act((now) => editor.view.dispatch(deleteUnit(editor.state, now)))
@@ -247,7 +249,7 @@ function BlockMenu({
     const turnInto = TURN_INTO.map((block) => ({
       id: `turn-${block.id}`,
       label: `${t('blockMenu.turnInto')} › ${block.label()}`,
-      icon: <Icon icon={block.icon} size={18} />,
+      icon: <block.icon size={18} />,
       run: act((now) => turnUnitInto(editor, now, block.id))
     }))
     return [...items.filter((i) => !i.submenu), ...turnInto].filter((i) =>
@@ -332,7 +334,7 @@ function BlockMenu({
               </span>
               <span className="flex-1 truncate">{item.label}</span>
               {item.keys && <span className="text-xs text-placeholder">{item.keys}</span>}
-              {item.submenu && <Icon icon={ArrowRight01Icon} size={14} aria-hidden />}
+              {item.submenu && <CaretRightIcon size={14} aria-hidden />}
             </MenuRow>
           ))}
         </div>

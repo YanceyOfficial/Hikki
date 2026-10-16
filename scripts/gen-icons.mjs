@@ -1,81 +1,56 @@
 #!/usr/bin/env node
-// Generates the type-safe `Icon` enum from design/icons.json and, for icons without an SF Symbol, draws their
-// Hugeicons outline (@hugeicons/core-free-icons) into HikkiUI's asset catalog (vector, template rendering).
-// `--check` fails when the outputs are stale.
+// Copies the Phosphor icons listed in design/icons.json into HikkiUI's asset catalog (vector, template
+// rendering) and generates the type-safe `Icon` enum. `--check` fails when the outputs are stale.
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import * as hugeicons from '@hugeicons/core-free-icons'
-
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const manifest = JSON.parse(readFileSync(join(root, 'design/icons.json'), 'utf8'))
+const source = join(root, 'node_modules/@phosphor-icons/core/assets')
 const catalog = join(root, 'HikkiUI/Resources/Icons.xcassets')
 const swiftOut = join(root, 'HikkiUI/Sources/Generated/Icons.swift')
 const check = process.argv.includes('--check')
 
 const camel = (s) => s.replace(/-([a-z0-9])/gu, (_, c) => c.toUpperCase())
-const kebab = (s) => s.replace(/[A-Z]/gu, (c) => `-${c.toLowerCase()}`)
-const base = 'regular'
-const entries = Object.entries(manifest.icons).flatMap(([name, opts]) => {
-  const data = hugeicons[opts.hugeicons]
-  if (!Array.isArray(data) || data.length === 0) {
-    throw new Error(
-      `${name}: unknown Hugeicons icon "${opts.hugeicons}" (an @hugeicons/core-free-icons export)`
-    )
-  }
-  return (opts.weights ?? [base]).map((weight) => {
-    // Our asset/case names are unsuffixed for the regular weight.
+const base = manifest.baseWeight
+const entries = Object.entries(manifest.icons).flatMap(([name, opts]) =>
+  (opts.weights ?? [base]).map((weight) => {
+    // Phosphor's own file naming; our asset/case names are unsuffixed for the base weight.
+    const file = weight === 'regular' ? `${name}.svg` : `${name}-${weight}.svg`
     const asset = weight === base ? name : `${name}-${weight}`
     const sf =
       typeof opts.sf === 'string' ? (weight === base ? opts.sf : null) : (opts.sf?.[weight] ?? null)
-    if (!sf && weight !== base && weight !== 'fill') {
-      throw new Error(
-        `${asset}: the fallback asset is drawn "${base}" or "fill" only — give it an "sf"`
-      )
-    }
-    return { name, weight, data, asset, swift: camel(asset), sf }
+    return { name, weight, file, asset, swift: camel(asset), sf }
   })
-})
+)
 
 /**
- * An icon's outline as an SVG Xcode renders: concrete colors (Xcode's renderer ignores currentColor), the
- * manifest's stroke width (the web editor's too), and an intrinsic 24pt size — places that ignore `.frame`
- * (toolbar labels) would otherwise size a viewBox-only SVG themselves. "fill" fills the outline's shapes.
+ * Asset catalog entries: SVG with a concrete fill (Xcode's renderer ignores currentColor), template rendering,
+ * and an intrinsic 24pt size — Phosphor ships viewBox-only SVGs, which Xcode sizes at 256pt, and places that
+ * ignore `.frame` (toolbar labels) then showed giant icons.
  */
-function svg(e) {
-  const children = e.data
-    .map(([tag, attrs]) => {
-      const all = {
-        ...attrs,
-        strokeWidth: manifest.strokeWidth,
-        ...(e.weight === 'fill' ? { fill: '#000000' } : {})
-      }
-      const list = Object.entries(all)
-        .filter(([key]) => key !== 'key')
-        .map(
-          ([key, value]) => `${kebab(key)}="${String(value).replace(/currentColor/gu, '#000000')}"`
-        )
-      return `  <${tag} ${list.join(' ')}/>`
-    })
-    .join('\n')
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">\n${children}\n</svg>\n`
-}
-
-/** Asset catalog entries — only for the icons the shell can't draw as an SF Symbol. */
-const fallbacks = entries.filter((e) => !e.sf)
 function catalogFiles() {
   const files = new Map([
     [join(catalog, 'Contents.json'), '{"info":{"author":"xcode","version":1}}\n']
   ])
-  for (const e of fallbacks) {
+  for (const e of entries) {
+    const path = join(source, e.weight, e.file)
+    if (!existsSync(path)) throw new Error(`unknown Phosphor icon: ${e.weight}/${e.file}`)
+    // Base-weight icons get an outline stroke (strokeBoost) — Phosphor has no weight between regular and bold.
+    const boost =
+      e.weight === base && manifest.strokeBoost
+        ? `stroke="#000000" stroke-width="${manifest.strokeBoost}" stroke-linejoin="round" `
+        : ''
+    const svg = readFileSync(path, 'utf8')
+      .replace(/fill="currentColor"/gu, 'fill="#000000"')
+      .replace('<svg ', `<svg width="24" height="24" ${boost}`)
     const dir = join(catalog, `${e.asset}.imageset`)
-    const file = `${e.asset}.svg`
-    files.set(join(dir, file), svg(e))
+    files.set(join(dir, e.file), svg)
     files.set(
       join(dir, 'Contents.json'),
       `${JSON.stringify({
-        images: [{ filename: file, idiom: 'universal' }],
+        images: [{ filename: e.file, idiom: 'universal' }],
         info: { author: 'xcode', version: 1 },
         properties: {
           'preserves-vector-representation': true,
@@ -98,8 +73,8 @@ function swift() {
 
 import SwiftUI
 
-/// The native shell's icons: SF Symbols where design/icons.json names one, else the bundled asset drawn from
-/// the icon's Hugeicons outline (the web editor draws Hugeicons too, through @hugeicons/react).
+/// The native shell's icons: SF Symbols where design/icons.json names one, else the bundled Phosphor asset
+/// (the web editor uses the Phosphor names via @phosphor-icons/react).
 public nonisolated enum Icon: String, CaseIterable, Sendable {
 ${cases}
 
@@ -141,18 +116,18 @@ for (const [path, content] of outputs) {
     writeFileSync(path, content)
   }
 }
-// Imagesets no longer needed (gone from the manifest, or drawn as an SF Symbol).
+// Imagesets no longer listed in the manifest.
 if (existsSync(catalog)) {
-  const wanted = new Set(fallbacks.map((e) => `${e.asset}.imageset`))
+  const wanted = new Set(entries.map((e) => `${e.asset}.imageset`))
   for (const dir of readdirSync(catalog).filter((d) => d.endsWith('.imageset') && !wanted.has(d))) {
     if (check) {
-      console.error(`stale: ${dir} needs no fallback asset (design/icons.json)`)
+      console.error(`stale: ${dir} is not in design/icons.json`)
       stale = true
     } else rmSync(join(catalog, dir), { recursive: true })
   }
 }
-// Files left inside kept imagesets (e.g. the old SVG after a rename).
-for (const e of fallbacks) {
+// Files left inside kept imagesets (e.g. the old SVG after a weight change).
+for (const e of entries) {
   const dir = join(catalog, `${e.asset}.imageset`)
   if (!existsSync(dir)) continue
   for (const file of readdirSync(dir).filter((name) => !outputs.has(join(dir, name)))) {

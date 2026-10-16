@@ -1,10 +1,10 @@
 import {
-  ArrowUp02Icon,
-  Copy01Icon,
-  Globe02Icon,
-  ReloadIcon,
+  ArrowClockwiseIcon,
+  ArrowUpIcon,
+  CopyIcon,
+  GlobeIcon,
   TextAlignLeftIcon
-} from '@hugeicons/core-free-icons'
+} from '@phosphor-icons/react'
 import { useLayoutEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -22,7 +22,6 @@ import type { AIReviewStyle } from '../extensions/ai-review'
 import type { AINote } from '../lib/ai-content'
 import { BubbleReview, DiffReview, type AIReviewLine } from './ai-review-styles'
 import type { FloatingAnchor, FloatingLayer } from './floating'
-import { Icon } from './icons'
 
 export type AIReviewProps = {
   session: {
@@ -114,7 +113,7 @@ function FollowUp({
           disabled={!value.trim()}
           onClick={submit}
         >
-          <Icon icon={ArrowUp02Icon} aria-hidden />
+          <ArrowUpIcon aria-hidden />
         </InputGroupButton>
       </InputGroupAddon>
     </InputGroup>
@@ -181,7 +180,7 @@ export function AIReview({
         <div className="flex flex-wrap items-center gap-2">
           <p className="m-0 min-w-0 flex-1 px-1 text-sm text-destructive">{errorText(error)}</p>
           <Button variant="ghost" size="sm" onClick={onRetry}>
-            <Icon icon={ReloadIcon} aria-hidden />
+            <ArrowClockwiseIcon aria-hidden />
             {t('ai.retry')}
           </Button>
           <Button variant="outline" size="sm" onClick={onDiscard}>
@@ -199,7 +198,7 @@ export function AIReview({
                 href={c.url}
                 className="inline-flex max-w-56 items-center gap-1 truncate rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground no-underline hover:text-foreground"
               >
-                <Icon icon={Globe02Icon} aria-hidden className="shrink-0" />
+                <GlobeIcon aria-hidden className="shrink-0" />
                 <span className="truncate">
                   {index + 1}. {c.title || new URL(c.url).hostname}
                 </span>
@@ -247,7 +246,7 @@ export function AIReview({
               {t('ai.changes', { count: changes })}
             </span>
             <Button variant="ghost" size="sm" onClick={onRetry}>
-              <Icon icon={ReloadIcon} aria-hidden />
+              <ArrowClockwiseIcon aria-hidden />
               {t('ai.retry')}
             </Button>
             <Button variant="outline" size="sm" onClick={onDiscard} data-testid="ai-discard">
@@ -267,11 +266,11 @@ export function AIReview({
           <FollowUp placeholder={t('ai.askFollowUp')} onSubmit={onFollowUp} />
           <div className="flex flex-wrap items-center justify-end gap-1.5">
             <Button variant="ghost" size="sm" onClick={() => onCopy()}>
-              <Icon icon={Copy01Icon} aria-hidden />
+              <CopyIcon aria-hidden />
               {t('ai.copy')}
             </Button>
             <Button variant="outline" size="sm" onClick={onInsertBelow}>
-              <Icon icon={TextAlignLeftIcon} aria-hidden />
+              <TextAlignLeftIcon aria-hidden />
               {t('ai.insertBelow')}
             </Button>
             <Button variant="outline" size="sm" onClick={onDiscard}>

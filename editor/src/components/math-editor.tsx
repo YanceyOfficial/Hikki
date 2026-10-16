@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 
 import { t } from '../core/i18n'
 import type { FloatingAnchor, FloatingLayer } from './floating'
+import { IconProvider } from './icons'
 
 type Props = {
   initial: string
@@ -67,5 +68,10 @@ export function MathEditor({ initial, multiline, onDone }: Props) {
 
 /** Shows the editor in its floating layer beside the formula (the extension holds no JSX). */
 export function renderMathEditor(layer: FloatingLayer, props: Props, anchor: FloatingAnchor): void {
-  layer.render(<MathEditor {...props} />, anchor)
+  layer.render(
+    <IconProvider>
+      <MathEditor {...props} />
+    </IconProvider>,
+    anchor
+  )
 }

@@ -1,9 +1,8 @@
-import { Tick02Icon } from '@hugeicons/core-free-icons'
+import { CheckIcon } from '@phosphor-icons/react'
 import type { ReactNode } from 'react'
 
 import { t } from '../core/i18n'
 import { colorLabel, PALETTE, type PaletteColor } from '../extensions/colors'
-import { Icon } from './icons'
 import { MenuRow, MenuTitle } from './menu-row'
 
 /** The "A" swatch in a text and background colour (`data-*-color`, styled from the `ink-*` / `wash-*` tokens). */
@@ -93,7 +92,7 @@ function ColorRow({
     <MenuRow role="menuitemradio" aria-checked={checked} onClick={onPick}>
       {children}
       <span className="flex-1 truncate">{colorLabel(color)}</span>
-      {checked && <Icon icon={Tick02Icon} size={14} aria-hidden />}
+      {checked && <CheckIcon size={14} aria-hidden />}
     </MenuRow>
   )
 }

@@ -1,4 +1,5 @@
-import { Add01Icon, DragDropVerticalIcon } from '@hugeicons/core-free-icons'
+import gripSvg from '@phosphor-icons/core/assets/bold/dots-six-vertical-bold.svg?raw'
+import plusSvg from '@phosphor-icons/core/assets/regular/plus.svg?raw'
 import { Extension, type Editor } from '@tiptap/core'
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
@@ -6,7 +7,6 @@ import type { EditorView } from '@tiptap/pm/view'
 import { openBlockMenu } from '../components/block-menu'
 import { t } from '../core/i18n'
 import { tiptapShortcut, type ShortcutId } from '../core/shortcuts'
-import { iconSvg } from '../lib/icon-svg'
 import { BlockHighlight, BlockHighlightKey, setBlockHighlight } from './block-highlight'
 import { duplicateUnit, firstTextPos, moveUnit, unitAtPos, type BlockUnit } from './block-units'
 import { dropBeside, MAX_COLUMNS } from './columns'
@@ -37,6 +37,9 @@ const moveAtCaret = (editor: Editor, dir: -1 | 1) => {
 const DRAG_THRESHOLD = 4
 /** How close to a block's side edge a drop makes columns. */
 const SIDE_EDGE = 48
+
+const icon = (svg: string) =>
+  svg.replace('<svg ', '<svg width="18" height="18" aria-hidden="true" ')
 
 /**
  * Notion-style block controls: "+" and a ⋮⋮ grip beside the block under the pointer, level with its first
@@ -112,14 +115,14 @@ class BlockControlsView {
     plus.type = 'button'
     plus.className = 'hk-block-plus'
     plus.setAttribute('aria-label', t('blockMenu.add'))
-    plus.innerHTML = iconSvg(Add01Icon)
+    plus.innerHTML = icon(plusSvg)
     plus.addEventListener('mousedown', (e) => e.preventDefault())
     plus.addEventListener('click', () => this.addBelow())
     const grip = document.createElement('button')
     grip.type = 'button'
     grip.className = 'hk-block-grip'
     grip.setAttribute('aria-label', t('editor.dragBlock'))
-    grip.innerHTML = iconSvg(DragDropVerticalIcon, { weight: 'bold' })
+    grip.innerHTML = icon(gripSvg)
     grip.addEventListener('pointerdown', this.onGripDown)
     this.handle.append(plus, grip)
     this.line = document.createElement('div')

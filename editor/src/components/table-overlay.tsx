@@ -1,19 +1,19 @@
 import {
-  Add01Icon,
-  Delete02Icon,
-  DragDropHorizontalIcon,
-  DragDropVerticalIcon,
+  ArrowsInLineHorizontalIcon,
+  ColumnsPlusLeftIcon,
+  ColumnsPlusRightIcon,
+  DotsSixIcon,
+  DotsSixVerticalIcon,
   EraserIcon,
-  InsertColumnLeftIcon,
-  InsertColumnRightIcon,
-  InsertRowDownIcon,
-  InsertRowUpIcon,
   PaintBucketIcon,
-  SortByDown01Icon,
-  SortByUp01Icon,
-  TableCellsMergeIcon,
-  TableCellsSplitIcon
-} from '@hugeicons/core-free-icons'
+  PlusIcon,
+  RowsPlusBottomIcon,
+  RowsPlusTopIcon,
+  SortAscendingIcon,
+  SortDescendingIcon,
+  SquareSplitHorizontalIcon,
+  TrashIcon
+} from '@phosphor-icons/react'
 import type { Editor } from '@tiptap/core'
 import type { CellSelection } from '@tiptap/pm/tables'
 import { cn } from 'cn'
@@ -46,7 +46,7 @@ import {
   setCellBackground,
   sortColumn
 } from '../extensions/table-ops'
-import { Icon } from './icons'
+import { IconProvider } from './icons'
 
 export type TableHover = {
   tablePos: number
@@ -176,7 +176,7 @@ function RowGrip({
           />
         }
       >
-        <Icon icon={DragDropVerticalIcon} size={12} weight="bold" aria-hidden />
+        <DotsSixVerticalIcon size={12} weight="bold" aria-hidden />
       </DropdownMenuTrigger>
       <DropdownMenuContent side="right" align="start" className="w-52">
         {children}
@@ -215,7 +215,7 @@ function ColumnGrip({
           />
         }
       >
-        <Icon icon={DragDropHorizontalIcon} size={12} weight="bold" aria-hidden />
+        <DotsSixIcon size={12} weight="bold" aria-hidden />
       </DropdownMenuTrigger>
       <DropdownMenuContent side="bottom" align="start" className="w-52">
         {children}
@@ -228,7 +228,7 @@ function ColorItems({ editor, onDone }: { editor: Editor; onDone: () => void }) 
   return (
     <DropdownMenuSub>
       <DropdownMenuSubTrigger>
-        <Icon icon={PaintBucketIcon} aria-hidden />
+        <PaintBucketIcon aria-hidden />
         {t('table.color')}
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent className="w-44">
@@ -270,11 +270,11 @@ function RowMenu({
   return (
     <>
       <DropdownMenuItem onClick={act(() => chain().addRowBefore().run())}>
-        <Icon icon={InsertRowUpIcon} aria-hidden />
+        <RowsPlusTopIcon aria-hidden />
         {t('table.insertAbove')}
       </DropdownMenuItem>
       <DropdownMenuItem onClick={act(() => chain().addRowAfter().run())}>
-        <Icon icon={InsertRowDownIcon} aria-hidden />
+        <RowsPlusBottomIcon aria-hidden />
         {t('table.insertBelow')}
       </DropdownMenuItem>
       {hover.row === 0 && (
@@ -288,12 +288,12 @@ function RowMenu({
       <DropdownMenuSeparator />
       <ColorItems editor={editor} onDone={onDone} />
       <DropdownMenuItem onClick={act(() => clearCells(editor))}>
-        <Icon icon={EraserIcon} aria-hidden />
+        <EraserIcon aria-hidden />
         {t('table.clear')}
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem variant="destructive" onClick={act(() => chain().deleteRow().run())}>
-        <Icon icon={Delete02Icon} aria-hidden />
+        <TrashIcon aria-hidden />
         {t('table.deleteRow')}
       </DropdownMenuItem>
     </>
@@ -319,11 +319,11 @@ function ColumnMenu({
   return (
     <>
       <DropdownMenuItem onClick={act(() => chain().addColumnBefore().run())}>
-        <Icon icon={InsertColumnLeftIcon} aria-hidden />
+        <ColumnsPlusLeftIcon aria-hidden />
         {t('table.insertLeft')}
       </DropdownMenuItem>
       <DropdownMenuItem onClick={act(() => chain().addColumnAfter().run())}>
-        <Icon icon={InsertColumnRightIcon} aria-hidden />
+        <ColumnsPlusRightIcon aria-hidden />
         {t('table.insertRight')}
       </DropdownMenuItem>
       {hover.col === 0 && (
@@ -339,25 +339,25 @@ function ColumnMenu({
         disabled={!sortable}
         onClick={act(() => sortColumn(editor, hover.tablePos, hover.col, 'asc'))}
       >
-        <Icon icon={SortByUp01Icon} aria-hidden />
+        <SortAscendingIcon aria-hidden />
         {t('table.sortAscending')}
       </DropdownMenuItem>
       <DropdownMenuItem
         disabled={!sortable}
         onClick={act(() => sortColumn(editor, hover.tablePos, hover.col, 'desc'))}
       >
-        <Icon icon={SortByDown01Icon} aria-hidden />
+        <SortDescendingIcon aria-hidden />
         {t('table.sortDescending')}
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <ColorItems editor={editor} onDone={onDone} />
       <DropdownMenuItem onClick={act(() => clearCells(editor))}>
-        <Icon icon={EraserIcon} aria-hidden />
+        <EraserIcon aria-hidden />
         {t('table.clear')}
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem variant="destructive" onClick={act(() => chain().deleteColumn().run())}>
-        <Icon icon={Delete02Icon} aria-hidden />
+        <TrashIcon aria-hidden />
         {t('table.deleteColumn')}
       </DropdownMenuItem>
     </>
@@ -424,7 +424,7 @@ function EdgeButton({
           />
         }
       >
-        <Icon icon={Add01Icon} size={12} weight="bold" aria-hidden />
+        <PlusIcon size={12} weight="bold" aria-hidden />
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
@@ -464,7 +464,7 @@ function CellBar({ editor, selection }: { editor: Editor; selection: CellSelecti
         disabled={!editor.can().mergeCells()}
         onClick={() => editor.chain().focus().mergeCells().run()}
       >
-        <Icon icon={TableCellsMergeIcon} size={14} aria-hidden />
+        <ArrowsInLineHorizontalIcon size={14} aria-hidden />
         {t('table.merge')}
       </Button>
       <Button
@@ -474,12 +474,12 @@ function CellBar({ editor, selection }: { editor: Editor; selection: CellSelecti
         disabled={!editor.can().splitCell()}
         onClick={() => editor.chain().focus().splitCell().run()}
       >
-        <Icon icon={TableCellsSplitIcon} size={14} aria-hidden />
+        <SquareSplitHorizontalIcon size={14} aria-hidden />
         {t('table.split')}
       </Button>
       <DropdownMenu>
         <DropdownMenuTrigger render={<Button variant="ghost" size="xs" className="font-normal" />}>
-          <Icon icon={PaintBucketIcon} size={14} aria-hidden />
+          <PaintBucketIcon size={14} aria-hidden />
           {t('table.color')}
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-44">
@@ -499,7 +499,7 @@ function CellBar({ editor, selection }: { editor: Editor; selection: CellSelecti
         </DropdownMenuContent>
       </DropdownMenu>
       <Button variant="ghost" size="xs" className="font-normal" onClick={() => clearCells(editor)}>
-        <Icon icon={EraserIcon} size={14} aria-hidden />
+        <EraserIcon size={14} aria-hidden />
         {t('table.clear')}
       </Button>
     </div>
@@ -509,8 +509,10 @@ function CellBar({ editor, selection }: { editor: Editor; selection: CellSelecti
 /** Draws the controls into the table plugin's React root over the editor (the extension holds no JSX). */
 export function renderTableOverlay(root: Root, props: Props): void {
   root.render(
-    <TooltipProvider delay={500}>
-      <TableOverlay {...props} />
-    </TooltipProvider>
+    <IconProvider>
+      <TooltipProvider delay={500}>
+        <TableOverlay {...props} />
+      </TooltipProvider>
+    </IconProvider>
   )
 }
