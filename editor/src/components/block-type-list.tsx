@@ -1,6 +1,7 @@
-import { CheckIcon } from '@phosphor-icons/react'
+import { Tick02Icon } from '@hugeicons/core-free-icons'
 
 import { BLOCK_TYPES, type BlockType } from '../core/blocks'
+import { Icon } from './icons'
 import { MenuRow, MenuTitle } from './menu-row'
 
 /** The kinds a block can be turned into (the catalog's `turnInto` entries). */
@@ -30,9 +31,9 @@ export function BlockTypeList({
           aria-checked={block.id === current}
           onClick={() => onPick(block)}
         >
-          <block.icon size={18} className="text-subtle-foreground" aria-hidden />
+          <Icon icon={block.icon} size={18} className="text-subtle-foreground" aria-hidden />
           <span className="flex-1 truncate">{block.label()}</span>
-          {block.id === current && <CheckIcon size={14} aria-hidden />}
+          {block.id === current && <Icon icon={Tick02Icon} size={14} aria-hidden />}
         </MenuRow>
       ))}
     </>

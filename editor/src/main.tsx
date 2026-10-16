@@ -1,7 +1,6 @@
 import './style.css'
 import { createRoot } from 'react-dom/client'
 
-import { IconProvider } from './components/icons'
 import { EditorBridge } from './core/bridge'
 import { exportPage, importDocument } from './core/convert'
 import { installErrorForwarding } from './core/errors'
@@ -32,16 +31,8 @@ if (native) installErrorForwarding(native)
 installScrollContainment()
 
 const bridge = new EditorBridge(document.getElementById('editor')!, transport)
-createRoot(document.getElementById('header')!).render(
-  <IconProvider>
-    <PageHeader bridge={bridge} />
-  </IconProvider>
-)
-createRoot(document.getElementById('outline')!).render(
-  <IconProvider>
-    <Outline bridge={bridge} />
-  </IconProvider>
-)
+createRoot(document.getElementById('header')!).render(<PageHeader bridge={bridge} />)
+createRoot(document.getElementById('outline')!).render(<Outline bridge={bridge} />)
 
 // The native shell drives everything through this object (callAsyncJavaScript).
 declare global {

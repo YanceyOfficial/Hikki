@@ -1,150 +1,205 @@
 {
-  "$comment": "Phosphor icons used by the native app (web uses @phosphor-icons/react with the same names). Run `make icons` after editing; generated: HikkiUI/Resources/Icons.xcassets and HikkiUI/Sources/Generated/Icons.swift. Map: Swift case = camelCase name (+ weight suffix when not baseWeight). baseWeight + strokeBoost (an outline stroke in 256-grid units that thickens base-weight icons; 4 ≈ halfway between regular and bold) are mirrored by editor/src/ui/icons.tsx (checked by a test). \"sf\": the SF Symbol the native shell draws instead (a name, or {weight: name}); icons without one fall back to the Phosphor asset. The web editor always uses Phosphor.",
-  "baseWeight": "regular",
-  "strokeBoost": 4,
+  "$comment": "The native app's icons. Run `make icons` after editing; generated: HikkiUI/Sources/Generated/Icons.swift and, for icons without an SF Symbol, HikkiUI/Resources/Icons.xcassets. Swift case = camelCase name (+ weight suffix when not regular). \"sf\": the SF Symbol the native shell draws (a name, or {weight: name}); \"hugeicons\": the Hugeicons icon (@hugeicons/core-free-icons export) it stands for — the bundled fallback asset is drawn from it, with strokeWidth (24-grid units), when there is no SF Symbol. The web editor draws Hugeicons at the same strokeWidth (ICON_STROKE_WIDTH in editor/src/lib/icon-svg.ts, checked by a test).",
+  "strokeWidth": 2,
   "icons": {
-    "clipboard-text": { "sf": "doc.on.clipboard" },
-    "warning-circle": { "sf": "exclamationmark.circle.fill" },
-    "x-circle": { "sf": "xmark.circle.fill" },
+    "clipboard-text": {
+      "hugeicons": "ClipboardIcon",
+      "sf": "doc.on.clipboard"
+    },
+    "warning-circle": {
+      "hugeicons": "AlertCircleIcon",
+      "sf": "exclamationmark.circle.fill"
+    },
+    "x-circle": {
+      "hugeicons": "CancelCircleIcon",
+      "sf": "xmark.circle.fill"
+    },
     "list": {
+      "hugeicons": "Menu01Icon",
       "sf": "line.3.horizontal"
     },
     "image": {
+      "hugeicons": "Image01Icon",
       "sf": "photo"
     },
     "chat-teardrop-text": {
+      "hugeicons": "Comment01Icon",
       "sf": "text.bubble"
     },
     "globe": {
+      "hugeicons": "Globe02Icon",
       "sf": "globe"
     },
     "stop": {
+      "hugeicons": "StopIcon",
       "sf": "stop.fill"
     },
     "arrow-up": {
+      "hugeicons": "ArrowUp02Icon",
       "sf": "arrow.up"
     },
     "caret-up-down": {
+      "hugeicons": "UnfoldMoreIcon",
       "sf": "chevron.up.chevron.down"
     },
     "sliders-horizontal": {
+      "hugeicons": "SlidersHorizontalIcon",
       "sf": "slider.horizontal.3"
     },
     "info": {
+      "hugeicons": "InformationCircleIcon",
       "sf": "info.circle"
     },
     "gear-six": {
+      "hugeicons": "Settings01Icon",
       "sf": "gearshape"
     },
     "buildings": {
+      "hugeicons": "Building03Icon",
       "sf": "building.2"
     },
     "link": {
+      "hugeicons": "Link01Icon",
       "sf": "link"
     },
     "pencil-simple": {
+      "hugeicons": "PencilEdit01Icon",
       "sf": "pencil"
     },
     "arrow-bend-up-right": {
+      "hugeicons": "ArrowTurnForwardIcon",
       "sf": "arrowshape.turn.up.right"
     },
     "app-window": {
+      "hugeicons": "AppWindowIcon",
       "sf": "macwindow"
     },
     "copy": {
+      "hugeicons": "Copy01Icon",
       "sf": "doc.on.doc"
     },
     "house": {
+      "hugeicons": "Home01Icon",
       "sf": "house"
     },
     "trash": {
+      "hugeicons": "Delete02Icon",
       "sf": "trash"
     },
     "magnifying-glass": {
+      "hugeicons": "Search01Icon",
       "sf": "magnifyingglass"
     },
     "plus": {
+      "hugeicons": "Add01Icon",
       "sf": "plus"
     },
     "note-pencil": {
+      "hugeicons": "PencilEdit02Icon",
       "sf": "square.and.pencil"
     },
     "sidebar-simple": {
+      "hugeicons": "SidebarLeftIcon",
       "sf": "sidebar.left"
     },
     "caret-right": {
+      "hugeicons": "ArrowRight01Icon",
       "sf": "chevron.right"
     },
     "caret-left": {
+      "hugeicons": "ArrowLeft01Icon",
       "sf": "chevron.left"
     },
     "caret-down": {
+      "hugeicons": "ArrowDown01Icon",
       "sf": "chevron.down"
     },
     "dots-three": {
+      "hugeicons": "MoreHorizontalIcon",
       "sf": "ellipsis"
     },
     "dots-three-circle": {
+      "hugeicons": "MoreHorizontalCircle01Icon",
       "sf": "ellipsis.circle"
     },
     "x": {
+      "hugeicons": "Cancel01Icon",
       "sf": "xmark"
     },
     "arrow-u-down-left": {
+      "hugeicons": "ArrowTurnBackwardIcon",
       "sf": "return"
     },
     "file-text": {
+      "hugeicons": "File01Icon",
       "sf": "doc.text"
     },
     "paperclip": {
+      "hugeicons": "Attachment01Icon",
       "sf": "paperclip"
     },
     "minus": {
+      "hugeicons": "MinusSignIcon",
       "sf": "minus"
     },
     "square-split-horizontal": {
+      "hugeicons": "LayoutTwoColumnIcon",
       "sf": "rectangle.split.2x1"
     },
     "arrows-left-right": {
+      "hugeicons": "ArrowDataTransferHorizontalIcon",
       "sf": "arrow.left.arrow.right"
     },
     "columns-plus-right": {
+      "hugeicons": "InsertColumnRightIcon",
       "sf": "sidebar.trailing"
     },
     "clock": {
+      "hugeicons": "Clock01Icon",
       "sf": "clock"
     },
     "keyboard": {
+      "hugeicons": "KeyboardIcon",
       "sf": "keyboard.chevron.compact.down"
     },
     "command": {
+      "hugeicons": "CommandIcon",
       "sf": "command"
     },
     "tray-arrow-down": {
+      "hugeicons": "InboxDownloadIcon",
       "sf": "tray.and.arrow.down"
     },
     "chat-circle-dots": {
+      "hugeicons": "BubbleChatAddIcon",
       "sf": "plus.bubble"
     },
     "browsers": {
+      "hugeicons": "AddSquareIcon",
       "sf": "plus.square.on.square"
     },
     "arrow-counter-clockwise": {
+      "hugeicons": "Undo02Icon",
       "sf": "arrow.counterclockwise"
     },
     "dots-six-vertical": {
+      "hugeicons": "DragDropVerticalIcon",
       "sf": "line.3.horizontal"
     },
     "export": {
+      "hugeicons": "Share03Icon",
       "sf": "square.and.arrow.up"
     },
     "download-simple": {
+      "hugeicons": "Download01Icon",
       "sf": "square.and.arrow.down"
     },
     "clock-counter-clockwise": {
+      "hugeicons": "Clock04Icon",
       "sf": "clock.arrow.circlepath"
     },
     "star": {
+      "hugeicons": "StarIcon",
       "weights": ["regular", "fill"],
       "sf": {
         "regular": "star",
@@ -152,82 +207,114 @@
       }
     },
     "text-b": {
+      "hugeicons": "TextBoldIcon",
       "sf": "bold"
     },
     "text-italic": {
+      "hugeicons": "TextItalicIcon",
       "sf": "italic"
     },
     "text-strikethrough": {
+      "hugeicons": "TextStrikethroughIcon",
       "sf": "strikethrough"
     },
     "code": {
+      "hugeicons": "SourceCodeIcon",
       "sf": "chevron.left.forwardslash.chevron.right"
     },
-    "text-h-one": {},
-    "text-h-two": {},
-    "text-h-three": {},
-    "text-t": {},
+    "text-h-one": {
+      "hugeicons": "Heading01Icon"
+    },
+    "text-h-two": {
+      "hugeicons": "Heading02Icon"
+    },
+    "text-h-three": {
+      "hugeicons": "Heading03Icon"
+    },
+    "text-t": {
+      "hugeicons": "TextIcon"
+    },
     "list-bullets": {
+      "hugeicons": "LeftToRightListBulletIcon",
       "sf": "list.bullet"
     },
     "list-numbers": {
+      "hugeicons": "LeftToRightListNumberIcon",
       "sf": "list.number"
     },
     "list-checks": {
+      "hugeicons": "CheckListIcon",
       "sf": "checklist"
     },
     "quotes": {
+      "hugeicons": "QuoteDownIcon",
       "sf": "text.quote"
     },
     "code-block": {
+      "hugeicons": "SourceCodeSquareIcon",
       "sf": "curlybraces.square"
     },
     "arrow-u-up-left": {
+      "hugeicons": "Undo02Icon",
       "sf": "arrow.uturn.backward"
     },
     "arrow-u-up-right": {
+      "hugeicons": "Redo02Icon",
       "sf": "arrow.uturn.forward"
     },
     "cloud": {
+      "hugeicons": "CloudIcon",
       "sf": "icloud"
     },
     "laptop": {
+      "hugeicons": "LaptopIcon",
       "sf": "laptopcomputer"
     },
     "folder-simple": {
+      "hugeicons": "Folder01Icon",
       "sf": "folder"
     },
     "check": {
+      "hugeicons": "Tick02Icon",
       "sf": "checkmark"
     },
     "arrow-right": {
+      "hugeicons": "ArrowRight02Icon",
       "sf": "arrow.right"
     },
     "check-circle": {
+      "hugeicons": "CheckmarkCircle02Icon",
       "weights": ["fill"],
       "sf": {
         "fill": "checkmark.circle.fill"
       }
     },
     "files": {
+      "hugeicons": "Files01Icon",
       "sf": "doc.on.doc"
     },
     "text-aa": {
+      "hugeicons": "TextFontIcon",
       "sf": "textformat"
     },
     "flame": {
+      "hugeicons": "FireIcon",
       "sf": "flame"
     },
     "pencil-line": {
+      "hugeicons": "PencilEdit01Icon",
       "sf": "pencil.line"
     },
     "calendar-dots": {
+      "hugeicons": "Calendar03Icon",
       "sf": "calendar"
     },
     "lock-simple": {
+      "hugeicons": "SquareLock02Icon",
       "sf": "lock"
     },
     "lock-simple-open": {
+      "hugeicons": "SquareUnlock02Icon",
       "sf": "lock.open"
     }
   }

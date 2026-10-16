@@ -1,10 +1,10 @@
 import {
-  ArrowsOutIcon,
+  ArrowExpandIcon,
+  Delete02Icon,
   TextAlignCenterIcon,
   TextAlignLeftIcon,
-  TextAlignRightIcon,
-  TrashIcon
-} from '@phosphor-icons/react'
+  TextAlignRightIcon
+} from '@hugeicons/core-free-icons'
 import type { Editor } from '@tiptap/core'
 import { NodeSelection } from '@tiptap/pm/state'
 import type { Root } from 'react-dom/client'
@@ -16,7 +16,7 @@ import { Toggle } from '@/components/ui/toggle'
 import { t } from '../core/i18n'
 import { safeMediaSrc, type MediaHost } from '../extensions/media'
 import { useEditorSnapshot } from '../hooks/use-editor-snapshot'
-import { IconProvider } from './icons'
+import { Icon } from './icons'
 
 type Props = { editor: Editor; host: MediaHost | null }
 
@@ -55,7 +55,7 @@ export function MediaToolbar({ editor, host }: Props) {
         onPressedChange={() => setAlign('left')}
         className={align}
       >
-        <TextAlignLeftIcon size={16} aria-hidden />
+        <Icon icon={TextAlignLeftIcon} size={16} aria-hidden />
       </Toggle>
       <Toggle
         size="sm"
@@ -64,7 +64,7 @@ export function MediaToolbar({ editor, host }: Props) {
         onPressedChange={() => setAlign('center')}
         className={align}
       >
-        <TextAlignCenterIcon size={16} aria-hidden />
+        <Icon icon={TextAlignCenterIcon} size={16} aria-hidden />
       </Toggle>
       <Toggle
         size="sm"
@@ -73,7 +73,7 @@ export function MediaToolbar({ editor, host }: Props) {
         onPressedChange={() => setAlign('right')}
         className={align}
       >
-        <TextAlignRightIcon size={16} aria-hidden />
+        <Icon icon={TextAlignRightIcon} size={16} aria-hidden />
       </Toggle>
       {state.src?.startsWith('hikki-editor://assets/') && host && (
         <Button
@@ -82,7 +82,7 @@ export function MediaToolbar({ editor, host }: Props) {
           aria-label={t('media.view')}
           onClick={() => host.openAsset(state.src!)}
         >
-          <ArrowsOutIcon size={16} aria-hidden />
+          <Icon icon={ArrowExpandIcon} size={16} aria-hidden />
         </Button>
       )}
       <Separator orientation="vertical" className="mx-0.5 data-[orientation=vertical]:h-5" />
@@ -92,7 +92,7 @@ export function MediaToolbar({ editor, host }: Props) {
         aria-label={t('media.delete')}
         onClick={() => editor.chain().focus().deleteSelection().run()}
       >
-        <TrashIcon size={16} aria-hidden />
+        <Icon icon={Delete02Icon} size={16} aria-hidden />
       </Button>
     </div>
   )
@@ -100,9 +100,5 @@ export function MediaToolbar({ editor, host }: Props) {
 
 /** Draws the toolbar into the media toolbar extension's React root (the BubbleMenu element). */
 export function renderMediaToolbar(root: Root, props: Props): void {
-  root.render(
-    <IconProvider>
-      <MediaToolbar {...props} />
-    </IconProvider>
-  )
+  root.render(<MediaToolbar {...props} />)
 }

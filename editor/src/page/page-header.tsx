@@ -1,4 +1,4 @@
-import { ImageIcon, LockSimpleIcon, SmileyIcon } from '@phosphor-icons/react'
+import { Image01Icon, SmileIcon, SquareLock02Icon } from '@hugeicons/core-free-icons'
 import { cn } from 'cn'
 import {
   useCallback,
@@ -18,6 +18,7 @@ import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 
 import { EmojiPickerPanel } from '../components/emoji-picker-panel'
+import { Icon } from '../components/icons'
 import { LazyLoadImage } from '../components/lazy-load-image'
 import type { EditorBridge } from '../core/bridge'
 import {
@@ -163,7 +164,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
               className="font-normal text-muted-foreground"
               onClick={() => bridge.setIcon(randomIcon())}
             >
-              <SmileyIcon size={18} aria-hidden /> {t('page.addIcon')}
+              <Icon icon={SmileIcon} size={18} aria-hidden /> {t('page.addIcon')}
             </Button>
           )}
           {!background && !frozen && (
@@ -173,13 +174,13 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
               className="font-normal text-muted-foreground"
               onClick={() => bridge.setCover(randomGradient())}
             >
-              <ImageIcon size={18} aria-hidden /> {t('page.addCover')}
+              <Icon icon={Image01Icon} size={18} aria-hidden /> {t('page.addCover')}
             </Button>
           )}
         </div>
         {page.readOnly && (
           <Alert className="mb-3" data-testid="read-only-notice">
-            <LockSimpleIcon aria-hidden />
+            <Icon icon={SquareLock02Icon} aria-hidden />
             <AlertTitle>{t('page.readOnlyTitle')}</AlertTitle>
             <AlertDescription>{t('page.readOnlyDescription')}</AlertDescription>
           </Alert>

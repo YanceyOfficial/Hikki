@@ -1,21 +1,21 @@
 import {
-  CaretRightIcon,
-  ChatTeardropTextIcon,
-  CodeIcon,
-  DotsThreeIcon,
+  ArrowRight01Icon,
+  Comment01Icon,
   EraserIcon,
-  LinkSimpleIcon,
-  MathOperationsIcon,
-  SparkleIcon,
-  TextAaIcon,
-  TextBIcon,
+  Link01Icon,
+  MathIcon,
+  MoreHorizontalIcon,
+  SourceCodeIcon,
+  SparklesIcon,
+  TextBoldIcon,
+  TextFontIcon,
   TextItalicIcon,
   TextStrikethroughIcon,
   TextSubscriptIcon,
   TextSuperscriptIcon,
-  TextUnderlineIcon,
-  type Icon
-} from '@phosphor-icons/react'
+  TextUnderlineIcon
+} from '@hugeicons/core-free-icons'
+import type { IconSvgElement } from '@hugeicons/react'
 import type { Editor } from '@tiptap/core'
 import { cn } from 'cn'
 import { useLayoutEffect, useRef, useState } from 'react'
@@ -36,7 +36,7 @@ import { AIPanel } from './ai-panel'
 import { BlockTypeList, TURN_INTO } from './block-type-list'
 import { ColorList, ColorSwatch } from './color-list'
 import { usePresence } from './floating'
-import { IconProvider } from './icons'
+import { Icon } from './icons'
 import { MenuRow } from './menu-row'
 
 type Panel = 'ai' | 'turnInto' | 'color' | 'link' | 'more' | null
@@ -105,7 +105,6 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
   const [shownPanel, setShownPanel] = useState(panel)
   if (panel && panel !== shownPanel) setShownPanel(panel)
   const current = TURN_INTO.find((b) => b.id === state.block) ?? TURN_INTO[0]
-  const CurrentIcon = current.icon
 
   return (
     <div className="relative" data-testid="selection-menu" onMouseDown={keepEditorFocus}>
@@ -125,9 +124,9 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
             setPanel('ai')
           }}
         >
-          <SparkleIcon size={18} weight="fill" className="text-primary" aria-hidden />
+          <Icon icon={SparklesIcon} size={18} weight="fill" className="text-primary" aria-hidden />
           <span className="flex-1 truncate">{t('ai.menu')}</span>
-          <CaretRightIcon size={14} className="text-muted-foreground" aria-hidden />
+          <Icon icon={ArrowRight01Icon} size={14} className="text-muted-foreground" aria-hidden />
         </MenuRow>
         <MenuRow
           data-testid="selection-menu-comment"
@@ -136,7 +135,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
           }}
           onClick={() => editor.commands.commentStart()}
         >
-          <ChatTeardropTextIcon size={18} className="text-subtle-foreground" aria-hidden />
+          <Icon icon={Comment01Icon} size={18} className="text-subtle-foreground" aria-hidden />
           <span className="flex-1 truncate">{t('comments.menu')}</span>
           <span className="text-xs text-placeholder">{shortcutLabel('comment')}</span>
         </MenuRow>
@@ -146,9 +145,9 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
           onMouseEnter={() => hover('turnInto')}
           onClick={() => setPanel('turnInto')}
         >
-          <CurrentIcon size={18} className="text-subtle-foreground" aria-hidden />
+          <Icon icon={current.icon} size={18} className="text-subtle-foreground" aria-hidden />
           <span className="flex-1 truncate">{current.label()}</span>
-          <CaretRightIcon size={14} className="text-muted-foreground" aria-hidden />
+          <Icon icon={ArrowRight01Icon} size={14} className="text-muted-foreground" aria-hidden />
         </MenuRow>
         <div className="mx-1 my-1 h-px bg-border" />
         <div
@@ -165,7 +164,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
             onClick={() => toggle('color')}
           />
           <MarkButton
-            icon={TextBIcon}
+            icon={TextBoldIcon}
             label={t('format.bold')}
             keys={shortcutLabel('bold')}
             active={state.bold}
@@ -192,7 +191,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
             onClick={() => run((c) => c.unsetAllMarks())}
           />
           <MarkButton
-            icon={LinkSimpleIcon}
+            icon={Link01Icon}
             label={t('format.link')}
             active={!!state.link || panel === 'link'}
             onClick={() => toggle('link')}
@@ -205,14 +204,14 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
             onClick={() => run((c) => c.toggleStrike())}
           />
           <MarkButton
-            icon={CodeIcon}
+            icon={SourceCodeIcon}
             label={t('format.code')}
             keys={shortcutLabel('inlineCode')}
             active={state.code}
             onClick={() => run((c) => c.toggleCode())}
           />
           <MarkButton
-            icon={MathOperationsIcon}
+            icon={MathIcon}
             label={t('format.math')}
             active={false}
             onClick={() => {
@@ -222,7 +221,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
             }}
           />
           <MarkButton
-            icon={DotsThreeIcon}
+            icon={MoreHorizontalIcon}
             label={t('format.more')}
             active={panel === 'more' || state.superscript || state.subscript}
             onClick={() => toggle('more')}
@@ -273,7 +272,12 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
                 aria-checked={state.superscript}
                 onClick={() => run((c) => c.toggleSuperscript())}
               >
-                <TextSuperscriptIcon size={18} className="text-subtle-foreground" aria-hidden />
+                <Icon
+                  icon={TextSuperscriptIcon}
+                  size={18}
+                  className="text-subtle-foreground"
+                  aria-hidden
+                />
                 <span className="flex-1 truncate">{t('format.superscript')}</span>
                 <span className="text-xs text-placeholder">{shortcutLabel('superscript')}</span>
               </MenuRow>
@@ -282,7 +286,12 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
                 aria-checked={state.subscript}
                 onClick={() => run((c) => c.toggleSubscript())}
               >
-                <TextSubscriptIcon size={18} className="text-subtle-foreground" aria-hidden />
+                <Icon
+                  icon={TextSubscriptIcon}
+                  size={18}
+                  className="text-subtle-foreground"
+                  aria-hidden
+                />
                 <span className="flex-1 truncate">{t('format.subscript')}</span>
                 <span className="text-xs text-placeholder">{shortcutLabel('subscript')}</span>
               </MenuRow>
@@ -293,7 +302,12 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
                   editor.commands.editRuby()
                 }}
               >
-                <TextAaIcon size={18} className="text-subtle-foreground" aria-hidden />
+                <Icon
+                  icon={TextFontIcon}
+                  size={18}
+                  className="text-subtle-foreground"
+                  aria-hidden
+                />
                 <span className="flex-1 truncate">{t('format.ruby')}</span>
                 <span className="text-xs text-placeholder">{shortcutLabel('ruby')}</span>
               </MenuRow>
@@ -342,13 +356,13 @@ function keepEditorFocus(event: React.MouseEvent) {
 }
 
 function MarkButton({
-  icon: Glyph,
+  icon,
   label,
   keys,
   active,
   onClick
 }: {
-  icon: Icon
+  icon: IconSvgElement
   label: string
   keys?: string
   active: boolean
@@ -367,7 +381,7 @@ function MarkButton({
           />
         }
       >
-        <Glyph size={18} weight={active ? 'bold' : undefined} aria-hidden />
+        <Icon icon={icon} size={18} weight={active ? 'bold' : undefined} aria-hidden />
       </TooltipTrigger>
       <TooltipContent side="bottom">
         {label}
@@ -431,7 +445,7 @@ function LinkPanel({
     <div className="flex flex-col gap-1 p-1">
       <InputGroup className="h-8 shadow-none">
         <InputGroupAddon>
-          <LinkSimpleIcon aria-hidden />
+          <Icon icon={Link01Icon} aria-hidden />
         </InputGroupAddon>
         <InputGroupInput
           // oxlint-disable-next-line jsx-a11y/no-autofocus -- the panel exists to type a link
@@ -483,10 +497,8 @@ function LinkPanel({
 /** Draws the menu into the extension's React root (the BubbleMenu element; the extension holds no JSX). */
 export function renderSelectionMenu(root: Root, editor: Editor): void {
   root.render(
-    <IconProvider>
-      <TooltipProvider delay={500}>
-        <SelectionMenu editor={editor} />
-      </TooltipProvider>
-    </IconProvider>
+    <TooltipProvider delay={500}>
+      <SelectionMenu editor={editor} />
+    </TooltipProvider>
   )
 }

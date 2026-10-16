@@ -14,7 +14,8 @@
   "dependencies": {
     "@base-ui/react": "^1.9.0",
     "@floating-ui/dom": "^1.8.0",
-    "@phosphor-icons/react": "^2.1.10",
+    "@hugeicons/core-free-icons": "^4.3.5",
+    "@hugeicons/react": "^1.1.10",
     "@tiptap/core": "3.31.4",
     "@tiptap/extension-blockquote": "3.31.4",
     "@tiptap/extension-bubble-menu": "3.31.4",
@@ -51,7 +52,6 @@
     "react-i18next": "^17.0.16"
   },
   "devDependencies": {
-    "@phosphor-icons/core": "^2.1.1",
     "@tailwindcss/vite": "4.3.3",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",

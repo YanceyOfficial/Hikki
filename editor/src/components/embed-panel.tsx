@@ -7,7 +7,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { t } from '../core/i18n'
 import { embedFromHTML, embedFromURL, type EmbedProvider, type EmbedSource } from '../lib/embeds'
 import type { FloatingAnchor, FloatingLayer } from './floating'
-import { IconProvider } from './icons'
 
 /** Placeholders, spelled out so the l10n audit sees every key. */
 const PLACEHOLDER: Record<EmbedProvider | 'html', () => string> = {
@@ -103,10 +102,5 @@ export function EmbedPanel({ provider, onDone }: Props) {
 
 /** Shows the panel in its floating layer at the caret (the extension holds no JSX). */
 export function renderEmbedPanel(layer: FloatingLayer, props: Props, anchor: FloatingAnchor): void {
-  layer.render(
-    <IconProvider>
-      <EmbedPanel {...props} />
-    </IconProvider>,
-    anchor
-  )
+  layer.render(<EmbedPanel {...props} />, anchor)
 }

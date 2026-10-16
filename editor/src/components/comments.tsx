@@ -1,14 +1,14 @@
 import {
-  ArrowUpIcon,
+  ArrowUp02Icon,
   AtIcon,
-  ChatTeardropTextIcon,
-  CheckIcon,
-  DotsThreeIcon,
-  LinkSimpleIcon,
-  PencilSimpleIcon,
-  TrashIcon,
-  XIcon
-} from '@phosphor-icons/react'
+  Cancel01Icon,
+  Comment01Icon,
+  Delete02Icon,
+  Link01Icon,
+  MoreHorizontalIcon,
+  PencilEdit01Icon,
+  Tick02Icon
+} from '@hugeicons/core-free-icons'
 import type { Editor } from '@tiptap/core'
 import { cn } from 'cn'
 import i18n from 'i18next'
@@ -49,6 +49,7 @@ import {
   type DraftMention
 } from '../lib/comment-text'
 import { CommandList, handleListKey } from './command-list'
+import { Icon } from './icons'
 
 /** Card width in the margin, and the room the margin needs beside the text to hold one. */
 const CARD = 300
@@ -362,7 +363,7 @@ function Narrow({
             data-testid="comment-badge"
             onClick={() => editor.commands.commentOpen(anchors[0].thread.id)}
           >
-            <ChatTeardropTextIcon className="size-3.5" aria-hidden />
+            <Icon icon={Comment01Icon} className="size-3.5" aria-hidden />
             {count}
           </Button>
         )
@@ -649,7 +650,7 @@ function CommentRow({
               data-testid="comment-resolve"
               onClick={() => editor.commands.commentResolve(thread.id, true)}
             >
-              <CheckIcon className="size-4.5" />
+              <Icon icon={Tick02Icon} className="size-4.5" />
             </Button>
           )}
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
@@ -664,11 +665,11 @@ function CommentRow({
                 />
               }
             >
-              <DotsThreeIcon className="size-4.5" weight="bold" />
+              <Icon icon={MoreHorizontalIcon} className="size-4.5" weight="bold" />
             </DropdownMenuTrigger>
             <DropdownMenuContent side="bottom" align="end" className="w-56">
               <DropdownMenuItem data-testid="comment-edit" onClick={() => setEditing(true)}>
-                <PencilSimpleIcon aria-hidden />
+                <Icon icon={PencilEdit01Icon} aria-hidden />
                 {t('comments.edit')}
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -681,7 +682,7 @@ function CommentRow({
                     .catch((error: unknown) => reportError('copyFailed', error))
                 }}
               >
-                <LinkSimpleIcon aria-hidden />
+                <Icon icon={Link01Icon} aria-hidden />
                 {t('comments.copyLink')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -694,7 +695,7 @@ function CommentRow({
                     : editor.commands.commentDeleteReply(thread.id, comment.id)
                 }
               >
-                <TrashIcon aria-hidden />
+                <Icon icon={Delete02Icon} aria-hidden />
                 {first ? t('comments.deleteThread') : t('comments.delete')}
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -1003,7 +1004,7 @@ function CommentField({
             onMouseDown={(e) => e.preventDefault()}
             onClick={startMention}
           >
-            <AtIcon className="size-4" aria-hidden />
+            <Icon icon={AtIcon} className="size-4" aria-hidden />
           </InputGroupButton>
           {initial === undefined ? (
             <InputGroupButton
@@ -1012,12 +1013,12 @@ function CommentField({
               disabled={!value.trim()}
               onClick={submit}
             >
-              <ArrowUpIcon className="size-4" weight="bold" aria-hidden />
+              <Icon icon={ArrowUp02Icon} className="size-4" weight="bold" aria-hidden />
             </InputGroupButton>
           ) : (
             <>
               <InputGroupButton size="icon-xs" aria-label={t('comments.cancel')} onClick={onCancel}>
-                <XIcon className="size-4" aria-hidden />
+                <Icon icon={Cancel01Icon} className="size-4" aria-hidden />
               </InputGroupButton>
               <InputGroupButton
                 size="icon-xs"
@@ -1026,7 +1027,7 @@ function CommentField({
                 disabled={!value.trim()}
                 onClick={submit}
               >
-                <CheckIcon className="size-4" weight="bold" aria-hidden />
+                <Icon icon={Tick02Icon} className="size-4" weight="bold" aria-hidden />
               </InputGroupButton>
             </>
           )}

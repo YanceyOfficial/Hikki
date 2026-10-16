@@ -1,4 +1,4 @@
-import { ArrowRightIcon, CopyIcon } from '@phosphor-icons/react'
+import { ArrowRight02Icon, Copy01Icon } from '@hugeicons/core-free-icons'
 import { cn } from 'cn'
 
 import { Button } from '@/components/ui/button'
@@ -7,6 +7,7 @@ import { Kbd } from '@/components/ui/kbd'
 import { t } from '../core/i18n'
 import type { AINote } from '../lib/ai-content'
 import { changePairs, diffSide, type DiffSegment } from '../lib/ai-diff'
+import { Icon } from './icons'
 
 export type AIReviewLine = { key: string; diff: DiffSegment[] }
 
@@ -140,7 +141,11 @@ export function BubbleReview({
             <span className="font-medium text-ink-red line-through decoration-1">
               {item.from || '∅'}
             </span>
-            <ArrowRightIcon className="shrink-0 self-center text-placeholder" aria-hidden />
+            <Icon
+              icon={ArrowRight02Icon}
+              className="shrink-0 self-center text-placeholder"
+              aria-hidden
+            />
             <span className="font-medium text-ink-green">{item.to || t('ai.removed')}</span>
             {item.why && <span className="text-muted-foreground">· {item.why}</span>}
           </li>
@@ -149,7 +154,7 @@ export function BubbleReview({
       <p className="m-0 px-1 text-xs text-muted-foreground">{t('ai.pageUntouched')}</p>
       <div className="flex flex-wrap items-center justify-end gap-1.5">
         <Button variant="ghost" size="sm" onClick={() => onCopy(result)}>
-          <CopyIcon aria-hidden />
+          <Icon icon={Copy01Icon} aria-hidden />
           {t('ai.copy')}
         </Button>
         <Button variant="outline" size="sm" onClick={onDiscard} data-testid="ai-discard">
