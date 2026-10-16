@@ -20,6 +20,14 @@ struct RootView: View {
         }
         #if os(iOS)
             .modifier(VerticalBarReader())
+            // Folding or unfolding an iPhone Duo moves the window to the other screen: which way it may turn changes.
+            .onGeometryChange(for: CGSize.self) {
+                $0.size
+            } action: { _ in
+                for scene in UIApplication.shared.connectedScenes {
+                    (scene as? UIWindowScene)?.keyWindow?.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
+                }
+            }
         #endif
         // Settings → Theme, app-wide (see AppearancePreference.apply); the editor follows its window.
         .onAppear { appearance.apply() }

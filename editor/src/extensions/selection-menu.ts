@@ -4,13 +4,14 @@ import { PluginKey } from '@tiptap/pm/state'
 import { createRoot, type Root } from 'react-dom/client'
 
 import { renderSelectionMenu } from '../components/selection-menu'
+import { matches, TOUCH } from '../lib/device'
 import { aiReviewOpen } from './ai-review'
 import { commentsState } from './comments'
 import { SlashCommandKey } from './slash-command'
 
 export const SelectionMenuKey = new PluginKey('selectionMenu')
 
-const coarsePointer = () => window.matchMedia?.('(pointer: coarse)').matches ?? false
+const coarsePointer = () => matches(TOUCH)
 
 /**
  * Formatting menu over a non-empty text selection (Tiptap's BubbleMenu positions it; React draws it).

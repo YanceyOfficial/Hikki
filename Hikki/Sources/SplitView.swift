@@ -317,7 +317,7 @@ enum PageDrop {
 private struct EdgeDrop: ViewModifier {
     let navigator: Navigator
     @State private var showing = false
-    /// Only where the window may split (`SplitPolicy`; ContentView sets it).
+    /// Only where the window may split (`DeviceRules.allowsSplit`; ContentView sets it).
     @Environment(\.splitAvailable) private var available
 
     func body(content: Content) -> some View {

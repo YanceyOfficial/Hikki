@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
+import { matches, TOUCH } from '../lib/device'
 import {
   loadEmojiCategories,
   recentEmoji,
@@ -209,5 +210,5 @@ function Status({ children }: { children: string }) {
 }
 
 function isTouch(): boolean {
-  return matchMedia?.('(pointer: coarse)').matches ?? false
+  return matches(TOUCH)
 }

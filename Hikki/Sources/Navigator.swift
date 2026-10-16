@@ -81,7 +81,7 @@ final class Navigator {
     var importDrop: ImportDrop?
     /// Split view (Mac/iPad): the window shows a second pane beside the current tab.
     private(set) var isSplit = false
-    /// Whether this window may split (`SplitPolicy`: the Mac and the larger iPads); set by ContentView. A window that
+    /// Whether this window may split (`DeviceRules.allowsSplit`); set by ContentView. A window that
     /// can no longer split closes its pane.
     var splitAllowed = true {
         didSet { if !splitAllowed && isSplit { closeSplit() } }

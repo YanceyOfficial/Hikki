@@ -49,6 +49,7 @@ import {
   mentionQuery,
   type DraftMention
 } from '../lib/comment-text'
+import { PHONE } from '../lib/device'
 import { sheetOpened } from '../lib/sheet-presence'
 import { CommandList, handleListKey } from './command-list'
 
@@ -241,9 +242,8 @@ function CommentsLayer({
   )
 }
 
-/** A phone: a touch screen in a narrow (or short) window. Its open thread is a bottom sheet (Notion's iPhone app). */
-export const PHONE_QUERY =
-  '(pointer: coarse) and (max-width: 640px), (pointer: coarse) and (max-height: 500px)'
+/** A phone: a touch screen in a narrow (or short) window (`PHONE` in lib/device). Its open thread is a bottom sheet. */
+export const PHONE_QUERY = PHONE
 
 const phoneQuery = () => window.matchMedia?.(PHONE_QUERY) ?? null
 

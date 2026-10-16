@@ -469,7 +469,7 @@
 
         func body(content: Content) -> some View {
             content
-                .padding(.top, max(0, Spacing.s6 - top))
+                .padding(.top, max(0, DeviceRules.topEdgeClearance - top))
                 .onGeometryChange(for: CGFloat.self) {
                     $0.frame(in: .global).minY
                 } action: {

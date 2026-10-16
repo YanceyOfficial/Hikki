@@ -7,6 +7,7 @@ import type { EditorView } from '@tiptap/pm/view'
 import { openBlockMenu } from '../components/block-menu'
 import { t } from '../core/i18n'
 import { tiptapShortcut, type ShortcutId } from '../core/shortcuts'
+import { FINE_POINTER, matches } from '../lib/device'
 import { BlockHighlight, BlockHighlightKey, setBlockHighlight } from './block-highlight'
 import { duplicateUnit, firstTextPos, moveUnit, unitAtPos, type BlockUnit } from './block-units'
 import { dropBeside, MAX_COLUMNS } from './columns'
@@ -79,7 +80,7 @@ export const BlockControls = Extension.create<{ enabled: boolean | null }>({
   addProseMirrorPlugins() {
     // The highlights serve every pointer (the block menu may open from touch later); the handle itself
     // needs a mouse or trackpad.
-    const enabled = this.options.enabled ?? window.matchMedia?.('(pointer: fine)').matches ?? false
+    const enabled = this.options.enabled ?? matches(FINE_POINTER)
     if (!enabled) return [BlockHighlight]
     const editor = this.editor
     return [

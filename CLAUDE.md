@@ -126,7 +126,7 @@ Hikki/Sources/                app: SwiftUI shell, navigation (tabs), sidebar, pa
 Hikki/Resources/AppIcon.icon  Icon Composer document (merged from design/icon/hi-star; actool renders all sizes)
 HikkiCore/Sources/            framework: Store (GRDB/SQLite, page tree, assets, tabs model), Text (Japanese readings),
                               Bridge (protocol, JSONValue), Logging (file log, MetricKit crash collection),
-                              Layout (split view geometry), Shortcuts (KeyCombo)
+                              Layout (`DeviceRules`: every per-device rule — orientation, split view, the Duo's vertical bar), Shortcuts (KeyCombo)
 HikkiSearch/Sources/          framework: the search engine — its own SQLite index (trigram FTS5, BM25), query parsing,
                               ranking, pinyin keys, fuzzy titles; tests in HikkiSearch/Tests/
 HikkiAI/Sources/              framework: AI — one streaming client over OpenAI (Responses) and Anthropic (Messages) with
@@ -174,6 +174,11 @@ HikkiUITests/                 XCUITest flows
   "inside"), elsewhere at the top level (the sidebar is outlined); ContentView runs the import through
   `Navigator.importDrop` → `AppModel.importFiles(_:parentId:)`. A page row's own drag carries a page link, never a
   file, so the two never mix; iPad drags (typed documents, no file URL) load as a temporary copy.
+- **Device compatibility lives in two files**: `HikkiCore/Sources/Layout/DeviceRules.swift` (native — a table of
+  iPhone / iPhone Duo folded and unfolded / iPad / Mac: orientation — phones and a folded Duo upright, iPads and an
+  unfolded Duo on their side, through `OrientationDelegate` in `Hikki/Sources/HikkiApp.swift` — split view, the
+  vertical bar) and `editor/src/lib/device.ts` (the editor's touch / pointer media queries). `#if os()` only separates
+  the Mac from iOS; per-device behaviour is a named rule there, decided from the screen or window, never the idiom.
 - **iPhone is its own layout**, not the Mac's squeezed — chosen by the window's width, never the device (Apple's
   "Preparing your app for iPhone Duo": no `userInterfaceIdiom`, orientation or screen checks): a compact width gets the
   iPhone layout, a regular one the iPad's (an unfolded iPhone Duo, a large iPhone on its side); its top bars stay 24 pt clear of the screen's top edge
@@ -416,7 +421,7 @@ HikkiUITests/                 XCUITest flows
   state is re-read on enter/exit/resize/key (restored windows) and logged (category `fullscreen`). DEBUG:
   `HIKKI_DEBUG_FULLSCREEN` forces the layout on in a window, `HIKKI_DEBUG_ENTER_FULLSCREEN` enters full screen 1.5 s
   after launch, `HIKKI_DEBUG_QUIT_AFTER=<s>` quits — own-instance checks.
-- **Split view** (a window at least 800 pt wide, on any device — `SplitPolicy`, `Navigator.splitAllowed`;
+- **Split view** (a window at least 800 pt wide, on any device — `DeviceRules.allowsSplit`, `Navigator.splitAllowed`;
   `Hikki/Sources/SplitView.swift`): the current tab and a second pane side by side, either
   holding a page or a PDF (`Navigator.split`, `isSplit`). The pane's page has its own editor (a second web view, made
   on first use and wired like the main one in `ContentView`). Opened from the

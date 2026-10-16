@@ -9,6 +9,7 @@ import { t } from '../core/i18n'
 import { DEFAULT_CALLOUT_ICON } from '../extensions/callout'
 import { colorLabel, PALETTE, type PaletteColor } from '../extensions/colors'
 import { useMediaQuery } from '../hooks/use-media-query'
+import { TOUCH } from '../lib/device'
 import { BottomSheet } from './bottom-sheet'
 import { EmojiPickerPanel } from './emoji-picker-panel'
 import { IconProvider } from './icons'
@@ -24,7 +25,7 @@ type Props = {
 /** The callout's emoji: a button opening the emoji picker, with the callout's background colors below. */
 export function CalloutIcon({ icon, color, editable, onIcon, onColor }: Props) {
   const [open, setOpen] = useState(false)
-  const touch = useMediaQuery('(pointer: coarse)')
+  const touch = useMediaQuery(TOUCH)
   const glyph = <span className="text-lg leading-none">{icon || DEFAULT_CALLOUT_ICON}</span>
   if (!editable) return <span className="grid size-7 place-items-center">{glyph}</span>
   const picker = (

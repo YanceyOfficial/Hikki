@@ -8,6 +8,9 @@ struct HikkiApp: App {
     #if os(macOS)
         // Closing the last window hides it; the Dock brings it back (see WindowLifecycle).
         @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    #else
+        /// Which way the window may turn, per screen (`DeviceRules.orientation`).
+        @UIApplicationDelegateAdaptor(OrientationDelegate.self) private var orientation
     #endif
 
     init() {
@@ -99,3 +102,19 @@ struct HikkiApp: App {
         #endif
     }
 }
+
+#if os(iOS)
+    /// Upright on a phone-sized screen (every iPhone, an iPhone Duo folded), on its side on a tablet-sized one (iPads,
+    /// the Duo unfolded) — `DeviceRules.orientation`; asked again when the window moves to the other screen (`RootView`).
+    final class OrientationDelegate: NSObject, UIApplicationDelegate {
+        func application(
+            _ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?
+        ) -> UIInterfaceOrientationMask {
+            guard let screen = window?.windowScene?.screen else { return .allButUpsideDown }
+            switch DeviceRules.orientation(screen: screen.bounds.size) {
+            case .portrait: return .portrait
+            case .landscape: return .landscape
+            }
+        }
+    }
+#endif

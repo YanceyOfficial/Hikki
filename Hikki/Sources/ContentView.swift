@@ -115,7 +115,10 @@ struct ContentView: View {
             #if os(iOS)
                 // A bottom sheet of the page's is open on an iPhone Duo: its vertical bar steps aside (it sits over the
                 // sheet's side otherwise), back when the sheet closes. Elsewhere the bars stay.
-                .toolbarVisibility(sheetOpen && verticalBar != nil ? .hidden : .automatic, for: .navigationBar)
+                .toolbarVisibility(
+                    sheetOpen && DeviceRules.sheetHidesBars(hasVerticalBar: verticalBar != nil) ? .hidden : .automatic,
+                    for: .navigationBar
+                )
                 .animation(Motion.easeOut(), value: sheetOpen)
             #endif
             .sheet(
@@ -174,7 +177,7 @@ struct ContentView: View {
         // It keeps the page it was selected in: a question about another page goes without it.
         .onChange(of: editor.selection) { _, selection in chat.selection = selection }
         // "Open in Split View" wherever page actions are (sidebar, Home, ⋯): by the window's width, not a column's,
-        // and only where it has room for two pages (`SplitPolicy`).
+        // and only where it has room for two pages (`DeviceRules.allowsSplit`).
         .onGeometryChange(for: CGFloat.self) {
             $0.size.width
         } action: {
@@ -562,12 +565,12 @@ struct ContentView: View {
     /// One of the window's editors shows a bottom sheet (`EditorController.sheetOpen`).
     private var sheetOpen: Bool { editor.sheetOpen || splitEditor?.sheetOpen == true }
 
-    /// Whether this window may split into two panes: wide enough for two pages (`SplitPolicy`), on any device.
+    /// Whether this window may split into two panes: wide enough for two pages (`DeviceRules.allowsSplit`).
     private var splitAllowed: Bool {
         #if os(macOS)
             true
         #else
-            wide && SplitPolicy.allowed(windowWidth: windowWidth)
+            wide && DeviceRules.allowsSplit(windowWidth: windowWidth)
         #endif
     }
 

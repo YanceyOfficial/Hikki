@@ -35,6 +35,17 @@ let project = Project(
                 "CFBundleShortVersionString": "$(MARKETING_VERSION)",
                 "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
                 "UILaunchScreen": [:],
+                // What the window may ever take; `OrientationDelegate` narrows it per screen at run time (phones and a
+                // folded iPhone Duo upright, iPads and an unfolded Duo on their side). iPad lists all four, as multitasking
+                // requires for App Store validation.
+                "UISupportedInterfaceOrientations~iphone": [
+                    "UIInterfaceOrientationPortrait", "UIInterfaceOrientationLandscapeLeft",
+                    "UIInterfaceOrientationLandscapeRight",
+                ],
+                "UISupportedInterfaceOrientations~ipad": [
+                    "UIInterfaceOrientationPortrait", "UIInterfaceOrientationPortraitUpsideDown",
+                    "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight",
+                ],
                 // hikki://page/<id> — "Copy link" (HikkiCore/Sources/Store/PageLink.swift).
                 "CFBundleURLTypes": [["CFBundleURLName": "app.yancey.hikki", "CFBundleURLSchemes": ["hikki"]]],
                 "UIApplicationSceneManifest": ["UIApplicationSupportsMultipleScenes": true],

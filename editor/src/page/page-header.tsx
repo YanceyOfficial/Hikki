@@ -32,6 +32,7 @@ import {
   repositionedCover,
   withCoverPosition
 } from '../lib/covers'
+import { ANY_TOUCH, matches, TOUCH } from '../lib/device'
 import { CoverPicker } from './cover-picker'
 import { CoverSheet, type CoverSheetMode } from './cover-sheet'
 
@@ -43,10 +44,10 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
   // Reposition: the position being dragged (null when not repositioning).
   const [draftY, setDraftY] = useState<number | null>(null)
   // A touch screen (no hover): the cover's controls are a sheet a long press opens, not buttons over the picture.
-  const touch = useMediaQuery('(pointer: coarse)')
+  const touch = useMediaQuery(TOUCH)
   // iPhone and iPad (any touch screen, an iPad with a trackpad too): no Reposition — dragging a cover to place it is
   // the Mac's.
-  const canReposition = !useMediaQuery('(any-pointer: coarse)')
+  const canReposition = !useMediaQuery(ANY_TOUCH)
   const [coverSheet, setCoverSheet] = useState<CoverSheetMode | null>(null)
   // The header stays mounted from page to page: another page starts with nothing of the last one's in progress
   // (a reposition draft would otherwise be saved into the next page's cover).
@@ -309,8 +310,7 @@ function TitleField({
 
   // New, empty pages start with the caret in the title.
   useEffect(() => {
-    if (autoFocus && !title && ref.current && !matchMedia?.('(pointer: coarse)').matches)
-      ref.current.focus()
+    if (autoFocus && !title && ref.current && !matches(TOUCH)) ref.current.focus()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docId])
 
