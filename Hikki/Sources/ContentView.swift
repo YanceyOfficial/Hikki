@@ -635,12 +635,15 @@ private struct NativeDetailToolbar: ToolbarContent {
                 }
             )
             .frame(minWidth: 240, idealWidth: 480, maxWidth: 640)  // design-lint: allow (toolbar item width)
-            // The toolbar centres it over the whole detail column; with the inspector open that is page + panel, so
-            // it moves left by half the panel to sit over the page.
             // Its own glass (the toolbar's shared capsule is hidden below), so the capsule moves with it.
             .glassEffect(.regular, in: .capsule)
-            .offset(x: inspectorOpen ? -CGFloat(inspectorWidth) / 2 : 0)
-            .animation(Motion.easeOut(), value: inspectorOpen)
+            #if os(macOS)
+                // The Mac toolbar centres it over the whole detail column; with the inspector open that is page +
+                // panel, so it moves left by half the panel to sit over the page. iPad's toolbar already lays it out
+                // between back/forward and the page's buttons, and the shift slid it under back/forward.
+                .offset(x: inspectorOpen ? -CGFloat(inspectorWidth) / 2 : 0)
+                .animation(Motion.easeOut(), value: inspectorOpen)
+            #endif
         }
         .sharedBackgroundVisibility(.hidden)
         if let id = navigator.route.pageID, let page = model.tree.page(id) {

@@ -923,6 +923,28 @@ final class EditorFlowTests: XCTestCase {
         attachScreenshot(app, "split-typing")
     }
 
+    /// iPad: with the inspector open the tabs stay clear of back/forward. The strip was moved left by half the panel
+    /// (right on a Mac, whose toolbar centres it over page and panel), and on iPad that slid it under the buttons.
+    func testTabsStayClearOfBackForwardWithTheInspectorOpen() throws {
+        #if os(iOS)
+            guard UIDevice.current.userInterfaceIdiom == .pad else { throw XCTSkip("the iPad toolbar") }
+        #else
+            throw XCTSkip("the iPad toolbar")
+        #endif
+        continueAfterFailure = false
+        let app = launch(environment: ["HIKKI_DEMO_PAGES": "1", "HIKKI_DEBUG_NAV": "demo-46ffce8"])
+        let forward = app.buttons["Forward"].firstMatch
+        let tab = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'tab-'")).firstMatch
+        let ai = app.buttons["ai-toggle"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(ai, in: app))
+        ai.tap()
+        XCTAssertTrue(waitOrDumpTree(app.descendants(matching: .any)["ai-chat-field"].firstMatch, in: app))
+        XCTAssertTrue(tab.exists && forward.exists)
+        sleep(1)
+        XCTAssertGreaterThanOrEqual(tab.frame.minX, forward.frame.maxX, "the tab slid under back/forward")
+        attachScreenshot(app, "tabs-with-inspector")
+    }
+
     /// Opening split view keeps the left page on screen: the left side was built anew as the window split, and the
     /// window's one web view went with the old one (a blank left side, its editor gone from the screen).
     func testTheLeftPageStaysWhenTheWindowSplits() throws {
