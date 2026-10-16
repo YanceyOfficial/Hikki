@@ -31,12 +31,12 @@ function Home() {
 function Hero() {
   return (
     <section class={`${row} grid-cols-1 lg:grid-cols-12 lg:grid-rows-[1fr_auto]`}>
-      <div class="cell flex flex-col justify-between gap-10 p-8 md:p-12 lg:col-span-7 lg:row-span-2">
-        <ruby class="furigana self-start text-[clamp(7rem,22vw,17rem)]" aria-label="Hikki (筆記)">
+      <div class="cell flex flex-col justify-between gap-10 p-8 md:p-10 lg:col-span-4 lg:row-span-2">
+        <ruby class="furigana self-start text-[clamp(6rem,13vw,10.5rem)]" aria-label="Hikki (筆記)">
           筆記<rt>ひっき</rt>
         </ruby>
         <div class="max-w-[34rem]">
-          <h1 class="expanded text-[clamp(2.4rem,5vw,4.2rem)] leading-[1.02] font-[850] tracking-[-0.02em]">
+          <h1 class="expanded text-[clamp(2.2rem,3.4vw,3.4rem)] leading-[1.04] font-[850] tracking-[-0.02em]">
             Notes that stay on your devices.
           </h1>
           <p class="mt-6 text-lg leading-relaxed text-muted">
@@ -46,17 +46,17 @@ function Hero() {
           </p>
         </div>
       </div>
-      <div class="cell bg-red flex items-end justify-center overflow-hidden px-8 pt-10 lg:col-span-5">
+      <div class="cell bg-red flex items-center justify-center p-5 md:p-8 lg:col-span-8">
         <Shot
-          name="iphone-page"
-          alt="Hikki on iPhone: a page called Japanese, week 3, with furigana above the kanji."
-          width={1206}
-          height={2622}
-          class="w-[min(68%,300px)] translate-y-[4px] rounded-t-[36px] border-b-0"
+          name="mac-hero"
+          alt="Hikki on Mac: a launch plan with a cover photo, a callout, a checklist, a status list and a budget in three columns, a schedule table, furigana and an outline of the page beside it."
+          width={2846}
+          height={1802}
+          class="w-full rounded-[12px]"
           eager
         />
       </div>
-      <div class={`${row} grid-cols-[1fr_2fr] lg:col-span-5`}>
+      <div class={`${row} grid-cols-[1fr_3fr] lg:col-span-8`}>
         <div class="cell bg-yellow" />
         <p class="cell bg-blue p-6 text-[15px] leading-relaxed">
           <span lang="ja">筆記</span> (hikki) is Japanese for taking notes. Hikki shows readings
