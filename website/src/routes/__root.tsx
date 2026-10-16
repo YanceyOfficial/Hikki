@@ -23,7 +23,7 @@ export const Route = createRootRoute({
       { property: 'og:title', content: title },
       { property: 'og:description', content: description },
       { property: 'og:url', content: SITE_URL },
-      { property: 'og:image', content: `${SITE_URL}/shots/iphone-page.png` },
+      { property: 'og:image', content: `${SITE_URL}/shots/iphone-page.webp` },
       { name: 'twitter:card', content: 'summary_large_image' }
     ],
     links: [

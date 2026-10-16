@@ -73,10 +73,10 @@ function Hero() {
       </div>
       <div class="cell bg-red flex items-end justify-center overflow-hidden px-8 pt-10 lg:col-span-5">
         <img
-          src="/shots/iphone-page.png"
+          src="/shots/iphone-page.webp"
           alt="Hikki on iPhone: a page called Japanese, week 3, with furigana above the kanji."
-          width="736"
-          height="1600"
+          width="1206"
+          height="2622"
           class="shot w-[min(68%,300px)] translate-y-[4px] rounded-t-[36px] border-b-0"
         />
       </div>
@@ -158,10 +158,10 @@ function Devices() {
       </div>
       <figure class="cell m-0 flex flex-col gap-5 p-6 md:p-10 lg:col-span-8">
         <img
-          src="/shots/mac.png"
+          src="/shots/mac.webp"
           alt="Hikki on Mac: the page tree in a sidebar, tabs in the toolbar and a page about a product launch."
-          width="1800"
-          height="1139"
+          width="2846"
+          height="1802"
           class="shot w-full rounded-[12px]"
         />
         <figcaption class="text-[15px] leading-relaxed text-muted">
@@ -170,10 +170,10 @@ function Devices() {
       </figure>
       <figure class="cell bg-yellow m-0 flex flex-col items-center justify-end gap-5 p-6 md:p-10 lg:col-span-4">
         <img
-          src="/shots/iphone-home.png"
+          src="/shots/iphone-home.webp"
           alt="Hikki on iPhone: the home screen with recent pages and quick ways to start one."
-          width="736"
-          height="1600"
+          width="1206"
+          height="2622"
           class="shot w-[min(70%,260px)] rounded-[34px]"
         />
         <figcaption class="self-start text-[15px] leading-relaxed">
@@ -182,10 +182,10 @@ function Devices() {
       </figure>
       <figure class="cell bg-blue text-paper m-0 flex flex-col gap-5 p-6 md:p-10 lg:col-span-8">
         <img
-          src="/shots/ipad.png"
+          src="/shots/ipad.webp"
           alt="Hikki on iPad in landscape: a product launch page beside the design notes, in split view."
-          width="2000"
-          height="1500"
+          width="2752"
+          height="2064"
           class="shot w-full rounded-[18px]"
         />
         <figcaption class="text-[15px] leading-relaxed">

@@ -143,8 +143,10 @@ editor/src/lib/               data helpers: cover catalog, Unsplash client, emoj
 editor/test/                  vitest
 bff/                          backend-for-frontend (Hono, Vercel): Unsplash proxy, YouTube embed shim; tests with `bun test`
 website/                      the site at hikki.yancey.app (TanStack Start + Solid, SSR on Vercel, Tailwind v4 with its
-                              own Mondrian palette — not the app's tokens): src/routes/, screenshots in public/shots/;
-                              APP_STORE_URL in src/site.ts turns "Coming to the App Store" into the store link
+                              own Mondrian palette — not the app's tokens): src/routes/ (/lab: an experimental
+                              photo-grid layout), screenshots in public/shots/ as WebP made by `bun run shots <captures>`
+                              (sharp; crops in shots.json); APP_STORE_URL in src/site.ts turns "Coming to the App Store"
+                              into the store link
 HikkiUITests/                 XCUITest flows
 ```
 

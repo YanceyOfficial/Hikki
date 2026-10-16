@@ -15,19 +15,28 @@ export function AskAI() {
       </div>
       <figure class="cell m-0 flex flex-col gap-5 p-6 md:p-10 lg:col-span-8">
         <img
-          src="/shots/ipad-ai-chat.png"
+          src="/shots/ipad-ai-chat.webp"
           alt="The AI panel beside a product launch page, answering what is left before the launch."
-          width="2000"
-          height="1500"
+          width="2752"
+          height="2064"
           class="shot w-full rounded-[18px]"
         />
       </figure>
-      <div class="cell flex flex-col justify-end p-8 md:p-10 lg:col-span-4">
-        <h3 class="expanded text-2xl leading-tight font-[800]">Ask beside the page.</h3>
-        <p class="mt-4 leading-relaxed text-muted">
-          The AI panel reads the page you have open and the passage you selected. Add other pages
-          with @, attach a picture or a PDF, and let it search the web, with its sources linked.
-        </p>
+      <div class="cell bg-yellow flex flex-col gap-8 p-6 md:p-10 lg:col-span-4">
+        <img
+          src="/shots/ipad-ai-panel.webp"
+          alt="Close up of the AI panel: the question and its answer, with the page attached as context."
+          width="712"
+          height="985"
+          class="shot mx-auto w-full max-w-[360px] rounded-[14px]"
+        />
+        <div class="mt-auto">
+          <h3 class="expanded text-2xl leading-tight font-[800]">Ask beside the page.</h3>
+          <p class="mt-4 leading-relaxed">
+            The AI panel reads the page you have open and the passage you selected. Add other pages
+            with @, attach a picture or a PDF, and let it search the web, with its sources linked.
+          </p>
+        </div>
       </div>
       <div class="cell bg-blue text-paper flex flex-col justify-end p-8 md:p-10 lg:col-span-4">
         <h3 class="expanded text-2xl leading-tight font-[800]">Select, ask, review.</h3>
@@ -38,10 +47,10 @@ export function AskAI() {
       </div>
       <figure class="cell m-0 flex flex-col gap-5 p-6 md:p-10 lg:col-span-8">
         <img
-          src="/shots/ipad-ai-review.png"
+          src="/shots/ipad-ai-review.webp"
           alt="An edit by AI shown in the page: the old words struck through, the new ones beside them, with Accept and Discard."
-          width="1800"
-          height="1117"
+          width="2177"
+          height="1380"
           class="shot w-full"
         />
       </figure>

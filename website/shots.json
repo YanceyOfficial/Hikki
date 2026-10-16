@@ -1,0 +1,14 @@
+{
+  "$comment": "Screenshots for the page: `bun run shots <folder of captures>` turns <name>.png there into public/shots/<name>.webp. Optional per name: extract (a crop in the capture's pixels, after its orientation is applied) and width (the largest width kept).",
+  "iphone-page": {},
+  "iphone-home": {},
+  "mac": {},
+  "mac-split": {},
+  "ipad": {},
+  "ipad-ai-chat": {},
+  "ipad-ai-panel": {
+    "from": "ipad-ai-chat",
+    "extract": { "left": 2040, "top": 1020, "width": 712, "height": 985 }
+  },
+  "ipad-ai-review": { "extract": { "left": 575, "top": 470, "width": 2177, "height": 1380 } }
+}

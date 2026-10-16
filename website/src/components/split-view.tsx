@@ -21,10 +21,10 @@ export function SplitView() {
       </div>
       <figure class="cell m-0 flex flex-col gap-5 p-6 md:p-10 lg:col-span-8">
         <img
-          src="/shots/mac-split.png"
+          src="/shots/mac-split.webp"
           alt="Hikki on Mac in split view: a page about a trip to Kyoto beside a Japanese lesson with furigana."
-          width="1800"
-          height="1139"
+          width="2846"
+          height="1802"
           class="shot w-full rounded-[12px]"
         />
         <figcaption class="text-[15px] leading-relaxed text-muted">
