@@ -1,8 +1,9 @@
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 
 import { useKeyboardViewport } from '../hooks/use-keyboard-viewport'
+import { sheetOpened } from '../lib/sheet-presence'
 
 /**
  * A touch screen's panel as a bottom sheet over the dimmed page (the shadcn Drawer, as the comments' phone sheet):
@@ -24,6 +25,8 @@ export function BottomSheet({
   children: ReactNode
 }) {
   const { height, keyboard } = useKeyboardViewport()
+  // While open, the native bars beside the page step aside (`sheet` message), so the sheet spans the screen.
+  useEffect(() => (open ? sheetOpened() : undefined), [open])
   return (
     <Drawer
       open={open}
@@ -35,14 +38,11 @@ export function BottomSheet({
       <DrawerContent
         data-testid={testId}
         finalFocus={false}
-        className="pt-1 [--drawer-content-height:auto]"
+        // iOS's own sheet: floating a little in from the screen's edges, its corners rounded like the screen's.
+        className="rounded-sheet pt-1 shadow-popover [--drawer-content-height:auto] [--drawer-inset:--spacing(2)] data-[swipe-direction=down]:rounded-sheet"
         style={
           {
             bottom: keyboard,
-            // Clear of a vertical bar beside it (an iPhone Duo's, folded or not) or a notch on its side: the page runs
-            // under those, the sheet doesn't (0 everywhere else).
-            left: 'env(safe-area-inset-left, 0px)',
-            right: 'env(safe-area-inset-right, 0px)',
             '--drawer-content-max-height': `calc(${height}px - var(--hk-inset-top, 0px) - 12px)`,
             paddingBottom:
               keyboard > 0
@@ -51,7 +51,9 @@ export function BottomSheet({
           } as React.CSSProperties
         }
       >
-        <DrawerTitle className="sr-only">{title}</DrawerTitle>
+        <DrawerTitle className="pt-1.5 pb-3 text-center text-base font-semibold">
+          {title}
+        </DrawerTitle>
         {children}
       </DrawerContent>
     </Drawer>

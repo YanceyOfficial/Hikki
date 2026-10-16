@@ -144,6 +144,7 @@ struct BridgeMessageTests {
         #expect(try decode(["type": "scroll", "docId": "p1", "top": 840]) == .scroll(docId: "p1", top: 840))
         #expect(try decode(["type": "aiCancel", "id": "r1"]) == .aiCancel(id: "r1"))
         #expect(try decode(["type": "selection", "docId": "p1", "text": "いいえ"]) == .selection(docId: "p1", text: "いいえ"))
+        #expect(try decode(["type": "sheet", "open": true]) == .sheet(open: true))
         #expect(
             try decode(["type": "commentCreate", "docId": "p1", "threadId": "t", "quote": "そうです", "body": "样态"])
                 == .commentCreate(docId: "p1", threadId: "t", quote: "そうです", body: "样态"))

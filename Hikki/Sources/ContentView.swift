@@ -108,6 +108,12 @@ struct ContentView: View {
                 .toolbar(removing: navigator.isShowingInspector && navigator.route.pageID != nil ? .title : nil)
             #endif
             .toolbar { if wide { NativeDetailToolbar(navigator: navigator, editor: editor) } }
+            #if os(iOS)
+                // A bottom sheet of the page's is open: the bars step aside (an iPhone Duo's vertical bar sits over
+                // the sheet's side otherwise), back when it closes.
+                .toolbarVisibility(sheetOpen ? .hidden : .automatic, for: .navigationBar)
+                .animation(Motion.easeOut(), value: sheetOpen)
+            #endif
             .sheet(
                 isPresented: Binding(
                     get: { !wide && navigator.isShowingInspector && navigator.route.pageID != nil },
@@ -412,6 +418,10 @@ struct ContentView: View {
             if environment["HIKKI_OPEN_FIND"] != nil {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak editor] in editor?.find(.find) }
             }
+            // HIKKI_DEBUG_COVER_SHEET opens the open page's cover sheet once it is up (screenshots of the touch sheets).
+            if environment["HIKKI_DEBUG_COVER_SHEET"] != nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak editor] in editor?.editCover() }
+            }
             // HIKKI_DEBUG_AI_ASK=<question> asks the AI panel about the open page, and HIKKI_DEBUG_AI_EDIT=<words> selects
             // those words in it and runs "Improve writing" (screenshots of AI at work; they need a provider key).
             if let question = environment["HIKKI_DEBUG_AI_ASK"] {
@@ -544,6 +554,9 @@ struct ContentView: View {
     private var mainSplitDrop: EditorController.SplitDropMode {
         splitAllowed ? (navigator.isSplit ? .replace : .open) : .off
     }
+
+    /// One of the window's editors shows a bottom sheet (`EditorController.sheetOpen`).
+    private var sheetOpen: Bool { editor.sheetOpen || splitEditor?.sheetOpen == true }
 
     /// Whether this window may split into two panes: wide enough for two pages (`SplitPolicy`), on any device.
     private var splitAllowed: Bool {

@@ -28,6 +28,8 @@ final class EditorController {
     private(set) var activeHeading: (docId: String, id: String?)?
     /// The text selected in the page (Ask AI offers it as context); nil when nothing is.
     private(set) var selection: EditorSelection?
+    /// One of the page's bottom sheets is open (cover, icon, comment on a touch screen): the page's bars step aside.
+    private(set) var sheetOpen = false
 
     struct PageInfo: Equatable {
         var docId: String
@@ -598,6 +600,8 @@ final class EditorController {
             applyComment(pageId: docId) { try $0.edit(pageId: docId, threadId: threadId, commentId: commentId, body: body) }
         case .selection(let docId, let text):
             selection = text.isEmpty ? nil : EditorSelection(docId: docId, text: text)
+        case .sheet(let open):
+            sheetOpen = open
         case .scroll(let docId, let top):
             lastScroll = (docId, top)
         case .aiRequest(let payload):

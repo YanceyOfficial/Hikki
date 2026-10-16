@@ -49,6 +49,7 @@ import {
   mentionQuery,
   type DraftMention
 } from '../lib/comment-text'
+import { sheetOpened } from '../lib/sheet-presence'
 import { CommandList, handleListKey } from './command-list'
 
 /** Card width in the margin, and the room the margin needs beside the text to hold one. */
@@ -419,6 +420,8 @@ function CommentSheet({
   if (open && (shown.thread !== thread || shown.draft !== draft)) setShown({ thread, draft })
   const popup = useRef<HTMLDivElement>(null)
   const { height, keyboard } = useKeyboardViewport()
+  // While open, the native bars beside the page step aside (as `BottomSheet`).
+  useEffect(() => (open ? sheetOpened() : undefined), [open])
   const close = () => editor.commands.commentOpen(null)
   return (
     <Drawer
@@ -435,13 +438,10 @@ function CommentSheet({
         data-testid="comment-sheet"
         // Its content's height: the Drawer pins the height it first measured (for stacking nested drawers), which
         // would clip a reply added later or the room kept for the native bar.
-        className="pt-1 [--drawer-content-height:auto]"
+        className="rounded-sheet pt-1 shadow-popover [--drawer-content-height:auto] [--drawer-inset:--spacing(2)] data-[swipe-direction=down]:rounded-sheet"
         style={
           {
             bottom: keyboard,
-            // Clear of a vertical bar beside it (an iPhone Duo's) or a notch on its side, as `BottomSheet`.
-            left: 'env(safe-area-inset-left, 0px)',
-            right: 'env(safe-area-inset-right, 0px)',
             '--drawer-content-max-height': `calc(${height}px - var(--hk-inset-top, 0px) - 12px)`,
             // Over the keyboard it sits right on it; else clear of the home indicator and the native bottom bar.
             paddingBottom:

@@ -20,6 +20,7 @@ import { rubySegmentsFrom, type RubyHost } from '../extensions/ruby'
 import type { SplitDropHost, SplitDropMode } from '../extensions/split-drop'
 import { openTogglesAround } from '../extensions/toggle'
 import { linkCardFrom } from '../lib/embeds'
+import { sheetPresence } from '../lib/sheet-presence'
 import { activeCommands, createEditor, runCommand } from './editor'
 import { plainText, wordCount } from './extract'
 import {
@@ -135,6 +136,8 @@ export class EditorBridge {
     private readonly transport: Transport,
     private readonly options: Options = { debounceMs: 400, maxWaitMs: 2000 }
   ) {
+    // A bottom sheet open or not: the native bars beside the page step aside meanwhile.
+    sheetPresence((open) => void this.send({ type: 'sheet', open }))
     // The heading the reader is in follows the scroll (once a frame at most).
     let queued = false
     window.addEventListener(

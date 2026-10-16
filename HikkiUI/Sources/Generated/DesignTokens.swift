@@ -106,6 +106,8 @@ public nonisolated enum Radius {
     public static let md: CGFloat = 6
     public static let lg: CGFloat = 8
     public static let xl: CGFloat = 12
+    public static let x2l: CGFloat = 16
+    public static let sheet: CGFloat = 32
     public static let full: CGFloat = 9999
 }
 

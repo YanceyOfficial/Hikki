@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 24
+    public static let version = 25
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -54,6 +54,9 @@ public enum BridgeMessage: Sendable, Equatable {
     case activeHeading(docId: String, id: String?)
     /// The selected text ("" when nothing is): Ask AI offers it as context.
     case selection(docId: String, text: String)
+    /// A bottom sheet of the page's opened or closed (a touch screen's cover, icon or comment sheet): the native bars
+    /// beside it step aside meanwhile (an iPhone Duo's vertical bar), so the sheet has the whole width.
+    case sheet(open: Bool)
     /// Comments (`PageComments`): a thread started on a passage with its first comment, a reply, resolving / reopening,
     /// deleting a comment or (`commentId` nil) the whole thread.
     case commentCreate(docId: String, threadId: String, quote: String, body: String)
@@ -165,7 +168,7 @@ extension BridgeMessage: Decodable {
     private enum CodingKeys: String, CodingKey {
         case type, protocolVersion, snapshot, active, level, message, context, docId, icon, cover, fileExtension, dataBase64
         case size, id, url, block, text, headings, words, characters, name, top
-        case threadId, quote, body, resolved, commentId, kind, code, detail
+        case threadId, quote, body, resolved, commentId, kind, code, detail, open
     }
 
     public init(from decoder: Decoder) throws {
@@ -203,6 +206,8 @@ extension BridgeMessage: Decodable {
                 commentId: try c.decode(String.self, forKey: .commentId), body: try c.decode(String.self, forKey: .body))
         case "selection":
             self = .selection(docId: try c.decode(String.self, forKey: .docId), text: try c.decode(String.self, forKey: .text))
+        case "sheet":
+            self = .sheet(open: try c.decode(Bool.self, forKey: .open))
         case "activeHeading":
             self = .activeHeading(docId: try c.decode(String.self, forKey: .docId), id: try c.decodeIfPresent(String.self, forKey: .id))
         case "pageInfo":

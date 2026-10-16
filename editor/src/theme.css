@@ -368,6 +368,8 @@
   --radius-md: 6px;
   --radius-lg: 8px;
   --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-sheet: 32px;
   --radius-full: 9999px;
   --shadow-popover: var(--popover-shadow);
   --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", Helvetica, sans-serif;

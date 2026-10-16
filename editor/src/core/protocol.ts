@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 24
+export const PROTOCOL_VERSION = 25
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -103,6 +103,9 @@ export type ToNativeMessage =
   | { type: 'commentEdit'; docId: string; threadId: string; commentId: string; body: string }
   /** The selected text (debounced; "" when nothing is): Ask AI offers it as context. Capped at 4000 characters. */
   | { type: 'selection'; docId: string; text: string }
+  /** A bottom sheet opened or closed (a touch screen's cover, icon or comment sheet): the native bars beside the page
+   * step aside meanwhile (an iPhone Duo's vertical bar), so the sheet has the whole width. */
+  | { type: 'sheet'; open: boolean }
   | { type: 'log'; level: LogLevel; message: string; context?: Record<string, string> }
   /** A confirmation or note for the user ("Link copied"), already in the page's language: the app shows it as a toast. */
   | { type: 'toast'; kind: 'success' | 'info' | 'warning' | 'error'; message: string }

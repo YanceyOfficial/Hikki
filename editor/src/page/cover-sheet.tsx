@@ -1,3 +1,6 @@
+import { ImageIcon, TrashIcon } from '@phosphor-icons/react'
+import { cn } from 'cn'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { BottomSheet } from '../components/bottom-sheet'
@@ -54,22 +57,61 @@ export function CoverSheet({
           }}
         />
       ) : (
-        <div className="flex flex-col p-2">
-          <MenuRow data-testid="cover-sheet-change" onClick={() => onMode('picker')}>
-            {t('page.changeCover')}
-          </MenuRow>
-          <MenuRow
-            data-testid="cover-sheet-remove"
-            className="text-destructive hover:text-destructive"
-            onClick={() => {
-              onRemove()
-              onClose()
-            }}
-          >
-            {t('page.removeCover')}
-          </MenuRow>
+        // iOS's grouped rows (the native ⋯ sheet's): one card, an icon before each label, hairlines between.
+        <div className="px-4 pb-2">
+          <div className="overflow-hidden rounded-2xl bg-muted">
+            <SheetRow
+              testId="cover-sheet-change"
+              icon={<ImageIcon size={22} />}
+              onClick={() => onMode('picker')}
+            >
+              {t('page.changeCover')}
+            </SheetRow>
+            <SheetRow
+              testId="cover-sheet-remove"
+              icon={<TrashIcon size={22} />}
+              destructive
+              onClick={() => {
+                onRemove()
+                onClose()
+              }}
+            >
+              {t('page.removeCover')}
+            </SheetRow>
+          </div>
         </div>
       )}
     </BottomSheet>
+  )
+}
+
+/** A row of a sheet's grouped card: icon, label; a hairline above every row but the first. */
+function SheetRow({
+  testId,
+  icon,
+  destructive = false,
+  onClick,
+  children
+}: {
+  testId: string
+  icon: ReactNode
+  destructive?: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <MenuRow
+      data-testid={testId}
+      className={cn(
+        'h-13 gap-3.5 rounded-none px-4 text-base hover:bg-accent [&+&]:border-t [&+&]:border-border',
+        destructive && 'text-destructive hover:text-destructive'
+      )}
+      onClick={onClick}
+    >
+      <span className={cn('flex w-6 justify-center', !destructive && 'text-subtle-foreground')}>
+        {icon}
+      </span>
+      {children}
+    </MenuRow>
   )
 }
