@@ -81,6 +81,11 @@ final class Navigator {
     var importDrop: ImportDrop?
     /// Split view (Mac/iPad): the window shows a second pane beside the current tab.
     private(set) var isSplit = false
+    /// Whether this window may split (`SplitPolicy`: the Mac and the larger iPads); set by ContentView. A window that
+    /// can no longer split closes its pane.
+    var splitAllowed = true {
+        didSet { if !splitAllowed && isSplit { closeSplit() } }
+    }
     /// What the second pane shows — a page or a file; nil while it offers a picker.
     private(set) var split: Route?
     /// While split: a page is held over the left side's right edge, so dropping it replaces the right side — which
@@ -193,7 +198,7 @@ final class Navigator {
     /// Opens (or replaces) the pane beside the current tab. The same page can't be on both sides (two editors on one page
     /// would overwrite each other), so asking for the left side's page swaps nothing and shows the picker instead.
     func openInSplit(_ route: Route) {
-        guard route.canSplit else { return }
+        guard splitAllowed, route.canSplit else { return }
         isSplit = true
         isShowingInspector = false
         // The same page may be on both sides (write on the left, read on the right): the editors reload each
@@ -204,6 +209,7 @@ final class Navigator {
 
     /// The split pane with nothing in it yet: it offers recent pages and PDFs to pick from.
     func showSplitPicker() {
+        guard splitAllowed else { return }
         isSplit = true
         // The inspector belongs to the left page but would sit beside the right one: it closes with a split.
         isShowingInspector = false

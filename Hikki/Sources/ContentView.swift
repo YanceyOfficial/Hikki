@@ -159,8 +159,11 @@ struct ContentView: View {
         // The passage selected in the page (the main editor's) rides along to Ask AI as context, as in Notion.
         // It keeps the page it was selected in: a question about another page goes without it.
         .onChange(of: editor.selection) { _, selection in chat.selection = selection }
-        // "Open in Split View" wherever page actions are (sidebar, Home, ⋯): by the window's width, not a column's.
-        .environment(\.splitAvailable, wide)
+        // "Open in Split View" wherever page actions are (sidebar, Home, ⋯): by the window's width, not a column's,
+        // and only where the device has room for two pages (`SplitPolicy`).
+        .environment(\.splitAvailable, splitAllowed)
+        .onAppear { navigator.splitAllowed = splitAllowed }
+        .onChange(of: splitAllowed) { _, allowed in navigator.splitAllowed = allowed }
     }
 
     /// Page history, export and import (PageTransfer.swift): the history sheet, the save panel / exporter and the
@@ -518,8 +521,28 @@ struct ContentView: View {
 
     /// What a page dropped on the left page's right edge does: opens beside it, or replaces the right side.
     private var mainSplitDrop: EditorController.SplitDropMode {
-        wide ? (navigator.isSplit ? .replace : .open) : .off
+        splitAllowed ? (navigator.isSplit ? .replace : .open) : .off
     }
+
+    /// Whether this window may split into two panes: a wide window, on the Mac or a larger iPad (`SplitPolicy`).
+    private var splitAllowed: Bool {
+        #if os(macOS)
+            true
+        #else
+            wide
+                && SplitPolicy.allowed(
+                    isPad: UIDevice.current.userInterfaceIdiom == .pad, screenShortSide: Self.screenShortSide)
+        #endif
+    }
+
+    #if os(iOS)
+        /// The device screen's shorter side, in points (the window may be smaller: Stage Manager, multitasking).
+        private static var screenShortSide: CGFloat {
+            let screen = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.screen }.first
+            guard let bounds = screen?.bounds else { return 0 }
+            return min(bounds.width, bounds.height)
+        }
+    #endif
 
     /// A wide window (Mac, regular-width iPad): tabs and page actions in the window toolbar, the workspace
     /// switcher in the sidebar. iPhone keeps its navigation bar.

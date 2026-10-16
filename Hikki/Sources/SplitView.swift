@@ -310,21 +310,12 @@ enum PageDrop {
 
 /// The right edge of what the left side shows when it isn't a page (Home, Trash, a PDF): a page dropped there opens
 /// in the pane on the right, and while one is over it the right half shows where. (A page's editor has its own edge,
-/// `editor/src/extensions/split-drop.ts`.) Mac and wide iPads only.
+/// `editor/src/extensions/split-drop.ts`.) Mac and the larger iPads only.
 private struct EdgeDrop: ViewModifier {
     let navigator: Navigator
     @State private var showing = false
-    #if os(iOS)
-        @Environment(\.horizontalSizeClass) private var sizeClass
-    #endif
-
-    private var available: Bool {
-        #if os(macOS)
-            true
-        #else
-            sizeClass == .regular
-        #endif
-    }
+    /// Only where the window may split (`SplitPolicy`; ContentView sets it).
+    @Environment(\.splitAvailable) private var available
 
     func body(content: Content) -> some View {
         if available {

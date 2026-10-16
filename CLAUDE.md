@@ -159,7 +159,9 @@ HikkiUITests/                 XCUITest flows
   "inside"), elsewhere at the top level (the sidebar is outlined); ContentView runs the import through
   `Navigator.importDrop` → `AppModel.importFiles(_:parentId:)`. A page row's own drag carries a page link, never a
   file, so the two never mix; iPad drags (typed documents, no file URL) load as a temporary copy.
-- **iPhone is its own layout**, not the Mac's squeezed (prototype: the "Hikki iPhone redesign" canvas): the collapsed
+- **iPhone is its own layout**, not the Mac's squeezed — in every posture but an unfolded iPhone Duo on its side: a
+  phone with a regular width (the Duo unfolded upright, a large iPhone on its side) reads as compact at the root
+  (`PhoneLayout.forcesCompact`, `PhonePosture` in `Hikki/Sources/RootView.swift`) (prototype: the "Hikki iPhone redesign" canvas): the collapsed
   split view's sidebar column is `Hikki/Sources/PhoneHome.swift` (a ☰ · Home top bar, All pages / Trash tiles,
   "Jump back in" cards, Quick create — a blank page, today's note titled with the date, a page from the clipboard
   (`QuickNote`, HikkiCore) — Ask AI suggestions sent with this week's pages (`Navigator.pendingAIQuestion`), This
@@ -390,7 +392,8 @@ HikkiUITests/                 XCUITest flows
   state is re-read on enter/exit/resize/key (restored windows) and logged (category `fullscreen`). DEBUG:
   `HIKKI_DEBUG_FULLSCREEN` forces the layout on in a window, `HIKKI_DEBUG_ENTER_FULLSCREEN` enters full screen 1.5 s
   after launch, `HIKKI_DEBUG_QUIT_AFTER=<s>` quits — own-instance checks.
-- **Split view** (Mac/iPad, `Hikki/Sources/SplitView.swift`): the current tab and a second pane side by side, either
+- **Split view** (Mac and the larger iPads — not iPad mini or a phone: `SplitPolicy`, `Navigator.splitAllowed`;
+  `Hikki/Sources/SplitView.swift`): the current tab and a second pane side by side, either
   holding a page or a PDF (`Navigator.split`, `isSplit`). The pane's page has its own editor (a second web view, made
   on first use and wired like the main one in `ContentView`). Opened from the
   View → Show Split View (⌘\\) (no toolbar button: drag is the way) — an empty pane offers the left page's PDF attachments, PDFs
