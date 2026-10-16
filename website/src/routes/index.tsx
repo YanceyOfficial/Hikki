@@ -5,7 +5,9 @@ import { For } from 'solid-js'
 import { AppStoreButton } from '../components/app-store-button'
 import { AskAI } from '../components/ask-ai'
 import { Footer } from '../components/footer'
+import { Header } from '../components/header'
 import { row } from '../components/row'
+import { Shot } from '../components/shot'
 import { SplitView } from '../components/split-view'
 
 export const Route = createFileRoute('/')({ component: Home })
@@ -23,34 +25,6 @@ function Home() {
       <Together />
       <Footer />
     </main>
-  )
-}
-
-function Header() {
-  return (
-    <header class={`${row} grid-cols-1 md:grid-cols-12`}>
-      <a href="/" class="cell flex items-center gap-3 p-5 md:col-span-3" aria-label="Hikki home">
-        <img src="/icon.png" alt="" width="44" height="44" class="rounded-[10px]" />
-        <img src="/wordmark.svg" alt="Hikki" class="h-11 w-auto" />
-      </a>
-      <nav class="cell flex flex-wrap items-center gap-x-8 gap-y-2 p-5 text-[15px] font-semibold md:col-span-6">
-        <a href="#local-first" class="underline-offset-4 hover:underline">
-          Local-first
-        </a>
-        <a href="#devices" class="underline-offset-4 hover:underline">
-          iPhone, iPad, Mac
-        </a>
-        <a href="#ai" class="underline-offset-4 hover:underline">
-          AI
-        </a>
-        <a href="#features" class="underline-offset-4 hover:underline">
-          Features
-        </a>
-      </nav>
-      <div class="cell flex items-center p-5 md:col-span-3 md:justify-end">
-        <AppStoreButton />
-      </div>
-    </header>
   )
 }
 
@@ -72,17 +46,18 @@ function Hero() {
         </div>
       </div>
       <div class="cell bg-red flex items-end justify-center overflow-hidden px-8 pt-10 lg:col-span-5">
-        <img
-          src="/shots/iphone-page.webp"
+        <Shot
+          name="iphone-page"
           alt="Hikki on iPhone: a page called Japanese, week 3, with furigana above the kanji."
-          width="1206"
-          height="2622"
-          class="shot w-[min(68%,300px)] translate-y-[4px] rounded-t-[36px] border-b-0"
+          width={1206}
+          height={2622}
+          class="w-[min(68%,300px)] translate-y-[4px] rounded-t-[36px] border-b-0"
+          eager
         />
       </div>
       <div class={`${row} grid-cols-[1fr_2fr] lg:col-span-5`}>
         <div class="cell bg-yellow" />
-        <p class="cell bg-blue text-paper p-6 text-[15px] leading-relaxed">
+        <p class="cell bg-blue p-6 text-[15px] leading-relaxed">
           <span lang="ja">筆記</span> (hikki) is Japanese for taking notes. Hikki shows readings
           like that above the kanji in your own pages.
         </p>
@@ -132,7 +107,7 @@ function LocalFirst() {
         <For each={facts}>
           {(fact, index) => (
             <li
-              class={`cell p-6 md:p-8 ${index() === 0 ? 'bg-yellow' : ''} ${index() === 3 ? 'bg-blue text-paper' : ''}`}
+              class={`cell p-6 md:p-8 ${index() === 0 ? 'bg-yellow' : ''} ${index() === 3 ? 'bg-blue' : ''}`}
             >
               <h3 class="expanded text-xl font-[800]">{fact.title}</h3>
               <p class={`mt-3 leading-relaxed ${index() === 3 ? '' : 'text-muted'}`}>{fact.text}</p>
@@ -157,36 +132,36 @@ function Devices() {
         </p>
       </div>
       <figure class="cell m-0 flex flex-col gap-5 p-6 md:p-10 lg:col-span-8">
-        <img
-          src="/shots/mac.webp"
+        <Shot
+          name="mac"
           alt="Hikki on Mac: the page tree in a sidebar, tabs in the toolbar and a page about a product launch."
-          width="2846"
-          height="1802"
-          class="shot w-full rounded-[12px]"
+          width={2846}
+          height={1802}
+          class="w-full rounded-[12px]"
         />
         <figcaption class="text-[15px] leading-relaxed text-muted">
           <strong class="text-ink">Mac.</strong> Native windows, tabs, menus and keyboard shortcuts.
         </figcaption>
       </figure>
       <figure class="cell bg-yellow m-0 flex flex-col items-center justify-end gap-5 p-6 md:p-10 lg:col-span-4">
-        <img
-          src="/shots/iphone-home.webp"
+        <Shot
+          name="iphone-home"
           alt="Hikki on iPhone: the home screen with recent pages and quick ways to start one."
-          width="1206"
-          height="2622"
-          class="shot w-[min(70%,260px)] rounded-[34px]"
+          width={1206}
+          height={2622}
+          class="w-[min(70%,260px)] rounded-[34px]"
         />
         <figcaption class="self-start text-[15px] leading-relaxed">
           <strong>iPhone.</strong> One hand: the page tree in a drawer, actions in a floating bar.
         </figcaption>
       </figure>
-      <figure class="cell bg-blue text-paper m-0 flex flex-col gap-5 p-6 md:p-10 lg:col-span-8">
-        <img
-          src="/shots/ipad.webp"
+      <figure class="cell bg-blue m-0 flex flex-col gap-5 p-6 md:p-10 lg:col-span-8">
+        <Shot
+          name="ipad"
           alt="Hikki on iPad in landscape: a product launch page beside the design notes, in split view."
-          width="2752"
-          height="2064"
-          class="shot w-full rounded-[18px]"
+          width={2752}
+          height={2064}
+          class="w-full rounded-[18px]"
         />
         <figcaption class="text-[15px] leading-relaxed">
           <strong>iPad.</strong> Sidebar, tabs and two pages side by side.
@@ -194,6 +169,13 @@ function Devices() {
       </figure>
       <div class="cell flex flex-col justify-between gap-8 p-8 md:p-10 lg:col-span-4">
         <p class="expanded text-2xl leading-tight font-[800]">The same pages on every device.</p>
+        <Shot
+          name="iphone-launch"
+          alt="The same product launch page on iPhone, with its cover and milestones."
+          width={1206}
+          height={2622}
+          class="mx-auto w-[min(62%,230px)] rounded-[30px]"
+        />
         <p class="leading-relaxed text-muted">
           Put the folder in iCloud Drive and what you write on one shows up on the others. Two
           devices editing the same page keep both versions.
@@ -242,7 +224,7 @@ function Features() {
         text="Every editing session keeps the version before it. Compare them word by word."
       />
       <Feature
-        class="bg-red text-paper md:col-span-2 lg:col-span-4"
+        class="bg-red md:col-span-2 lg:col-span-4"
         title="Comments"
         text="Comment on a passage; the thread travels with the page."
       />
@@ -275,7 +257,7 @@ function Together() {
   return (
     <section class={`${row} grid-cols-1 lg:grid-cols-12`}>
       <div class="cell bg-yellow lg:col-span-1" aria-hidden="true" />
-      <div class="cell bg-blue text-paper p-8 md:p-12 lg:col-span-8">
+      <div class="cell bg-blue p-8 md:p-12 lg:col-span-8">
         <h2 class="expanded text-[clamp(2rem,4vw,3.2rem)] leading-[1.05] font-[850] tracking-[-0.02em]">
           Editing together is on its way.
         </h2>

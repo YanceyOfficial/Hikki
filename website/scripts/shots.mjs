@@ -1,5 +1,5 @@
-// bun run shots <folder>: each capture named in shots.json → public/shots/<name>.webp (cropped, at most `width`
-// wide, compressed). Captures stay out of the repository; the WebP files are what the page loads.
+// bun run shots <folder>: each capture named in shots.json, light and dark → public/shots/<name>[-dark].webp
+// (cropped, at most `width` wide, compressed). Captures stay out of the repository; the WebP files are what the page loads.
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -10,9 +10,15 @@ const folder = process.argv[2]
 if (!folder) throw new Error('usage: bun run shots <folder of captures>')
 const manifest = JSON.parse(readFileSync(join(root, 'shots.json'), 'utf8'))
 
-for (const [name, options] of Object.entries(manifest)) {
-  if (name.startsWith('$')) continue
-  const source = join(folder, `${options.from ?? name}.png`)
+const entries = Object.entries(manifest).filter(([name]) => !name.startsWith('$'))
+// Each name in both appearances: <name> from <from>.png, <name>-dark from <from>-dark.png.
+const jobs = entries.flatMap(([name, options]) => [
+  [name, options, options.from ?? name],
+  [`${name}-dark`, options, `${options.from ?? name}-dark`]
+])
+
+for (const [name, options, from] of jobs) {
+  const source = join(folder, `${from}.png`)
   if (!existsSync(source)) {
     console.warn(`skip ${name}: no ${source}`)
     continue

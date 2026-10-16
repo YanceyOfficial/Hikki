@@ -1,4 +1,5 @@
 import { row } from './row'
+import { Shot } from './shot'
 
 /** Split view: two pages side by side, shown on the Mac. */
 export function SplitView() {
@@ -20,12 +21,12 @@ export function SplitView() {
         </div>
       </div>
       <figure class="cell m-0 flex flex-col gap-5 p-6 md:p-10 lg:col-span-8">
-        <img
-          src="/shots/mac-split.webp"
+        <Shot
+          name="mac-split"
           alt="Hikki on Mac in split view: a page about a trip to Kyoto beside a Japanese lesson with furigana."
-          width="2846"
-          height="1802"
-          class="shot w-full rounded-[12px]"
+          width={2846}
+          height={1802}
+          class="w-full rounded-[12px]"
         />
         <figcaption class="text-[15px] leading-relaxed text-muted">
           <strong class="text-ink">Split view on Mac.</strong> On iPad too.

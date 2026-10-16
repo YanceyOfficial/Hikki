@@ -5,6 +5,7 @@ import { Suspense } from 'solid-js'
 import { HydrationScript } from 'solid-js/web'
 
 import { SITE_URL } from '../site'
+import { THEME_SCRIPT } from '../theme'
 
 import styles from '../styles.css?url'
 
@@ -20,6 +21,7 @@ export const Route = createRootRoute({
       { title },
       { name: 'description', content: description },
       { name: 'theme-color', content: '#000000' },
+      { name: 'color-scheme', content: 'light dark' },
       { property: 'og:title', content: title },
       { property: 'og:description', content: description },
       { property: 'og:url', content: SITE_URL },
@@ -40,6 +42,8 @@ function RootDocument(props: { children: JSX.Element }) {
   return (
     <html lang="en">
       <head>
+        {/* Before anything paints: the stored light/dark choice, so the page never flashes the other one. */}
+        <script innerHTML={THEME_SCRIPT} />
         <HydrationScript />
       </head>
       <body>

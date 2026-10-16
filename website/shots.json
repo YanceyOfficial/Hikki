@@ -1,5 +1,6 @@
 {
-  "$comment": "Screenshots for the page: `bun run shots <folder of captures>` turns <name>.png there into public/shots/<name>.webp. Optional per name: extract (a crop in the capture's pixels, after its orientation is applied) and width (the largest width kept).",
+  "$comment": "Screenshots for the page: `bun run shots <folder of captures>` turns <name>.png there into public/shots/<name>.webp, and <name>-dark.png into <name>-dark.webp. Optional per name: from (another capture), extract (a crop in the capture's pixels, after its orientation is applied) and width (the largest width kept).",
+  "iphone-launch": {},
   "iphone-page": {},
   "iphone-home": {},
   "mac": {},
@@ -8,7 +9,35 @@
   "ipad-ai-chat": {},
   "ipad-ai-panel": {
     "from": "ipad-ai-chat",
-    "extract": { "left": 2040, "top": 1020, "width": 712, "height": 985 }
+    "extract": {
+      "left": 2040,
+      "top": 1020,
+      "width": 712,
+      "height": 985
+    }
   },
-  "ipad-ai-review": { "extract": { "left": 575, "top": 470, "width": 2177, "height": 1380 } }
+  "review-inline": {
+    "extract": {
+      "left": 200,
+      "top": 380,
+      "width": 1800,
+      "height": 520
+    }
+  },
+  "review-diff": {
+    "extract": {
+      "left": 200,
+      "top": 380,
+      "width": 1800,
+      "height": 520
+    }
+  },
+  "review-bubble": {
+    "extract": {
+      "left": 200,
+      "top": 380,
+      "width": 1800,
+      "height": 520
+    }
+  }
 }

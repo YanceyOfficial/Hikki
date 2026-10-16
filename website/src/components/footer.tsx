@@ -8,7 +8,7 @@ export function Footer() {
         Hikki keeps your notes on your devices. © 2026 Hikki.
       </p>
       <div class="cell flex items-center p-6 md:col-span-3 md:justify-end">
-        <img src="/wordmark.svg" alt="Hikki" class="h-6 w-auto" />
+        <img src="/wordmark.svg" alt="Hikki" class="wordmark h-6 w-auto" />
       </div>
     </footer>
   )
