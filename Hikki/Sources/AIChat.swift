@@ -32,6 +32,7 @@ final class AIChat {
         let id = UUID()
         let role: Role
         var text: String
+        let sentAt = Date()
         /// Files sent with a question (shown in its bubble; sent with that turn only).
         var attachments: [ChatAttachment] = []
         var citations: [AICitation] = []
@@ -260,6 +261,13 @@ struct AIChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: Spacing.s5) {
+                    // Notion's: who answers and when the conversation began, over it.
+                    if let first = chat.messages.first {
+                        Text("app:ai.chat.header \(first.sentAt.formatted(date: .omitted, time: .shortened))")
+                            .font(.hk(.xs))
+                            .foregroundStyle(Theme.mutedForeground)
+                            .frame(maxWidth: .infinity)
+                    }
                     ForEach(chat.messages) { message in
                         ChatBubble(message: message, isStreaming: chat.isStreaming && message == chat.messages.last)
                             .id(message.id)
@@ -269,7 +277,6 @@ struct AIChatView: View {
                 .padding(.vertical, Spacing.s3)
             }
             .scrollDismissesKeyboard(.interactively)
-            .defaultScrollAnchor(.bottom)
             .onChange(of: chat.messages.last?.text) {
                 if let id = chat.messages.last?.id { proxy.scrollTo(id, anchor: .bottom) }
             }
@@ -787,11 +794,7 @@ private struct ChatBubble: View {
             .padding(.leading, Spacing.s12)
         case .assistant:
             VStack(alignment: .leading, spacing: Spacing.s2_5) {
-                if !message.text.isEmpty {
-                    Text(AIMarkdown.attributed(message.text))
-                        .font(.hk(.base))
-                        .textSelection(.enabled)
-                }
+                if !message.text.isEmpty { AnswerText(text: message.text) }
                 if isStreaming && (message.text.isEmpty || message.searching != nil) {
                     working
                 }
@@ -816,19 +819,24 @@ private struct ChatBubble: View {
                     }
                 }
                 if !isStreaming && !message.text.isEmpty {
-                    Button {
-                        #if os(iOS)
-                            UIPasteboard.general.string = message.text
-                        #else
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(message.text, forType: .string)
-                        #endif
-                    } label: {
-                        IconLabel("app:ai.copy", icon: .copy).labelStyle(.iconOnly)
+                    HStack(spacing: Spacing.s1) {
+                        Button {
+                            #if os(iOS)
+                                UIPasteboard.general.string = message.text
+                            #else
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(message.text, forType: .string)
+                            #endif
+                        } label: {
+                            IconLabel("app:ai.copy", icon: .copy).labelStyle(.iconOnly)
+                                .foregroundStyle(Theme.mutedForeground)
+                                .frame(width: Size.iconButton + Spacing.s1, height: Size.iconButton + Spacing.s1)
+                        }
+                        .buttonStyle(.plain)
+                        Text(message.sentAt, format: .dateTime.hour().minute())
+                            .font(.hk(.xs))
                             .foregroundStyle(Theme.mutedForeground)
-                            .frame(width: Size.iconButton + Spacing.s1, height: Size.iconButton + Spacing.s1)
                     }
-                    .buttonStyle(.plain)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -838,9 +846,9 @@ private struct ChatBubble: View {
     private var userText: some View {
         Text(verbatim: message.text)
             .font(.hk(.sm))
-            .padding(.horizontal, Spacing.s3_5)
+            .padding(.horizontal, Spacing.s4)
             .padding(.vertical, Spacing.s2_5)
-            .background(Theme.muted, in: .rect(cornerRadius: Radius.xl + Spacing.s2))
+            .background(Theme.muted, in: .capsule)
     }
 
     private var working: some View {
@@ -854,6 +862,42 @@ private struct ChatBubble: View {
         }
         .font(.hk(.sm))
         .foregroundStyle(Theme.mutedForeground)
+    }
+}
+
+/// An answer as Notion draws it: paragraphs apart, list items with their bullet or number hanging.
+private struct AnswerText: View {
+    let text: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.s2) {
+            ForEach(Array(AIMarkdown.blocks(text).enumerated()), id: \.offset) { _, block in
+                switch block.kind {
+                case .paragraph:
+                    line(block.text)
+                case .bullet:
+                    item(marker: "•", block.text)
+                case .numbered(let number):
+                    item(marker: number, block.text)
+                }
+            }
+        }
+        .textSelection(.enabled)
+    }
+
+    private func line(_ text: AttributedString) -> some View {
+        Text(text).font(.hk(.base)).lineSpacing(Spacing.s1).fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func item(marker: String, _ text: AttributedString) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Spacing.s2) {
+            Text(verbatim: marker)  // a list marker, not copy
+                .font(.hk(.base))
+                .foregroundStyle(Theme.mutedForeground)
+                .frame(minWidth: Spacing.s3, alignment: .trailing)
+            line(text)
+        }
+        .padding(.leading, Spacing.s1)
     }
 }
 

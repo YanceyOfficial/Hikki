@@ -222,6 +222,23 @@
         }
       }
     },
+    "app:ai.chat.header %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hikki AI · %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hikki AI · %@"
+          }
+        }
+      }
+    },
     "app:ai.chat.placeholder": {
       "extractionState": "manual",
       "localizations": {
