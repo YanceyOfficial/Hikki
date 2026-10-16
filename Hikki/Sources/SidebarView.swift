@@ -484,7 +484,7 @@ private struct DisclosureChevron: View {
     }
 }
 
-/// A system sidebar row for a fixed destination: Phosphor icon (tinted like system sidebar icons) + title.
+/// A system sidebar row for a fixed destination: an `Icon` (tinted like system sidebar icons) + title.
 private struct NativeSymbolLabel: View {
     let title: LocalizedStringKey
     let icon: Icon

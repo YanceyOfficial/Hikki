@@ -1,4 +1,4 @@
-import { CaretDownIcon, CheckIcon, CopyIcon } from '@phosphor-icons/react'
+import { ArrowDown01Icon, Copy01Icon, Tick02Icon } from '@hugeicons/core-free-icons'
 import { cn } from 'cn'
 import { useEffect, useRef, useState } from 'react'
 import type { Root } from 'react-dom/client'
@@ -11,7 +11,7 @@ import { t } from '../core/i18n'
 import { filterLanguages, findLanguage } from '../extensions/code-languages'
 import { handleListKey } from './command-list'
 import { GlidingHighlight } from './gliding-highlight'
-import { IconProvider } from './icons'
+import { Icon } from './icons'
 
 type Props = {
   language: string
@@ -71,7 +71,7 @@ export function CodeBlockHeader({
             }
           >
             {label}
-            <CaretDownIcon size={10} aria-hidden />
+            <Icon icon={ArrowDown01Icon} size={10} aria-hidden />
           </PopoverTrigger>
           <PopoverContent align="start" className="w-56 gap-0 p-0">
             <LanguageList
@@ -97,7 +97,11 @@ export function CodeBlockHeader({
           void navigator.clipboard?.writeText(getText()).then(() => setCopied(true))
         }}
       >
-        {copied ? <CheckIcon size={12} aria-hidden /> : <CopyIcon size={12} aria-hidden />}
+        {copied ? (
+          <Icon icon={Tick02Icon} size={12} aria-hidden />
+        ) : (
+          <Icon icon={Copy01Icon} size={12} aria-hidden />
+        )}
         {copied ? t('code.copied') : t('code.copy')}
       </Button>
     </div>
@@ -159,7 +163,7 @@ function LanguageList({ current, onPick }: { current: string; onPick: (id: strin
             onClick={() => onPick(language.id)}
           >
             {languageLabel(language.id)}
-            {language.id === current && <CheckIcon size={14} aria-hidden />}
+            {language.id === current && <Icon icon={Tick02Icon} size={14} aria-hidden />}
           </button>
         ))}
       </div>
@@ -169,9 +173,5 @@ function LanguageList({ current, onPick }: { current: string; onPick: (id: strin
 
 /** Draws the header into the code block node view's React root (the extension holds no JSX). */
 export function renderCodeBlockHeader(root: Root, props: Props): void {
-  root.render(
-    <IconProvider>
-      <CodeBlockHeader {...props} />
-    </IconProvider>
-  )
+  root.render(<CodeBlockHeader {...props} />)
 }

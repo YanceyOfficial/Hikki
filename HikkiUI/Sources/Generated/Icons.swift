@@ -3,8 +3,8 @@
 
 import SwiftUI
 
-/// The native shell's icons: SF Symbols where design/icons.json names one, else the bundled Phosphor asset
-/// (the web editor uses the Phosphor names via @phosphor-icons/react).
+/// The native shell's icons: SF Symbols where design/icons.json names one, else the bundled asset drawn from
+/// the icon's Hugeicons outline (the web editor draws Hugeicons too, through @hugeicons/react).
 public nonisolated enum Icon: String, CaseIterable, Sendable {
     case clipboardText = "clipboard-text"
     case warningCircle = "warning-circle"

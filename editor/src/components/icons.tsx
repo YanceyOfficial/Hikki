@@ -1,26 +1,31 @@
-import { IconContext } from '@phosphor-icons/react'
-import type { ReactNode } from 'react'
+import { HugeiconsIcon, type HugeiconsIconProps, type IconSvgElement } from '@hugeicons/react'
+
+import {
+  ICON_BOLD_STROKE_WIDTH,
+  ICON_STROKE_WIDTH,
+  iconElements,
+  type IconWeight
+} from '../lib/icon-svg'
+
+export type { IconSvgElement }
 
 /**
- * Phosphor weight and extra outline stroke (256-grid units) for every icon in the editor. Mirrors `baseWeight`
- * and `strokeBoost` in design/icons.json (the native side's source) so both sides draw the same line —
- * test/icons.test.ts fails when they drift. Phosphor has no weight between regular and bold; the stroke fills
- * that gap.
+ * Every editor icon: a Hugeicons outline (`@hugeicons/core-free-icons`, imported by its `…Icon` name) at the
+ * editor's stroke (`ICON_STROKE_WIDTH`, mirrored from design/icons.json). Sized like text (1em) unless a
+ * `size` or a `size-*` class says otherwise; `weight` thickens an active toggle or fills the shape.
  */
-export const ICON_WEIGHT = 'regular' as const
-export const ICON_STROKE_BOOST = 4
-
-export function IconProvider({ children }: { children: ReactNode }) {
+export function Icon({
+  icon,
+  weight = 'regular',
+  size = '1em',
+  ...props
+}: Omit<HugeiconsIconProps, 'strokeWidth' | 'altIcon' | 'showAlt'> & { weight?: IconWeight }) {
   return (
-    <IconContext.Provider
-      value={{
-        weight: ICON_WEIGHT,
-        stroke: 'currentColor',
-        strokeWidth: ICON_STROKE_BOOST,
-        strokeLinejoin: 'round'
-      }}
-    >
-      {children}
-    </IconContext.Provider>
+    <HugeiconsIcon
+      icon={iconElements(icon, weight)}
+      size={size}
+      strokeWidth={weight === 'bold' ? ICON_BOLD_STROKE_WIDTH : ICON_STROKE_WIDTH}
+      {...props}
+    />
   )
 }

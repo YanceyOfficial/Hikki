@@ -34,7 +34,10 @@ These rules are mandatory. Automated ones are noted.
   then oxfmt). Prefer a shadcn component over a hand-rolled one;
   editor-specific pieces live in `editor/src/components/`. Fields, buttons, toggles, tooltips and popovers are always the shadcn
   components (`Input`, `InputGroup`, `Textarea`, `Button`, `Toggle`, `Kbd`…) restyled with classes — never a bare
-  `<input>` / `<button>`; Phosphor icons are imported by their `…Icon` names. Files under `editor/src` are
+  `<input>` / `<button>`; icons are Hugeicons (`@hugeicons/core-free-icons`, imported by their `…Icon` names) drawn
+  through `Icon` (`editor/src/components/icons.tsx`: the shared stroke, `weight` bold / fill) — plain DOM gets the
+  same markup from `iconSvg` (`editor/src/lib/icon-svg.ts`); shadcn's generated components keep their
+  `HugeiconsIcon strokeWidth={2}`. Files under `editor/src` are
   kebab-case (`editor/src/components/find-panel.tsx`; the component inside stays PascalCase), and a folder holds either
   `.tsx` or `.ts`, never both: React lives in `editor/src/components/` and `editor/src/page/`; `editor/src/core/`
   (bridge, protocol, editor setup, catalogs), `editor/src/extensions/`, `editor/src/lib/` and `editor/src/hooks/` are
@@ -44,7 +47,9 @@ These rules are mandatory. Automated ones are noted.
   `from 'cn'` as the generated components do (`editor/src/lib/utils.ts` is the one-line re-export `shadcn init` writes).
 - **Icons go through one list** (`design/icons.json`, `make icons`). The native shell draws SF Symbols (each icon's
   `"sf"` name; the generated `Icon` enum, `IconView` / `IconLabel`, `Icon.glyph` for system-sized spots), falling
-  back to the bundled Phosphor asset where there is no symbol; the web editor uses `@phosphor-icons/react`. No raw
+  back to an asset drawn from the icon's `"hugeicons"` outline where there is no symbol (`make icons` writes assets
+  only for those); the web editor draws Hugeicons at the manifest's `strokeWidth` (checked by
+  `editor/test/icons.test.ts`). No raw
   `Image(systemName:)` / `systemImage:` — _enforced by `make lint-design`_.
 - **Keyboard shortcuts come from one registry.** `design/shortcuts.json` → `make shortcuts` generates
   `Hikki/Sources/Generated/Shortcuts.swift` (`Shortcut.x.keyboardShortcut` / `.display`) and
@@ -135,7 +140,7 @@ editor/src/components/        editor UI (.tsx): menus, panels, the floating laye
 editor/src/components/ui/     shadcn components (generated via `bun run ui:add`)
 editor/src/page/              page header, cover picker, outline (.tsx)
 editor/src/hooks/             React hooks (useEditorSnapshot)
-editor/src/lib/               data helpers: cover catalog, Unsplash client, emoji data; shadcn's utils re-export
+editor/src/lib/               data helpers: cover catalog, Unsplash client, emoji data, icon markup; shadcn's utils re-export
 editor/test/                  vitest
 bff/                          backend-for-frontend (Hono, Vercel): Unsplash proxy, YouTube embed shim; tests with `bun test`
 HikkiUITests/                 XCUITest flows

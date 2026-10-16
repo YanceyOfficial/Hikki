@@ -1,13 +1,13 @@
 import {
-  ArrowsClockwiseIcon,
-  CaretRightIcon,
-  CheckIcon,
-  CopyIcon,
-  LinkSimpleIcon,
-  PaintBrushIcon,
-  SparkleIcon,
-  TrashIcon
-} from '@phosphor-icons/react'
+  ArrowRight01Icon,
+  Copy01Icon,
+  Delete02Icon,
+  Link01Icon,
+  PaintBrush01Icon,
+  RepeatIcon,
+  SparklesIcon,
+  Tick02Icon
+} from '@hugeicons/core-free-icons'
 import type { Editor } from '@tiptap/core'
 import { TextSelection } from '@tiptap/pm/state'
 import { cn } from 'cn'
@@ -32,7 +32,7 @@ import { blockLabel, copyLink } from '../extensions/page-links'
 import { AIPanel } from './ai-panel'
 import { FloatingLayer, usePresence } from './floating'
 import { GlidingHighlight } from './gliding-highlight'
-import { IconProvider } from './icons'
+import { Icon } from './icons'
 
 const TURN_INTO = BLOCK_TYPES.filter((b) => b.turnInto)
 
@@ -59,12 +59,7 @@ export function openBlockMenu(editor: Editor, unit: BlockUnit, anchor: DOMRect):
     if (open?.layer === layer) open = null
   }
   open = { layer, close }
-  layer.render(
-    <IconProvider>
-      <BlockMenu editor={editor} unit={unit} onClose={close} />
-    </IconProvider>,
-    () => anchor
-  )
+  layer.render(<BlockMenu editor={editor} unit={unit} onClose={close} />, () => anchor)
 }
 
 type Submenu = 'ai' | 'turnInto' | 'color'
@@ -142,7 +137,7 @@ function BlockMenu({
           {
             id: 'ai',
             label: t('ai.menu'),
-            icon: <SparkleIcon size={18} />,
+            icon: <Icon icon={SparklesIcon} size={18} />,
             submenu: 'ai' as const
           }
         ]
@@ -150,7 +145,7 @@ function BlockMenu({
     {
       id: 'turnInto',
       label: t('blockMenu.turnInto'),
-      icon: <ArrowsClockwiseIcon size={18} />,
+      icon: <Icon icon={RepeatIcon} size={18} />,
       submenu: 'turnInto'
     },
     ...(colorable
@@ -158,7 +153,7 @@ function BlockMenu({
           {
             id: 'color',
             label: t('blockMenu.color'),
-            icon: <PaintBrushIcon size={18} />,
+            icon: <Icon icon={PaintBrush01Icon} size={18} />,
             submenu: 'color' as const
           }
         ]
@@ -168,7 +163,7 @@ function BlockMenu({
           {
             id: 'copyLink',
             label: t('blockMenu.copyLink'),
-            icon: <LinkSimpleIcon size={18} />,
+            icon: <Icon icon={Link01Icon} size={18} />,
             // A ready hyperlink (the block's text) plus the URL: pasting it lands as a link.
             run: act(() => void copyLink(link.href, blockLabel(unit.node) ?? link.pageLabel))
           }
@@ -177,14 +172,14 @@ function BlockMenu({
     {
       id: 'duplicate',
       label: t('blockMenu.duplicate'),
-      icon: <CopyIcon size={18} />,
+      icon: <Icon icon={Copy01Icon} size={18} />,
       keys: shortcutLabel('duplicateBlock'),
       run: act(() => editor.view.dispatch(duplicateUnit(editor.state, unit)))
     },
     {
       id: 'delete',
       label: t('blockMenu.delete'),
-      icon: <TrashIcon size={18} />,
+      icon: <Icon icon={Delete02Icon} size={18} />,
       keys: 'Del',
       destructive: true,
       run: act(() => editor.view.dispatch(deleteUnit(editor.state, unit)))
@@ -198,7 +193,7 @@ function BlockMenu({
     const turnInto = TURN_INTO.map((block) => ({
       id: `turn-${block.id}`,
       label: `${t('blockMenu.turnInto')} › ${block.label()}`,
-      icon: <block.icon size={18} />,
+      icon: <Icon icon={block.icon} size={18} />,
       run: act(() => turnUnitInto(editor, unit, block.id))
     }))
     return [...items.filter((i) => !i.submenu), ...turnInto].filter((i) =>
@@ -289,7 +284,7 @@ function BlockMenu({
               </span>
               <span className="flex-1 truncate">{item.label}</span>
               {item.keys && <span className="text-xs text-placeholder">{item.keys}</span>}
-              {item.submenu && <CaretRightIcon size={14} aria-hidden />}
+              {item.submenu && <Icon icon={ArrowRight01Icon} size={14} aria-hidden />}
             </button>
           ))}
         </div>
@@ -389,9 +384,9 @@ function TurnIntoList({
             onDone()
           }}
         >
-          <block.icon size={18} className="text-subtle-foreground" aria-hidden />
+          <Icon icon={block.icon} size={18} className="text-subtle-foreground" aria-hidden />
           <span className="flex-1 truncate">{block.label()}</span>
-          {block.id === current && <CheckIcon size={14} aria-hidden />}
+          {block.id === current && <Icon icon={Tick02Icon} size={14} aria-hidden />}
         </button>
       ))}
     </>
@@ -419,7 +414,7 @@ function ColorRow({
     >
       {children}
       <span className="flex-1 truncate">{label}</span>
-      {checked && <CheckIcon size={14} aria-hidden />}
+      {checked && <Icon icon={Tick02Icon} size={14} aria-hidden />}
     </button>
   )
 }

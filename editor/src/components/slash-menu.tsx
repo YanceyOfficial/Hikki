@@ -6,6 +6,7 @@ import { t } from '../core/i18n'
 import { BlockPreview } from './block-preview'
 import type { FloatingAnchor, FloatingLayer } from './floating'
 import { GlidingHighlight } from './gliding-highlight'
+import { Icon } from './icons'
 
 type Props = {
   items: BlockType[]
@@ -70,7 +71,6 @@ export function SlashMenu({ items, query, selectedIndex, onSelect, onHover, onCl
   const row = (item: BlockType) => {
     index += 1
     const i = index
-    const Icon = item.icon
     return (
       <button
         key={item.id}
@@ -85,7 +85,7 @@ export function SlashMenu({ items, query, selectedIndex, onSelect, onHover, onCl
         onMouseMove={() => i !== selectedIndex && onHover(i)}
         onClick={() => onSelect(i)}
       >
-        <Icon size={18} className="flex-none text-subtle-foreground" aria-hidden />
+        <Icon icon={item.icon} size={18} className="flex-none text-subtle-foreground" aria-hidden />
         <span className="min-w-0 flex-1 truncate text-foreground">{item.label()}</span>
         {item.shortcut && (
           <span className="flex-none font-mono text-xs text-placeholder">{item.shortcut}</span>

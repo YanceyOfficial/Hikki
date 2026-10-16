@@ -8,7 +8,6 @@ import { t } from '../core/i18n'
 import { DEFAULT_CALLOUT_ICON } from '../extensions/callout'
 import { colorLabel, PALETTE, type PaletteColor } from '../extensions/colors'
 import { EmojiPickerPanel } from './emoji-picker-panel'
-import { IconProvider } from './icons'
 
 type Props = {
   icon: string
@@ -71,9 +70,5 @@ export function CalloutIcon({ icon, color, editable, onIcon, onColor }: Props) {
 
 /** Draws the icon into the callout node view's React root (the extension holds no JSX). */
 export function renderCalloutIcon(root: Root, props: Props): void {
-  root.render(
-    <IconProvider>
-      <CalloutIcon {...props} />
-    </IconProvider>
-  )
+  root.render(<CalloutIcon {...props} />)
 }
