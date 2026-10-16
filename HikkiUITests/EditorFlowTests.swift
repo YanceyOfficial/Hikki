@@ -923,6 +923,27 @@ final class EditorFlowTests: XCTestCase {
         attachScreenshot(app, "split-typing")
     }
 
+    /// Opening split view keeps the left page on screen: the left side was built anew as the window split, and the
+    /// window's one web view went with the old one (a blank left side, its editor gone from the screen).
+    func testTheLeftPageStaysWhenTheWindowSplits() throws {
+        continueAfterFailure = false
+        let app = launch(environment: [
+            "HIKKI_DEMO_PAGES": "1", "HIKKI_DEBUG_NAV": "demo-46ffce8", "HIKKI_OPEN_SPLIT": "demo-dba8e9bf",
+        ])
+        guard app.buttons["nav-home"].waitForExistence(timeout: 10) else {
+            throw XCTSkip("needs a wide window — run on iPad or Mac")
+        }
+        XCTAssertTrue(app.webViews.element(boundBy: 1).waitForExistence(timeout: 20), "no second editor in the pane")
+        sleep(3)
+        // The left page's own words ("雨が降りそうです。"), on screen in the window's left half.
+        let middle = app.windows.firstMatch.frame.midX
+        let words = app.webViews.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "降りそう"))
+            .allElementsBoundByIndex
+            .filter { $0.isHittable && $0.frame.maxX <= middle }
+        XCTAssertFalse(words.isEmpty, "the left page's text is on screen")
+        attachScreenshot(app, "split-left-page")
+    }
+
     /// iPad / Mac: split view puts a second page beside the first, each in its own editor; the pane closes again.
     func testSplitViewShowsTwoPages() throws {
         continueAfterFailure = false

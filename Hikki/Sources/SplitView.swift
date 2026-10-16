@@ -18,22 +18,25 @@ struct SplitDetail<Leading: View>: View {
     @State private var dragStart: Double?
 
     var body: some View {
-        if navigator.isSplit {
-            GeometryReader { proxy in
-                let width = proxy.size.width
-                // The sides share what the divider leaves (half and half is the same width on each side).
-                let left = SplitGeometry.leftWidth(
-                    total: width, fraction: fraction, grip: Size.splitGrip, minimum: Size.splitMin)
-                HStack(spacing: Spacing.s0) {
-                    leading.modifier(EdgeDrop(navigator: navigator)).frame(width: left)
+        // One structure split or not, so the left side keeps its identity: built anew, it made its editor view again
+        // around the window's one web view, and taking the old view away took the web view with it (a blank left
+        // side as the window split).
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            // The sides share what the divider leaves (half and half is the same width on each side).
+            let left =
+                navigator.isSplit
+                ? SplitGeometry.leftWidth(total: width, fraction: fraction, grip: Size.splitGrip, minimum: Size.splitMin)
+                : width
+            HStack(spacing: Spacing.s0) {
+                leading.modifier(EdgeDrop(navigator: navigator)).frame(width: left)
+                if navigator.isSplit {
                     divider(width: width)
                     SplitPane(navigator: navigator, editor: splitEditor)
                         .frame(maxWidth: .infinity)
+                        .transition(.opacity)
                 }
             }
-            .transition(.opacity)
-        } else {
-            leading.modifier(EdgeDrop(navigator: navigator))
         }
     }
 
