@@ -438,7 +438,7 @@ function CommentSheet({
         data-testid="comment-sheet"
         // Its content's height: the Drawer pins the height it first measured (for stacking nested drawers), which
         // would clip a reply added later or the room kept for the native bar.
-        className="rounded-sheet pt-1 shadow-popover [--drawer-content-height:auto] [--drawer-inset:--spacing(2)] data-[swipe-direction=down]:rounded-sheet"
+        className="rounded-t-sheet pt-1 [--drawer-content-height:auto] data-[swipe-direction=down]:rounded-t-sheet"
         style={
           {
             bottom: keyboard,

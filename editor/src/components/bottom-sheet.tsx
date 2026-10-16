@@ -38,8 +38,9 @@ export function BottomSheet({
       <DrawerContent
         data-testid={testId}
         finalFocus={false}
-        // iOS's own sheet: floating a little in from the screen's edges, its corners rounded like the screen's.
-        className="rounded-sheet pt-1 shadow-popover [--drawer-content-height:auto] [--drawer-inset:--spacing(2)] data-[swipe-direction=down]:rounded-sheet"
+        // iOS's own sheet: docked to the bottom edge (a device's rounded screen corners cut a floating one), its top
+        // corners rounded large.
+        className="rounded-t-sheet pt-1 [--drawer-content-height:auto] data-[swipe-direction=down]:rounded-t-sheet"
         style={
           {
             bottom: keyboard,

@@ -15,6 +15,10 @@ struct ContentView: View {
     #endif
     /// One editor (and one WKWebView) per window, reused across pages and tabs; the split pane's second one.
     @State private var editors = WindowEditors()
+    #if os(iOS)
+        /// The system's vertical bar (an iPhone Duo), if any: page sheets hide it while open.
+        @Environment(\.verticalBarEdge) private var verticalBar
+    #endif
     /// The window's width, kept current as it resizes (an iPhone Duo folding or unfolding, Stage Manager): split view
     /// follows it.
     @State private var windowWidth: CGFloat = 0
@@ -109,9 +113,9 @@ struct ContentView: View {
             #endif
             .toolbar { if wide { NativeDetailToolbar(navigator: navigator, editor: editor) } }
             #if os(iOS)
-                // A bottom sheet of the page's is open: the bars step aside (an iPhone Duo's vertical bar sits over
-                // the sheet's side otherwise), back when it closes.
-                .toolbarVisibility(sheetOpen ? .hidden : .automatic, for: .navigationBar)
+                // A bottom sheet of the page's is open on an iPhone Duo: its vertical bar steps aside (it sits over the
+                // sheet's side otherwise), back when the sheet closes. Elsewhere the bars stay.
+                .toolbarVisibility(sheetOpen && verticalBar != nil ? .hidden : .automatic, for: .navigationBar)
                 .animation(Motion.easeOut(), value: sheetOpen)
             #endif
             .sheet(

@@ -3,8 +3,9 @@ import { cn } from 'cn'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { Button } from '@/components/ui/button'
+
 import { BottomSheet } from '../components/bottom-sheet'
-import { MenuRow } from '../components/menu-row'
 import { CoverPicker } from './cover-picker'
 
 /** What the cover's sheet shows: its actions (a long press on the cover), or the picker (Change cover). */
@@ -85,7 +86,10 @@ export function CoverSheet({
   )
 }
 
-/** A row of a sheet's grouped card: icon, label; a hairline above every row but the first. */
+/**
+ * A row of a sheet's grouped card, as iOS draws one: 56 pt tall, icon then label, a hairline above every row but the
+ * first that starts after the icon. Plain rows (no border, no press shrink, no hover fill — the card is the surface).
+ */
 function SheetRow({
   testId,
   icon,
@@ -100,11 +104,14 @@ function SheetRow({
   children: ReactNode
 }) {
   return (
-    <MenuRow
+    <Button
+      variant="ghost"
       data-testid={testId}
       className={cn(
-        'h-13 gap-3.5 rounded-none px-4 text-base hover:bg-accent [&+&]:border-t [&+&]:border-border',
-        destructive && 'text-destructive hover:text-destructive'
+        'group/row relative h-14 w-full cursor-pointer justify-start gap-3.5 rounded-none border-0 px-4 text-left text-base font-normal hover:bg-transparent active:not-aria-[haspopup]:scale-100 active:bg-foreground/5 dark:hover:bg-transparent',
+        // The hairline: above each row but the first, from the label's start to the card's edge.
+        '[&+&]:before:absolute [&+&]:before:top-0 [&+&]:before:right-0 [&+&]:before:left-14 [&+&]:before:h-px [&+&]:before:bg-border',
+        destructive ? 'text-destructive hover:text-destructive' : 'text-foreground'
       )}
       onClick={onClick}
     >
@@ -112,6 +119,6 @@ function SheetRow({
         {icon}
       </span>
       {children}
-    </MenuRow>
+    </Button>
   )
 }
