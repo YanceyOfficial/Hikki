@@ -15,6 +15,9 @@ struct ContentView: View {
     #endif
     /// One editor (and one WKWebView) per window, reused across pages and tabs; the split pane's second one.
     @State private var editors = WindowEditors()
+    /// The window's width, kept current as it resizes (an iPhone Duo folding or unfolding, Stage Manager): split view
+    /// follows it.
+    @State private var windowWidth: CGFloat = 0
     private var editor: EditorController { editors.main }
     private var splitEditor: EditorController? { editors.split }
     /// Where each tab's page was scrolled when another tab took over (session only), and the tab the editor shows.
@@ -54,15 +57,15 @@ struct ContentView: View {
     }
 
     #if os(iOS)
-        /// ⌘K / the search button: full screen on iPhone, a sheet on iPad.
+        /// ⌘K / the search button: full screen in a compact window (a phone, a folded iPhone Duo), a sheet otherwise.
         private var phoneSearch: Binding<Bool> {
             Binding(
-                get: { navigator.isSearching && UIDevice.current.userInterfaceIdiom == .phone },
+                get: { navigator.isSearching && sizeClass == .compact },
                 set: { if !$0 { navigator.isSearching = false } })
         }
         private var padSearch: Binding<Bool> {
             Binding(
-                get: { navigator.isSearching && UIDevice.current.userInterfaceIdiom != .phone },
+                get: { navigator.isSearching && sizeClass != .compact },
                 set: { if !$0 { navigator.isSearching = false } })
         }
     #endif
@@ -160,7 +163,12 @@ struct ContentView: View {
         // It keeps the page it was selected in: a question about another page goes without it.
         .onChange(of: editor.selection) { _, selection in chat.selection = selection }
         // "Open in Split View" wherever page actions are (sidebar, Home, ⋯): by the window's width, not a column's,
-        // and only where the device has room for two pages (`SplitPolicy`).
+        // and only where it has room for two pages (`SplitPolicy`).
+        .onGeometryChange(for: CGFloat.self) {
+            $0.size.width
+        } action: {
+            windowWidth = $0
+        }
         .environment(\.splitAvailable, splitAllowed)
         .onAppear { navigator.splitAllowed = splitAllowed }
         .onChange(of: splitAllowed) { _, allowed in navigator.splitAllowed = allowed }
@@ -535,25 +543,14 @@ struct ContentView: View {
         splitAllowed ? (navigator.isSplit ? .replace : .open) : .off
     }
 
-    /// Whether this window may split into two panes: a wide window, on the Mac or a larger iPad (`SplitPolicy`).
+    /// Whether this window may split into two panes: wide enough for two pages (`SplitPolicy`), on any device.
     private var splitAllowed: Bool {
         #if os(macOS)
             true
         #else
-            wide
-                && SplitPolicy.allowed(
-                    isPad: UIDevice.current.userInterfaceIdiom == .pad, screenShortSide: Self.screenShortSide)
+            wide && SplitPolicy.allowed(windowWidth: windowWidth)
         #endif
     }
-
-    #if os(iOS)
-        /// The device screen's shorter side, in points (the window may be smaller: Stage Manager, multitasking).
-        private static var screenShortSide: CGFloat {
-            let screen = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.screen }.first
-            guard let bounds = screen?.bounds else { return 0 }
-            return min(bounds.width, bounds.height)
-        }
-    #endif
 
     /// A wide window (Mac, regular-width iPad): tabs and page actions in the window toolbar, the workspace
     /// switcher in the sidebar. iPhone keeps its navigation bar.

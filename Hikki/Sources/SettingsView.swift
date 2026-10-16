@@ -4,6 +4,10 @@ import HikkiUI
 import SwiftUI
 import UniformTypeIdentifiers
 
+#if os(iOS)
+    import GameController
+#endif
+
 /// Device-level appearance choice (Settings → Appearance → Theme), applied at the root of each window.
 enum AppearancePreference: String, CaseIterable, Identifiable {
     case system, light, dark
@@ -84,10 +88,11 @@ enum SettingsPage: String, CaseIterable, Identifiable {
         }
     }
 
-    /// The pages this device shows: an iPhone has no keyboard to rebind, so no Shortcuts.
+    /// The pages shown: Shortcuts only with a keyboard to press them on (a Mac; an iPad or iPhone with a hardware
+    /// keyboard connected) — by the keyboard, not the device type.
     static var visible: [SettingsPage] {
         #if os(iOS)
-            if UIDevice.current.userInterfaceIdiom == .phone { return allCases.filter { $0 != .shortcuts } }
+            if GCKeyboard.coalesced == nil { return allCases.filter { $0 != .shortcuts } }
         #endif
         return allCases
     }

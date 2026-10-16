@@ -174,9 +174,9 @@ HikkiUITests/                 XCUITest flows
   "inside"), elsewhere at the top level (the sidebar is outlined); ContentView runs the import through
   `Navigator.importDrop` → `AppModel.importFiles(_:parentId:)`. A page row's own drag carries a page link, never a
   file, so the two never mix; iPad drags (typed documents, no file URL) load as a temporary copy.
-- **iPhone is its own layout**, not the Mac's squeezed — in every posture but an unfolded iPhone Duo on its side: a
-  phone with a regular width (the Duo unfolded upright, a large iPhone on its side) reads as compact at the root
-  (`PhoneLayout.forcesCompact`, `PhonePosture` in `Hikki/Sources/RootView.swift`); its top bars stay 24 pt clear of the screen's top edge
+- **iPhone is its own layout**, not the Mac's squeezed — chosen by the window's width, never the device (Apple's
+  "Preparing your app for iPhone Duo": no `userInterfaceIdiom`, orientation or screen checks): a compact width gets the
+  iPhone layout, a regular one the iPad's (an unfolded iPhone Duo, a large iPhone on its side); its top bars stay 24 pt clear of the screen's top edge
   (`clearOfTopEdge`: the Duo shows its status bar beside the camera, so its top inset is a few points). Where the system
   has a vertical bar (iOS 27.1 `toolbarVerticalEdge`, read once in `RootView` as `verticalBarEdge`: the Duo's strip
   beside the camera), the floating bar's buttons and Home's ☰ are toolbar items the system puts there instead, and the
@@ -197,7 +197,7 @@ HikkiUITests/                 XCUITest flows
   (hidden while the keyboard is up); the page's ⋯ is a sheet (`Hikki/Sources/PhonePageActions.swift`: quick tiles,
   history, export, move, facts). All pages groups by day (`RecencyGroup`, HikkiCore). Ask AI is a native chat sheet
   (`Hikki/Sources/AIChat.swift`: the open page's text as context, model menu, web search, `AIPrompts.chat`; answers render through `AIMarkdown`, which keeps only http(s) links). Left
-  out on iPhone: tabs, split view, the inspector panel, Home's table, Shortcuts settings. Search is a full-screen cover
+  out of the compact layout: tabs, split view, the inspector panel, Home's table. Search is a full-screen cover
   (the field fixed at the top, results filling the rest). A page runs to the top of the screen: the scroll view has no
   top inset and the editor makes that room itself (`setInsets` with `bleed`, `--hk-bleed-top`), so a cover fills it
   behind the status bar and the glass buttons (`.hk-cover`) and a page without one starts below them.
@@ -413,7 +413,7 @@ HikkiUITests/                 XCUITest flows
   state is re-read on enter/exit/resize/key (restored windows) and logged (category `fullscreen`). DEBUG:
   `HIKKI_DEBUG_FULLSCREEN` forces the layout on in a window, `HIKKI_DEBUG_ENTER_FULLSCREEN` enters full screen 1.5 s
   after launch, `HIKKI_DEBUG_QUIT_AFTER=<s>` quits — own-instance checks.
-- **Split view** (Mac and the larger iPads — not iPad mini or a phone: `SplitPolicy`, `Navigator.splitAllowed`;
+- **Split view** (a window at least 800 pt wide, on any device — `SplitPolicy`, `Navigator.splitAllowed`;
   `Hikki/Sources/SplitView.swift`): the current tab and a second pane side by side, either
   holding a page or a PDF (`Navigator.split`, `isSplit`). The pane's page has its own editor (a second web view, made
   on first use and wired like the main one in `ContentView`). Opened from the
@@ -551,7 +551,7 @@ HikkiUITests/                 XCUITest flows
   `AccentColor.colorset` from it, so system menus, selection and controls take the tone (where the user's system
   accent is "Multicolor" — a chosen system accent overrides every app's).
 - **Settings** (`Hikki/Sources/SettingsView.swift`): pages (`SettingsPage`: General — appearance, language, editor,
-  menu bar — then Workspace, Shortcuts, Search, AI, About; iPhone has no Shortcuts) as the classic toolbar tabs of the
+  menu bar — then Workspace, Shortcuts, Search, AI, About; Shortcuts only with a keyboard: `GCKeyboard`) as the classic toolbar tabs of the
   Mac Settings window and a hub list on iPhone/iPad; each page is a grouped form of sections, the last page opened is
   remembered.
   `HIKKI_OPEN_SETTINGS=<page>` opens that page (screenshots). Optional integrations get pages here with a

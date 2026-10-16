@@ -10,6 +10,9 @@ import SwiftUI
 /// Mac/iPad show it as a centered overlay card; iPhone as a sheet.
 struct SearchPalette: View {
     @Environment(AppModel.self) private var model
+    #if os(iOS)
+        @Environment(\.horizontalSizeClass) private var sizeClass
+    #endif
     let navigator: Navigator
     let dismiss: () -> Void
     @State private var query = ""
@@ -201,10 +204,10 @@ struct SearchPalette: View {
     /// iPhone: the larger, filled chips of the phone's search sheet.
     private var phoneChips: Bool { phone }
 
-    /// iPhone: search fills the screen.
+    /// A compact window (a phone, a folded iPhone Duo): search fills it.
     private var phone: Bool {
         #if os(iOS)
-            UIDevice.current.userInterfaceIdiom == .phone
+            sizeClass == .compact
         #else
             false
         #endif
