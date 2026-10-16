@@ -103,6 +103,7 @@
             }
             .padding(.horizontal, Spacing.s4)
             .padding(.vertical, Spacing.s2)
+            .clearOfTopEdge()
             .background(Theme.background)
         }
 
@@ -407,6 +408,27 @@
             configuration.label
                 .scaleEffect(configuration.isPressed ? 0.97 : 1)
                 .animation(Motion.easeOut(Motion.popOut), value: configuration.isPressed)
+        }
+    }
+    extension View {
+        /// Keeps a top bar clear of the screen's top edge where the safe area doesn't: an iPhone Duo shows its status
+        /// bar in the strip beside the camera, so its top inset is a few points and a button there sits in the
+        /// system's swipe-down zone (a finger's tap goes to the system first). Elsewhere the status bar keeps it lower.
+        func clearOfTopEdge() -> some View { modifier(TopEdgeClearance()) }
+    }
+
+    private struct TopEdgeClearance: ViewModifier {
+        /// The bar's distance from the window's top (measured outside the padding it gets, so the two don't loop).
+        @State private var top: CGFloat = .infinity
+
+        func body(content: Content) -> some View {
+            content
+                .padding(.top, max(0, Spacing.s6 - top))
+                .onGeometryChange(for: CGFloat.self) {
+                    $0.frame(in: .global).minY
+                } action: {
+                    top = $0
+                }
         }
     }
 #endif

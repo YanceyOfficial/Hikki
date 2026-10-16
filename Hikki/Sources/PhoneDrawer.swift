@@ -86,6 +86,7 @@
             .padding(.horizontal, Spacing.s4)
             .padding(.top, Spacing.s3)
             .padding(.bottom, Spacing.s2)
+            .clearOfTopEdge()
         }
 
         private func section(_ title: LocalizedStringKey, @ViewBuilder rows: () -> some View) -> some View {

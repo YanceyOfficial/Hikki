@@ -161,7 +161,8 @@ HikkiUITests/                 XCUITest flows
   file, so the two never mix; iPad drags (typed documents, no file URL) load as a temporary copy.
 - **iPhone is its own layout**, not the Mac's squeezed — in every posture but an unfolded iPhone Duo on its side: a
   phone with a regular width (the Duo unfolded upright, a large iPhone on its side) reads as compact at the root
-  (`PhoneLayout.forcesCompact`, `PhonePosture` in `Hikki/Sources/RootView.swift`) (prototype: the "Hikki iPhone redesign" canvas): the collapsed
+  (`PhoneLayout.forcesCompact`, `PhonePosture` in `Hikki/Sources/RootView.swift`); its top bars stay 24 pt clear of the screen's top edge
+  (`clearOfTopEdge`: the Duo shows its status bar beside the camera, so its top inset is a few points) (prototype: the "Hikki iPhone redesign" canvas): the collapsed
   split view's sidebar column is `Hikki/Sources/PhoneHome.swift` (a ☰ · Home top bar, All pages / Trash tiles,
   "Jump back in" cards, Quick create — a blank page, today's note titled with the date, a page from the clipboard
   (`QuickNote`, HikkiCore) — Ask AI suggestions sent with this week's pages (`Navigator.pendingAIQuestion`), This
