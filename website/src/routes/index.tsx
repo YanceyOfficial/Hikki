@@ -40,8 +40,9 @@ function Hero() {
             Notes that stay on your devices.
           </h1>
           <p class="mt-6 text-lg leading-relaxed text-muted">
-            Hikki is a block editor for iPhone, iPad and Mac. Every page is a file in a folder you
-            choose, so your writing never waits on an account or a server.
+            Hikki is a block editor for iPhone, iPad and Mac: native SwiftUI around a Tiptap editor.
+            Every page is a file in a folder you choose, so your writing never waits on an account
+            or a server. And there is no telemetry: nothing about how you use it leaves your device.
           </p>
         </div>
       </div>
