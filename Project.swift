@@ -56,6 +56,10 @@ let project = Project(
             ],
             settings: .settings(base: [
                 "SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor",
+                // Release links our four frameworks into the app binary (fewer images for dyld to load at launch; GRDB stays
+                // separate, see Tuist/Package.swift); Debug keeps them apart for fast incremental builds. Apple's
+                // "Reducing your app's launch time".
+                "MERGED_BINARY_TYPE": "automatic",
                 "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
                 // The tone (design/tokens.json → make tokens → AccentColor.colorset): menus and selection follow it.
                 "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor",

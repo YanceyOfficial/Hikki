@@ -154,6 +154,14 @@ HikkiUITests/                 XCUITest flows
 ## Gotchas
 
 - **swiftly** on `PATH` shadows Xcode's Swift and breaks `tuist install`; the Makefile strips it.
+- **Linking**: GRDB is one dynamic framework (`Tuist/Package.swift` `productTypes`) — as a static library it was linked
+  into both HikkiCore and HikkiSearch, two copies in one process. Release merges our four frameworks into the app binary
+  (`MERGED_BINARY_TYPE = automatic` on the app; Debug keeps them separate); GRDB stays out of the merge (marked mergeable
+  from Tuist's package project, the merged app looked for its symbols in an empty stub and crashed at launch). The editor
+  bundle ships without a source map and with KaTeX's woff2 fonts only (`katexWoff2Only` in `editor/vite.config.ts`).
+  Measured (Instruments' App Launch, Release, a demo workspace): ~610 ms to the first frame, ~400 ms of it SwiftUI/AppKit
+  building the window; our `HikkiApp.init` is ~22 ms. The editor's files are served on the main thread, so it is ready
+  only once the window has drawn (~950 ms); starting its web view earlier (at `HikkiApp.init`) gained nothing.
 - `make test-core` (tuist test) regenerates a test-only workspace; the target regenerates the full one afterwards.
 - **Window chrome is native**: the system `NavigationSplitView` and window toolbar (Liquid Glass groups: back/forward
   `ControlGroup`, tabs, page actions). Don't reintroduce a custom title bar — an earlier one needed an isa-swizzled
