@@ -3,11 +3,12 @@ import type { JSX } from 'solid-js'
 import { For } from 'solid-js'
 
 import { AppStoreButton } from '../components/app-store-button'
+import { AskAI } from '../components/ask-ai'
+import { Footer } from '../components/footer'
+import { row } from '../components/row'
+import { SplitView } from '../components/split-view'
 
 export const Route = createFileRoute('/')({ component: Home })
-
-/** A row of the page: its own grid of cells, joined to the rows around it by the same black lines. */
-const row = 'grid gap-(--line) bg-ink'
 
 function Home() {
   return (
@@ -16,6 +17,8 @@ function Home() {
       <Hero />
       <LocalFirst />
       <Devices />
+      <SplitView />
+      <AskAI />
       <Features />
       <Together />
       <Footer />
@@ -36,6 +39,9 @@ function Header() {
         </a>
         <a href="#devices" class="underline-offset-4 hover:underline">
           iPhone, iPad, Mac
+        </a>
+        <a href="#ai" class="underline-offset-4 hover:underline">
+          AI
         </a>
         <a href="#features" class="underline-offset-4 hover:underline">
           Features
@@ -174,26 +180,25 @@ function Devices() {
           <strong>iPhone.</strong> One hand: the page tree in a drawer, actions in a floating bar.
         </figcaption>
       </figure>
-      <figure class="cell bg-blue text-paper m-0 flex flex-col items-center gap-5 p-6 md:p-10 lg:col-span-6">
+      <figure class="cell bg-blue text-paper m-0 flex flex-col gap-5 p-6 md:p-10 lg:col-span-8">
         <img
           src="/shots/ipad.png"
-          alt="Hikki on iPad: a product launch page beside the design notes, in split view."
-          width="1200"
-          height="1600"
-          class="shot w-[min(100%,520px)] rounded-[18px]"
+          alt="Hikki on iPad in landscape: a product launch page beside the design notes, in split view."
+          width="2000"
+          height="1500"
+          class="shot w-full rounded-[18px]"
         />
-        <figcaption class="self-start text-[15px] leading-relaxed">
+        <figcaption class="text-[15px] leading-relaxed">
           <strong>iPad.</strong> Sidebar, tabs and two pages side by side.
         </figcaption>
       </figure>
-      <div class="cell flex flex-col justify-end p-8 md:p-12 lg:col-span-4">
-        <h3 class="expanded text-2xl leading-tight font-[800]">Write on one, read on the other.</h3>
-        <p class="mt-4 leading-relaxed text-muted">
-          Drag a page to the edge of the window to open it beside the one you are writing in. A PDF
-          from the page opens there too.
+      <div class="cell flex flex-col justify-between gap-8 p-8 md:p-10 lg:col-span-4">
+        <p class="expanded text-2xl leading-tight font-[800]">The same pages on every device.</p>
+        <p class="leading-relaxed text-muted">
+          Put the folder in iCloud Drive and what you write on one shows up on the others. Two
+          devices editing the same page keep both versions.
         </p>
       </div>
-      <div class="cell bg-red lg:col-span-2" aria-hidden="true" />
     </section>
   )
 }
@@ -243,8 +248,8 @@ function Features() {
       />
       <Feature
         class="md:col-span-2 lg:col-span-4"
-        title="AI with your own key"
-        text="Rewrite, summarize or ask about a page, with your OpenAI or Anthropic key. Nothing is sent otherwise."
+        title="Lock a page"
+        text="Lock a finished page and nothing in it changes by accident, on any device."
       />
       <Feature
         class="md:col-span-4 lg:col-span-8"
@@ -283,19 +288,5 @@ function Together() {
         <AppStoreButton />
       </div>
     </section>
-  )
-}
-
-function Footer() {
-  return (
-    <footer class={`${row} grid-cols-1 md:grid-cols-12`}>
-      <div class="cell bg-red md:col-span-2" aria-hidden="true" />
-      <p class="cell m-0 p-6 text-[15px] text-muted md:col-span-7">
-        Hikki keeps your notes on your devices. © 2026 Hikki.
-      </p>
-      <div class="cell flex items-center p-6 md:col-span-3 md:justify-end">
-        <img src="/wordmark.svg" alt="Hikki" class="h-6 w-auto" />
-      </div>
-    </footer>
   )
 }
