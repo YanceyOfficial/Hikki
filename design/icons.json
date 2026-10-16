@@ -126,6 +126,9 @@
     "chat-circle-dots": {
       "sf": "plus.bubble"
     },
+    "sparkle": {
+      "sf": "sparkles"
+    },
     "browsers": {
       "sf": "plus.square.on.square"
     },

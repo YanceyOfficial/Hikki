@@ -83,7 +83,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
         case .general: .gearSix
         case .shortcuts: .command
         case .search: .magnifyingGlass
-        case .ai: .chatCircleDots
+        case .ai: .sparkle
         case .about: .info
         }
     }
