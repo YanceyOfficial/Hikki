@@ -416,7 +416,7 @@ function CoverActions({ className, children }: { className?: string; children: R
       role="group"
       data-slot="cover-actions"
       className={cn(
-        'absolute top-[calc(var(--hk-bleed-top,0px)+0.75rem)] right-3 flex items-center gap-0.5 rounded-md bg-popover p-0.5 text-popover-foreground shadow-sm ring-1 ring-foreground/10',
+        'absolute top-[calc(var(--hk-bleed-top,0px)+0.75rem)] right-[calc(env(safe-area-inset-right)+0.75rem)] flex items-center gap-0.5 rounded-md bg-popover p-0.5 text-popover-foreground shadow-sm ring-1 ring-foreground/10',
         className
       )}
     >

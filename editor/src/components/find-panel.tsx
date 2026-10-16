@@ -115,7 +115,7 @@ export function FindPanel({ editor, open, replace, initialText, onReplaceToggle,
       aria-label={t('find.label')}
       ref={panelRef}
       data-testid="find-panel"
-      className="hk-pop fixed right-4 left-4 z-40 rounded-xl bg-popover text-popover-foreground shadow-popover [--hk-pop-origin:top_right] sm:left-auto sm:w-[440px]"
+      className="hk-pop fixed right-[calc(env(safe-area-inset-right)+1rem)] left-[calc(env(safe-area-inset-left)+1rem)] z-40 rounded-xl bg-popover text-popover-foreground shadow-popover [--hk-pop-origin:top_right] sm:left-auto sm:w-[440px]"
       // The same distance from the toolbar as from the window's edge (right-4).
       style={{ top: 'calc(var(--hk-inset-top, 0px) + 16px)' }}
     >

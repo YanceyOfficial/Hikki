@@ -955,7 +955,15 @@
 /* The page's text column: Notion's fixed side margins — a narrower window narrows the text, never the margins, so the
    + / ⋮⋮ handles (left) and the outline rail (right) keep their room. Touch screens have no handles: slim margins. */
 .hk-column {
-  @apply mx-auto box-border max-w-[calc(var(--size-column)+192px)] px-24 coarse:px-5;
+  @apply mx-auto box-border max-w-[calc(var(--size-column)+192px)];
+  --hk-column-pad: --spacing(24);
+  /* Plus the safe area at the sides, which is only there where the page runs under a vertical bar (an iPhone Duo's,
+     beside the camera): the cover fills to the edge, the text keeps clear of the bar's buttons. */
+  padding-left: calc(var(--hk-column-pad) + env(safe-area-inset-left));
+  padding-right: calc(var(--hk-column-pad) + env(safe-area-inset-right));
+  @variant coarse {
+    --hk-column-pad: --spacing(5);
+  }
 }
 
 /* The outline rail (right edge) gives way to the find panel, which sits in the same corner. */

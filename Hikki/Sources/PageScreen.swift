@@ -12,6 +12,8 @@ struct PageScreen: View {
     #if os(iOS)
         /// The software keyboard is up: the bottom bar steps aside for the formatting bar.
         @State private var keyboardShown = false
+        /// An iPhone Duo's vertical bar: the floating bar's buttons go there instead.
+        @Environment(\.verticalBarEdge) private var verticalBar
     #endif
 
     var body: some View {
@@ -20,7 +22,7 @@ struct PageScreen: View {
         // editor's top inset so the first line still starts below it.
         GeometryReader { proxy in
             EditorView(controller: editor, topInset: proxy.safeAreaInsets.top, bottomInset: bottomBarInset)
-                .ignoresSafeArea(.container, edges: [.top, .bottom])
+                .ignoresSafeArea(.container, edges: underBars)
         }
         // iPhone: the page shows its own title; the bar keeps only its glass buttons.
         .navigationTitle(phoneToolbar ? "" : page.map { Self.title($0) } ?? "")
@@ -54,10 +56,36 @@ struct PageScreen: View {
                         }
                         .accessibilityIdentifier("page-more")
                     }
+                    if verticalBar != nil {
+                        ToolbarItemGroup(placement: .primaryAction) {
+                            Button {
+                                navigator.toggleInspector(.outline)
+                            } label: {
+                                IconLabel("app:inspector.outline", icon: .listBullets)
+                            }
+                            .accessibilityIdentifier("open-inspector")
+                            Button {
+                                navigator.isAskingAI = true
+                            } label: {
+                                Label {
+                                    Text("app:ai.askPage")
+                                } icon: {
+                                    AIGlyph()
+                                }
+                            }
+                            .accessibilityIdentifier("ask-ai-page")
+                            Button {
+                                editor.focusBody()
+                            } label: {
+                                IconLabel("app:page.edit", icon: .pencilSimple)
+                            }
+                            .accessibilityIdentifier("edit-page")
+                        }
+                    }
                 }
             }
             .overlay(alignment: .bottom) {
-                if phoneToolbar && !keyboardShown {
+                if showsFloatingBar {
                     FloatingActionBar(
                         leading: .init("app:inspector.outline", icon: .listBullets, identifier: "open-inspector") {
                             navigator.toggleInspector(.outline)
@@ -80,14 +108,33 @@ struct PageScreen: View {
         #endif
     }
 
+    /// The page runs under the toolbar (top), the home indicator (bottom) — and an iPhone Duo's vertical bar, where its
+    /// cover fills to the screen's edge while the text keeps clear (the web view's safe area, CSS `env()`).
+    private var underBars: Edge.Set {
+        #if os(iOS)
+            switch verticalBar {
+            case .leading?: [.top, .bottom, .leading]
+            case .trailing?: [.top, .bottom, .trailing]
+            case nil: [.top, .bottom]
+            }
+        #else
+            [.top, .bottom]
+        #endif
+    }
+
     /// The floating bar's room over the page's foot (iPhone, keyboard down), above the home indicator.
     private var bottomBarInset: CGFloat {
         #if os(iOS)
-            phoneToolbar && !keyboardShown ? Size.floatingBar + Spacing.s2 : 0
+            showsFloatingBar ? Size.floatingBar + Spacing.s2 : 0
         #else
             0
         #endif
     }
+
+    #if os(iOS)
+        /// iPhone with the keyboard down — and no vertical bar to hold its buttons.
+        private var showsFloatingBar: Bool { phoneToolbar && !keyboardShown && verticalBar == nil }
+    #endif
 
     /// Parents of the page, nearest last (root first).
     private var ancestors: [PageSummary] { model.tree.path(to: pageID).dropLast() }

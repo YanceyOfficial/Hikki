@@ -20,6 +20,7 @@ struct RootView: View {
         }
         #if os(iOS)
             .modifier(PhonePosture())
+            .modifier(VerticalBarReader())
         #endif
         // Settings → Theme, app-wide (see AppearancePreference.apply); the editor follows its window.
         .onAppear { appearance.apply() }
@@ -48,5 +49,33 @@ struct RootView: View {
                     .environment(\.horizontalSizeClass, compact ? .compact : horizontal)
             }
         }
+    }
+
+    /// The edge of the system's vertical bar (an iPhone Duo: the strip beside the camera, where the status bar and the
+    /// navigation bar's buttons go), or nil where there is none — iOS 27.1's `toolbarVerticalEdge`, read once here
+    /// so views don't each need the availability check. Where it is, the iPhone's own floating bar and top bar hand
+    /// their buttons to it (`PhoneHome`, `PageScreen`).
+    private struct VerticalBarReader: ViewModifier {
+        func body(content: Content) -> some View {
+            if #available(iOS 27.1, *) {
+                content.modifier(Reading())
+            } else {
+                content
+            }
+        }
+
+        @available(iOS 27.1, *)
+        private struct Reading: ViewModifier {
+            @Environment(\.toolbarVerticalEdge) private var edge
+
+            func body(content: Content) -> some View {
+                content.environment(\.verticalBarEdge, edge)
+            }
+        }
+    }
+
+    extension EnvironmentValues {
+        /// See `VerticalBarReader`.
+        @Entry var verticalBarEdge: HorizontalEdge?
     }
 #endif

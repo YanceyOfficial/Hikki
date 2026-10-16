@@ -17,6 +17,8 @@
         /// This week's writing and the workspace's totals (two queries), read when the tree changes.
         @State private var activity: [DailyActivity] = []
         @State private var stats = WorkspaceStats(pages: 0, words: 0)
+        /// An iPhone Duo's vertical bar: ☰ and the floating bar's buttons go there instead.
+        @Environment(\.verticalBarEdge) private var verticalBar
 
         var body: some View {
             SideDrawer(isOpen: $isDrawerOpen, closeLabel: "app:drawer.close") {
@@ -25,7 +27,41 @@
                 home
             }
             .background(Theme.sidebar)
-            .toolbar(.hidden, for: .navigationBar)
+            .toolbar(verticalBar == nil ? .hidden : .automatic, for: .navigationBar)
+            .toolbar {
+                if verticalBar != nil {
+                    ToolbarItemGroup(placement: .primaryAction) {
+                        Button {
+                            setDrawer(open: !isDrawerOpen)
+                        } label: {
+                            IconLabel("app:drawer.open", icon: .list)
+                        }
+                        .accessibilityIdentifier("drawer-toggle")
+                        Button {
+                            navigator.isSearching = true
+                        } label: {
+                            IconLabel("app:nav.search", icon: .magnifyingGlass)
+                        }
+                        .accessibilityIdentifier("sidebar-search")
+                        Button {
+                            navigator.isAskingAI = true
+                        } label: {
+                            Label {
+                                Text("app:ai.ask")
+                            } icon: {
+                                AIGlyph()
+                            }
+                        }
+                        .accessibilityIdentifier("ask-ai")
+                        Button {
+                            navigator.newPage()
+                        } label: {
+                            IconLabel("app:page.new", icon: .notePencil)
+                        }
+                        .accessibilityIdentifier("new-page")
+                    }
+                }
+            }
             // Something opened from elsewhere (search, a link): the drawer is shut when Home shows again.
             .onChange(of: navigator.compactColumn) { _, column in
                 if column == .detail { isDrawerOpen = false }
@@ -55,22 +91,27 @@
                     }
                 }
                 .padding(.top, Spacing.s2)
-                .padding(.bottom, Size.floatingBar + Spacing.s12)
+                .padding(.bottom, verticalBar == nil ? Size.floatingBar + Spacing.s12 : Spacing.s6)
             }
             .scrollIndicators(.hidden)
             .background(Theme.background)
             .safeAreaInset(edge: .top, spacing: Spacing.s0) { topBar }
             .safeAreaInset(edge: .bottom) {
-                FloatingActionBar(
-                    leading: .init("app:nav.search", icon: .magnifyingGlass, identifier: "sidebar-search") {
-                        navigator.isSearching = true
-                    },
-                    prompt: "app:ai.ask", promptIdentifier: "ask-ai",
-                    onPrompt: { navigator.isAskingAI = true },
-                    trailing: .init("app:page.new", icon: .notePencil, identifier: "new-page") { navigator.newPage() }
-                )
-                .padding(.bottom, Spacing.s2)
+                if verticalBar == nil { floatingBar }
             }
+        }
+
+        /// Search · Ask AI · New page, floating over the foot of the screen (not with a vertical bar: those go there).
+        private var floatingBar: some View {
+            FloatingActionBar(
+                leading: .init("app:nav.search", icon: .magnifyingGlass, identifier: "sidebar-search") {
+                    navigator.isSearching = true
+                },
+                prompt: "app:ai.ask", promptIdentifier: "ask-ai",
+                onPrompt: { navigator.isAskingAI = true },
+                trailing: .init("app:page.new", icon: .notePencil, identifier: "new-page") { navigator.newPage() }
+            )
+            .padding(.bottom, Spacing.s2)
         }
 
         private func setDrawer(open: Bool) {
@@ -82,18 +123,8 @@
         /// ☰ (the drawer), the title, and ⋯ (import, settings).
         private var topBar: some View {
             HStack(spacing: Spacing.s2_5) {
-                Button {
-                    setDrawer(open: !isDrawerOpen)
-                } label: {
-                    IconView(.list, size: TextSize.xl.rawValue)
-                        .foregroundStyle(Theme.foreground)
-                        .frame(width: Size.iconButton + Spacing.s3, height: Size.iconButton + Spacing.s3)
-                        .contentShape(.circle)
-                }
-                .buttonStyle(.plain)
-                .glassEffect(.regular.interactive(), in: .circle)
-                .accessibilityLabel(Text("app:drawer.open"))
-                .accessibilityIdentifier("drawer-toggle")
+                // With a vertical bar ☰ is there; the title stays.
+                if verticalBar == nil { drawerButton }
                 Text("app:nav.home")
                     .font(.hk(.lg, .semibold))
                     .foregroundStyle(Theme.foreground)
@@ -105,6 +136,21 @@
             .padding(.vertical, Spacing.s2)
             .clearOfTopEdge()
             .background(Theme.background)
+        }
+
+        private var drawerButton: some View {
+            Button {
+                setDrawer(open: !isDrawerOpen)
+            } label: {
+                IconView(.list, size: TextSize.xl.rawValue)
+                    .foregroundStyle(Theme.foreground)
+                    .frame(width: Size.iconButton + Spacing.s3, height: Size.iconButton + Spacing.s3)
+                    .contentShape(.circle)
+            }
+            .buttonStyle(.plain)
+            .glassEffect(.regular.interactive(), in: .circle)
+            .accessibilityLabel(Text("app:drawer.open"))
+            .accessibilityIdentifier("drawer-toggle")
         }
 
         /// All pages and Trash, side by side.

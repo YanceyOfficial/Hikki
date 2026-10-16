@@ -162,7 +162,12 @@ HikkiUITests/                 XCUITest flows
 - **iPhone is its own layout**, not the Mac's squeezed — in every posture but an unfolded iPhone Duo on its side: a
   phone with a regular width (the Duo unfolded upright, a large iPhone on its side) reads as compact at the root
   (`PhoneLayout.forcesCompact`, `PhonePosture` in `Hikki/Sources/RootView.swift`); its top bars stay 24 pt clear of the screen's top edge
-  (`clearOfTopEdge`: the Duo shows its status bar beside the camera, so its top inset is a few points) (prototype: the "Hikki iPhone redesign" canvas): the collapsed
+  (`clearOfTopEdge`: the Duo shows its status bar beside the camera, so its top inset is a few points). Where the system
+  has a vertical bar (iOS 27.1 `toolbarVerticalEdge`, read once in `RootView` as `verticalBarEdge`: the Duo's strip
+  beside the camera), the floating bar's buttons and Home's ☰ are toolbar items the system puts there instead, and the
+  page's web view runs under the bar (its cover to the edge; the column and the cover's buttons add CSS
+  `env(safe-area-inset-*)`, which is 0 everywhere else). Simulator: `simctl io … screenshot --display=<id>` (see
+  `simctl io <device> enumerate`) — the default display may be the Duo's inner screen, black while folded (prototype: the "Hikki iPhone redesign" canvas): the collapsed
   split view's sidebar column is `Hikki/Sources/PhoneHome.swift` (a ☰ · Home top bar, All pages / Trash tiles,
   "Jump back in" cards, Quick create — a blank page, today's note titled with the date, a page from the clipboard
   (`QuickNote`, HikkiCore) — Ask AI suggestions sent with this week's pages (`Navigator.pendingAIQuestion`), This
