@@ -10,26 +10,22 @@ export type CoverSheetMode = 'actions' | 'picker'
 
 /**
  * A touch screen's cover controls, as a bottom sheet instead of buttons always over the picture: a long press on the
- * cover lists Change cover, Reposition and Remove; Change cover shows the picker in the same sheet, the width of the
+ * cover lists Change cover and Remove (no Reposition on iPhone and iPad); Change cover shows the picker in the same sheet, the width of the
  * screen rather than a popover squeezed under the cover.
  */
 export function CoverSheet({
   mode,
   current,
-  canReposition,
   onClose,
   onMode,
-  onReposition,
   onSelect,
   onRemove,
   onUpload
 }: {
   mode: CoverSheetMode | null
   current: string | null
-  canReposition: boolean
   onClose: () => void
   onMode: (mode: CoverSheetMode) => void
-  onReposition: () => void
   onSelect: (cover: string) => void
   onRemove: () => void
   onUpload: (file: File) => Promise<void>
@@ -76,17 +72,6 @@ export function CoverSheet({
             <MenuRow data-testid="cover-sheet-change" onClick={() => onMode('picker')}>
               {t('page.changeCover')}
             </MenuRow>
-            {canReposition && (
-              <MenuRow
-                data-testid="cover-sheet-reposition"
-                onClick={() => {
-                  onReposition()
-                  onClose()
-                }}
-              >
-                {t('page.reposition')}
-              </MenuRow>
-            )}
             <MenuRow
               data-testid="cover-sheet-remove"
               className="text-destructive hover:text-destructive"

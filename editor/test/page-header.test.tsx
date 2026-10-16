@@ -221,7 +221,7 @@ describe('PageHeader', () => {
 
   it('on a touch screen the cover has no buttons over it: a long press opens its sheet', async () => {
     vi.stubGlobal('matchMedia', (query: string) => ({
-      matches: query === '(pointer: coarse)',
+      matches: query === '(pointer: coarse)' || query === '(any-pointer: coarse)',
       media: query,
       addEventListener: () => {},
       removeEventListener: () => {}
@@ -238,14 +238,14 @@ describe('PageHeader', () => {
       fireEvent.pointerMove(cover, { pointerId: 1, clientX: 10, clientY: 40 })
       act(() => vi.advanceTimersByTime(600))
       expect(screen.queryByTestId('cover-sheet')).toBeNull()
-      // Held still: the sheet with Change cover, Reposition and Remove cover.
+      // Held still: the sheet with Change cover and Remove cover (no Reposition on a touch screen).
       fireEvent.pointerDown(cover, { pointerId: 2, isPrimary: true, clientX: 10, clientY: 10 })
       act(() => vi.advanceTimersByTime(600))
     } finally {
       vi.useRealTimers()
     }
     expect(await screen.findByTestId('cover-sheet-change')).toBeTruthy()
-    expect(screen.getByTestId('cover-sheet-reposition')).toBeTruthy()
+    expect(screen.queryByTestId('cover-sheet-reposition')).toBeNull()
     fireEvent.click(screen.getByTestId('cover-sheet-remove'))
     await settle()
     expect(sent).toContainEqual(expect.objectContaining({ type: 'setCover', cover: null }))

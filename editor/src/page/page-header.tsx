@@ -43,6 +43,9 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
   const [draftY, setDraftY] = useState<number | null>(null)
   // A touch screen (no hover): the cover's controls are a sheet a long press opens, not buttons over the picture.
   const touch = useMediaQuery('(pointer: coarse)')
+  // iPhone and iPad (any touch screen, an iPad with a trackpad too): no Reposition — dragging a cover to place it is
+  // the Mac's.
+  const canReposition = !useMediaQuery('(any-pointer: coarse)')
   const [coverSheet, setCoverSheet] = useState<CoverSheetMode | null>(null)
   // The header stays mounted from page to page: another page starts with nothing of the last one's in progress
   // (a reposition draft would otherwise be saved into the next page's cover).
@@ -118,7 +121,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
                     />
                   </PopoverContent>
                 </Popover>
-                {isImageCover(page.cover) && (
+                {canReposition && isImageCover(page.cover) && (
                   <>
                     <Separator orientation="vertical" className="mx-0.5 h-4 self-center!" />
                     <CoverAction onClick={() => setDraftY(coverPosition(page.cover))}>
@@ -135,10 +138,8 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
         <CoverSheet
           mode={frozen ? null : coverSheet}
           current={page.cover}
-          canReposition={isImageCover(page.cover)}
           onClose={() => setCoverSheet(null)}
           onMode={setCoverSheet}
-          onReposition={() => setDraftY(coverPosition(page.cover))}
           onSelect={(next) => bridge.setCover(next)}
           onRemove={() => bridge.setCover(null)}
           onUpload={uploadCover}
