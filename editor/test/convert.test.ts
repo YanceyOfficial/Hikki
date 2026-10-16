@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { exportPage, importDocument } from '../src/core/convert'
+import { exportPage, importDocument, markdownBlocks } from '../src/core/convert'
 import { stripIds } from './helpers'
 
 const text = (value: string, marks?: { type: string; attrs?: object }[]) => ({
@@ -126,6 +126,31 @@ describe('import', () => {
       'paragraph:at dusk.'
     ])
     expect(page.title).toBe('Trip')
+  })
+
+  it('keeps the structure when inline code sits inside bold (the code mark excludes the others)', () => {
+    const page = importDocument(
+      '# Notes\n\n## Index\n\nSee **`trigram`** search.\n\n- one\n- two',
+      'markdown',
+      'file'
+    )
+    expect(page.title).toBe('Notes')
+    const blocks = stripIds(page.content).content
+    expect(blocks.map((b: { type: string }) => b.type)).toEqual([
+      'heading',
+      'paragraph',
+      'bulletList'
+    ])
+    expect(blocks[1].content).toContainEqual({
+      type: 'text',
+      text: 'trigram',
+      marks: [{ type: 'code' }]
+    })
+  })
+
+  it('an AI answer with code inside bold keeps its list', () => {
+    const blocks = markdownBlocks('- **`a`** first\n- second')
+    expect(blocks.map((b) => b.type)).toEqual(['bulletList'])
   })
 
   it('falls back to the file name without a leading H1', () => {

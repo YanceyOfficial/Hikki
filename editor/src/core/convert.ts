@@ -7,7 +7,7 @@ import {
   type JSONContent
 } from '@tiptap/core'
 import { MarkdownManager } from '@tiptap/markdown'
-import { DOMSerializer, Node as PMNode, type Schema } from '@tiptap/pm/model'
+import { DOMSerializer, type Mark, Node as PMNode, type Schema } from '@tiptap/pm/model'
 
 import { editorExtensions } from './editor'
 import { plainText, textOf, wordCount } from './extract'
@@ -101,6 +101,25 @@ ${heading}${html}
 }
 
 /**
+ * Marks a text may not carry together resolved the way the editor would (ProseMirror's `addToSet`: a mark that
+ * excludes another replaces it — inline code inside bold stays code), so one such run doesn't send the whole file to
+ * the text fallback. Unknown marks are left for the schema check to refuse.
+ */
+function fitMarks(node: JSONContent, schema: Schema): JSONContent {
+  let marks = node.marks
+  if (marks && marks.length > 1 && marks.every((mark) => schema.marks[mark.type])) {
+    let set: readonly Mark[] = []
+    for (const mark of marks) set = schema.mark(mark.type, mark.attrs).addToSet(set)
+    marks = set.map((mark) => mark.toJSON() as NonNullable<JSONContent['marks']>[number])
+  }
+  return {
+    ...node,
+    ...(marks ? { marks } : {}),
+    ...(node.content ? { content: node.content.map((child) => fitMarks(child, schema)) } : {})
+  }
+}
+
+/**
  * A Markdown, HTML or plain-text file as a new page's title and body. A leading level-1 heading (or an HTML
  * `<title>`) becomes the title; otherwise `fallbackTitle` (the file's name). Whatever the file holds, the body fits
  * the schema: anything that doesn't parse falls back to the text, line by line.
@@ -123,6 +142,7 @@ export function importDocument(
     } else {
       content = textDocument(text)
     }
+    content = fitMarks(content, schema)
     PMNode.fromJSON(schema, content).check()
   } catch (error) {
     // Into the native log (the reason only — never the file's text).
@@ -275,8 +295,9 @@ function answerNode(node: JSONContent): JSONContent | null {
 export function markdownBlocks(text: string): JSONContent[] {
   const { schema, markdown } = converter()
   try {
-    const content = answerNode(markdown.parse(text))
-    if (!content) throw new Error('no content')
+    const answer = answerNode(markdown.parse(text))
+    if (!answer) throw new Error('no content')
+    const content = fitMarks(answer, schema)
     PMNode.fromJSON(schema, content).check()
     return content.content ?? []
   } catch {
