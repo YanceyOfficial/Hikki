@@ -439,6 +439,9 @@ function CommentSheet({
         style={
           {
             bottom: keyboard,
+            // Clear of a vertical bar beside it (an iPhone Duo's) or a notch on its side, as `BottomSheet`.
+            left: 'env(safe-area-inset-left, 0px)',
+            right: 'env(safe-area-inset-right, 0px)',
             '--drawer-content-max-height': `calc(${height}px - var(--hk-inset-top, 0px) - 12px)`,
             // Over the keyboard it sits right on it; else clear of the home indicator and the native bottom bar.
             paddingBottom:

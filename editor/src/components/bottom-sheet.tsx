@@ -6,7 +6,7 @@ import { useKeyboardViewport } from '../hooks/use-keyboard-viewport'
 
 /**
  * A touch screen's panel as a bottom sheet over the dimmed page (the shadcn Drawer, as the comments' phone sheet):
- * the screen's width, a grabber to swipe it away, above the software keyboard while a field in it is typing, clear of
+ * the screen's width (short of a vertical bar or notch beside it), a grabber to swipe it away, above the software keyboard while a field in it is typing, clear of
  * the home indicator and the native bottom bar otherwise. The cover's actions and picker, the page icon's picker.
  */
 export function BottomSheet({
@@ -39,6 +39,10 @@ export function BottomSheet({
         style={
           {
             bottom: keyboard,
+            // Clear of a vertical bar beside it (an iPhone Duo's, folded or not) or a notch on its side: the page runs
+            // under those, the sheet doesn't (0 everywhere else).
+            left: 'env(safe-area-inset-left, 0px)',
+            right: 'env(safe-area-inset-right, 0px)',
             '--drawer-content-max-height': `calc(${height}px - var(--hk-inset-top, 0px) - 12px)`,
             paddingBottom:
               keyboard > 0
