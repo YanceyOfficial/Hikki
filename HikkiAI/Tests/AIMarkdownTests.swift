@@ -144,6 +144,38 @@ struct AIMarkdownTests {
         }
     }
 
+    /// The bold parts of an answer, as written.
+    private func bold(_ string: AttributedString) -> [String] {
+        string.runs.filter { $0.inlinePresentationIntent?.contains(.stronglyEmphasized) == true }
+            .map { String(string[$0.range].characters) }
+    }
+
+    @Test func boldNextToCJKPunctuation() {
+        // cmark's flanking rules leave these literal: closing after "：", opening before "“".
+        let note = AIMarkdown.attributed("**注意：**这是重点")
+        #expect(text(note) == "注意：这是重点")
+        #expect(bold(note) == ["注意："])
+        let quote = AIMarkdown.attributed("看**“这个”**吧，还有**ほか**も")
+        #expect(text(quote) == "看“这个”吧，还有ほかも")
+        #expect(bold(quote) == ["“这个”", "ほか"])
+        // Pairs cmark already reads stay as they were.
+        #expect(bold(AIMarkdown.attributed("是**这个**。也是**「那个」**")) == ["这个", "「那个」"])
+        // Code keeps its asterisks.
+        #expect(text(AIMarkdown.attributed("用 `a**b` 和 `**`")) == "用 a**b 和 **")
+        #expect(bold(AIMarkdown.attributed("`**x**`")).isEmpty)
+    }
+
+    @Test func boldStillStreaming() {
+        // The partner hasn't arrived: what's there is bold already, and no asterisks flash by.
+        let partial = AIMarkdown.attributed("要点是**先写测")
+        #expect(text(partial) == "要点是先写测")
+        #expect(bold(partial) == ["先写测"])
+        #expect(text(AIMarkdown.attributed("要点是**")) == "要点是")
+        #expect(AIMarkdown.blocks("**") == [])
+        // Latin text is cmark's as before.
+        #expect(bold(AIMarkdown.attributed("a **b** c")) == ["b"])
+    }
+
     @Test func singleTildesAreNotStrikethrough() {
         guard case .paragraph(let line) = AIMarkdown.blocks("About ~5 min, ~~gone~~, `a~b`").first else {
             Issue.record("no paragraph")

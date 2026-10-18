@@ -47,7 +47,7 @@ public enum AIMarkdown {
 
     /// The answer as blocks. A single line break inside a paragraph stays a line break, as the model wrote it.
     public static func blocks(_ text: String) -> [Block] {
-        let source = escapingLoneTildes(droppingPartialFence(text))
+        let source = flankingCJKStrong(escapingLoneTildes(droppingPartialFence(text)))
         let document = Document(parsing: source, options: [.disableSmartOpts])
         return blocks(document.children)
     }
@@ -245,6 +245,119 @@ public enum AIMarkdown {
     }
 }
 
+extension AIMarkdown {
+    /// Hair space: whitespace to cmark, so it makes a `**` beside it flank, and taken out of the text again.
+    static let flankSpace: Character = "\u{200A}"
+
+    /// cmark's flanking rules don't know CJK: a `**` that opens before punctuation right after a letter, or closes
+    /// after punctuation right before a letter, isn't a delimiter — "**注意：**这是" and "看**“这个”**吧" stay literal, and
+    /// a later `**` pairs with the wrong one. Chinese and Japanese answers hit it all the time. Each line's `**` runs
+    /// (outside code) alternate opening and closing; one that wouldn't, beside a non-ASCII character, gets a hair space
+    /// on the side that makes it — before an opener, after a closer. Latin text is left to cmark as written.
+    static func flankingCJKStrong(_ text: String) -> String {
+        guard text.contains("**"), text.unicodeScalars.contains(where: { !$0.isASCII }) else { return text }
+        var output = ""
+        output.reserveCapacity(text.count + 8)
+        var fence: (marker: Character, count: Int)?
+        for (index, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+            if index > 0 { output.append("\n") }
+            if let next = Fence.toggle(line, open: fence) {
+                fence = next.marker.map { ($0, next.count) }
+                output += line
+                continue
+            }
+            guard fence == nil, line.contains("**") else {
+                output += line
+                continue
+            }
+            let chars = Array(line)
+            var inCode = 0
+            var opening = true
+            var i = 0
+            while i < chars.count {
+                let char = chars[i]
+                if char == "\\", i + 1 < chars.count {
+                    output.append(char)
+                    output.append(chars[i + 1])
+                    i += 2
+                    continue
+                }
+                if char == "`" {
+                    var run = 0
+                    while i + run < chars.count, chars[i + run] == "`" { run += 1 }
+                    if inCode == 0 {
+                        inCode = run
+                    } else if inCode == run {
+                        inCode = 0
+                    }
+                    output += String(repeating: "`", count: run)
+                    i += run
+                    continue
+                }
+                guard char == "*", inCode == 0 else {
+                    output.append(char)
+                    i += 1
+                    continue
+                }
+                var run = 0
+                while i + run < chars.count, chars[i + run] == "*" { run += 1 }
+                let before = i > 0 ? chars[i - 1] : nil
+                let after = i + run < chars.count ? chars[i + run] : nil
+                if run == 2 {
+                    if opening, let before, let after, isPunctuation(after), !before.isWhitespace, !isPunctuation(before),
+                        !before.isASCII || !after.isASCII
+                    {
+                        output.append(flankSpace)
+                        output += "**"
+                    } else if !opening, let before, let after, isPunctuation(before), !after.isWhitespace,
+                        !isPunctuation(after), !before.isASCII || !after.isASCII
+                    {
+                        output += "**"
+                        output.append(flankSpace)
+                    } else {
+                        output += "**"
+                    }
+                    opening.toggle()
+                } else {
+                    output += String(repeating: "*", count: run)
+                }
+                i += run
+            }
+        }
+        return output
+    }
+
+    /// cmark's punctuation: ASCII punctuation and Unicode's P categories (CJK 、。：“” 「」 included).
+    private static func isPunctuation(_ char: Character) -> Bool {
+        guard let scalar = char.unicodeScalars.first else { return false }
+        switch scalar.properties.generalCategory {
+        case .connectorPunctuation, .dashPunctuation, .openPunctuation, .closePunctuation, .initialPunctuation,
+            .finalPunctuation, .otherPunctuation:
+            return true
+        default:
+            return scalar.isASCII && (char.isPunctuation || char.isSymbol)
+        }
+    }
+}
+
+/// Fenced code lines, shared by the line rewrites that must leave code alone.
+enum Fence {
+    /// For a fence line: the fence state after it (marker nil when it closed the open one); nil for any other line.
+    static func toggle(_ line: Substring, open: (marker: Character, count: Int)?) -> (marker: Character?, count: Int)? {
+        let trimmed = line.drop { $0 == " " || $0 == ">" }
+        guard let marker = trimmed.first, marker == "`" || marker == "~" else { return nil }
+        let run = trimmed.prefix { $0 == marker }.count
+        guard run >= 3 else { return nil }
+        if let open {
+            if open.marker == marker, run >= open.count, trimmed.dropFirst(run).allSatisfy(\.isWhitespace) {
+                return (nil, 0)
+            }
+            return (open.marker, open.count)
+        }
+        return (marker, run)
+    }
+}
+
 /// `<br>`, `<br/>`, `<br />`, in any case: the one piece of HTML a model writes into Markdown as a matter of course,
 /// and it means a line break. Every other tag is shown as the text it is. (exodus-ios, MarkdownParser.swift.)
 enum HTMLBreak {
@@ -298,12 +411,13 @@ private struct InlineBuilder {
             if let link = run.link { result[index..<end].link = link }
             index = end
         }
+        if text.contains("**") { LeftoverStrong.apply(to: &result) }
         return result
     }
 
     mutating func visit(_ markup: Markup) {
         if let node = markup as? Markdown.Text {
-            pending += node.string
+            pending += node.string.filter { $0 != AIMarkdown.flankSpace }
             return
         }
         flush()
@@ -381,6 +495,69 @@ private struct InlineBuilder {
             append(piece)
             link = saved
         }
+    }
+}
+
+/// `**` that cmark left as text. Its flanking rules don't know CJK: a run that opens before or closes after
+/// punctuation next to a letter isn't a delimiter, so "**注意：**这是" or "看**“这个”**吧" stays literal — Chinese and
+/// Japanese answers hit it all the time. And while an answer streams, the closing `**` hasn't arrived yet. Leftover
+/// markers outside code pair up in order and their text turns bold; a last one without a partner bolds to the end (as
+/// it will be once the partner comes), or is dropped when it is the very end.
+enum LeftoverStrong {
+    static func apply(to string: inout AttributedString) {
+        let markers = markerOffsets(string)
+        guard !markers.isEmpty else { return }
+        let length = string.characters.count
+        var pairs: [(open: Int, close: Int?)] = []
+        var index = 0
+        while index < markers.count {
+            let close = index + 1 < markers.count ? markers[index + 1] : nil
+            pairs.append((markers[index], close))
+            index += 2
+        }
+        // From the end, so earlier offsets stay valid as markers are removed.
+        for pair in pairs.reversed() {
+            let start = pair.open + 2
+            let end = pair.close ?? length
+            if end > start {
+                let range = self.range(string, start, end)
+                for (intent, runRange) in string[range].runs[\.inlinePresentationIntent].reversed() {
+                    string[runRange].inlinePresentationIntent = (intent ?? []).union(.stronglyEmphasized)
+                }
+            } else if pair.close != nil {
+                continue  // "****": nothing between, left as written
+            }
+            if let close = pair.close { string.removeSubrange(self.range(string, close, close + 2)) }
+            string.removeSubrange(self.range(string, pair.open, pair.open + 2))
+        }
+    }
+
+    /// Character offsets of each `**` (exactly two asterisks) outside code.
+    private static func markerOffsets(_ string: AttributedString) -> [Int] {
+        var offsets: [Int] = []
+        var offset = 0
+        for run in string.runs {
+            let chars = Array(string[run.range].characters)
+            defer { offset += chars.count }
+            if run.inlinePresentationIntent?.contains(.code) == true || run.link != nil { continue }
+            var i = 0
+            while i < chars.count {
+                guard chars[i] == "*" else {
+                    i += 1
+                    continue
+                }
+                var count = 0
+                while i + count < chars.count, chars[i + count] == "*" { count += 1 }
+                if count == 2 { offsets.append(offset + i) }
+                i += count
+            }
+        }
+        return offsets
+    }
+
+    private static func range(_ string: AttributedString, _ start: Int, _ end: Int) -> Range<AttributedString.Index> {
+        let lower = string.characters.index(string.startIndex, offsetBy: start)
+        return lower..<string.characters.index(lower, offsetBy: end - start)
     }
 }
 
