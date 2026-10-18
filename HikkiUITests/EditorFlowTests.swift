@@ -1126,6 +1126,47 @@ final class EditorFlowTests: XCTestCase {
         item.tap()
     }
 
+    /// A tab's context menu (Chrome's): Duplicate copies it beside itself, Close Tabs to the Right and Close Other
+    /// Tabs leave the one it was opened on, New Tab to the Right opens Home after it.
+    func testTabContextMenu() throws {
+        continueAfterFailure = false
+        let app = launch()
+        guard app.buttons["nav-home"].waitForExistence(timeout: 10) else {
+            throw XCTSkip("needs the window toolbar's tabs — run on iPad or Mac")
+        }
+        createPage(app, title: "Alpha")
+        createPage(app, title: "Beta")  // in Alpha's tab
+        app.descendants(matching: .any)["page-row-Alpha"].firstMatch.tap()  // a tab of its own
+        let tabs = { (title: String) in app.descendants(matching: .any).matching(identifier: "tab-\(title)") }
+        XCTAssertTrue(waitOrDumpTree(tabs("Alpha").firstMatch, in: app))
+        XCTAssertTrue(waitOrDumpTree(tabs("Beta").firstMatch, in: app))
+
+        func run(_ command: String, on tab: XCUIElement) {
+            #if os(macOS)
+                tab.rightClick()
+                let item = app.menuItems["tab-menu-\(command)"].firstMatch
+            #else
+                tab.press(forDuration: 1)
+                let item = app.buttons["tab-menu-\(command)"].firstMatch
+            #endif
+            XCTAssertTrue(waitOrDumpTree(item, in: app, timeout: 5), "no \(command) in the tab menu")
+            item.tap()
+            sleep(1)
+        }
+
+        run("duplicate", on: tabs("Alpha").firstMatch)
+        XCTAssertEqual(tabs("Alpha").count, 2)
+        run("closeToRight", on: tabs("Beta").firstMatch)
+        XCTAssertEqual(tabs("Alpha").count, 0)
+        XCTAssertTrue(tabs("Beta").firstMatch.exists)
+        run("newToRight", on: tabs("Beta").firstMatch)
+        XCTAssertTrue(waitOrDumpTree(tabs("Home").firstMatch, in: app, timeout: 5))
+        XCTAssertLessThan(tabs("Beta").firstMatch.frame.minX, tabs("Home").firstMatch.frame.minX)
+        run("closeOthers", on: tabs("Beta").firstMatch)
+        XCTAssertEqual(tabs("Home").count, 0)
+        XCTAssertEqual(tabs("Beta").count, 1)
+    }
+
     private func createPage(_ app: XCUIApplication, title: String) {
         let newPage = app.buttons["new-page"].firstMatch
         XCTAssertTrue(waitOrDumpTree(newPage, in: app))

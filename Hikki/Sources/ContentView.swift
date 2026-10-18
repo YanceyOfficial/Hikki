@@ -619,6 +619,9 @@ private struct NativeDetailToolbar: ToolbarContent {
     let navigator: Navigator
     let editor: EditorController
     @AppStorage(InspectorPreferences.widthKey) private var inspectorWidth = Double(Size.inspectorIdeal)
+    #if os(macOS)
+        @Environment(\.openWindow) private var openWindow
+    #endif
 
     private var inspectorOpen: Bool { navigator.isShowingInspector && navigator.route.pageID != nil }
 
@@ -662,7 +665,8 @@ private struct NativeDetailToolbar: ToolbarContent {
                 // A page's tab drags its link: onto the split pane, the page's right edge, or into a page.
                 dragItem: { id in
                     navigator.tabs.tabs.first { $0.id == id }?.route.pageID.map(PageLink.dragItem)
-                }
+                },
+                menu: TabStripMenu(commands: tabMenuCommands, perform: performTabCommand)
             )
             .frame(minWidth: 240, idealWidth: 480, maxWidth: 640)  // design-lint: allow (toolbar item width)
             // Its own glass (the toolbar's shared capsule is hidden below), so the capsule moves with it.
@@ -724,6 +728,36 @@ private struct NativeDetailToolbar: ToolbarContent {
                 .disabled(navigator.isSplit)
                 .accessibilityIdentifier("ai-toggle")
             }
+        }
+    }
+
+    /// Chrome's tab menu: new / split / duplicate / move, then the closes. Split only where the window may split and
+    /// the tab shows a page or a file; a new window only on the Mac, for a page (the "page" window group opens on one).
+    private func tabMenuCommands(_ id: UUID) -> [[TabStripCommand]] {
+        let route = navigator.route(ofTab: id)
+        var first: [TabStripCommand] = [.newToRight]
+        if navigator.splitAllowed, route?.canSplit == true { first.append(.openInSplit) }
+        first.append(.duplicate)
+        #if os(macOS)
+            if route?.pageID != nil { first.append(.moveToNewWindow) }
+        #endif
+        return [first, [.close, .closeOthers, .closeToRight]]
+    }
+
+    private func performTabCommand(_ command: TabStripCommand, _ id: UUID) {
+        switch command {
+        case .newToRight: navigator.newTab(rightOf: id)
+        case .openInSplit: navigator.openTabInSplit(id)
+        case .duplicate: navigator.duplicateTab(id)
+        case .moveToNewWindow:
+            #if os(macOS)
+                guard let pageID = navigator.route(ofTab: id)?.pageID else { return }
+                openWindow(id: "page", value: pageID)
+                navigator.closeTab(id)
+            #endif
+        case .close: navigator.closeTab(id)
+        case .closeOthers: navigator.closeOtherTabs(id)
+        case .closeToRight: navigator.closeTabs(rightOf: id)
         }
     }
 

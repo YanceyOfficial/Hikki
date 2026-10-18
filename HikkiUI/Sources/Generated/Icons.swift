@@ -86,6 +86,8 @@ public nonisolated enum Icon: String, CaseIterable, Sendable {
     case calendarDots = "calendar-dots"
     case lockSimple = "lock-simple"
     case lockSimpleOpen = "lock-simple-open"
+    case xSquare = "x-square"
+    case arrowLineRight = "arrow-line-right"
 
     /// The SF Symbol drawn for this icon, if any.
     public var systemName: String? {
@@ -166,6 +168,8 @@ public nonisolated enum Icon: String, CaseIterable, Sendable {
         case .calendarDots: "calendar"
         case .lockSimple: "lock"
         case .lockSimpleOpen: "lock.open"
+        case .xSquare: "xmark.square"
+        case .arrowLineRight: "arrow.right.to.line"
         default: nil
         }
     }

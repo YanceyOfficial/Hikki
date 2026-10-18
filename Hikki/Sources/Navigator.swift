@@ -260,6 +260,39 @@ final class Navigator {
         return tabs.close(id)
     }
 
+    // MARK: The tab menu (Chrome's)
+
+    /// What the tab `id` shows (nil: no such tab).
+    func route(ofTab id: UUID) -> Route? {
+        tabs.tabs.first { $0.id == id }?.route
+    }
+
+    /// "New Tab to the Right": Home in a new tab right after `id`, as "+" opens.
+    func newTab(rightOf id: UUID) {
+        tabs.openTab(.home, after: id)
+        syncSelection()
+    }
+
+    func duplicateTab(_ id: UUID) {
+        tabs.duplicate(id)
+        syncSelection()
+    }
+
+    func closeOtherTabs(_ id: UUID) {
+        tabs.closeOthers(id)
+        syncSelection()
+    }
+
+    func closeTabs(rightOf id: UUID) {
+        tabs.closeTabs(after: id)
+        syncSelection()
+    }
+
+    /// "Open in Split View": the tab's page (or file) in the pane beside the current tab; the tab stays.
+    func openTabInSplit(_ id: UUID) {
+        if let route = route(ofTab: id) { openInSplit(route) }
+    }
+
     /// Drops trashed pages from every tab's history.
     func prune(existing: (String) -> Bool) {
         let before = tabs.route
