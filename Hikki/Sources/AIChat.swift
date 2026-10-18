@@ -778,6 +778,7 @@ struct AIModelMenu: View {
 private struct ChatBubble: View {
     let message: AIChat.Message
     let isStreaming: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         switch message.role {
@@ -794,7 +795,7 @@ private struct ChatBubble: View {
             .padding(.leading, Spacing.s12)
         case .assistant:
             VStack(alignment: .leading, spacing: Spacing.s2_5) {
-                if !message.text.isEmpty { AnswerText(text: message.text) }
+                if !message.text.isEmpty { AnswerText(text: message.text, isStreaming: isStreaming) }
                 if isStreaming && (message.text.isEmpty || message.searching != nil) {
                     working
                 }
@@ -851,53 +852,17 @@ private struct ChatBubble: View {
             .background(Theme.muted, in: .capsule)
     }
 
+    /// The model at work: the line shimmers; with Reduce Motion it stands still, so a spinner says it's busy.
     private var working: some View {
         HStack(spacing: Spacing.s2) {
-            ProgressView().controlSize(.small)
+            if reduceMotion { ProgressView().controlSize(.small) }
             if let query = message.searching {
-                Text(query.isEmpty ? "app:ai.searching" : "app:ai.searchingFor \(query)")
+                ShimmerText(query.isEmpty ? "app:ai.searching" : "app:ai.searchingFor \(query)")
             } else {
-                Text("app:ai.thinking")
+                ShimmerText("app:ai.thinking")
             }
         }
         .font(.hk(.sm))
-        .foregroundStyle(Theme.mutedForeground)
-    }
-}
-
-/// An answer as Notion draws it: paragraphs apart, list items with their bullet or number hanging.
-private struct AnswerText: View {
-    let text: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.s2) {
-            ForEach(Array(AIMarkdown.blocks(text).enumerated()), id: \.offset) { _, block in
-                switch block.kind {
-                case .paragraph:
-                    line(block.text)
-                case .bullet:
-                    item(marker: "•", block.text)
-                case .numbered(let number):
-                    item(marker: number, block.text)
-                }
-            }
-        }
-        .textSelection(.enabled)
-    }
-
-    private func line(_ text: AttributedString) -> some View {
-        Text(text).font(.hk(.base)).lineSpacing(Spacing.s1).fixedSize(horizontal: false, vertical: true)
-    }
-
-    private func item(marker: String, _ text: AttributedString) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: Spacing.s2) {
-            Text(verbatim: marker)  // a list marker, not copy
-                .font(.hk(.base))
-                .foregroundStyle(Theme.mutedForeground)
-                .frame(minWidth: Spacing.s3, alignment: .trailing)
-            line(text)
-        }
-        .padding(.leading, Spacing.s1)
     }
 }
 

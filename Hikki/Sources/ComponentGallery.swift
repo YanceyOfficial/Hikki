@@ -165,6 +165,20 @@
                         SkeletonLines([0.45], height: Spacing.s6, label: "app:history.loading")
                         SkeletonLines([1, 0.94, 0.62], label: "app:history.loading")
                     }
+                    Section("ShimmerText") {
+                        ShimmerText("app:ai.thinking").font(.hk(.sm))
+                        ShimmerText("app:ai.searching").font(.hk(.sm))
+                    }
+                    Section("CodeBlockView") {
+                        CodeBlockView(
+                            code: "let greeting = \"Hello\"\nprint(greeting)  // a line long enough to scroll sideways in the block",
+                            language: "swift", copyLabel: "app:ai.code.copy", copiedLabel: "app:ai.code.copied")
+                    }
+                    Section("TextTable") {
+                        TextTable(
+                            header: ["Model", "Context"], rows: [["Small", "128k"], ["Large", "1M"]],
+                            alignments: [.leading, .trailing])
+                    }
                     Section("TaskProgressRow") {
                         TaskProgressRow(Text(verbatim: "Importing 3 of 20"), done: 3, total: 20, cancelTitle: "Cancel") {}
                         TaskProgressRow(Text(verbatim: "Reading files…"), done: 0, total: 0, cancelTitle: "Cancel") {}

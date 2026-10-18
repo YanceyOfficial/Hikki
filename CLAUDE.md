@@ -130,7 +130,8 @@ HikkiCore/Sources/            framework: Store (GRDB/SQLite, page tree, assets, 
 HikkiSearch/Sources/          framework: the search engine — its own SQLite index (trigram FTS5, BM25), query parsing,
                               ranking, pinyin keys, fuzzy titles; tests in HikkiSearch/Tests/
 HikkiAI/Sources/              framework: AI — one streaming client over OpenAI (Responses) and Anthropic (Messages) with
-                              their own web search + citations, the fixed model catalog; tests in HikkiAI/Tests/
+                              their own web search + citations, the fixed model catalog, answers as Markdown blocks
+                              (swift-markdown) and code colouring (HighlightSwift); tests in HikkiAI/Tests/
 HikkiUI/Sources/              framework: reusable SwiftUI components + Theme
 editor/src/                   web editor: main.tsx + style.css; each folder below holds only .tsx or only .ts
 editor/src/core/              bridge, protocol, transport, editor setup, block catalog, i18n, shortcuts, links, page store
@@ -201,7 +202,7 @@ HikkiUITests/                 XCUITest flows
   `FloatingActionBar` (HikkiUI): Search · Ask AI · New page at home, Outline · Ask about this page · Edit on a page
   (hidden while the keyboard is up); the page's ⋯ is a sheet (`Hikki/Sources/PhonePageActions.swift`: quick tiles,
   history, export, move, facts). All pages groups by day (`RecencyGroup`, HikkiCore). Ask AI is a native chat sheet
-  (`Hikki/Sources/AIChat.swift`: the open page's text as context, model menu, web search, `AIPrompts.chat`; answers render through `AIMarkdown`, which keeps only http(s) links). Left
+  (`Hikki/Sources/AIChat.swift`: the open page's text as context, model menu, web search, `AIPrompts.chat`; answers render through `AIMarkdown` — see AI). Left
   out of the compact layout: tabs, split view, the inspector panel, Home's table. Search is a full-screen cover
   (the field fixed at the top, results filling the rest). A page runs to the top of the screen: the scroll view has no
   top inset and the editor makes that room itself (`setInsets` with `bleed`, `--hk-bleed-top`), so a cover fills it
@@ -520,7 +521,19 @@ HikkiUITests/                 XCUITest flows
   change with the model's reason (`explain` in the request, `notes` in the reply), the page untouched until Replace
   (B and C: `editor/src/components/ai-review-styles.tsx`). Answers get a card (Insert below, Copy) that draws their
   Markdown as page blocks (`markdownBlocks` / `markdownDOM` in `editor/src/core/convert.ts`: no media, web links only)
-  and inserts it as blocks; answers and reasons are written in the app's language (`AIPrompts.languageLine`). Model output is untrusted: the reply is parsed tolerantly (`editor/src/lib/ai-content.ts`;
+  and inserts it as blocks; answers and reasons are written in the app's language (`AIPrompts.languageLine`). The chat's
+  answers (`Hikki/Sources/AIAnswerText.swift`) are full GitHub-flavoured Markdown: `AIMarkdown`
+  (`HikkiAI/Sources/AIMarkdown.swift`, swift-markdown's cmark-gfm tree, ported from exodus-ios's MarkdownKit) gives
+  blocks — headings, nested / numbered / task lists, quotes, fenced code, tables, rules — with inline styles; only
+  http(s) links stay links (bare URLs autolinked), pictures show as their description, a lone `~` is not a strike. It
+  parses the whole answer on every token: an unclosed fence is code to the end and a half-typed fence line is left out.
+  Code blocks are HikkiUI's `CodeBlockView` (language, copy) coloured by `CodeHighlighter`
+  (`HikkiAI/Sources/CodeHighlighter.swift`: highlight.js via HighlightSwift, each class mapped to a sentinel CSS grey
+  read back as a `CodeToken`, drawn in the `syntax-*` tokens as the editor maps them; it waits for a pause while
+  streaming and a growing block keeps its earlier colours); tables are HikkiUI's `TextTable`. HighlightSwift's
+  resource bundle is copied into the app; when it's missing (`resourcesFound`) code stays plain rather than trap.
+  While the model works the chat's "Thinking…" / "Searching the web…" line is HikkiUI's `ShimmerText` (a foreground
+  band sweeping the muted text once per `Motion.loop`; still under Reduce Motion, which gets a spinner instead). Model output is untrusted: the reply is parsed tolerantly (`editor/src/lib/ai-content.ts`;
   sanitized inline HTML through the schema, unknown keys dropped, an unreadable reply is an error), citations must be
   http(s), and any change to the page closes the review.
 - **Find, spelling, insets**: find and replace is `editor/src/extensions/find.ts` (Tiptap's extension, RE2 regex) with

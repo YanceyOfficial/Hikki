@@ -106,6 +106,7 @@
   --size-toast-width: 420px;
   --size-week-bar: 40px;
   --size-drawer: 360px;
+  --size-table-cell-max: 260px;
   --motion-pop-in: 200ms;
   --motion-pop-out: 150ms;
   --motion-loop: 1400ms;

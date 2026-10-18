@@ -307,6 +307,40 @@
         }
       }
     },
+    "app:ai.code.copied": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copied"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已复制"
+          }
+        }
+      }
+    },
+    "app:ai.code.copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy code"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制代码"
+          }
+        }
+      }
+    },
     "app:ai.copy": {
       "extractionState": "manual",
       "localizations": {

@@ -203,6 +203,12 @@
     "check": {
       "sf": "checkmark"
     },
+    "check-square": {
+      "sf": "checkmark.square.fill"
+    },
+    "square": {
+      "sf": "square"
+    },
     "arrow-right": {
       "sf": "arrow.right"
     },
