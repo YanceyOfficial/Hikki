@@ -516,7 +516,14 @@ HikkiUITests/                 XCUITest flows
   streams `AIEvent`s (text, searching, citation, finished); `HikkiAI/Sources/StreamDecoders.swift` reads each provider's events
   tolerantly (unknown events skipped, malformed lines ignored, only error events throw), `HTTPErrors` maps failures
   to `AIError`. Models are a fixed list (`AIModelCatalog`; "Auto" picks a balanced one among the providers with a
-  key). The model menu (`AIModelButton` in `Hikki/Sources/AISettings.swift` over `HikkiUI/Sources/ModelPickerList.swift`;
+  key). Ask AI keeps one conversation per page (`HikkiCore/Sources/Store/PageChats.swift`: `ai/<page id>.json` in the
+  workspace folder, synced and merged like comments — turns joined by id, New chat a `clearedAt` that keeps cleared
+  turns from coming back; a conversation from Home, about no page, isn't kept): moving to another page shows its
+  conversation, New chat (the panel's header, the iPhone sheet's bar, ⇧⌘N) empties it with an Undo toast, Settings →
+  AI keeps them 30 / 90 days (default) / forever (`ChatRetention`, pruned at launch) or deletes them all, and a page
+  deleted for good takes its conversation along (`onDeleted`). Past ~12k tokens since the last summary, the older turns
+  are summarized by the model first (`HikkiAI/Sources/ChatCompaction.swift`, `AIPrompts.summarizeChat`) and sent as
+  that summary in the instructions; the turns stay on screen. The model menu (`AIModelButton` in `Hikki/Sources/AISettings.swift` over `HikkiUI/Sources/ModelPickerList.swift`;
   the chat's composer and Settings → AI) is Notion's: Auto, starred models under Favorites, Recommended, Other
   models — a star on each row (`AIModelFavorites` in `HikkiAI/Sources/AIModelFavorites.swift`, UserDefaults
   `ai.favoriteModels`); a pick in the chat is also the default, which the page's Ask AI runs on. Each provider may have a base URL (blank: its own API; `HikkiAI/Sources/AIEndpoint.swift` — OpenAI's base

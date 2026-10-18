@@ -384,6 +384,8 @@ final class Navigator {
 extension FocusedValues {
     @Entry var editor: EditorController?
     @Entry var navigator: Navigator?
+    /// The window's AI chat, for File → New AI Chat (⇧⌘N) while the AI panel shows it.
+    @Entry var aiChat: AIChat?
     /// Whether the open page is locked (nil on Home / Trash) — a plain value for the menu bar: reading the
     /// model's tree from `Commands` through the navigator made the main menu and the scene rebuild each
     /// other without end.

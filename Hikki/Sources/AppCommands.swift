@@ -8,6 +8,7 @@ struct AppCommands: Commands {
     @FocusedValue(\.editor) private var editor
     @FocusedValue(\.navigator) private var navigator
     @FocusedValue(\.lockedPage) private var lockedPage
+    @FocusedValue(\.aiChat) private var aiChat
 
     var body: some Commands {
         #if os(iOS)
@@ -33,6 +34,11 @@ struct AppCommands: Commands {
                 if !navigator.closeTab(navigator.tabs.activeID) { closeWindow() }
             }
             .keyboardShortcut(Shortcut.closeTab.keyboardShortcut)
+            // A new chat with AI about the page: while the side panel shows the conversation, with one to clear.
+            Button("app:shortcut.newChat") { aiChat?.clear() }
+                .keyboardShortcut(Shortcut.newChat.keyboardShortcut)
+                .disabled(
+                    navigator?.isShowingInspector != true || navigator?.inspectorMode != .ai || aiChat?.messages.isEmpty != false)
             Divider()
             Button("app:import.menu") { navigator?.importFiles(into: nil) }
                 .disabled(navigator == nil)

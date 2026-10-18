@@ -57,6 +57,7 @@ struct ContentView: View {
             .toastHost(bottomInset: wide ? Spacing.s4 : Size.floatingBar + Spacing.s8)
             .focusedSceneValue(\.editor, editor)
             .focusedSceneValue(\.navigator, navigator)
+            .focusedSceneValue(\.aiChat, chat)
             .focusedSceneValue(\.lockedPage, navigator.currentPage?.isLocked)
     }
 

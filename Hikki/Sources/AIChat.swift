@@ -24,17 +24,23 @@ struct ChatAttachment: Identifiable, Equatable {
 /// A conversation with AI (Ask AI): the turns, the model picked for it, web search on or off, and the page it is
 /// about. One per window; the answer streams into the last message. Page text goes to the model only as context, and
 /// nothing of it is logged.
+///
+/// Each page has one conversation, kept in the workspace folder (`PageChats`: `ai/<page id>.json`, synced like the
+/// page): moving to another page shows that page's, New chat empties it (Undo puts it back). One asked from Home,
+/// about no page, isn't kept. A long one is compacted (`ChatCompaction`): its older turns go to the model as a summary.
 @MainActor
 @Observable
 final class AIChat {
     struct Message: Identifiable, Equatable {
-        enum Role { case user, assistant }
-        let id = UUID()
+        typealias Role = ChatTurn.Role
+        var id = UUID().uuidString.lowercased()
         let role: Role
         var text: String
-        let sentAt = Date()
+        var sentAt = Date()
         /// Files sent with a question (shown in its bubble; sent with that turn only).
         var attachments: [ChatAttachment] = []
+        /// Names of files sent with a question in an earlier session (the files themselves aren't kept).
+        var attachmentNames: [String] = []
         var citations: [AICitation] = []
         /// A web search under way (its query, when the provider says it).
         var searching: String?
@@ -42,6 +48,12 @@ final class AIChat {
     }
 
     var messages: [Message] = []
+    /// What the conversation's older turns said, sent in their place (`ChatCompaction`).
+    private(set) var summary: ChatSummary?
+    /// The older turns are being summarized before the question goes.
+    private(set) var isCompacting = false
+    /// Where conversations are kept (nil until the workspace folder is known).
+    @ObservationIgnored var chatStore: () -> PageChats? = { AppModel.current?.chats }
     var draft = ""
     var webSearch = true
     /// "auto" or a catalog id; starts from Settings → AI's default.
@@ -54,9 +66,40 @@ final class AIChat {
     /// The chat now sits beside `id`: it becomes the page asked about (mentions of other pages stay).
     func show(page id: String?) {
         guard id != openPageID else { return }
+        // An answer still arriving belongs to the page it was asked on: it stops, and what came is kept there.
+        if isStreaming { stop() }
         openPageID = id
         pageID = id
         extraPageIDs.removeAll { $0 == id }
+        load()
+    }
+
+    /// The open page's kept conversation (none for no page).
+    private func load() {
+        guard let id = openPageID, let chats = chatStore() else {
+            messages = []
+            summary = nil
+            return
+        }
+        do {
+            let conversation = try chats.conversation(of: id, retention: AIPreferences.chatRetention)
+            messages = conversation.turns.map(Message.init)
+            summary = conversation.summary
+        } catch {
+            messages = []
+            summary = nil
+            Log.warn("AI chat not read: \(error)", category: "ai", context: ["docId": id])
+        }
+    }
+
+    /// Keeps turns of the open page's conversation.
+    private func keep(_ kept: [Message]) {
+        guard let id = openPageID, let chats = chatStore(), !kept.isEmpty else { return }
+        do {
+            try chats.save(kept.map(\.turn), pageId: id)
+        } catch {
+            Log.warn("AI chat not kept: \(error)", category: "ai", context: ["docId": id])
+        }
     }
 
     /// Other pages the user @-mentioned, in the order added.
@@ -119,14 +162,11 @@ final class AIChat {
         guard !question.isEmpty || !attachments.isEmpty, !isStreaming else { return }
         draft = ""
         attachError = nil
-        messages.append(Message(role: .user, text: question, attachments: attachments))
+        let asked = Message(role: .user, text: question, attachments: attachments)
+        messages.append(asked)
+        keep([asked])
         attachments = []
         messages.append(Message(role: .assistant, text: ""))
-        let turns: [AIMessage] = messages.dropLast().map { message in
-            message.role == .assistant
-                ? .assistant(message.text)
-                : AIMessage(role: .user, parts: [.text(message.text)] + message.attachments.map(\.part))
-        }
         let pages = ([pageID].compactMap { $0 } + extraPageIDs)
             .compactMap { try? store?.document(id: $0) }
             .map { (title: $0.title, text: $0.plainText) }
@@ -134,31 +174,112 @@ final class AIChat {
         case .failure(let error):
             finish(error: error)
         case .success(let (model, client)):
-            let request = AIPrompts.chat(
-                turns, pages: pages, selection: contextSelection, model: model, webSearch: webSearch, language: AIService.appLanguage)
-            Log.info(
-                "AI chat", category: "ai",
-                context: [
-                    "model": model.id, "turns": "\(turns.count)", "pages": "\(pages.count)",
-                    "files": "\(messages[messages.count - 2].attachments.count)",
-                ])
             isStreaming = true
-            run.start(
-                client.stream(request), onEvent: { [weak self] event in self?.apply(event) },
-                onEnd: { [weak self] error in self?.finish(error: error) })
+            Task { [weak self] in
+                await self?.compactIfNeeded(model: model, client: client)
+                self?.ask(pages: pages, model: model, client: client)
+            }
         }
+    }
+
+    /// The turns since the summary, as the model gets them (the answer being written left out).
+    private var turnsToSend: [Message] {
+        let asked = messages.dropLast()
+        guard let through = summary?.through, let index = asked.firstIndex(where: { $0.id == through }) else {
+            return Array(asked)
+        }
+        return Array(asked[asked.index(after: index)...])
+    }
+
+    /// A long conversation's older turns become (part of) its summary before the question goes; if that fails the
+    /// question goes with everything, as before.
+    private func compactIfNeeded(model: AIModel, client: any AIClient) async {
+        let turns = turnsToSend
+        guard let cut = ChatCompaction.cut(turns.map { (isUser: $0.role == .user, text: $0.text) }) else { return }
+        let older = turns[..<cut]
+        let page = openPageID
+        isCompacting = true
+        defer { isCompacting = false }
+        let request = AIPrompts.summarizeChat(
+            older.map { (isUser: $0.role == .user, text: $0.text) }, previous: summary?.text, model: model)
+        var text = ""
+        do {
+            for try await event in client.stream(request) {
+                if case .text(let delta) = event { text += delta }
+            }
+        } catch {
+            Log.warn("AI chat not compacted: \(error)", category: "ai", context: ["turns": "\(older.count)"])
+            return
+        }
+        guard isStreaming, openPageID == page, let last = older.last, !text.isEmpty else { return }
+        let compacted = ChatSummary(text: text, through: last.id, createdAt: .now)
+        summary = compacted
+        Log.info("AI chat compacted", category: "ai", context: ["turns": "\(older.count)"])
+        if let id = openPageID, let chats = chatStore() { try? chats.setSummary(compacted, pageId: id) }
+    }
+
+    private func ask(pages: [(title: String, text: String)], model: AIModel, client: any AIClient) {
+        // Stopped (or moved to another page) while compacting.
+        guard isStreaming else { return }
+        let turns: [AIMessage] = turnsToSend.map { message in
+            guard message.role == .user else { return .assistant(message.text) }
+            var parts: [AIMessage.Part] = [.text(message.text)] + message.attachments.map(\.part)
+            if !message.attachmentNames.isEmpty {
+                parts.append(.text("(Files attached then, not available now: \(message.attachmentNames.joined(separator: ", ")))"))
+            }
+            return AIMessage(role: .user, parts: parts)
+        }
+        let request = AIPrompts.chat(
+            turns, summary: summary?.text, pages: pages, selection: contextSelection, model: model, webSearch: webSearch,
+            language: AIService.appLanguage)
+        Log.info(
+            "AI chat", category: "ai",
+            context: [
+                "model": model.id, "turns": "\(turns.count)", "pages": "\(pages.count)",
+                "files": "\(messages[messages.count - 2].attachments.count)", "summary": summary == nil ? "no" : "yes",
+            ])
+        run.start(
+            client.stream(request), onEvent: { [weak self] event in self?.apply(event) },
+            onEnd: { [weak self] error in self?.finish(error: error) })
     }
 
     func stop() {
         run.stop()
         isStreaming = false
-        if let last = messages.indices.last { messages[last].searching = nil }
+        guard let last = messages.indices.last else { return }
+        messages[last].searching = nil
+        // What arrived of a stopped answer stays.
+        if messages[last].role == .assistant, !messages[last].text.isEmpty { keep([messages[last]]) }
     }
 
-    /// A new conversation (same page and model).
+    /// New chat (same page and model): the conversation empties; the toast's Undo brings it back.
     func clear() {
         stop()
+        let cleared = messages
+        let clearedSummary = summary
         messages = []
+        summary = nil
+        guard !cleared.isEmpty else { return }
+        let page = openPageID
+        var previous: ChatConversation?
+        if let page, let chats = chatStore() {
+            do {
+                previous = try chats.clear(pageId: page)
+            } catch {
+                Log.warn("AI chat not cleared: \(error)", category: "ai", context: ["docId": page])
+            }
+        }
+        Toasts.shared.show(.info, String(localized: "app:ai.chatCleared"), actionTitle: "app:format.undo") { [weak self] in
+            guard let self else { return }
+            if let page, let previous, let chats = self.chatStore() { try? chats.restore(previous, pageId: page) }
+            guard self.openPageID == page else { return }
+            if page != nil, previous != nil {
+                self.load()
+            } else {
+                self.messages = cleared + self.messages
+                self.summary = clearedSummary
+            }
+        }
     }
 
     private func apply(_ event: AIEvent) {
@@ -185,12 +306,32 @@ final class AIChat {
         isStreaming = false
         guard let last = messages.indices.last else { return }
         messages[last].searching = nil
+        if messages[last].role == .assistant, !messages[last].text.isEmpty {
+            messages[last].sentAt = .now
+            keep([messages[last]])
+        }
         if let error {
             messages[last].error = AIService.message(for: error)
             if let code = error.errorCode { Incident.report(code, error, category: "ai") }
         } else if messages[last].text.isEmpty {
             messages[last].error = AIService.message(for: .invalidResponse)
         }
+    }
+}
+
+extension AIChat.Message {
+    /// A kept turn, shown again.
+    init(_ turn: ChatTurn) {
+        self.init(
+            id: turn.id, role: turn.role, text: turn.text, sentAt: turn.sentAt, attachmentNames: turn.attachments,
+            citations: turn.citations.map { AICitation(url: $0.url, title: $0.title) })
+    }
+
+    /// The turn as it is kept.
+    var turn: ChatTurn {
+        ChatTurn(
+            id: id, role: role, text: text, sentAt: sentAt, attachments: attachmentNames + attachments.map(\.name),
+            citations: citations.map { ChatCitation(url: $0.url, title: $0.title) })
     }
 }
 
@@ -225,8 +366,8 @@ struct AIChatSheet: View {
     }
 }
 
-/// A new chat (once there is one) — the sheet's toolbar, the side panel's header. The model is picked in the
-/// composer.
+/// A new chat (once there is one) — the sheet's toolbar, the side panel's header; its tooltip names the shortcut
+/// (⇧⌘N, File → New AI Chat). The model is picked in the composer.
 struct AIChatActions: View {
     @Bindable var chat: AIChat
 
@@ -237,7 +378,8 @@ struct AIChatActions: View {
             } label: {
                 IconLabel("app:ai.newChat", icon: .notePencil)
             }
-            .help("app:ai.newChat")
+            .help(Text("app:ai.newChat") + Text(verbatim: "  \(Shortcut.newChat.display)"))
+            .accessibilityIdentifier("ai-chat-new")
         }
     }
 }
@@ -269,8 +411,11 @@ struct AIChatView: View {
                             .frame(maxWidth: .infinity)
                     }
                     ForEach(chat.messages) { message in
-                        ChatBubble(message: message, isStreaming: chat.isStreaming && message == chat.messages.last)
-                            .id(message.id)
+                        ChatBubble(
+                            message: message, isStreaming: chat.isStreaming && message == chat.messages.last,
+                            isCompacting: chat.isCompacting
+                        )
+                        .id(message.id)
                     }
                 }
                 .padding(.horizontal, Spacing.s4)
@@ -794,6 +939,7 @@ struct AIModelMenu: View {
 private struct ChatBubble: View {
     let message: AIChat.Message
     let isStreaming: Bool
+    var isCompacting = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -804,6 +950,15 @@ private struct ChatBubble: View {
                     HStack(spacing: Spacing.s1_5) {
                         ForEach(message.attachments) { AttachmentThumbnail(attachment: $0) }
                     }
+                }
+                // Files sent in an earlier session: their names (the files aren't kept).
+                if !message.attachmentNames.isEmpty {
+                    HStack(spacing: Spacing.s1) {
+                        IconView(.paperclip, size: TextSize.xs.rawValue)
+                        Text(verbatim: message.attachmentNames.joined(separator: ", ")).lineLimit(1)
+                    }
+                    .font(.hk(.xs))
+                    .foregroundStyle(Theme.mutedForeground)
                 }
                 if !message.text.isEmpty { userText }
             }
@@ -875,7 +1030,7 @@ private struct ChatBubble: View {
             if let query = message.searching {
                 ShimmerText(query.isEmpty ? "app:ai.searching" : "app:ai.searchingFor \(query)")
             } else {
-                ShimmerText("app:ai.thinking")
+                ShimmerText(isCompacting ? "app:ai.compacting" : "app:ai.thinking")
             }
         }
         .font(.hk(.sm))

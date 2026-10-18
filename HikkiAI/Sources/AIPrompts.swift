@@ -104,8 +104,8 @@ public enum AIPrompts {
     /// @-mentioned (first one first; together at most `maxPageText` characters). The context rides in the latest user
     /// turn, ahead of the user's words — page text is data, and the system prompt stays the app's own.
     public static func chat(
-        _ turns: [AIMessage], pages: [(title: String, text: String)] = [], selection: String? = nil, model: AIModel,
-        webSearch: Bool, language: String? = nil
+        _ turns: [AIMessage], summary: String? = nil, pages: [(title: String, text: String)] = [], selection: String? = nil,
+        model: AIModel, webSearch: Bool, language: String? = nil
     ) -> AIRequest {
         var context: [String] = []
         var budget = maxPageText
@@ -124,9 +124,14 @@ public enum AIPrompts {
         if !context.isEmpty, let last = messages.indices.last, messages[last].role == .user {
             messages[last].parts.insert(.text(context.joined(separator: "\n\n")), at: 0)
         }
+        // A long conversation's older turns (`ChatCompaction`) come as their summary.
+        let earlier =
+            summary.map {
+                "\n\nEarlier in this conversation (a summary; those turns aren't repeated):\n<summary>\(escape($0))</summary>"
+            } ?? ""
         return AIRequest(
-            model: model, instructions: chatInstructions + languageLine(language), messages: messages, webSearch: webSearch,
-            maxOutputTokens: 4096)
+            model: model, instructions: chatInstructions + languageLine(language) + earlier, messages: messages,
+            webSearch: webSearch, maxOutputTokens: 4096)
     }
 
     static let chatInstructions = """

@@ -1,4 +1,5 @@
 import HikkiAI
+import HikkiCore
 import HikkiUI
 import SwiftUI
 
@@ -12,6 +13,12 @@ enum AIPreferences {
     static let favoritesKey = "ai.favoriteModels"
     /// How an AI edit is reviewed: `inline` (A, default), `diff` (B) or `bubble` (C) — `ReviewStyleThumbnail.Sketch`.
     static let reviewStyleKey = "ai.reviewStyle"
+    /// How long each page's AI conversation is kept (`ChatRetention`: days30, days90 — the default — or forever).
+    static let chatRetentionKey = "ai.chatRetention"
+
+    static var chatRetention: ChatRetention {
+        UserDefaults.standard.string(forKey: chatRetentionKey).flatMap(ChatRetention.init) ?? .default
+    }
 
     /// The base URL typed for a provider (blank: its own API) — `AIEndpoint` reads it.
     static func baseURLKey(_ provider: AIProvider) -> String { "ai.baseURL.\(provider.rawValue)" }
@@ -47,8 +54,11 @@ enum AIPreferences {
 }
 
 struct AISettingsSection: View {
+    @Environment(AppModel.self) private var app
     @AppStorage(AIPreferences.modelKey) private var model = AIModelCatalog.autoID
     @AppStorage(AIPreferences.reviewStyleKey) private var reviewStyle = ReviewStyleThumbnail.Sketch.inline.rawValue
+    @AppStorage(AIPreferences.chatRetentionKey) private var retention = ChatRetention.default.rawValue
+    @State private var confirmingDelete = false
 
     var body: some View {
         Section {
@@ -81,6 +91,37 @@ struct AISettingsSection: View {
             Text("app:ai.settings.models")
         } footer: {
             Text("app:ai.settings.models.detail")
+        }
+        Section {
+            Picker("app:ai.settings.history.keep", selection: $retention) {
+                ForEach(ChatRetention.allCases, id: \.self) { choice in
+                    if let days = choice.days {
+                        Text("app:settings.trash.days \(days.formatted())").tag(choice.rawValue)
+                    } else {
+                        Text("app:settings.trash.forever").tag(choice.rawValue)
+                    }
+                }
+            }
+            .accessibilityIdentifier("settings-ai-history-keep")
+            .onChange(of: retention) { _, _ in
+                let retention = AIPreferences.chatRetention
+                if let chats = app.chats { Task.detached(priority: .utility) { chats.prune(retention) } }
+            }
+            Button("app:ai.settings.history.deleteAll", role: .destructive) { confirmingDelete = true }
+                .disabled(app.chats == nil)
+                .accessibilityIdentifier("settings-ai-history-delete")
+                .confirmationDialog("app:ai.settings.history.deleteAll.confirm", isPresented: $confirmingDelete) {
+                    Button("app:common.delete", role: .destructive) {
+                        app.chats?.removeEverything()
+                        Toasts.shared.show(.success, String(localized: "app:ai.settings.history.deleted"))
+                    }
+                } message: {
+                    Text("app:trash.cannotUndo")
+                }
+        } header: {
+            Text("app:ai.settings.history")
+        } footer: {
+            Text("app:ai.settings.history.detail")
         }
         ForEach(AIProvider.allCases, id: \.self) { provider in
             AIKeySection(provider: provider)

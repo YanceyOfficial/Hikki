@@ -6,6 +6,7 @@ export type ShortcutId =
   | 'closeTab'
   | 'search'
   | 'toggleInspector'
+  | 'newChat'
   | 'toggleSplit'
   | 'settings'
   | 'back'
@@ -60,6 +61,7 @@ export const SHORTCUTS: Record<ShortcutId, Shortcut> = {
   closeTab: { key: 'w', command: true, shift: false, option: false, control: false, bound: 'app', display: '⌘W' },
   search: { key: 'k', command: true, shift: false, option: false, control: false, bound: 'app', display: '⌘K' },
   toggleInspector: { key: 'i', command: true, shift: false, option: true, control: false, bound: 'app', display: '⌥⌘I' },
+  newChat: { key: 'n', command: true, shift: true, option: false, control: false, bound: 'app', display: '⇧⌘N' },
   toggleSplit: { key: '\\', command: true, shift: false, option: false, control: false, bound: 'app', display: '⌘\\' },
   settings: { key: ',', command: true, shift: false, option: false, control: false, bound: 'app', display: '⌘,' },
   back: { key: '[', command: true, shift: false, option: false, control: false, bound: 'app', display: '⌘[' },

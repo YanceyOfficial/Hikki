@@ -307,6 +307,23 @@
         }
       }
     },
+    "app:ai.chatCleared": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chat cleared"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "对话已清空"
+          }
+        }
+      }
+    },
     "app:ai.code.copied": {
       "extractionState": "manual",
       "localizations": {
@@ -337,6 +354,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "复制代码"
+          }
+        }
+      }
+    },
+    "app:ai.compacting": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Summarizing earlier messages…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在总结之前的对话…"
           }
         }
       }
@@ -915,6 +949,108 @@
           "stringUnit": {
             "state": "translated",
             "value": "Base URL"
+          }
+        }
+      }
+    },
+    "app:ai.settings.history": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conversations"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "对话"
+          }
+        }
+      }
+    },
+    "app:ai.settings.history.deleteAll": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete All Conversations…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除所有对话…"
+          }
+        }
+      }
+    },
+    "app:ai.settings.history.deleteAll.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete every page’s conversation with AI?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除所有页面与 AI 的对话？"
+          }
+        }
+      }
+    },
+    "app:ai.settings.history.deleted": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conversations deleted"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "对话已删除"
+          }
+        }
+      }
+    },
+    "app:ai.settings.history.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Each page keeps one conversation with AI, in the workspace folder, synced with the page. Older messages are deleted on every device; a page deleted for good takes its conversation along."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每个页面保留一段与 AI 的对话，存放在工作区文件夹中，随页面同步。超过期限的消息会在所有设备上删除；页面被永久删除时，其对话也一并删除。"
+          }
+        }
+      }
+    },
+    "app:ai.settings.history.keep": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep conversations"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保留对话"
           }
         }
       }
@@ -7137,6 +7273,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "上移块"
+          }
+        }
+      }
+    },
+    "app:shortcut.newChat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New AI chat"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新建 AI 对话"
           }
         }
       }

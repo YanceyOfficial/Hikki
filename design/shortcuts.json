@@ -31,6 +31,12 @@
       "bound": "app",
       "group": "general"
     },
+    "newChat": {
+      "key": "n",
+      "modifiers": ["command", "shift"],
+      "bound": "app",
+      "group": "general"
+    },
     "toggleSplit": {
       "key": "\\",
       "modifiers": ["command"],

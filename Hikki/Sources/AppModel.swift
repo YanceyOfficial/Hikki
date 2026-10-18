@@ -73,6 +73,8 @@ final class AppModel {
     @ObservationIgnored private(set) var history: PageHistory?
     /// Comment threads (`comments/<page id>.json`), in the folder too so they sync with the pages.
     @ObservationIgnored private(set) var comments: PageComments?
+    /// Each page's AI conversation (`ai/<page id>.json`), in the folder too.
+    @ObservationIgnored private(set) var chats: PageChats?
 
     /// Notion-like: a version per editing session (10 quiet minutes apart), all of the last day, then one a day for
     /// 30 days. DEBUG: `HIKKI_HISTORY_INTERVAL=<seconds>` shortens the session (UI tests).
@@ -111,6 +113,10 @@ final class AppModel {
             self.history = history
             let comments = PageComments(root: folder, author: Self.authorName, device: Self.deviceKind)
             self.comments = comments
+            let chats = PageChats(root: folder)
+            self.chats = chats
+            let retention = AIPreferences.chatRetention
+            Task.detached(priority: .utility) { chats.prune(retention) }
             // Every pass — launch, activation, or the folder watcher noticing another device — tells open
             // editors which pages came from disk, so one showing such a page reloads it.
             // The losing side of a conflict becomes a page of its own, titled in the app's language; a page
@@ -130,6 +136,7 @@ final class AppModel {
                     for id in ids {
                         try? history.forget(pageID: id)
                         comments.removeAll(pageId: id)
+                        chats.removeAll(pageId: id)
                     }
                 })
             let sync = WorkspaceSync(store: store, files: PageFiles(root: folder), options: options) { [weak self] report in

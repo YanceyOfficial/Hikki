@@ -77,7 +77,8 @@ struct InspectorView: View {
             if navigator.inspectorMode == .ai && !chat.messages.isEmpty {
                 HStack(spacing: Spacing.s1) {
                     Spacer(minLength: Spacing.s2)
-                    AIChatActions(chat: chat).labelStyle(.iconOnly).buttonStyle(.borderless)
+                    // Named, not a bare glyph: clearing the conversation shouldn't be a guess.
+                    AIChatActions(chat: chat).labelStyle(.titleAndIcon).buttonStyle(.borderless).font(.hk(.sm))
                 }
                 .padding(.horizontal, Spacing.s3)
                 .frame(height: Size.iconButton)

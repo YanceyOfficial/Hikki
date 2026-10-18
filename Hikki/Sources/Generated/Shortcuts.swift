@@ -10,6 +10,7 @@ enum Shortcut: String, CaseIterable {
     case closeTab
     case search
     case toggleInspector
+    case newChat
     case toggleSplit
     case settings
     case back
@@ -65,6 +66,7 @@ enum Shortcut: String, CaseIterable {
         case .closeTab: .app
         case .search: .app
         case .toggleInspector: .app
+        case .newChat: .app
         case .toggleSplit: .app
         case .settings: .app
         case .back: .app
@@ -109,6 +111,7 @@ enum Shortcut: String, CaseIterable {
         case .closeTab: .general
         case .search: .general
         case .toggleInspector: .general
+        case .newChat: .general
         case .toggleSplit: .general
         case .settings: .general
         case .back: .navigation
@@ -154,6 +157,7 @@ enum Shortcut: String, CaseIterable {
         case .closeTab: KeyCombo("w", [.command])
         case .search: KeyCombo("k", [.command])
         case .toggleInspector: KeyCombo("i", [.option, .command])
+        case .newChat: KeyCombo("n", [.shift, .command])
         case .toggleSplit: KeyCombo("\\", [.command])
         case .settings: KeyCombo(",", [.command])
         case .back: KeyCombo("[", [.command])
@@ -199,6 +203,7 @@ enum Shortcut: String, CaseIterable {
         case .closeTab: "app:shortcut.closeTab"
         case .search: "app:shortcut.search"
         case .toggleInspector: "app:shortcut.toggleInspector"
+        case .newChat: "app:shortcut.newChat"
         case .toggleSplit: "app:shortcut.toggleSplit"
         case .settings: "app:shortcut.settings"
         case .back: "app:shortcut.back"
