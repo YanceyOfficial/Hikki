@@ -570,6 +570,20 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(waitOrDumpTree(row, in: app), "imported page missing from the sidebar")
     }
 
+    /// An attachment opened from a page shows over it (a sheet / full-screen cover), not in a tab of its own; Close
+    /// brings the page back (`HIKKI_SHOW_FILE` stands in for clicking the attachment; the file is missing, so the
+    /// viewer says so).
+    func testAttachmentOpensOverThePage() throws {
+        continueAfterFailure = false
+        let app = launch(environment: ["HIKKI_SHOW_FILE": "missing.pdf"])
+        let close = app.buttons["pdf-sheet-close"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(close, in: app, timeout: 15), "the viewer did not open over the page")
+        XCTAssertFalse(app.descendants(matching: .any)["tab-missing.pdf"].exists, "the file opened as a tab")
+        close.tap()
+        let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: close)
+        wait(for: [gone], timeout: 10)
+    }
+
     /// A page's Import… (its context menu) takes several files at once and makes them its subpages
     /// (`HIKKI_PICK_FILES` stands in for the file picker).
     func testImportIntoAPage() throws {

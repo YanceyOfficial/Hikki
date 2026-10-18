@@ -173,6 +173,18 @@ struct ContentView: View {
         .animation(.snappy(duration: 0.18), value: navigator.isSearching)
         // Attachments opened from the editor.
         .quickLookPreview($editor.previewURL)
+        // An attached PDF clicked in the page: the viewer over it, the page staying in its tab.
+        #if os(iOS)
+            .fullScreenCover(item: $navigator.documentSheet) { request in
+                DocumentSheet(request: request, editor: editor, navigator: navigator)
+            }
+        #else
+            .sheet(item: $navigator.documentSheet) { request in
+                DocumentSheet(request: request, editor: editor, navigator: navigator)
+                .frame(minWidth: Size.pdfSheetWidth, minHeight: Size.pdfSheetHeight)
+                .presentationSizing(.page)
+            }
+        #endif
         // The passage selected in the page (the main editor's) rides along to Ask AI as context, as in Notion.
         // It keeps the page it was selected in: a question about another page goes without it.
         .onChange(of: editor.selection) { _, selection in chat.selection = selection }
@@ -366,7 +378,7 @@ struct ContentView: View {
         // The editor's callbacks hold the navigator, the model and the editor weakly (each owns none of them): a
         // strong capture kept every closed window's editor and web process alive.
         let editor = editor
-        editor.onOpenDocument = { [weak navigator] name, label in navigator?.openDocument(name: name, label: label) }
+        editor.onOpenDocument = { [weak navigator] name, label in navigator?.showDocument(name: name, label: label) }
         // A page dropped on the page's right edge opens beside it (split view).
         editor.onOpenInSplit = { [weak navigator, weak model] id in
             navigator?.splitDropHover = false
@@ -489,6 +501,12 @@ struct ContentView: View {
             // HIKKI_OPEN_FILE=<asset name> opens that attachment in the viewer pane (screenshots of the PDF viewer).
             if let name = environment["HIKKI_OPEN_FILE"] {
                 navigator.openDocument(name: name, label: name)
+            }
+            // HIKKI_SHOW_FILE=<asset name> shows it the way a click in a page does: the viewer over the page (UI tests).
+            if let name = environment["HIKKI_SHOW_FILE"] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak navigator] in
+                    navigator?.showDocument(name: name, label: name)
+                }
             }
             // HIKKI_DEBUG_NAV=a,b,c visits those pages one per second (reproduces page-switch bugs).
             if let ids = environment["HIKKI_DEBUG_NAV"]?.split(separator: ",") {
@@ -807,6 +825,42 @@ private struct DocumentPane: View {
             }
         }
         .navigationTitle(label)
+    }
+}
+
+/// An attached PDF over the page (a large sheet on the Mac, a full-screen cover on iOS): the viewer with its own
+/// controls under a bar with the file's name, Open in Split View (where the window splits) and Close (Escape).
+private struct DocumentSheet: View {
+    let request: DocumentSheetRequest
+    let editor: EditorController
+    let navigator: Navigator
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            DocumentPane(name: request.name, label: request.label, editor: editor)
+                #if os(iOS)
+                    .navigationBarTitleDisplayMode(.inline)
+                #endif
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("app:common.close") { dismiss() }
+                            .accessibilityIdentifier("pdf-sheet-close")
+                    }
+                    if navigator.splitAllowed {
+                        ToolbarItem(placement: .primaryAction) {
+                            Button {
+                                navigator.documentSheet = nil
+                                navigator.openInSplit(.file(name: request.name, label: request.label))
+                            } label: {
+                                IconLabel("app:split.openPage", icon: .squareSplitHorizontal)
+                            }
+                            .accessibilityIdentifier("pdf-sheet-split")
+                        }
+                    }
+                }
+        }
+        .accessibilityIdentifier("pdf-sheet")
     }
 }
 

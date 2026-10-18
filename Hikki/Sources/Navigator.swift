@@ -37,6 +37,13 @@ struct ImportDrop: Equatable, Identifiable {
     let parentID: String?
 }
 
+/// An attached file (a PDF) to show in the viewer over the page: the asset's name and the file's own name.
+struct DocumentSheetRequest: Equatable, Identifiable {
+    let name: String
+    let label: String
+    var id: String { name }
+}
+
 struct TitleFocusRequest: Equatable {
     let pageID: String
     let serial: Int
@@ -95,6 +102,8 @@ final class Navigator {
 
     /// Files dropped on the sidebar, waiting for ContentView (which has the editor that converts them) to import.
     var importDrop: ImportDrop?
+    /// An attached PDF shown over the page (`showDocument`).
+    var documentSheet: DocumentSheetRequest?
     /// Split view (Mac/iPad): the window shows a second pane beside the current tab.
     private(set) var isSplit = false
     /// Whether this window may split (`DeviceRules.allowsSplit`); set by ContentView. A window that
@@ -253,7 +262,13 @@ final class Navigator {
         syncSelection()
     }
 
-    /// An attached PDF clicked in a page: it opens in a viewer pane in a tab of its own (or its tab gets focus).
+    /// An attached PDF clicked in a page: it opens in a viewer over the page (a sheet on the Mac, a full-screen cover on
+    /// iOS), so the page stays in its tab and the PDF can still go beside it (the sheet's Open in Split View).
+    func showDocument(name: String, label: String) {
+        documentSheet = DocumentSheetRequest(name: name, label: label)
+    }
+
+    /// The PDF in a pane of its own in a tab (`Route.file`, or its tab gets focus) — `HIKKI_OPEN_FILE` screenshots.
     func openDocument(name: String, label: String) {
         tabs.openRecent(.file(name: name, label: label), limit: Self.recentTabLimit)
         syncSelection()

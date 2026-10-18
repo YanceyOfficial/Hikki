@@ -442,10 +442,12 @@ HikkiUITests/                 XCUITest flows
   view takes the drags over it. Split already, that edge replaces the right side, so the right pane outlines itself
   whole (`Navigator.splitDropHover`, set by `EdgeDrop` and the editor's `splitDropHover` message) — a half-width zone
   on the left read as a third column. iPadOS keeps the screen's very edge for "open in a new window".
-- **PDF viewer**: a PDF attachment opens in a pane of its own in a tab (`Route.file`), drawn natively by
-  `HikkiUI/Sources/PDFViewer.swift` (PDFKit: continuous pages, zoom/fit, page number, find, thumbnails, an unlock prompt
-  for password-protected files — the password is never stored); other attachments still open in Quick Look. Panes are
-  the unit the planned split view will put side by side.
+- **PDF viewer**: a PDF attachment clicked in a page opens over it (`Navigator.showDocument` → `DocumentSheet` in
+  ContentView: a page-sized sheet on the Mac, a full-screen cover on iOS, Close and Open in Split View in its bar),
+  drawn natively by `HikkiUI/Sources/PDFViewer.swift` (PDFKit: continuous pages, zoom/fit, page number, find,
+  thumbnails, an unlock prompt for password-protected files — the password is never stored); other attachments still
+  open in Quick Look. `Route.file` (a PDF in a tab's pane) remains for the split pane and `HIKKI_OPEN_FILE`;
+  `HIKKI_SHOW_FILE=<asset>` opens the sheet (UI tests).
 - **Comments** (Notion's): ⇧⌘M or the selection menu's Comment starts a thread on the selected passage. The passage
   carries a `comment` mark with the thread's id (`editor/src/extensions/comments.ts`), so it moves with edits; the
   words live natively in `comments/<page id>.json` in the workspace folder (`HikkiCore/Sources/Store/PageComments.swift`:
