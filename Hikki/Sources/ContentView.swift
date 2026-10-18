@@ -246,7 +246,8 @@ struct ContentView: View {
             .fileImporter(isPresented: $navigator.isImporting, allowedContentTypes: Self.importTypes, allowsMultipleSelection: true) {
                 result in
                 guard case .success(let urls) = result else { return }
-                Task { await importFiles(urls) }
+                let parentID = navigator.importParentID
+                Task { await importFiles(urls, parentID: parentID) }
             }
             // Files dropped on the sidebar (SidebarFileDrop).
             .onChange(of: navigator.importDrop) { _, drop in

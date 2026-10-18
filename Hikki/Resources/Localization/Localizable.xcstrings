@@ -4557,6 +4557,23 @@
         }
       }
     },
+    "app:page.importInside": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import into Page…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入为子页面…"
+          }
+        }
+      }
+    },
     "app:page.lastEdited %@": {
       "extractionState": "manual",
       "localizations": {

@@ -562,6 +562,13 @@ struct PageActions: View {
             } label: {
                 IconLabel("app:page.addInside", icon: .plus)
             }
+            // Markdown / HTML / text files (or folders of them) as subpages of this page.
+            Button {
+                navigator.importFiles(into: page.id)
+            } label: {
+                IconLabel("app:page.importInside", icon: .trayArrowDown)
+            }
+            .accessibilityIdentifier("page-import")
             Button(role: .destructive) {
                 model.moveToTrash(id: page.id)
             } label: {

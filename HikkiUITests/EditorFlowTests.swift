@@ -570,6 +570,42 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(waitOrDumpTree(row, in: app), "imported page missing from the sidebar")
     }
 
+    /// A page's Import… (its context menu) takes several files at once and makes them its subpages
+    /// (`HIKKI_PICK_FILES` stands in for the file picker).
+    func testImportIntoAPage() throws {
+        continueAfterFailure = false
+        let first = dataDir + "-child-a.md"
+        let second = dataDir + "-child-b.md"
+        try "# Child A\n\nOne.\n".write(toFile: first, atomically: true, encoding: .utf8)
+        try "# Child B\n\nTwo.\n".write(toFile: second, atomically: true, encoding: .utf8)
+        let app = launch(environment: ["HIKKI_PICK_FILES": "\(first)|\(second)"])
+        createPage(app, title: "Parent")
+        backToSidebarIfNeeded(app)
+        openDrawerIfNeeded(app)
+        let row = app.descendants(matching: .any)["page-row-Parent"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(row, in: app))
+        #if os(macOS)
+            row.rightClick()
+            let item = app.menuItems["page-import"].firstMatch
+        #else
+            row.press(forDuration: 1.0)
+            // iOS context menus keep an item's label, not its identifier.
+            let item = app.buttons["Import into Page…"].firstMatch
+        #endif
+        XCTAssertTrue(waitOrDumpTree(item, in: app), "no Import… in the page menu")
+        item.tap()
+        backToSidebarIfNeeded(app)
+        openDrawerIfNeeded(app)
+        for title in ["Child A", "Child B"] {
+            let child = app.descendants(matching: .any)["page-row-\(title)"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(child, in: app, timeout: 15), "\(title) was not imported")
+            // The Mac/iPad tree names each row's outline level (the iPhone drawer's rows don't).
+            if let level = child.value as? String, level.hasPrefix("level") {
+                XCTAssertEqual(level, "level 2", "\(title) is not a subpage")
+            }
+        }
+    }
+
     /// Settings → Import & Export, by its launch stand-ins for the pickers: a folder imports as a page tree (a folder
     /// is a page, `Trip.md` beside `Trip/` is that folder's page), and the workspace exports as JSON mirroring it.
     func testBulkImportThenExportMirrorsTheTree() throws {

@@ -75,8 +75,24 @@ final class Navigator {
     var historyPageID: String?
     /// Page ⋯ → Export: the page and format being exported (ContentView presents the save panel / exporter).
     var exportRequest: ExportRequest?
-    /// File → Import… / the workspace menu: the file picker is up.
+    /// File → Import… / a page's Import…: the file picker is up.
     var isImporting = false
+    /// The page the picked files import under (a page's Import…); nil: the top level (File → Import…).
+    private(set) var importParentID: String?
+
+    /// Shows the file picker; what is picked becomes pages under `parentID` (subpages), or top-level pages for nil.
+    func importFiles(into parentID: String?) {
+        #if DEBUG
+            // HIKKI_PICK_FILES=<path>|<path>: the picker's stand-in (it runs out of process) — UI tests.
+            if let paths = ProcessInfo.processInfo.environment["HIKKI_PICK_FILES"] {
+                importDrop = ImportDrop(urls: paths.split(separator: "|").map { URL(filePath: String($0)) }, parentID: parentID)
+                return
+            }
+        #endif
+        importParentID = parentID
+        isImporting = true
+    }
+
     /// Files dropped on the sidebar, waiting for ContentView (which has the editor that converts them) to import.
     var importDrop: ImportDrop?
     /// Split view (Mac/iPad): the window shows a second pane beside the current tab.

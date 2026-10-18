@@ -255,13 +255,15 @@ HikkiUITests/                 XCUITest flows
   `PageExport` (`HikkiCore/Sources/Store/PageExport.swift`): one file, or — when the page attaches files — a folder
   with the document and `assets/` it links into relatively; saved with `.fileExporter` on both platforms. PDF renders
   the HTML export in an offscreen light web view (`createPDF`: one tall page). Import (File → Import…, the workspace
-  menu) takes .md/.html/.txt — or a folder of them, such as an export — as new top-level pages; pictures and
+  menu) takes .md/.html/.txt — or a folder of them, such as an export — as new top-level pages, and a page's
+  Import… (its context and ⋯ menus, `Navigator.importFiles(into:)`) takes several as its subpages; pictures and
   attachments a document links by relative path inside its folder are copied into the workspace's assets
   (`HikkiCore/Sources/Store/PageImport.swift`; nothing outside the folder), and Markdown's inline pictures are lifted
   into blocks (`liftBlockMedia`). Whatever the file holds, the body fits the schema (text fallback, its reason logged).
   Files dropped on the sidebar import the same way (see Sidebar; a dropped file's name is reduced to its last
   component before it is copied). DEBUG: `HIKKI_EXPORT_DIR=<folder>`
-  skips the save panel, `HIKKI_IMPORT_FILE=<path>` imports at launch (UI tests).
+  skips the save panel, `HIKKI_IMPORT_FILE=<path>` imports at launch, `HIKKI_PICK_FILES=<path>|<path>` stands in
+  for the picker (UI tests).
   **Bulk** (Settings → Workspace → Import & Export, `TransferSection` → `Hikki/Sources/BulkTransfer.swift`, one job
   per app on `AppModel.bulkTransfer`, running on when Settings closes: progress with Cancel, then a summary with the
   skipped files and why; `onFinish` is the hook for app-wide notices). Import takes many files and folders:
