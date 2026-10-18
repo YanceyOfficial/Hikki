@@ -199,3 +199,19 @@ describe('image toolbar', () => {
     expect(editor.getHTML()).toContain('data-align="right"')
   })
 })
+
+describe('video first frame', () => {
+  it('seeks a hair past 0 once the metadata is in, so WebKit paints the first frame', () => {
+    editor = createEditor(host, {
+      type: 'doc',
+      content: [{ type: 'video', attrs: { src: 'hikki-editor://assets/clip.mp4' } }]
+    })
+    const video = host.querySelector('video')!
+    expect(video.getAttribute('src')).toBe('hikki-editor://assets/clip.mp4')
+    expect(video.currentTime).toBe(0)
+    video.dispatchEvent(new Event('loadedmetadata'))
+    expect(video.currentTime).toBe(0.001)
+    // The stored src carries no `#t=` fragment.
+    expect(JSON.stringify(editor.getJSON())).not.toContain('#t=')
+  })
+})

@@ -120,6 +120,22 @@ class MediaView implements NodeView {
   }
 }
 
+/**
+ * WebKit (WKWebView, Safari) with `preload="metadata"` stops at HAVE_METADATA and paints an empty box until the
+ * video plays — Chrome decodes the first frame anyway. Seeking a hair past 0 once the metadata is in makes WebKit
+ * decode and paint that frame (checked in Playwright's WebKit: readyState 1 → 4, the frame shows), without
+ * downloading the whole file as `preload="auto"` would, and without a `#t=` fragment on the stored src.
+ */
+export function showFirstFrame(video: HTMLVideoElement): void {
+  video.addEventListener(
+    'loadedmetadata',
+    () => {
+      if (video.paused && video.currentTime === 0) video.currentTime = 0.001
+    },
+    { once: true }
+  )
+}
+
 function mediaNode(name: 'video' | 'audio') {
   return Node.create({
     name,
@@ -141,7 +157,10 @@ function mediaNode(name: 'video' | 'audio') {
         const element = document.createElement(name)
         element.controls = true
         element.preload = 'metadata'
-        if (name === 'video') (element as HTMLVideoElement).playsInline = true
+        if (name === 'video') {
+          ;(element as HTMLVideoElement).playsInline = true
+          showFirstFrame(element as HTMLVideoElement)
+        }
         const src = safeMediaSrc(node.attrs.src, name)
         if (src) element.src = src
         element.className = `hk-${name}`
