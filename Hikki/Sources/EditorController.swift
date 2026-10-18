@@ -194,7 +194,7 @@ final class EditorController {
 
     @ObservationIgnored private var history: () -> PageHistory? = { nil }
 
-    // MARK: - Import / export (editor/src/core/convert.ts)
+    // MARK: - Import / export (apps/editor/src/core/convert.ts)
 
     enum ConversionError: Error {
         case editorNotReady
@@ -467,7 +467,7 @@ final class EditorController {
     }
 
     /// What a page dropped on the page's right edge does (split view): open it beside, replace the right side, show it
-    /// here (the right side's own editor), or nothing (iPhone). `editor/src/extensions/split-drop.ts`.
+    /// here (the right side's own editor), or nothing (iPhone). `apps/editor/src/extensions/split-drop.ts`.
     enum SplitDropMode: String { case off, open, replace, here }
 
     @ObservationIgnored private var splitDrop = SplitDropMode.off

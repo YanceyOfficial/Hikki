@@ -26,7 +26,7 @@ export default defineConfig({
   plugins: [katexWoff2Only(), react(), tailwindcss()],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   build: {
-    outDir: '../Hikki/Resources/Editor',
+    outDir: '../../Hikki/Resources/Editor',
     emptyOutDir: true,
     target: 'safari18',
     // No source map in the app: it was 8 MB of the bundle and nothing reads it (dev builds have their own).

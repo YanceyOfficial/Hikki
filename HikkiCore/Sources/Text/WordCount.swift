@@ -1,6 +1,6 @@
 import Foundation
 
-/// Words in a text, counted the way the editor counts them (`wordCount` in `editor/src/core/extract.ts`): every CJK
+/// Words in a text, counted the way the editor counts them (`wordCount` in `apps/editor/src/core/extract.ts`): every CJK
 /// character (Han, Hiragana, Katakana, Hangul) is one word, other scripts count runs of letters and digits — with an
 /// apostrophe inside a word ("it's") still one.
 public enum WordCount {

@@ -14,7 +14,7 @@ Hikki/            SwiftUI app (shell, WKWebView host, keyboard toolbar, menus)
 HikkiCore/        Framework: SQLite store (GRDB), bridge protocol, logging, crash collection
 HikkiUI/          Framework: reusable SwiftUI components (no app state; plain values + closures)
 HikkiUITests/     XCUITest end-to-end flows
-editor/           Tiptap 3 web editor (vite → Hikki/Resources/Editor)
+apps/editor/           Tiptap 3 web editor (vite → Hikki/Resources/Editor)
 ```
 
 ## Commands
@@ -28,14 +28,14 @@ editor/           Tiptap 3 web editor (vite → Hikki/Resources/Editor)
 | `make test-ui-mac` | end-to-end UI test on macOS (takes over the screen — don't use the Mac while it runs) |
 | `make check`       | tests + macOS and iOS builds                                                          |
 
-`cd editor && pnpm dev` runs the editor alone in a browser with a console-logging bridge.
+`cd apps/editor && bun run dev` runs the editor alone in a browser with a console-logging bridge.
 
 ## Components
 
 Reusable UI goes in `HikkiUI` rather than the app target: one component per file, a `#Preview` in each, and an
 entry in the DEBUG gallery (`Hikki/Sources/ComponentGallery.swift`, launch with `-HikkiGallery`).
 
-Web editor UI (`editor/src`) follows the same idea: `ui/` holds generic React pieces (`CommandList`,
+Web editor UI (`apps/editor/src`) follows the same idea: `ui/` holds generic React pieces (`CommandList`,
 `FloatingLayer`) reused by every popup; `blocks.ts` is the single block-type catalog (slash menu today,
 "turn into"/"+" later); `extensions/` holds Tiptap extensions (title, slash command, block handle).
 
@@ -53,5 +53,5 @@ Web editor UI (`editor/src`) follows the same idea: `ui/` holds generic React pi
 
 - Tuist must use Xcode's Swift, not swiftly's; the Makefile strips swiftly from `PATH`.
 - `HIKKI_DATA_DIR` overrides the data directory (UI tests use a fresh one per run).
-- Bridge protocol lives in `editor/src/core/protocol.ts` and `HikkiCore/Sources/Bridge/BridgeMessage.swift`;
+- Bridge protocol lives in `apps/editor/src/core/protocol.ts` and `HikkiCore/Sources/Bridge/BridgeMessage.swift`;
   bump `PROTOCOL_VERSION` on both sides together.

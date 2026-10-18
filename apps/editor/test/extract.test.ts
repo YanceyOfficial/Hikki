@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import fixture from '../../design/fixtures/content-text.json'
+import fixture from '../../../design/fixtures/content-text.json'
 import { blockTexts, plainText, wordCount } from '../src/core/extract'
 
 const doc = {

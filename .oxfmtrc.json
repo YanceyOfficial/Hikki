@@ -12,12 +12,12 @@
     "Hikki/Resources/",
     "Derived/",
     "Tuist/.build/",
-    "editor/public/",
-    "editor/src/theme.css",
-    "editor/src/generated/",
-    "bff/src/generated/",
-    "website/src/routeTree.gen.ts",
-    "website/.output/",
+    "apps/editor/public/",
+    "apps/editor/src/theme.css",
+    "apps/editor/src/generated/",
+    "apps/bff/src/generated/",
+    "apps/website/src/routeTree.gen.ts",
+    "apps/website/.output/",
     "HikkiUI/Sources/Generated/",
     "*.xcodeproj/",
     "*.xcworkspace/",
@@ -28,7 +28,7 @@
   },
   "sortTailwindcss": {
     "enabled": true,
-    "stylesheet": "./editor/src/style.css"
+    "stylesheet": "./apps/editor/src/style.css"
   },
   "sortPackageJson": {
     "enabled": true

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Mirror of editor/src/protocol.ts. Bump both versions together.
+/// Mirror of apps/editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
     public static let version = 25
 

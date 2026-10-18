@@ -2,8 +2,8 @@
 // Generates the error-code registry from design/errors.json, one list for every side:
 // - HikkiCore/Sources/Errors/ErrorCode.swift — `ErrorCode` (number, "HK-2001", severity, HTTP status)
 // - Hikki/Sources/Generated/ErrorMessages.swift — each code's user-facing message (`ErrorCode.message`)
-// - editor/src/generated/errors.ts — the same table for the page (`errorMessage`)
-// - bff/src/generated/errors.ts — the codes the BFF answers with (status + English message)
+// - apps/editor/src/generated/errors.ts — the same table for the page (`errorMessage`)
+// - apps/bff/src/generated/errors.ts — the codes the BFF answers with (status + English message)
 // - the messages into both string catalogs (native `app:error.<id>`, web `error.<id>`), en + zh-Hans.
 // `--check` fails when any output is stale.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -175,11 +175,11 @@ const catalogPath = join(root, 'Hikki/Resources/Localization/Localizable.xcstrin
 const outputs = [
   [join(root, 'HikkiCore/Sources/Errors/ErrorCode.swift'), swiftCore],
   [join(root, 'Hikki/Sources/Generated/ErrorMessages.swift'), swiftMessages],
-  [join(root, 'editor/src/generated/errors.ts'), ts],
-  [join(root, 'bff/src/generated/errors.ts'), bff],
+  [join(root, 'apps/editor/src/generated/errors.ts'), ts],
+  [join(root, 'apps/bff/src/generated/errors.ts'), bff],
   [catalogPath, nativeCatalog(readFileSync(catalogPath, 'utf8'))],
   ...['en', 'zh-Hans'].map((lang) => {
-    const path = join(root, `editor/src/locales/${lang}.json`)
+    const path = join(root, `apps/editor/src/locales/${lang}.json`)
     return [path, webCatalog(readFileSync(path, 'utf8'), lang)]
   })
 ]

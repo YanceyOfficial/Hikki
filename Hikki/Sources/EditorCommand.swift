@@ -1,6 +1,6 @@
 import HikkiUI
 
-/// Mirrors COMMANDS in editor/src/protocol.ts.
+/// Mirrors COMMANDS in apps/editor/src/protocol.ts.
 enum EditorCommand: String, CaseIterable, Identifiable, Hashable {
     case bold, italic, strike, code
     case heading1, heading2, heading3, paragraph

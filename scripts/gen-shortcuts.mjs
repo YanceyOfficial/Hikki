@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Generates the keyboard-shortcut registry from design/shortcuts.json: a Swift `Shortcut` enum (the native
-// menus bind and display them) and `editor/src/generated/shortcuts.ts` (the page matches keydown events and
+// menus bind and display them) and `apps/editor/src/generated/shortcuts.ts` (the page matches keydown events and
 // shows the same labels). `--check` fails when either output is stale.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const manifest = JSON.parse(readFileSync(join(root, 'design/shortcuts.json'), 'utf8'))
 const swiftOut = join(root, 'Hikki/Sources/Generated/Shortcuts.swift')
-const tsOut = join(root, 'editor/src/generated/shortcuts.ts')
+const tsOut = join(root, 'apps/editor/src/generated/shortcuts.ts')
 const check = process.argv.includes('--check')
 
 const MODIFIERS = ['control', 'option', 'shift', 'command'] // display order: ⌃⌥⇧⌘

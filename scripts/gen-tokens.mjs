@@ -279,7 +279,7 @@ function accentColor() {
 
 const outputs = [
   [join(root, 'HikkiUI/Sources/Generated/DesignTokens.swift'), swift()],
-  [join(root, 'editor/src/theme.css'), css()],
+  [join(root, 'apps/editor/src/theme.css'), css()],
   [join(root, 'Hikki/Resources/Assets.xcassets/AccentColor.colorset/Contents.json'), accentColor()]
 ]
 const check = process.argv.includes('--check')

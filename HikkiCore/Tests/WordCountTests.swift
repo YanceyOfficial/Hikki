@@ -3,7 +3,7 @@ import Testing
 @testable import HikkiCore
 
 struct WordCountTests {
-    // The editor's own cases (editor/test/extract.test.ts), so both sides count alike.
+    // The editor's own cases (apps/editor/test/extract.test.ts), so both sides count alike.
     @Test func countsCJKPerCharacterAndOtherScriptsPerWord() {
         #expect(WordCount.count("会议纪要") == 4)
         #expect(WordCount.count("Hello world, it's v2") == 4)

@@ -7,20 +7,20 @@ Tuist/.build/
 xcuserdata/
 # Web (bun workspace)
 node_modules/
-editor/node_modules/
-editor/test-results/
+apps/editor/node_modules/
+apps/editor/test-results/
 # Generated editor bundle (built by `make editor`)
 Hikki/Resources/Editor/*
 !Hikki/Resources/Editor/.gitkeep
 .DS_Store
 .playwright-mcp/
-editor/public/emojibase/
+apps/editor/public/emojibase/
 
 # Local secrets (UNSPLASH_ACCESS_KEY etc.) — never commit
 .env
 .env.*
 !.env.example
 # Public, non-secret Vite build config (VITE_* is bundled into the app anyway).
-!editor/.env.production
-!editor/.env.development
+!apps/editor/.env.production
+!apps/editor/.env.development
 .vercel

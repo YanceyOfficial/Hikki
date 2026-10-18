@@ -12,13 +12,13 @@ check "literal color — add a token to design/tokens.json" 'Color\((red|white|h
 check "literal spacing — use Spacing.*" '(spacing: *-?[0-9])|(\.padding\((\.[a-zA-Z]+|\[[^]]*\]), *-?[0-9])|(\.padding\(-?[0-9])|(\.padding\([^)]*\? *[0-9])'
 check "literal corner radius — use Radius.*" 'cornerRadius: *[0-9]'
 check "raw SF Symbol — go through the Icon enum (design/icons.json \"sf\", make icons)" '(systemImage|systemName): '
-allowed_files=$(grep -rl 'design-lint: allow-file' editor/src | tr '\n' '|' | sed 's/|$//')
-css=$(grep -nE '#[0-9a-fA-F]{3,8}\b|rgba?\(' editor/src --include='*.css' --include='*.tsx' --include='*.ts' -r | grep -v 'editor/src/theme.css' | grep -v 'design-lint: allow' | { if [ -n "$allowed_files" ]; then grep -vE "^($allowed_files):"; else cat; fi; })
+allowed_files=$(grep -rl 'design-lint: allow-file' apps/editor/src | tr '\n' '|' | sed 's/|$//')
+css=$(grep -nE '#[0-9a-fA-F]{3,8}\b|rgba?\(' apps/editor/src --include='*.css' --include='*.tsx' --include='*.ts' -r | grep -v 'apps/editor/src/theme.css' | grep -v 'design-lint: allow' | { if [ -n "$allowed_files" ]; then grep -vE "^($allowed_files):"; else cat; fi; })
 if [ -n "$css" ]; then echo "✗ literal color in web code — use a Tailwind token class (bg-background, text-muted-foreground…)"; echo "$css" | sed 's/^/    /'; status=1; fi
-motion=$(grep -rnE 'animate-(in|out)\b|\b(fade|zoom)-(in|out)-|\bslide-(in-from|out-to)-|\btransition-all\b|\bduration-[0-9]|[^a-zA-Z0-9_-][0-9]+ms\b' editor/src --include='*.css' --include='*.tsx' --include='*.ts' | grep -v 'editor/src/theme.css' | grep -v 'design-lint: allow')
+motion=$(grep -rnE 'animate-(in|out)\b|\b(fade|zoom)-(in|out)-|\bslide-(in-from|out-to)-|\btransition-all\b|\bduration-[0-9]|[^a-zA-Z0-9_-][0-9]+ms\b' apps/editor/src --include='*.css' --include='*.tsx' --include='*.ts' | grep -v 'apps/editor/src/theme.css' | grep -v 'design-lint: allow')
 if [ -n "$motion" ]; then echo "✗ one-off motion in web code — hk-pop / hk-pop-toggle, duration-(--motion-pop-in), ease-out (CLAUDE.md: Motion)"; echo "$motion" | sed 's/^/    /'; status=1; fi
-# Web UI is shadcn: rows are MenuRow (editor/src/components/menu-row.tsx), the rest Button / Input… (CLAUDE.md).
-bare=$(grep -rnE '<(button|input)\b' editor/src/components editor/src/page --include='*.tsx' | grep -v '^editor/src/components/ui/' | grep -v 'design-lint: allow')
+# Web UI is shadcn: rows are MenuRow (apps/editor/src/components/menu-row.tsx), the rest Button / Input… (CLAUDE.md).
+bare=$(grep -rnE '<(button|input)\b' apps/editor/src/components apps/editor/src/page --include='*.tsx' | grep -v '^apps/editor/src/components/ui/' | grep -v 'design-lint: allow')
 if [ -n "$bare" ]; then echo "✗ bare <button> / <input> in web UI — use the shadcn components (MenuRow, Button, Input…)"; echo "$bare" | sed 's/^/    /'; status=1; fi
 [ $status -eq 0 ] && echo "design lint: ok"
 exit $status

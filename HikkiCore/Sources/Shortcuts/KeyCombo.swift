@@ -35,7 +35,7 @@ public struct KeyCombo: Codable, Hashable, Sendable {
         "tab": "⇥", "return": "↩", "escape": "⎋", "delete": "⌫",
     ]
 
-    /// Characters the editor matches by physical key (`codeFor` in editor/src/core/shortcuts.ts): letters, digits and
+    /// Characters the editor matches by physical key (`codeFor` in apps/editor/src/core/shortcuts.ts): letters, digits and
     /// this punctuation. Anything else (a dead key, an IME character) can't be bound on both sides.
     public static let bindableCharacters = Set("abcdefghijklmnopqrstuvwxyz0123456789,.[]/;'\\-=`".map(String.init))
 

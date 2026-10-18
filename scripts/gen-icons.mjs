@@ -7,9 +7,9 @@ import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const manifest = JSON.parse(readFileSync(join(root, 'design/icons.json'), 'utf8'))
-// The editor's own copy of the Phosphor package (a dependency of editor/; the workspace may hoist it to the root).
+// The editor's own copy of the Phosphor package (a dependency of apps/editor/; the workspace may hoist it to the root).
 const source = [
-  join(root, 'editor/node_modules/@phosphor-icons/core/assets'),
+  join(root, 'apps/editor/node_modules/@phosphor-icons/core/assets'),
   join(root, 'node_modules/@phosphor-icons/core/assets')
 ].find((dir) => existsSync(dir))
 if (!source) throw new Error('gen-icons: @phosphor-icons/core is not installed (run bun install)')

@@ -2,7 +2,7 @@ import Foundation
 
 /// Text pulled out of a stored Tiptap document for the pieces of the app that need it (search, Spotlight, the split
 /// view's PDF list). The document is otherwise opaque to Swift. A block's text reads as the editor's
-/// (`editor/src/core/extract.ts`): a page mention as "@title", an inline formula as its LaTeX, a hard break as a
+/// (`apps/editor/src/core/extract.ts`): a page mention as "@title", an inline formula as its LaTeX, a hard break as a
 /// line break — `design/fixtures/content-text.json` holds both sides to the same answers.
 public enum ContentText {
     /// A line of text the editor can scroll to: a paragraph, heading, code block or toggle summary with its block id.

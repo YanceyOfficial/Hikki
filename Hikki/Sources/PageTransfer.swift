@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 import WebKit
 
 // Page history (restoring a version), import and export: the app's side. The conversions run in the editor
-// (editor/src/core/convert.ts), packing and history in HikkiCore (PageExport, PageHistory).
+// (apps/editor/src/core/convert.ts), packing and history in HikkiCore (PageExport, PageHistory).
 
 extension AppModel {
     // MARK: - History

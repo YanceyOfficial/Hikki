@@ -4,7 +4,9 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 // vitest runs from editor/ (happy-dom rewrites import.meta.url, so resolve from the cwd).
-const tokens = JSON.parse(readFileSync(join(process.cwd(), '../design/tokens.json'), 'utf8')) as {
+const tokens = JSON.parse(
+  readFileSync(join(process.cwd(), '../../design/tokens.json'), 'utf8')
+) as {
   tone: { default: string; presets: Record<string, unknown> }
 }
 const css = readFileSync(join(process.cwd(), 'src/theme.css'), 'utf8')

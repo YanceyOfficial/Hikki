@@ -148,7 +148,7 @@ public actor CodeHighlighter {
         return "rgb(\(level),\(level),\(level))"
     }
 
-    /// highlight.js classes → tokens, as `editor/src/style.css` maps them for the page's code blocks.
+    /// highlight.js classes → tokens, as `apps/editor/src/style.css` maps them for the page's code blocks.
     static let css: String = {
         let rules: [(String, CodeToken?)] = [
             (".hljs", nil),

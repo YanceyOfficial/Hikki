@@ -16,17 +16,17 @@
     "react/react-in-jsx-scope": "off"
   },
   "ignorePatterns": [
-    "editor/src/theme.css",
-    "editor/src/generated/",
-    "website/src/routeTree.gen.ts",
-    "website/.output/**",
+    "apps/editor/src/theme.css",
+    "apps/editor/src/generated/",
+    "apps/website/src/routeTree.gen.ts",
+    "apps/website/.output/**",
     "Hikki/Resources/**",
     "**/node_modules/**",
     "**/dist/**"
   ],
   "overrides": [
     {
-      "files": ["editor/test/**"],
+      "files": ["apps/editor/test/**"],
       "rules": {
         "max-lines-per-function": "off",
         "typescript/no-explicit-any": "off"

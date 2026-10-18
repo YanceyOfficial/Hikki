@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // Localization gate (en is the source language; zh-Hans must be complete).
 // Native: keys are symbolic (`app:<area>.<element>`), in Hikki/Resources/Localization/Localizable.xcstrings.
-// Web:    keys used via t('…') or <Trans i18nKey='…'> in editor/src, catalogs in editor/src/locales/<lang>.json.
+// Web:    keys used via t('…') or <Trans i18nKey='…'> in apps/editor/src, catalogs in apps/editor/src/locales/<lang>.json.
 import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -118,7 +118,7 @@ for (const file of swiftFiles.filter((f) => !f.endsWith('ComponentGallery.swift'
 }
 
 // ---------- web
-const localesDir = join(root, 'editor/src/locales')
+const localesDir = join(root, 'apps/editor/src/locales')
 const flatten = (obj, prefix = '') =>
   Object.entries(obj).flatMap(([k, v]) =>
     typeof v === 'object' ? flatten(v, `${prefix}${k}.`) : [[`${prefix}${k}`, v]]
@@ -130,7 +130,9 @@ const webCatalogs = Object.fromEntries(
   ])
 )
 const usedWeb = new Set()
-for (const file of walk(join(root, 'editor/src'), /\.(ts|tsx)$/u, (p) => p.includes('/locales'))) {
+for (const file of walk(join(root, 'apps/editor/src'), /\.(ts|tsx)$/u, (p) =>
+  p.includes('/locales')
+)) {
   for (const [, key] of readFileSync(file, 'utf8').matchAll(
     /(?:\bt\(\s*|\bi18nKey=)['"]([a-zA-Z0-9_.]+)['"]/gu
   ))

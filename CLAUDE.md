@@ -6,7 +6,7 @@ Guidance for Claude Code (and any agent or human) working in this repository.
 
 Hikki is a Notion-like, local-first notebook for macOS, iPhone and iPad. The shell is SwiftUI; the page editor is
 Tiptap 3 (React 19 + Tailwind CSS v4) running in a single long-lived `WKWebView` per window, bridged to Swift.
-Tuist generates the Xcode project; bun manages the web workspace (`editor/`).
+Tuist generates the Xcode project; bun manages the web workspace — a monorepo: apps in `apps/` (editor, bff, website), shared packages in `packages/`.
 
 ## Project Constraints (read first)
 
@@ -14,64 +14,64 @@ These rules are mandatory. Automated ones are noted.
 
 - **Design tokens only.** Colors, spacing, radii, text sizes and component sizes come from `design/tokens.json`
   (shadcn/ui semantic color names, Tailwind scale names). Regenerate with `make tokens`; never edit
-  `HikkiUI/Sources/Generated/DesignTokens.swift` or `editor/src/theme.css` by hand. Swift uses `Theme.*`, `Spacing.*`,
+  `HikkiUI/Sources/Generated/DesignTokens.swift` or `apps/editor/src/theme.css` by hand. Swift uses `Theme.*`, `Spacing.*`,
   `Radius.*`, `Size.*`, `.font(.hk(.sm))`; the web uses Tailwind classes (`bg-background`, `text-muted-foreground`,
   `rounded-md`, `p-2.5`). _Enforced by `make lint-design` (`scripts/lint-design.sh`)._ A justified exception carries
   a `design-lint: allow` comment on the same line.
 - **Motion.** Everything that appears, leaves or reacts moves the same way, from the `motion` tokens. Web surfaces
   (menus, popovers, tooltips, panels, the outline list) take `hk-pop` — mounted when shown: `FloatingLayer` adds it,
-  the Base UI popups in `editor/src/components/ui/` carry it, a React panel stays mounted through its leave with
-  `usePresence` (`editor/src/components/floating.tsx`) — or `hk-pop-toggle` + `data-open` when they stay mounted. Lists
-  mark the selected row with one gliding surface (`editor/src/components/gliding-highlight.tsx`, rows `relative` +
+  the Base UI popups in `apps/editor/src/components/ui/` carry it, a React panel stays mounted through its leave with
+  `usePresence` (`apps/editor/src/components/floating.tsx`) — or `hk-pop-toggle` + `data-open` when they stay mounted. Lists
+  mark the selected row with one gliding surface (`apps/editor/src/components/gliding-highlight.tsx`, rows `relative` +
   `data-index`), block tints fade (`.tiptap [data-id]`), hover fades and the 97 % press live in the shadcn `Button` /
-  `Toggle` (restyled in `editor/src/components/ui/`); Swift uses `Motion.easeOut()`. No per-component durations, easings or
+  `Toggle` (restyled in `apps/editor/src/components/ui/`); Swift uses `Motion.easeOut()`. No per-component durations, easings or
   tw-animate classes. _Enforced by `make lint-design`._
 - **Reusable UI lives in `HikkiUI`** (no app state: plain values + closures, a `#Preview` each, listed in the DEBUG
   gallery `Hikki/Sources/ComponentGallery.swift`, launch argument `-HikkiGallery`). Native components follow the same
   look as the web's shadcn style (`base-vega`: `Radius.md` controls, `Theme.*` colors).
-- **Web UI primitives are shadcn** (style `base-vega`, Base UI primitives, hugeicons; config in `editor/components.json`,
-  components in `editor/src/components/ui/`). Add components with `cd editor && bun run ui:add <name>` (the shadcn CLI,
+- **Web UI primitives are shadcn** (style `base-vega`, Base UI primitives, hugeicons; config in `apps/editor/components.json`,
+  components in `apps/editor/src/components/ui/`). Add components with `cd apps/editor && bun run ui:add <name>` (the shadcn CLI,
   then oxfmt). Prefer a shadcn component over a hand-rolled one;
-  editor-specific pieces live in `editor/src/components/`. Fields, buttons, toggles, tooltips and popovers are always the shadcn
+  editor-specific pieces live in `apps/editor/src/components/`. Fields, buttons, toggles, tooltips and popovers are always the shadcn
   components (`Input`, `InputGroup`, `Textarea`, `Button`, `Toggle`, `Kbd`…) restyled with classes — never a bare
   `<input>` / `<button>` (_checked by `make lint-design`_); a row in a menu, list or panel is `MenuRow`
-  (`editor/src/components/menu-row.tsx`: a ghost `Button` as a full-width row, `glide` in lists with a gliding
-  highlight); Phosphor icons are imported by their `…Icon` names. Files under `editor/src` are
-  kebab-case (`editor/src/components/find-panel.tsx`; the component inside stays PascalCase), and a folder holds either
-  `.tsx` or `.ts`, never both: React lives in `editor/src/components/` and `editor/src/page/`; `editor/src/core/`
-  (bridge, protocol, editor setup, catalogs), `editor/src/extensions/`, `editor/src/lib/` and `editor/src/hooks/` are
+  (`apps/editor/src/components/menu-row.tsx`: a ghost `Button` as a full-width row, `glide` in lists with a gliding
+  highlight); Phosphor icons are imported by their `…Icon` names. Files under `apps/editor/src` are
+  kebab-case (`apps/editor/src/components/find-panel.tsx`; the component inside stays PascalCase), and a folder holds either
+  `.tsx` or `.ts`, never both: React lives in `apps/editor/src/components/` and `apps/editor/src/page/`; `apps/editor/src/core/`
+  (bridge, protocol, editor setup, catalogs), `apps/editor/src/extensions/`, `apps/editor/src/lib/` and `apps/editor/src/hooks/` are
   plain TypeScript — an extension that shows a React panel calls the component file's `render*` helper
   (`renderFindPanel`, `renderTableOverlay`…) instead of holding JSX. Class recipes that aren't a component
-  (`.hk-floating`, `.hk-column`) live in `editor/src/style.css`, and `cn` is shadcn's own `cn` npm package, imported
-  `from 'cn'` as the generated components do (`editor/src/lib/utils.ts` is the one-line re-export `shadcn init` writes).
+  (`.hk-floating`, `.hk-column`) live in `apps/editor/src/style.css`, and `cn` is shadcn's own `cn` npm package, imported
+  `from 'cn'` as the generated components do (`apps/editor/src/lib/utils.ts` is the one-line re-export `shadcn init` writes).
 - **Icons go through one list** (`design/icons.json`, `make icons`). The native shell draws SF Symbols (each icon's
   `"sf"` name; the generated `Icon` enum, `IconView` / `IconLabel`, `Icon.glyph` for system-sized spots), falling
   back to the bundled Phosphor asset where there is no symbol; the web editor uses `@phosphor-icons/react`. No raw
   `Image(systemName:)` / `systemImage:` — _enforced by `make lint-design`_.
 - **Keyboard shortcuts come from one registry.** `design/shortcuts.json` → `make shortcuts` generates
   `Hikki/Sources/Generated/Shortcuts.swift` (`Shortcut.x.keyboardShortcut` / `.display`) and
-  `editor/src/generated/shortcuts.ts` (`matchesShortcut`, `shortcutLabel`, `tiptapShortcut` in
-  `editor/src/core/shortcuts.ts`). Each entry says who binds it: `app` (native menu), `editor` (the page; menus only
+  `apps/editor/src/generated/shortcuts.ts` (`matchesShortcut`, `shortcutLabel`, `tiptapShortcut` in
+  `apps/editor/src/core/shortcuts.ts`). Each entry says who binds it: `app` (native menu), `editor` (the page; menus only
   display it) or `both`. No literal key equivalents or "⌘X" labels in code; the generator refuses two shortcuts on
   the same keys. _Checked by `make lint-design`._ Users rebind any of them in Settings → Shortcuts: the overrides
   (`HikkiCore/Sources/Shortcuts/KeyCombo.swift` — what may be bound, conflicts) live in
   `Hikki/Sources/ShortcutStore.swift` (UserDefaults; `Shortcut.keyboardShortcut` / `.display` read it, observed by the
   menus) and reach the page through `window.hikki.setShortcuts`, where `ShortcutOverrides`
-  (`editor/src/extensions/shortcuts.ts`) runs a rebound shortcut on its new keys ahead of the default-bound keymaps.
+  (`apps/editor/src/extensions/shortcuts.ts`) runs a rebound shortcut on its new keys ahead of the default-bound keymaps.
 - **Copy language.** User-facing strings are keys, never literals: native `app:<area>.<element>` keys in
   `Hikki/Resources/Localization/Localizable.xcstrings` (interpolations become `%@`, e.g. `app:page.edited %@`); web
-  `t('area.key')` with catalogs in `editor/src/locales/`. English is the source; zh-Hans must be complete. The native
+  `t('area.key')` with catalogs in `apps/editor/src/locales/`. English is the source; zh-Hans must be complete. The native
   side tells the editor its language (`window.hikki.setLocale`). _Enforced by `make lint-l10n`
   (`scripts/l10n-audit.mjs`): missing / unused keys, untranslated values, placeholder mismatches, literal UI text._
-- **Secrets stay server-side.** Third-party API keys (Unsplash) live only in the BFF (`bff/`, Hono on Vercel).
+- **Secrets stay server-side.** Third-party API keys (Unsplash) live only in the BFF (`apps/bff/`, Hono on Vercel).
   Unsplash rules: hotlink `urls`, attribute the photographer with utm links, report picks via the download endpoint.
 - **Pre-commit gate.** `.husky/pre-commit` runs lint-staged (oxlint + oxfmt for web files, `swift-format` for
   Swift), `make lint-design lint-docs lint-l10n`, the editor + BFF typecheck and web unit tests. `make check` adds the Swift tests and both
   platform builds. Don't `--no-verify`.
-- **Tests with every change.** Web logic: vitest in `editor/test/`. Swift data/logic: Swift Testing in
+- **Tests with every change.** Web logic: vitest in `apps/editor/test/`. Swift data/logic: Swift Testing in
   `HikkiCore/Tests/`. User-visible flows: XCUITest in `HikkiUITests/` (look elements up by accessibility identifier).
   A bug fix comes with a test that fails without the fix — check that it does.
-- **Bridge protocol.** Messages are defined twice — `editor/src/core/protocol.ts` and
+- **Bridge protocol.** Messages are defined twice — `apps/editor/src/core/protocol.ts` and
   `HikkiCore/Sources/Bridge/BridgeMessage.swift` — and versioned by `PROTOCOL_VERSION` / `BridgeProtocol.version`.
   Change both together and bump both.
 - **Split write paths.** `DocumentStore.saveContent` writes only editor-owned columns; metadata (icon, cover,
@@ -82,12 +82,12 @@ These rules are mandatory. Automated ones are noted.
 - **Logs never contain page content.** Use `Log.info` / `Log.warn` / `Log.error` with a category; IDs and counts only.
 - **Failures have codes and reach the user as toasts.** Every user-visible failure has a code in `design/errors.json`
   (`make errors` generates `ErrorCode` in `HikkiCore/Sources/Errors/ErrorCode.swift`, its messages in
-  `Hikki/Sources/Generated/ErrorMessages.swift`, `editor/src/generated/errors.ts`, `bff/src/generated/errors.ts` and both
+  `Hikki/Sources/Generated/ErrorMessages.swift`, `apps/editor/src/generated/errors.ts`, `apps/bff/src/generated/errors.ts` and both
   string catalogs; numbers by area: 1xxx app, 2xxx pages & workspace, 3xxx editor, 4xxx files, 5xxx AI, 6xxx search,
   7xxx network — never reused). Report with `Toasts.report(code, error, category:)` natively (logs it with an incident
   id via `Incident.report`, then a toast with the code and "Copy details"), `reportError(id, error)` in the editor
-  (`editor/src/core/errors.ts`, over the `reportError` bridge message); confirmations are `Toasts.shared.show` /
-  `notify`. The BFF answers failures as `{error: {code, id, message}, requestId}` (`bff/src/http.ts`). No ad-hoc alerts
+  (`apps/editor/src/core/errors.ts`, over the `reportError` bridge message); confirmations are `Toasts.shared.show` /
+  `notify`. The BFF answers failures as `{error: {code, id, message}, requestId}` (`apps/bff/src/http.ts`). No ad-hoc alerts
   or silent catches for something the user should know. _Checked by `make lint-design` (`gen-errors.mjs --check`)._
 - **Keep this file current.** Architecture or directory changes update CLAUDE.md in the same commit.
   _Paths are checked by `make lint-docs` (`scripts/check-claude-md.mjs`)._
@@ -105,9 +105,9 @@ make test           # lint, format check, design + docs lint, web + BFF typechec
 make test-ui-ios    # XCUITest on the iOS simulator
 make test-ui-mac    # XCUITest on macOS — takes over the screen; don't run while someone is using the Mac
 make check          # test + macOS and iOS builds
-cd editor && bun run dev   # the editor alone in a browser (console-logging bridge)
-cd website && bun run dev  # the website locally (TanStack/Solid docs: bunx @tanstack/intent@latest list)
-cd bff && bun run dev      # the BFF locally (needs UNSPLASH_ACCESS_KEY); the editor reads VITE_HIKKI_BFF_URL (editor/.env.*; prod: unsplash.yancey.app)
+cd apps/editor && bun run dev   # the editor alone in a browser (console-logging bridge)
+cd apps/website && bun run dev  # the website locally (TanStack/Solid docs: bunx @tanstack/intent@latest list)
+cd apps/bff && bun run dev      # the BFF locally (needs UNSPLASH_ACCESS_KEY); the editor reads VITE_HIKKI_BFF_URL (apps/editor/.env.*; prod: unsplash.yancey.app)
 ```
 
 ## Code Structure
@@ -133,22 +133,24 @@ HikkiAI/Sources/              framework: AI — one streaming client over OpenAI
                               their own web search + citations, the fixed model catalog, answers as Markdown blocks
                               (swift-markdown) and code colouring (HighlightSwift); tests in HikkiAI/Tests/
 HikkiUI/Sources/              framework: reusable SwiftUI components + Theme
-editor/src/                   web editor: main.tsx + style.css; each folder below holds only .tsx or only .ts
-editor/src/core/              bridge, protocol, transport, editor setup, block catalog, i18n, shortcuts, links, page store
-editor/src/extensions/        Tiptap extensions (.ts; React panels are drawn through the components' render* helpers)
-editor/src/components/        editor UI (.tsx): menus, panels, the floating layer, icons (kebab-case files)
-editor/src/components/ui/     shadcn components (generated via `bun run ui:add`)
-editor/src/page/              page header, cover picker, outline (.tsx)
-editor/src/hooks/             React hooks (useEditorSnapshot)
-editor/src/lib/               data helpers: cover catalog, Unsplash client, emoji data; shadcn's utils re-export
-editor/test/                  vitest
-bff/                          backend-for-frontend (Hono, Vercel): Unsplash proxy, YouTube embed shim; tests with `bun test`
-website/                      the site at hikki.yancey.app (TanStack Start + Solid, SSR on Vercel, Tailwind v4 with its
+apps/editor/src/                   web editor: main.tsx + style.css; each folder below holds only .tsx or only .ts
+apps/editor/src/core/              bridge, protocol, transport, editor setup, block catalog, i18n, shortcuts, links, page store
+apps/editor/src/extensions/        Tiptap extensions (.ts; React panels are drawn through the components' render* helpers)
+apps/editor/src/components/        editor UI (.tsx): menus, panels, the floating layer, icons (kebab-case files)
+apps/editor/src/components/ui/     shadcn components (generated via `bun run ui:add`)
+apps/editor/src/page/              page header, cover picker, outline (.tsx)
+apps/editor/src/hooks/             React hooks (useEditorSnapshot)
+apps/editor/src/lib/               data helpers: cover catalog, Unsplash client, emoji data; shadcn's utils re-export
+apps/editor/test/                  vitest
+apps/bff/                          backend-for-frontend (Hono, Vercel): Unsplash proxy, YouTube embed shim; tests with `bun test`
+apps/website/                      the site at hikki.yancey.app (TanStack Start + Solid, SSR on Vercel, Tailwind v4 with its
                               own Mondrian palette — not the app's tokens): src/routes/ (/lab: an experimental
                               photo-grid layout), light/dark/system theme (`data-theme`, THEME_SCRIPT in src/theme.ts runs
                               before paint), screenshots in public/shots/ as WebP, each with a -dark twin (`Shot`), made by
                               `bun run shots <captures>` (sharp; crops in shots.json); APP_STORE_URL in src/site.ts turns
                               "Coming to the App Store" into the store link
+packages/                     shared web packages (bun workspaces `apps/*`, `packages/*`): editor extensions and code
+                              more than one app uses, each its own package.json, consumed from source
 HikkiUITests/                 XCUITest flows
 ```
 
@@ -159,7 +161,7 @@ HikkiUITests/                 XCUITest flows
   into both HikkiCore and HikkiSearch, two copies in one process. Release merges our four frameworks into the app binary
   (`MERGED_BINARY_TYPE = automatic` on the app; Debug keeps them separate); GRDB stays out of the merge (marked mergeable
   from Tuist's package project, the merged app looked for its symbols in an empty stub and crashed at launch). The editor
-  bundle ships without a source map and with KaTeX's woff2 fonts only (`katexWoff2Only` in `editor/vite.config.ts`).
+  bundle ships without a source map and with KaTeX's woff2 fonts only (`katexWoff2Only` in `apps/editor/vite.config.ts`).
   Measured (Instruments' App Launch, Release, a demo workspace): ~610 ms to the first frame, ~400 ms of it SwiftUI/AppKit
   building the window; our `HikkiApp.init` is ~22 ms. The editor's files are served on the main thread, so it is ready
   only once the window has drawn (~950 ms); starting its web view earlier (at `HikkiApp.init`) gained nothing.
@@ -184,7 +186,7 @@ HikkiUITests/                 XCUITest flows
 - **Device compatibility lives in two files**: `HikkiCore/Sources/Layout/DeviceRules.swift` (native — a table of
   iPhone / iPhone Duo folded and unfolded / iPad / Mac: orientation — phones and a folded Duo upright, iPads and an
   unfolded Duo on their side, through `OrientationDelegate` in `Hikki/Sources/HikkiApp.swift` — split view, the
-  vertical bar) and `editor/src/lib/device.ts` (the editor's touch / pointer media queries). `#if os()` only separates
+  vertical bar) and `apps/editor/src/lib/device.ts` (the editor's touch / pointer media queries). `#if os()` only separates
   the Mac from iOS; per-device behaviour is a named rule there, decided from the screen or window, never the idiom.
 - **iPhone is its own layout**, not the Mac's squeezed — chosen by the window's width, never the device (Apple's
   "Preparing your app for iPhone Duo": no `userInterfaceIdiom`, orientation or screen checks): a compact width gets the
@@ -256,7 +258,7 @@ HikkiUITests/                 XCUITest flows
   (`PageDiff.title`, `VersionTitleView`, "Title changed"). Restore writes through `saveContent` + `setIcon`/`setCover` and reloads open editors.
   DEBUG: `HIKKI_HISTORY_INTERVAL=<s>` shortens the session (UI tests).
 - **Import / export** (`Hikki/Sources/PageTransfer.swift`): the editor converts, in its own schema
-  (`editor/src/core/convert.ts`: Tiptap's official `@tiptap/markdown`, HTML through the schema's parse/render rules;
+  (`apps/editor/src/core/convert.ts`: Tiptap's official `@tiptap/markdown`, HTML through the schema's parse/render rules;
   blocks with no Markdown form export as their container's blocks or their rendered HTML) — `window.hikki.exportPage`
   / `importDocument`. Export (page ⋯ → Export: Markdown, HTML, PDF, JSON = the page file) is packed by
   `PageExport` (`HikkiCore/Sources/Store/PageExport.swift`): one file, or — when the page attaches files — a folder
@@ -288,55 +290,55 @@ HikkiUITests/                 XCUITest flows
   (onboarding says so), and a newer identity from another device replaces the local name/icon on activation. Settings →
   Storage → Change folder re-points a workspace (`AppModel.changeLocation`: synced marks cleared, local pages written
   out, the folder's imported — nothing deleted).
-- **Popups close one way**: every `FloatingLayer` opened with `onDismiss` (`editor/src/components/floating.tsx`) joins
+- **Popups close one way**: every `FloatingLayer` opened with `onDismiss` (`apps/editor/src/components/floating.tsx`) joins
   one dismiss bus — a single pair of document listeners: Escape and a press outside every open layer dismiss the newest
   one, and the opener says what that means (the slash and block menus exit, the math and ruby panels cancel; it gets
   the reason and may answer `'keep'` — Escape in the block menu closes its submenu first). No popup installs its own
   outside-click or Escape listener. `dismissAllLayers` runs as `loadDocument` starts, so nothing outlives its page, and a
   menu or panel acting on a block later follows it through edits meanwhile (`followNode` / `followPosition` in
-  `editor/src/extensions/block-units.ts`: by block id, else mapped; gone → it closes). Base UI popups (shadcn) bring their own. A layer follows its
+  `apps/editor/src/extensions/block-units.ts`: by block id, else mapped; gone → it closes). Base UI popups (shadcn) bring their own. A layer follows its
   anchor when the page scrolls, and a scroll over any popup (`hk-pop`) never reaches the page behind it
-  (`editor/src/lib/scroll-containment.ts`, one set of document listeners).
-- **Editor menus**: `editor/src/core/blocks.ts` is the one block catalog (groups, Markdown shortcuts, `turnInto`, `isActive`)
-  behind the "/" menu (`editor/src/components/slash-menu.tsx`) and the selection menu's "Turn into"
-  (`editor/src/components/selection-menu.tsx`, positioned by Tiptap's BubbleMenu; its side panels stay inside the menu element
+  (`apps/editor/src/lib/scroll-containment.ts`, one set of document listeners).
+- **Editor menus**: `apps/editor/src/core/blocks.ts` is the one block catalog (groups, Markdown shortcuts, `turnInto`, `isActive`)
+  behind the "/" menu (`apps/editor/src/components/slash-menu.tsx`) and the selection menu's "Turn into"
+  (`apps/editor/src/components/selection-menu.tsx`, positioned by Tiptap's BubbleMenu; its side panels stay inside the menu element
   or BubbleMenu hides on blur). The selection menu and the block menu share "Turn into"
-  (`editor/src/components/block-type-list.tsx`) and the colour list (`editor/src/components/color-list.tsx`). Text/background colors are stored as palette names (`editor/src/extensions/colors.ts`) and
+  (`apps/editor/src/components/block-type-list.tsx`) and the colour list (`apps/editor/src/components/color-list.tsx`). Text/background colors are stored as palette names (`apps/editor/src/extensions/colors.ts`) and
   styled from the `ink-*` / `wash-*` tokens — never raw CSS colors in the document.
-- **Code blocks** (`editor/src/extensions/code-block.ts`): lowlight with the `common` grammars, colored by the
+- **Code blocks** (`apps/editor/src/extensions/code-block.ts`): lowlight with the `common` grammars, colored by the
   `syntax-*` tokens (Xcode's Default Light/Dark); new blocks use the last picked language
-  (`editor/src/extensions/code-languages.ts`). "Auto-detect" (`language: auto`) guesses with our own signatures
-  (`editor/src/extensions/code-detect.ts` — highlight.js's guess ties CSS/JS/Python on short snippets) and names the
+  (`apps/editor/src/extensions/code-languages.ts`). "Auto-detect" (`language: auto`) guesses with our own signatures
+  (`apps/editor/src/extensions/code-detect.ts` — highlight.js's guess ties CSS/JS/Python on short snippets) and names the
   guess in the header; the same guess feeds lowlight, so colours and label agree. Node views are plain DOM with small React roots for controls (the editor
   is the core `Editor`, not `@tiptap/react`).
-- **Block controls** (`editor/src/extensions/block-controls.ts`, units in `editor/src/extensions/block-units.ts`): our
+- **Block controls** (`apps/editor/src/extensions/block-controls.ts`, units in `apps/editor/src/extensions/block-units.ts`): our
   own + / ⋮⋮ handle on pointer events (HTML5 drag-and-drop is unreliable in WebKit), centred on the block's first line;
   anything inside a toggle, quote or callout shows the outermost container's handle (`handleUnitAtPos`; drops and caret
-  commands still reach the blocks inside; list items keep one each); drag shows a ghost and a drop line (side edges make columns); a click opens `editor/src/components/block-menu.tsx`. Fine
+  commands still reach the blocks inside; list items keep one each); drag shows a ghost and a drop line (side edges make columns); a click opens `apps/editor/src/components/block-menu.tsx`. Fine
   pointers only. Block colours are `blockColor` / `blockBackground` attributes. Block-level highlights (drag
-  source, the block a menu is open for) are node decorations from `editor/src/extensions/block-highlight.ts` —
+  source, the block a menu is open for) are node decorations from `apps/editor/src/extensions/block-highlight.ts` —
   never classes on the node's DOM, which ProseMirror drops on redraw.
-- **Rich blocks**: toggles (`editor/src/extensions/toggle.ts`; open/closed is not stored, so opening never saves; a
+- **Rich blocks**: toggles (`apps/editor/src/extensions/toggle.ts`; open/closed is not stored, so opening never saves; a
   summary may be a heading — `level` 1–3, set by `# `…`### ` at its start, cleared by Backspace there),
-  callouts, KaTeX formulas (`editor/src/extensions/math.ts`; our panel replaces Tiptap's `prompt()`), tables
-  (`editor/src/extensions/table.ts` + `editor/src/extensions/table-ops.ts`, controls drawn by
-  `editor/src/components/table-overlay.tsx`) and columns (`editor/src/extensions/columns.ts`: schema needs 2–5 columns, so
+  callouts, KaTeX formulas (`apps/editor/src/extensions/math.ts`; our panel replaces Tiptap's `prompt()`), tables
+  (`apps/editor/src/extensions/table.ts` + `apps/editor/src/extensions/table-ops.ts`, controls drawn by
+  `apps/editor/src/components/table-overlay.tsx`) and columns (`apps/editor/src/extensions/columns.ts`: schema needs 2–5 columns, so
   removing one of two replaces the row; dragging a block onto another's side edge makes a row).
-- **Network images** load like exodus's (`editor/src/components/lazy-load-image.tsx`: skeleton, fade in, an icon on
+- **Network images** load like exodus's (`apps/editor/src/components/lazy-load-image.tsx`: skeleton, fade in, an icon on
   failure) — covers and the Unsplash grid use the component; body images get the same through
-  `editor/src/extensions/image-loading.ts` (`data-load` states styled in `editor/src/style.css`; Tiptap's resizable view hides its
+  `apps/editor/src/extensions/image-loading.ts` (`data-load` states styled in `apps/editor/src/style.css`; Tiptap's resizable view hides its
   container until an image loads, so the CSS shows it meanwhile).
 - **Covers**: the stored value is `gradient:<id>` or an image URL, and an image's vertical position rides along
-  as a `#y=<0-100>` fragment (`editor/src/lib/covers.ts`: `coverPosition`, `withCoverPosition`), so the store and
-  the protocol keep a plain string. "Reposition" on the cover (`editor/src/page/page-header.tsx`) drags the picture
+  as a `#y=<0-100>` fragment (`apps/editor/src/lib/covers.ts`: `coverPosition`, `withCoverPosition`), so the store and
+  the protocol keep a plain string. "Reposition" on the cover (`apps/editor/src/page/page-header.tsx`) drags the picture
   one pixel per pixel over its overflow and saves or cancels — Mac only. Touch screens (`pointer: coarse`) have no
   buttons over the cover and no Reposition: a long press on it, or the page ⋯ menu's Cover… (`window.hikki.editCover`),
-  opens its sheet (Change cover, Remove; `editor/src/page/cover-sheet.tsx`), and the page and callout icon pickers open
-  as the same bottom sheet (`editor/src/components/bottom-sheet.tsx`, keyboard-aware) instead of popovers.
-- **Embeds** (`editor/src/extensions/embed.ts`, transforms in `editor/src/lib/embeds.ts`): one `embed` block — an
+  opens its sheet (Change cover, Remove; `apps/editor/src/page/cover-sheet.tsx`), and the page and callout icon pickers open
+  as the same bottom sheet (`apps/editor/src/components/bottom-sheet.tsx`, keyboard-aware) instead of popovers.
+- **Embeds** (`apps/editor/src/extensions/embed.ts`, transforms in `apps/editor/src/lib/embeds.ts`): one `embed` block — an
   `<iframe>` on a third-party page (sandboxed, keeps its origin) or on a snippet of HTML (`srcdoc`, no origin) — behind
   the "/" menu's Embeds group (Embed, HTML, Google Drive, Tweet, Gist, Google Maps, Figma, draw.io, Loom, Excalidraw,
-  Miro, Airtable, Spotify, CodeSandbox — each service shown by its own logo, `editor/src/components/brand-logos.tsx`).
+  Miro, Airtable, Spotify, CodeSandbox — each service shown by its own logo, `apps/editor/src/components/brand-logos.tsx`).
   `embedFromURL` turns a pasted link into the provider's embeddable URL (YouTube, Vimeo, Figma, Maps, Drive/Docs, gists
   as a script snippet, tweets via platform.twitter.com, CodePen, draw.io's viewer, Loom, Excalidraw, Miro's live embed,
   Airtable views, Spotify, CodeSandbox). Any other page is a link card instead of a frame (most sites refuse to be
@@ -350,7 +352,7 @@ HikkiUITests/                 XCUITest flows
   WebKit hands `messageHandlers` to every frame), and a stored embed `src` loads only when it is an https page
   (`safeFrameSrc`). YouTube's player refuses to play (error 153) without an HTTP Referer, which a page on
   the app's own scheme never sends, so with `VITE_HIKKI_BFF_URL` set the frame loads the BFF's shim page
-  (`/embed/youtube/<id>`, `bff/src/index.ts`) and the player sees that as its referrer.
+  (`/embed/youtube/<id>`, `apps/bff/src/index.ts`) and the player sees that as its referrer.
 - **Home** (`Hikki/Sources/HomeView.swift`) is a database of every page (Notion's): a native `Table` (Name, Location,
   Created, Edited, Words, Favorite — click a header to sort, double-click or Return opens) or a gallery of cards, with
   a filter and New Page on top; iPhone gets a list. Sorting is `HomeSort` (Sendable, for Swift 6's table). The sidebar
@@ -365,22 +367,22 @@ HikkiUITests/                 XCUITest flows
   `NativeDetailToolbar` in ContentView): New Tab to the Right (Home), Open in Split View (where the window splits),
   Duplicate (the whole history), Move to New Window (Mac, a page: the "page" window group, then the tab closes — iPad
   has no such scene yet), Close, Close Other Tabs, Close Tabs to the Right — the rules in `NavigationTabs`.
-- **Page links** (`editor/src/extensions/page-links.ts`): `hikki://page/<id>#<block>`. The native side feeds the editor
+- **Page links** (`apps/editor/src/extensions/page-links.ts`): `hikki://page/<id>#<block>`. The native side feeds the editor
   the page index (`window.hikki.setPages`) so pasted links get titles; "Copy link to block" puts a ready `<a>` plus the
   URL on the clipboard; a plain-text paste of a link becomes a labelled hyperlink, and so does a dropped one: a
   sidebar row's drag carries the page's link (`PageLink.dragItem`), the editor's `handleDrop` inserts it where it
   lands, and the toolbar's `TabStrip` (`TabStripDrop`, `HikkiUI/Sources/TabStrip.swift`) opens it — between tabs
   as a new tab (or that page's tab is focused), onto a tab in that tab. Clicks go through the bridge
   (`openPage` with the block, `openLink` for the web) and `window.hikki.scrollToBlock` lands on the block.
-- **Mentions, emoji, typography**: "@" mentions a page (`editor/src/extensions/page-mention.ts`, Tiptap's Mention: a
+- **Mentions, emoji, typography**: "@" mentions a page (`apps/editor/src/extensions/page-mention.ts`, Tiptap's Mention: a
   `mention` node with the page id and its title at the time as `label`; the chip is a `hikki://page/<id>` link drawn
   with the page's current icon and title from the index, the label only a fallback). ":" suggests emoji
-  (`editor/src/extensions/emoji-suggestion.ts`, Tiptap's Suggestion over the icon picker's emojibase data) and inserts
+  (`apps/editor/src/extensions/emoji-suggestion.ts`, Tiptap's Suggestion over the icon picker's emojibase data) and inserts
   the plain character — not Tiptap's Emoji node, whose plugin rewrites every emoji in a page into nodes. Both menus
-  are `suggestionMenu` (`editor/src/extensions/suggestion-menu.ts`) over the shared `CommandList`. Typography turns
+  are `suggestionMenu` (`apps/editor/src/extensions/suggestion-menu.ts`) over the shared `CommandList`. Typography turns
   -- … -> (c) into their characters; quotes, fractions and × stay as typed. Text extraction (search, word counts)
   treats mentions, ruby and inline math as part of the line.
-- **Ruby / furigana** (`editor/src/extensions/ruby.ts`): an inline node (`<ruby><rb>…</rb><rt>…</rt></ruby>`, reading as
+- **Ruby / furigana** (`apps/editor/src/extensions/ruby.ts`): an inline node (`<ruby><rb>…</rb><rt>…</rt></ruby>`, reading as
   an attribute); ⇧⌘R or Format → More → Ruby opens the reading panel, prefilled from the native tokenizer
   (`HikkiCore/Sources/Text/JapaneseReading.swift`, `suggestReading` message): a phrase comes back as kanji runs with
   readings and bare kana (役に立ちます → 役(やく)に立(た)ちます), one ruby per run; "Whole" puts one reading over all of it.
@@ -392,7 +394,7 @@ HikkiUITests/                 XCUITest flows
   store's commit observer (a record whose title, icon and edited time the index has is skipped), plus a reconcile at
   launch by edited time (the index is rebuildable; `SearchIndex.version` empties an outdated one). Each page's
   content is read once, natively (`ContentText.extract` in `HikkiCore/Sources/Store/ContentText.swift`: headings,
-  blocks, attached files; block text reads as the editor's `editor/src/core/extract.ts` — `design/fixtures/content-text.json` holds
+  blocks, attached files; block text reads as the editor's `apps/editor/src/core/extract.ts` — `design/fixtures/content-text.json` holds
   both to the same answers), for the index and Spotlight both. A search looks each term up on its own — FTS for
   three characters or more, a scan of the folded blocks for shorter ones — so every page holding a term is a
   candidate. `SearchRanker` orders results: whole title, its start, every term at a word start / anywhere, the pinyin
@@ -449,7 +451,7 @@ HikkiUITests/                 XCUITest flows
   closes when the window splits; its toggle, ⌥⌘I and the page's star / ⋯ / lock buttons are off while split. By drag: a sidebar row or a page's tab dropped onto the pane shows there (`PageDrop`), and
   dropped on the right edge of the left side — the right quarter, 96–240 pt — opens beside it: native content
   (Home, a PDF) through `EdgeDrop` in `Hikki/Sources/SplitView.swift`, a page through the editor's own edge
-  (`editor/src/extensions/split-drop.ts`, `openInSplit` bridge message, `window.hikki.setSplitDrop`), since the web
+  (`apps/editor/src/extensions/split-drop.ts`, `openInSplit` bridge message, `window.hikki.setSplitDrop`), since the web
   view takes the drags over it. Split already, that edge replaces the right side, so the right pane outlines itself
   whole (`Navigator.splitDropHover`, set by `EdgeDrop` and the editor's `splitDropHover` message) — a half-width zone
   on the left read as a third column. iPadOS keeps the screen's very edge for "open in a new window".
@@ -460,16 +462,16 @@ HikkiUITests/                 XCUITest flows
   open in Quick Look. `Route.file` (a PDF in a tab's pane) remains for the split pane and `HIKKI_OPEN_FILE`;
   `HIKKI_SHOW_FILE=<asset>` opens the sheet (UI tests).
 - **Comments** (Notion's): ⇧⌘M or the selection menu's Comment starts a thread on the selected passage. The passage
-  carries a `comment` mark with the thread's id (`editor/src/extensions/comments.ts`), so it moves with edits; the
+  carries a `comment` mark with the thread's id (`apps/editor/src/extensions/comments.ts`), so it moves with edits; the
   words live natively in `comments/<page id>.json` in the workspace folder (`HikkiCore/Sources/Store/PageComments.swift`:
   format-versioned, merged by id with tombstones, iCloud conflict versions folded in), written through the
   `commentCreate` / `commentReply` / `commentResolve` / `commentDelete` bridge messages and pushed back with
   `window.hikki.setComments`. A draft is only a highlight until it is sent; adding or removing the mark is kept out of undo but saved (`SAVE_META`
-  — `isUserEdit` in `editor/src/core/bridge.ts` otherwise skips non-undo transactions), and an open thread whose mark is
-  missing is marked again where its quote occurs once (`findQuote`). `editor/src/components/comments.tsx` draws
+  — `isUserEdit` in `apps/editor/src/core/bridge.ts` otherwise skips non-undo transactions), and an open thread whose mark is
+  missing is marked again where its quote occurs once (`findQuote`). `apps/editor/src/components/comments.tsx` draws
   cards in the right margin when the window is wide (`#page[data-comments]` shifts the page left at ≥ 1240 px), count
   badges with a thread card under the passage otherwise; on a phone (`PHONE_QUERY`: coarse pointer, narrow or short
-  window) the open thread or a new comment is a bottom sheet instead (shadcn `Drawer`, `editor/src/components/ui/drawer.tsx`,
+  window) the open thread or a new comment is a bottom sheet instead (shadcn `Drawer`, `apps/editor/src/components/ui/drawer.tsx`,
   restyled to the motion tokens): grabber, quote, comments with their actions always shown, the reply field at the
   foot riding the software keyboard (`visualViewport`) and clear of the native bottom bar (`--hk-inset-bottom`);
   scrim, swipe down or Escape close it, and neither opening nor closing it focuses the page. A tap on a commented
@@ -479,9 +481,9 @@ HikkiUITests/                 XCUITest flows
   `hikki://page/<id>#<thread id>`, which `scrollToBlock` turns into opening the thread — and Delete: a reply alone,
   the first comment the whole discussion); `commentEdit` rewrites one (`editedAt`; a merge keeps the newer edit).
   "@" in the field (typed, or its @ button) mentions a page: stored as `[@Title](hikki://page/<id>)` in the text
-  (`editor/src/lib/comment-text.ts`), drawn as a chip with the page's current icon and title, "@Title" natively
+  (`apps/editor/src/lib/comment-text.ts`), drawn as a chip with the page's current icon and title, "@Title" natively
   (`PageComment.plainBody`). The page column is
-  `.hk-column` alone in `editor/index.html` (fixed 96 px side margins).
+  `.hk-column` alone in `apps/editor/index.html` (fixed 96 px side margins).
 - **Inspector** (Mac/iPad: a full-height trailing panel inside the detail column — SwiftUI's `.inspector` widened the
   window — with the window title hidden while it is open, as in Photos; iPhone: a sheet from the page ⋯ menu):
   `Hikki/Sources/InspectorView.swift`, one mode at a time (`InspectorMode`): the outline, the page's comments (open /
@@ -493,7 +495,7 @@ HikkiUITests/                 XCUITest flows
   Show Outline (⌥⌘I); no tab bar. The page's facts (location, created, edited, words and
   characters) are the last lines of its ⋯ menu. The editor reports the outline and size with `pageInfo` (headings with
   block ids, words — CJK characters count one each — and characters from Tiptap's CharacterCount) and the heading the
-  reader is in with `activeHeading` (a scroll-spy in `editor/src/core/bridge.ts`: the last heading past a line under
+  reader is in with `activeHeading` (a scroll-spy in `apps/editor/src/core/bridge.ts`: the last heading past a line under
   the toolbar, the last one at the end; a heading jumped to from an outline stays marked until the reader scrolls).
   The panel's outline puts it on a background that glides from row to row and keeps it in view; the page's own hover rail lights its bar, and its list opens on it (the shared `GlidingHighlight`, following the hovered row meanwhile). A heading
   picked in the outline lands at the top (`window.hikki.jumpToHeading`). While the inspector shows the outline the
@@ -533,15 +535,15 @@ HikkiUITests/                 XCUITest flows
   text) and gets `window.hikki.aiEvent`s back. `Hikki/Sources/AIService.swift` runs them (one per window, both
   editors) with the prompts in `HikkiAI/Sources/AIPrompts.swift`: an edit asks for JSON `{"blocks":[{id, html}]}`
   with the same ids and inline tags only, an answer for short Markdown with web search; page text is wrapped in tags
-  as data. In the page: the selection menu's "Ask AI" (`editor/src/components/ai-panel.tsx`) runs a preset or the
-  user's words; `editor/src/extensions/ai-review.ts` shows an edit in the review style picked in Settings → AI
+  as data. In the page: the selection menu's "Ask AI" (`apps/editor/src/components/ai-panel.tsx`) runs a preset or the
+  user's words; `apps/editor/src/extensions/ai-review.ts` shows an edit in the review style picked in Settings → AI
   (thumbnails: `ReviewStyleThumbnail` / `ThumbnailOption` in HikkiUI; `ai.reviewStyle`, sent with
   `window.hikki.setAIReviewStyle`): A `inline` (default) — removals struck through and additions as widgets in the page
-  (decorations only, the document untouched) under a bar from `editor/src/components/ai-review.tsx` (Accept ↵ in one
+  (decorations only, the document untouched) under a bar from `apps/editor/src/components/ai-review.tsx` (Accept ↵ in one
   undo step, Discard esc, Retry, a follow-up); B `diff` — − / + lines in the bar; C `bubble` — a card listing each
   change with the model's reason (`explain` in the request, `notes` in the reply), the page untouched until Replace
-  (B and C: `editor/src/components/ai-review-styles.tsx`). Answers get a card (Insert below, Copy) that draws their
-  Markdown as page blocks (`markdownBlocks` / `markdownDOM` in `editor/src/core/convert.ts`: no media, web links only)
+  (B and C: `apps/editor/src/components/ai-review-styles.tsx`). Answers get a card (Insert below, Copy) that draws their
+  Markdown as page blocks (`markdownBlocks` / `markdownDOM` in `apps/editor/src/core/convert.ts`: no media, web links only)
   and inserts it as blocks; answers and reasons are written in the app's language (`AIPrompts.languageLine`). The chat's
   answers (`Hikki/Sources/AIAnswerText.swift`) are full GitHub-flavoured Markdown: `AIMarkdown`
   (`HikkiAI/Sources/AIMarkdown.swift`, swift-markdown's cmark-gfm tree, ported from exodus-ios's MarkdownKit) gives
@@ -554,16 +556,16 @@ HikkiUITests/                 XCUITest flows
   streaming and a growing block keeps its earlier colours); tables are HikkiUI's `TextTable`. HighlightSwift's
   resource bundle is copied into the app; when it's missing (`resourcesFound`) code stays plain rather than trap.
   While the model works the chat's "Thinking…" / "Searching the web…" line is HikkiUI's `ShimmerText` (a foreground
-  band sweeping the muted text once per `Motion.loop`; still under Reduce Motion, which gets a spinner instead). Model output is untrusted: the reply is parsed tolerantly (`editor/src/lib/ai-content.ts`;
+  band sweeping the muted text once per `Motion.loop`; still under Reduce Motion, which gets a spinner instead). Model output is untrusted: the reply is parsed tolerantly (`apps/editor/src/lib/ai-content.ts`;
   sanitized inline HTML through the schema, unknown keys dropped, an unreadable reply is an error), citations must be
   http(s), and any change to the page closes the review.
-- **Find, spelling, insets**: find and replace is `editor/src/extensions/find.ts` (Tiptap's extension, RE2 regex) with
-  `editor/src/components/find-panel.tsx`; the page handles ⌘F/⌥⌘F/⌘G itself, the native Edit menu and the page ⋯ menu ("Find
+- **Find, spelling, insets**: find and replace is `apps/editor/src/extensions/find.ts` (Tiptap's extension, RE2 regex) with
+  `apps/editor/src/components/find-panel.tsx`; the page handles ⌘F/⌥⌘F/⌘G itself, the native Edit menu and the page ⋯ menu ("Find
   in Page", the only way on a phone) call `window.hikki.find`. Spellcheck is WebKit's (Settings → Editor,
   `window.hikki.setSpellcheck`). `window.hikki.setInsets` gives the page the toolbar height for fixed panels and, on
   iPhone, the floating bar's room at the foot (`--hk-inset-bottom`, 0 while the keyboard is up).
 - **iOS input zoom**: fields under 16px make iOS zoom the page on focus (fixed panels then sit off screen); touch
-  devices get 16px fields via an unlayered rule in `editor/src/style.css` (the page title is exempt).
+  devices get 16px fields via an unlayered rule in `apps/editor/src/style.css` (the page title is exempt).
 - **Editor content safety**: content that doesn't fit the schema (corrupt, or from a newer Hikki) opens read-only and
   is never saved (`enableContentCheck`); housekeeping transactions (`addToHistory: false` — UniqueID stamping
   block ids, remote reloads) never count as edits; continuous typing still saves every 2 s (`maxWaitMs`).
@@ -586,9 +588,9 @@ HikkiUITests/                 XCUITest flows
 - **Demos and screenshots** on the Mac: launch the built binary with `HIKKI_DATA_DIR` and
   `-ApplePersistenceIgnoreState YES` (otherwise saved-state restoration can leave no window), capture by window id. Never
   `pkill -f Hikki` — the developer runs their own instance of the same binary (shared DerivedData).
-- **BFF on Vercel** (project root `bff/`) compiles `src/` per file and runs it as Node ESM: relative imports need
-  `.js` extensions (enforced by `NodeNext` in `bff/tsconfig.json`), and `src/` must not rely on Bun/Node ambient
-  types (read env through Hono's `env(c)` adapter); tests get Bun types from `bff/tsconfig.test.json`.
+- **BFF on Vercel** (project root `apps/bff/`) compiles `src/` per file and runs it as Node ESM: relative imports need
+  `.js` extensions (enforced by `NodeNext` in `apps/bff/tsconfig.json`), and `src/` must not rely on Bun/Node ambient
+  types (read env through Hono's `env(c)` adapter); tests get Bun types from `apps/bff/tsconfig.test.json`.
 - **Demo recordings** (macOS): `HikkiUITests/UnsplashDemoRecording.swift` drives a flow at a watchable pace when run
   with `TEST_RUNNER_HIKKI_RECORD=1`; record with `screencapture -v -V <s>` meanwhile. UI tests paste text rather than
   type it on macOS when spaces matter — synthesized keys go through the active input method (a Chinese IME eats them).

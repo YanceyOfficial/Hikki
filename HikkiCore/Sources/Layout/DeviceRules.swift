@@ -15,7 +15,7 @@ import CoreGraphics
 /// Where the system has a vertical bar (iOS 27.1's `toolbarVerticalEdge`, read once in `RootView`): the iPhone's
 /// floating bar and top bar hand their buttons to it, the page runs under it, top bars keep `topEdgeClearance` from the
 /// screen's top edge, and it hides while one of the page's bottom sheets is open. The web editor's own touch rules are
-/// in `editor/src/lib/device.ts`.
+/// in `apps/editor/src/lib/device.ts`.
 public enum DeviceRules {
     // MARK: Orientation
 

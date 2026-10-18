@@ -56,16 +56,16 @@ lint-docs:
 	bun scripts/check-claude-md.mjs
 
 editor:
-	cd editor && bun run build
+	cd apps/editor && bun run build
 
 generate: editor
 	tuist generate --no-open
 
 test-web:
-	cd editor && bun run typecheck && bun run test
+	cd apps/editor && bun run typecheck && bun run test
 
 test-bff:
-	cd bff && bun run typecheck && bun run test
+	cd apps/bff && bun run typecheck && bun run test
 
 # `tuist test` regenerates a test-focused workspace; regenerate the full one afterwards so the
 # Hikki scheme exists again for builds and UI tests.

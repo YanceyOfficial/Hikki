@@ -12,7 +12,7 @@
         "oxlint": "1.87.0",
       },
     },
-    "bff": {
+    "apps/bff": {
       "name": "hikki-bff",
       "dependencies": {
         "hono": "^4.13.13",
@@ -22,7 +22,7 @@
         "typescript": "7.0.2",
       },
     },
-    "editor": {
+    "apps/editor": {
       "name": "hikki-editor",
       "dependencies": {
         "@base-ui/react": "^1.9.0",
@@ -80,7 +80,7 @@
         "vitest": "^5.0.3",
       },
     },
-    "website": {
+    "apps/website": {
       "name": "hikki-website",
       "dependencies": {
         "@fontsource-variable/archivo": "^5.3.0",
@@ -887,11 +887,11 @@
 
     "highlight.js": ["highlight.js@11.11.1", "", {}, "sha512-Xwwo44whKBVCYoliBQwaPvtd/2tYFkRQtXDWj1nackaV2JPXx3L0+Jvd8/qCJ2p+ML0/XVkJ2q+Mr+UVdpJK5w=="],
 
-    "hikki-bff": ["hikki-bff@workspace:bff"],
+    "hikki-bff": ["hikki-bff@workspace:apps/bff"],
 
-    "hikki-editor": ["hikki-editor@workspace:editor"],
+    "hikki-editor": ["hikki-editor@workspace:apps/editor"],
 
-    "hikki-website": ["hikki-website@workspace:website"],
+    "hikki-website": ["hikki-website@workspace:apps/website"],
 
     "hono": ["hono@4.13.13", "", {}, "sha512-CQ46U0ZkAGmbT/4UxdzzGJpacP2IeKgY4a5/tOI9AABbpOMfK739wfDXmv1usCk+3RkKj1hQy4/fjhiwa2xlrA=="],
 
