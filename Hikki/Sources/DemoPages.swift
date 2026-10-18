@@ -7,7 +7,12 @@
     /// HIKKI_OPEN_TABS can open one.
     enum DemoPages {
         static func seed(_ store: DocumentStore) {
-            guard ProcessInfo.processInfo.environment["HIKKI_DEMO_PAGES"] != nil, (try? store.pages().isEmpty) == true else {
+            guard let value = ProcessInfo.processInfo.environment["HIKKI_DEMO_PAGES"], (try? store.pages().isEmpty) == true
+            else {
+                return
+            }
+            if let count = Int(value), count > 1 {
+                seedMany(store, count: count)
                 return
             }
             let now = Date.now
@@ -44,6 +49,27 @@
             _ = page("OKRs", "🎯", minutesAgo: 3000)
             _ = page("Immigration Planning", "🧭", minutesAgo: 330)
             if let japanese { try? store.setFavorite(true, for: japanese) }
+        }
+
+        /// HIKKI_DEMO_PAGES=<n> (n > 1): n top-level pages "Page 001"…, every tenth with three subpages — a big
+        /// workspace for the sidebar's performance checks.
+        private static func seedMany(_ store: DocumentStore, count: Int) {
+            let now = Date.now
+            func page(_ id: String, _ title: String, parent: String?) {
+                guard (try? store.create(id: id, parentId: parent, now: now)) != nil else { return }
+                _ = try? store.saveContent(
+                    Snapshot(
+                        docId: id, content: .object(["type": .string("doc"), "content": .array([])]), title: title, text: "",
+                        wordCount: WordCount.count(title: title, text: "")),
+                    now: now)
+            }
+            let width = String(count).count
+            for index in 1...count {
+                let number = String(repeating: "0", count: max(0, width - String(index).count)) + String(index)
+                page("bulk-\(number)", "Page \(number)", parent: nil)
+                guard index % 10 == 0 else { continue }
+                for child in 1...3 { page("bulk-\(number)-\(child)", "Page \(number).\(child)", parent: "bulk-\(number)") }
+            }
         }
     }
 #endif

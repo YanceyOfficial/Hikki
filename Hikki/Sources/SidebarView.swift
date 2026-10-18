@@ -20,6 +20,35 @@ struct SidebarView: View {
 
 // MARK: - Mac / iPad
 
+#if DEBUG
+    /// DEBUG hook HIKKI_DEBUG_SIDEBAR_STATS=<file>: how often the sidebar and its page rows evaluated their bodies,
+    /// written to the file as JSON a few times a second (counts only) — the sidebar performance UI test reads it.
+    enum SidebarRenderStats {
+        private static let path = ProcessInfo.processInfo.environment["HIKKI_DEBUG_SIDEBAR_STATS"]
+        private static var sidebar = 0
+        private static var rows = 0
+        private static var cells = 0
+        private static var writer: Task<Void, Never>?
+
+        static func sidebarRendered() { count { sidebar += 1 } }
+        static func rowRendered() { count { rows += 1 } }
+        static func cellRendered() { count { cells += 1 } }
+
+        private static func count(_ bump: () -> Void) {
+            guard let path else { return }
+            bump()
+            guard writer == nil else { return }
+            writer = Task {
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(250))
+                    let json = #"{"sidebar":\#(sidebar),"rows":\#(rows),"cells":\#(cells)}"#
+                    try? json.write(toFile: path, atomically: true, encoding: .utf8)
+                }
+            }
+        }
+    }
+#endif
+
 /// Drop handling for one sidebar row: tracks the pointer to show before / inside / after, and
 /// moves the dragged page on drop (validity comes from `PageTree.destination`). Files dragged in from outside
 /// (`SidebarFileDrop`) import as the page's children, the row tinted as for "inside".
@@ -137,8 +166,14 @@ private struct PageSidebar: View {
     /// Files from outside are over the sidebar (not over a row): it is outlined in the colour tone.
     @State private var filesTargeted = false
     @Environment(\.colorTone) private var colorTone
+    /// Read here once: the rows get the resolved pill colour as a value (a dynamic one picked up the sidebar's
+    /// vibrancy), so no row reads the whole environment — that invalidated every row on any environment change.
+    @Environment(\.self) private var environment
 
     var body: some View {
+        #if DEBUG
+            let _ = SidebarRenderStats.sidebarRendered()
+        #endif
         ScrollView {
             LazyVStack(alignment: .leading, spacing: Spacing.px) { sections }
                 .padding(.horizontal, Spacing.s4)
@@ -190,10 +225,10 @@ private struct PageSidebar: View {
             Section {
                 ForEach(model.tree.favorites) { page in
                     // A shortcut: the selection shows on the page's own row in the tree, once (like a native list).
-                    SidebarDestination(route: .page(page.id), navigator: navigator, showsSelection: false) {
+                    SidebarDestination(route: .page(page.id), navigator: navigator, selected: false, pill: pill) {
                         NativePageLabel(page: page)
                     }
-                    .contextMenu { PageActions(page: page, navigator: navigator) }
+                    .contextMenu { PageActionsFor(id: page.id, navigator: navigator) }
                 }
             } header: {
                 SidebarHeader("app:sidebar.favorites")
@@ -209,7 +244,17 @@ private struct PageSidebar: View {
                 }
                 .buttonStyle(.plain)
             }
-            PageTreeRows(nodes: model.tree.roots, depth: 0, navigator: navigator)
+            // One flat list of plain rows (expanded subtrees inline), each redrawn only when what it shows changed:
+            // the tree is rebuilt on every save, and the open page, a drag's drop line and expansion change often.
+            let drop = navigator.dropIndicator
+            let selectedID = navigator.route.pageID
+            ForEach(model.tree.visibleRows(expanded: navigator.expanded)) { row in
+                PageTreeRow(
+                    row: row, selected: row.id == selectedID, drop: drop?.pageID == row.id ? drop?.zone : nil, pill: pill,
+                    navigator: navigator
+                )
+                .equatable()
+            }
         } header: {
             // No title (Notion's sidebar has none here either): a thin gap that still takes a dropped page to the
             // end of the top level.
@@ -224,39 +269,48 @@ private struct PageSidebar: View {
         }
     }
 
+    private var pill: Color.Resolved { Theme.sidebarAccent.resolve(in: environment) }
 }
 
-/// The page tree's rows: our own chevron inside the row, so it can turn white on the tone-filled selection (the system
-/// disclosure triangle can't be recoloured); children follow as their own rows.
-private struct PageTreeRows: View {
-    let nodes: [PageNode]
-    let depth: Int
-    @Bindable var navigator: Navigator
+/// A page row of the tree: our own chevron inside the row, so it can turn white on the tone-filled selection (the
+/// system disclosure triangle can't be recoloured). Everything it draws arrives as plain values, compared by
+/// `.equatable()`: a save, a navigation or a drag redraws only the rows whose values changed. Nothing in its body reads
+/// the navigator or the model (the menus read the page by id when they open).
+private struct PageTreeRow: View, Equatable {
+    let row: SidebarRow
+    let selected: Bool
+    let drop: DropZone?
+    let pill: Color.Resolved
+    let navigator: Navigator
+
+    nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.row == rhs.row && lhs.selected == rhs.selected && lhs.drop == rhs.drop && lhs.pill == rhs.pill
+            && lhs.navigator === rhs.navigator
+    }
 
     var body: some View {
-        ForEach(nodes) { node in
-            row(node, chevron: node.children.isEmpty ? nil : expansion(node.id))
-            if !node.children.isEmpty, navigator.expanded.contains(node.id) {
-                PageTreeRows(nodes: node.children, depth: depth + 1, navigator: navigator)
-            }
+        #if DEBUG
+            let _ = SidebarRenderStats.cellRendered()
+        #endif
+        SidebarDestination(route: .page(row.id), navigator: navigator, selected: selected, pill: pill, reservesChevron: false) {
+            HoverPageRow(row: row, navigator: navigator)
+                .padding(.leading, CGFloat(row.depth) * Spacing.s4)
         }
+        .contextMenu { PageActionsFor(id: row.id, navigator: navigator) }
+        .accessibilityIdentifier("page-row-\(row.title)")
+        .modifier(PageRowDragDrop(row: row, indicator: drop, navigator: navigator))
     }
+}
 
-    private func row(_ node: PageNode, chevron: Binding<Bool>?) -> some View {
-        SidebarDestination(route: .page(node.id), navigator: navigator, reservesChevron: false) {
-            HoverPageRow(page: node.page, isExpanded: chevron, navigator: navigator)
-                .padding(.leading, CGFloat(depth) * Spacing.s4)
-        }
-        .contextMenu { PageActions(page: node.page, navigator: navigator) }
-        .accessibilityIdentifier("page-row-\(node.page.title)")
-        .modifier(PageRowDragDrop(page: node.page, depth: depth, navigator: navigator))
-    }
+/// Page actions for a page named by id, read from the tree when the menu is built — so the row holding the menu doesn't
+/// depend on the tree.
+private struct PageActionsFor: View {
+    @Environment(AppModel.self) private var model
+    let id: String
+    let navigator: Navigator
 
-    private func expansion(_ id: String) -> Binding<Bool> {
-        Binding(
-            get: { navigator.expanded.contains(id) },
-            set: { open in if open { navigator.expanded.insert(id) } else { navigator.expanded.remove(id) } }
-        )
+    var body: some View {
+        if let page = model.tree.page(id) { PageActions(page: page, navigator: navigator) }
     }
 }
 
@@ -265,17 +319,17 @@ private struct PageTreeRows: View {
 private struct SidebarDestination<Label: View>: View {
     let route: Route
     let navigator: Navigator
-    var showsSelection = true
+    /// Whether the row is the open page (favorites never show it: the selection shows on the tree's row, once).
+    let selected: Bool
+    /// The resolved selection / hover fill (`PageSidebar.pill`).
+    let pill: Color.Resolved
     /// Rows without a chevron of their own (Home, Trash, favorites) leave its slot empty, so icons line up
     /// with the tree's.
     var reservesChevron = true
     @ViewBuilder let label: Label
-    @Environment(\.colorTone) private var colorTone
-    @Environment(\.self) private var environment
     @State private var hovering = false
 
     var body: some View {
-        let selected = showsSelection && navigator.route == route
         Button {
             // Mac/iPad: the row's page joins the tab strip (or its tab gets focus).
             navigator.openFromSidebar(route)
@@ -297,10 +351,7 @@ private struct SidebarDestination<Label: View>: View {
             // Resolved to a concrete colour: a dynamic one picked up the active sidebar's vibrancy.
             // Hover: the same grey, lighter.
             RoundedRectangle(cornerRadius: Radius.lg)
-                .fill(
-                    selected
-                        ? Color(Theme.sidebarAccent.resolve(in: environment))
-                        : hovering ? Color(Theme.sidebarAccent.resolve(in: environment)).opacity(0.55) : .clear)
+                .fill(selected ? Color(pill) : hovering ? Color(pill).opacity(0.55) : .clear)
         }
         .onHover { hovering = $0 }
         .animation(Motion.easeOut(Motion.popOut), value: hovering)
@@ -315,14 +366,15 @@ private struct SidebarDestination<Label: View>: View {
 /// Same rules as the custom sidebar (PageRowDropDelegate / PageTree.destination); the indicator is a line for
 /// before/after and a tint for "inside".
 private struct PageRowDragDrop: ViewModifier {
-    let page: PageSummary
-    let depth: Int
+    let row: SidebarRow
+    /// Where a page held over this row would land (nil: nothing is held over it).
+    let indicator: DropZone?
     let navigator: Navigator
     @Environment(AppModel.self) private var model
     @Environment(\.colorTone) private var colorTone
 
     func body(content: Content) -> some View {
-        let indicator = navigator.dropIndicator?.pageID == page.id ? navigator.dropIndicator?.zone : nil
+        let depth = row.depth
         content
             .background {
                 if indicator == .inside {
@@ -336,15 +388,15 @@ private struct PageRowDragDrop: ViewModifier {
                 }
             }
             .onDrag {
-                navigator.draggingPageID = page.id
+                navigator.draggingPageID = row.id
                 // The payload is the page's link: the editor makes a labelled hyperlink of it and the tab strip
                 // opens it. The sidebar's own drops go by `draggingPageID`.
-                return PageLink.dragItem(page.id)
+                return PageLink.dragItem(row.id)
             } preview: {
                 // The row as a rounded chip (the default preview was the bare row, square-cornered).
                 HStack(spacing: Spacing.s2) {
-                    PageIcon(page.icon, size: 16)
-                    Text(page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
+                    PageIcon(row.icon, size: 16)
+                    Text(row.title.isEmpty ? String(localized: "app:page.untitled") : row.title)
                         .font(.hk(.md))
                         .foregroundStyle(Theme.foreground)
                         .lineLimit(1)
@@ -357,7 +409,7 @@ private struct PageRowDragDrop: ViewModifier {
             }
             .onDrop(
                 of: [.plainText] + SidebarFileDrop.types,
-                delegate: PageRowDropDelegate(target: page.id, navigator: navigator, model: model)
+                delegate: PageRowDropDelegate(target: row.id, navigator: navigator, model: model)
             )
             // Outline level for VoiceOver (and UI tests): "level 1" at the top, +1 per nesting.
             .accessibilityValue("level \(depth + 1)")
@@ -384,24 +436,24 @@ private struct SidebarHeader: View {
 /// The expand/collapse chevron of a native sidebar row (Mac/iPad). Every page row reserves its slot so icons
 /// line up, as with the system triangle; it takes the row's colour (white on the selection).
 private struct DisclosureChevron: View {
-    let isExpanded: Binding<Bool>?
-    @Environment(\.sidebarRowSelected) private var selected
-    @Environment(\.colorTone) private var colorTone
+    /// nil: the page has no subpages (the slot stays blank).
+    let isExpanded: Bool?
+    let toggle: () -> Void
 
     var body: some View {
         Group {
             if let isExpanded {
                 Button {
-                    withAnimation(.snappy(duration: 0.2)) { isExpanded.wrappedValue.toggle() }
+                    withAnimation(.snappy(duration: 0.2)) { toggle() }
                 } label: {
                     IconView(.caretRight, size: TextSize.xs.rawValue)
-                        .rotationEffect(.degrees(isExpanded.wrappedValue ? 90 : 0))
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
                         .foregroundStyle(.secondary)
                         .frame(width: Size.sidebarIcon + Spacing.s1, height: Size.iconButtonSm)
                         .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(isExpanded.wrappedValue ? "app:sidebar.collapse" : "app:sidebar.expand")
+                .accessibilityLabel(isExpanded ? "app:sidebar.collapse" : "app:sidebar.expand")
             } else {
                 Color.clear.frame(width: Size.sidebarIcon + Spacing.s1, height: Size.iconButtonSm)
             }
@@ -457,23 +509,27 @@ private struct NativePageLabel: View {
 /// A page row's content in the Mac/iPad tree: expand chevron, icon and title; on hover "+" (new subpage) and ⋯
 /// (page actions) appear at the end (Notion).
 private struct HoverPageRow: View {
-    let page: PageSummary
-    let isExpanded: Binding<Bool>?
+    let row: SidebarRow
     let navigator: Navigator
     @State private var hovering = false
 
     var body: some View {
+        #if DEBUG
+            let _ = SidebarRenderStats.rowRendered()
+        #endif
         HStack(spacing: Spacing.s2) {
             // The chevron keeps its own slot (blank for pages without subpages), always visible: swapping it
             // in for the icon on hover hid where a page could expand.
-            DisclosureChevron(isExpanded: isExpanded)
-            PageIcon(page.icon, size: TextSize.base.rawValue)
+            DisclosureChevron(isExpanded: row.hasChildren ? row.isExpanded : nil) { [navigator, id = row.id] in
+                if navigator.expanded.contains(id) { navigator.expanded.remove(id) } else { navigator.expanded.insert(id) }
+            }
+            PageIcon(row.icon, size: TextSize.base.rawValue)
                 .frame(width: Size.sidebarIcon + Spacing.s1, height: Size.iconButtonSm)
             Group {
-                if page.title.isEmpty {
+                if row.title.isEmpty {
                     Text("app:page.untitled").foregroundStyle(.secondary)
                 } else {
-                    Text(verbatim: page.title)  // the page's own title
+                    Text(verbatim: row.title)  // the page's own title
                 }
             }
             .lineLimit(1)
@@ -481,7 +537,7 @@ private struct HoverPageRow: View {
             if hovering {
                 HStack(spacing: Spacing.px) {
                     Menu {
-                        PageActions(page: page, navigator: navigator)
+                        PageActionsFor(id: row.id, navigator: navigator)
                     } label: {
                         IconView(.dotsThree, size: TextSize.sm.rawValue)
                             .frame(width: Size.iconButtonSm, height: Size.iconButtonSm)
@@ -493,7 +549,7 @@ private struct HoverPageRow: View {
                     .fixedSize()
                     .accessibilityLabel("app:common.more")
                     Button {
-                        navigator.newPage(parentId: page.id)
+                        navigator.newPage(parentId: row.id)
                     } label: {
                         IconView(.plus, size: TextSize.sm.rawValue)
                             .frame(width: Size.iconButtonSm, height: Size.iconButtonSm)

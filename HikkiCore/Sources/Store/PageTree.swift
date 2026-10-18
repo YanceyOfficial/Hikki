@@ -73,6 +73,25 @@ public struct PageTree: Equatable, Sendable {
         return path
     }
 
+    /// The sidebar's page rows: the tree flattened depth first, a page's children following it only while it is in
+    /// `expanded`. Each row holds only what the row draws (no edited time or word count), so a save that changes
+    /// neither title nor icon leaves every row equal and the sidebar redraws none of them.
+    public func visibleRows(expanded: Set<String>) -> [SidebarRow] {
+        var rows: [SidebarRow] = []
+        func walk(_ nodes: [PageNode], _ depth: Int) {
+            for node in nodes {
+                let open = !node.children.isEmpty && expanded.contains(node.id)
+                rows.append(
+                    SidebarRow(
+                        id: node.id, title: node.page.title, icon: node.page.icon, depth: depth,
+                        hasChildren: !node.children.isEmpty, isExpanded: open))
+                if open { walk(node.children, depth + 1) }
+            }
+        }
+        walk(roots, 0)
+        return rows
+    }
+
     /// Favorites, most recently favorited first.
     public var favorites: [PageSummary] {
         byId.values.filter(\.isFavorite).sorted { ($0.favoritedAt ?? .distantPast) > ($1.favoritedAt ?? .distantPast) }
@@ -85,6 +104,16 @@ public struct PageTree: Equatable, Sendable {
 }
 
 /// Where a dragged sidebar row lands relative to the row under the pointer.
+/// One page row of the sidebar's tree (`PageTree.visibleRows`): plain values, compared to skip redrawing a row.
+public struct SidebarRow: Identifiable, Equatable, Sendable {
+    public let id: String
+    public let title: String
+    public let icon: String?
+    public let depth: Int
+    public let hasChildren: Bool
+    public let isExpanded: Bool
+}
+
 public enum DropZone: Equatable, Sendable {
     case before, inside, after
 

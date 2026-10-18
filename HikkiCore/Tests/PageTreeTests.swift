@@ -86,3 +86,37 @@ struct DropDestinationTests {
         #expect(tree.destination(dropping: "ghost", onto: "a", zone: .inside) == nil)
     }
 }
+
+/// The sidebar's flattened rows (`PageTree.visibleRows`).
+struct SidebarRowsTests {
+    private func page(_ id: String, parent: String? = nil, updated: TimeInterval = 0) -> PageSummary {
+        PageSummary(
+            id: id, parentId: parent, title: id.uppercased(), icon: nil, updatedAt: Date(timeIntervalSince1970: updated),
+            favoritedAt: nil, deletedAt: nil, sortKey: 0)
+    }
+
+    @Test func visibleRowsFollowExpansionDepthFirst() {
+        let tree = PageTree([page("a"), page("b"), page("a1", parent: "a"), page("a2", parent: "a"), page("a1x", parent: "a1")])
+        #expect(tree.visibleRows(expanded: []).map(\.id) == ["a", "b"])
+        let open = tree.visibleRows(expanded: ["a", "a1"])
+        #expect(open.map(\.id) == ["a", "a1", "a1x", "a2", "b"])
+        #expect(open.map(\.depth) == [0, 1, 2, 1, 0])
+        #expect(open.map(\.hasChildren) == [true, true, false, false, false])
+        #expect(open.map(\.isExpanded) == [true, true, false, false, false])
+        // An expanded page under a collapsed one stays hidden.
+        #expect(tree.visibleRows(expanded: ["a1"]).map(\.id) == ["a", "b"])
+        // A leaf in `expanded` doesn't count as open.
+        #expect(tree.visibleRows(expanded: ["b"]).last?.isExpanded == false)
+    }
+
+    @Test func visibleRowsIgnoreEditedTimeAndWordCount() {
+        var edited = page("a", updated: 100)
+        edited.wordCount = 42
+        let before = PageTree([page("a"), page("b")]).visibleRows(expanded: [])
+        let after = PageTree([edited, page("b")]).visibleRows(expanded: [])
+        #expect(before == after)
+        var renamed = page("a")
+        renamed.title = "Renamed"
+        #expect(PageTree([renamed, page("b")]).visibleRows(expanded: []) != before)
+    }
+}
