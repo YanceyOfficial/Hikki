@@ -570,6 +570,117 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(waitOrDumpTree(row, in: app), "imported page missing from the sidebar")
     }
 
+    /// A big workspace (500 top-level pages, `HIKKI_DEMO_PAGES`): typing in a page saves it every couple of seconds and
+    /// so changes the page tree, which must not make the sidebar's rows draw themselves again — only the sidebar's own
+    /// list (a cheap flattening) re-runs. Counts come from `HIKKI_DEBUG_SIDEBAR_STATS`; they are printed
+    /// ("sidebar-stats") for before/after comparisons.
+    func testSidebarRowsStayPutWhileTyping() throws {
+        continueAfterFailure = false
+        let statsFile = dataDir + "-sidebar-stats.json"
+        let app = launch(environment: ["HIKKI_DEMO_PAGES": "500", "HIKKI_DEBUG_SIDEBAR_STATS": statsFile])
+        guard app.buttons["nav-home"].waitForExistence(timeout: 15) else {
+            throw XCTSkip("needs the page sidebar — run on iPad or Mac")
+        }
+        let first = app.descendants(matching: .any)["page-row-Page 001"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(first, in: app, timeout: 20))
+        func stats() -> (sidebar: Int, rows: Int, cells: Int) {
+            let data = (try? Data(contentsOf: URL(filePath: statsFile))) ?? Data()
+            let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Int] ?? [:]
+            return (json["sidebar"] ?? 0, json["rows"] ?? 0, json["cells"] ?? 0)
+        }
+        sleep(2)
+        let launched = stats()
+        // Flicks through the list and back, from fixed points in the sidebar (rows scroll away under the pointer).
+        let origin = app.coordinate(withNormalizedOffset: .zero)
+        let low = origin.withOffset(CGVector(dx: first.frame.midX, dy: first.frame.midY + 400))
+        let high = origin.withOffset(CGVector(dx: first.frame.midX, dy: first.frame.midY + 40))
+        for _ in 0..<8 { low.press(forDuration: 0.05, thenDragTo: high, withVelocity: .fast, thenHoldForDuration: 0) }
+        for _ in 0..<8 { high.press(forDuration: 0.05, thenDragTo: low, withVelocity: .fast, thenHoldForDuration: 0) }
+        sleep(2)
+        let scrolled = stats()
+
+        first.tap()
+        let body = app.webViews.textViews["Page content"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(body, in: app, timeout: 30), "editor never became editable")
+        body.tap()
+        sleep(3)
+        let opened = stats()
+        for word in ["alpha ", "beta ", "gamma ", "delta ", "epsilon "] {
+            body.typeText(word)
+            sleep(3)  // past the save debounce: each word is a save, a tree change
+        }
+        let typed = stats()
+        let report =
+            "sidebar-stats launch rows=\(launched.rows) cells=\(launched.cells) sidebar=\(launched.sidebar); "
+            + "scroll rows=\(scrolled.rows - launched.rows) cells=\(scrolled.cells - launched.cells) "
+            + "sidebar=\(scrolled.sidebar - launched.sidebar); "
+            + "open rows=\(opened.rows - scrolled.rows) cells=\(opened.cells - scrolled.cells) "
+            + "sidebar=\(opened.sidebar - scrolled.sidebar); "
+            + "typing rows=\(typed.rows - opened.rows) cells=\(typed.cells - opened.cells) "
+            + "sidebar=\(typed.sidebar - opened.sidebar)"
+        print(report)
+        let attachment = XCTAttachment(string: report)
+        attachment.name = "sidebar-stats"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        XCTAssertGreaterThan(typed.sidebar, opened.sidebar, "the saves never reached the sidebar — nothing measured")
+        // The edited page's own row may redraw (its word count / edited time ride along); the other rows must not.
+        XCTAssertLessThanOrEqual(typed.rows - opened.rows, 10, report)
+        XCTAssertLessThanOrEqual(typed.cells - opened.cells, 10, report)
+        // Opening a page moves the selection: the row it leaves and the row it lands on, nothing else.
+        XCTAssertLessThanOrEqual(opened.cells - scrolled.cells, 6, report)
+    }
+
+    /// An attachment opened from a page shows over it (a sheet / full-screen cover), not in a tab of its own; Close
+    /// brings the page back (`HIKKI_SHOW_FILE` stands in for clicking the attachment; the file is missing, so the
+    /// viewer says so).
+    func testAttachmentOpensOverThePage() throws {
+        continueAfterFailure = false
+        let app = launch(environment: ["HIKKI_SHOW_FILE": "missing.pdf"])
+        let close = app.buttons["pdf-sheet-close"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(close, in: app, timeout: 15), "the viewer did not open over the page")
+        XCTAssertFalse(app.descendants(matching: .any)["tab-missing.pdf"].exists, "the file opened as a tab")
+        close.tap()
+        let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: close)
+        wait(for: [gone], timeout: 10)
+    }
+
+    /// A page's Import… (its context menu) takes several files at once and makes them its subpages
+    /// (`HIKKI_PICK_FILES` stands in for the file picker).
+    func testImportIntoAPage() throws {
+        continueAfterFailure = false
+        let first = dataDir + "-child-a.md"
+        let second = dataDir + "-child-b.md"
+        try "# Child A\n\nOne.\n".write(toFile: first, atomically: true, encoding: .utf8)
+        try "# Child B\n\nTwo.\n".write(toFile: second, atomically: true, encoding: .utf8)
+        let app = launch(environment: ["HIKKI_PICK_FILES": "\(first)|\(second)"])
+        createPage(app, title: "Parent")
+        backToSidebarIfNeeded(app)
+        openDrawerIfNeeded(app)
+        let row = app.descendants(matching: .any)["page-row-Parent"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(row, in: app))
+        #if os(macOS)
+            row.rightClick()
+            let item = app.menuItems["page-import"].firstMatch
+        #else
+            row.press(forDuration: 1.0)
+            // iOS context menus keep an item's label, not its identifier.
+            let item = app.buttons["Import into Page…"].firstMatch
+        #endif
+        XCTAssertTrue(waitOrDumpTree(item, in: app), "no Import… in the page menu")
+        item.tap()
+        backToSidebarIfNeeded(app)
+        openDrawerIfNeeded(app)
+        for title in ["Child A", "Child B"] {
+            let child = app.descendants(matching: .any)["page-row-\(title)"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(child, in: app, timeout: 15), "\(title) was not imported")
+            // The Mac/iPad tree names each row's outline level (the iPhone drawer's rows don't).
+            if let level = child.value as? String, level.hasPrefix("level") {
+                XCTAssertEqual(level, "level 2", "\(title) is not a subpage")
+            }
+        }
+    }
+
     /// Settings → Import & Export, by its launch stand-ins for the pickers: a folder imports as a page tree (a folder
     /// is a page, `Trip.md` beside `Trip/` is that folder's page), and the workspace exports as JSON mirroring it.
     func testBulkImportThenExportMirrorsTheTree() throws {
@@ -1124,6 +1235,47 @@ final class EditorFlowTests: XCTestCase {
         let item = app.descendants(matching: .any)["open-in-split"].firstMatch
         XCTAssertTrue(waitOrDumpTree(item, in: app))
         item.tap()
+    }
+
+    /// A tab's context menu (Chrome's): Duplicate copies it beside itself, Close Tabs to the Right and Close Other
+    /// Tabs leave the one it was opened on, New Tab to the Right opens Home after it.
+    func testTabContextMenu() throws {
+        continueAfterFailure = false
+        let app = launch()
+        guard app.buttons["nav-home"].waitForExistence(timeout: 10) else {
+            throw XCTSkip("needs the window toolbar's tabs — run on iPad or Mac")
+        }
+        createPage(app, title: "Alpha")
+        createPage(app, title: "Beta")  // in Alpha's tab
+        app.descendants(matching: .any)["page-row-Alpha"].firstMatch.tap()  // a tab of its own
+        let tabs = { (title: String) in app.descendants(matching: .any).matching(identifier: "tab-\(title)") }
+        XCTAssertTrue(waitOrDumpTree(tabs("Alpha").firstMatch, in: app))
+        XCTAssertTrue(waitOrDumpTree(tabs("Beta").firstMatch, in: app))
+
+        func run(_ command: String, on tab: XCUIElement) {
+            #if os(macOS)
+                tab.rightClick()
+                let item = app.menuItems["tab-menu-\(command)"].firstMatch
+            #else
+                tab.press(forDuration: 1)
+                let item = app.buttons["tab-menu-\(command)"].firstMatch
+            #endif
+            XCTAssertTrue(waitOrDumpTree(item, in: app, timeout: 5), "no \(command) in the tab menu")
+            item.tap()
+            sleep(1)
+        }
+
+        run("duplicate", on: tabs("Alpha").firstMatch)
+        XCTAssertEqual(tabs("Alpha").count, 2)
+        run("closeToRight", on: tabs("Beta").firstMatch)
+        XCTAssertEqual(tabs("Alpha").count, 0)
+        XCTAssertTrue(tabs("Beta").firstMatch.exists)
+        run("newToRight", on: tabs("Beta").firstMatch)
+        XCTAssertTrue(waitOrDumpTree(tabs("Home").firstMatch, in: app, timeout: 5))
+        XCTAssertLessThan(tabs("Beta").firstMatch.frame.minX, tabs("Home").firstMatch.frame.minX)
+        run("closeOthers", on: tabs("Beta").firstMatch)
+        XCTAssertEqual(tabs("Home").count, 0)
+        XCTAssertEqual(tabs("Beta").count, 1)
     }
 
     private func createPage(_ app: XCUIApplication, title: String) {

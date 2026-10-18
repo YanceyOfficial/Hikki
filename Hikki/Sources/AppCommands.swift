@@ -34,7 +34,7 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut(Shortcut.closeTab.keyboardShortcut)
             Divider()
-            Button("app:import.menu") { navigator?.isImporting = true }
+            Button("app:import.menu") { navigator?.importFiles(into: nil) }
                 .disabled(navigator == nil)
             Divider()
             Button("app:menu.search") { navigator?.isSearching = true }

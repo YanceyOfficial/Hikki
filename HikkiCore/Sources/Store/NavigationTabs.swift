@@ -18,6 +18,13 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
             self.position = 0
         }
 
+        /// A copy of `tab` under a new id — same history, same place in it (Duplicate).
+        init(copying tab: Tab) {
+            self.id = UUID()
+            self.history = tab.history
+            self.position = tab.position
+        }
+
         mutating func navigate(to route: Route, maxHistory: Int) {
             guard route != self.route else { return }
             history = Array(history.prefix(position + 1)) + [route]
@@ -82,11 +89,46 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
     /// Opens a new tab after the active one and focuses it.
     @discardableResult
     public mutating func openTab(_ route: Route) -> UUID {
+        openTab(route, after: activeID)
+    }
+
+    /// Opens a new tab right after the tab `id` (after the last one when there is no such tab) and focuses it — the tab
+    /// menu's "New Tab to the Right".
+    @discardableResult
+    public mutating func openTab(_ route: Route, after id: UUID) -> UUID {
         let tab = Tab(route: route)
-        let index = (tabs.firstIndex { $0.id == activeID } ?? tabs.count - 1) + 1
+        let index = (tabs.firstIndex { $0.id == id } ?? tabs.count - 1) + 1
         tabs.insert(tab, at: index)
         activeID = tab.id
         return tab.id
+    }
+
+    /// A copy of the tab `id` — its whole history, at the same place — right after it, focused (the tab menu's
+    /// Duplicate). Nil when there is no such tab.
+    @discardableResult
+    public mutating func duplicate(_ id: UUID) -> UUID? {
+        guard let index = tabs.firstIndex(where: { $0.id == id }) else { return nil }
+        let copy = Tab(copying: tabs[index])
+        tabs.insert(copy, at: index + 1)
+        activeID = copy.id
+        return copy.id
+    }
+
+    /// Closes every tab but `id`, which gets focus ("Close Other Tabs").
+    public mutating func closeOthers(_ id: UUID) {
+        guard tabs.contains(where: { $0.id == id }) else { return }
+        tabs.removeAll { $0.id != id }
+        recency.removeAll { $0 != id }
+        activeID = id
+    }
+
+    /// Closes the tabs after `id` ("Close Tabs to the Right"); when the focused tab was one of them, `id` gets focus.
+    public mutating func closeTabs(after id: UUID) {
+        guard let index = tabs.firstIndex(where: { $0.id == id }), index < tabs.count - 1 else { return }
+        let gone = Set(tabs[(index + 1)...].map(\.id))
+        tabs.removeSubrange((index + 1)...)
+        recency.removeAll { gone.contains($0) }
+        if gone.contains(activeID) { activeID = id }
     }
 
     public mutating func select(_ id: UUID) {

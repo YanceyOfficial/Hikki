@@ -188,4 +188,77 @@ struct NavigationTabsTests {
         let decoded = try JSONDecoder().decode(Tabs.self, from: JSONEncoder().encode(tabs))
         #expect(decoded == tabs)
     }
+
+    // MARK: The tab menu
+
+    @Test func newTabToTheRightOpensRightAfterThatTab() {
+        var tabs = Tabs(initial: "a")
+        let a = tabs.activeID
+        tabs.openTab("b")
+        tabs.openTab("c")
+        let new = tabs.openTab("home", after: a)
+        #expect(tabs.tabs.map(\.route) == ["a", "home", "b", "c"])
+        #expect(tabs.activeID == new)
+    }
+
+    @Test func duplicateCopiesHistoryAndPlaceRightAfterTheTab() throws {
+        var tabs = Tabs(initial: "home")
+        tabs.navigate(to: "a")
+        tabs.navigate(to: "b")
+        tabs.goBack()
+        let original = tabs.activeID
+        tabs.openTab("c")
+        let duplicated = tabs.duplicate(original)
+        let copy = try #require(duplicated)
+        #expect(tabs.tabs.map(\.id)[1] == copy)
+        #expect(tabs.activeID == copy)
+        #expect(tabs.active.history == ["home", "a", "b"])
+        #expect(tabs.route == "a")
+        #expect(tabs.active.canGoForward)
+        #expect(copy != original)
+        let missing = tabs.duplicate(UUID())
+        #expect(missing == nil)
+    }
+
+    @Test func closeOthersKeepsOnlyThatTabFocused() {
+        var tabs = Tabs(initial: "a")
+        tabs.openTab("b")
+        let b = tabs.activeID
+        tabs.openTab("c")
+        tabs.closeOthers(b)
+        #expect(tabs.tabs.map(\.route) == ["b"])
+        #expect(tabs.activeID == b)
+        #expect(tabs.recency == [b])
+        tabs.closeOthers(UUID())
+        #expect(tabs.tabs.count == 1)
+    }
+
+    @Test func closeToTheRightFocusesTheTabWhenTheActiveOneCloses() {
+        var tabs = Tabs(initial: "a")
+        let a = tabs.activeID
+        tabs.openTab("b")
+        let b = tabs.activeID
+        tabs.openTab("c")
+        tabs.closeTabs(after: b)
+        #expect(tabs.tabs.map(\.route) == ["a", "b"])
+        #expect(tabs.activeID == b)
+        let open = Set(tabs.tabs.map(\.id))
+        #expect(Set(tabs.recency).isSubset(of: open))
+        tabs.select(a)
+        tabs.closeTabs(after: b)  // nothing to its right: no change
+        tabs.closeTabs(after: a)
+        #expect(tabs.tabs.map(\.route) == ["a"])
+        #expect(tabs.activeID == a)
+    }
+
+    @Test func closeToTheRightKeepsFocusLeftOfIt() {
+        var tabs = Tabs(initial: "a")
+        let a = tabs.activeID
+        tabs.openTab("b")
+        let b = tabs.activeID
+        tabs.openTab("c")
+        tabs.select(a)
+        tabs.closeTabs(after: b)
+        #expect(tabs.activeID == a)
+    }
 }

@@ -238,6 +238,12 @@
     },
     "lock-simple-open": {
       "sf": "lock.open"
+    },
+    "x-square": {
+      "sf": "xmark.square"
+    },
+    "arrow-line-right": {
+      "sf": "arrow.right.to.line"
     }
   }
 }

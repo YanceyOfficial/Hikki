@@ -37,6 +37,13 @@ struct ImportDrop: Equatable, Identifiable {
     let parentID: String?
 }
 
+/// An attached file (a PDF) to show in the viewer over the page: the asset's name and the file's own name.
+struct DocumentSheetRequest: Equatable, Identifiable {
+    let name: String
+    let label: String
+    var id: String { name }
+}
+
 struct TitleFocusRequest: Equatable {
     let pageID: String
     let serial: Int
@@ -75,10 +82,28 @@ final class Navigator {
     var historyPageID: String?
     /// Page ⋯ → Export: the page and format being exported (ContentView presents the save panel / exporter).
     var exportRequest: ExportRequest?
-    /// File → Import… / the workspace menu: the file picker is up.
+    /// File → Import… / a page's Import…: the file picker is up.
     var isImporting = false
+    /// The page the picked files import under (a page's Import…); nil: the top level (File → Import…).
+    private(set) var importParentID: String?
+
+    /// Shows the file picker; what is picked becomes pages under `parentID` (subpages), or top-level pages for nil.
+    func importFiles(into parentID: String?) {
+        #if DEBUG
+            // HIKKI_PICK_FILES=<path>|<path>: the picker's stand-in (it runs out of process) — UI tests.
+            if let paths = ProcessInfo.processInfo.environment["HIKKI_PICK_FILES"] {
+                importDrop = ImportDrop(urls: paths.split(separator: "|").map { URL(filePath: String($0)) }, parentID: parentID)
+                return
+            }
+        #endif
+        importParentID = parentID
+        isImporting = true
+    }
+
     /// Files dropped on the sidebar, waiting for ContentView (which has the editor that converts them) to import.
     var importDrop: ImportDrop?
+    /// An attached PDF shown over the page (`showDocument`).
+    var documentSheet: DocumentSheetRequest?
     /// Split view (Mac/iPad): the window shows a second pane beside the current tab.
     private(set) var isSplit = false
     /// Whether this window may split (`DeviceRules.allowsSplit`); set by ContentView. A window that
@@ -237,7 +262,13 @@ final class Navigator {
         syncSelection()
     }
 
-    /// An attached PDF clicked in a page: it opens in a viewer pane in a tab of its own (or its tab gets focus).
+    /// An attached PDF clicked in a page: it opens in a viewer over the page (a sheet on the Mac, a full-screen cover on
+    /// iOS), so the page stays in its tab and the PDF can still go beside it (the sheet's Open in Split View).
+    func showDocument(name: String, label: String) {
+        documentSheet = DocumentSheetRequest(name: name, label: label)
+    }
+
+    /// The PDF in a pane of its own in a tab (`Route.file`, or its tab gets focus) — `HIKKI_OPEN_FILE` screenshots.
     func openDocument(name: String, label: String) {
         tabs.openRecent(.file(name: name, label: label), limit: Self.recentTabLimit)
         syncSelection()
@@ -258,6 +289,39 @@ final class Navigator {
     func closeTab(_ id: UUID) -> Bool {
         defer { syncSelection() }
         return tabs.close(id)
+    }
+
+    // MARK: The tab menu (Chrome's)
+
+    /// What the tab `id` shows (nil: no such tab).
+    func route(ofTab id: UUID) -> Route? {
+        tabs.tabs.first { $0.id == id }?.route
+    }
+
+    /// "New Tab to the Right": Home in a new tab right after `id`, as "+" opens.
+    func newTab(rightOf id: UUID) {
+        tabs.openTab(.home, after: id)
+        syncSelection()
+    }
+
+    func duplicateTab(_ id: UUID) {
+        tabs.duplicate(id)
+        syncSelection()
+    }
+
+    func closeOtherTabs(_ id: UUID) {
+        tabs.closeOthers(id)
+        syncSelection()
+    }
+
+    func closeTabs(rightOf id: UUID) {
+        tabs.closeTabs(after: id)
+        syncSelection()
+    }
+
+    /// "Open in Split View": the tab's page (or file) in the pane beside the current tab; the tab stays.
+    func openTabInSplit(_ id: UUID) {
+        if let route = route(ofTab: id) { openInSplit(route) }
     }
 
     /// Drops trashed pages from every tab's history.

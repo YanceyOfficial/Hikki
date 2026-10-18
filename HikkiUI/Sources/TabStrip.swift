@@ -37,6 +37,47 @@ public struct TabStripDrop {
     }
 }
 
+/// A command in a tab's context menu (Chrome's tab menu).
+public enum TabStripCommand: String, CaseIterable, Hashable, Sendable {
+    case newToRight, openInSplit, duplicate, moveToNewWindow, close, closeOthers, closeToRight
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .newToRight: "app:tabs.newToRight"
+        case .openInSplit: "app:split.openPage"
+        case .duplicate: "app:tabs.duplicate"
+        case .moveToNewWindow: "app:tabs.moveToNewWindow"
+        case .close: "app:tabs.close"
+        case .closeOthers: "app:tabs.closeOthers"
+        case .closeToRight: "app:tabs.closeToRight"
+        }
+    }
+
+    var icon: Icon {
+        switch self {
+        case .newToRight: .browsers
+        case .openInSplit: .squareSplitHorizontal
+        case .duplicate: .copy
+        case .moveToNewWindow: .appWindow
+        case .close: .x
+        case .closeOthers: .xSquare
+        case .closeToRight: .arrowLineRight
+        }
+    }
+}
+
+/// A tab's context menu: which commands a tab offers, in sections (the caller knows what its tab shows and what the
+/// window can do), and what running one means. The strip greys out the close commands that would do nothing.
+public struct TabStripMenu {
+    public var commands: (UUID) -> [[TabStripCommand]]
+    public var perform: (TabStripCommand, UUID) -> Void
+
+    public init(commands: @escaping (UUID) -> [[TabStripCommand]], perform: @escaping (TabStripCommand, UUID) -> Void) {
+        self.commands = commands
+        self.perform = perform
+    }
+}
+
 /// Browser-style tab bar (Notion's top row): back/forward, tabs that shrink to fit, close on hover, "+".
 /// Purely presentational — all state lives with the caller. With `drop`, a page dragged over it shows a
 /// line between tabs or a tint on one (Safari's tab bar), and the caller gets where it landed.
@@ -54,6 +95,7 @@ public struct TabStrip<Leading: View>: View {
     private let showsHistory: Bool
     private let drop: TabStripDrop?
     private let dragItem: ((UUID) -> NSItemProvider?)?
+    private let menu: TabStripMenu?
     @State private var frames: [UUID: CGRect] = [:]
     @State private var dropTarget: TabStripDropTarget?
     @Environment(\.chromeMetrics) private var metrics
@@ -63,7 +105,7 @@ public struct TabStrip<Leading: View>: View {
         items: [TabStripItem], activeID: UUID, canGoBack: Bool, canGoForward: Bool,
         onSelect: @escaping (UUID) -> Void, onClose: @escaping (UUID) -> Void, onNew: @escaping () -> Void,
         onBack: @escaping () -> Void, onForward: @escaping () -> Void, showsHistory: Bool = true,
-        drop: TabStripDrop? = nil, dragItem: ((UUID) -> NSItemProvider?)? = nil,
+        drop: TabStripDrop? = nil, dragItem: ((UUID) -> NSItemProvider?)? = nil, menu: TabStripMenu? = nil,
         @ViewBuilder leading: () -> Leading = { EmptyView() }
     ) {
         self.showsHistory = showsHistory
@@ -78,6 +120,7 @@ public struct TabStrip<Leading: View>: View {
         self.onForward = onForward
         self.drop = drop
         self.dragItem = dragItem
+        self.menu = menu
         self.leading = leading()
     }
 
@@ -113,6 +156,9 @@ public struct TabStrip<Leading: View>: View {
                         dragItem: dragItem.map { make in { make(item.id) } },
                         onSelect: { onSelect(item.id) }, onClose: { onClose(item.id) }
                     )
+                    .contextMenu {
+                        if let menu { menuContent(menu, for: item.id) }
+                    }
                     .onGeometryChange(for: CGRect.self) {
                         $0.frame(in: .named(tabStripSpace))
                     } action: {
@@ -141,6 +187,33 @@ public struct TabStrip<Leading: View>: View {
         .help(Text(verbatim: ""))
         // A drop that changed the tabs is over, whatever the drag session still reports.
         .onChange(of: items) { _, _ in dropTarget = nil }
+    }
+
+    /// The tab's menu, its sections divided; Close / Close Other Tabs need another tab, Close Tabs to the Right one
+    /// after this.
+    @ViewBuilder
+    private func menuContent(_ menu: TabStripMenu, for id: UUID) -> some View {
+        let sections = menu.commands(id)
+        ForEach(sections.indices, id: \.self) { index in
+            if index > 0 { Divider() }
+            ForEach(sections[index], id: \.self) { command in
+                Button {
+                    menu.perform(command, id)
+                } label: {
+                    IconLabel(command.title, icon: command.icon)
+                }
+                .disabled(!isAvailable(command, for: id))
+                .accessibilityIdentifier("tab-menu-\(command.rawValue)")
+            }
+        }
+    }
+
+    private func isAvailable(_ command: TabStripCommand, for id: UUID) -> Bool {
+        switch command {
+        case .close, .closeOthers: items.count > 1
+        case .closeToRight: items.last?.id != id
+        default: true
+        }
     }
 
     /// The gap before the tab at `index` (after the last one for `items.count`), in the strip's space.

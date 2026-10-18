@@ -170,7 +170,13 @@ HikkiUITests/                 XCUITest flows
   `obscuredContentInsets` on macOS, an explicit scroll inset on iOS).
 - **Sidebar**: Mac/iPad draw our own rows in a `LazyVStack` (`Hikki/Sources/SidebarView.swift`) — a native `List`
   paints selection in the system accent (not the colour tone) and swallowed row drops on iPad. Fills on the sidebar use
-  resolved colours (dynamic ones picked up the active window's vibrancy). Markdown / HTML / text files or folders
+  resolved colours (dynamic ones picked up the active window's vibrancy). The tree is one flat list of plain
+  `SidebarRow`s (`PageTree.visibleRows(expanded:)`: id, title, icon, depth, expansion — no edited time) drawn by an
+  `Equatable` `PageTreeRow` with its selection, drop line and pill colour passed in as values: no row reads the
+  navigator, the model or `\.self` in its body (menus read the page by id when built, `PageActionsFor`), so a save,
+  a navigation or a drag redraws only the rows that changed. `HIKKI_DEMO_PAGES=<n>` seeds n pages and
+  `HIKKI_DEBUG_SIDEBAR_STATS=<file>` counts row bodies for `testSidebarRowsStayPutWhileTyping` (500 pages: before,
+  opening a page redrew every built row and each save several; now one and none). Markdown / HTML / text files or folders
   dragged onto it import (`Hikki/Sources/SidebarFileDrop.swift`): on a page row as its children (the row tints as for
   "inside"), elsewhere at the top level (the sidebar is outlined); ContentView runs the import through
   `Navigator.importDrop` → `AppModel.importFiles(_:parentId:)`. A page row's own drag carries a page link, never a
@@ -208,7 +214,7 @@ HikkiUITests/                 XCUITest flows
   top inset and the editor makes that room itself (`setInsets` with `bleed`, `--hk-bleed-top`), so a cover fills it
   behind the status bar and the glass buttons (`.hk-cover`) and a page without one starts below them.
 - **Data directory**: `HIKKI_DATA_DIR` overrides it (UI tests, demos). DEBUG hooks: `HIKKI_OPEN_TABS=a,b`,
-  `HIKKI_OPEN_SEARCH`, `HIKKI_OPEN_FIND`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SPOTLIGHT_QUERY=<text>` (logs the page ids Spotlight ranks), `HIKKI_OPEN_FILE=<asset>` (the PDF viewer), `HIKKI_OPEN_SPLIT=<page id>|file:<asset>|picker` (split view), `HIKKI_DEBUG_SIDEBAR` (hide + show the split view sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_DEBUG_TOAST` (a sample failure toast), `HIKKI_OPEN_AI`, `HIKKI_OPEN_PAGE_ACTIONS`, `HIKKI_DEBUG_COVER_SHEET` (opens the page's cover sheet), `HIKKI_DEBUG_AI_ASK=<question>` (asks the AI panel about the open page) and `HIKKI_DEBUG_AI_EDIT=<words>` (selects them and runs Improve writing through `window.hikki.demoAI`) — screenshots of AI at work, which need a provider key, `HIKKI_DEMO_PAGES` (an empty workspace gets sample pages, ids fixed per title — `Hikki/Sources/DemoPages.swift`), `HIKKI_ACTIVATE`, `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
+  `HIKKI_OPEN_SEARCH`, `HIKKI_OPEN_FIND`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SPOTLIGHT_QUERY=<text>` (logs the page ids Spotlight ranks), `HIKKI_OPEN_FILE=<asset>` (the PDF viewer), `HIKKI_OPEN_SPLIT=<page id>|file:<asset>|picker` (split view), `HIKKI_DEBUG_SIDEBAR` (hide + show the split view sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_DEBUG_TOAST` (a sample failure toast), `HIKKI_OPEN_AI`, `HIKKI_OPEN_PAGE_ACTIONS`, `HIKKI_DEBUG_COVER_SHEET` (opens the page's cover sheet), `HIKKI_DEBUG_AI_ASK=<question>` (asks the AI panel about the open page) and `HIKKI_DEBUG_AI_EDIT=<words>` (selects them and runs Improve writing through `window.hikki.demoAI`) — screenshots of AI at work, which need a provider key, `HIKKI_DEMO_PAGES` (an empty workspace gets sample pages, ids fixed per title — `Hikki/Sources/DemoPages.swift`; `=<n>` above 1: n pages "Page 001"…, every tenth with three subpages), `HIKKI_ACTIVATE`, `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
   UI tests set it by default — pass `workspace: nil` to `launch()` to test onboarding).
 - **Storage (option C)**: the workspace folder is the source of truth — one JSON file per page
   (`HikkiCore/Sources/Store/PageFile.swift`: `pages/<id>.json`, format-versioned, content as JSON); SQLite is a
@@ -256,13 +262,15 @@ HikkiUITests/                 XCUITest flows
   `PageExport` (`HikkiCore/Sources/Store/PageExport.swift`): one file, or — when the page attaches files — a folder
   with the document and `assets/` it links into relatively; saved with `.fileExporter` on both platforms. PDF renders
   the HTML export in an offscreen light web view (`createPDF`: one tall page). Import (File → Import…, the workspace
-  menu) takes .md/.html/.txt — or a folder of them, such as an export — as new top-level pages; pictures and
+  menu) takes .md/.html/.txt — or a folder of them, such as an export — as new top-level pages, and a page's
+  Import… (its context and ⋯ menus, `Navigator.importFiles(into:)`) takes several as its subpages; pictures and
   attachments a document links by relative path inside its folder are copied into the workspace's assets
   (`HikkiCore/Sources/Store/PageImport.swift`; nothing outside the folder), and Markdown's inline pictures are lifted
   into blocks (`liftBlockMedia`). Whatever the file holds, the body fits the schema (text fallback, its reason logged).
   Files dropped on the sidebar import the same way (see Sidebar; a dropped file's name is reduced to its last
   component before it is copied). DEBUG: `HIKKI_EXPORT_DIR=<folder>`
-  skips the save panel, `HIKKI_IMPORT_FILE=<path>` imports at launch (UI tests).
+  skips the save panel, `HIKKI_IMPORT_FILE=<path>` imports at launch, `HIKKI_PICK_FILES=<path>|<path>` stands in
+  for the picker (UI tests).
   **Bulk** (Settings → Workspace → Import & Export, `TransferSection` → `Hikki/Sources/BulkTransfer.swift`, one job
   per app on `AppModel.bulkTransfer`, running on when Settings closes: progress with Cancel, then a summary with the
   skipped files and why; `onFinish` is the hook for app-wide notices). Import takes many files and folders:
@@ -352,7 +360,11 @@ HikkiUITests/                 XCUITest flows
   (`DocumentStore.purgeTrash`); the deletion reaches other devices through the workspace folder.
 - **Tabs from the sidebar** (Mac/iPad): a sidebar row focuses the tab already showing its page, or opens it as a new tab
   at the end; past `Navigator.recentTabLimit` the least recently focused tab closes (`NavigationTabs.openRecent`,
-  recency kept in the saved tabs). Links and history still navigate inside the active tab.
+  recency kept in the saved tabs). Links and history still navigate inside the active tab. A tab's context menu is
+  Chrome's (`TabStripMenu` / `TabStripCommand` in `HikkiUI/Sources/TabStrip.swift`, the commands chosen by
+  `NativeDetailToolbar` in ContentView): New Tab to the Right (Home), Open in Split View (where the window splits),
+  Duplicate (the whole history), Move to New Window (Mac, a page: the "page" window group, then the tab closes — iPad
+  has no such scene yet), Close, Close Other Tabs, Close Tabs to the Right — the rules in `NavigationTabs`.
 - **Page links** (`editor/src/extensions/page-links.ts`): `hikki://page/<id>#<block>`. The native side feeds the editor
   the page index (`window.hikki.setPages`) so pasted links get titles; "Copy link to block" puts a ready `<a>` plus the
   URL on the clipboard; a plain-text paste of a link becomes a labelled hyperlink, and so does a dropped one: a
@@ -441,10 +453,12 @@ HikkiUITests/                 XCUITest flows
   view takes the drags over it. Split already, that edge replaces the right side, so the right pane outlines itself
   whole (`Navigator.splitDropHover`, set by `EdgeDrop` and the editor's `splitDropHover` message) — a half-width zone
   on the left read as a third column. iPadOS keeps the screen's very edge for "open in a new window".
-- **PDF viewer**: a PDF attachment opens in a pane of its own in a tab (`Route.file`), drawn natively by
-  `HikkiUI/Sources/PDFViewer.swift` (PDFKit: continuous pages, zoom/fit, page number, find, thumbnails, an unlock prompt
-  for password-protected files — the password is never stored); other attachments still open in Quick Look. Panes are
-  the unit the planned split view will put side by side.
+- **PDF viewer**: a PDF attachment clicked in a page opens over it (`Navigator.showDocument` → `DocumentSheet` in
+  ContentView: a page-sized sheet on the Mac, a full-screen cover on iOS, Close and Open in Split View in its bar),
+  drawn natively by `HikkiUI/Sources/PDFViewer.swift` (PDFKit: continuous pages, zoom/fit, page number, find,
+  thumbnails, an unlock prompt for password-protected files — the password is never stored); other attachments still
+  open in Quick Look. `Route.file` (a PDF in a tab's pane) remains for the split pane and `HIKKI_OPEN_FILE`;
+  `HIKKI_SHOW_FILE=<asset>` opens the sheet (UI tests).
 - **Comments** (Notion's): ⇧⌘M or the selection menu's Comment starts a thread on the selected passage. The passage
   carries a `comment` mark with the thread's id (`editor/src/extensions/comments.ts`), so it moves with edits; the
   words live natively in `comments/<page id>.json` in the workspace folder (`HikkiCore/Sources/Store/PageComments.swift`:
