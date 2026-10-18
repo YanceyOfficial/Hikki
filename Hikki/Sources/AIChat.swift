@@ -778,6 +778,7 @@ struct AIModelMenu: View {
 private struct ChatBubble: View {
     let message: AIChat.Message
     let isStreaming: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         switch message.role {
@@ -851,17 +852,17 @@ private struct ChatBubble: View {
             .background(Theme.muted, in: .capsule)
     }
 
+    /// The model at work: the line shimmers; with Reduce Motion it stands still, so a spinner says it's busy.
     private var working: some View {
         HStack(spacing: Spacing.s2) {
-            ProgressView().controlSize(.small)
+            if reduceMotion { ProgressView().controlSize(.small) }
             if let query = message.searching {
-                Text(query.isEmpty ? "app:ai.searching" : "app:ai.searchingFor \(query)")
+                ShimmerText(query.isEmpty ? "app:ai.searching" : "app:ai.searchingFor \(query)")
             } else {
-                Text("app:ai.thinking")
+                ShimmerText("app:ai.thinking")
             }
         }
         .font(.hk(.sm))
-        .foregroundStyle(Theme.mutedForeground)
     }
 }
 

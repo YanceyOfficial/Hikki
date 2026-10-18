@@ -165,6 +165,10 @@
                         SkeletonLines([0.45], height: Spacing.s6, label: "app:history.loading")
                         SkeletonLines([1, 0.94, 0.62], label: "app:history.loading")
                     }
+                    Section("ShimmerText") {
+                        ShimmerText("app:ai.thinking").font(.hk(.sm))
+                        ShimmerText("app:ai.searching").font(.hk(.sm))
+                    }
                     Section("CodeBlockView") {
                         CodeBlockView(
                             code: "let greeting = \"Hello\"\nprint(greeting)  // a line long enough to scroll sideways in the block",

@@ -527,7 +527,9 @@ HikkiUITests/                 XCUITest flows
   (`HikkiAI/Sources/CodeHighlighter.swift`: highlight.js via HighlightSwift, each class mapped to a sentinel CSS grey
   read back as a `CodeToken`, drawn in the `syntax-*` tokens as the editor maps them; it waits for a pause while
   streaming and a growing block keeps its earlier colours); tables are HikkiUI's `TextTable`. HighlightSwift's
-  resource bundle is copied into the app; when it's missing (`resourcesFound`) code stays plain rather than trap. Model output is untrusted: the reply is parsed tolerantly (`editor/src/lib/ai-content.ts`;
+  resource bundle is copied into the app; when it's missing (`resourcesFound`) code stays plain rather than trap.
+  While the model works the chat's "Thinking…" / "Searching the web…" line is HikkiUI's `ShimmerText` (a foreground
+  band sweeping the muted text once per `Motion.loop`; still under Reduce Motion, which gets a spinner instead). Model output is untrusted: the reply is parsed tolerantly (`editor/src/lib/ai-content.ts`;
   sanitized inline HTML through the schema, unknown keys dropped, an unreadable reply is an error), citations must be
   http(s), and any change to the page closes the review.
 - **Find, spelling, insets**: find and replace is `editor/src/extensions/find.ts` (Tiptap's extension, RE2 regex) with
