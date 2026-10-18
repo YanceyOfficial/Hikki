@@ -4,7 +4,9 @@ import Image from '@tiptap/extension-image'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet, type NodeView } from '@tiptap/pm/view'
+import { createRoot } from 'react-dom/client'
 
+import { renderFileTypeIcon } from '../components/file-type-icon'
 import { reportError } from '../core/errors'
 import { t } from '../core/i18n'
 import { mediaToolbarExtension } from './media-toolbar'
@@ -172,11 +174,17 @@ export const MediaImage = Image.extend({
 /** A node whose DOM is a media element the user interacts with (controls), not ProseMirror. */
 class MediaView implements NodeView {
   dom: HTMLElement
-  constructor(element: HTMLElement) {
+  constructor(
+    element: HTMLElement,
+    private readonly onDestroy?: () => void
+  ) {
     this.dom = document.createElement('div')
     this.dom.className = 'hk-media'
     this.dom.contentEditable = 'false'
     this.dom.append(element)
+  }
+  destroy() {
+    this.onDestroy?.()
   }
   stopEvent(event: Event) {
     // Play/seek/volume belong to the element; dragging the block still goes to ProseMirror.
@@ -278,8 +286,8 @@ export const FileAttachment = Node.create<{ host: MediaHost | null }>({
       button.className = 'hk-file'
       const icon = document.createElement('span')
       icon.className = 'hk-file-icon'
-      icon.textContent =
-        (node.attrs.name as string | null)?.split('.').pop()?.slice(0, 4).toUpperCase() ?? ''
+      const iconRoot = createRoot(icon)
+      renderFileTypeIcon(iconRoot, node.attrs.name as string | null)
       const name = document.createElement('span')
       name.className = 'hk-file-name'
       name.textContent = (node.attrs.name as string | null) ?? t('media.file')
@@ -291,7 +299,8 @@ export const FileAttachment = Node.create<{ host: MediaHost | null }>({
       button.addEventListener('click', () => {
         if (src) this.options.host?.openAsset(src, node.attrs.name as string | null)
       })
-      return new MediaView(button)
+      // Not synchronously: destroy can run while React is rendering.
+      return new MediaView(button, () => queueMicrotask(() => iconRoot.unmount()))
     }
   }
 })

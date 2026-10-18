@@ -1,4 +1,5 @@
 import type { Editor } from '@tiptap/core'
+import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { EditorBridge, extensionOf } from '../src/core/bridge'
@@ -15,6 +16,7 @@ import {
   safeMediaSrc,
   type MediaHost
 } from '../src/extensions/media'
+import { fileTypeOf } from '../src/lib/file-types'
 import { doc, settle, stripIds } from './helpers'
 
 let host: HTMLElement
@@ -230,6 +232,43 @@ describe('inserting files', () => {
     expect(media.openAsset).toHaveBeenCalledTimes(1)
     expect(media.openAsset).toHaveBeenCalledWith('hikki-editor://assets/r.pdf', 'r.pdf')
   })
+
+  it('an attachment card shows its type as a tinted icon, not a text label', async () => {
+    editor = createEditor(host, {
+      type: 'doc',
+      content: [card('data.json'), card('Report.PDF'), card('deck.pptx'), card('blob')]
+    })
+    await act(async () => {})
+    const icons = [...host.querySelectorAll('.hk-file-icon')]
+    // No extension text ("JSON") to spill out of the box.
+    expect(icons.map((icon) => icon.textContent)).toEqual(['', '', '', ''])
+    const svgs = icons.map((icon) => icon.querySelector('svg')!)
+    expect(svgs.map((svg) => svg.dataset.fileType)).toEqual([
+      'code',
+      'pdf',
+      'presentation',
+      'other'
+    ])
+    expect(svgs[1].getAttribute('class')).toContain('text-ink-red')
+    expect(svgs[2].getAttribute('class')).toContain('text-ink-orange')
+  })
+})
+
+describe('file types', () => {
+  it('reads the type from the extension, any case', () => {
+    expect(fileTypeOf('a.docx')).toBe('document')
+    expect(fileTypeOf('a.XLSX')).toBe('spreadsheet')
+    expect(fileTypeOf('a.csv')).toBe('csv')
+    expect(fileTypeOf('a.key')).toBe('presentation')
+    expect(fileTypeOf('a.tar.gz')).toBe('archive')
+    expect(fileTypeOf('notes.md')).toBe('text')
+    expect(fileTypeOf('a.heic')).toBe('image')
+    expect(fileTypeOf('a.flac')).toBe('audio')
+    expect(fileTypeOf('a.mkv')).toBe('video')
+    expect(fileTypeOf('Makefile')).toBe('other')
+    expect(fileTypeOf(null)).toBe('other')
+    expect(fileTypeOf('a.unknown')).toBe('other')
+  })
 })
 
 describe('image toolbar', () => {
@@ -264,6 +303,10 @@ describe('video first frame', () => {
   })
 })
 
+const card = (name: string | null) => ({
+  type: 'fileAttachment',
+  attrs: { src: 'hikki-editor://assets/f', name }
+})
 const pdf = () => new File(['x'], 'report.pdf', { type: 'application/pdf' })
 const png = () => new File(['x'], 'photo.png', { type: 'image/png' })
 
