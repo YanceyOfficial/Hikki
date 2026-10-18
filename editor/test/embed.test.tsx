@@ -1,7 +1,8 @@
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import type { Editor } from '@tiptap/core'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { BLOCK_TYPES } from '../src/core/blocks'
 import { createEditor } from '../src/core/editor'
 import { openEmbedPanel } from '../src/extensions/embed'
 import type { PageLinksHost } from '../src/extensions/page-links'
@@ -208,5 +209,39 @@ describe('embed block', () => {
         )
     )
     expect(document.querySelector('.hk-embed-panel')).toBeNull()
+  })
+})
+
+const embedBlocks = BLOCK_TYPES.filter((block) => block.group === 'embeds')
+
+describe('the "/" menu’s Embeds group', () => {
+  it('shows each service by its own logo; Embed and HTML keep their icons', () => {
+    for (const block of embedBlocks) {
+      const { container, unmount } = render(
+        <block.icon size={18} className="text-subtle-foreground" />
+      )
+      const svg = container.querySelector('svg')!
+      const generic = block.id === 'embed' || block.id === 'html'
+      expect(svg.hasAttribute('data-logo'), block.id).toBe(!generic)
+      unmount()
+    }
+  })
+
+  it('offers draw.io and the other new services, each opening a panel that names it', () => {
+    const ids = embedBlocks.map((block) => block.id)
+    for (const id of [
+      'drawio',
+      'loom',
+      'excalidraw',
+      'miro',
+      'airtable',
+      'spotify',
+      'codesandbox'
+    ]) {
+      expect(ids).toContain(id)
+    }
+    editor = createEditor(host, doc(''))
+    BLOCK_TYPES.find((block) => block.id === 'drawio')!.after!(editor)
+    expect(screen.getByPlaceholderText('Paste a draw.io or diagrams.net link…')).toBeTruthy()
   })
 })

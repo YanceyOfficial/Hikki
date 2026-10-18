@@ -147,6 +147,34 @@
     "figma": {
       "title": "Figma",
       "hint": "Figma 文件或原型"
+    },
+    "drawio": {
+      "title": "draw.io",
+      "hint": "来自 draw.io（diagrams.net）的图表"
+    },
+    "loom": {
+      "title": "Loom",
+      "hint": "Loom 视频"
+    },
+    "excalidraw": {
+      "title": "Excalidraw",
+      "hint": "Excalidraw 手绘图"
+    },
+    "miro": {
+      "title": "Miro",
+      "hint": "Miro 白板"
+    },
+    "airtable": {
+      "title": "Airtable",
+      "hint": "共享的 Airtable 视图"
+    },
+    "spotify": {
+      "title": "Spotify",
+      "hint": "单曲、专辑、歌单或播客"
+    },
+    "codesandbox": {
+      "title": "CodeSandbox",
+      "hint": "可运行的代码沙盒"
     }
   },
   "cover": {
@@ -348,7 +376,14 @@
       "figma": "粘贴 Figma 链接…",
       "youtube": "粘贴 YouTube 链接…",
       "vimeo": "粘贴 Vimeo 链接…",
-      "codepen": "粘贴 CodePen 链接…"
+      "codepen": "粘贴 CodePen 链接…",
+      "drawio": "粘贴 draw.io 或 diagrams.net 链接…",
+      "loom": "粘贴 Loom 链接…",
+      "excalidraw": "粘贴 Excalidraw 分享链接…",
+      "miro": "粘贴 Miro 白板链接…",
+      "airtable": "粘贴 Airtable 共享视图链接…",
+      "spotify": "粘贴 Spotify 链接…",
+      "codesandbox": "粘贴 CodeSandbox 链接…"
     },
     "label": {
       "link": "要嵌入的链接",

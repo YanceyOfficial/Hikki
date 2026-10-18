@@ -96,6 +96,117 @@ describe('embedFromURL', () => {
     expect(embedFromURL('   ')).toBeNull()
     expect(embedFromURL('not a link at all')).toBeNull()
   })
+
+  it('draw.io: the viewer as it is; an editor link opens its diagram (the fragment) in the viewer', () => {
+    const viewer = 'https://viewer.diagrams.net/?highlight=0000ff&nav=1#G1AbCdEf'
+    expect(src(viewer)).toBe(viewer)
+    expect(provider(viewer)).toBe('drawio')
+    expect(src('https://app.diagrams.net/#G1AbCdEf_-x')).toBe(
+      'https://viewer.diagrams.net/?nav=1#G1AbCdEf_-x'
+    )
+    expect(src('https://app.diagrams.net/?src=about#Uhttps%3A%2F%2Fexample.com%2Fd.drawio')).toBe(
+      'https://viewer.diagrams.net/?nav=1#Uhttps%3A%2F%2Fexample.com%2Fd.drawio'
+    )
+    expect(src('https://www.draw.io/#R7Vxbc')).toBe('https://viewer.diagrams.net/?nav=1#R7Vxbc')
+    // No diagram named: the page itself, as any other link (a card, not a frame).
+    expect(provider('https://app.diagrams.net/')).toBe('generic')
+  })
+
+  it('Loom share links → the Loom player', () => {
+    const id = '0123456789abcdef0123456789abcdef'
+    expect(src(`https://www.loom.com/share/${id}?sid=x`)).toBe(`https://www.loom.com/embed/${id}`)
+    expect(src(`https://loom.com/embed/${id}`)).toBe(`https://www.loom.com/embed/${id}`)
+    expect(provider('https://www.loom.com/share/not-an-id')).toBe('generic')
+  })
+
+  it('Excalidraw share and room links are framed as they are; anything else is a plain link', () => {
+    expect(src('https://excalidraw.com/#json=abc123_-X,keyKEY_-9')).toBe(
+      'https://excalidraw.com/#json=abc123_-X,keyKEY_-9'
+    )
+    expect(src('https://excalidraw.com/#room=abcdef0123,keyKEY')).toBe(
+      'https://excalidraw.com/#room=abcdef0123,keyKEY'
+    )
+    expect(provider('https://excalidraw.com/')).toBe('generic')
+    expect(provider('https://excalidraw.com/#json=<script>')).toBe('generic')
+  })
+
+  it('Miro boards → the read-only live embed', () => {
+    expect(src('https://miro.com/app/board/uXjVOabc123=/?share_link_id=42')).toBe(
+      'https://miro.com/app/live-embed/uXjVOabc123=/?embedMode=view_only_without_ui'
+    )
+    expect(provider('https://miro.com/pricing/')).toBe('generic')
+  })
+
+  it('Airtable shared views → their embed page', () => {
+    expect(src('https://airtable.com/shrAbC123xyz')).toBe('https://airtable.com/embed/shrAbC123xyz')
+    expect(src('https://airtable.com/appAbC123/shrXyZ789?backgroundColor=red')).toBe(
+      'https://airtable.com/embed/appAbC123/shrXyZ789'
+    )
+    expect(src('https://airtable.com/embed/shrAbC123xyz')).toBe(
+      'https://airtable.com/embed/shrAbC123xyz'
+    )
+    expect(provider('https://airtable.com/appAbC123/tblPrivate')).toBe('generic')
+  })
+
+  it('Spotify → the embed player, compact for a track or an episode', () => {
+    expect(
+      embedFromURL('https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC?si=x')
+    ).toMatchObject({
+      provider: 'spotify',
+      src: 'https://open.spotify.com/embed/track/4uLU6hMCjMI75M1A2tKUQC',
+      height: 152
+    })
+    expect(
+      embedFromURL('https://open.spotify.com/intl-ja/playlist/37i9dQZF1DXcBWIGoYBM5M')
+    ).toMatchObject({
+      src: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M',
+      height: 352
+    })
+    expect(src('https://open.spotify.com/episode/abc123')).toBe(
+      'https://open.spotify.com/embed/episode/abc123'
+    )
+    expect(provider('https://open.spotify.com/user/someone')).toBe('generic')
+  })
+
+  it('CodeSandbox sandboxes → their embed page', () => {
+    expect(src('https://codesandbox.io/s/new-abc12')).toBe('https://codesandbox.io/embed/new-abc12')
+    expect(src('https://codesandbox.io/p/sandbox/react-xyz9')).toBe(
+      'https://codesandbox.io/embed/react-xyz9'
+    )
+    expect(src('https://codesandbox.io/embed/abc?view=preview')).toBe(
+      'https://codesandbox.io/embed/abc'
+    )
+    expect(provider('https://codesandbox.io/docs')).toBe('generic')
+  })
+
+  it('every provider’s frame is an https page on the provider’s own host, whatever was pasted', () => {
+    const links = [
+      'https://app.diagrams.net/#G1AbC',
+      'https://www.loom.com/share/0123456789abcdef0123',
+      'https://excalidraw.com/#json=a,b',
+      'https://miro.com/app/board/uXjV=/',
+      'https://airtable.com/shrAbc',
+      'https://open.spotify.com/album/1abc',
+      'https://codesandbox.io/s/abc'
+    ]
+    const hosts = [
+      'viewer.diagrams.net',
+      'www.loom.com',
+      'excalidraw.com',
+      'miro.com',
+      'airtable.com',
+      'open.spotify.com',
+      'codesandbox.io'
+    ]
+    links.forEach((link, i) => {
+      const frame = src(link)!
+      expect(safeFrameSrc(frame), link).toBe(frame)
+      expect(new URL(frame).hostname, link).toBe(hosts[i])
+    })
+    // A look-alike host is just a link.
+    expect(provider('https://loom.com.evil.example/share/0123456789abcdef0123')).toBe('generic')
+    expect(provider('http://open.spotify.com/track/abc')).toBeUndefined()
+  })
 })
 
 describe('embedFromHTML and friends', () => {
