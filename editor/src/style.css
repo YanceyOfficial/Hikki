@@ -193,11 +193,54 @@
   .tiptap .hk-toggle {
     @apply my-0.5 flex items-start gap-1;
   }
+  /* As tall as the summary's first line, so the caret sits on it (a heading summary's line too, below). */
   .tiptap .hk-toggle > button {
-    @apply mt-[5px] grid size-5 flex-none cursor-pointer place-items-center rounded-sm text-subtle-foreground hover:bg-accent;
+    @apply grid h-6 w-5 flex-none cursor-pointer place-items-center rounded-sm text-subtle-foreground hover:bg-accent;
   }
   .tiptap .hk-toggle > button svg {
     @apply size-3 transition-transform duration-(--motion-pop-in) ease-out;
+  }
+  /* The summary is a <summary> outside a <details>: WebKit still draws its disclosure marker (a stray diamond
+     over the caret) unless told not to. */
+  .tiptap .hk-toggle summary {
+    @apply block list-none leading-6;
+  }
+  .tiptap .hk-toggle summary::-webkit-details-marker {
+    @apply hidden;
+  }
+  .tiptap .hk-toggle summary::marker {
+    content: '';
+  }
+  /* Toggle headings (extensions/toggle.ts `level`): the heading's type on the summary, its line for the caret. */
+  .tiptap .hk-toggle summary[data-level] {
+    @apply leading-tight font-semibold;
+  }
+  .tiptap .hk-toggle summary[data-level='1'] {
+    font-size: 1.875em;
+  }
+  .tiptap .hk-toggle summary[data-level='2'] {
+    font-size: 1.5em;
+  }
+  .tiptap .hk-toggle summary[data-level='3'] {
+    font-size: 1.25em;
+  }
+  .tiptap .hk-toggle:has(> div > summary[data-level='1']) {
+    @apply mt-[1.4em];
+  }
+  .tiptap .hk-toggle:has(> div > summary[data-level='2']) {
+    @apply mt-[1.2em];
+  }
+  .tiptap .hk-toggle:has(> div > summary[data-level='3']) {
+    @apply mt-[1em];
+  }
+  .tiptap .hk-toggle:has(> div > summary[data-level='1']) > button {
+    height: calc(1.875em * 1.25);
+  }
+  .tiptap .hk-toggle:has(> div > summary[data-level='2']) > button {
+    height: calc(1.5em * 1.25);
+  }
+  .tiptap .hk-toggle:has(> div > summary[data-level='3']) > button {
+    height: calc(1.25em * 1.25);
   }
   .tiptap .hk-toggle.is-open > button svg {
     @apply rotate-90;

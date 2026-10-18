@@ -302,11 +302,13 @@ HikkiUITests/                 XCUITest flows
   is the core `Editor`, not `@tiptap/react`).
 - **Block controls** (`editor/src/extensions/block-controls.ts`, units in `editor/src/extensions/block-units.ts`): our
   own + / ⋮⋮ handle on pointer events (HTML5 drag-and-drop is unreliable in WebKit), centred on the block's first line;
-  drag shows a ghost and a drop line (side edges make columns); a click opens `editor/src/components/block-menu.tsx`. Fine
+  anything inside a toggle, quote or callout shows the outermost container's handle (`handleUnitAtPos`; drops and caret
+  commands still reach the blocks inside; list items keep one each); drag shows a ghost and a drop line (side edges make columns); a click opens `editor/src/components/block-menu.tsx`. Fine
   pointers only. Block colours are `blockColor` / `blockBackground` attributes. Block-level highlights (drag
   source, the block a menu is open for) are node decorations from `editor/src/extensions/block-highlight.ts` —
   never classes on the node's DOM, which ProseMirror drops on redraw.
-- **Rich blocks**: toggles (`editor/src/extensions/toggle.ts`; open/closed is not stored, so opening never saves),
+- **Rich blocks**: toggles (`editor/src/extensions/toggle.ts`; open/closed is not stored, so opening never saves; a
+  summary may be a heading — `level` 1–3, set by `# `…`### ` at its start, cleared by Backspace there),
   callouts, KaTeX formulas (`editor/src/extensions/math.ts`; our panel replaces Tiptap's `prompt()`), tables
   (`editor/src/extensions/table.ts` + `editor/src/extensions/table-ops.ts`, controls drawn by
   `editor/src/components/table-overlay.tsx`) and columns (`editor/src/extensions/columns.ts`: schema needs 2–5 columns, so

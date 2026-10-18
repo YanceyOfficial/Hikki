@@ -9,7 +9,14 @@ import { t } from '../core/i18n'
 import { tiptapShortcut, type ShortcutId } from '../core/shortcuts'
 import { FINE_POINTER, matches } from '../lib/device'
 import { BlockHighlight, BlockHighlightKey, setBlockHighlight } from './block-highlight'
-import { duplicateUnit, firstTextPos, moveUnit, unitAtPos, type BlockUnit } from './block-units'
+import {
+  duplicateUnit,
+  firstTextPos,
+  handleUnitAtPos,
+  moveUnit,
+  unitAtPos,
+  type BlockUnit
+} from './block-units'
 import { dropBeside, MAX_COLUMNS } from './columns'
 
 export const BlockControlsKey = new PluginKey('blockControls')
@@ -166,13 +173,18 @@ class BlockControlsView {
     return this.view.dom.getBoundingClientRect()
   }
 
-  /** The unit at a viewport point (anywhere on its row, including the left gutter). */
-  private unitAtPoint(x: number, y: number): BlockUnit | null {
+  /**
+   * The unit at a viewport point (anywhere on its row, including the left gutter). `handle`: the one the hover
+   * handle grabs — a block inside a toggle, quote or callout gives the container (`handleUnitAtPos`); drops keep
+   * the inner block, so a block can still be dropped into one.
+   */
+  private unitAtPoint(x: number, y: number, handle = false): BlockUnit | null {
     const rect = this.contentRect()
     const left = Math.min(Math.max(x, rect.left + 2), rect.right - 2)
     const at = this.view.posAtCoords({ left, top: y })
     if (!at) return null
-    return unitAtPos(this.view.state, at.inside >= 0 ? at.inside : at.pos)
+    const pos = at.inside >= 0 ? at.inside : at.pos
+    return handle ? handleUnitAtPos(this.view.state, pos) : unitAtPos(this.view.state, pos)
   }
 
   /** A non-empty text selection: the selection menu's moment, not the handle's. */
@@ -193,7 +205,7 @@ class BlockControlsView {
       return
     }
     if (this.handle.contains(event.target as Node)) return
-    const unit = this.unitAtPoint(event.clientX, event.clientY)
+    const unit = this.unitAtPoint(event.clientX, event.clientY, true)
     if (!unit) return this.hide()
     this.unit = unit
     this.reposition()
