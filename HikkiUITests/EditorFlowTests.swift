@@ -378,6 +378,53 @@ final class EditorFlowTests: XCTestCase {
             app.staticTexts["Hello Hikki"].firstMatch.waitForExistence(timeout: 10), "saved title missing from sidebar after relaunch")
     }
 
+    #if os(iOS)
+        /// The keyboard bar's panels take the keyboard's place: + inserts a block and the keyboard comes back; Aa
+        /// stays until the bar's keyboard button.
+        func testKeyboardBarPanels() throws {
+            continueAfterFailure = false
+            let app = launch()
+            let newPage = app.buttons["new-page"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+            newPage.tap()
+            let title = app.webViews.textViews["Page title"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+            title.tap()
+            title.typeText("Plan\n")
+            let body = app.webViews.textViews["Page content"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(body, in: app), "body missing")
+            body.tap()
+
+            app.buttons["Add block"].firstMatch.tap()
+            let blocks = app.descendants(matching: .any)["keyboard-block-panel"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(blocks, in: app), "+ panel did not open")
+            attach(app, "plus-panel")
+            app.buttons["keyboard-block-heading2"].firstMatch.tap()
+            XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5), "keyboard did not come back")
+            XCTAssertFalse(blocks.exists)
+            body.typeText("Day one")
+            XCTAssertTrue(waitOrDumpTree(app.webViews.staticTexts["Day one"].firstMatch, in: app), "heading text missing")
+
+            app.buttons["Format"].firstMatch.tap()
+            let format = app.descendants(matching: .any)["keyboard-format-panel"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(format, in: app), "Aa panel did not open")
+            attach(app, "format-panel")
+            // In the keyboard's place the bar's keyboard button closes it; as a sheet (a hardware keyboard, as the
+            // simulator usually has), a swipe down.
+            let showKeyboard = app.buttons["show-keyboard"].firstMatch
+            if showKeyboard.isHittable { showKeyboard.tap() } else { format.swipeDown(velocity: .fast) }
+            let gone = NSPredicate(format: "exists == false")
+            wait(for: [expectation(for: gone, evaluatedWith: format)], timeout: 5)
+        }
+
+        private func attach(_ app: XCUIApplication, _ name: String) {
+            let shot = XCTAttachment(screenshot: app.screenshot())
+            shot.name = name
+            shot.lifetime = .keepAlways
+            add(shot)
+        }
+    #endif
+
     func testSlashMenuInsertsTodoList() throws {
         continueAfterFailure = false
         let app = launch()

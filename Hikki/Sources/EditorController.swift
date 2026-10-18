@@ -411,6 +411,75 @@ final class EditorController {
         }
     }
 
+    // MARK: - The phone's keyboard bar
+
+    /// What the "Aa" panel and the bar show as on (the page's `touchState`).
+    struct TouchState: Equatable {
+        var block = "paragraph"
+        var marks: Set<String> = []
+        var textColor: String?
+        var backgroundColor: String?
+        var selection = false
+        var canIndent = false
+        var canOutdent = false
+    }
+
+    /// The "+" panel's blocks: the "/" menu's catalog, as the page names it.
+    func touchBlockMenu() async -> [KeyboardBlockSection] {
+        let value = await call("return window.hikki.touchBlockMenu()", label: "touchBlockMenu")
+        return ((value as? [[String: Any]]) ?? []).map { group in
+            KeyboardBlockSection(
+                id: group["id"] as? String ?? "", title: group["label"] as? String ?? "",
+                items: Self.blockItems(group["blocks"]))
+        }
+    }
+
+    func touchTurnIntoMenu() async -> [KeyboardBlockItem] {
+        Self.blockItems(await call("return window.hikki.touchTurnIntoMenu()", label: "touchTurnIntoMenu"))
+    }
+
+    private static func blockItems(_ value: Any?) -> [KeyboardBlockItem] {
+        ((value as? [[String: Any]]) ?? []).compactMap { block in
+            guard let id = block["id"] as? String, let label = block["label"] as? String else { return nil }
+            return KeyboardBlockItem(id: id, label: label, icon: (block["icon"] as? String).flatMap(Icon.init(rawValue:)))
+        }
+    }
+
+    func touchState() async -> TouchState? {
+        guard let value = await call("return window.hikki.touchState()", label: "touchState") as? [String: Any] else {
+            return nil
+        }
+        return TouchState(
+            block: value["block"] as? String ?? "paragraph", marks: Set(value["marks"] as? [String] ?? []),
+            textColor: value["textColor"] as? String, backgroundColor: value["bgColor"] as? String,
+            selection: value["selection"] as? Bool ?? false, canIndent: value["canIndent"] as? Bool ?? false,
+            canOutdent: value["canOutdent"] as? Bool ?? false)
+    }
+
+    func touchInsertBlock(_ id: String) async {
+        await call("window.hikki.touchInsertBlock(id)", ["id": id], label: "touchInsertBlock")
+    }
+
+    func touchTurnInto(_ id: String) async {
+        await call("window.hikki.touchTurnInto(id)", ["id": id], label: "touchTurnInto")
+    }
+
+    /// bold, italic, underline, strike, code, indent, outdent, undo, redo, mention, todo or comment.
+    func touchRun(_ tool: String) async {
+        await call("window.hikki.touchRun(tool)", ["tool": tool], label: "touchRun")
+    }
+
+    func touchSetColor(_ kind: KeyboardFormatPanel.ColorKind, _ color: String?) async {
+        await call(
+            "window.hikki.touchSetColor(kind, color)",
+            ["kind": kind == .text ? "text" : "background", "color": color ?? NSNull()], label: "touchSetColor")
+    }
+
+    /// Ask AI or a link's field, docked above the keyboard.
+    func touchOpen(_ kind: String) async {
+        await call("window.hikki.touchOpen(kind)", ["kind": kind], label: "touchOpen")
+    }
+
     /// Selects the page title for typing — now if that page is loaded, otherwise right after it loads.
     func focusTitle(of id: String) {
         if isReady, currentDocumentID == id, pendingDocumentID == nil {
@@ -561,6 +630,10 @@ final class EditorController {
             await call("window.hikki.setOutlineRail(visible)", ["visible": false], label: "setOutlineRail")
         }
         if let arguments = pageIndexArguments() { await call("window.hikki.setPages(pages)", arguments, label: "setPages") }
+        #if os(iOS)
+            // The keyboard bar formats a selection here; the page's floating menu stays away.
+            await call("window.hikki.setKeyboardBar(on)", ["on": true], label: "setKeyboardBar")
+        #endif
     }
 
     // MARK: - Loading

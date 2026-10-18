@@ -410,7 +410,7 @@ function ColorButton({
   )
 }
 
-function LinkPanel({
+export function LinkPanel({
   href,
   onApply,
   onRemove,

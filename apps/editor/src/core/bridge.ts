@@ -3,7 +3,8 @@ import type { Node as PMNode } from '@tiptap/pm/model'
 import type { Transaction } from '@tiptap/pm/state'
 
 import { setBlockLinkBuilder } from '../components/block-menu'
-import { dismissAllLayers } from '../components/floating'
+import { dismissAllLayers, FloatingLayer } from '../components/floating'
+import { renderTouchDock } from '../components/touch-dock'
 import type { AIChangesHost } from '../extensions/ai-changes'
 import { handleAIEvent, type AIHost, type AIReviewStyle } from '../extensions/ai-review'
 import {
@@ -18,6 +19,7 @@ import { UploadsKey, type MediaHost } from '../extensions/media'
 import { pageLinkHref, type PageIndexEntry, type PageLinksHost } from '../extensions/page-links'
 import { notifyPageIndexChanged } from '../extensions/page-mention'
 import { rubySegmentsFrom, type RubyHost } from '../extensions/ruby'
+import { setKeyboardBar } from '../extensions/selection-menu'
 import type { SplitDropHost, SplitDropMode } from '../extensions/split-drop'
 import { openTogglesAround } from '../extensions/toggle'
 import { pageBlocks, type AIPageBlock } from '../lib/ai-content'
@@ -44,6 +46,20 @@ import {
   type ToNativeMessage
 } from './protocol'
 import { Store } from './store'
+import {
+  selectAroundCaret,
+  touchBlockMenu,
+  touchInsertBlock,
+  touchRun,
+  touchSetColor,
+  touchState,
+  touchTurnInto,
+  touchTurnIntoMenu,
+  type TouchBlock,
+  type TouchBlockGroup,
+  type TouchState,
+  type TouchTool
+} from './touch-tools'
 
 export interface Transport {
   post(message: ToNativeMessage): Promise<unknown>
@@ -449,6 +465,81 @@ export class EditorBridge {
   aiApproveAll(): boolean {
     if (this.frozen) return false
     return this.editor?.commands.aiApproveAllChanges() ?? false
+  }
+
+  // MARK: the phone's keyboard bar (native `KeyboardToolbar`): its panels' contents and tools.
+
+  /** `window.hikki.setKeyboardBar`: the native bar is up on this device — the selection's floating menu stays away. */
+  setKeyboardBar(on: boolean): void {
+    setKeyboardBar(on)
+  }
+
+  touchBlockMenu(): TouchBlockGroup[] {
+    return touchBlockMenu()
+  }
+
+  touchTurnIntoMenu(): TouchBlock[] {
+    return touchTurnIntoMenu()
+  }
+
+  touchState(): TouchState | null {
+    return this.editor ? touchState(this.editor) : null
+  }
+
+  touchInsertBlock(id: string): boolean {
+    return !this.frozen && !!this.editor && touchInsertBlock(this.editor, id)
+  }
+
+  touchTurnInto(id: string): boolean {
+    return !this.frozen && !!this.editor && touchTurnInto(this.editor, id)
+  }
+
+  touchRun(tool: TouchTool): boolean {
+    return !this.frozen && !!this.editor && touchRun(this.editor, tool)
+  }
+
+  touchSetColor(kind: 'text' | 'background', color: string | null): boolean {
+    return !this.frozen && !!this.editor && touchSetColor(this.editor, kind, color)
+  }
+
+  private touchDock: FloatingLayer | null = null
+
+  /** The bar's AI or link: a field docked above the keyboard, acting on the selection (or the word at the caret). */
+  touchOpen(kind: 'ai' | 'link'): boolean {
+    const editor = this.editor
+    if (!editor || this.frozen || !selectAroundCaret(editor)) return false
+    this.touchDock?.destroy()
+    const close = () => {
+      layer.destroy()
+      if (this.touchDock === layer) this.touchDock = null
+    }
+    const layer = new FloatingLayer('hk-touch-dock', { onDismiss: close })
+    this.touchDock = layer
+    if (kind === 'ai') {
+      renderTouchDock(layer, {
+        kind,
+        onClose: close,
+        onRun: (action) => {
+          close()
+          editor.commands.aiRun(action)
+        }
+      })
+    } else {
+      renderTouchDock(layer, {
+        kind,
+        href: (editor.getAttributes('link').href as string | undefined) ?? null,
+        onClose: close,
+        onApply: (href) => {
+          close()
+          editor.chain().focus().extendMarkRange('link').setLink({ href }).run()
+        },
+        onRemove: () => {
+          close()
+          editor.chain().focus().extendMarkRange('link').unsetLink().run()
+        }
+      })
+    }
+    return true
   }
 
   /** `window.hikki.aiPageBlocks`: the open page's text blocks with their ids, for Ask AI to propose changes by. */

@@ -3,9 +3,15 @@
   "baseWeight": "regular",
   "strokeBoost": 4,
   "icons": {
-    "clipboard-text": { "sf": "doc.on.clipboard" },
-    "warning-circle": { "sf": "exclamationmark.circle.fill" },
-    "x-circle": { "sf": "xmark.circle.fill" },
+    "clipboard-text": {
+      "sf": "doc.on.clipboard"
+    },
+    "warning-circle": {
+      "sf": "exclamationmark.circle.fill"
+    },
+    "x-circle": {
+      "sf": "xmark.circle.fill"
+    },
     "list": {
       "sf": "line.3.horizontal"
     },
@@ -115,7 +121,11 @@
       "sf": "clock"
     },
     "keyboard": {
-      "sf": "keyboard.chevron.compact.down"
+      "weights": ["regular", "fill"],
+      "sf": {
+        "regular": "keyboard.chevron.compact.down",
+        "fill": "keyboard"
+      }
     },
     "command": {
       "sf": "command"
@@ -244,6 +254,50 @@
     },
     "arrow-line-right": {
       "sf": "arrow.right.to.line"
-    }
+    },
+    "text-h-four": {},
+    "caret-circle-right": {
+      "sf": "chevron.right.circle"
+    },
+    "image-square": {
+      "sf": "photo"
+    },
+    "film-strip": {
+      "sf": "film"
+    },
+    "music-notes": {
+      "sf": "music.note"
+    },
+    "browser": {
+      "sf": "globe"
+    },
+    "table": {
+      "sf": "tablecells"
+    },
+    "columns": {
+      "sf": "rectangle.split.2x1"
+    },
+    "list-magnifying-glass": {
+      "sf": "list.bullet.rectangle"
+    },
+    "sigma": {
+      "sf": "sum"
+    },
+    "function": {
+      "sf": "function"
+    },
+    "at": {
+      "sf": "at"
+    },
+    "text-indent": {
+      "sf": "increase.indent"
+    },
+    "text-outdent": {
+      "sf": "decrease.indent"
+    },
+    "text-underline": {
+      "sf": "underline"
+    },
+    "text-a-underline": {}
   }
 }

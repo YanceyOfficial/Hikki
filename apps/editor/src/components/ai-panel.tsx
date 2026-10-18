@@ -13,42 +13,43 @@ import type { AIAction } from '../extensions/ai-review'
 import { MenuRow, MenuTitle } from './menu-row'
 
 /** The AI actions: what the user types, then presets (edits replace the selection after review; Ask explains it). */
-const AI_GROUPS: { label: () => string; actions: { id: string; label: () => string }[] }[] = [
-  {
-    label: () => t('ai.group.edit'),
-    actions: [
-      { id: 'improve', label: () => t('ai.action.improve') },
-      { id: 'fix', label: () => t('ai.action.fix') },
-      { id: 'shorter', label: () => t('ai.action.shorter') },
-      { id: 'longer', label: () => t('ai.action.longer') },
-      { id: 'simplify', label: () => t('ai.action.simplify') }
-    ]
-  },
-  {
-    label: () => t('ai.group.tone'),
-    actions: [
-      { id: 'tone:professional', label: () => t('ai.action.tone.professional') },
-      { id: 'tone:casual', label: () => t('ai.action.tone.casual') },
-      { id: 'tone:friendly', label: () => t('ai.action.tone.friendly') },
-      { id: 'tone:confident', label: () => t('ai.action.tone.confident') }
-    ]
-  },
-  {
-    label: () => t('ai.group.translate'),
-    actions: [
-      { id: 'translate:zh', label: () => t('ai.action.translate.zh') },
-      { id: 'translate:en', label: () => t('ai.action.translate.en') },
-      { id: 'translate:ja', label: () => t('ai.action.translate.ja') }
-    ]
-  },
-  {
-    label: () => t('ai.group.ask'),
-    actions: [
-      { id: 'explain', label: () => t('ai.action.explain') },
-      { id: 'summarize', label: () => t('ai.action.summarize') }
-    ]
-  }
-]
+export const AI_GROUPS: { label: () => string; actions: { id: string; label: () => string }[] }[] =
+  [
+    {
+      label: () => t('ai.group.edit'),
+      actions: [
+        { id: 'improve', label: () => t('ai.action.improve') },
+        { id: 'fix', label: () => t('ai.action.fix') },
+        { id: 'shorter', label: () => t('ai.action.shorter') },
+        { id: 'longer', label: () => t('ai.action.longer') },
+        { id: 'simplify', label: () => t('ai.action.simplify') }
+      ]
+    },
+    {
+      label: () => t('ai.group.tone'),
+      actions: [
+        { id: 'tone:professional', label: () => t('ai.action.tone.professional') },
+        { id: 'tone:casual', label: () => t('ai.action.tone.casual') },
+        { id: 'tone:friendly', label: () => t('ai.action.tone.friendly') },
+        { id: 'tone:confident', label: () => t('ai.action.tone.confident') }
+      ]
+    },
+    {
+      label: () => t('ai.group.translate'),
+      actions: [
+        { id: 'translate:zh', label: () => t('ai.action.translate.zh') },
+        { id: 'translate:en', label: () => t('ai.action.translate.en') },
+        { id: 'translate:ja', label: () => t('ai.action.translate.ja') }
+      ]
+    },
+    {
+      label: () => t('ai.group.ask'),
+      actions: [
+        { id: 'explain', label: () => t('ai.action.explain') },
+        { id: 'summarize', label: () => t('ai.action.summarize') }
+      ]
+    }
+  ]
 
 export function AIPanel({
   onRun,

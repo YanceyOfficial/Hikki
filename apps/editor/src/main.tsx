@@ -15,6 +15,7 @@ import {
   type PagePayload
 } from './core/protocol'
 import { applyShortcutOverrides, type ShortcutOverride } from './core/shortcuts'
+import type { TouchTool } from './core/touch-tools'
 import { devTransport, webkitTransport } from './core/transport'
 import type { AIReviewStyle } from './extensions/ai-review'
 import type { ThreadItem } from './extensions/comments'
@@ -71,6 +72,17 @@ window.hikki = {
   aiResolveChange: (id: string, verdict: 'approve' | 'skip') => bridge.aiResolveChange(id, verdict),
   aiApproveAll: () => bridge.aiApproveAll(),
   aiPageBlocks: (docId: string) => bridge.aiPageBlocks(docId),
+  // The phone's keyboard bar (native): the "+" and "Aa" panels' contents, the page's state for them, and their tools.
+  setKeyboardBar: (on: boolean) => bridge.setKeyboardBar(on),
+  touchBlockMenu: () => bridge.touchBlockMenu(),
+  touchTurnIntoMenu: () => bridge.touchTurnIntoMenu(),
+  touchState: () => bridge.touchState(),
+  touchInsertBlock: (id: string) => bridge.touchInsertBlock(id),
+  touchTurnInto: (id: string) => bridge.touchTurnInto(id),
+  touchRun: (tool: TouchTool) => bridge.touchRun(tool),
+  touchSetColor: (kind: 'text' | 'background', color: string | null) =>
+    bridge.touchSetColor(kind, color),
+  touchOpen: (kind: 'ai' | 'link') => bridge.touchOpen(kind),
   // A tab shown again scrolls back to where it was.
   restoreScroll: (top: number) => bridge.restoreScroll(top),
   // The inspector's outline: a heading to the top of the page, marked as the one being read.

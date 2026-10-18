@@ -39,6 +39,28 @@
                     Section("KeyboardDismissButton") {
                         KeyboardDismissButton {}
                     }
+                    Section("KeyboardBlockPanel") {
+                        KeyboardBlockPanel(
+                            sections: [
+                                .init(
+                                    id: "basic", title: "Basic blocks",
+                                    items: [
+                                        .init(id: "paragraph", label: "Text", icon: .textT),
+                                        .init(id: "heading1", label: "Heading 1", icon: .textHOne),
+                                        .init(id: "bulletList", label: "Bulleted list", icon: .listBullets),
+                                        .init(id: "taskList", label: "To-do list", icon: .checkSquare),
+                                    ])
+                            ], onPick: { _ in }
+                        )
+                        .frame(height: 160)
+                    }
+                    Section("KeyboardFormatPanel") {
+                        KeyboardFormatPanel(
+                            marks: [.bold], turnInto: [.init(id: "paragraph", label: "Text", icon: .textT)], block: "paragraph",
+                            textColor: "red", backgroundColor: nil, onMark: { _ in }, onTurnInto: { _ in }, onColor: { _, _ in }
+                        )
+                        .frame(height: 320)
+                    }
                     Section("KeyboardAccessoryBar") {
                         KeyboardAccessoryBar(onDismiss: {}) {
                             ForEach(EditorCommand.allCases) { command in

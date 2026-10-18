@@ -13,6 +13,12 @@ export const SelectionMenuKey = new PluginKey('selectionMenu')
 
 const coarsePointer = () => matches(TOUCH)
 
+/** On a phone the native keyboard bar does this menu's job (`window.hikki.setKeyboardBar`); the menu stays away. */
+let keyboardBar = false
+export function setKeyboardBar(on: boolean): void {
+  keyboardBar = on
+}
+
 /**
  * Formatting menu over a non-empty text selection (Tiptap's BubbleMenu positions it; React draws it).
  * Above the selection with a mouse; below it on touch, where the system's edit menu takes the top.
@@ -53,6 +59,7 @@ export const SelectionMenuExtension = Extension.create<
         shouldShow: ({ editor, view, state, from, to }) => {
           // Tiptap's destroy() leaves the debounced update's timer running.
           if (editor.isDestroyed) return false
+          if (keyboardBar) return false
           if (!editor.isEditable || from === to || !isTextSelection(state.selection)) return false
           // Keep showing while the menu itself has focus (link input).
           if (!view.hasFocus() && !element.contains(document.activeElement)) return false

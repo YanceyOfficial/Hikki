@@ -1,14 +1,17 @@
 import SwiftUI
 
 /// Bar for above the software keyboard: scrolling tools on the leading side, a hide-keyboard button pinned
-/// trailing so it is always reachable however many tools there are.
+/// trailing so it is always reachable however many tools there are. While a panel takes the keyboard's place
+/// (`panelOpen`), that button brings the keyboard back.
 public struct KeyboardAccessoryBar<Tools: View>: View {
     public static var height: CGFloat { Size.keyboardBar }
 
+    private let panelOpen: Bool
     private let onDismiss: () -> Void
     private let tools: Tools
 
-    public init(onDismiss: @escaping () -> Void, @ViewBuilder tools: () -> Tools) {
+    public init(panelOpen: Bool = false, onDismiss: @escaping () -> Void, @ViewBuilder tools: () -> Tools) {
+        self.panelOpen = panelOpen
         self.onDismiss = onDismiss
         self.tools = tools()
     }
@@ -25,7 +28,7 @@ public struct KeyboardAccessoryBar<Tools: View>: View {
                     stops: [.init(color: .black, location: 0.9), .init(color: .clear, location: 1)], startPoint: .leading,
                     endPoint: .trailing)
             )
-            KeyboardDismissButton(action: onDismiss)
+            KeyboardDismissButton(showsKeyboard: panelOpen, action: onDismiss)
                 .padding(.trailing, Spacing.s2)
         }
         .frame(height: Self.height)

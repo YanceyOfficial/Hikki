@@ -44,5 +44,9 @@ final class HikkiWebView: WKWebView {
     #if os(iOS)
         /// Shown above the software keyboard instead of WebKit's default ⌃⌄ Done bar.
         var keyboardToolbar: UIView?
+        /// A panel of the bar's in the keyboard's place (nil: the keyboard).
+        var keyboardPanel: UIView?
+        /// The bar's state (its panels, what the page reports for them).
+        var keyboardBar: KeyboardBar?
     #endif
 }

@@ -574,6 +574,17 @@ HikkiUITests/                 XCUITest flows
   in Page", the only way on a phone) call `window.hikki.find`. Spellcheck is WebKit's (Settings → Editor,
   `window.hikki.setSpellcheck`). `window.hikki.setInsets` gives the page the toolbar height for fixed panels and, on
   iPhone, the floating bar's room at the foot (`--hk-inset-bottom`, 0 while the keyboard is up).
+- **Keyboard bar (iOS)**, Notion's (`Hikki/Sources/KeyboardToolbar.swift`): native SwiftUI over the software keyboard
+  as the web view's input accessory (a runtime subclass of WebKit's content view, no private API). With a caret:
+  - · AI · @ · to-do · photo · comment · Aa · link · indent · outdent · undo; with a selection: Aa · B · I · U · S ·
+    colour · AI · link · comment — the page's floating selection menu stays away meanwhile (`window.hikki.setKeyboardBar`).
+  - and Aa open a panel in the keyboard's place at its height (the same subclass's `inputView`, swapped with
+    `reloadInputViews`, the caret staying put): HikkiUI's `KeyboardBlockPanel` (the "/" catalog as flat two-column rows)
+    and `KeyboardFormatPanel` (marks, Turn into, text colour and background); the bar's end button brings the keyboard
+    back, a swipe down closes both. With a hardware keyboard (`GCKeyboard`) the system keeps the keyboard's area
+    off screen, so the panel is a sheet of the keyboard's height instead. Their contents and tools come from the page (`apps/editor/src/core/touch-tools.ts`:
+    the catalog with Phosphor icon names the native `Icon` set shares, `touchState`, `touchRun`…); AI and link keep
+    the keyboard and dock their field above the bar (`apps/editor/src/components/touch-dock.tsx`, `touchOpen`).
 - **iOS input zoom**: fields under 16px make iOS zoom the page on focus (fixed panels then sit off screen); touch
   devices get 16px fields via an unlayered rule in `apps/editor/src/style.css` (the page title is exempt).
 - **Editor content safety**: content that doesn't fit the schema (corrupt, or from a newer Hikki) opens read-only and
