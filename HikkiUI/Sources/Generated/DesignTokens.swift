@@ -227,6 +227,7 @@ public nonisolated enum Size {
     public static let toastWidth: CGFloat = 420
     public static let weekBar: CGFloat = 40
     public static let drawer: CGFloat = 360
+    public static let tableCellMax: CGFloat = 260
 }
 
 /// Motion: one timing for everything that appears, leaves or reacts (popovers, hover states, scrims).

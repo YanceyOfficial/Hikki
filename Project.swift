@@ -113,7 +113,9 @@ let project = Project(
             product: .framework,
             bundleId: "app.yancey.hikki.ai",
             deploymentTargets: deploymentTargets,
-            sources: ["HikkiAI/Sources/**"]
+            sources: ["HikkiAI/Sources/**"],
+            // Answers render as Markdown (swift-markdown) with highlighted code (HighlightSwift): AIMarkdown, CodeHighlighter.
+            dependencies: [.external(name: "Markdown"), .external(name: "HighlightSwift")]
         ),
         .target(
             name: "HikkiAITests",
