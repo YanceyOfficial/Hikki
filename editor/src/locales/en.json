@@ -493,6 +493,7 @@
     "uploadFailed": "Couldn't add the file.",
     "fileTooLarge": "The file is too large.",
     "fileOpenFailed": "Couldn't open the file.",
+    "fileTypeNotAllowed": "This block doesn't take that kind of file.",
     "aiMissingKey": "Add an API key in Settings → AI first.",
     "aiBadBaseURL": "The AI provider's address in Settings isn't usable.",
     "aiUnauthorized": "The API key was refused.",

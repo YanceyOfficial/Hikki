@@ -40,15 +40,82 @@ export function safeMediaSrc(src: unknown, kind: MediaKind): string | null {
   return null
 }
 
-/** The kind a file becomes when dropped/pasted/picked. */
-export function mediaKindOf(file: { type: string; name: string }): MediaKind {
-  const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
-  if (file.type.startsWith('image/') && file.type !== 'image/svg+xml') return 'image'
-  if (file.type.startsWith('video/') || ['mp4', 'm4v', 'mov', 'webm'].includes(ext)) return 'video'
-  if (file.type.startsWith('audio/') || ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'flac'].includes(ext)) {
-    return 'audio'
+type FileLike = { type: string; name: string }
+
+/**
+ * What the Image, Video and Audio blocks take — formats WebKit shows on every platform we run on. Anything else
+ * is an attachment (the File block takes every file).
+ */
+export const MEDIA_TYPES: Record<
+  Exclude<MediaKind, 'file'>,
+  { extensions: string[]; types: string[] }
+> = {
+  image: {
+    extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'svg', 'avif'],
+    types: [
+      'image/png',
+      'image/jpeg',
+      'image/gif',
+      'image/webp',
+      'image/heic',
+      'image/svg+xml',
+      'image/avif'
+    ]
+  },
+  video: {
+    extensions: ['mp4', 'mov', 'm4v', 'webm'],
+    types: ['video/mp4', 'video/quicktime', 'video/x-m4v', 'video/webm']
+  },
+  audio: {
+    extensions: ['mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg'],
+    types: [
+      'audio/mpeg',
+      'audio/mp3',
+      'audio/mp4',
+      'audio/x-m4a',
+      'audio/aac',
+      'audio/wav',
+      'audio/x-wav',
+      'audio/wave',
+      'audio/flac',
+      'audio/x-flac',
+      'audio/ogg'
+    ]
   }
+}
+
+const extensionOfName = (name: string) =>
+  name.includes('.') ? (name.split('.').pop()?.toLowerCase() ?? '') : ''
+
+/** Whether a block of `kind` takes `file` (by its type, else its name's extension). */
+export function acceptsFile(kind: MediaKind, file: FileLike): boolean {
+  if (kind === 'file') return true
+  const { extensions, types } = MEDIA_TYPES[kind]
+  return types.includes(file.type.toLowerCase()) || extensions.includes(extensionOfName(file.name))
+}
+
+/**
+ * The kind a file becomes when dropped or pasted. SVG stays an attachment here (a drawing dropped in is more
+ * often a file to keep than a picture to show); the Image block's picker takes it as a picture.
+ */
+export function mediaKindOf(file: FileLike): MediaKind {
+  const svg = file.type === 'image/svg+xml' || extensionOfName(file.name) === 'svg'
+  if (!svg && acceptsFile('image', file)) return 'image'
+  if (acceptsFile('video', file)) return 'video'
+  if (acceptsFile('audio', file)) return 'audio'
   return 'file'
+}
+
+/** The files a block of `kind` takes; each one it doesn't is refused with a toast. */
+export function acceptedFiles(kind: MediaKind, files: File[]): File[] {
+  return files.filter((file) => {
+    if (acceptsFile(kind, file)) return true
+    reportError('fileTypeNotAllowed', undefined, {
+      kind,
+      extension: extensionOfName(file.name) || file.type || 'none'
+    })
+    return false
+  })
 }
 
 /** Human file size ("2.4 MB"). */
@@ -300,11 +367,17 @@ const uploadsPlugin = new Plugin({
 
 let uploadSeq = 0
 
-/** Uploads `files` and inserts them as blocks at `pos` (in order). */
-export function insertFiles(editor: Editor, host: MediaHost, files: File[], pos: number): void {
+/** Uploads `files` and inserts them as blocks at `pos` (in order) — as `as` when given, else by their type. */
+export function insertFiles(
+  editor: Editor,
+  host: MediaHost,
+  files: File[],
+  pos: number,
+  as?: MediaKind
+): void {
   for (const file of files) {
     const id = `upload-${++uploadSeq}`
-    const kind = mediaKindOf(file)
+    const kind = as ?? mediaKindOf(file)
     const at = Math.min(pos, editor.state.doc.content.size)
     editor.view.dispatch(
       editor.state.tr.setMeta(UploadsKey, {
@@ -362,32 +435,82 @@ function nodeFor(kind: MediaKind, src: string, file: File) {
   }
 }
 
-const ACCEPT: Record<MediaKind, string> = {
-  image: 'image/png,image/jpeg,image/gif,image/webp,image/heic,image/avif',
-  video: 'video/*',
-  audio: 'audio/*',
-  file: ''
+/** The picker's `accept` for a block: extensions (document pickers) and types (the photo library). */
+export function acceptFor(kind: MediaKind): string {
+  if (kind === 'file') return ''
+  const { extensions, types } = MEDIA_TYPES[kind]
+  return [...extensions.map((ext) => `.${ext}`), ...types].join(',')
 }
 
-/** "/" Image, Video, Audio, File: the system file picker, then upload at the caret. */
+/**
+ * "/" Image, Video, Audio, File: the system file picker, then upload at the caret as that block. `accept` only
+ * steers the picker (a user can still pick another file), so what it returns is checked again.
+ */
 export function pickFiles(editor: Editor, host: MediaHost, kind: MediaKind): void {
   const input = document.createElement('input')
   input.type = 'file'
   input.multiple = kind !== 'file'
-  if (ACCEPT[kind]) input.accept = ACCEPT[kind]
+  const accept = acceptFor(kind)
+  if (accept) input.accept = accept
   const pos = editor.state.selection.from
   input.addEventListener('change', () => {
-    const files = Array.from(input.files ?? [])
-    if (files.length) insertFiles(editor, host, files, pos)
+    const files = acceptedFiles(kind, Array.from(input.files ?? []))
+    if (files.length > 0) insertFiles(editor, host, files, pos, kind)
   })
   input.click()
+}
+
+const BLOCK_KINDS: Record<string, MediaKind> = {
+  image: 'image',
+  video: 'video',
+  audio: 'audio'
+}
+
+/**
+ * Files dropped onto an image, video or audio block: the ones of its kind go in right after it, the others are
+ * refused (a PDF dropped on a picture isn't meant as a picture). Returns false when `nodePos` isn't such a block.
+ */
+export function dropOnMediaBlock(
+  editor: Editor,
+  host: MediaHost,
+  files: File[],
+  nodePos: number
+): boolean {
+  const node = editor.state.doc.nodeAt(nodePos)
+  const kind = node ? BLOCK_KINDS[node.type.name] : undefined
+  if (!node || !kind) return false
+  const accepted = acceptedFiles(kind, files)
+  if (accepted.length > 0) insertFiles(editor, host, accepted, nodePos + node.nodeSize, kind)
+  return true
+}
+
+/** Runs ahead of FileHandler: a drop that lands on a media block goes through `dropOnMediaBlock`. */
+function mediaDropPlugin(editor: Editor, host: MediaHost) {
+  return new Plugin({
+    key: new PluginKey('mediaDrop'),
+    props: {
+      handleDrop(view, event) {
+        const files = Array.from(event.dataTransfer?.files ?? [])
+        if (files.length === 0) return false
+        const target = view.posAtCoords({ left: event.clientX, top: event.clientY })
+        if (!target || target.inside < 0) return false
+        if (!dropOnMediaBlock(editor, host, files, target.inside)) return false
+        event.preventDefault()
+        return true
+      }
+    }
+  })
 }
 
 /** Media blocks plus dropping/pasting files from the system. */
 export function mediaExtensions(host: MediaHost | null) {
   const uploads = Extension.create({
     name: 'uploads',
-    addProseMirrorPlugins: () => [uploadsPlugin]
+    // Ahead of FileHandler (100), so a drop on a media block is checked before it inserts anything.
+    priority: 110,
+    addProseMirrorPlugins() {
+      return host ? [uploadsPlugin, mediaDropPlugin(this.editor, host)] : [uploadsPlugin]
+    }
   })
   const handler = host
     ? [

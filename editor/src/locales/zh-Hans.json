@@ -493,6 +493,7 @@
     "uploadFailed": "无法添加文件。",
     "fileTooLarge": "文件太大。",
     "fileOpenFailed": "无法打开文件。",
+    "fileTypeNotAllowed": "此块不支持这种文件类型。",
     "aiMissingKey": "请先在 设置 → AI 中添加 API 密钥。",
     "aiBadBaseURL": "设置中的 AI 服务地址不可用。",
     "aiUnauthorized": "API 密钥被拒绝。",

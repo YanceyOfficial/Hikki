@@ -172,6 +172,12 @@
       "en": "Couldn't open the file.",
       "zh": "无法打开文件。"
     },
+    "fileTypeNotAllowed": {
+      "code": 4007,
+      "severity": "warning",
+      "en": "This block doesn't take that kind of file.",
+      "zh": "此块不支持这种文件类型。"
+    },
 
     "aiMissingKey": {
       "code": 5001,

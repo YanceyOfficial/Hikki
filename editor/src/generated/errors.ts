@@ -34,6 +34,7 @@ export const ERRORS = {
   uploadFailed: { code: 4004, severity: 'error' },
   fileTooLarge: { code: 4005, severity: 'error' },
   fileOpenFailed: { code: 4006, severity: 'error' },
+  fileTypeNotAllowed: { code: 4007, severity: 'warning' },
   aiMissingKey: { code: 5001, severity: 'warning' },
   aiBadBaseURL: { code: 5002, severity: 'error' },
   aiUnauthorized: { code: 5003, severity: 'error' },
@@ -124,6 +125,8 @@ export function errorMessage(id: ErrorId): string {
       return t('error.fileTooLarge')
     case 'fileOpenFailed':
       return t('error.fileOpenFailed')
+    case 'fileTypeNotAllowed':
+      return t('error.fileTypeNotAllowed')
     case 'aiMissingKey':
       return t('error.aiMissingKey')
     case 'aiBadBaseURL':

@@ -34,6 +34,7 @@ extension ErrorCode {
         case .uploadFailed: String(localized: "app:error.uploadFailed")
         case .fileTooLarge: String(localized: "app:error.fileTooLarge")
         case .fileOpenFailed: String(localized: "app:error.fileOpenFailed")
+        case .fileTypeNotAllowed: String(localized: "app:error.fileTypeNotAllowed")
         case .aiMissingKey: String(localized: "app:error.aiMissingKey")
         case .aiBadBaseURL: String(localized: "app:error.aiBadBaseURL")
         case .aiUnauthorized: String(localized: "app:error.aiUnauthorized")
