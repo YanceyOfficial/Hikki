@@ -568,15 +568,31 @@ struct AIChatView: View {
             if chat.isStreaming { chat.stop() } else { chat.send(store: model.store) }
         } label: {
             IconView(chat.isStreaming ? .stop : .arrowUp, size: TextSize.base.rawValue)
-                .foregroundStyle(ColorTone.standard.onFill)
-                .frame(width: Size.iconButton + Spacing.s1, height: Size.iconButton + Spacing.s1)
-                .background(ColorTone.standard.fill, in: .circle)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SendButtonStyle())
         .disabled(!chat.isStreaming && !canSend)
-        .opacity(!chat.isStreaming && !canSend ? 0.4 : 1)
         .accessibilityLabel(Text(chat.isStreaming ? "app:ai.stop" : "app:ai.send"))
         .accessibilityIdentifier("ai-chat-send")
+    }
+}
+
+/// The composer's round send button: a solid tone fill with a white arrow when it can send, muted grey when it
+/// can't — never the label dimmed over the fill, which read as pale pink in light mode. The colours are resolved
+/// against the environment so a vibrant panel (the inspector) can't wash them out either.
+private struct SendButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.self) private var environment
+
+    func makeBody(configuration: Configuration) -> some View {
+        let fill = isEnabled ? ColorTone.standard.fill : Theme.muted
+        let ink = isEnabled ? ColorTone.standard.onFill : Theme.mutedForeground
+        configuration.label
+            .foregroundStyle(Color(ink.resolve(in: environment)))
+            .frame(width: Size.iconButton + Spacing.s1, height: Size.iconButton + Spacing.s1)
+            .background(Color(fill.resolve(in: environment)), in: .circle)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(Motion.easeOut(), value: configuration.isPressed)
+            .contentShape(.circle)
     }
 }
 
