@@ -8,6 +8,7 @@ import { installErrorForwarding } from './core/errors'
 import { setLocale } from './core/i18n'
 import {
   PROTOCOL_VERSION,
+  type AIChangeInput,
   type AIStreamEvent,
   type ExportFormat,
   type ImportFormat,
@@ -63,6 +64,13 @@ window.hikki = {
   demoAI: (terms: string[], action: string) => bridge.demoAI(terms, action),
   // AI on the selection: the answer to an `aiRequest`, one event at a time.
   aiEvent: (event: AIStreamEvent) => bridge.aiEvent(event),
+  // Ask AI's changes to the page (the chat's cards): offered in the page, one picked, approved / skipped, all approved;
+  // and the page's blocks with their ids for the chat to propose them by.
+  aiChanges: (docId: string, changes: AIChangeInput[]) => bridge.aiChanges(docId, changes),
+  aiFocusChange: (id: string) => bridge.aiFocusChange(id),
+  aiResolveChange: (id: string, verdict: 'approve' | 'skip') => bridge.aiResolveChange(id, verdict),
+  aiApproveAll: () => bridge.aiApproveAll(),
+  aiPageBlocks: (docId: string) => bridge.aiPageBlocks(docId),
   // A tab shown again scrolls back to where it was.
   restoreScroll: (top: number) => bridge.restoreScroll(top),
   // The inspector's outline: a heading to the top of the page, marked as the one being read.

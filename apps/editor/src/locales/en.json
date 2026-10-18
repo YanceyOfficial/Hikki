@@ -465,6 +465,18 @@
       "invalidResponse": "The answer couldn’t be read. Try again.",
       "badBaseURL": "The {{provider}} address in Settings → AI isn’t usable: use https (http only to this device)."
     },
+    "change": {
+      "approve": "Approve",
+      "skip": "Skip",
+      "edit": "Edit",
+      "position": "{{position}} of {{total}}",
+      "kind": {
+        "rewrite": "Rewrite",
+        "insert": "Insert",
+        "move": "Move",
+        "delete": "Delete"
+      }
+    },
     "replace": "Replace selection",
     "pageUntouched": "The page changes only when you replace.",
     "removed": "(removed)",

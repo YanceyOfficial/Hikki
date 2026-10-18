@@ -850,6 +850,47 @@
   background: var(--color-wash-green);
   animation: hk-fade-in var(--motion-pop-in) var(--ease-out);
 }
+/* Changes Ask AI proposes to the page (extensions/ai-changes.ts): each pending one's block carries a thin green rule in
+   the gutter; the one being reviewed is drawn as tracked changes — a rewrite in place, a block to delete struck
+   through, a block to insert (or a moved one, at its new place) as a green ghost, the moved block itself faded. */
+.tiptap .hk-ai-change {
+  box-shadow: -10px 0 0 -8px var(--color-ink-green);
+}
+.tiptap .hk-ai-change.is-focused {
+  border-radius: var(--radius-sm);
+  box-shadow: -10px 0 0 -7px var(--color-ink-green);
+}
+.tiptap .hk-ai-change.is-delete {
+  box-shadow: -10px 0 0 -7px var(--color-ink-red);
+}
+.tiptap .hk-ai-change.is-move {
+  opacity: 0.45;
+}
+.tiptap .hk-ai-ghost {
+  margin-block: 0.25em;
+  border-radius: var(--radius-sm);
+  padding: 0.125em 0.25em;
+  color: var(--color-ink-green);
+  background: var(--color-wash-green);
+  white-space: pre-wrap;
+  pointer-events: none;
+  user-select: none;
+  animation: hk-fade-in var(--motion-pop-in) var(--ease-out);
+}
+.tiptap .hk-ai-ghost[data-level] {
+  font-weight: 600;
+  line-height: 1.25;
+}
+/* As the page's own headings. */
+.tiptap .hk-ai-ghost[data-level='1'] {
+  font-size: 1.875em;
+}
+.tiptap .hk-ai-ghost[data-level='2'] {
+  font-size: 1.5em;
+}
+.tiptap .hk-ai-ghost[data-level='3'] {
+  font-size: 1.25em;
+}
 /* AI at work: three dots rising in turn, over one --motion-loop. */
 /* Commented passages (comments.ts): a warm underline on a faint wash; the open thread's passage darker. Resolved
    threads are not marked. */
@@ -965,6 +1006,7 @@
   .tiptap .hk-toggle.is-open > div > [data-type='detailsContent'],
   .tiptap .hk-ai-thinking,
   .tiptap .hk-ai-ins,
+  .tiptap .hk-ai-ghost,
   .hk-ai-dots span {
     animation: none;
   }

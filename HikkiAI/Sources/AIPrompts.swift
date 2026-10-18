@@ -98,18 +98,28 @@ public enum AIPrompts {
         """
 
     /// Longest page text a chat sends as context (characters); the rest is cut.
-    static let maxPageText = 30_000
+    public static let maxPageText = 30_000
 
     /// A conversation with AI (Ask AI): the turns so far, and as context the page it was opened on plus any the user
     /// @-mentioned (first one first; together at most `maxPageText` characters). The context rides in the latest user
     /// turn, ahead of the user's words — page text is data, and the system prompt stays the app's own.
+    ///
+    /// `openPageBlocks` (the open page's blocks with their ids, `AIPageEdits.pageJSON`) stands for the first page's
+    /// text and lets the answer propose changes to it.
     public static func chat(
-        _ turns: [AIMessage], summary: String? = nil, pages: [(title: String, text: String)] = [], selection: String? = nil,
-        model: AIModel, webSearch: Bool, language: String? = nil
+        _ turns: [AIMessage], summary: String? = nil, pages: [(title: String, text: String)] = [], openPageBlocks: String? = nil,
+        selection: String? = nil, model: AIModel, webSearch: Bool, language: String? = nil
     ) -> AIRequest {
         var context: [String] = []
         var budget = maxPageText
+        let editable = openPageBlocks != nil && !pages.isEmpty
         for (index, page) in pages.enumerated() where budget > 0 {
+            if index == 0, let blocks = openPageBlocks {
+                budget -= blocks.count
+                context.append(
+                    "The page I have open, as blocks:\n<page title=\"\(escape(page.title))\">\n\(blocks)\n</page>")
+                continue
+            }
             let text = String(page.text.prefix(budget))
             budget -= text.count
             let intro = index == 0 ? "The page I have open" : "A page I added"
@@ -130,8 +140,9 @@ public enum AIPrompts {
                 "\n\nEarlier in this conversation (a summary; those turns aren't repeated):\n<summary>\(escape($0))</summary>"
             } ?? ""
         return AIRequest(
-            model: model, instructions: chatInstructions + languageLine(language) + earlier, messages: messages,
-            webSearch: webSearch, maxOutputTokens: 4096)
+            model: model,
+            instructions: chatInstructions + (editable ? AIPageEdits.instructions : "") + languageLine(language) + earlier,
+            messages: messages, webSearch: webSearch, maxOutputTokens: editable ? 8192 : 4096)
     }
 
     static let chatInstructions = """

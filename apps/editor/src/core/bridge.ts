@@ -4,6 +4,7 @@ import type { Transaction } from '@tiptap/pm/state'
 
 import { setBlockLinkBuilder } from '../components/block-menu'
 import { dismissAllLayers } from '../components/floating'
+import type { AIChangesHost } from '../extensions/ai-changes'
 import { handleAIEvent, type AIHost, type AIReviewStyle } from '../extensions/ai-review'
 import {
   commentRanges,
@@ -19,6 +20,7 @@ import { notifyPageIndexChanged } from '../extensions/page-mention'
 import { rubySegmentsFrom, type RubyHost } from '../extensions/ruby'
 import type { SplitDropHost, SplitDropMode } from '../extensions/split-drop'
 import { openTogglesAround } from '../extensions/toggle'
+import { pageBlocks, type AIPageBlock } from '../lib/ai-content'
 import { linkCardFrom } from '../lib/embeds'
 import { sheetPresence } from '../lib/sheet-presence'
 import { activeCommands, createEditor, runCommand } from './editor'
@@ -34,6 +36,7 @@ import { t } from './i18n'
 import { normalizeBody } from './normalize'
 import {
   COMMANDS,
+  type AIChangeInput,
   type AIStreamEvent,
   type Command,
   type PagePayload,
@@ -255,6 +258,7 @@ export class EditorBridge {
       pageLinks: this.pageLinks,
       splitDrop: this.splitDropHost,
       ai: this.aiHost,
+      aiChanges: this.aiChangesHost,
       comments: this.commentsHost,
       ruby: this.ruby,
       linkPreview: async (url) =>
@@ -401,6 +405,57 @@ export class EditorBridge {
     cancel: (id) => void this.send({ type: 'aiCancel', id }),
     title: () => this.page.get().title,
     style: () => this.aiReviewStyle
+  }
+
+  /** Changes Ask AI proposed to the page: each verdict (and the change in view) goes to the chat's cards. */
+  readonly aiChangesHost: AIChangesHost = {
+    report: (id, status, before, after) => {
+      const docId = this.page.get().docId
+      if (docId)
+        void this.send({
+          type: 'aiChange',
+          docId,
+          id,
+          status,
+          ...(before === undefined ? {} : { before }),
+          ...(after === undefined ? {} : { after })
+        })
+    },
+    focused: (id) => {
+      const docId = this.page.get().docId
+      if (docId) void this.send({ type: 'aiChangeFocus', docId, ...(id ? { id } : {}) })
+    }
+  }
+
+  /** `window.hikki.aiChanges`: the changes an Ask AI answer proposes to this page (ignored for another page). */
+  aiChanges(docId: string, changes: AIChangeInput[]): boolean {
+    const editor = this.editor
+    if (!editor || docId !== this.page.get().docId) return false
+    return editor.commands.aiSetChanges(changes)
+  }
+
+  /** `window.hikki.aiFocusChange`: a card picked in the chat — its change shown in the page. */
+  aiFocusChange(id: string): boolean {
+    return this.editor?.commands.aiFocusChange(id) ?? false
+  }
+
+  /** `window.hikki.aiResolveChange`: a card's own approve / skip. */
+  aiResolveChange(id: string, verdict: 'approve' | 'skip'): boolean {
+    if (this.frozen) return false
+    return this.editor?.commands.aiResolveChange(id, verdict) ?? false
+  }
+
+  /** `window.hikki.aiApproveAll`: every pending change, one undo step. */
+  aiApproveAll(): boolean {
+    if (this.frozen) return false
+    return this.editor?.commands.aiApproveAllChanges() ?? false
+  }
+
+  /** `window.hikki.aiPageBlocks`: the open page's text blocks with their ids, for Ask AI to propose changes by. */
+  aiPageBlocks(docId: string): AIPageBlock[] | null {
+    const editor = this.editor
+    if (!editor || docId !== this.page.get().docId) return null
+    return pageBlocks(editor.state)
   }
 
   /** Comments on passages: written to the native store, which sends the page's threads back (`setComments`). */

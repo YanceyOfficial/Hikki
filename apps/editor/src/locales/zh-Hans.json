@@ -465,6 +465,18 @@
       "invalidResponse": "无法读取回答。请重试。",
       "badBaseURL": "“设置 → AI”中的 {{provider}} 地址无法使用：请使用 https（http 只限本机）。"
     },
+    "change": {
+      "approve": "采纳",
+      "skip": "跳过",
+      "edit": "编辑",
+      "position": "第 {{position}} 处，共 {{total}} 处",
+      "kind": {
+        "rewrite": "改写",
+        "insert": "插入",
+        "move": "移动",
+        "delete": "删除"
+      }
+    },
     "replace": "替换选中内容",
     "pageUntouched": "替换之前页面不会改动。",
     "removed": "（删除）",

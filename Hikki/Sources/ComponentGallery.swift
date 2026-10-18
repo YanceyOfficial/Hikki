@@ -161,6 +161,28 @@
                             .init(id: 3, style: .paragraph, change: .removed, runs: [.init("An old note", .removed)]),
                         ])
                     }
+                    Section("AIChangeReview") {
+                        AIChangeReview(
+                            items: [
+                                .init(id: "1", kind: .rewrite, title: "He know → He knows", why: "Third person singular.", state: .pending),
+                                .init(id: "2", kind: .insert, title: "Add a summary", state: .pending),
+                                .init(
+                                    id: "3", kind: .rewrite, title: "Tighten the intro", state: .approved,
+                                    runs: [.init("Leave on ", .same), .init("Saturday", .added), .init(" morning.", .same)]),
+                                .init(
+                                    id: "4", kind: .delete, title: "Drop the old note", state: .approved,
+                                    runs: [.init("An old note", .removed)]),
+                            ],
+                            reviewed: [
+                                .init(
+                                    id: "4", kind: .delete, title: "Drop the old note", state: .approved,
+                                    runs: [.init("An old note", .removed)]),
+                                .init(
+                                    id: "3", kind: .rewrite, title: "Tighten the intro", state: .approved,
+                                    runs: [.init("Leave on ", .same), .init("Saturday", .added), .init(" morning.", .same)]),
+                            ],
+                            activeID: "1", onFocus: { _ in }, onApprove: { _ in }, onSkip: { _ in }, onApproveAll: {})
+                    }
                     Section("SkeletonLines") {
                         SkeletonLines([0.45], height: Spacing.s6, label: "app:history.loading")
                         SkeletonLines([1, 0.94, 0.62], label: "app:history.loading")

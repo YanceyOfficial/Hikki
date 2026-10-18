@@ -13,9 +13,12 @@ public struct ChatTurn: Codable, Equatable, Sendable, Identifiable {
     /// Names of the files sent with a question.
     public var attachments: [String]
     public var citations: [ChatCitation]
+    /// Changes an answer proposed to the page, with how each was reviewed (absent in older files).
+    public var changes: [AIPageChange]?
 
     public init(
-        id: String, role: Role, text: String, sentAt: Date, attachments: [String] = [], citations: [ChatCitation] = []
+        id: String, role: Role, text: String, sentAt: Date, attachments: [String] = [], citations: [ChatCitation] = [],
+        changes: [AIPageChange]? = nil
     ) {
         self.id = id
         self.role = role
@@ -23,6 +26,7 @@ public struct ChatTurn: Codable, Equatable, Sendable, Identifiable {
         self.sentAt = sentAt
         self.attachments = attachments
         self.citations = citations
+        self.changes = changes
     }
 }
 
@@ -261,8 +265,20 @@ public final class PageChats: @unchecked Sendable {
     static func merge(_ a: File, _ b: File) -> File {
         var byID: [String: ChatTurn] = [:]
         for turn in a.turns + b.turns {
-            if let known = byID[turn.id], known.text.count >= turn.text.count { continue }
-            byID[turn.id] = turn
+            guard var known = byID[turn.id] else {
+                byID[turn.id] = turn
+                continue
+            }
+            if turn.text.count > known.text.count {
+                known.text = turn.text
+                known.citations = turn.citations
+            }
+            // Each card keeps the review furthest along (approved on one device, still pending on the other).
+            if let changes = turn.changes {
+                let mine = Dictionary((known.changes ?? []).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+                known.changes = changes.map { change in mine[change.id].map { AIPageChange.merged($0, change) } ?? change }
+            }
+            byID[turn.id] = known
         }
         var merged = a
         merged.clearedAt = [a.clearedAt, b.clearedAt].compactMap { $0 }.max()

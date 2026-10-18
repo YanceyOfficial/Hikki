@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of apps/editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 25
+    public static let version = 26
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -71,6 +71,11 @@ public enum BridgeMessage: Sendable, Equatable {
     case aiRequest(AIRequestPayload)
     /// Stop that AI request.
     case aiCancel(id: String)
+    /// A change Ask AI proposed to the page was reviewed in it (approved, skipped, edited) or went stale; with the
+    /// block's text before and after, for the reviewed stack.
+    case aiChange(docId: String, id: String, status: AIPageChange.Status, before: String?, after: String?)
+    /// The change shown in the page (its bar open) is now this one; nil: none.
+    case aiChangeFocus(docId: String, id: String?)
     case log(level: LogLevel, message: String, context: [String: String]?)
     /// A confirmation or note for the user, already in the page's language (shown as a toast).
     case toast(kind: String, message: String)
@@ -168,7 +173,7 @@ extension BridgeMessage: Decodable {
     private enum CodingKeys: String, CodingKey {
         case type, protocolVersion, snapshot, active, level, message, context, docId, icon, cover, fileExtension, dataBase64
         case size, id, url, block, text, headings, words, characters, name, top
-        case threadId, quote, body, resolved, commentId, kind, code, detail, open
+        case threadId, quote, body, resolved, commentId, kind, code, detail, open, status, before, after
     }
 
     public init(from decoder: Decoder) throws {
@@ -184,6 +189,14 @@ extension BridgeMessage: Decodable {
             self = .aiRequest(try AIRequestPayload(from: decoder))
         case "aiCancel":
             self = .aiCancel(id: try c.decode(String.self, forKey: .id))
+        case "aiChange":
+            self = .aiChange(
+                docId: try c.decode(String.self, forKey: .docId), id: try c.decode(String.self, forKey: .id),
+                status: try c.decode(AIPageChange.Status.self, forKey: .status),
+                before: try c.decodeIfPresent(String.self, forKey: .before),
+                after: try c.decodeIfPresent(String.self, forKey: .after))
+        case "aiChangeFocus":
+            self = .aiChangeFocus(docId: try c.decode(String.self, forKey: .docId), id: try c.decodeIfPresent(String.self, forKey: .id))
         case "commentCreate":
             self = .commentCreate(
                 docId: try c.decode(String.self, forKey: .docId), threadId: try c.decode(String.self, forKey: .threadId),

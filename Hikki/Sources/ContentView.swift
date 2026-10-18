@@ -388,6 +388,11 @@ struct ContentView: View {
         editor.onSplitDropHover = { [weak navigator] active in navigator?.splitDropHover = active }
         editor.setSplitDrop(mainSplitDrop)
         ai.attach(editor)
+        // Ask AI's changes to the page are reviewed in the main editor; its verdicts go back to the chat's cards.
+        chat.editor = editor
+        editor.onAIChange = { [weak chat] docId, id, status, before, after in
+            chat?.changeReviewed(docId: docId, id: id, status: status, before: before, after: after)
+        }
         // The inspector starts closed in every window (its tab is remembered); `-inspector.visible YES` opens it
         // (screenshots).
         // Only the launch argument counts; a value saved by earlier builds (which remembered it) is dropped.

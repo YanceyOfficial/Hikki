@@ -38,6 +38,36 @@ export function selectionUnits(state: EditorState): AIUnit[] {
   return units
 }
 
+/** A block of the page as Ask AI sees it (to propose changes by id): its kind in a word and its inline HTML. */
+export type AIPageBlock = { id: string; type: string; html: string }
+
+/** Every text block of the page with an id, in order (empty ones left out; code as its text). */
+export function pageBlocks(state: EditorState): AIPageBlock[] {
+  const blocks: AIPageBlock[] = []
+  state.doc.descendants((node, pos, parent) => {
+    if (!node.isTextblock) return true
+    const id = node.attrs.id as string | undefined
+    if (!id || !node.textContent.trim()) return false
+    const container = parent?.type.name
+    const list = container && pos > 0 ? state.doc.resolve(pos).node(-1)?.type.name : undefined
+    let type = node.type.name
+    if (type === 'heading') type = `heading${node.attrs.level as number}`
+    else if (type === 'codeBlock') type = 'code'
+    else if (container === 'taskItem') type = 'todo'
+    else if (container === 'listItem') type = list === 'orderedList' ? 'numbered' : 'bullet'
+    else if (container === 'blockquote') type = 'quote'
+    const html = node.type.spec.code
+      ? escapeHTML(node.textContent)
+      : rangeHTML(state.schema, node, pos, pos + 1, pos + node.nodeSize - 1)
+    blocks.push({ id, type, html })
+    return false
+  })
+  return blocks
+}
+
+const escapeHTML = (text: string) =>
+  text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+
 /** Inline HTML for part of a text block (its marks as tags). */
 function rangeHTML(
   schema: Schema,

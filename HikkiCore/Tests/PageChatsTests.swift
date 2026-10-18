@@ -63,6 +63,20 @@ struct PageChatsTests {
         #expect(PageChats.merge(partial, full).turns.map(\.text) == ["三个要点"])
     }
 
+    @Test func aChangeReviewedOnOneDeviceStaysReviewed() {
+        func answer(_ statuses: [AIPageChange.Status]) -> ChatTurn {
+            var turn = turn("a", .assistant, text: "改好了", at: 1)
+            turn.changes = statuses.enumerated().map { index, status in
+                AIPageChange(id: "a-\(index)", kind: .rewrite, block: "b\(index)", html: "x", title: "t", status: status)
+            }
+            return turn
+        }
+        let mac = PageChats.File(format: 1, pageId: "p", turns: [answer([.approved, .pending])])
+        let phone = PageChats.File(format: 1, pageId: "p", turns: [answer([.pending, .skipped])])
+        #expect(PageChats.merge(mac, phone).turns[0].changes?.map(\.status) == [.approved, .skipped])
+        #expect(PageChats.merge(phone, mac).turns[0].changes?.map(\.status) == [.approved, .skipped])
+    }
+
     @Test func oldTurnsGoAfterTheRetention() throws {
         let (chats, root) = store()
         defer { try? FileManager.default.removeItem(at: root) }

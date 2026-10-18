@@ -143,6 +143,14 @@ struct BridgeMessageTests {
         #expect(try decode(["type": "activeHeading", "docId": "p1", "id": "h2"]) == .activeHeading(docId: "p1", id: "h2"))
         #expect(try decode(["type": "scroll", "docId": "p1", "top": 840]) == .scroll(docId: "p1", top: 840))
         #expect(try decode(["type": "aiCancel", "id": "r1"]) == .aiCancel(id: "r1"))
+        #expect(
+            try decode(["type": "aiChange", "docId": "p1", "id": "c1", "status": "approved", "before": "旧", "after": "新"])
+                == .aiChange(docId: "p1", id: "c1", status: .approved, before: "旧", after: "新"))
+        #expect(
+            try decode(["type": "aiChange", "docId": "p1", "id": "c2", "status": "stale"])
+                == .aiChange(docId: "p1", id: "c2", status: .stale, before: nil, after: nil))
+        #expect(try decode(["type": "aiChangeFocus", "docId": "p1", "id": "c1"]) == .aiChangeFocus(docId: "p1", id: "c1"))
+        #expect(try decode(["type": "aiChangeFocus", "docId": "p1"]) == .aiChangeFocus(docId: "p1", id: nil))
         #expect(try decode(["type": "selection", "docId": "p1", "text": "いいえ"]) == .selection(docId: "p1", text: "いいえ"))
         #expect(try decode(["type": "sheet", "open": true]) == .sheet(open: true))
         #expect(

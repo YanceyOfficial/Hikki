@@ -359,6 +359,58 @@ final class EditorController {
         send("window.hikki.aiEvent(event)", ["event": event], label: "aiEvent")
     }
 
+    // MARK: - Ask AI's changes to the page
+
+    /// A change was reviewed in the page (or went stale): the chat's card follows.
+    @ObservationIgnored var onAIChange:
+        ((_ docId: String, _ id: String, _ status: AIPageChange.Status, _ before: String?, _ after: String?) -> Void)?
+    /// The change shown in the page now (its card is marked in the chat).
+    private(set) var focusedAIChange: (docId: String, id: String)?
+    /// The changes the chat offers for a page: sent now if it's open, else when it loads.
+    @ObservationIgnored private var aiChangeOffer: (docId: String, changes: [AIPageChange])?
+
+    func offerAIChanges(_ changes: [AIPageChange], for docId: String) {
+        aiChangeOffer = (docId, changes)
+        guard isReady, currentDocumentID == docId else { return }
+        Task { await pushAIChanges() }
+    }
+
+    private func pushAIChanges() async {
+        guard let offer = aiChangeOffer, offer.docId == currentDocumentID else { return }
+        await call(
+            "window.hikki.aiChanges(docId, changes)", ["docId": offer.docId, "changes": offer.changes.map(\.bridgeValue)],
+            label: "aiChanges")
+    }
+
+    /// A card picked: its change shown in the page, which takes the keyboard (↵ approves, ⌫ skips).
+    func focusAIChange(_ id: String) {
+        guard isReady else { return }
+        #if os(macOS)
+            webView.window?.makeFirstResponder(webView)
+        #endif
+        send("window.hikki.aiFocusChange(id)", ["id": id], label: "aiFocusChange")
+    }
+
+    func resolveAIChange(_ id: String, approve: Bool) {
+        send("window.hikki.aiResolveChange(id, verdict)", ["id": id, "verdict": approve ? "approve" : "skip"], label: "aiResolveChange")
+    }
+
+    func approveAllAIChanges() {
+        send("window.hikki.aiApproveAll()", label: "aiApproveAll")
+    }
+
+    /// The open page's text blocks with their ids (`id`, `type`, `html`) for Ask AI to propose changes by; nil when
+    /// that page isn't the one open here.
+    func aiPageBlocks(for docId: String) async -> [[String: String]]? {
+        guard isReady, currentDocumentID == docId else { return nil }
+        let value = await call("return window.hikki.aiPageBlocks(docId)", ["docId": docId], label: "aiPageBlocks")
+        return (value as? [[String: Any]])?.compactMap { block in
+            guard let id = block["id"] as? String, let type = block["type"] as? String, let html = block["html"] as? String
+            else { return nil }
+            return ["id": id, "type": type, "html": html]
+        }
+    }
+
     /// Selects the page title for typing — now if that page is loaded, otherwise right after it loads.
     func focusTitle(of id: String) {
         if isReady, currentDocumentID == id, pendingDocumentID == nil {
@@ -539,6 +591,7 @@ final class EditorController {
             pageState.loaded(id, locked: record.isLocked)
             sendLockIfChanged()
             pushComments()
+            await pushAIChanges()
             if titleFocusPageID == id {
                 titleFocusPageID = nil
                 await call("window.hikki.focusTitle()", label: "focusTitle")
@@ -608,6 +661,14 @@ final class EditorController {
             onAIRequest?(payload)
         case .aiCancel(let id):
             onAICancel?(id)
+        case .aiChange(let docId, let id, let status, let before, let after):
+            // A page loaded again is offered only what is still pending.
+            if aiChangeOffer?.docId == docId, let index = aiChangeOffer?.changes.firstIndex(where: { $0.id == id }) {
+                aiChangeOffer?.changes[index].status = status
+            }
+            onAIChange?(docId, id, status, before, after)
+        case .aiChangeFocus(let docId, let id):
+            focusedAIChange = id.map { (docId, $0) }
         case .log(let level, let message, let context):
             Log.write(level, message, category: "web", context: context)
         case .toast(let kind, let message):

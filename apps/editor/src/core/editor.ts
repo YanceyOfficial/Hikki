@@ -7,6 +7,7 @@ import UniqueID from '@tiptap/extension-unique-id'
 import { CharacterCount, Placeholder } from '@tiptap/extensions'
 import StarterKit from '@tiptap/starter-kit'
 
+import { AIChanges, type AIChangesHost } from '../extensions/ai-changes'
 import { AIReview, type AIHost } from '../extensions/ai-review'
 import { BlockControls } from '../extensions/block-controls'
 import { Callout } from '../extensions/callout'
@@ -67,6 +68,8 @@ type EditorOptions = {
   splitDrop?: SplitDropHost
   /** AI on the selection (the native AI service); without it the AI actions do nothing. */
   ai?: AIHost
+  /** Changes Ask AI proposes to the page, reviewed in it. */
+  aiChanges?: AIChangesHost
   /** Comments on passages (the native store); without it the threads stay empty and nothing is written. */
   comments?: CommentsHost
 }
@@ -173,6 +176,7 @@ export function editorExtensions(options: EditorOptions = {}): AnyExtension[] {
     PageMention(options.pageLinks ?? noPageLinks),
     SplitDrop(options.splitDrop ?? { mode: () => 'off', open: () => {}, hover: () => {} }),
     AIReview(options.ai ?? { request: () => {}, cancel: () => {}, title: () => '' }),
+    AIChanges(options.aiChanges ?? { report: () => {}, focused: () => {} }),
     Comments(options.comments ?? noComments),
     EmojiSuggestion,
     // "--" → —, "..." → …, "->" → →, "(c)" → ©… Quotes stay straight and fractions stay typed (notes, code-ish text, CJK).

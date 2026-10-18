@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 25
+export const PROTOCOL_VERSION = 26
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -91,6 +91,18 @@ export type ToNativeMessage =
   | { type: 'scroll'; docId: string; top: number }
   /** Stop an AI request (the review was closed, or the page changed under it). */
   | { type: 'aiCancel'; id: string }
+  /** A change Ask AI proposed (`window.hikki.aiChanges`) was reviewed in the page, or went stale; with the block's text
+   * before and after, for the chat's reviewed stack. */
+  | {
+      type: 'aiChange'
+      docId: string
+      id: string
+      status: AIChangeStatus
+      before?: string
+      after?: string
+    }
+  /** The change shown in the page (its bar open) is now this one; none when absent. */
+  | { type: 'aiChangeFocus'; docId: string; id?: string }
   /** The heading the reader is in (scroll-spy) changed: the inspector's outline marks it; null above the first. */
   | { type: 'activeHeading'; docId: string; id: string | null }
   /** Comments (the native store, `comments/<page id>.json`): a thread started on a passage with its first comment, … */
@@ -136,6 +148,25 @@ export type ToNativeMessage =
   | { type: 'suggestReading'; text: string }
   /** A link card's details: replies `{title, description, icon}` (each may be null), or null when the page can't be read. */
   | { type: 'linkPreview'; url: string }
+
+export type AIChangeStatus = 'pending' | 'approved' | 'skipped' | 'edited' | 'stale'
+
+/**
+ * A change to the page an Ask AI answer proposes (`window.hikki.aiChanges`), by block id: `rewrite` sets `block`'s
+ * text to `html`; `insert` adds a block of `type` with `html` after `after` (none: the top); `move` puts `block` after
+ * `after`; `delete` removes `block`.
+ */
+export type AIChangeInput = {
+  id: string
+  kind: 'rewrite' | 'insert' | 'move' | 'delete'
+  block?: string
+  after?: string
+  html?: string
+  type?: string
+  title: string
+  why?: string
+  status: AIChangeStatus
+}
 
 /** What `window.hikki.aiEvent` delivers for an `aiRequest`: the answer as it is written, then done or an error. */
 export type AIStreamEvent =

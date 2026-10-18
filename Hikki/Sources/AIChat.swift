@@ -42,6 +42,8 @@ final class AIChat {
         /// Names of files sent with a question in an earlier session (the files themselves aren't kept).
         var attachmentNames: [String] = []
         var citations: [AICitation] = []
+        /// Changes the answer proposes to the page, with how each was reviewed.
+        var changes: [AIPageChange] = []
         /// A web search under way (its query, when the provider says it).
         var searching: String?
         var error: String?
@@ -54,6 +56,10 @@ final class AIChat {
     private(set) var isCompacting = false
     /// Where conversations are kept (nil until the workspace folder is known).
     @ObservationIgnored var chatStore: () -> PageChats? = { AppModel.current?.chats }
+    /// The window's page editor: the open page's blocks for an answer to change, and its changes offered there.
+    @ObservationIgnored weak var editor: EditorController?
+    /// The page blocks the answer being written was given (its changes may name only these).
+    @ObservationIgnored private var askedBlocks: Set<String>?
     var draft = ""
     var webSearch = true
     /// "auto" or a catalog id; starts from Settings → AI's default.
@@ -85,6 +91,7 @@ final class AIChat {
             let conversation = try chats.conversation(of: id, retention: AIPreferences.chatRetention)
             messages = conversation.turns.map(Message.init)
             summary = conversation.summary
+            offerChanges()
         } catch {
             messages = []
             summary = nil
@@ -176,10 +183,19 @@ final class AIChat {
         case .success(let (model, client)):
             isStreaming = true
             Task { [weak self] in
+                let blocks = await self?.openPageBlocks()
                 await self?.compactIfNeeded(model: model, client: client)
-                self?.ask(pages: pages, model: model, client: client)
+                self?.ask(pages: pages, blocks: blocks, model: model, client: client)
             }
         }
+    }
+
+    /// The open page's blocks with their ids, when it is the page asked about and its editor has it: the answer may
+    /// then propose changes to it.
+    private func openPageBlocks() async -> [[String: String]]? {
+        guard let page = pageID, page == openPageID, let blocks = await editor?.aiPageBlocks(for: page), !blocks.isEmpty
+        else { return nil }
+        return blocks
     }
 
     /// The turns since the summary, as the model gets them (the answer being written left out).
@@ -218,9 +234,12 @@ final class AIChat {
         if let id = openPageID, let chats = chatStore() { try? chats.setSummary(compacted, pageId: id) }
     }
 
-    private func ask(pages: [(title: String, text: String)], model: AIModel, client: any AIClient) {
+    private func ask(
+        pages: [(title: String, text: String)], blocks: [[String: String]]?, model: AIModel, client: any AIClient
+    ) {
         // Stopped (or moved to another page) while compacting.
         guard isStreaming else { return }
+        askedBlocks = blocks.map { Set($0.compactMap { $0["id"] }) }
         let turns: [AIMessage] = turnsToSend.map { message in
             guard message.role == .user else { return .assistant(message.text) }
             var parts: [AIMessage.Part] = [.text(message.text)] + message.attachments.map(\.part)
@@ -230,13 +249,14 @@ final class AIChat {
             return AIMessage(role: .user, parts: parts)
         }
         let request = AIPrompts.chat(
-            turns, summary: summary?.text, pages: pages, selection: contextSelection, model: model, webSearch: webSearch,
-            language: AIService.appLanguage)
+            turns, summary: summary?.text, pages: pages, openPageBlocks: blocks.map { AIPageEdits.pageJSON($0) },
+            selection: contextSelection, model: model, webSearch: webSearch, language: AIService.appLanguage)
         Log.info(
             "AI chat", category: "ai",
             context: [
                 "model": model.id, "turns": "\(turns.count)", "pages": "\(pages.count)",
                 "files": "\(messages[messages.count - 2].attachments.count)", "summary": summary == nil ? "no" : "yes",
+                "blocks": "\(blocks?.count ?? 0)",
             ])
         run.start(
             client.stream(request), onEvent: { [weak self] event in self?.apply(event) },
@@ -261,6 +281,7 @@ final class AIChat {
         summary = nil
         guard !cleared.isEmpty else { return }
         let page = openPageID
+        if let page { editor?.offerAIChanges([], for: page) }
         var previous: ChatConversation?
         if let page, let chats = chatStore() {
             do {
@@ -278,8 +299,53 @@ final class AIChat {
             } else {
                 self.messages = cleared + self.messages
                 self.summary = clearedSummary
+                self.offerChanges()
             }
         }
+    }
+
+    // MARK: - Changes to the page
+
+    /// The changes a finished answer proposes, checked against the blocks it was given.
+    private func proposedChanges(in message: Message, blocks: Set<String>) -> [AIPageChange] {
+        AIPageEdits.changes(in: message.text, blocks: blocks).enumerated().compactMap { index, change in
+            guard let kind = AIPageChange.Kind(rawValue: change.kind) else { return nil }
+            return AIPageChange(
+                id: "\(message.id)-\(index)", kind: kind, block: change.block, after: change.after, html: change.html,
+                blockType: change.type, title: change.title, why: change.why)
+        }
+    }
+
+    /// Every change of the open page's conversation goes to its editor (the pending ones are shown there).
+    private func offerChanges() {
+        guard let page = openPageID else { return }
+        editor?.offerAIChanges(messages.flatMap(\.changes), for: page)
+    }
+
+    /// The change shown in the page now (its card is marked).
+    var focusedChange: String? {
+        guard let focused = editor?.focusedAIChange, focused.docId == openPageID else { return nil }
+        return focused.id
+    }
+
+    func focusChange(_ id: String) { editor?.focusAIChange(id) }
+    func approveChange(_ id: String) { editor?.resolveAIChange(id, approve: true) }
+    func skipChange(_ id: String) { editor?.resolveAIChange(id, approve: false) }
+    func approveAllChanges() { editor?.approveAllAIChanges() }
+
+    /// The page reports a verdict (or a change gone stale): the card follows, and is kept.
+    func changeReviewed(
+        docId: String, id: String, status: AIPageChange.Status, before: String?, after: String?
+    ) {
+        guard docId == openPageID,
+            let m = messages.firstIndex(where: { $0.changes.contains { $0.id == id } }),
+            let c = messages[m].changes.firstIndex(where: { $0.id == id })
+        else { return }
+        messages[m].changes[c].status = status
+        messages[m].changes[c].reviewedAt = .now
+        if let before { messages[m].changes[c].beforeText = before }
+        if let after { messages[m].changes[c].afterText = after }
+        keep([messages[m]])
     }
 
     private func apply(_ event: AIEvent) {
@@ -308,8 +374,11 @@ final class AIChat {
         messages[last].searching = nil
         if messages[last].role == .assistant, !messages[last].text.isEmpty {
             messages[last].sentAt = .now
+            if error == nil, let blocks = askedBlocks { messages[last].changes = proposedChanges(in: messages[last], blocks: blocks) }
             keep([messages[last]])
+            if !messages[last].changes.isEmpty { offerChanges() }
         }
+        askedBlocks = nil
         if let error {
             messages[last].error = AIService.message(for: error)
             if let code = error.errorCode { Incident.report(code, error, category: "ai") }
@@ -324,14 +393,14 @@ extension AIChat.Message {
     init(_ turn: ChatTurn) {
         self.init(
             id: turn.id, role: turn.role, text: turn.text, sentAt: turn.sentAt, attachmentNames: turn.attachments,
-            citations: turn.citations.map { AICitation(url: $0.url, title: $0.title) })
+            citations: turn.citations.map { AICitation(url: $0.url, title: $0.title) }, changes: turn.changes ?? [])
     }
 
     /// The turn as it is kept.
     var turn: ChatTurn {
         ChatTurn(
             id: id, role: role, text: text, sentAt: sentAt, attachments: attachmentNames + attachments.map(\.name),
-            citations: citations.map { ChatCitation(url: $0.url, title: $0.title) })
+            citations: citations.map { ChatCitation(url: $0.url, title: $0.title) }, changes: changes.isEmpty ? nil : changes)
     }
 }
 
@@ -413,7 +482,7 @@ struct AIChatView: View {
                     ForEach(chat.messages) { message in
                         ChatBubble(
                             message: message, isStreaming: chat.isStreaming && message == chat.messages.last,
-                            isCompacting: chat.isCompacting
+                            isCompacting: chat.isCompacting, chat: chat
                         )
                         .id(message.id)
                     }
@@ -940,6 +1009,8 @@ private struct ChatBubble: View {
     let message: AIChat.Message
     let isStreaming: Bool
     var isCompacting = false
+    /// Where an answer's changes to the page are reviewed.
+    var chat: AIChat?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -966,10 +1037,12 @@ private struct ChatBubble: View {
             .padding(.leading, Spacing.s12)
         case .assistant:
             VStack(alignment: .leading, spacing: Spacing.s2_5) {
-                if !message.text.isEmpty { AnswerText(text: message.text, isStreaming: isStreaming) }
-                if isStreaming && (message.text.isEmpty || message.searching != nil) {
+                // The changes block never shows as text: the cards below stand for it.
+                if !prose.isEmpty { AnswerText(text: prose, isStreaming: isStreaming) }
+                if isStreaming && (message.text.isEmpty || message.searching != nil || AIPageEdits.hasChanges(message.text)) {
                     working
                 }
+                if let chat, !message.changes.isEmpty { changeReview(chat) }
                 if let error = message.error {
                     Text(verbatim: error).font(.hk(.sm)).foregroundStyle(.red)
                 }
@@ -994,10 +1067,10 @@ private struct ChatBubble: View {
                     HStack(spacing: Spacing.s1) {
                         Button {
                             #if os(iOS)
-                                UIPasteboard.general.string = message.text
+                                UIPasteboard.general.string = prose
                             #else
                                 NSPasteboard.general.clearContents()
-                                NSPasteboard.general.setString(message.text, forType: .string)
+                                NSPasteboard.general.setString(prose, forType: .string)
                             #endif
                         } label: {
                             IconLabel("app:ai.copy", icon: .copy).labelStyle(.iconOnly)
@@ -1015,6 +1088,18 @@ private struct ChatBubble: View {
         }
     }
 
+    private var prose: String { message.role == .assistant ? AIPageEdits.prose(message.text) : message.text }
+
+    private func changeReview(_ chat: AIChat) -> some View {
+        let items = message.changes.map(ChangeReviewItem.make)
+        let reviewed = message.changes.filter { $0.status.isReviewed }
+            .sorted { ($0.reviewedAt ?? .distantPast) < ($1.reviewedAt ?? .distantPast) }
+            .map(ChangeReviewItem.make)
+        return AIChangeReview(
+            items: items, reviewed: reviewed, activeID: chat.focusedChange, onFocus: chat.focusChange,
+            onApprove: chat.approveChange, onSkip: chat.skipChange, onApproveAll: chat.approveAllChanges)
+    }
+
     private var userText: some View {
         Text(verbatim: message.text)
             .font(.hk(.sm))
@@ -1029,11 +1114,57 @@ private struct ChatBubble: View {
             if reduceMotion { ProgressView().controlSize(.small) }
             if let query = message.searching {
                 ShimmerText(query.isEmpty ? "app:ai.searching" : "app:ai.searchingFor \(query)")
+            } else if AIPageEdits.hasChanges(message.text) {
+                ShimmerText("app:ai.changes.preparing")
             } else {
                 ShimmerText(isCompacting ? "app:ai.compacting" : "app:ai.thinking")
             }
         }
         .font(.hk(.sm))
+    }
+}
+
+/// A kept change as HikkiUI's review card: the block's words marked as the review left them.
+enum ChangeReviewItem {
+    static func make(_ change: AIPageChange) -> AIChangeReview.Item {
+        AIChangeReview.Item(
+            id: change.id, kind: AIChangeReview.Kind(rawValue: change.kind.rawValue) ?? .rewrite, title: change.title,
+            why: change.why, state: status(change.status), runs: runs(change))
+    }
+
+    static func status(_ status: AIPageChange.Status) -> AIChangeReview.Status {
+        switch status {
+        case .pending: .pending
+        case .approved: .approved
+        case .skipped: .skipped
+        case .edited: .edited
+        case .stale: .stale
+        }
+    }
+
+    /// Approved: the new words green in the block as it reads now (a deleted block struck through); skipped: what
+    /// was proposed, unmarked.
+    static func runs(_ change: AIPageChange) -> [VersionDiffView.Run] {
+        let before = change.beforeText ?? ""
+        let after = change.afterText ?? ""
+        switch change.status {
+        case .pending, .stale: return []
+        case .skipped: return after.isEmpty ? (before.isEmpty ? [] : [.init(before, .same)]) : [.init(after, .same)]
+        case .approved, .edited:
+            switch change.kind {
+            case .delete: return [.init(before, .removed)]
+            case .insert: return [.init(after, .added)]
+            case .move: return [.init(after, .same)]
+            case .rewrite:
+                return PageDiff.words(old: before, new: after).compactMap { run in
+                    switch run.change {
+                    case .same: .init(run.text, .same)
+                    case .added: .init(run.text, .added)
+                    case .removed: nil
+                    }
+                }
+            }
+        }
     }
 }
 

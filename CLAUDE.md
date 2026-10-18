@@ -558,7 +558,17 @@ HikkiUITests/                 XCUITest flows
   While the model works the chat's "Thinking…" / "Searching the web…" line is HikkiUI's `ShimmerText` (a foreground
   band sweeping the muted text once per `Motion.loop`; still under Reduce Motion, which gets a spinner instead). Model output is untrusted: the reply is parsed tolerantly (`apps/editor/src/lib/ai-content.ts`;
   sanitized inline HTML through the schema, unknown keys dropped, an unreadable reply is an error), citations must be
-  http(s), and any change to the page closes the review.
+  http(s), and any change to the page closes the review. **Ask AI edits the page** (Notion's review cards): the chat
+  sends the open page as blocks with their ids (`window.hikki.aiPageBlocks`, `AIPageEdits.pageJSON`) and an answer
+  that changes it ends with a fenced `hikki-changes` JSON block — rewrite / insert / move / delete, one block each —
+  hidden from the chat and checked against those ids (`HikkiAI/Sources/AIPageEdits.swift`). The changes
+  (`AIPageChange`, kept on the answer's `ChatTurn`) are HikkiUI's `AIChangeReview` under it: a card per pending change
+  (a tap shows it in the page — `window.hikki.aiFocusChange`; ✓ / ✕ decide there), Approve all, and the reviewed ones
+  in a stack of cards (newest on top, the AI's words green, a tap spreads it). In the page
+  (`apps/editor/src/extensions/ai-changes.ts`, bar `apps/editor/src/components/ai-change-bar.tsx`) the focused change
+  is drawn as tracked changes with Edit · Skip ⌫ · Approve ↵; each verdict moves to the next and goes back as
+  `aiChange` (with the block's text before and after); an approval is one undo step, Approve all one step for all;
+  editing a block makes only the changes naming it stale.
 - **Find, spelling, insets**: find and replace is `apps/editor/src/extensions/find.ts` (Tiptap's extension, RE2 regex) with
   `apps/editor/src/components/find-panel.tsx`; the page handles ⌘F/⌥⌘F/⌘G itself, the native Edit menu and the page ⋯ menu ("Find
   in Page", the only way on a phone) call `window.hikki.find`. Spellcheck is WebKit's (Settings → Editor,
