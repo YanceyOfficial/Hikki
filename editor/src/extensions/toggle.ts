@@ -1,3 +1,4 @@
+import caretSvg from '@phosphor-icons/core/assets/fill/caret-right-fill.svg?raw'
 import { type Editor, InputRule, wrappingInputRule } from '@tiptap/core'
 import Blockquote from '@tiptap/extension-blockquote'
 import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details'
@@ -26,7 +27,9 @@ export const Toggle = Details.extend({
   persist: false,
   HTMLAttributes: { class: 'hk-toggle' },
   renderToggleButton: ({ element, isOpen }) => {
-    if (!element.firstChild) element.append(caret())
+    // Phosphor's filled caret (Notion's solid triangle), static markup from the icon package; rotated by CSS.
+    if (!element.firstChild)
+      element.innerHTML = caretSvg.replace('<svg ', '<svg aria-hidden="true" ')
     element.setAttribute('aria-label', isOpen ? t('toggle.collapse') : t('toggle.expand'))
     element.setAttribute('aria-expanded', String(isOpen))
   }
@@ -72,23 +75,62 @@ export function openTogglesAround(editor: Editor, pos: number): void {
   }
 }
 
-/** A small rounded triangle (rotated by CSS when open). Static markup, built with DOM APIs. */
-function caret(): SVGSVGElement {
-  const ns = 'http://www.w3.org/2000/svg'
-  const svg = document.createElementNS(ns, 'svg')
-  svg.setAttribute('viewBox', '0 0 16 16')
-  svg.setAttribute('aria-hidden', 'true')
-  const path = document.createElementNS(ns, 'path')
-  path.setAttribute('d', 'M6 3.5 11.5 8 6 12.5Z')
-  path.setAttribute('fill', 'currentColor')
-  path.setAttribute('stroke', 'currentColor')
-  path.setAttribute('stroke-linejoin', 'round')
-  path.setAttribute('stroke-width', '1.5')
-  svg.append(path)
-  return svg
-}
+export const SUMMARY_LEVELS = [1, 2, 3] as const
 
-export const toggleExtensions = [Toggle, DetailsSummary, DetailsContent]
+/**
+ * A toggle's summary may be a heading (Notion's toggle headings): `level` 1–3, or null for plain text. `# `,
+ * `## ` or `### ` at the start of a summary sets it; Backspace at its start clears it before it would unwrap the
+ * toggle. Stored as an optional attribute (absent = plain), so pages from before load as they were.
+ */
+export const ToggleSummary = DetailsSummary.extend({
+  // Ahead of Details' own Backspace (which unwraps the toggle at the summary's start).
+  priority: 110,
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      level: {
+        default: null,
+        parseHTML: (el: HTMLElement) => {
+          const level = Number(el.dataset.level)
+          return (SUMMARY_LEVELS as readonly number[]).includes(level) ? level : null
+        },
+        renderHTML: (attrs: Record<string, unknown>) =>
+          attrs.level ? { 'data-level': String(attrs.level) } : {}
+      }
+    }
+  },
+  addInputRules() {
+    return [
+      new InputRule({
+        find: /^(#{1,3})\s$/u,
+        handler: ({ state, range, match }) => {
+          const { $from } = state.selection
+          if ($from.parent.type !== this.type) return null
+          state.tr.deleteRange(range.from, range.to).setNodeMarkup($from.before(), undefined, {
+            ...$from.parent.attrs,
+            level: match[1].length
+          })
+        }
+      })
+    ]
+  },
+  addKeyboardShortcuts() {
+    return {
+      Backspace: () => {
+        const { selection } = this.editor.state
+        const { $from, empty } = selection
+        if (!empty || $from.parent.type !== this.type || $from.parentOffset !== 0) return false
+        if (!$from.parent.attrs.level) return false
+        return this.editor.commands.command(({ tr }) => {
+          tr.setNodeMarkup($from.before(), undefined, { ...$from.parent.attrs, level: null })
+          return true
+        })
+      }
+    }
+  }
+})
+
+export const toggleExtensions = [Toggle, ToggleSummary, DetailsContent]
 
 /** Quote moves to Notion's `" ` shortcut (straight or curly), leaving "> " to toggles. */
 export const Quote = Blockquote.extend({

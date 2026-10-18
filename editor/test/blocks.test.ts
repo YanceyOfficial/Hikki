@@ -23,7 +23,8 @@ describe('filterBlockTypes', () => {
 
   it('matches pinyin initials', () => {
     expect(ids('bt')).toEqual(['heading1', 'heading2', 'heading3', 'heading4'])
-    expect(ids('db')).toEqual(['taskList'])
+    // "db" also occurs inside "codesandbox": a weaker (substring) match, ranked after.
+    expect(ids('db')).toEqual(['taskList', 'codesandbox'])
     expect(ids('dm')).toEqual(['codeBlock'])
   })
 

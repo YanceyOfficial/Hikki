@@ -11,6 +11,13 @@ export type EmbedProvider =
   | 'gist'
   | 'tweet'
   | 'codepen'
+  | 'drawio'
+  | 'loom'
+  | 'excalidraw'
+  | 'miro'
+  | 'airtable'
+  | 'spotify'
+  | 'codesandbox'
   | 'generic'
 
 export type EmbedSource =
@@ -35,8 +42,18 @@ const HEIGHT: Record<EmbedProvider, number> = {
   gist: 400,
   tweet: 520,
   codepen: 400,
+  drawio: 450,
+  loom: 400,
+  excalidraw: 450,
+  miro: 450,
+  airtable: 533,
+  spotify: 352,
+  codesandbox: 500,
   generic: 400
 }
+
+/** Spotify's compact player (a track, an episode) is this tall; albums, playlists and shows take `HEIGHT`. */
+const SPOTIFY_COMPACT = 152
 
 export const MIN_EMBED_HEIGHT = 120
 export const MAX_EMBED_HEIGHT = 1200
@@ -45,8 +62,10 @@ const host = (url: URL) => url.hostname.replace(/^www\./u, '').toLowerCase()
 
 /**
  * Turns a link the user pasted into what a frame can show: the providers' own embed URLs where the page
- * itself refuses to be framed (YouTube, Figma, Google Maps / Drive / Docs, Gists, tweets, CodePen), the link
- * as it is otherwise. Only https; null when it is no link at all.
+ * itself refuses to be framed (YouTube, Figma, Google Maps / Drive / Docs, Gists, tweets, CodePen, draw.io,
+ * Loom, Miro, Airtable, Spotify, CodeSandbox), the link as it is otherwise. Every URL built here is https on
+ * the provider's own host, with ids matched to their alphabet, so nothing pasted can steer the frame elsewhere.
+ * Only https; null when it is no link at all.
  */
 export function embedFromURL(input: string): EmbedSource | null {
   const href = normalizeHref(input.trim())
@@ -147,6 +166,49 @@ export function embedFromURL(input: string): EmbedSource | null {
       const [, user, id] = match
       return frame('codepen', `https://codepen.io/${user}/embed/${id}?default-tab=result`)
     }
+  }
+  // draw.io: the viewer frames itself; an editor link (app.diagrams.net, draw.io) names its diagram in the
+  // fragment (#G<Drive id>, #U<url>, #R<compressed XML>…), which the viewer reads the same way.
+  if (h === 'viewer.diagrams.net' || h === 'embed.diagrams.net') return frame('drawio', url.href)
+  if (
+    ['app.diagrams.net', 'diagrams.net', 'draw.io', 'app.draw.io'].includes(h) &&
+    url.hash.length > 2
+  ) {
+    return frame('drawio', `https://viewer.diagrams.net/?nav=1${url.hash}`)
+  }
+  if (h === 'loom.com') {
+    const id = /^\/(?:share|embed)\/([0-9a-f]{16,})/u.exec(path)?.[1]
+    if (id) return frame('loom', `https://www.loom.com/embed/${id}`)
+  }
+  // Excalidraw keeps the drawing (and its key) in the fragment: the page itself is the embed.
+  if (h === 'excalidraw.com' && /^#(?:json|room)=[\w,-]+$/u.test(url.hash)) {
+    return frame('excalidraw', `https://excalidraw.com/${url.hash}`)
+  }
+  if (h === 'miro.com') {
+    const id = /^\/app\/(?:board|live-embed)\/([\w-]+=*)/u.exec(path)?.[1]
+    if (id)
+      return frame('miro', `https://miro.com/app/live-embed/${id}/?embedMode=view_only_without_ui`)
+  }
+  if (h === 'airtable.com') {
+    const view = /^\/(?:embed\/)?((?:app\w+\/)?shr\w+)/u.exec(path)?.[1]
+    if (view) return frame('airtable', `https://airtable.com/embed/${view}`)
+  }
+  if (h === 'open.spotify.com') {
+    const match =
+      /^\/(?:intl-[\w-]+\/)?(?:embed\/)?(track|album|playlist|episode|show|artist)\/(\w+)/u.exec(
+        path
+      )
+    if (match) {
+      const [, type, id] = match
+      const source = frame('spotify', `https://open.spotify.com/embed/${type}/${id}`)
+      return type === 'track' || type === 'episode'
+        ? { ...source, height: SPOTIFY_COMPACT }
+        : source
+    }
+  }
+  if (h === 'codesandbox.io') {
+    const id = /^\/(?:s|embed|p\/sandbox)\/([\w-]+)/u.exec(path)?.[1]
+    if (id) return frame('codesandbox', `https://codesandbox.io/embed/${id}`)
   }
   return frame('generic', url.href)
 }

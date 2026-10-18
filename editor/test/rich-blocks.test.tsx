@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { Editor } from '@tiptap/core'
 import katex from 'katex'
@@ -25,6 +28,15 @@ afterEach(() => {
     .querySelectorAll('.hk-math-editor, [data-slot=popover-content]')
     .forEach((e) => e.remove())
 })
+
+// vitest runs from editor/ (happy-dom rewrites import.meta.url, so resolve from the cwd).
+const styles = readFileSync(join(process.cwd(), 'src/style.css'), 'utf8')
+
+/** A real keydown through ProseMirror's handlers (as the keyboard sends it). */
+const press = (key: string) => {
+  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
+  editor.view.someProp('handleKeyDown', (f) => f(editor.view, event))
+}
 
 const block = (id: string) => BLOCK_TYPES.find((b) => b.id === id)!
 /** Types like a user: through the input-rule handler, so Markdown shortcuts fire. */
@@ -79,7 +91,70 @@ describe('toggle list', () => {
     expect(onError).not.toHaveBeenCalled()
     expect(stripIds(editor.getJSON())).toEqual(stored)
   })
+
+  it('draws Phosphor’s caret and hides WebKit’s own summary marker', async () => {
+    editor = createEditor(host, null)
+    editor.commands.setTextSelection(1)
+    type('> ')
+    await settle()
+    const svg = host.querySelector('.hk-toggle > button svg')!
+    // Phosphor's 256-unit grid (the old hand-drawn triangle was 16), filled like Notion's.
+    expect(svg.getAttribute('viewBox')).toBe('0 0 256 256')
+    expect(svg.getAttribute('aria-hidden')).toBe('true')
+    // A <summary> outside <details> still gets WebKit's disclosure marker — the stray diamond over the caret.
+    expect(styles).toMatch(/\.hk-toggle summary::-webkit-details-marker\s*\{\s*@apply hidden;/u)
+    expect(styles).toMatch(/\.hk-toggle summary\s*\{\s*@apply block list-none/u)
+  })
+
+  it('"# " to "### " at the start of a summary make it a toggle heading; Backspace makes it plain again', async () => {
+    editor = createEditor(host, null)
+    editor.commands.setTextSelection(1)
+    type('> ')
+    await settle()
+    type('## ')
+    type('Title')
+    expect(summary().attrs.level).toBe(2)
+    expect(summary().textContent).toBe('Title')
+    expect(host.querySelector('.hk-toggle summary')?.getAttribute('data-level')).toBe('2')
+    editor.commands.setTextSelection(editor.state.selection.from - 'Title'.length)
+    press('Backspace')
+    expect(summary().attrs.level).toBeNull()
+    expect(editor.getJSON().content?.[0].type).toBe('details')
+    // Only at the start of the summary, and only up to three levels.
+    type('#### ')
+    expect(summary().attrs.level).toBeNull()
+  })
+
+  it('a stored toggle heading round-trips through HTML; one without a level stays plain', () => {
+    const heading = {
+      type: 'doc',
+      content: [
+        {
+          type: 'details',
+          content: [
+            {
+              type: 'detailsSummary',
+              attrs: { level: 1 },
+              content: [{ type: 'text', text: 'Big' }]
+            },
+            { type: 'detailsContent', content: [{ type: 'paragraph' }] }
+          ]
+        }
+      ]
+    }
+    editor = createEditor(host, heading)
+    expect(stripIds(editor.getJSON())).toEqual(heading)
+    const html = editor.getHTML()
+    expect(html).toContain('<summary data-level="1">Big</summary>')
+    editor.commands.setContent(html)
+    expect(summary().attrs.level).toBe(1)
+    editor.commands.setContent(html.replace('data-level="1"', 'data-level="9"'))
+    expect(summary().attrs.level).toBeNull()
+  })
 })
+
+/** The first toggle's summary node. */
+const summary = () => editor.state.doc.firstChild!.firstChild!
 
 const toggle = () => host.querySelector('.hk-toggle') as HTMLElement
 const toggleContent = () => toggle().querySelector('[data-type=detailsContent]') as HTMLElement

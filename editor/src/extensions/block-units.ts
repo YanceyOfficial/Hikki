@@ -41,6 +41,27 @@ export function unitAtPos(state: EditorState, pos: number): BlockUnit | null {
   return unitAt(state.doc.resolve(clamped))
 }
 
+/**
+ * Containers whose blocks share the container's handle (Notion): hovering anything inside a toggle, quote or
+ * callout shows the + / ⋮⋮ of the whole container — the outermost one when they nest. Only the handle: drops
+ * still land between the blocks inside, and caret commands (move up/down, duplicate) still act on the block
+ * at the caret. Lists keep a handle per item, nested items too: each item is a block of its own (it drags out
+ * of its list, indents and outdents), as in Notion.
+ */
+const HANDLE_OWNERS = new Set(['details', 'blockquote', 'callout'])
+
+/** The unit the hover handle grabs at `pos`: the outermost toggle, quote or callout around it, else its unit. */
+export function handleUnitAtPos(state: EditorState, pos: number): BlockUnit | null {
+  const unit = unitAtPos(state, pos)
+  if (!unit) return null
+  const $pos = state.doc.resolve(unit.pos)
+  for (let depth = 1; depth <= $pos.depth; depth++) {
+    const node = $pos.node(depth)
+    if (HANDLE_OWNERS.has(node.type.name)) return { pos: $pos.before(depth), node, depth }
+  }
+  return unit
+}
+
 /** Can a unit of this type go at `pos`? (List items only into lists; other blocks only into containers.) */
 function fits(state: EditorState, pos: number, node: PMNode): boolean {
   const $pos = state.doc.resolve(pos)

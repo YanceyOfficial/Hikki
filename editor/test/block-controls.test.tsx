@@ -8,6 +8,7 @@ import { BlockHighlightKey, setBlockHighlight } from '../src/extensions/block-hi
 import {
   deleteUnit,
   duplicateUnit,
+  handleUnitAtPos,
   moveUnit,
   unitAtPos,
   unitTextRange
@@ -43,6 +44,14 @@ const texts = () =>
   stripIds(editor.getJSON()).content.map(
     (n: JSONContent) => editor.schema.nodeFromJSON(n).textContent
   )
+
+const toggleWith = (summary: string, ...content: object[]) => ({
+  type: 'details',
+  content: [
+    { type: 'detailsSummary', content: [{ type: 'text', text: summary }] },
+    { type: 'detailsContent', content }
+  ]
+})
 
 /** Position of the first occurrence of `text`. */
 function posOf(text: string): number {
@@ -87,6 +96,50 @@ describe('block units', () => {
     expect(unitAtPos(editor.state, posOf('cell'))?.node.type.name).toBe('table')
     expect(unitAtPos(editor.state, posOf('summary'))?.node.type.name).toBe('details')
     expect(unitAtPos(editor.state, posOf('inside'))?.node.type.name).toBe('paragraph')
+  })
+
+  it('the handle of a block inside a toggle, quote or callout is the outermost container’s', () => {
+    editor = createEditor(host, {
+      type: 'doc',
+      content: [
+        toggleWith('summary', para('in toggle')),
+        { type: 'blockquote', content: [para('quote one'), para('quote two')] },
+        { type: 'callout', content: [para('in callout'), toggleWith('inner', para('deep'))] },
+        {
+          type: 'bulletList',
+          content: [
+            {
+              type: 'listItem',
+              content: [
+                para('item'),
+                { type: 'bulletList', content: [{ type: 'listItem', content: [para('nested')] }] }
+              ]
+            }
+          ]
+        },
+        {
+          type: 'columns',
+          content: [
+            { type: 'column', content: [para('left')] },
+            { type: 'column', content: [para('right')] }
+          ]
+        }
+      ]
+    })
+    const handle = (text: string) => handleUnitAtPos(editor.state, posOf(text))
+    expect(handle('in toggle')?.node.type.name).toBe('details')
+    expect(handle('summary')?.node.type.name).toBe('details')
+    expect(handle('quote two')?.node.type.name).toBe('blockquote')
+    expect(handle('quote two')?.pos).toBe(handle('quote one')?.pos)
+    expect(handle('in callout')?.node.type.name).toBe('callout')
+    // Nested containers: the outermost one.
+    expect(handle('deep')?.node.type.name).toBe('callout')
+    // List items keep their own handles, nested ones too; so do blocks in columns.
+    expect(handle('nested')?.node.textContent).toBe('nested')
+    expect(handle('nested')?.node.type.name).toBe('listItem')
+    expect(handle('left')?.node.type.name).toBe('paragraph')
+    // Drops and caret commands still see the block inside.
+    expect(unitAtPos(editor.state, posOf('in toggle'))?.node.type.name).toBe('paragraph')
   })
 
   it('the text range of a unit spans its text blocks and leaves code out', () => {

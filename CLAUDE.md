@@ -302,11 +302,13 @@ HikkiUITests/                 XCUITest flows
   is the core `Editor`, not `@tiptap/react`).
 - **Block controls** (`editor/src/extensions/block-controls.ts`, units in `editor/src/extensions/block-units.ts`): our
   own + / ⋮⋮ handle on pointer events (HTML5 drag-and-drop is unreliable in WebKit), centred on the block's first line;
-  drag shows a ghost and a drop line (side edges make columns); a click opens `editor/src/components/block-menu.tsx`. Fine
+  anything inside a toggle, quote or callout shows the outermost container's handle (`handleUnitAtPos`; drops and caret
+  commands still reach the blocks inside; list items keep one each); drag shows a ghost and a drop line (side edges make columns); a click opens `editor/src/components/block-menu.tsx`. Fine
   pointers only. Block colours are `blockColor` / `blockBackground` attributes. Block-level highlights (drag
   source, the block a menu is open for) are node decorations from `editor/src/extensions/block-highlight.ts` —
   never classes on the node's DOM, which ProseMirror drops on redraw.
-- **Rich blocks**: toggles (`editor/src/extensions/toggle.ts`; open/closed is not stored, so opening never saves),
+- **Rich blocks**: toggles (`editor/src/extensions/toggle.ts`; open/closed is not stored, so opening never saves; a
+  summary may be a heading — `level` 1–3, set by `# `…`### ` at its start, cleared by Backspace there),
   callouts, KaTeX formulas (`editor/src/extensions/math.ts`; our panel replaces Tiptap's `prompt()`), tables
   (`editor/src/extensions/table.ts` + `editor/src/extensions/table-ops.ts`, controls drawn by
   `editor/src/components/table-overlay.tsx`) and columns (`editor/src/extensions/columns.ts`: schema needs 2–5 columns, so
@@ -324,9 +326,11 @@ HikkiUITests/                 XCUITest flows
   as the same bottom sheet (`editor/src/components/bottom-sheet.tsx`, keyboard-aware) instead of popovers.
 - **Embeds** (`editor/src/extensions/embed.ts`, transforms in `editor/src/lib/embeds.ts`): one `embed` block — an
   `<iframe>` on a third-party page (sandboxed, keeps its origin) or on a snippet of HTML (`srcdoc`, no origin) — behind
-  the "/" menu's Embeds group (Embed, HTML, Google Drive, Tweet, Gist, Google Maps, Figma). `embedFromURL` turns a
-  pasted link into the provider's embeddable URL (YouTube, Vimeo, Figma, Maps, Drive/Docs, gists as a script snippet,
-  tweets via platform.twitter.com, CodePen). Any other page is a link card instead of a frame (most sites refuse to be
+  the "/" menu's Embeds group (Embed, HTML, Google Drive, Tweet, Gist, Google Maps, Figma, draw.io, Loom, Excalidraw,
+  Miro, Airtable, Spotify, CodeSandbox — each service shown by its own logo, `editor/src/components/brand-logos.tsx`).
+  `embedFromURL` turns a pasted link into the provider's embeddable URL (YouTube, Vimeo, Figma, Maps, Drive/Docs, gists
+  as a script snippet, tweets via platform.twitter.com, CodePen, draw.io's viewer, Loom, Excalidraw, Miro's live embed,
+  Airtable views, Spotify, CodeSandbox). Any other page is a link card instead of a frame (most sites refuse to be
   framed): icon, title, description and address, read natively by `HikkiCore/Sources/Text/LinkPreview.swift` through
   the `linkPreview` bridge request (exodus's `safe-fetch` rules: http/https, public hosts only, every redirect checked)
   and stored in the block when it is added; an older card without details reads them for display only. The height is an attribute, set by the handle

@@ -5,15 +5,10 @@ import {
   CodeBlockIcon,
   CodeIcon,
   ColumnsIcon,
-  FigmaLogoIcon,
   FilmStripIcon,
   FunctionIcon,
-  GithubLogoIcon,
-  GoogleDriveLogoIcon,
   ImageSquareIcon,
   InfoIcon,
-  MapTrifoldIcon,
-  XLogoIcon,
   ListBulletsIcon,
   ListMagnifyingGlassIcon,
   ListNumbersIcon,
@@ -31,7 +26,23 @@ import {
   type Icon
 } from '@phosphor-icons/react'
 import type { ChainedCommands, Editor } from '@tiptap/core'
+import type { ComponentType } from 'react'
 
+import {
+  AirtableLogo,
+  CodeSandboxLogo,
+  DrawioLogo,
+  ExcalidrawLogo,
+  FigmaLogo,
+  GitHubLogo,
+  GoogleDriveLogo,
+  GoogleMapsLogo,
+  LoomLogo,
+  MiroLogo,
+  SpotifyLogo,
+  XLogo,
+  type LogoProps
+} from '../components/brand-logos'
 import { lastCodeLanguage } from '../extensions/code-languages'
 import { openEmbedPanel } from '../extensions/embed'
 import { openMathEditor } from '../extensions/math'
@@ -48,11 +59,14 @@ export type BlockGroup = (typeof BLOCK_GROUPS)[number]
  * block "+" button and native menus. Aliases include Chinese, full pinyin and pinyin initials, so "/标题",
  * "/biaoti" and "/bt" all work.
  */
+/** A Phosphor icon, or a service's logo (the Embeds group). */
+export type BlockIcon = Icon | ComponentType<LogoProps>
+
 export type BlockType = {
   id: string
   title: string
   hint: string
-  icon: Icon
+  icon: BlockIcon
   group: BlockGroup
   /** The Markdown shortcut that creates it as you type, shown at the row's end. */
   shortcut?: string
@@ -309,7 +323,7 @@ export const BLOCK_TYPES: BlockType[] = [
     hint: 'A Drive file, Doc, Sheet or Slides',
     label: () => t('blocks.googleDrive.title'),
     description: () => t('blocks.googleDrive.hint'),
-    icon: GoogleDriveLogoIcon,
+    icon: GoogleDriveLogo,
     group: 'embeds',
     aliases: ['google drive', 'drive', 'docs', 'sheets', 'slides', '谷歌云盘', 'guge', 'gg'],
     apply: (c) => c,
@@ -321,7 +335,7 @@ export const BLOCK_TYPES: BlockType[] = [
     hint: 'A post from X',
     label: () => t('blocks.tweet.title'),
     description: () => t('blocks.tweet.hint'),
-    icon: XLogoIcon,
+    icon: XLogo,
     group: 'embeds',
     aliases: ['tweet', 'twitter', 'x', '推文', 'tuiwen', 'tw'],
     apply: (c) => c,
@@ -333,7 +347,7 @@ export const BLOCK_TYPES: BlockType[] = [
     hint: 'A gist, with its syntax colours',
     label: () => t('blocks.gist.title'),
     description: () => t('blocks.gist.hint'),
-    icon: GithubLogoIcon,
+    icon: GitHubLogo,
     group: 'embeds',
     aliases: ['gist', 'github', '片段', 'pianduan', 'pd'],
     apply: (c) => c,
@@ -345,7 +359,7 @@ export const BLOCK_TYPES: BlockType[] = [
     hint: 'A place on the map',
     label: () => t('blocks.googleMaps.title'),
     description: () => t('blocks.googleMaps.hint'),
-    icon: MapTrifoldIcon,
+    icon: GoogleMapsLogo,
     group: 'embeds',
     aliases: ['google maps', 'maps', 'map', '地图', 'ditu', 'dt'],
     apply: (c) => c,
@@ -357,11 +371,105 @@ export const BLOCK_TYPES: BlockType[] = [
     hint: 'A Figma file or prototype',
     label: () => t('blocks.figma.title'),
     description: () => t('blocks.figma.hint'),
-    icon: FigmaLogoIcon,
+    icon: FigmaLogo,
     group: 'embeds',
     aliases: ['figma', 'design', '设计稿', 'shejigao', 'sjg'],
     apply: (c) => c,
     after: (editor) => openEmbedPanel(editor, 'figma')
+  },
+  {
+    id: 'drawio',
+    title: 'draw.io',
+    hint: 'A diagram from draw.io (diagrams.net)',
+    label: () => t('blocks.drawio.title'),
+    description: () => t('blocks.drawio.hint'),
+    icon: DrawioLogo,
+    group: 'embeds',
+    aliases: [
+      'draw.io',
+      'drawio',
+      'diagrams',
+      'diagram',
+      'flowchart',
+      '流程图',
+      '图表',
+      'liuchengtu',
+      'lct'
+    ],
+    apply: (c) => c,
+    after: (editor) => openEmbedPanel(editor, 'drawio')
+  },
+  {
+    id: 'loom',
+    title: 'Loom',
+    hint: 'A Loom video',
+    label: () => t('blocks.loom.title'),
+    description: () => t('blocks.loom.hint'),
+    icon: LoomLogo,
+    group: 'embeds',
+    aliases: ['loom', 'video', 'screen recording', '录屏', 'luping', 'lp'],
+    apply: (c) => c,
+    after: (editor) => openEmbedPanel(editor, 'loom')
+  },
+  {
+    id: 'excalidraw',
+    title: 'Excalidraw',
+    hint: 'An Excalidraw drawing',
+    label: () => t('blocks.excalidraw.title'),
+    description: () => t('blocks.excalidraw.hint'),
+    icon: ExcalidrawLogo,
+    group: 'embeds',
+    aliases: ['excalidraw', 'whiteboard', 'sketch', 'drawing', '白板', 'baiban', 'bb'],
+    apply: (c) => c,
+    after: (editor) => openEmbedPanel(editor, 'excalidraw')
+  },
+  {
+    id: 'miro',
+    title: 'Miro',
+    hint: 'A Miro board',
+    label: () => t('blocks.miro.title'),
+    description: () => t('blocks.miro.hint'),
+    icon: MiroLogo,
+    group: 'embeds',
+    aliases: ['miro', 'board', 'whiteboard', '白板', 'baiban', 'bb'],
+    apply: (c) => c,
+    after: (editor) => openEmbedPanel(editor, 'miro')
+  },
+  {
+    id: 'airtable',
+    title: 'Airtable',
+    hint: 'A shared Airtable view',
+    label: () => t('blocks.airtable.title'),
+    description: () => t('blocks.airtable.hint'),
+    icon: AirtableLogo,
+    group: 'embeds',
+    aliases: ['airtable', 'table', 'base', '数据表', 'shujubiao', 'sjb'],
+    apply: (c) => c,
+    after: (editor) => openEmbedPanel(editor, 'airtable')
+  },
+  {
+    id: 'spotify',
+    title: 'Spotify',
+    hint: 'A track, album, playlist or podcast',
+    label: () => t('blocks.spotify.title'),
+    description: () => t('blocks.spotify.hint'),
+    icon: SpotifyLogo,
+    group: 'embeds',
+    aliases: ['spotify', 'music', 'podcast', 'playlist', '音乐', '播客', 'yinyue', 'yy'],
+    apply: (c) => c,
+    after: (editor) => openEmbedPanel(editor, 'spotify')
+  },
+  {
+    id: 'codesandbox',
+    title: 'CodeSandbox',
+    hint: 'A sandbox, running',
+    label: () => t('blocks.codesandbox.title'),
+    description: () => t('blocks.codesandbox.hint'),
+    icon: CodeSandboxLogo,
+    group: 'embeds',
+    aliases: ['codesandbox', 'sandbox', 'code', '代码沙盒', 'shahe', 'sh'],
+    apply: (c) => c,
+    after: (editor) => openEmbedPanel(editor, 'codesandbox')
   },
   {
     id: 'blockquote',

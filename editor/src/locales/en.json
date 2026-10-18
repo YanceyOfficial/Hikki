@@ -147,6 +147,34 @@
     "figma": {
       "title": "Figma",
       "hint": "A Figma file or prototype"
+    },
+    "drawio": {
+      "title": "draw.io",
+      "hint": "A diagram from draw.io (diagrams.net)"
+    },
+    "loom": {
+      "title": "Loom",
+      "hint": "A Loom video"
+    },
+    "excalidraw": {
+      "title": "Excalidraw",
+      "hint": "An Excalidraw drawing"
+    },
+    "miro": {
+      "title": "Miro",
+      "hint": "A Miro board"
+    },
+    "airtable": {
+      "title": "Airtable",
+      "hint": "A shared Airtable view"
+    },
+    "spotify": {
+      "title": "Spotify",
+      "hint": "A track, album, playlist or podcast"
+    },
+    "codesandbox": {
+      "title": "CodeSandbox",
+      "hint": "A sandbox, running"
     }
   },
   "cover": {
@@ -348,7 +376,14 @@
       "figma": "Paste a Figma link…",
       "youtube": "Paste a YouTube link…",
       "vimeo": "Paste a Vimeo link…",
-      "codepen": "Paste a CodePen link…"
+      "codepen": "Paste a CodePen link…",
+      "drawio": "Paste a draw.io or diagrams.net link…",
+      "loom": "Paste a Loom link…",
+      "excalidraw": "Paste an Excalidraw share link…",
+      "miro": "Paste a Miro board link…",
+      "airtable": "Paste an Airtable shared view link…",
+      "spotify": "Paste a Spotify link…",
+      "codesandbox": "Paste a CodeSandbox link…"
     },
     "label": {
       "link": "Link to embed",
@@ -493,6 +528,7 @@
     "uploadFailed": "Couldn't add the file.",
     "fileTooLarge": "The file is too large.",
     "fileOpenFailed": "Couldn't open the file.",
+    "fileTypeNotAllowed": "This block doesn't take that kind of file.",
     "aiMissingKey": "Add an API key in Settings → AI first.",
     "aiBadBaseURL": "The AI provider's address in Settings isn't usable.",
     "aiUnauthorized": "The API key was refused.",

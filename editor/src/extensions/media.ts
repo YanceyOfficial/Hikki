@@ -4,7 +4,9 @@ import Image from '@tiptap/extension-image'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet, type NodeView } from '@tiptap/pm/view'
+import { createRoot } from 'react-dom/client'
 
+import { renderFileTypeIcon } from '../components/file-type-icon'
 import { reportError } from '../core/errors'
 import { t } from '../core/i18n'
 import { mediaToolbarExtension } from './media-toolbar'
@@ -40,15 +42,82 @@ export function safeMediaSrc(src: unknown, kind: MediaKind): string | null {
   return null
 }
 
-/** The kind a file becomes when dropped/pasted/picked. */
-export function mediaKindOf(file: { type: string; name: string }): MediaKind {
-  const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
-  if (file.type.startsWith('image/') && file.type !== 'image/svg+xml') return 'image'
-  if (file.type.startsWith('video/') || ['mp4', 'm4v', 'mov', 'webm'].includes(ext)) return 'video'
-  if (file.type.startsWith('audio/') || ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'flac'].includes(ext)) {
-    return 'audio'
+type FileLike = { type: string; name: string }
+
+/**
+ * What the Image, Video and Audio blocks take — formats WebKit shows on every platform we run on. Anything else
+ * is an attachment (the File block takes every file).
+ */
+export const MEDIA_TYPES: Record<
+  Exclude<MediaKind, 'file'>,
+  { extensions: string[]; types: string[] }
+> = {
+  image: {
+    extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'svg', 'avif'],
+    types: [
+      'image/png',
+      'image/jpeg',
+      'image/gif',
+      'image/webp',
+      'image/heic',
+      'image/svg+xml',
+      'image/avif'
+    ]
+  },
+  video: {
+    extensions: ['mp4', 'mov', 'm4v', 'webm'],
+    types: ['video/mp4', 'video/quicktime', 'video/x-m4v', 'video/webm']
+  },
+  audio: {
+    extensions: ['mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg'],
+    types: [
+      'audio/mpeg',
+      'audio/mp3',
+      'audio/mp4',
+      'audio/x-m4a',
+      'audio/aac',
+      'audio/wav',
+      'audio/x-wav',
+      'audio/wave',
+      'audio/flac',
+      'audio/x-flac',
+      'audio/ogg'
+    ]
   }
+}
+
+const extensionOfName = (name: string) =>
+  name.includes('.') ? (name.split('.').pop()?.toLowerCase() ?? '') : ''
+
+/** Whether a block of `kind` takes `file` (by its type, else its name's extension). */
+export function acceptsFile(kind: MediaKind, file: FileLike): boolean {
+  if (kind === 'file') return true
+  const { extensions, types } = MEDIA_TYPES[kind]
+  return types.includes(file.type.toLowerCase()) || extensions.includes(extensionOfName(file.name))
+}
+
+/**
+ * The kind a file becomes when dropped or pasted. SVG stays an attachment here (a drawing dropped in is more
+ * often a file to keep than a picture to show); the Image block's picker takes it as a picture.
+ */
+export function mediaKindOf(file: FileLike): MediaKind {
+  const svg = file.type === 'image/svg+xml' || extensionOfName(file.name) === 'svg'
+  if (!svg && acceptsFile('image', file)) return 'image'
+  if (acceptsFile('video', file)) return 'video'
+  if (acceptsFile('audio', file)) return 'audio'
   return 'file'
+}
+
+/** The files a block of `kind` takes; each one it doesn't is refused with a toast. */
+export function acceptedFiles(kind: MediaKind, files: File[]): File[] {
+  return files.filter((file) => {
+    if (acceptsFile(kind, file)) return true
+    reportError('fileTypeNotAllowed', undefined, {
+      kind,
+      extension: extensionOfName(file.name) || file.type || 'none'
+    })
+    return false
+  })
 }
 
 /** Human file size ("2.4 MB"). */
@@ -105,11 +174,17 @@ export const MediaImage = Image.extend({
 /** A node whose DOM is a media element the user interacts with (controls), not ProseMirror. */
 class MediaView implements NodeView {
   dom: HTMLElement
-  constructor(element: HTMLElement) {
+  constructor(
+    element: HTMLElement,
+    private readonly onDestroy?: () => void
+  ) {
     this.dom = document.createElement('div')
     this.dom.className = 'hk-media'
     this.dom.contentEditable = 'false'
     this.dom.append(element)
+  }
+  destroy() {
+    this.onDestroy?.()
   }
   stopEvent(event: Event) {
     // Play/seek/volume belong to the element; dragging the block still goes to ProseMirror.
@@ -118,6 +193,22 @@ class MediaView implements NodeView {
   ignoreMutation() {
     return true
   }
+}
+
+/**
+ * WebKit (WKWebView, Safari) with `preload="metadata"` stops at HAVE_METADATA and paints an empty box until the
+ * video plays — Chrome decodes the first frame anyway. Seeking a hair past 0 once the metadata is in makes WebKit
+ * decode and paint that frame (checked in Playwright's WebKit: readyState 1 → 4, the frame shows), without
+ * downloading the whole file as `preload="auto"` would, and without a `#t=` fragment on the stored src.
+ */
+export function showFirstFrame(video: HTMLVideoElement): void {
+  video.addEventListener(
+    'loadedmetadata',
+    () => {
+      if (video.paused && video.currentTime === 0) video.currentTime = 0.001
+    },
+    { once: true }
+  )
 }
 
 function mediaNode(name: 'video' | 'audio') {
@@ -141,7 +232,10 @@ function mediaNode(name: 'video' | 'audio') {
         const element = document.createElement(name)
         element.controls = true
         element.preload = 'metadata'
-        if (name === 'video') (element as HTMLVideoElement).playsInline = true
+        if (name === 'video') {
+          ;(element as HTMLVideoElement).playsInline = true
+          showFirstFrame(element as HTMLVideoElement)
+        }
         const src = safeMediaSrc(node.attrs.src, name)
         if (src) element.src = src
         element.className = `hk-${name}`
@@ -192,8 +286,8 @@ export const FileAttachment = Node.create<{ host: MediaHost | null }>({
       button.className = 'hk-file'
       const icon = document.createElement('span')
       icon.className = 'hk-file-icon'
-      icon.textContent =
-        (node.attrs.name as string | null)?.split('.').pop()?.slice(0, 4).toUpperCase() ?? ''
+      const iconRoot = createRoot(icon)
+      renderFileTypeIcon(iconRoot, node.attrs.name as string | null)
       const name = document.createElement('span')
       name.className = 'hk-file-name'
       name.textContent = (node.attrs.name as string | null) ?? t('media.file')
@@ -205,7 +299,8 @@ export const FileAttachment = Node.create<{ host: MediaHost | null }>({
       button.addEventListener('click', () => {
         if (src) this.options.host?.openAsset(src, node.attrs.name as string | null)
       })
-      return new MediaView(button)
+      // Not synchronously: destroy can run while React is rendering.
+      return new MediaView(button, () => queueMicrotask(() => iconRoot.unmount()))
     }
   }
 })
@@ -281,11 +376,17 @@ const uploadsPlugin = new Plugin({
 
 let uploadSeq = 0
 
-/** Uploads `files` and inserts them as blocks at `pos` (in order). */
-export function insertFiles(editor: Editor, host: MediaHost, files: File[], pos: number): void {
+/** Uploads `files` and inserts them as blocks at `pos` (in order) — as `as` when given, else by their type. */
+export function insertFiles(
+  editor: Editor,
+  host: MediaHost,
+  files: File[],
+  pos: number,
+  as?: MediaKind
+): void {
   for (const file of files) {
     const id = `upload-${++uploadSeq}`
-    const kind = mediaKindOf(file)
+    const kind = as ?? mediaKindOf(file)
     const at = Math.min(pos, editor.state.doc.content.size)
     editor.view.dispatch(
       editor.state.tr.setMeta(UploadsKey, {
@@ -343,32 +444,82 @@ function nodeFor(kind: MediaKind, src: string, file: File) {
   }
 }
 
-const ACCEPT: Record<MediaKind, string> = {
-  image: 'image/png,image/jpeg,image/gif,image/webp,image/heic,image/avif',
-  video: 'video/*',
-  audio: 'audio/*',
-  file: ''
+/** The picker's `accept` for a block: extensions (document pickers) and types (the photo library). */
+export function acceptFor(kind: MediaKind): string {
+  if (kind === 'file') return ''
+  const { extensions, types } = MEDIA_TYPES[kind]
+  return [...extensions.map((ext) => `.${ext}`), ...types].join(',')
 }
 
-/** "/" Image, Video, Audio, File: the system file picker, then upload at the caret. */
+/**
+ * "/" Image, Video, Audio, File: the system file picker, then upload at the caret as that block. `accept` only
+ * steers the picker (a user can still pick another file), so what it returns is checked again.
+ */
 export function pickFiles(editor: Editor, host: MediaHost, kind: MediaKind): void {
   const input = document.createElement('input')
   input.type = 'file'
   input.multiple = kind !== 'file'
-  if (ACCEPT[kind]) input.accept = ACCEPT[kind]
+  const accept = acceptFor(kind)
+  if (accept) input.accept = accept
   const pos = editor.state.selection.from
   input.addEventListener('change', () => {
-    const files = Array.from(input.files ?? [])
-    if (files.length) insertFiles(editor, host, files, pos)
+    const files = acceptedFiles(kind, Array.from(input.files ?? []))
+    if (files.length > 0) insertFiles(editor, host, files, pos, kind)
   })
   input.click()
+}
+
+const BLOCK_KINDS: Record<string, MediaKind> = {
+  image: 'image',
+  video: 'video',
+  audio: 'audio'
+}
+
+/**
+ * Files dropped onto an image, video or audio block: the ones of its kind go in right after it, the others are
+ * refused (a PDF dropped on a picture isn't meant as a picture). Returns false when `nodePos` isn't such a block.
+ */
+export function dropOnMediaBlock(
+  editor: Editor,
+  host: MediaHost,
+  files: File[],
+  nodePos: number
+): boolean {
+  const node = editor.state.doc.nodeAt(nodePos)
+  const kind = node ? BLOCK_KINDS[node.type.name] : undefined
+  if (!node || !kind) return false
+  const accepted = acceptedFiles(kind, files)
+  if (accepted.length > 0) insertFiles(editor, host, accepted, nodePos + node.nodeSize, kind)
+  return true
+}
+
+/** Runs ahead of FileHandler: a drop that lands on a media block goes through `dropOnMediaBlock`. */
+function mediaDropPlugin(editor: Editor, host: MediaHost) {
+  return new Plugin({
+    key: new PluginKey('mediaDrop'),
+    props: {
+      handleDrop(view, event) {
+        const files = Array.from(event.dataTransfer?.files ?? [])
+        if (files.length === 0) return false
+        const target = view.posAtCoords({ left: event.clientX, top: event.clientY })
+        if (!target || target.inside < 0) return false
+        if (!dropOnMediaBlock(editor, host, files, target.inside)) return false
+        event.preventDefault()
+        return true
+      }
+    }
+  })
 }
 
 /** Media blocks plus dropping/pasting files from the system. */
 export function mediaExtensions(host: MediaHost | null) {
   const uploads = Extension.create({
     name: 'uploads',
-    addProseMirrorPlugins: () => [uploadsPlugin]
+    // Ahead of FileHandler (100), so a drop on a media block is checked before it inserts anything.
+    priority: 110,
+    addProseMirrorPlugins() {
+      return host ? [uploadsPlugin, mediaDropPlugin(this.editor, host)] : [uploadsPlugin]
+    }
   })
   const handler = host
     ? [

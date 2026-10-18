@@ -20,7 +20,14 @@ const PLACEHOLDER: Record<EmbedProvider | 'html', () => string> = {
   figma: () => t('embed.placeholder.figma'),
   youtube: () => t('embed.placeholder.youtube'),
   vimeo: () => t('embed.placeholder.vimeo'),
-  codepen: () => t('embed.placeholder.codepen')
+  codepen: () => t('embed.placeholder.codepen'),
+  drawio: () => t('embed.placeholder.drawio'),
+  loom: () => t('embed.placeholder.loom'),
+  excalidraw: () => t('embed.placeholder.excalidraw'),
+  miro: () => t('embed.placeholder.miro'),
+  airtable: () => t('embed.placeholder.airtable'),
+  spotify: () => t('embed.placeholder.spotify'),
+  codesandbox: () => t('embed.placeholder.codesandbox')
 }
 
 type Props = {

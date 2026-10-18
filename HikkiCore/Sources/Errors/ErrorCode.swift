@@ -36,6 +36,7 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
     case uploadFailed
     case fileTooLarge
     case fileOpenFailed
+    case fileTypeNotAllowed
     case aiMissingKey
     case aiBadBaseURL
     case aiUnauthorized
@@ -85,6 +86,7 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .uploadFailed: 4004
         case .fileTooLarge: 4005
         case .fileOpenFailed: 4006
+        case .fileTypeNotAllowed: 4007
         case .aiMissingKey: 5001
         case .aiBadBaseURL: 5002
         case .aiUnauthorized: 5003
@@ -154,6 +156,7 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .uploadFailed: .error
         case .fileTooLarge: .error
         case .fileOpenFailed: .error
+        case .fileTypeNotAllowed: .warning
         case .aiMissingKey: .warning
         case .aiBadBaseURL: .error
         case .aiUnauthorized: .error

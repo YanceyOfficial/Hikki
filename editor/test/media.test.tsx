@@ -1,11 +1,22 @@
 import type { Editor } from '@tiptap/core'
+import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { EditorBridge, extensionOf } from '../src/core/bridge'
 import { createEditor } from '../src/core/editor'
 import { installErrorForwarding } from '../src/core/errors'
 import type { ToNativeMessage } from '../src/core/protocol'
-import { insertFiles, mediaKindOf, safeMediaSrc, type MediaHost } from '../src/extensions/media'
+import {
+  acceptFor,
+  acceptsFile,
+  dropOnMediaBlock,
+  insertFiles,
+  mediaKindOf,
+  pickFiles,
+  safeMediaSrc,
+  type MediaHost
+} from '../src/extensions/media'
+import { fileTypeOf } from '../src/lib/file-types'
 import { doc, settle, stripIds } from './helpers'
 
 let host: HTMLElement
@@ -63,6 +74,45 @@ describe('kinds and extensions', () => {
     expect(mediaKindOf({ type: '', name: 'clip.MOV' })).toBe('video')
     expect(mediaKindOf({ type: 'audio/mpeg', name: 'song' })).toBe('audio')
     expect(mediaKindOf({ type: 'application/pdf', name: 'a.pdf' })).toBe('file')
+  })
+
+  it('makes media only of the formats the blocks take; anything else is an attachment', () => {
+    expect(mediaKindOf({ type: 'image/bmp', name: 'scan.bmp' })).toBe('file')
+    expect(mediaKindOf({ type: 'image/tiff', name: 'scan.tiff' })).toBe('file')
+    expect(mediaKindOf({ type: 'video/x-matroska', name: 'film.mkv' })).toBe('file')
+    expect(mediaKindOf({ type: 'audio/midi', name: 'tune.mid' })).toBe('file')
+    expect(mediaKindOf({ type: '', name: 'photo.HEIC' })).toBe('image')
+    expect(mediaKindOf({ type: 'video/webm', name: 'clip' })).toBe('video')
+    expect(mediaKindOf({ type: '', name: 'song.flac' })).toBe('audio')
+  })
+
+  it('limits each block to its formats; File takes anything', () => {
+    for (const name of [
+      'a.png',
+      'a.jpg',
+      'a.jpeg',
+      'a.gif',
+      'a.webp',
+      'a.heic',
+      'a.svg',
+      'a.avif'
+    ]) {
+      expect(acceptsFile('image', { type: '', name }), name).toBe(true)
+    }
+    for (const name of ['a.mp4', 'a.mov', 'a.m4v', 'a.webm']) {
+      expect(acceptsFile('video', { type: '', name }), name).toBe(true)
+    }
+    for (const name of ['a.mp3', 'a.m4a', 'a.aac', 'a.wav', 'a.flac', 'a.ogg']) {
+      expect(acceptsFile('audio', { type: '', name }), name).toBe(true)
+    }
+    expect(acceptsFile('image', { type: 'application/pdf', name: 'a.pdf' })).toBe(false)
+    expect(acceptsFile('video', { type: 'video/x-msvideo', name: 'a.avi' })).toBe(false)
+    expect(acceptsFile('audio', { type: 'video/mp4', name: 'a.mp4' })).toBe(false)
+    expect(acceptsFile('file', { type: 'application/x-anything', name: 'a.xyz' })).toBe(true)
+    expect(acceptFor('video')).toBe(
+      '.mp4,.mov,.m4v,.webm,video/mp4,video/quicktime,video/x-m4v,video/webm'
+    )
+    expect(acceptFor('file')).toBe('')
   })
 
   it('takes the extension from the name, else the type', () => {
@@ -182,6 +232,43 @@ describe('inserting files', () => {
     expect(media.openAsset).toHaveBeenCalledTimes(1)
     expect(media.openAsset).toHaveBeenCalledWith('hikki-editor://assets/r.pdf', 'r.pdf')
   })
+
+  it('an attachment card shows its type as a tinted icon, not a text label', async () => {
+    editor = createEditor(host, {
+      type: 'doc',
+      content: [card('data.json'), card('Report.PDF'), card('deck.pptx'), card('blob')]
+    })
+    await act(async () => {})
+    const icons = [...host.querySelectorAll('.hk-file-icon')]
+    // No extension text ("JSON") to spill out of the box.
+    expect(icons.map((icon) => icon.textContent)).toEqual(['', '', '', ''])
+    const svgs = icons.map((icon) => icon.querySelector('svg')!)
+    expect(svgs.map((svg) => svg.dataset.fileType)).toEqual([
+      'code',
+      'pdf',
+      'presentation',
+      'other'
+    ])
+    expect(svgs[1].getAttribute('class')).toContain('text-ink-red')
+    expect(svgs[2].getAttribute('class')).toContain('text-ink-orange')
+  })
+})
+
+describe('file types', () => {
+  it('reads the type from the extension, any case', () => {
+    expect(fileTypeOf('a.docx')).toBe('document')
+    expect(fileTypeOf('a.XLSX')).toBe('spreadsheet')
+    expect(fileTypeOf('a.csv')).toBe('csv')
+    expect(fileTypeOf('a.key')).toBe('presentation')
+    expect(fileTypeOf('a.tar.gz')).toBe('archive')
+    expect(fileTypeOf('notes.md')).toBe('text')
+    expect(fileTypeOf('a.heic')).toBe('image')
+    expect(fileTypeOf('a.flac')).toBe('audio')
+    expect(fileTypeOf('a.mkv')).toBe('video')
+    expect(fileTypeOf('Makefile')).toBe('other')
+    expect(fileTypeOf(null)).toBe('other')
+    expect(fileTypeOf('a.unknown')).toBe('other')
+  })
 })
 
 describe('image toolbar', () => {
@@ -197,5 +284,95 @@ describe('image toolbar', () => {
     editor.chain().focus().updateAttributes('image', { align: 'right' }).run()
     expect(editor.getJSON().content?.[0].attrs?.align).toBe('right')
     expect(editor.getHTML()).toContain('data-align="right"')
+  })
+})
+
+describe('video first frame', () => {
+  it('seeks a hair past 0 once the metadata is in, so WebKit paints the first frame', () => {
+    editor = createEditor(host, {
+      type: 'doc',
+      content: [{ type: 'video', attrs: { src: 'hikki-editor://assets/clip.mp4' } }]
+    })
+    const video = host.querySelector('video')!
+    expect(video.getAttribute('src')).toBe('hikki-editor://assets/clip.mp4')
+    expect(video.currentTime).toBe(0)
+    video.dispatchEvent(new Event('loadedmetadata'))
+    expect(video.currentTime).toBe(0.001)
+    // The stored src carries no `#t=` fragment.
+    expect(JSON.stringify(editor.getJSON())).not.toContain('#t=')
+  })
+})
+
+const card = (name: string | null) => ({
+  type: 'fileAttachment',
+  attrs: { src: 'hikki-editor://assets/f', name }
+})
+const pdf = () => new File(['x'], 'report.pdf', { type: 'application/pdf' })
+const png = () => new File(['x'], 'photo.png', { type: 'image/png' })
+
+/** Runs `pickFiles` with the system picker stubbed out; returns the input it would have shown. */
+function openPicker(target: Editor, media: MediaHost, kind: 'image' | 'file'): HTMLInputElement {
+  const click = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {})
+  pickFiles(target, media, kind)
+  const input = click.mock.contexts[0] as HTMLInputElement
+  click.mockRestore()
+  return input
+}
+
+describe('wrong file types', () => {
+  const posted: unknown[] = []
+  beforeEach(() => {
+    posted.length = 0
+    installErrorForwarding({ post: async (m) => void posted.push(m) })
+  })
+  const refusals = () =>
+    posted.filter((m) => (m as { type: string; code?: number }).type === 'reportError')
+
+  it('the Image picker refuses a PDF with a toast and inserts the pictures as images', async () => {
+    const media = fakeHost(async () => asset)
+    editor = createEditor(host, doc('text'), { media })
+    const input = openPicker(editor, media, 'image')
+    expect(input.accept).toContain('.png')
+    expect(input.accept).not.toContain('pdf')
+    Object.defineProperty(input, 'files', { value: [pdf(), png()] })
+    input.dispatchEvent(new Event('change'))
+    await settle()
+    expect(refusals()).toEqual([
+      expect.objectContaining({ code: 4007, context: { kind: 'image', extension: 'pdf' } })
+    ])
+    expect(editor.getJSON().content?.map((n) => n.type)).toEqual([
+      'paragraph',
+      'image',
+      'paragraph'
+    ])
+  })
+
+  it('the File picker keeps a picture as an attachment', async () => {
+    const media = fakeHost(async () => 'hikki-editor://assets/photo.png')
+    editor = createEditor(host, doc('text'), { media })
+    const input = openPicker(editor, media, 'file')
+    Object.defineProperty(input, 'files', { value: [png()] })
+    input.dispatchEvent(new Event('change'))
+    await settle()
+    expect(refusals()).toEqual([])
+    expect(editor.getJSON().content?.map((n) => n.type)).toContain('fileAttachment')
+  })
+
+  it('a file dropped on a media block of another kind is refused; one of its kind goes in after it', async () => {
+    const media = fakeHost(async () => asset)
+    editor = createEditor(
+      host,
+      { type: 'doc', content: [{ type: 'image', attrs: { src: asset } }, { type: 'paragraph' }] },
+      { media }
+    )
+    expect(dropOnMediaBlock(editor, media, [pdf()], 0)).toBe(true)
+    await settle()
+    expect(refusals()).toHaveLength(1)
+    expect(editor.getJSON().content?.map((n) => n.type)).toEqual(['image', 'paragraph'])
+    expect(dropOnMediaBlock(editor, media, [png()], 0)).toBe(true)
+    await settle()
+    expect(editor.getJSON().content?.map((n) => n.type)).toEqual(['image', 'image', 'paragraph'])
+    // Not on a media block: FileHandler's drop goes ahead as before.
+    expect(dropOnMediaBlock(editor, media, [pdf()], editor.state.doc.content.size - 2)).toBe(false)
   })
 })
