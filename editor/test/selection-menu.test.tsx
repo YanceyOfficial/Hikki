@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { Editor } from '@tiptap/core'
 import { Profiler } from 'react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TooltipProvider } from '@/components/ui/tooltip'
 
@@ -240,5 +240,22 @@ describe('links in stored documents', () => {
     expect(host.querySelector('a')?.getAttribute('href')).toBe('hikki://page/abc')
     act(() => void editor.commands.setTextSelection({ from: 7, to: 12 }))
     expect(editor.commands.setLink({ href: 'hikki://page/def' })).toBe(true)
+  })
+})
+
+describe('after the editor is gone', () => {
+  it("the menu's pending update doesn't touch the page (Tiptap leaves its timer running)", () => {
+    vi.useFakeTimers()
+    try {
+      editor.view.focus()
+      editor.commands.setTextSelection({ from: 1, to: 6 })
+      editor.destroy()
+      // The page is torn down too (a test environment ending, a window closing): the update must not read it.
+      vi.stubGlobal('document', undefined)
+      expect(() => vi.runAllTimers()).not.toThrow()
+    } finally {
+      vi.unstubAllGlobals()
+      vi.useRealTimers()
+    }
   })
 })

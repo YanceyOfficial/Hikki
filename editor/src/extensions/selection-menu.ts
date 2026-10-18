@@ -51,6 +51,8 @@ export const SelectionMenuExtension = Extension.create<
           shift: { padding: 8 }
         },
         shouldShow: ({ editor, view, state, from, to }) => {
+          // Tiptap's destroy() leaves the debounced update's timer running.
+          if (editor.isDestroyed) return false
           if (!editor.isEditable || from === to || !isTextSelection(state.selection)) return false
           // Keep showing while the menu itself has focus (link input).
           if (!view.hasFocus() && !element.contains(document.activeElement)) return false
