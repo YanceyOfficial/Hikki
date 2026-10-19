@@ -12,19 +12,37 @@ export type BlockUnit = { pos: number; node: PMNode; depth: number }
 const CONTAINERS = new Set(['doc', 'column', 'callout', 'blockquote', 'detailsContent'])
 const ITEMS = new Set(['listItem', 'taskItem'])
 
-/** The unit containing `$pos` (or the node right after it), innermost first; null outside the page. */
+/**
+ * The unit containing `$pos` (or the node right after it), innermost first; null outside the page. A position
+ * between blocks (directly in a container — a column's padding gives these) is the block after it; a position in a
+ * columns row, between its columns, is the next column's first block: the row itself is never a unit (Notion's —
+ * each column's blocks have their own handles).
+ */
 export function unitAt($pos: ResolvedPos): BlockUnit | null {
+  const parent = $pos.parent
+  if (parent.type.name === 'columns') {
+    const column = $pos.nodeAfter ?? $pos.nodeBefore
+    if (!column?.firstChild) return null
+    const columnPos = $pos.nodeAfter ? $pos.pos : $pos.pos - column.nodeSize
+    return { pos: columnPos + 1, node: column.firstChild, depth: $pos.depth + 2 }
+  }
+  const after = $pos.nodeAfter
+  if (after?.isBlock && CONTAINERS.has(parent.type.name)) {
+    return { pos: $pos.pos, node: after, depth: $pos.depth + 1 }
+  }
+  // Past a column's last block (its bottom padding): that block.
+  const before = $pos.nodeBefore
+  if (!after && before?.isBlock && parent.type.name === 'column') {
+    return { pos: $pos.pos - before.nodeSize, node: before, depth: $pos.depth + 1 }
+  }
   for (let depth = $pos.depth; depth >= 1; depth--) {
     const node = $pos.node(depth)
-    const parent = $pos.node(depth - 1)
-    if (ITEMS.has(node.type.name) || (node.isBlock && CONTAINERS.has(parent.type.name))) {
+    const outer = $pos.node(depth - 1)
+    if (ITEMS.has(node.type.name) || (node.isBlock && CONTAINERS.has(outer.type.name))) {
+      // A position at a column's edge (in no block of it): the row stops here, its blocks don't.
+      if (node.type.name === 'columns') return null
       return { pos: $pos.before(depth), node, depth }
     }
-  }
-  // Between blocks at the top level (or on an atom): the node after the position.
-  const after = $pos.nodeAfter
-  if (after?.isBlock && CONTAINERS.has($pos.parent.type.name)) {
-    return { pos: $pos.pos, node: after, depth: $pos.depth + 1 }
   }
   return null
 }

@@ -314,7 +314,8 @@ HikkiUITests/                 XCUITest flows
 - **Block controls** (`apps/editor/src/extensions/block-controls.ts`, units in `apps/editor/src/extensions/block-units.ts`): our
   own + / ⋮⋮ handle on pointer events (HTML5 drag-and-drop is unreliable in WebKit), centred on the block's first line;
   anything inside a toggle, quote or callout shows the outermost container's handle (`handleUnitAtPos`; drops and caret
-  commands still reach the blocks inside; list items keep one each); drag shows a ghost and a drop line (side edges make columns); a click opens `apps/editor/src/components/block-menu.tsx`. Fine
+  commands still reach the blocks inside; list items keep one each; a columns row has none of its own — each
+  column's blocks do, wherever in the column the pointer is: `unitAt`); drag shows a ghost and a drop line (side edges make columns); a click opens `apps/editor/src/components/block-menu.tsx`. Fine
   pointers only. The block menu is Notion's: a search field over the actions (and Turn-into targets), the block's kind
   as its section title (`apps/editor/src/core/block-kinds.ts`: catalog labels, an embed's service), then an embed's own
   actions (Replace — the embed panel on its link, same block; Caption — `apps/editor/src/extensions/embed-caption.ts`, a

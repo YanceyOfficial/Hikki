@@ -142,6 +142,40 @@ describe('block units', () => {
     expect(unitAtPos(editor.state, posOf('in toggle'))?.node.type.name).toBe('paragraph')
   })
 
+  it('in columns, every point finds a block of that column — never the whole row', () => {
+    editor = createEditor(host, {
+      type: 'doc',
+      content: [
+        {
+          type: 'columns',
+          content: [
+            { type: 'column', content: [para('left one'), para('left two')] },
+            { type: 'column', content: [{ type: 'horizontalRule' }, para('right')] }
+          ]
+        }
+      ]
+    })
+    const { doc: page } = editor.state
+    const columns = page.child(0)
+    const left = columns.child(0)
+    // Gaps inside the left column: at its start, between its blocks.
+    const leftStart = 2
+    const between = leftStart + left.child(0).nodeSize
+    const rightStart = 1 + left.nodeSize + 1
+    const names = (pos: number) => {
+      const unit = handleUnitAtPos(editor.state, pos)
+      return unit ? `${unit.node.type.name}:${unit.node.textContent}` : null
+    }
+    expect(names(leftStart)).toBe('paragraph:left one')
+    expect(names(between)).toBe('paragraph:left two')
+    expect(names(rightStart)).toBe('horizontalRule:')
+    // Between the two columns: the next column's first block.
+    expect(names(1 + left.nodeSize)).toBe('horizontalRule:')
+    // At the row's very start: the first column's first block; past a column's last block: that block.
+    expect(names(1)).toBe('paragraph:left one')
+    expect(names(1 + left.nodeSize - 1)).toBe('paragraph:left two')
+  })
+
   it('the text range of a unit spans its text blocks and leaves code out', () => {
     editor = createEditor(host, {
       type: 'doc',
