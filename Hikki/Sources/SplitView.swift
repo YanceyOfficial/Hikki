@@ -82,7 +82,8 @@ private struct SplitPane: View {
     var body: some View {
         VStack(spacing: Spacing.s0) {
             bar
-            Divider()
+            // The bar's rule runs on to the divider's hairline, in the middle of its grip, so the two meet.
+            Theme.border.frame(height: Spacing.px).padding(.leading, -Size.splitGrip / 2)
             content.frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Theme.background)
