@@ -1,6 +1,6 @@
 import { mergeAttributes, Node, type Editor } from '@tiptap/core'
 import type { Node as PMNode } from '@tiptap/pm/model'
-import { TextSelection } from '@tiptap/pm/state'
+import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
 import type { NodeView } from '@tiptap/pm/view'
 
 import { FloatingLayer } from '../components/floating'
@@ -98,7 +98,9 @@ export function Ruby(host: RubyHost | null = null) {
     group: 'inline',
     inline: true,
     content: 'text*',
-    marks: '',
+    // The base text takes the page's marks (bold, colour…); the reading never does — a mark the ruby itself gets (a
+    // whole line made bold) moves onto its base text (`RubyMarksInside`).
+    marks: '_',
     defining: true,
 
     addAttributes() {
@@ -215,12 +217,40 @@ export function Ruby(host: RubyHost | null = null) {
       return { [tiptapShortcut('ruby')]: () => this.editor.commands.editRuby() }
     },
 
+    addProseMirrorPlugins() {
+      return [rubyMarksInside()]
+    },
+
     addNodeView() {
       return ({ node, editor }) => new RubyView(node, editor, host)
     },
 
     onDestroy() {
       closePanel()
+    }
+  })
+}
+
+/**
+ * Marks belong to the base text, not the ruby: ProseMirror marks an inline node as a whole when a range covers it, and
+ * the mark's element would then wrap the reading too (a bold, underlined or coloured reading). Housekeeping, so it
+ * rides with the edit that marked it (no undo step of its own).
+ */
+function rubyMarksInside(): Plugin {
+  return new Plugin({
+    key: new PluginKey('rubyMarksInside'),
+    appendTransaction: (transactions, _old, state) => {
+      if (!transactions.some((tr) => tr.docChanged)) return null
+      const tr = state.tr
+      state.doc.descendants((node, pos) => {
+        if (node.type.name !== 'ruby') return true
+        for (const mark of node.marks) {
+          tr.removeNodeMark(tr.mapping.map(pos), mark)
+          if (node.content.size > 0) tr.addMark(pos + 1, pos + node.nodeSize - 1, mark)
+        }
+        return false
+      })
+      return tr.docChanged ? tr : null
     }
   })
 }

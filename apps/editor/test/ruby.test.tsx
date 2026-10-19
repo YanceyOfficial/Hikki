@@ -62,6 +62,27 @@ describe('ruby (furigana)', () => {
     expect(editor.getText()).toBe('この漢字を読む')
   })
 
+  it('the base text takes bold and colour; the reading never does', () => {
+    editor.commands.setTextSelection({ from: 3, to: 5 })
+    editor.commands.setRuby('かんじ')
+    // The kanji alone (the selection inside the ruby).
+    editor.commands.setTextSelection({ from: 4, to: 6 })
+    expect(editor.commands.toggleBold()).toBe(true)
+    expect(editor.getHTML()).toContain('<rb><strong>漢字</strong></rb><rt>かんじ</rt>')
+    // The whole line: the mark lands on the base text, not around the ruby (which would take the reading too).
+    editor.commands.toggleBold()
+    editor.commands.selectAll()
+    editor.commands.toggleItalic()
+    const ruby = editor.state.doc.firstChild!.child(1)
+    expect(ruby.type.name).toBe('ruby')
+    expect(ruby.marks).toEqual([])
+    expect(ruby.firstChild!.marks.map((m) => m.type.name)).toEqual(['italic'])
+    expect(editor.getHTML()).not.toMatch(/<em>[^<]*<ruby/u)
+    // One undo takes the whole italic away, the move included.
+    editor.commands.undo()
+    expect(editor.getHTML()).not.toContain('<em>')
+  })
+
   it('refuses a selection across lines or with no text, and edits an existing reading in place', () => {
     editor.commands.setContent({ type: 'doc', content: [para('一'), para('二')] })
     editor.commands.setTextSelection({ from: 1, to: 5 })

@@ -63,6 +63,8 @@ export function selectedTextRects(range: Range, root: Node, origin: DOMRect): DO
   )
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     if (!root.contains(node) || !range.intersectsNode(node)) continue
+    // A ruby's reading is a mark over the text, not text that is selected.
+    if (node.parentElement?.closest('rt')) continue
     const text = node as Text
     const part = document.createRange()
     part.setStart(text, node === range.startContainer ? range.startOffset : 0)

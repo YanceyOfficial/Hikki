@@ -505,6 +505,10 @@
   .tiptap ruby.hk-ruby > rt:hover {
     @apply text-foreground;
   }
+  /* A selection over a ruby paints its base text only (the inline decoration also lands on the <ruby> itself). */
+  .tiptap ruby.hk-ruby.hk-selection {
+    background: transparent;
+  }
 
   /* Formulas (extensions/math.ts). */
   .tiptap [data-type='block-math'] {

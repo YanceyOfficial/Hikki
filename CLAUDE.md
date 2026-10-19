@@ -401,7 +401,9 @@ HikkiUITests/                 XCUITest flows
 - **Ruby / furigana** (`apps/editor/src/extensions/ruby.ts`): an inline node (`<ruby><rb>…</rb><rt>…</rt></ruby>`, reading as
   an attribute); ⇧⌘R or Format → More → Ruby opens the reading panel, prefilled from the native tokenizer
   (`HikkiCore/Sources/Text/JapaneseReading.swift`, `suggestReading` message): a phrase comes back as kanji runs with
-  readings and bare kana (役に立ちます → 役(やく)に立(た)ちます), one ruby per run; "Whole" puts one reading over all of it.
+  readings and bare kana (役に立ちます → 役(やく)に立(た)ちます), one ruby per run; "Whole" puts one reading over all of it. The base text
+  takes the page's marks (bold, colour…), the reading never does — a mark on the whole ruby moves onto its base text
+  (`rubyMarksInside`) — and the reading is never part of a selection (not editable, not painted as selected).
 - **Search** (⌘K, `Hikki/Sources/SearchPalette.swift`) is the `HikkiSearch` package: `SearchIndex`
   (`HikkiSearch/Sources/SearchIndex.swift`) keeps its own SQLite file (`search.sqlite` next to the database, WAL so
   searches read beside writes) with every page's title (and pinyin keys) and its text blocks with their ids, stored
