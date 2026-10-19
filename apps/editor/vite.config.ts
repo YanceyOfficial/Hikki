@@ -38,7 +38,16 @@ export default defineConfig({
   test: {
     environment: 'happy-dom',
     setupFiles: ['./test/setup.ts'],
-    // An <iframe src> (embeds) would make happy-dom fetch the page: no network in tests.
-    environmentOptions: { happyDOM: { settings: { disableIframePageLoading: true } } }
+    // An <iframe src> (embeds) would make happy-dom fetch the page, and a snippet's <script src> (a gist) its
+    // script: no network in tests — a script that isn't fetched counts as loaded.
+    environmentOptions: {
+      happyDOM: {
+        settings: {
+          disableIframePageLoading: true,
+          disableJavaScriptFileLoading: true,
+          handleDisabledFileLoadingAsSuccess: true
+        }
+      }
+    }
   }
 })

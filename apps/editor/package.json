@@ -48,7 +48,8 @@
     "lowlight": "3.3.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "react-i18next": "^17.0.16"
+    "react-i18next": "^17.0.16",
+    "simple-icons": "16.33.0"
   },
   "devDependencies": {
     "@phosphor-icons/core": "^2.1.1",

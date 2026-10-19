@@ -130,51 +130,43 @@
     },
     "googleDrive": {
       "title": "Google Drive",
-      "hint": "A Drive file, Doc, Sheet or Slides"
-    },
-    "tweet": {
-      "title": "Tweet",
-      "hint": "A post from X"
-    },
-    "gist": {
-      "title": "GitHub Gist",
-      "hint": "A gist, with its syntax colours"
-    },
-    "googleMaps": {
-      "title": "Google Maps",
-      "hint": "A place on the map"
+      "hint": "A Doc, Sheet, Slides or Drive file"
     },
     "figma": {
       "title": "Figma",
-      "hint": "A Figma file or prototype"
-    },
-    "drawio": {
-      "title": "draw.io",
-      "hint": "A diagram from draw.io (diagrams.net)"
-    },
-    "loom": {
-      "title": "Loom",
-      "hint": "A Loom video"
-    },
-    "excalidraw": {
-      "title": "Excalidraw",
-      "hint": "An Excalidraw drawing"
+      "hint": "A Figma design, board or prototype"
     },
     "miro": {
       "title": "Miro",
       "hint": "A Miro board"
     },
+    "loom": {
+      "title": "Loom",
+      "hint": "A Loom video"
+    },
     "airtable": {
       "title": "Airtable",
       "hint": "A shared Airtable view"
     },
-    "spotify": {
-      "title": "Spotify",
-      "hint": "A track, album, playlist or podcast"
+    "calendly": {
+      "title": "Calendly",
+      "hint": "A booking page to schedule a meeting"
+    },
+    "gist": {
+      "title": "GitHub Gist",
+      "hint": "A gist, styled like the page"
     },
     "codesandbox": {
       "title": "CodeSandbox",
       "hint": "A sandbox, running"
+    },
+    "drawio": {
+      "title": "draw.io",
+      "hint": "A diagram from draw.io (diagrams.net)"
+    },
+    "excalidraw": {
+      "title": "Excalidraw",
+      "hint": "An Excalidraw drawing"
     }
   },
   "cover": {
@@ -370,20 +362,15 @@
       "generic": "Paste a link to embed…",
       "html": "Paste HTML…",
       "googleDrive": "Paste a Google Drive, Docs, Sheets or Slides link…",
-      "tweet": "Paste a link to a post on X…",
-      "gist": "Paste a gist link…",
-      "googleMaps": "Paste a Google Maps link…",
       "figma": "Paste a Figma link…",
-      "youtube": "Paste a YouTube link…",
-      "vimeo": "Paste a Vimeo link…",
-      "codepen": "Paste a CodePen link…",
-      "drawio": "Paste a draw.io or diagrams.net link…",
-      "loom": "Paste a Loom link…",
-      "excalidraw": "Paste an Excalidraw share link…",
       "miro": "Paste a Miro board link…",
+      "loom": "Paste a Loom link…",
       "airtable": "Paste an Airtable shared view link…",
-      "spotify": "Paste a Spotify link…",
-      "codesandbox": "Paste a CodeSandbox link…"
+      "calendly": "Paste a Calendly scheduling link…",
+      "gist": "Paste a gist link…",
+      "codesandbox": "Paste a CodeSandbox link…",
+      "drawio": "Paste a draw.io or diagrams.net link…",
+      "excalidraw": "Paste an Excalidraw share link…"
     },
     "label": {
       "link": "Link to embed",

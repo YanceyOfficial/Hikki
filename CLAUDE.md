@@ -337,11 +337,18 @@ HikkiUITests/                 XCUITest flows
   as the same bottom sheet (`apps/editor/src/components/bottom-sheet.tsx`, keyboard-aware) instead of popovers.
 - **Embeds** (`apps/editor/src/extensions/embed.ts`, transforms in `apps/editor/src/lib/embeds.ts`): one `embed` block — an
   `<iframe>` on a third-party page (sandboxed, keeps its origin) or on a snippet of HTML (`srcdoc`, no origin) — behind
-  the "/" menu's Embeds group (Embed, HTML, Google Drive, Tweet, Gist, Google Maps, Figma, draw.io, Loom, Excalidraw,
-  Miro, Airtable, Spotify, CodeSandbox — each service shown by its own logo, `apps/editor/src/components/brand-logos.tsx`).
-  `embedFromURL` turns a pasted link into the provider's embeddable URL (YouTube, Vimeo, Figma, Maps, Drive/Docs, gists
-  as a script snippet, tweets via platform.twitter.com, CodePen, draw.io's viewer, Loom, Excalidraw, Miro's live embed,
-  Airtable views, Spotify, CodeSandbox). Any other page is a link card instead of a frame (most sites refuse to be
+  the "/" menu's Embeds group — a short list of work services: Embed, HTML, Google Drive, Figma, Miro, Loom, Airtable,
+  Calendly, GitHub Gist, CodeSandbox, draw.io, Excalidraw, each by its Simple Icons mark (`simple-icons`, one named
+  import per logo, `apps/editor/src/components/brand-logos.tsx`), monochrome in the row's colour at the icons' size.
+  `embedFromURL` turns a pasted link into the provider's embeddable URL (YouTube, Vimeo, Figma's embed.figma.com, Maps,
+  Drive/Docs, gists as a script snippet, tweets via platform.twitter.com, CodePen, draw.io's viewer, Loom, Excalidraw,
+  Miro's live embed, Airtable views, Spotify, CodeSandbox, Calendly, Typeform) — services without a row still embed
+  through Embed. Frames and link cards sit in one card (border, `rounded-xl`, `bg-card`; the height handle inside its
+  foot). A gist's frame (`apps/editor/src/lib/gist-embed.ts`) gets our stylesheet over GitHub's — page fonts, no box of
+  its own, `syntax-*` colours for the `pl-*` classes, the "hosted by" bar cut to name + view raw — with the page's
+  tokens inlined (`readEmbedTheme`: a `srcdoc` frame can't read the page's variables), re-sent on a light/dark change
+  without a reload, and reports its content's height (`postMessage`), so the frame fits it up to the block's height.
+  Any other page is a link card instead of a frame (most sites refuse to be
   framed): icon, title, description and address, read natively by `HikkiCore/Sources/Text/LinkPreview.swift` through
   the `linkPreview` bridge request (exodus's `safe-fetch` rules: http/https, public hosts only, every redirect checked)
   and stored in the block when it is added; an older card without details reads them for display only. The height is an attribute, set by the handle
