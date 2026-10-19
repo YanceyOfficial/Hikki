@@ -15,10 +15,12 @@ public struct ChatTurn: Codable, Equatable, Sendable, Identifiable {
     public var citations: [ChatCitation]
     /// Changes an answer proposed to the page, with how each was reviewed (absent in older files).
     public var changes: [AIPageChange]?
+    /// How the answer was worked out: the model's thinking and its web searches, in order (the chat's timeline).
+    public var thinking: ChatThinking?
 
     public init(
         id: String, role: Role, text: String, sentAt: Date, attachments: [String] = [], citations: [ChatCitation] = [],
-        changes: [AIPageChange]? = nil
+        changes: [AIPageChange]? = nil, thinking: ChatThinking? = nil
     ) {
         self.id = id
         self.role = role
@@ -27,6 +29,31 @@ public struct ChatTurn: Codable, Equatable, Sendable, Identifiable {
         self.attachments = attachments
         self.citations = citations
         self.changes = changes
+        self.thinking = thinking
+    }
+}
+
+/// An answer's thinking timeline: its steps, and how long the model worked before answering.
+public struct ChatThinking: Codable, Equatable, Sendable {
+    public struct Step: Codable, Equatable, Sendable {
+        public enum Kind: String, Codable, Sendable { case thinking, search }
+        public var kind: Kind
+        /// The thinking's text, or the search's query ("" while the provider hasn't said it).
+        public var text: String
+
+        public init(kind: Kind, text: String) {
+            self.kind = kind
+            self.text = text
+        }
+    }
+
+    public var steps: [Step]
+    /// Seconds from asking to the answer's first words.
+    public var seconds: Double?
+
+    public init(steps: [Step] = [], seconds: Double? = nil) {
+        self.steps = steps
+        self.seconds = seconds
     }
 }
 
@@ -272,6 +299,7 @@ public final class PageChats: @unchecked Sendable {
             if turn.text.count > known.text.count {
                 known.text = turn.text
                 known.citations = turn.citations
+                known.thinking = turn.thinking ?? known.thinking
             }
             // Each card keeps the review furthest along (approved on one device, still pending on the other).
             if let changes = turn.changes {

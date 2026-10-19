@@ -555,6 +555,11 @@ HikkiUITests/                 XCUITest flows
   read back as a `CodeToken`, drawn in the `syntax-*` tokens as the editor maps them; it waits for a pause while
   streaming and a growing block keeps its earlier colours); tables are HikkiUI's `TextTable`. HighlightSwift's
   resource bundle is copied into the app; when it's missing (`resourcesFound`) code stays plain rather than trap.
+  The chat asks the model to think first (`AIRequest.reasoning`: OpenAI's reasoning summary, Anthropic's extended
+  thinking with its own budget) and shows how the answer was worked out above it — HikkiUI's `ThinkingTimeline`
+  (actovia's): live, the step it is on shimmering; then "Thought for 12 seconds", opening into the steps (thinking
+  titled by its bold first line, `AIThinking`; web searches by query), grown by `ChatTimeline` and kept on the turn
+  (`ChatTurn.thinking`). The page's own AI requests don't ask for thinking.
   While the model works the chat's "Thinking…" / "Searching the web…" line is HikkiUI's `ShimmerText` (a foreground
   band sweeping the muted text once per `Motion.loop`; still under Reduce Motion, which gets a spinner instead). Model output is untrusted: the reply is parsed tolerantly (`apps/editor/src/lib/ai-content.ts`;
   sanitized inline HTML through the schema, unknown keys dropped, an unreadable reply is an error), citations must be

@@ -46,6 +46,8 @@ final class AIChat {
         var changes: [AIPageChange] = []
         /// A web search under way (its query, when the provider says it).
         var searching: String?
+        /// The model's thinking and searches so far (the timeline above the answer).
+        var thinking: ChatThinking?
         var error: String?
     }
 
@@ -248,9 +250,11 @@ final class AIChat {
             }
             return AIMessage(role: .user, parts: parts)
         }
-        let request = AIPrompts.chat(
+        var request = AIPrompts.chat(
             turns, summary: summary?.text, pages: pages, openPageBlocks: blocks.map { AIPageEdits.pageJSON($0) },
             selection: contextSelection, model: model, webSearch: webSearch, language: AIService.appLanguage)
+        // The model thinks first; its thinking streams into the answer's timeline.
+        request.reasoning = true
         Log.info(
             "AI chat", category: "ai",
             context: [
@@ -353,10 +357,19 @@ final class AIChat {
         let last = messages.count - 1
         switch event {
         case .text(let delta):
+            // The first words end the thinking: the timeline keeps how long it took.
+            if messages[last].text.isEmpty, messages[last].thinking != nil, messages[last].thinking?.seconds == nil {
+                messages[last].thinking?.seconds = Date.now.timeIntervalSince(messages[last].sentAt)
+            }
             messages[last].text += delta
             messages[last].searching = nil
+        case .reasoningStep:
+            messages[last].thinking = ChatTimeline.step(.thinking, in: messages[last].thinking)
+        case .reasoning(let delta):
+            messages[last].thinking = ChatTimeline.thought(delta, in: messages[last].thinking)
         case .searching(let query):
             messages[last].searching = query ?? ""
+            messages[last].thinking = ChatTimeline.searched(query, in: messages[last].thinking)
         case .citation(let citation):
             // Only web pages, once each (the model's search supplies them).
             guard let url = URL(string: citation.url), url.scheme == "https" || url.scheme == "http",
@@ -393,14 +406,16 @@ extension AIChat.Message {
     init(_ turn: ChatTurn) {
         self.init(
             id: turn.id, role: turn.role, text: turn.text, sentAt: turn.sentAt, attachmentNames: turn.attachments,
-            citations: turn.citations.map { AICitation(url: $0.url, title: $0.title) }, changes: turn.changes ?? [])
+            citations: turn.citations.map { AICitation(url: $0.url, title: $0.title) }, changes: turn.changes ?? [],
+            thinking: turn.thinking)
     }
 
     /// The turn as it is kept.
     var turn: ChatTurn {
         ChatTurn(
             id: id, role: role, text: text, sentAt: sentAt, attachments: attachmentNames + attachments.map(\.name),
-            citations: citations.map { ChatCitation(url: $0.url, title: $0.title) }, changes: changes.isEmpty ? nil : changes)
+            citations: citations.map { ChatCitation(url: $0.url, title: $0.title) }, changes: changes.isEmpty ? nil : changes,
+            thinking: thinking.flatMap(ChatTimeline.kept))
     }
 }
 
@@ -1037,9 +1052,11 @@ private struct ChatBubble: View {
             .padding(.leading, Spacing.s12)
         case .assistant:
             VStack(alignment: .leading, spacing: Spacing.s2_5) {
+                // How the answer was worked out, over it: live while the model thinks, folded once it answers.
+                if let timeline { timeline }
                 // The changes block never shows as text: the cards below stand for it.
                 if !prose.isEmpty { AnswerText(text: prose, isStreaming: isStreaming) }
-                if isStreaming && (message.text.isEmpty || message.searching != nil || AIPageEdits.hasChanges(message.text)) {
+                if isStreaming, isCompacting || AIPageEdits.hasChanges(message.text) || !message.text.isEmpty && message.searching != nil {
                     working
                 }
                 if let chat, !message.changes.isEmpty { changeReview(chat) }
@@ -1109,6 +1126,61 @@ private struct ChatBubble: View {
     }
 
     /// The model at work: the line shimmers; with Reduce Motion it stands still, so a spinner says it's busy.
+    /// The timeline, when there is something in it — or the model is still working on its first words.
+    private var timeline: ThinkingTimeline? {
+        let steps = message.thinking?.steps ?? []
+        let live = isStreaming && message.text.isEmpty && !isCompacting
+        guard !steps.isEmpty || live else { return nil }
+        let rows = steps.enumerated().map { index, step in
+            switch step.kind {
+            case .search:
+                return ThinkingTimeline.Step(id: index, kind: .search, title: Self.searchTitle(step.text, done: true))
+            case .thinking:
+                let (title, detail) = Self.split(step.text)
+                return ThinkingTimeline.Step(
+                    id: index, kind: .thinking, title: title ?? String(localized: "app:ai.thought"), detail: detail)
+            }
+        }
+        return ThinkingTimeline(header: Self.header(message.thinking, live: live), isStreaming: live, steps: rows)
+    }
+
+    /// While live, the step the model is on; afterwards how long it thought (or that it searched).
+    private static func header(_ thinking: ChatThinking?, live: Bool) -> String {
+        let steps = thinking?.steps ?? []
+        if live {
+            switch steps.last?.kind {
+            case .search: return searchTitle(steps.last?.text ?? "", done: false)
+            case .thinking: return AIThinking.title(of: steps.last?.text ?? "") ?? String(localized: "app:ai.thinking")
+            case nil: return String(localized: "app:ai.thinking")
+            }
+        }
+        guard steps.contains(where: { $0.kind == .thinking }) else { return String(localized: "app:ai.searchedWeb") }
+        guard let seconds = thinking?.seconds, seconds >= 1 else { return String(localized: "app:ai.thought") }
+        let duration = Duration.seconds(Int(seconds.rounded())).formatted(.units(allowed: [.minutes, .seconds], width: .wide))
+        return String(localized: "app:ai.thoughtFor \(duration)")
+    }
+
+    private static func searchTitle(_ query: String, done: Bool) -> String {
+        switch (query.isEmpty, done) {
+        case (true, true): String(localized: "app:ai.searchedWeb")
+        case (true, false): String(localized: "app:ai.searching")
+        case (false, true): String(localized: "app:ai.searchedFor \(query)")
+        case (false, false): String(localized: "app:ai.searchingFor \(query)")
+        }
+    }
+
+    /// A stretch of thinking as its row shows it: the title it opens with, then the rest (inline Markdown).
+    private static func split(_ text: String) -> (String?, AttributedString) {
+        let title = AIThinking.title(of: text)
+        var rest = AIThinking.body(of: text)
+        // No bold title: the first line was the title.
+        if rest == text.trimmingCharacters(in: .whitespacesAndNewlines), let title, rest.hasPrefix(title) {
+            rest = String(rest.dropFirst(title.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        return (title, (try? AttributedString(markdown: rest, options: options)) ?? AttributedString(rest))
+    }
+
     private var working: some View {
         HStack(spacing: Spacing.s2) {
             if reduceMotion { ProgressView().controlSize(.small) }

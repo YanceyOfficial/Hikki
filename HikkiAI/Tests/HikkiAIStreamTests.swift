@@ -159,6 +159,59 @@ struct RequestBuilderTests {
     }
 }
 
+struct ThinkingTests {
+    @Test func openAIStreamsItsReasoningSummary() {
+        let lines = [
+            #"data: {"type":"response.reasoning_summary_part.added","summary_index":0}"#,
+            #"data: {"type":"response.reasoning_summary_text.delta","delta":"**Checking dates**\n\nLooking"}"#,
+            #"data: {"type":"response.reasoning_summary_part.added","summary_index":1}"#,
+            #"data: {"type":"response.reasoning_summary_text.delta","delta":"**Answering**"}"#,
+            #"data: {"type":"response.output_text.delta","delta":"Yes."}"#,
+        ]
+        #expect(
+            decode(OpenAIStreamDecoder(), lines).events == [
+                .reasoningStep, .reasoning("**Checking dates**\n\nLooking"), .reasoningStep, .reasoning("**Answering**"),
+                .text("Yes."),
+            ])
+    }
+
+    @Test func anthropicStreamsItsThinking() {
+        let lines = [
+            #"data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":""}}"#,
+            #"data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"Let me check."}}"#,
+            #"data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"abc"}}"#,
+            #"data: {"type":"content_block_stop","index":0}"#,
+            #"data: {"type":"content_block_start","index":1,"content_block":{"type":"text","text":""}}"#,
+            #"data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"Done."}}"#,
+        ]
+        #expect(
+            decode(AnthropicStreamDecoder(), lines).events == [.reasoningStep, .reasoning("Let me check."), .text("Done.")])
+    }
+
+    @Test func requestsAskForThinkingOnlyWhenTold() throws {
+        var request = AIRequest(model: AIModelCatalog.sonnet, instructions: "", messages: [.user("hi")], maxOutputTokens: 1000)
+        func json(_ http: URLRequest) throws -> [String: Any] {
+            let body = try #require(http.httpBody)
+            return try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        }
+        #expect(try json(RequestBuilders.anthropic(request, apiKey: "k"))["thinking"] == nil)
+        request.reasoning = true
+        let anthropic = try json(RequestBuilders.anthropic(request, apiKey: "k"))
+        #expect((anthropic["thinking"] as? [String: Any])?["budget_tokens"] as? Int == RequestBuilders.anthropicThinkingBudget)
+        #expect(anthropic["max_tokens"] as? Int == 1000 + RequestBuilders.anthropicThinkingBudget)
+        request.model = AIModelCatalog.gptSol
+        #expect((try json(RequestBuilders.openAI(request, apiKey: "k"))["reasoning"] as? [String: Any])?["summary"] as? String == "auto")
+    }
+
+    @Test func stepsAreTitledByTheirBoldLine() {
+        #expect(AIThinking.title(of: "**Checking the dates**\n\nThe trip is in May.") == "Checking the dates")
+        #expect(AIThinking.title(of: "\n  Let me look at the page first.\nThen…") == "Let me look at the page first.")
+        #expect(AIThinking.title(of: "  ") == nil)
+        #expect(AIThinking.body(of: "**Checking the dates**\n\nThe trip is in May.") == "The trip is in May.")
+        #expect(AIThinking.body(of: "No title here.") == "No title here.")
+    }
+}
+
 struct HTTPErrorTests {
     @Test func statusesAndBodies() {
         #expect(HTTPErrors.map(status: 401, body: Data()) == .unauthorized)

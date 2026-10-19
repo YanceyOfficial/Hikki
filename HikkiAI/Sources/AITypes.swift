@@ -69,15 +69,19 @@ public struct AIRequest: Sendable {
     /// Let the model search the web with the provider's own tool (results come back as `.citation`s).
     public var webSearch: Bool
     public var maxOutputTokens: Int
+    /// Let the model think first and stream (a summary of) its thinking as `.reasoning` (the chat's timeline).
+    public var reasoning: Bool
 
     public init(
-        model: AIModel, instructions: String, messages: [AIMessage], webSearch: Bool = false, maxOutputTokens: Int = 4096
+        model: AIModel, instructions: String, messages: [AIMessage], webSearch: Bool = false, maxOutputTokens: Int = 4096,
+        reasoning: Bool = false
     ) {
         self.model = model
         self.instructions = instructions
         self.messages = messages
         self.webSearch = webSearch
         self.maxOutputTokens = maxOutputTokens
+        self.reasoning = reasoning
     }
 }
 
@@ -95,6 +99,10 @@ public struct AICitation: Hashable, Codable, Sendable {
 /// What a stream yields, in order: text as it is written, web searches as they start, the sources cited, the end.
 public enum AIEvent: Equatable, Sendable {
     case text(String)
+    /// The model's thinking (a summary of its reasoning) as it is written — only when the request asks for it.
+    case reasoning(String)
+    /// A new stretch of thinking begins (the provider's next summary part or thinking block).
+    case reasoningStep
     /// A web search began (the query when the provider says it).
     case searching(String?)
     case citation(AICitation)

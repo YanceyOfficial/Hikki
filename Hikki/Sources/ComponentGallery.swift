@@ -209,6 +209,17 @@
                         SkeletonLines([0.45], height: Spacing.s6, label: "app:history.loading")
                         SkeletonLines([1, 0.94, 0.62], label: "app:history.loading")
                     }
+                    Section("ThinkingTimeline") {
+                        ThinkingTimeline(
+                            header: "Checking the dates", isStreaming: true,
+                            steps: [.init(id: 0, kind: .thinking, title: "Reading the page", detail: "The trip is in May.")])
+                        ThinkingTimeline(
+                            header: "Thought for 12 seconds", isStreaming: false,
+                            steps: [
+                                .init(id: 0, kind: .thinking, title: "Reading the page", detail: "The trip is in May."),
+                                .init(id: 1, kind: .search, title: "Searched for “Kyoto weather May”"),
+                            ])
+                    }
                     Section("ShimmerText") {
                         ShimmerText("app:ai.thinking").font(.hk(.sm))
                         ShimmerText("app:ai.searching").font(.hk(.sm))

@@ -5,6 +5,8 @@ enum RequestBuilders {
     static let openAIURL = AIEndpoint.requestURL(.openAI, base: AIEndpoint.defaultBase(.openAI))
     static let anthropicURL = AIEndpoint.requestURL(.anthropic, base: AIEndpoint.defaultBase(.anthropic))
     static let anthropicVersion = "2023-06-01"
+    /// Tokens Anthropic's models may think with before answering (extended thinking's minimum is 1024).
+    static let anthropicThinkingBudget = 4096
 
     /// OpenAI's Responses API: `instructions` + `input` messages (images as data URLs), the `web_search` tool, streamed.
     static func openAI(_ request: AIRequest, apiKey: String, url: URL = openAIURL) throws -> URLRequest {
@@ -18,6 +20,8 @@ enum RequestBuilders {
             "store": false,
         ]
         if request.webSearch { body["tools"] = [["type": "web_search"]] }
+        // Reasoning models think anyway; this asks for the summary of it to be streamed.
+        if request.reasoning { body["reasoning"] = ["summary": "auto"] }
         var http = URLRequest(url: url)
         http.httpMethod = "POST"
         http.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
@@ -51,6 +55,11 @@ enum RequestBuilders {
             "stream": true,
         ]
         if request.webSearch { body["tools"] = [["type": "web_search_20250305", "name": "web_search", "max_uses": 5]] }
+        // Extended thinking: its budget comes on top of the answer's (max_tokens must exceed it).
+        if request.reasoning {
+            body["thinking"] = ["type": "enabled", "budget_tokens": anthropicThinkingBudget]
+            body["max_tokens"] = request.maxOutputTokens + anthropicThinkingBudget
+        }
         var http = URLRequest(url: url)
         http.httpMethod = "POST"
         http.setValue(apiKey, forHTTPHeaderField: "x-api-key")

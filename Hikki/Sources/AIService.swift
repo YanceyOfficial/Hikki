@@ -42,7 +42,7 @@ final class AIService {
                 for try await event in client.stream(request) {
                     if Task.isCancelled { return }
                     if case .text(let delta) = event { characters += delta.count }
-                    send(Self.event(id, for: event))
+                    if let event = Self.event(id, for: event) { send(event) }
                 }
                 Log.info("AI request finished", category: "ai", context: ["characters": "\(characters)"])
             } catch {
@@ -103,13 +103,15 @@ final class AIService {
             language: appLanguage)
     }
 
-    /// An answer's event as the page reads it (`AIStreamEvent` in protocol.ts).
-    static func event(_ id: String, for event: AIEvent) -> [String: Any] {
+    /// An answer's event as the page reads it (`AIStreamEvent` in protocol.ts); nil for what the page doesn't show.
+    static func event(_ id: String, for event: AIEvent) -> [String: Any]? {
         switch event {
         case .text(let delta): ["id": id, "type": "text", "delta": delta]
         case .searching(let query): ["id": id, "type": "searching", "query": query ?? NSNull()]
         case .citation(let citation): ["id": id, "type": "citation", "url": citation.url, "title": citation.title ?? NSNull()]
         case .finished: ["id": id, "type": "done"]
+        // The page's requests don't ask for thinking (only the chat's timeline shows it).
+        case .reasoning, .reasoningStep: nil
         }
     }
 

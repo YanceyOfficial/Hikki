@@ -15,7 +15,7 @@ func sseJSON(_ line: some StringProtocol) -> [String: Any]? {
     return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
 }
 
-/// OpenAI's Responses API stream: `response.output_text.delta` (text), `response.web_search_call.*` and the finished
+/// OpenAI's Responses API stream: `response.output_text.delta` (text), `response.reasoning_summary_*` (thinking), `response.web_search_call.*` and the finished
 /// `web_search_call` item (the query), `response.output_text.annotation.added` (`url_citation`), `response.completed`,
 /// and `response.failed` / `error`.
 struct OpenAIStreamDecoder: StreamDecoder {
@@ -26,6 +26,11 @@ struct OpenAIStreamDecoder: StreamDecoder {
         case "response.output_text.delta":
             guard let delta = json["delta"] as? String, !delta.isEmpty else { return [] }
             return [.text(delta)]
+        case "response.reasoning_summary_part.added":
+            return [.reasoningStep]
+        case "response.reasoning_summary_text.delta":
+            guard let delta = json["delta"] as? String, !delta.isEmpty else { return [] }
+            return [.reasoning(delta)]
         case "response.web_search_call.in_progress":
             return [.searching(nil)]
         case "response.output_item.done":
@@ -65,7 +70,8 @@ struct OpenAIStreamDecoder: StreamDecoder {
     }
 }
 
-/// Anthropic's Messages API stream: `content_block_delta` with `text_delta` (text) or `citations_delta`
+/// Anthropic's Messages API stream: `content_block_delta` with `text_delta` (text), `thinking_delta` (thinking) or
+/// `citations_delta`
 /// (`web_search_result_location`), a `server_tool_use` block whose input JSON streams in (the search query, read when
 /// the block stops), `message_stop`, and `error` events.
 struct AnthropicStreamDecoder: StreamDecoder {
@@ -80,13 +86,20 @@ struct AnthropicStreamDecoder: StreamDecoder {
                 let type = block["type"] as? String
             else { return [] }
             blocks[index] = (type, "")
-            return type == "server_tool_use" ? [.searching(nil)] : []
+            switch type {
+            case "server_tool_use": return [.searching(nil)]
+            case "thinking": return [.reasoningStep]
+            default: return []
+            }
         case "content_block_delta":
             guard let delta = json["delta"] as? [String: Any] else { return [] }
             switch delta["type"] as? String {
             case "text_delta":
                 guard let text = delta["text"] as? String, !text.isEmpty else { return [] }
                 return [.text(text)]
+            case "thinking_delta":
+                guard let thinking = delta["thinking"] as? String, !thinking.isEmpty else { return [] }
+                return [.reasoning(thinking)]
             case "input_json_delta":
                 if let index = json["index"] as? Int, let partial = delta["partial_json"] as? String {
                     blocks[index]?.input += partial
