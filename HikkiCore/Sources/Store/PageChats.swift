@@ -62,6 +62,15 @@ public struct ChatCitation: Codable, Hashable, Sendable {
     public var url: String
     public var title: String?
 
+    /// The page's address when it is a web page (http / https) — the only links a citation may open. Kept turns come
+    /// from the workspace folder, which other devices write, so this is checked where they are shown, not trusted.
+    public var webURL: URL? {
+        guard let url = URL(string: url), let scheme = url.scheme?.lowercased(), scheme == "https" || scheme == "http",
+            url.host() != nil
+        else { return nil }
+        return url
+    }
+
     public init(url: String, title: String?) {
         self.url = url
         self.title = title

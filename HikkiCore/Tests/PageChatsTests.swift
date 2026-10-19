@@ -77,6 +77,14 @@ struct PageChatsTests {
         #expect(PageChats.merge(phone, mac).turns[0].changes?.map(\.status) == [.approved, .skipped])
     }
 
+    @Test func onlyWebPagesAreCitationLinks() {
+        #expect(ChatCitation(url: "https://kyoto.travel/autumn", title: nil).webURL != nil)
+        #expect(ChatCitation(url: "HTTP://example.com", title: nil).webURL != nil)
+        for url in ["file:///etc/hosts", "javascript:alert(1)", "hikki://page/x", "x-apple-reminder://", "https:nohost", "not a url"] {
+            #expect(ChatCitation(url: url, title: nil).webURL == nil, "\(url)")
+        }
+    }
+
     @Test func oldTurnsGoAfterTheRetention() throws {
         let (chats, root) = store()
         defer { try? FileManager.default.removeItem(at: root) }

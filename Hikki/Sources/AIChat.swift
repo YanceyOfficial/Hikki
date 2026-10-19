@@ -372,7 +372,7 @@ final class AIChat {
             messages[last].thinking = ChatTimeline.searched(query, in: messages[last].thinking)
         case .citation(let citation):
             // Only web pages, once each (the model's search supplies them).
-            guard let url = URL(string: citation.url), url.scheme == "https" || url.scheme == "http",
+            guard ChatCitation(url: citation.url, title: nil).webURL != nil,
                 !messages[last].citations.contains(citation)
             else { return }
             messages[last].citations.append(citation)
@@ -406,7 +406,8 @@ extension AIChat.Message {
     init(_ turn: ChatTurn) {
         self.init(
             id: turn.id, role: turn.role, text: turn.text, sentAt: turn.sentAt, attachmentNames: turn.attachments,
-            citations: turn.citations.map { AICitation(url: $0.url, title: $0.title) }, changes: turn.changes ?? [],
+            citations: turn.citations.filter { $0.webURL != nil }.map { AICitation(url: $0.url, title: $0.title) },
+            changes: turn.changes ?? [],
             thinking: turn.thinking)
     }
 
@@ -1066,7 +1067,8 @@ private struct ChatBubble: View {
                 if !message.citations.isEmpty {
                     FlowLayout(spacing: Spacing.s1_5) {
                         ForEach(Array(message.citations.enumerated()), id: \.offset) { index, citation in
-                            if let url = URL(string: citation.url) {
+                            // Web pages only, however the citation got here (a kept turn is read from a synced file).
+                            if let url = ChatCitation(url: citation.url, title: nil).webURL {
                                 Link(destination: url) {
                                     Text(verbatim: "\(index + 1) · \(citation.title ?? url.host() ?? citation.url)")
                                         .lineLimit(1)
