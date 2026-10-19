@@ -11,7 +11,8 @@ enum AIPreferences {
     static let modelKey = "ai.model"
     /// The starred models, comma-separated in the order starred (`AIModelFavorites`).
     static let favoritesKey = "ai.favoriteModels"
-    /// How an AI edit is reviewed: `inline` (A, default), `diff` (B) or `bubble` (C) — `ReviewStyleThumbnail.Sketch`.
+    /// How an AI edit is reviewed: `inline` (A, default) or `diff` (B) — `ReviewStyleThumbnail.Sketch`; a stored
+    /// `bubble` (the retired card style) reads as `inline`.
     static let reviewStyleKey = "ai.reviewStyle"
     /// How long each page's AI conversation is kept (`ChatRetention`: days30, days90 — the default — or forever).
     static let chatRetentionKey = "ai.chatRetention"
@@ -64,7 +65,7 @@ struct AISettingsSection: View {
         Section {
             HStack(alignment: .top, spacing: Spacing.s2) {
                 ForEach(ReviewStyleThumbnail.Sketch.allCases, id: \.self) { sketch in
-                    ThumbnailOption(title(sketch), isSelected: reviewStyle == sketch.rawValue) {
+                    ThumbnailOption(title(sketch), isSelected: ReviewStyleThumbnail.Sketch(stored: reviewStyle) == sketch) {
                         withAnimation(Motion.easeOut()) { reviewStyle = sketch.rawValue }
                     } thumbnail: {
                         ReviewStyleThumbnail(sketch)
@@ -75,7 +76,7 @@ struct AISettingsSection: View {
         } header: {
             Text("app:ai.settings.review")
         } footer: {
-            Text(detail(ReviewStyleThumbnail.Sketch(rawValue: reviewStyle) ?? .inline))
+            Text(detail(ReviewStyleThumbnail.Sketch(stored: reviewStyle)))
         }
         Section {
             LabeledContent("app:ai.settings.model") {
@@ -132,7 +133,6 @@ struct AISettingsSection: View {
         switch sketch {
         case .inline: "app:ai.review.inline"
         case .diff: "app:ai.review.diff"
-        case .bubble: "app:ai.review.bubble"
         }
     }
 
@@ -140,7 +140,6 @@ struct AISettingsSection: View {
         switch sketch {
         case .inline: "app:ai.review.inline.detail"
         case .diff: "app:ai.review.diff.detail"
-        case .bubble: "app:ai.review.bubble.detail"
         }
     }
 }

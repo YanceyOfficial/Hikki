@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 27
+export const PROTOCOL_VERSION = 28
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -82,8 +82,6 @@ export type ToNativeMessage =
       action: string
       instruction?: string
       answer: boolean
-      /** Ask for a reason per change (`notes` in the reply; review style C). */
-      explain?: boolean
       units: { key: string; html: string }[]
       context: { title: string; before: string; after: string; previous?: string }
       /** A picture or a PDF the question is about (the block menu's Ask AI on an image or a file): the workspace asset
@@ -94,6 +92,10 @@ export type ToNativeMessage =
   | { type: 'scroll'; docId: string; top: number }
   /** Stop an AI request (the review was closed, or the page changed under it). */
   | { type: 'aiCancel'; id: string }
+  /** The model judged a request in the user's own words (`custom`, `ask`) more than an edit of the selection or a short
+   * answer (`{"handoff": …}`): the app continues it in the chat — `instruction` as the question, `selection` (the
+   * passage's text) as its context. */
+  | { type: 'aiHandoff'; docId: string; instruction: string; selection: string }
   /** A change Ask AI proposed (`window.hikki.aiChanges`) was reviewed in the page, or went stale; with the block's text
    * before and after, for the chat's reviewed stack. */
   | {

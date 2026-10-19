@@ -456,6 +456,9 @@
     "accept": "接受",
     "copy": "复制",
     "insertBelow": "插入到下方",
+    "notes": "AI 的说明",
+    "copied": "已复制",
+    "inserted": "已插入",
     "followUp": "告诉 AI 要怎么改…",
     "askFollowUp": "继续提问…",
     "noChanges": "这里没有需要修改的地方。",
@@ -486,9 +489,6 @@
         "delete": "删除"
       }
     },
-    "replace": "替换选中内容",
-    "pageUntouched": "替换之前页面不会改动。",
-    "removed": "（删除）",
     "changesInLines_one": "{{total}} 行中的 {{changed}} 行有 {{count}} 处修改",
     "changesInLines_other": "{{total}} 行中的 {{changed}} 行有 {{count}} 处修改",
     "askPlaceholder": "就此询问 AI…"

@@ -456,6 +456,9 @@
     "accept": "Accept",
     "copy": "Copy",
     "insertBelow": "Insert below",
+    "notes": "What AI says",
+    "copied": "Copied",
+    "inserted": "Inserted",
     "followUp": "Tell AI what to change…",
     "askFollowUp": "Ask a follow-up…",
     "noChanges": "Nothing to change here.",
@@ -486,9 +489,6 @@
         "delete": "Delete"
       }
     },
-    "replace": "Replace selection",
-    "pageUntouched": "The page changes only when you replace.",
-    "removed": "(removed)",
     "changesInLines_one": "{{count}} change in {{changed}} of {{total}} lines",
     "changesInLines_other": "{{count}} changes in {{changed}} of {{total}} lines",
     "askPlaceholder": "Ask AI about this…"

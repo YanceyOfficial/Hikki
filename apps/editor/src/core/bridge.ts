@@ -420,7 +420,11 @@ export class EditorBridge {
     request: (message) => void this.send({ type: 'aiRequest', ...message }),
     cancel: (id) => void this.send({ type: 'aiCancel', id }),
     title: () => this.page.get().title,
-    style: () => this.aiReviewStyle
+    style: () => this.aiReviewStyle,
+    handoff: ({ instruction, selection }) => {
+      const { docId } = this.page.get()
+      if (docId) void this.send({ type: 'aiHandoff', docId, instruction, selection })
+    }
   }
 
   /** Changes Ask AI proposed to the page: each verdict (and the change in view) goes to the chat's cards. */
@@ -610,8 +614,9 @@ export class EditorBridge {
   }
 
   /** Settings → AI → Review style: how the next edit is shown. */
-  setAIReviewStyle(style: AIReviewStyle): void {
-    if (style === 'inline' || style === 'diff' || style === 'bubble') this.aiReviewStyle = style
+  /** Anything but `diff` — the retired `bubble` card among them — reviews in the page. */
+  setAIReviewStyle(style: string): void {
+    this.aiReviewStyle = style === 'diff' ? 'diff' : 'inline'
   }
 
   /** `window.hikki.aiEvent`: one event of an AI request's answer. */

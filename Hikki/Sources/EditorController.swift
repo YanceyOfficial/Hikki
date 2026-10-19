@@ -354,6 +354,8 @@ final class EditorController {
     /// AI on the selection: the request goes to the app's AI service; its events come back through `sendAIEvent`.
     @ObservationIgnored var onAIRequest: ((AIRequestPayload) -> Void)?
     @ObservationIgnored var onAICancel: ((String) -> Void)?
+    /// AI on the selection handed the request to the chat (too big for an edit): ContentView opens the chat with it.
+    @ObservationIgnored var onAIHandoff: ((AIHandoff) -> Void)?
 
     /// One event of an AI request's answer, to the page (`window.hikki.aiEvent`).
     func sendAIEvent(_ event: [String: Any]) {
@@ -737,6 +739,9 @@ final class EditorController {
             onAIRequest?(payload)
         case .aiCancel(let id):
             onAICancel?(id)
+        case .aiHandoff(let handoff):
+            Log.info("AI handoff", category: "ai", context: ["docId": handoff.docId])
+            onAIHandoff?(handoff)
         case .aiChange(let docId, let id, let status, let before, let after):
             // A page loaded again is offered only what is still pending.
             if aiChangeOffer?.docId == docId, let index = aiChangeOffer?.changes.firstIndex(where: { $0.id == id }) {

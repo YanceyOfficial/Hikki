@@ -193,15 +193,19 @@ struct BridgeMessageTests {
                 == .commentEdit(docId: "p1", threadId: "t", commentId: "c", body: "更正"))
         #expect(
             try decode([
-                "type": "aiRequest", "id": "r1", "action": "tone:casual", "answer": false, "explain": true,
+                "type": "aiRequest", "id": "r1", "action": "tone:casual", "answer": false,
                 "units": [["key": "p1:0", "html": "Hello <strong>there</strong>"]],
                 "context": ["title": "Notes", "before": "", "after": "Bye"],
             ])
                 == .aiRequest(
                     AIRequestPayload(
-                        id: "r1", action: "tone:casual", answer: false, explain: true,
+                        id: "r1", action: "tone:casual", answer: false,
                         units: [.init(key: "p1:0", html: "Hello <strong>there</strong>")],
                         context: .init(title: "Notes", before: "", after: "Bye"))))
+        #expect(
+            try decode(["type": "aiHandoff", "docId": "p1", "instruction": "Write a report on this", "selection": "Foxes"])
+                == .aiHandoff(AIHandoff(docId: "p1", instruction: "Write a report on this", selection: "Foxes")))
+        #expect(throws: (any Error).self) { try decode(["type": "aiHandoff", "docId": "p1", "instruction": "x"]) }
         #expect(try decode(["type": "activeHeading", "docId": "p1", "id": NSNull()]) == .activeHeading(docId: "p1", id: nil))
         #expect(try decode(["type": "openLink", "url": "https://example.com"]) == .openLink(url: "https://example.com"))
         #expect(try decode(["type": "suggestReading", "text": "漢字"]) == .suggestReading(text: "漢字"))

@@ -129,7 +129,6 @@ final class AIService {
     static func task(_ payload: AIRequestPayload, media: AIMessage.Part? = nil) -> AITask {
         AITask(
             action: payload.action, instruction: payload.instruction, answer: payload.answer,
-            explain: payload.explain ?? false,
             units: payload.units.map { AITask.Unit(key: $0.key, html: $0.html) }, title: payload.context.title,
             before: payload.context.before, after: payload.context.after, previous: payload.context.previous,
             language: appLanguage, media: media)

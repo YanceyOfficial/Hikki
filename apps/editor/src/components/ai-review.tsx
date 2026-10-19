@@ -1,11 +1,12 @@
 import {
   ArrowClockwiseIcon,
   ArrowUpIcon,
+  CheckIcon,
   CopyIcon,
   GlobeIcon,
   TextAlignLeftIcon
 } from '@phosphor-icons/react'
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -19,8 +20,7 @@ import { Kbd } from '@/components/ui/kbd'
 import { markdownDOM } from '../core/convert'
 import { t } from '../core/i18n'
 import type { AIReviewStyle } from '../extensions/ai-review'
-import type { AINote } from '../lib/ai-content'
-import { BubbleReview, DiffReview, type AIReviewLine } from './ai-review-styles'
+import { DiffReview, type AIReviewLine } from './ai-review-styles'
 import type { FloatingAnchor, FloatingLayer } from './floating'
 
 export type AIReviewProps = {
@@ -34,15 +34,21 @@ export type AIReviewProps = {
     /** For edits: how many separate changes there are. */
     changes: number
     style: AIReviewStyle
-    /** Each unit's diff (styles B and C draw them in the bar). */
+    /** Each unit's diff (style B draws them in the bar). */
     lines: AIReviewLine[]
-    notes: AINote[]
+    /** What the model says to the user beside an edit (Markdown each), and which of them are in the page already. */
+    notes: string[]
+    inserted: number[]
+    /** The edit was accepted; its notes stay open. */
+    accepted: boolean
   }
   onAccept: () => void
   onDiscard: () => void
   onRetry: () => void
   onFollowUp: (instruction: string) => void
   onInsertBelow: () => void
+  /** Puts note `index` into the page below the selection (the review stays open). */
+  onInsertNote: (index: number) => void
   /** Copies `text`, or the answer. */
   onCopy: (text?: string) => void
 }
@@ -73,6 +79,77 @@ function MarkdownAnswer({ text }: { text: string }) {
       className="hk-ai-answer max-h-[min(360px,50vh)] overflow-y-auto overscroll-contain px-1 text-sm leading-relaxed"
       data-testid="ai-answer"
     />
+  )
+}
+
+/** A note's "Copied" lasts this long. */
+const COPIED_MS = 1500
+
+/**
+ * The edit's notes — what the model says rather than writes into the page (a verdict, an answer, an explanation) — in a
+ * card of their own: each drawn as page blocks, with Copy and Insert below (the user may keep it as notes).
+ */
+function NotesCard({
+  notes,
+  inserted,
+  onCopy,
+  onInsert
+}: {
+  notes: string[]
+  inserted: number[]
+  onCopy: (text: string) => void
+  onInsert: (index: number) => void
+}) {
+  const [copied, setCopied] = useState<number | null>(null)
+  // "Copied" for a moment, as the code block's Copy says it.
+  useEffect(() => {
+    if (copied === null) return
+    const timer = setTimeout(() => setCopied(null), COPIED_MS)
+    return () => clearTimeout(timer)
+  }, [copied])
+  return (
+    <section
+      className="flex flex-col gap-1 rounded-lg border border-border bg-muted/40 p-1.5"
+      aria-label={t('ai.notes')}
+      data-testid="ai-notes"
+    >
+      {notes.map((note, index) => (
+        <div
+          key={index}
+          className="flex flex-col gap-1 not-first:border-t not-first:border-border not-first:pt-1.5"
+          data-testid="ai-note"
+        >
+          <MarkdownAnswer text={note} />
+          <div className="flex items-center justify-end gap-1">
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={() => {
+                onCopy(note)
+                setCopied(index)
+              }}
+            >
+              {copied === index ? <CheckIcon aria-hidden /> : <CopyIcon aria-hidden />}
+              {copied === index ? t('ai.copied') : t('ai.copy')}
+            </Button>
+            <Button
+              variant="ghost"
+              size="xs"
+              disabled={inserted.includes(index)}
+              onClick={() => onInsert(index)}
+              data-testid="ai-note-insert"
+            >
+              {inserted.includes(index) ? (
+                <CheckIcon aria-hidden />
+              ) : (
+                <TextAlignLeftIcon aria-hidden />
+              )}
+              {inserted.includes(index) ? t('ai.inserted') : t('ai.insertBelow')}
+            </Button>
+          </div>
+        </div>
+      ))}
+    </section>
   )
 }
 
@@ -146,9 +223,10 @@ function errorText(error: NonNullable<AIReviewProps['session']['error']>): strin
 }
 
 /**
- * Under the selection while AI works on it (review style A): a working line, then — for an edit — the change count,
- * a follow-up field and Retry / Discard / Accept (the edit itself is drawn in the page); for an answer, a card with
- * the text as it streams in, its sources, and Insert below / Copy / Close. Errors say what to do.
+ * Under the selection while AI works on it: a working line, then — for an edit — the change count, a follow-up field
+ * and Retry / Discard / Accept (style A draws the edit in the page, style B as − / + lines here), and the model's notes
+ * in a card below; for an answer, a card with the text as it streams in, its sources, and Insert below / Copy / Close.
+ * Errors say what to do.
  */
 export function AIReview({
   session,
@@ -157,10 +235,23 @@ export function AIReview({
   onRetry,
   onFollowUp,
   onInsertBelow,
+  onInsertNote,
   onCopy
 }: AIReviewProps) {
-  const { status, answer, reply, searching, citations, error, changes, style, lines, notes } =
-    session
+  const {
+    status,
+    answer,
+    reply,
+    searching,
+    citations,
+    error,
+    changes,
+    style,
+    lines,
+    notes,
+    inserted,
+    accepted
+  } = session
   const working =
     searching === null
       ? answer
@@ -219,7 +310,7 @@ export function AIReview({
         </div>
       )}
 
-      {status === 'review' && changes === 0 && (
+      {status === 'review' && changes === 0 && notes.length === 0 && (
         <div className="flex items-center justify-between gap-2 px-1">
           <p className="m-0 text-sm text-muted-foreground">{t('ai.noChanges')}</p>
           <Button variant="outline" size="sm" onClick={onDiscard}>
@@ -230,15 +321,6 @@ export function AIReview({
 
       {status === 'review' && changes > 0 && style === 'diff' && (
         <DiffReview lines={lines} changes={changes} onAccept={onAccept} onDiscard={onDiscard} />
-      )}
-      {status === 'review' && changes > 0 && style === 'bubble' && (
-        <BubbleReview
-          lines={lines}
-          notes={notes}
-          onAccept={onAccept}
-          onDiscard={onDiscard}
-          onCopy={onCopy}
-        />
       )}
       {status === 'review' && changes > 0 && style === 'inline' && (
         <>
@@ -260,6 +342,27 @@ export function AIReview({
               <Kbd className="bg-primary-foreground/15 text-primary-foreground">↵</Kbd>
             </Button>
           </div>
+        </>
+      )}
+
+      {status === 'review' && notes.length > 0 && (
+        <>
+          <NotesCard notes={notes} inserted={inserted} onCopy={onCopy} onInsert={onInsertNote} />
+          {/* Nothing (left) to accept: the notes alone, closed from here. */}
+          {changes === 0 && (
+            <div className="flex flex-wrap items-center justify-end gap-1.5">
+              {!accepted && (
+                <Button variant="ghost" size="sm" onClick={onRetry}>
+                  <ArrowClockwiseIcon aria-hidden />
+                  {t('ai.retry')}
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={onDiscard} data-testid="ai-close">
+                {t('ai.close')}
+                <Kbd>esc</Kbd>
+              </Button>
+            </div>
+          )}
         </>
       )}
 

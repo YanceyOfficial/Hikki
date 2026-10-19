@@ -1,12 +1,17 @@
 import SwiftUI
 
 /// A miniature of how an AI edit is reviewed (Settings → AI), drawn with one real edit — "We was late" fixed to "We
-/// were late" — so the three styles compare on the same change: `inline` — the change in the sentence; `diff` — the
-/// sentence before and after on − / + rows; `bubble` — the sentence untouched, a card naming the change and why. The
+/// were late" — so the two styles compare on the same change: `inline` — the change in the sentence; `diff` — the
+/// sentence before and after on − / + rows. (What the model says beside an edit is always in a card under either.) The
 /// sample stays English in every language: it shows a layout, not copy.
 public struct ReviewStyleThumbnail: View {
     public enum Sketch: String, CaseIterable, Sendable {
-        case inline, diff, bubble
+        case inline, diff
+
+        /// The style a stored value names; anything else — the retired `bubble` card among them — reads as `inline`.
+        public init(stored: String?) {
+            self = stored.flatMap(Sketch.init(rawValue:)) ?? .inline
+        }
     }
 
     private let sketch: Sketch
@@ -19,7 +24,6 @@ public struct ReviewStyleThumbnail: View {
     private static let after = "were"
     private static let head = "We "
     private static let tail = " late to the meeting."
-    private static let reason = "plural subject"
 
     public var body: some View {
         VStack(alignment: .leading, spacing: Spacing.s1_5) {
@@ -38,20 +42,6 @@ public struct ReviewStyleThumbnail: View {
                     diffRow(sign: "−", text: sentence(removed: true, added: false, struck: false), wash: Theme.washRed)
                     diffRow(sign: "+", text: sentence(removed: false, added: true), wash: Theme.washGreen)
                 }
-                Spacer(minLength: 0)
-            case .bubble:
-                Text(verbatim: Self.head + Self.before + Self.tail)
-                    .padding(.horizontal, Spacing.px)
-                    .background(Theme.selection, in: .rect(cornerRadius: Radius.sm))
-                    .lineLimit(1)
-                VStack(alignment: .leading, spacing: Spacing.s0_5) {
-                    Text(change)
-                    Text(verbatim: Self.reason).foregroundStyle(Theme.mutedForeground)
-                }
-                .padding(Spacing.s1_5)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Theme.popover, in: .rect(cornerRadius: Radius.md))
-                .overlay(RoundedRectangle(cornerRadius: Radius.md).strokeBorder(Theme.border))
                 Spacer(minLength: 0)
             }
         }
@@ -81,16 +71,6 @@ public struct ReviewStyleThumbnail: View {
             text += word
         }
         return text + AttributedString(Self.tail)
-    }
-
-    /// "was → were" for the card.
-    private var change: AttributedString {
-        var old = AttributedString(Self.before)
-        old.foregroundColor = Theme.inkRed
-        old.strikethroughStyle = .single
-        var new = AttributedString(Self.after)
-        new.foregroundColor = Theme.inkGreen
-        return old + AttributedString(" → ") + new
     }
 
     private func diffRow(sign: String, text: AttributedString, wash: Color) -> some View {
@@ -168,9 +148,8 @@ public struct ThumbnailOption<Thumbnail: View>: View {
     HStack(spacing: Spacing.s3) {
         ThumbnailOption("Inline", isSelected: true, action: {}) { ReviewStyleThumbnail(.inline) }
         ThumbnailOption("Diff", isSelected: false, action: {}) { ReviewStyleThumbnail(.diff) }
-        ThumbnailOption("Bubble", isSelected: false, action: {}) { ReviewStyleThumbnail(.bubble) }
     }
     .padding()
-    .frame(width: 460)
+    .frame(width: 320)
     .background(Theme.muted)
 }
