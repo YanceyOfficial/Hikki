@@ -1,7 +1,9 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import type { Editor } from '@tiptap/core'
+import { siFigma } from 'simple-icons'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { brandFill, isDarkHex } from '../src/components/brand-logos'
 import { BLOCK_TYPES } from '../src/core/blocks'
 import { createEditor } from '../src/core/editor'
 import { openEmbedPanel } from '../src/extensions/embed'
@@ -247,21 +249,42 @@ describe('the "/" menu’s Embeds group', () => {
     expect(screen.getByPlaceholderText('Paste a draw.io or diagrams.net link…')).toBeTruthy()
   })
 
-  it('logos are single-colour marks the size of the icons beside them', () => {
+  it('logos are single-path marks in their brand colour, the size of the icons beside them', () => {
     for (const block of embedBlocks.filter((b) => b.id !== 'embed' && b.id !== 'html')) {
       const { container, unmount } = render(
         <block.icon size={18} className="text-subtle-foreground" />
       )
       const svg = container.querySelector('svg')!
       expect(svg.getAttribute('width'), block.id).toBe('18')
-      expect(svg.getAttribute('fill'), block.id).toBe('currentColor')
+      const fill = svg.getAttribute('fill')!
+      // A brand colour, or the row's text colour for a near-black one (GitHub, CodeSandbox).
+      expect(fill === 'currentColor' || /^#[0-9A-F]{6}$/iu.test(fill), block.id).toBe(true)
       expect(svg.getAttribute('class'), block.id).toBe('text-subtle-foreground')
       expect(svg.querySelectorAll('path'), block.id).toHaveLength(1)
       expect(svg.querySelector('[fill]:not(svg)'), block.id).toBeNull()
       unmount()
     }
+    expect(['gist', 'codesandbox'].map((id) => colourOf(id))).toEqual([
+      'currentColor',
+      'currentColor'
+    ])
+    expect(colourOf('figma')).toBe(`#${siFigma.hex}`)
+  })
+
+  it('a near-black brand colour counts as dark', () => {
+    expect(isDarkHex('181717')).toBe(true)
+    expect(isDarkHex('F24E1E')).toBe(false)
+    expect(brandFill('18A0FB')).toBe('#18A0FB')
   })
 })
+
+function colourOf(id: string): string | null {
+  const block = embedBlocks.find((b) => b.id === id)!
+  const { container, unmount } = render(<block.icon size={18} />)
+  const fill = container.querySelector('svg')!.getAttribute('fill')
+  unmount()
+  return fill
+}
 
 const gist = () => embedFromURL('https://gist.github.com/octocat/6cad326836d38bd3a7ae')!
 /** A frame's size report, as a gist's frame posts it (from the frame unless said otherwise). */

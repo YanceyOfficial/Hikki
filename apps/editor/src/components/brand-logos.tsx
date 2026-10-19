@@ -1,8 +1,9 @@
 /**
  * Logos of the services the "/" menu embeds, from Simple Icons (simpleicons.org, CC0; the `simple-icons` package,
  * one named import per mark so the bundle keeps only these). They are trademarks of their owners, used only to
- * identify each service next to its embed. Each is one path drawn in `currentColor`, so a logo takes its row's
- * text colour like the Phosphor icons around it, at the same size: the brand colours stay out of the menus.
+ * identify each service next to its embed. Each is one path in its brand colour (as kagi's key icons draw them), at
+ * the Phosphor icons' size; a brand colour too dark to read on a dark surface (GitHub's near-black) takes the row's
+ * text colour instead, so it reads in both themes.
  */
 import type { SVGProps } from 'react'
 import {
@@ -27,17 +28,20 @@ export type LogoProps = Omit<SVGProps<SVGSVGElement>, 'ref'> & { size?: number |
  */
 const VIEW_BOX = '-2 -2 28 28'
 
+/** Whether a 6-digit brand colour is too dark to see on a dark surface (perceived luminance, kagi's `isHexDark`). */
+export function isDarkHex(hex: string): boolean {
+  const [r, g, b] = [0, 2, 4].map((i) => Number.parseInt(hex.slice(i, i + 2), 16))
+  return 0.299 * r + 0.587 * g + 0.114 * b < 80
+}
+
+/** The logo's fill: its brand colour, or the row's text colour when that colour is near-black. */
+export const brandFill = (hex: string) => (isDarkHex(hex) ? 'currentColor' : `#${hex}`)
+
 function logo(icon: SimpleIcon, name: string) {
+  const fill = brandFill(icon.hex)
   function Logo({ size = 18, ...rest }: LogoProps) {
     return (
-      <svg
-        viewBox={VIEW_BOX}
-        width={size}
-        height={size}
-        fill="currentColor"
-        data-logo={name}
-        {...rest}
-      >
+      <svg viewBox={VIEW_BOX} width={size} height={size} fill={fill} data-logo={name} {...rest}>
         <path d={icon.path} />
       </svg>
     )

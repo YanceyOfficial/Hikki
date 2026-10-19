@@ -339,7 +339,7 @@ HikkiUITests/                 XCUITest flows
   `<iframe>` on a third-party page (sandboxed, keeps its origin) or on a snippet of HTML (`srcdoc`, no origin) — behind
   the "/" menu's Embeds group — a short list of work services: Embed, HTML, Google Drive, Figma, Miro, Loom, Airtable,
   Calendly, GitHub Gist, CodeSandbox, draw.io, Excalidraw, each by its Simple Icons mark (`simple-icons`, one named
-  import per logo, `apps/editor/src/components/brand-logos.tsx`), monochrome in the row's colour at the icons' size.
+  import per logo, `apps/editor/src/components/brand-logos.tsx`), in its brand colour (near-black ones in the row's text colour) at the icons' size.
   `embedFromURL` turns a pasted link into the provider's embeddable URL (YouTube, Vimeo, Figma's embed.figma.com, Maps,
   Drive/Docs, gists as a script snippet, tweets via platform.twitter.com, CodePen, draw.io's viewer, Loom, Excalidraw,
   Miro's live embed, Airtable views, Spotify, CodeSandbox, Calendly, Typeform) — services without a row still embed
