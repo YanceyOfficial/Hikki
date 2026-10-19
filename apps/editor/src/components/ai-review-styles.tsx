@@ -1,12 +1,10 @@
-import { ArrowRightIcon, CopyIcon } from '@phosphor-icons/react'
 import { cn } from 'cn'
 
 import { Button } from '@/components/ui/button'
 import { Kbd } from '@/components/ui/kbd'
 
 import { t } from '../core/i18n'
-import type { AINote } from '../lib/ai-content'
-import { changePairs, diffSide, type DiffSegment } from '../lib/ai-diff'
+import { diffSide, type DiffSegment } from '../lib/ai-diff'
 
 export type AIReviewLine = { key: string; diff: DiffSegment[] }
 
@@ -106,59 +104,6 @@ function DiffRow({
         {sign}
       </span>
       <span className="min-w-0 break-words">{children}</span>
-    </div>
-  )
-}
-
-/**
- * Review style C: a card listing each change — what it replaced, with what, and why (the model's notes; without them,
- * the changes from the diff). The page is untouched until "Replace selection".
- */
-export function BubbleReview({
-  lines,
-  notes,
-  onAccept,
-  onDiscard,
-  onCopy
-}: {
-  lines: AIReviewLine[]
-  notes: AINote[]
-  onAccept: () => void
-  onDiscard: () => void
-  onCopy: (text: string) => void
-}) {
-  const items: AINote[] =
-    notes.length > 0
-      ? notes
-      : lines.flatMap((line) => changePairs(line.diff).map((pair) => ({ ...pair, why: '' })))
-  const result = lines.map((line) => diffSide(line.diff, 'after')).join('\n')
-  return (
-    <div className="flex flex-col gap-2" data-testid="ai-review-bubble">
-      <ul className="m-0 flex max-h-[min(320px,45vh)] list-none flex-col gap-1.5 overflow-y-auto p-0 px-1 text-sm">
-        {items.map((item, index) => (
-          <li key={index} className="flex flex-wrap items-baseline gap-x-1.5">
-            <span className="font-medium text-ink-red line-through decoration-1">
-              {item.from || '∅'}
-            </span>
-            <ArrowRightIcon className="shrink-0 self-center text-placeholder" aria-hidden />
-            <span className="font-medium text-ink-green">{item.to || t('ai.removed')}</span>
-            {item.why && <span className="text-muted-foreground">· {item.why}</span>}
-          </li>
-        ))}
-      </ul>
-      <p className="m-0 px-1 text-xs text-muted-foreground">{t('ai.pageUntouched')}</p>
-      <div className="flex flex-wrap items-center justify-end gap-1.5">
-        <Button variant="ghost" size="sm" onClick={() => onCopy(result)}>
-          <CopyIcon aria-hidden />
-          {t('ai.copy')}
-        </Button>
-        <Button variant="outline" size="sm" onClick={onDiscard} data-testid="ai-discard">
-          {t('ai.close')}
-        </Button>
-        <Button size="sm" onClick={onAccept} data-testid="ai-accept">
-          {t('ai.replace')}
-        </Button>
-      </div>
     </div>
   )
 }

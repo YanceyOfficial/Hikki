@@ -17,7 +17,6 @@ import {
 import { applyShortcutOverrides, type ShortcutOverride } from './core/shortcuts'
 import type { TouchTool } from './core/touch-tools'
 import { devTransport, webkitTransport } from './core/transport'
-import type { AIReviewStyle } from './extensions/ai-review'
 import type { ThreadItem } from './extensions/comments'
 import { findShortcut, type FindMode } from './extensions/find'
 import type { PageIndexEntry } from './extensions/page-links'
@@ -108,8 +107,8 @@ window.hikki = {
   openComment: (threadId: string) => bridge.openComment(threadId),
   // The split pane's editor: a loading page never takes the keyboard from the page beside it.
   setAutoFocus: (on: boolean) => bridge.setAutoFocus(on),
-  // Settings → AI → Review style: inline (A), diff (B) or bubble (C).
-  setAIReviewStyle: (style: AIReviewStyle) => bridge.setAIReviewStyle(style),
+  // Settings → AI → Review style: inline (A) or diff (B); anything else reads as inline.
+  setAIReviewStyle: (style: string) => bridge.setAIReviewStyle(style),
   // Split view (Mac, a wide iPad): what a page dropped on the right edge does — open / replace / here / off.
   setSplitDrop: (mode: SplitDropMode) => bridge.setSplitDrop(mode),
   // Page → Lock / Unlock while the page is open.

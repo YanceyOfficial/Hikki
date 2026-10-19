@@ -189,6 +189,9 @@ final class Navigator {
 
     /// Ask AI opened with a question to send at once, about these pages (Home's suggestions); ContentView sends it.
     var pendingAIQuestion: (text: String, pageIDs: [String])?
+    /// A request AI on the selection handed to the chat (either editor), waiting for ContentView to open the chat —
+    /// the inspector, or the Ask AI sheet (`AIHandoff.placement`) — and send it there.
+    var aiHandoff: AIHandoff?
 
     func newPage(parentId: String? = nil) {
         guard let id = model?.createPage(parentId: parentId) else { return }

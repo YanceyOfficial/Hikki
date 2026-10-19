@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createEditor } from '../src/core/editor'
 import {
   fragmentText,
+  isHandoff,
   OBJECT_CHAR,
   parseEditNotes,
   parseEditReply,
@@ -99,27 +100,41 @@ describe('parseEditReply', () => {
 })
 
 describe('parseEditNotes', () => {
-  it('keeps notes that name a change, as strings, capped', () => {
+  it('keeps the notes as trimmed Markdown strings, anything else dropped, capped', () => {
     const reply = JSON.stringify({
-      blocks: [],
+      blocks: [{ id: 'p1:0', html: 'x' }],
       notes: [
-        { from: 'が', to: '', why: 'から already marks it' },
-        { from: 5, to: 'x' },
-        { why: 'nothing named' },
-        'junk',
+        '  第三句语法正确：**主谓一致**。 ',
+        '',
+        '   ',
+        { from: 'a', to: 'b', why: 'old shape' },
+        5,
         null
       ]
     })
-    expect(parseEditNotes(reply)).toEqual([
-      { from: 'が', to: '', why: 'から already marks it' },
-      { from: '', to: 'x', why: '' }
+    expect(parseEditNotes(reply)).toEqual(['第三句语法正确：**主谓一致**。'])
+    // Fenced, with words around it, as models do.
+    expect(parseEditNotes('Here:\n```json\n{"blocks":[],"notes":["Correct."]}\n```')).toEqual([
+      'Correct.'
     ])
     expect(parseEditNotes('{"blocks":[]}')).toEqual([])
+    expect(parseEditNotes('{"notes":"not a list"}')).toEqual([])
     expect(parseEditNotes('nope')).toEqual([])
-    const many = JSON.stringify({
-      notes: Array.from({ length: 50 }, () => ({ from: 'a'.repeat(500) }))
-    })
-    expect(parseEditNotes(many)).toHaveLength(30)
-    expect(parseEditNotes(many)[0].from).toHaveLength(300)
+    const many = JSON.stringify({ notes: Array.from({ length: 20 }, () => 'a'.repeat(5000)) })
+    expect(parseEditNotes(many)).toHaveLength(10)
+    expect(parseEditNotes(many)[0]).toHaveLength(4000)
+  })
+})
+
+describe('isHandoff', () => {
+  it('is a handoff only when the reply is one, never an edit that mentions it', () => {
+    expect(isHandoff('{"handoff":{"reason":"needs research"}}')).toBe(true)
+    expect(isHandoff('```json\n{"handoff": {}}\n```')).toBe(true)
+    expect(isHandoff('{"handoff":true}')).toBe(true)
+    expect(isHandoff('{"blocks":[{"id":"p1:0","html":"x"}],"handoff":{}}')).toBe(false)
+    expect(isHandoff('{"handoff":"yes"}')).toBe(false)
+    expect(isHandoff('{"handoff":[]}')).toBe(false)
+    expect(isHandoff('The word "handoff" in prose.')).toBe(false)
+    expect(isHandoff('{"blocks":[]}')).toBe(false)
   })
 })

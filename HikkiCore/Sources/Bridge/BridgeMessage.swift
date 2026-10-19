@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of apps/editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 27
+    public static let version = 28
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -71,6 +71,8 @@ public enum BridgeMessage: Sendable, Equatable {
     case aiRequest(AIRequestPayload)
     /// Stop that AI request.
     case aiCancel(id: String)
+    /// AI on the selection judged the request too big for it (`{"handoff": …}`): the app continues it in the chat.
+    case aiHandoff(AIHandoff)
     /// A change Ask AI proposed to the page was reviewed in it (approved, skipped, edited) or went stale; with the
     /// block's text before and after, for the reviewed stack.
     case aiChange(docId: String, id: String, status: AIPageChange.Status, before: String?, after: String?)
@@ -174,6 +176,7 @@ extension BridgeMessage: Decodable {
         case type, protocolVersion, snapshot, active, level, message, context, docId, icon, cover, fileExtension, dataBase64
         case size, id, url, block, text, headings, words, characters, name, top
         case threadId, quote, body, resolved, commentId, kind, code, detail, open, status, before, after, blockId
+        case instruction, selection
     }
 
     public init(from decoder: Decoder) throws {
@@ -189,6 +192,12 @@ extension BridgeMessage: Decodable {
             self = .aiRequest(try AIRequestPayload(from: decoder))
         case "aiCancel":
             self = .aiCancel(id: try c.decode(String.self, forKey: .id))
+        case "aiHandoff":
+            self = .aiHandoff(
+                AIHandoff(
+                    docId: try c.decode(String.self, forKey: .docId),
+                    instruction: try c.decode(String.self, forKey: .instruction),
+                    selection: try c.decode(String.self, forKey: .selection)))
         case "aiChange":
             self = .aiChange(
                 docId: try c.decode(String.self, forKey: .docId), id: try c.decode(String.self, forKey: .id),
@@ -340,14 +349,12 @@ public struct AIRequestPayload: Decodable, Equatable, Sendable {
     public var action: String
     public var instruction: String?
     public var answer: Bool
-    /// Ask for a short reason per change (review style C).
-    public var explain: Bool?
     public var units: [Unit]
     public var context: Context
     public var media: Media?
 
     public init(
-        id: String, action: String, instruction: String? = nil, answer: Bool, explain: Bool? = nil, units: [Unit],
+        id: String, action: String, instruction: String? = nil, answer: Bool, units: [Unit],
         context: Context, media: Media? = nil
     ) {
         self.media = media
@@ -355,7 +362,6 @@ public struct AIRequestPayload: Decodable, Equatable, Sendable {
         self.action = action
         self.instruction = instruction
         self.answer = answer
-        self.explain = explain
         self.units = units
         self.context = context
     }

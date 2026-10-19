@@ -43,7 +43,8 @@ struct ContentView: View {
     /// What both of the window's editors show the same way; each holds it and replays it when its page comes up.
     private var editorSettings: EditorSettings {
         EditorSettings(
-            tone: tone, spellcheck: spellcheck, aiReviewStyle: aiReviewStyle, shortcuts: ShortcutStore.shared.overrides)
+            tone: tone, spellcheck: spellcheck,
+            aiReviewStyle: ReviewStyleThumbnail.Sketch(stored: aiReviewStyle).rawValue, shortcuts: ShortcutStore.shared.overrides)
     }
 
     var body: some View {
@@ -132,8 +133,13 @@ struct ContentView: View {
                 .sheetOverVerticalBar()
             }
             .sheet(isPresented: $navigator.isAskingAI) { AIChatSheet(chat: chat).sheetOverVerticalBar() }
-            // Asked from a page: about that page; from the home screen: about nothing in particular.
+            // Asked from a page: about that page; from the home screen: about nothing in particular. A handoff: about
+            // the page it came from.
             .onChange(of: navigator.isAskingAI) { _, asking in
+                if asking, let handoff = navigator.aiHandoff {
+                    sendAIHandoff(handoff)
+                    return
+                }
                 if asking { chat.show(page: navigator.compactColumn == .detail ? navigator.route.pageID : nil) }
                 // A suggestion from Home: its pages as context, the question sent.
                 if asking, let question = navigator.pendingAIQuestion {
@@ -155,7 +161,18 @@ struct ContentView: View {
             .background(HideOnClose())
             // Settings (⌘,): Notion's dialog over the window, its pages in a sidebar.
             .sheet(isPresented: $navigator.isShowingSettings) { SettingsView() }
+            // Ask AI as a sheet on the Mac only for a handoff in a split window (the inspector is off while split).
+            .sheet(isPresented: $navigator.isAskingAI) {
+                AIChatSheet(chat: chat).frame(minWidth: Size.inspectorMax, minHeight: Size.settingsHeight)
+            }
+            .onChange(of: navigator.isAskingAI) { _, asking in
+                if asking, let handoff = navigator.aiHandoff { sendAIHandoff(handoff) }
+            }
         #endif
+        // AI on the selection handed a request to the chat: it comes up where it belongs and the request is sent.
+        .onChange(of: navigator.aiHandoff) { _, handoff in
+            if let handoff { routeAIHandoff(handoff) }
+        }
         #if os(iOS)
             // iPhone: search takes the whole screen (a sheet's large corner and its keyboard avoidance hid the field);
             // a page-sized sheet on iPad.
@@ -387,6 +404,7 @@ struct ContentView: View {
         editor.onSplitDropHover = { [weak navigator] active in navigator?.splitDropHover = active }
         editor.setSplitDrop(mainSplitDrop)
         ai.attach(editor)
+        editor.onAIHandoff = { [weak navigator] handoff in navigator?.aiHandoff = handoff }
         // Ask AI's changes to the page are reviewed in the main editor; its verdicts go back to the chat's cards.
         chat.editor = editor
         editor.onAIChange = { [weak chat] docId, id, status, before, after in
@@ -550,6 +568,31 @@ struct ContentView: View {
         }
     #endif
 
+    /// Opens the chat for a handoff: the inspector in AI mode beside the page (Mac, a wide iPad), or the Ask AI sheet
+    /// (iPhone, and a split window, where the inspector is off); then sends it.
+    private func routeAIHandoff(_ handoff: AIHandoff) {
+        switch AIHandoff.placement(wide: wide, isSplit: navigator.isSplit) {
+        case .inspector:
+            navigator.inspectorMode = .ai
+            navigator.isShowingInspector = true
+            sendAIHandoff(handoff)
+        case .sheet:
+            // An open sheet takes it at once; else when it comes up (`isAskingAI`'s change).
+            if navigator.isAskingAI { sendAIHandoff(handoff) } else { navigator.isAskingAI = true }
+        }
+    }
+
+    /// The chat about the handoff's page, its passage as the selected context, the user's words as the next question
+    /// (an answer still streaming there stops: the user just asked for something new).
+    private func sendAIHandoff(_ handoff: AIHandoff) {
+        navigator.aiHandoff = nil
+        chat.show(page: handoff.docId)
+        chat.mention(handoff.docId)
+        if chat.isStreaming { chat.stop() }
+        chat.selection = EditorSelection(docId: handoff.docId, text: handoff.selection)
+        chat.send(handoff.instruction, store: model.store)
+    }
+
     /// The split pane's editor, made and wired on first use: same store, assets, pages and settings as the main one; a
     /// link clicked in it opens in the pane, a PDF attachment in a tab.
     private func splitPaneEditor() -> EditorController {
@@ -572,6 +615,7 @@ struct ContentView: View {
         }
         pane.setSplitDrop(.here)
         ai.attach(pane)
+        pane.onAIHandoff = { [weak navigator] handoff in navigator?.aiHandoff = handoff }
         pane.setPages(model.tree)
         editors.split = pane
         return pane

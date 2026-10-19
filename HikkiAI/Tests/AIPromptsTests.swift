@@ -19,12 +19,41 @@ struct AIPromptsTests {
         #expect(text.contains("Task: Fix spelling"))
     }
 
-    @Test func anExplainedEditAlsoAsksForNotes() {
-        let plain = AIPrompts.request(for: AITask(action: "fix", answer: false, units: [unit]), model: AIModelCatalog.sonnet)
-        #expect(!plain.instructions.contains("\"notes\""))
-        let task = AITask(action: "fix", answer: false, explain: true, units: [unit])
-        let request = AIPrompts.request(for: task, model: AIModelCatalog.sonnet)
-        #expect(request.instructions.contains(#"{"from": "<the words replaced>""#))
+    @Test func anEditKeepsWhatItSaysToTheUserInNotesApartFromThePage() {
+        let request = AIPrompts.request(for: AITask(action: "fix", answer: false, units: [unit]), model: AIModelCatalog.sonnet)
+        #expect(request.instructions.contains(#""notes":[]"#))
+        #expect(request.instructions.contains("Never put remarks to the user in the blocks"))
+        #expect(request.instructions.contains("verdicts of a check"))
+        #expect(request.instructions.contains("A check that finds nothing to fix returns the blocks unchanged"))
+    }
+
+    @Test func onlyTheUsersOwnWordsMayHandOffToTheChat() {
+        let model = AIModelCatalog.sonnet
+        let custom = AITask(action: "custom", instruction: "Add a Chinese translation after each sentence", answer: false, units: [unit])
+        #expect(custom.mayHandOff)
+        let edit = AIPrompts.request(for: custom, model: model).instructions
+        #expect(edit.contains(#"{"handoff":{"reason":"#))
+        #expect(edit.contains("can't be done as an edit of the selected text"))
+        // The everyday edits are named as never handed off.
+        #expect(edit.contains("adding a translation after each sentence"))
+        #expect(edit.contains("checking the grammar"))
+
+        let question = AITask(action: "ask", instruction: "Plan a course on this", answer: true, units: [unit])
+        #expect(AIPrompts.request(for: question, model: model).instructions.contains("answer in a few paragraphs"))
+
+        // Presets, an empty instruction and a picture's question never hand off.
+        for task in [
+            AITask(action: "fix", answer: false, units: [unit]),
+            AITask(action: "translate:zh", answer: false, units: [unit]),
+            AITask(action: "explain", answer: true, units: [unit]),
+            AITask(action: "custom", instruction: "  ", answer: false, units: [unit]),
+            AITask(
+                action: "ask", instruction: "What is it?", answer: true, units: [],
+                media: .image(Data([1]), mimeType: "image/png")),
+        ] {
+            #expect(!task.mayHandOff)
+            #expect(!AIPrompts.request(for: task, model: model).instructions.contains("handoff"))
+        }
     }
 
     @Test func answersAreWrittenInTheAppsLanguage() {

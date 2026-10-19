@@ -211,57 +211,59 @@ export function parseInline(schema: Schema, html: string): Fragment | null {
   }
 }
 
-/** A change the model explains (review style C): what it replaced, with what, and why. */
-export type AINote = { from: string; to: string; why: string }
+/** Longest reply read (characters): a runaway answer isn't parsed. */
+const MAX_REPLY = 200_000
 
-/** Most notes shown, and the longest text kept in each field. */
-const MAX_NOTES = 30
-const MAX_NOTE_TEXT = 300
-
-const noteText = (value: unknown) =>
-  typeof value === 'string' ? value.slice(0, MAX_NOTE_TEXT) : ''
-
-/** The reasons an edit's reply gives (`"notes": [{from, to, why}]`), checked like the blocks; none when absent. */
-export function parseEditNotes(reply: string): AINote[] {
-  if (reply.length > MAX_REPLY) return []
+/** The JSON object in a model's reply — fenced in ```json, or with text around it — or null. */
+function replyObject(reply: string): Record<string, unknown> | null {
+  if (reply.length > MAX_REPLY) return null
   const start = reply.indexOf('{')
   const end = reply.lastIndexOf('}')
-  if (start < 0 || end <= start) return []
-  let notes: unknown
+  if (start < 0 || end <= start) return null
   try {
-    notes = (JSON.parse(reply.slice(start, end + 1)) as { notes?: unknown } | null)?.notes
+    const json: unknown = JSON.parse(reply.slice(start, end + 1))
+    return json && typeof json === 'object' && !Array.isArray(json)
+      ? (json as Record<string, unknown>)
+      : null
   } catch {
-    return []
+    return null
   }
+}
+
+/** Most notes shown, and the longest one kept (characters). */
+const MAX_NOTES = 10
+const MAX_NOTE_TEXT = 4000
+
+/**
+ * What an edit's reply says to the user rather than to the page (`"notes": ["…"]`, Markdown each): answers, verdicts
+ * of a check, explanations. Strings only, blank ones dropped, capped; none when absent or unreadable.
+ */
+export function parseEditNotes(reply: string): string[] {
+  const notes = replyObject(reply)?.notes
   if (!Array.isArray(notes)) return []
   return notes
-    .map((note) => {
-      const { from, to, why } = (note ?? {}) as Record<string, unknown>
-      return { from: noteText(from), to: noteText(to), why: noteText(why) }
-    })
-    .filter((note) => note.from || note.to)
+    .filter((note): note is string => typeof note === 'string' && note.trim() !== '')
+    .map((note) => note.trim().slice(0, MAX_NOTE_TEXT))
     .slice(0, MAX_NOTES)
 }
 
-/** Longest reply read (characters): a runaway answer isn't parsed. */
-const MAX_REPLY = 200_000
+/**
+ * Whether the reply hands the request to the chat (`{"handoff": {"reason": "…"}}`, the whole reply): the model judged
+ * it more than an edit of the selection or a short answer. The reason is for logs only and isn't kept.
+ */
+export function isHandoff(reply: string): boolean {
+  const json = replyObject(reply)
+  if (!json || !('handoff' in json) || 'blocks' in json) return false
+  const handoff = json.handoff
+  return handoff === true || (!!handoff && typeof handoff === 'object' && !Array.isArray(handoff))
+}
 
 /**
  * The model's answer to an edit: `{"blocks": [{"id": …, "html": …}]}`, read tolerantly — fenced in ```json, with
  * text around it — and checked: only known keys, strings only. Null when there's nothing usable.
  */
 export function parseEditReply(reply: string, keys: string[]): Map<string, string> | null {
-  if (reply.length > MAX_REPLY) return null
-  const start = reply.indexOf('{')
-  const end = reply.lastIndexOf('}')
-  if (start < 0 || end <= start) return null
-  let json: unknown
-  try {
-    json = JSON.parse(reply.slice(start, end + 1))
-  } catch {
-    return null
-  }
-  const blocks = (json as { blocks?: unknown } | null)?.blocks
+  const blocks = replyObject(reply)?.blocks
   if (!Array.isArray(blocks)) return null
   const known = new Set(keys)
   const out = new Map<string, string>()

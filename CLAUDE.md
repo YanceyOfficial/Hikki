@@ -550,16 +550,30 @@ HikkiUITests/                 XCUITest flows
   (`AIPreferences`, `Hikki/Sources/AISettings.swift`), one per provider and origin (`AIEndpoint.keyAccount`), so a key
   only ever goes to the address it was entered for. The editor asks through `aiRequest` / `aiCancel` (selected parts of blocks as inline HTML + nearby
   text) and gets `window.hikki.aiEvent`s back. `Hikki/Sources/AIService.swift` runs them (one per window, both
-  editors) with the prompts in `HikkiAI/Sources/AIPrompts.swift`: an edit asks for JSON `{"blocks":[{id, html}]}`
-  with the same ids and inline tags only, an answer for short Markdown with web search; page text is wrapped in tags
-  as data. In the page: the selection menu's "Ask AI" (`apps/editor/src/components/ai-panel.tsx`) runs a preset or the
-  user's words; `apps/editor/src/extensions/ai-review.ts` shows an edit in the review style picked in Settings → AI
-  (thumbnails: `ReviewStyleThumbnail` / `ThumbnailOption` in HikkiUI; `ai.reviewStyle`, sent with
-  `window.hikki.setAIReviewStyle`): A `inline` (default) — removals struck through and additions as widgets in the page
-  (decorations only, the document untouched) under a bar from `apps/editor/src/components/ai-review.tsx` (Accept ↵ in one
-  undo step, Discard esc, Retry, a follow-up); B `diff` — − / + lines in the bar; C `bubble` — a card listing each
-  change with the model's reason (`explain` in the request, `notes` in the reply), the page untouched until Replace
-  (B and C: `apps/editor/src/components/ai-review-styles.tsx`). Answers get a card (Insert below, Copy) that draws their
+  editors) with the prompts in `HikkiAI/Sources/AIPrompts.swift`: an edit asks for JSON
+  `{"blocks":[{id, html}],"notes":["…"]}` — the blocks hold only what belongs in the page (same ids, inline tags only:
+  the edited text, a translation added after each sentence), `notes` everything said to the user (Markdown: answers, a
+  check's verdict, why — reasons too, when asked; the per-change `explain` of the retired card style is gone) — an
+  answer for short Markdown with web search; page text is wrapped in tags as data. In the page: the selection menu's
+  "Ask AI" (`apps/editor/src/components/ai-panel.tsx`) runs a preset or the user's words;
+  `apps/editor/src/extensions/ai-review.ts` shows an edit in the review style picked in Settings → AI (thumbnails:
+  `ReviewStyleThumbnail` / `ThumbnailOption` in HikkiUI; `ai.reviewStyle`, sent with `window.hikki.setAIReviewStyle`; a
+  stored `bubble` reads as `inline`): A `inline` (default) — removals struck through and additions as widgets in the
+  page (decorations only, the document untouched) under a bar from `apps/editor/src/components/ai-review.tsx` (Accept ↵
+  in one undo step, Discard esc, Retry, a follow-up); B `diff` — − / + lines in the bar
+  (`apps/editor/src/components/ai-review-styles.tsx`). Either way the notes are a card under the bar (`NotesCard`), each
+  drawn as page blocks with Copy and Insert below: inserting puts it after the selection's block (after notes inserted
+  before) and keeps the edit under review (the insertion carries the review's meta, so it doesn't close it); Accept
+  never inserts notes and leaves the card open over the accepted text; notes with no change (a check that found
+  nothing) are the card alone. **Handoff**: a request in the user's own words (`custom`, `ask` — never a preset or a
+  picture's question: `AITask.mayHandOff`, `mayHandOff` in the editor) may come back as `{"handoff":{"reason"}}` when it
+  is no local edit or short answer (several steps, research, a lot of new writing, changes beyond the selection, a
+  back-and-forth; the prompt lists the everyday edits that never hand off). An answer that starts like JSON is held back
+  meanwhile. The editor closes its review and posts `aiHandoff {docId, instruction, selection}`; ContentView opens the
+  chat by `AIHandoff.placement` (HikkiCore) — the inspector in AI mode (opened, or switched from outline / comments) on
+  Mac and a wide iPad, the Ask AI sheet on iPhone and in a split window (the inspector is off while split; the sheet is
+  about the page that handed off, either side) — then sets the passage as the chat's selection and sends the
+  instruction as the next turn of that page's conversation. Answers get a card (Insert below, Copy) that draws their
   Markdown as page blocks (`markdownBlocks` / `markdownDOM` in `apps/editor/src/core/convert.ts`: no media, web links only)
   and inserts it as blocks; answers and reasons are written in the app's language (`AIPrompts.languageLine`). The chat's
   answers (`Hikki/Sources/AIAnswerText.swift`) are full GitHub-flavoured Markdown: `AIMarkdown`

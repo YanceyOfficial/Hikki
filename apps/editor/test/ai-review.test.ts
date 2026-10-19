@@ -20,22 +20,40 @@ let requests: AIRequestMessage[]
 let cancelled: string[]
 let ai: AIHost
 let style: AIReviewStyle
+let handoffs: { instruction: string; selection: string }[]
 
 const text = () => editor.state.doc.textContent
 type Unsent<T> = T extends unknown ? Omit<T, 'id'> : never
 const send = (event: Unsent<AIStreamEvent>) =>
   handleAIEvent(editor, ai, { id: requests.at(-1)!.id, ...event } as AIStreamEvent)
-const reply = (blocks: Record<string, string>) =>
-  JSON.stringify({ blocks: Object.entries(blocks).map(([id, html]) => ({ id, html })) })
+const reply = (blocks: Record<string, string>, notes?: string[]) =>
+  JSON.stringify({
+    blocks: Object.entries(blocks).map(([id, html]) => ({ id, html })),
+    ...(notes ? { notes } : {})
+  })
+const review = () => document.querySelector<HTMLElement>('[data-testid="ai-review"]')
+const button = (label: string) =>
+  [...(review()?.querySelectorAll('button') ?? [])].find((b) => b.textContent?.includes(label)) as
+    | HTMLButtonElement
+    | undefined
+const tick = () =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, 0)
+  })
+const inserts = () => [
+  ...document.querySelectorAll<HTMLButtonElement>('[data-testid="ai-note-insert"]')
+]
 
 beforeEach(() => {
   host = document.createElement('div')
   document.body.append(host)
   requests = []
   cancelled = []
+  handoffs = []
   style = 'inline'
   ai = {
     style: () => style,
+    handoff: (request) => handoffs.push(request),
     request: (message) => requests.push(message),
     cancel: (id) => cancelled.push(id),
     title: () => 'Notes'
@@ -154,7 +172,6 @@ describe('AI review (style A)', () => {
   it('style B shows the edit as before/after lines in the bar, not in the page', () => {
     style = 'diff'
     editor.commands.aiRun({ id: 'improve' })
-    expect(requests[0].explain).toBeUndefined()
     send({ type: 'text', delta: reply({ 'p1:0': 'the fast fox' }) })
     send({ type: 'done' })
     expect(host.querySelector('.hk-ai-del, .hk-ai-ins')).toBeNull()
@@ -168,32 +185,146 @@ describe('AI review (style A)', () => {
     expect(text()).toBe('the fast fox')
   })
 
-  it('style C asks for reasons and lists each change with its reason', () => {
-    style = 'bubble'
-    editor.commands.aiRun({ id: 'improve' })
-    expect(requests[0].explain).toBe(true)
+  it('puts what the model says in a card under the edit, never into it, and keeps it past Accept', async () => {
+    editor.commands.aiRun({ id: 'custom', instruction: 'Fix it and tell me why' })
     send({
       type: 'text',
-      delta: JSON.stringify({
-        blocks: [{ id: 'p1:0', html: 'the fast fox' }],
-        notes: [{ from: 'quick', to: 'fast', why: 'shorter word' }, { why: 'no change named' }]
-      })
+      delta: reply({ 'p1:0': 'the fast fox' }, ['“fast” is the **plainer** word.'])
     })
     send({ type: 'done' })
-    expect(host.querySelector('.hk-ai-del, .hk-ai-ins')).toBeNull()
-    const items = [...document.querySelectorAll('[data-testid="ai-review-bubble"] li')]
-    expect(items.map((li) => li.textContent)).toEqual(['quickfast· shorter word'])
+    // The edit in the page, the note in its card (drawn as Markdown).
+    expect(host.querySelector('.hk-ai-ins')?.textContent).toBe('fast ')
+    const card = document.querySelector('[data-testid="ai-notes"]')!
+    expect(card.querySelector('strong')?.textContent).toBe('plainer')
+    expect(document.querySelector('[data-testid="ai-accept"]')).not.toBeNull()
+
     document.querySelector<HTMLButtonElement>('[data-testid="ai-accept"]')!.click()
+    expect(text()).toBe('the fast fox')
+    await tick()
+    // Accepted: the notes stay (nothing left to accept), and closing them leaves the page as it is.
+    expect(aiReviewOpen(editor)).toBe(true)
+    expect(document.querySelector('[data-testid="ai-accept"]')).toBeNull()
+    expect(document.querySelector('[data-testid="ai-notes"]')?.textContent).toContain('plainer')
+    expect(button('Retry')).toBeUndefined()
+    document.querySelector<HTMLButtonElement>('[data-testid="ai-close"]')!.click()
+    expect(aiReviewOpen(editor)).toBe(false)
     expect(text()).toBe('the fast fox')
   })
 
-  it('style C without notes lists the changes from the diff', () => {
-    style = 'bubble'
-    editor.commands.aiRun({ id: 'improve' })
-    send({ type: 'text', delta: reply({ 'p1:0': 'the fast fox' }) })
+  it('style B shows the notes card under the diff too', () => {
+    style = 'diff'
+    editor.commands.aiRun({ id: 'custom', instruction: 'Fix and explain' })
+    send({ type: 'text', delta: reply({ 'p1:0': 'the fast fox' }, ['Shorter.']) })
     send({ type: 'done' })
-    const items = [...document.querySelectorAll('[data-testid="ai-review-bubble"] li')]
-    expect(items.map((li) => li.textContent)).toEqual(['quick fast '])
+    expect(document.querySelector('[data-testid="ai-review-diff"]')).not.toBeNull()
+    expect(document.querySelector('[data-testid="ai-notes"]')?.textContent).toContain('Shorter.')
+  })
+
+  it('a check that changes nothing shows its verdict alone, not "Nothing to change"', () => {
+    editor.commands.aiRun({ id: 'custom', instruction: 'Check the grammar' })
+    // Some models drop the unchanged blocks altogether.
+    send({
+      type: 'text',
+      delta: JSON.stringify({ blocks: [], notes: ['The grammar is correct.'] })
+    })
+    send({ type: 'done' })
+    expect(review()?.textContent).not.toContain('Nothing to change')
+    expect(document.querySelector('[data-testid="ai-notes"]')?.textContent).toContain(
+      'The grammar is correct.'
+    )
+    expect(document.querySelector('[data-testid="ai-accept"]')).toBeNull()
+    expect(editor.commands.aiAccept()).toBe(false)
+    expect(button('Retry')).toBeDefined()
+  })
+
+  it('inserts a note below the selection as blocks, keeping the edit under review', async () => {
+    editor.commands.aiRun({ id: 'custom', instruction: 'Translate and comment' })
+    send({
+      type: 'text',
+      delta: reply({ 'p1:0': 'the fast fox' }, ['- first remark', '- second remark'])
+    })
+    send({ type: 'done' })
+    inserts()[1].click()
+    await tick()
+    inserts()[0].click()
+    await tick()
+    // In the order inserted, after the selection's block; each button now says so.
+    // (The page keeps an empty paragraph at its end.)
+    expect(editor.getJSON().content?.map((node) => node.type)).toEqual([
+      'paragraph',
+      'bulletList',
+      'bulletList',
+      'paragraph'
+    ])
+    expect(inserts().every((b) => b.disabled && b.textContent?.includes('Inserted'))).toBe(true)
+    // The edit is still there to accept, and accepting it doesn't insert anything more.
+    expect(aiReviewOpen(editor)).toBe(true)
+    expect(host.querySelector('.hk-ai-ins')?.textContent).toBe('fast ')
+    expect(editor.commands.aiAccept()).toBe(true)
+    expect(editor.state.doc.child(0).textContent).toBe('the fast fox')
+    expect(editor.state.doc.childCount).toBe(4)
+    expect(editor.state.doc.child(1).textContent).toBe('second remark')
+    expect(editor.state.doc.child(2).textContent).toBe('first remark')
+  })
+
+  it('copies a note’s Markdown with one click', async () => {
+    const copied: string[] = []
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: (value: string) => (copied.push(value), Promise.resolve()) }
+    })
+    editor.commands.aiRun({ id: 'custom', instruction: 'Check it' })
+    send({ type: 'text', delta: reply({ 'p1:0': 'the quick fox' }, ['Correct: *fine*.']) })
+    send({ type: 'done' })
+    button('Copy')!.click()
+    expect(copied).toEqual(['Correct: *fine*.'])
+    await tick()
+    expect(button('Copied')).toBeDefined()
+  })
+
+  it('hands a request in the user’s words to the chat when the model says so', () => {
+    editor.commands.aiRun({ id: 'custom', instruction: '  Research this and write a report  ' })
+    send({ type: 'text', delta: '{"handoff":{"reason":"research"}}' })
+    send({ type: 'done' })
+    expect(handoffs).toEqual([
+      { instruction: 'Research this and write a report', selection: 'the quick fox' }
+    ])
+    expect(aiReviewOpen(editor)).toBe(false)
+    expect(review()).toBeNull()
+    expect(cancelled).toEqual([])
+    expect(text()).toBe('the quick fox')
+  })
+
+  it('holds back a question’s answer while it may be a handoff', () => {
+    editor.commands.aiRun({ id: 'ask', instruction: 'Plan a whole course around this' })
+    send({ type: 'text', delta: '{"hand' })
+    expect(document.querySelector('[data-testid="ai-answer"]')).toBeNull()
+    send({ type: 'text', delta: 'off":{}}' })
+    send({ type: 'done' })
+    expect(handoffs).toHaveLength(1)
+
+    // A plain answer streams as before.
+    editor.commands.setTextSelection({ from: 1, to: 14 })
+    editor.commands.aiRun({ id: 'ask', instruction: 'What is it?' })
+    send({ type: 'text', delta: 'An animal.' })
+    send({ type: 'done' })
+    expect(handoffs).toHaveLength(1)
+    expect(document.querySelector('[data-testid="ai-answer"]')?.textContent).toBe('An animal.')
+  })
+
+  it('never hands off a preset, nor without a chat to hand to', () => {
+    editor.commands.aiRun({ id: 'improve' })
+    send({ type: 'text', delta: '{"handoff":{}}' })
+    send({ type: 'done' })
+    expect(handoffs).toEqual([])
+    expect(review()?.textContent).toContain('couldn’t be read')
+
+    delete ai.handoff
+    editor.commands.aiRun({ id: 'custom', instruction: 'Write a book' })
+    send({ type: 'text', delta: '{"handoff":{}}' })
+    send({ type: 'done' })
+    expect(handoffs).toEqual([])
+    expect(review()?.textContent).toContain('couldn’t be read')
   })
 
   it('hides the formatting menu and marks the range itself while AI holds it', () => {
