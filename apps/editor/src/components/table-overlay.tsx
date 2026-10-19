@@ -176,7 +176,7 @@ function RowGrip({
           />
         }
       >
-        <DotsSixVerticalIcon size={12} weight="bold" aria-hidden />
+        <DotsSixVerticalIcon size={12} weight="bold" className="size-3" aria-hidden />
       </DropdownMenuTrigger>
       <DropdownMenuContent side="right" align="start" className="w-52">
         {children}
@@ -215,7 +215,7 @@ function ColumnGrip({
           />
         }
       >
-        <DotsSixIcon size={12} weight="bold" aria-hidden />
+        <DotsSixIcon size={12} weight="bold" className="size-3" aria-hidden />
       </DropdownMenuTrigger>
       <DropdownMenuContent side="bottom" align="start" className="w-52">
         {children}
