@@ -652,9 +652,9 @@ private struct NativeDetailToolbar: ToolbarContent {
             // One control with a divider between the two (‹ | ›), as in Finder/Safari.
             ControlGroup {
                 Button(action: navigator.goBack) { IconLabel("app:chrome.back", icon: .caretLeft) }
-                    .disabled(!navigator.tabs.active.canGoBack)
+                    .disabled(!navigator.tabs.canGoBack)
                 Button(action: navigator.goForward) { IconLabel("app:chrome.forward", icon: .caretRight) }
-                    .disabled(!navigator.tabs.active.canGoForward)
+                    .disabled(!navigator.tabs.canGoForward)
             }
             #if os(macOS)
                 .controlGroupStyle(.navigation)
@@ -664,8 +664,8 @@ private struct NativeDetailToolbar: ToolbarContent {
             TabStrip(
                 items: navigator.tabs.tabs.map { tab in tabItem(tab.id, tab.route) },
                 activeID: navigator.tabs.activeID,
-                canGoBack: navigator.tabs.active.canGoBack,
-                canGoForward: navigator.tabs.active.canGoForward,
+                canGoBack: navigator.tabs.canGoBack,
+                canGoForward: navigator.tabs.canGoForward,
                 onSelect: navigator.selectTab,
                 onClose: { navigator.closeTab($0) },
                 onNew: { navigator.openInNewTab(.home) },

@@ -376,7 +376,9 @@ HikkiUITests/                 XCUITest flows
   (`DocumentStore.purgeTrash`); the deletion reaches other devices through the workspace folder.
 - **Tabs from the sidebar** (Mac/iPad): a sidebar row focuses the tab already showing its page, or opens it as a new tab
   at the end; past `Navigator.recentTabLimit` the least recently focused tab closes (`NavigationTabs.openRecent`,
-  recency kept in the saved tabs). Links and history still navigate inside the active tab. A tab's context menu is
+  recency kept in the saved tabs). Links navigate inside the active tab. Back / forward (the toolbar's arrows, ⌘[ ⌘]) walk the
+  window's history of pages shown, across tabs (`NavigationTabs.visits`): back returns to the page shown before, focusing
+  its tab — a page opened from the sidebar goes back to where the reader was; closed tabs and gone pages are passed over. A tab's context menu is
   Chrome's (`TabStripMenu` / `TabStripCommand` in `HikkiUI/Sources/TabStrip.swift`, the commands chosen by
   `NativeDetailToolbar` in ContentView): New Tab to the Right (Home), Open in Split View (where the window splits),
   Duplicate (the whole history), Move to New Window (Mac, a page: the "page" window group, then the tab closes — iPad

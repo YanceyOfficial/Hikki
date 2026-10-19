@@ -44,16 +44,80 @@ struct NavigationTabsTests {
         #expect(tabs.route == "5")
     }
 
-    @Test func tabsHaveIndependentHistories() {
+    @Test func backGoesToThePageShownBeforeWhicheverTabItWasIn() {
         var tabs = Tabs(initial: "home")
         tabs.navigate(to: "a")
         let first = tabs.activeID
         tabs.openTab("b")
+        let second = tabs.activeID
         tabs.navigate(to: "c")
         tabs.select(first)
         #expect(tabs.route == "a")
         tabs.goBack()
+        #expect(tabs.activeID == second && tabs.route == "c")
+        tabs.goBack()
+        #expect(tabs.route == "b")
+        tabs.goBack()
+        #expect(tabs.activeID == first && tabs.route == "a")
+        tabs.goBack()
         #expect(tabs.route == "home")
+        #expect(!tabs.canGoBack)
+        tabs.goForward()
+        tabs.goForward()
+        #expect(tabs.activeID == second && tabs.route == "b")
+        // Each tab still keeps its own pages.
+        #expect(tabs.tabs.map(\.history) == [["home", "a"], ["b", "c"]])
+    }
+
+    /// The bug: pages picked in the sidebar open (or focus) a tab, so a tab's own history stayed one page long and the
+    /// arrows never lit up.
+    @Test func pagesOpenedFromTheSidebarCanBeWalkedBack() {
+        var tabs = Tabs(initial: "home")
+        tabs.openRecent("a", limit: 5)
+        tabs.openRecent("b", limit: 5)
+        tabs.openRecent("a", limit: 5)
+        #expect(tabs.canGoBack)
+        tabs.goBack()
+        #expect(tabs.route == "b")
+        tabs.goBack()
+        #expect(tabs.route == "a")
+        tabs.goBack()
+        #expect(tabs.route == "home")
+        #expect(tabs.canGoForward)
+    }
+
+    @Test func closedTabsAndGonePagesArePassedOver() {
+        var tabs = Tabs(initial: "home")
+        tabs.openTab("a")
+        let a = tabs.activeID
+        tabs.openTab("b")
+        tabs.close(a)
+        tabs.goBack()
+        #expect(tabs.route == "home")
+        // A page that left every history (trashed) is skipped too.
+        var other = Tabs(initial: "home")
+        other.navigate(to: "x")
+        other.navigate(to: "y")
+        other.prune(fallback: "home") { $0 == "x" }
+        other.goBack()
+        #expect(other.route == "home")
+    }
+
+    @Test func navigatingAfterGoingBackDropsTheWayForward() {
+        var tabs = Tabs(initial: "home")
+        tabs.openRecent("a", limit: 5)
+        tabs.goBack()
+        tabs.navigate(to: "c")
+        #expect(!tabs.canGoForward)
+    }
+
+    @Test func historySavedBeforeTheWindowHadOneStartsAtThePageShown() throws {
+        let old =
+            #"{"tabs":[{"id":"8E3B1B6C-1C1C-4C4C-9C9C-111111111111","history":["home","a"],"position":1}],"activeID":"8E3B1B6C-1C1C-4C4C-9C9C-111111111111"}"#
+        let tabs = try JSONDecoder().decode(Tabs.self, from: Data(old.utf8))
+        #expect(tabs.route == "a")
+        #expect(tabs.visits.map(\.route) == ["a"])
+        #expect(!tabs.canGoBack)
     }
 
     @Test func newTabsOpenRightOfTheActiveOne() {
@@ -90,8 +154,10 @@ struct NavigationTabsTests {
         tabs.navigate(first, to: "dropped")
         #expect(tabs.activeID == first)
         #expect(tabs.route == "dropped")
+        #expect(tabs.active.history == ["1", "a", "dropped"])
+        // Back: the page shown before — the other tab's.
         tabs.goBack()
-        #expect(tabs.route == "a")
+        #expect(tabs.route == "2")
         // An unknown tab id changes nothing.
         let snapshot = tabs
         tabs.navigate(UUID(), to: "nowhere")

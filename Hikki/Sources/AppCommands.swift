@@ -98,10 +98,10 @@ struct AppCommands: Commands {
         CommandMenu("app:menu.go") {
             Button("app:chrome.back") { navigator?.goBack() }
                 .keyboardShortcut(Shortcut.back.keyboardShortcut)
-                .disabled(navigator?.tabs.active.canGoBack != true)
+                .disabled(navigator?.tabs.canGoBack != true)
             Button("app:chrome.forward") { navigator?.goForward() }
                 .keyboardShortcut(Shortcut.forward.keyboardShortcut)
-                .disabled(navigator?.tabs.active.canGoForward != true)
+                .disabled(navigator?.tabs.canGoForward != true)
             Divider()
             Button("app:tabs.next") { navigator?.selectNeighborTab(1) }
                 .keyboardShortcut(Shortcut.nextTab.keyboardShortcut)
