@@ -11,21 +11,33 @@ struct AppCommands: Commands {
     @FocusedValue(\.aiChat) private var aiChat
 
     var body: some Commands {
-        #if os(iOS)
-            // iPad menu bar: ⌘, opens the settings sheet (macOS has a real Settings scene).
-            CommandGroup(replacing: .appSettings) {
-                Button("app:settings.open") { navigator?.isShowingSettings = true }
-                    .keyboardShortcut(Shortcut.settings.keyboardShortcut)
+        // Settings… (⌘,): the Settings dialog over the window in front. With none (the Mac, every window closed or
+        // only the menu bar's Hikki), the main window comes up first and shows it.
+        CommandGroup(replacing: .appSettings) {
+            Button("app:settings.open") {
+                if let navigator {
+                    navigator.isShowingSettings = true
+                } else {
+                    #if os(macOS)
+                        MenuBarRequests.shared.post(.settings)
+                    #endif
+                }
             }
-        #endif
+            .keyboardShortcut(Shortcut.settings.keyboardShortcut)
+        }
         CommandGroup(replacing: .newItem) {
             Button("app:page.new") { navigator?.newPage() }
                 .keyboardShortcut(Shortcut.newPage.keyboardShortcut)
             Button("app:tabs.new") { navigator?.openInNewTab(.home) }
                 .keyboardShortcut(Shortcut.newTab.keyboardShortcut)
             Button("app:tabs.close") {
+                // ⌘W with Settings open closes Settings, not the tab under it.
+                if navigator?.isShowingSettings == true {
+                    navigator?.isShowingSettings = false
+                    return
+                }
                 guard let navigator else {
-                    // Settings (or another window without tabs): ⌘W closes it.
+                    // A window without tabs: ⌘W closes it.
                     #if os(macOS)
                         NSApp.keyWindow?.performClose(nil)
                     #endif

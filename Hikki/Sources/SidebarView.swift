@@ -700,20 +700,13 @@ extension PageLink {
     }
 }
 
-/// "Settings…" in the workspace menus: the Settings window on macOS, the settings sheet on iOS.
+/// "Settings…" in the workspace menus: the Settings dialog over the window.
 private struct SettingsMenuItem: View {
     let navigator: Navigator
-    #if os(macOS)
-        @Environment(\.openSettings) private var openSettings
-    #endif
 
     var body: some View {
         Button {
-            #if os(macOS)
-                openSettings()
-            #else
-                navigator.isShowingSettings = true
-            #endif
+            navigator.isShowingSettings = true
         } label: {
             IconLabel("app:settings.open", icon: .gearSix)
         }

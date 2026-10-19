@@ -647,18 +647,21 @@ HikkiUITests/                 XCUITest flows
   `AccentColor.colorset` from it, so system menus, selection and controls take the tone (where the user's system
   accent is "Multicolor" — a chosen system accent overrides every app's).
 - **Settings** (`Hikki/Sources/SettingsView.swift`): pages (`SettingsPage`: General — appearance, language, editor,
-  menu bar — then Workspace, Shortcuts, Search, AI, About; Shortcuts only with a keyboard: `GCKeyboard`) as the classic toolbar tabs of the
-  Mac Settings window and a hub list on iPhone/iPad; each page is a grouped form of sections, the last page opened is
-  remembered.
-  `HIKKI_OPEN_SETTINGS=<page>` opens that page (screenshots). Optional integrations get pages here with a
+  menu bar — then Workspace, Shortcuts, Search, AI, About; Shortcuts only with a keyboard: `GCKeyboard`) in a modal
+  dialog over the window, Notion's: the pages in a sidebar, the open one's form beside it, a close button and Escape
+  (HikkiUI's `SidebarDialog`, `Size.settings*`) — a sheet on the Mac (no separate Settings scene: the app menu's
+  Settings… ⌘, and every other way in set `Navigator.isShowingSettings`; with no window in front the main window comes
+  up first, through `MenuBarRequests`), a page-sized sheet on a regular-width iPad, the hub list in a sheet on iPhone.
+  Each page is a grouped form of sections, the last page opened is remembered; ⌘W closes Settings, not the tab under
+  it. `HIKKI_OPEN_SETTINGS=<page>` opens that page (screenshots). Optional integrations get pages here with a
   detected/not-detected status, exodus's way.
 - **Appearance** (Settings → General → Theme) is applied app-wide (`NSApp.appearance` / window `overrideUserInterfaceStyle`),
   not with `preferredColorScheme`, which left parts of windows in the old scheme after switching back.
-- **macOS windows**: closing the last main window only hides it (Dock click restores it) and closes Settings —
+- **macOS windows**: closing the last main window only hides it (Dock click restores it), its Settings sheet with it —
   `Hikki/Sources/WindowLifecycle.swift`.
 - **Menu bar extra** (`Hikki/Sources/MenuBarExtra.swift`, macOS, Settings → General → Menu bar): its menu has no
-  focused window, so New Page / Search post `MenuBarRequests.shared.pending` and the key window's ContentView
-  performs it. The glyph is `Hikki/Resources/Assets.xcassets` → MenuBarIcon (template PNGs at 1x/2x rasterized from
+  focused window, so New Page / Search / Settings post `MenuBarRequests.shared.pending` (`post` brings the main window
+  up first) and that window's ContentView performs it (`MainWindows.requestTarget`). The glyph is `Hikki/Resources/Assets.xcassets` → MenuBarIcon (template PNGs at 1x/2x rasterized from
   `design/icon/hi-star/menubar.svg` — as an SVG asset the label rendered empty). The preference key has no dot (a
   dotted `@AppStorage` key on `MenuBarExtra(isInserted:)` looped the main menu).
 - Simulators sometimes fail with "Busy (Application failed preflight checks)": `xcrun simctl shutdown all`, boot again.

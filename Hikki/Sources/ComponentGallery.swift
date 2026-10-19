@@ -13,6 +13,7 @@
         @State private var recording = false
         @State private var recorded = "⌘B"
         @State private var drawerOpen = true
+        @State private var dialogPage = "general"
         private let galleryTabs = [UUID(), UUID()]
         private let galleryToasts = [GalleryToast(message: "Page duplicated"), GalleryToast(message: "Link copied")]
 
@@ -110,6 +111,27 @@
                             FilterChip("All", isSelected: true, look: .filled) {}
                             FilterChip("Files", isSelected: false, look: .filled) {}
                         }
+                    }
+                    Section("SidebarDialog") {
+                        SidebarDialog(
+                            "Settings",
+                            sections: [
+                                .init(
+                                    id: 0, title: "Workspace",
+                                    items: [.init(id: "workspace", title: "Workspace", icon: .house, identifier: "w")]),
+                                .init(
+                                    id: 1, title: "App",
+                                    items: [
+                                        .init(id: "general", title: "General", icon: .gearSix, identifier: "g"),
+                                        .init(id: "ai", title: "AI", icon: .sparkle, identifier: "a"),
+                                    ]),
+                            ],
+                            selection: $dialogPage, closeTitle: "Close", closeIdentifier: "gallery-dialog-close", onClose: {}
+                        ) { page in
+                            Form { Text(verbatim: page) }.formStyle(.grouped)
+                        }
+                        .frame(height: Size.settingsHeight / 2)
+                        .listRowInsets(EdgeInsets())
                     }
                     Section("ModelPickerList") {
                         ModelPickerList(

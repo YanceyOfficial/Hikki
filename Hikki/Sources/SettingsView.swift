@@ -57,7 +57,7 @@ enum AppearancePreference: String, CaseIterable, Identifiable {
     }
 }
 
-/// The pages of Settings: toolbar tabs on the Mac (the classic Settings window), the hub list on iPhone and iPad.
+/// The pages of Settings: the dialog's sidebar on the Mac and a regular-width iPad, the hub list on iPhone.
 enum SettingsPage: String, CaseIterable, Identifiable {
     case general, workspace, shortcuts, search, ai, about
 
@@ -97,7 +97,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
         return allCases
     }
 
-    /// The groups the iOS hub shows: the workspace, then the app, then About on its own.
+    /// The groups the dialog's sidebar and the iPhone hub show: the workspace, then the app, then About on its own.
     static var groups: [(title: LocalizedStringKey?, pages: [SettingsPage])] {
         [
             ("app:settings.group.workspace", [.workspace]),
@@ -107,46 +107,81 @@ enum SettingsPage: String, CaseIterable, Identifiable {
     }
 }
 
-/// Settings: pages as tabs (Mac) or a hub list (iPhone, iPad), each a grouped form of sections.
+/// Settings: a dialog with the pages in a sidebar (the Mac, a regular-width iPad — Notion's settings, presented over
+/// the window by ContentView), or the hub list in a sheet (iPhone); each page a grouped form of sections.
 struct SettingsView: View {
-    @AppStorage(SettingsPage.storageKey) private var pageID = SettingsPage.general.rawValue
-
-    private var page: SettingsPage { SettingsPage(rawValue: pageID) ?? .general }
+    /// The hub list (a compact window) instead of the dialog.
+    var hub = false
+    /// The page shown: the remembered one when Settings opens (General when it isn't shown here — Shortcuts without a
+    /// keyboard), remembered again on every pick. Held here so a pick shows even where the stored value is pinned
+    /// (a launch argument, as the UI tests pass).
+    @State private var page: SettingsPage = {
+        let page = SettingsPage(rawValue: UserDefaults.standard.string(forKey: SettingsPage.storageKey) ?? "") ?? .general
+        return SettingsPage.visible.contains(page) ? page : .general
+    }()
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        content
-            .environment(\.colorTone, ColorTone.standard)
-            .tint(ColorTone.standard.fill)
+        Group {
+            if hub {
+                hubList
+            } else {
+                dialog
+            }
+        }
+        .environment(\.colorTone, ColorTone.standard)
+        .tint(ColorTone.standard.fill)
     }
 
-    #if os(macOS)
-        /// The classic Mac Settings window: the pages as toolbar tabs along the top, a grouped form under each.
-        private var content: some View {
-            TabView(selection: Binding(get: { page }, set: { pageID = $0.rawValue })) {
-                ForEach(SettingsPage.visible) { page in
-                    Tab(value: page) {
-                        Form {
-                            SettingsPageContent(page: page)
-                        }
-                        .formStyle(.grouped)
-                    } label: {
-                        Label {
-                            Text(page.title)
-                        } icon: {
-                            page.icon.glyph
-                        }
-                    }
-                    .accessibilityIdentifier("settings-page-\(page.rawValue)")
-                }
-            }
-            .scenePadding()
-            .frame(width: Size.settingsWidth)
-            .frame(minHeight: Size.settingsHeight)
-        }
-    #else
-        @Environment(\.dismiss) private var dismiss
+    private var dialog: some View {
+        SidebarDialog(
+            "app:settings.title",
+            sections: SettingsPage.groups.enumerated().map { index, group in
+                SidebarDialogSection(
+                    id: index, title: group.title,
+                    items: group.pages.map {
+                        SidebarDialogItem(id: $0, title: $0.title, icon: $0.icon, identifier: "settings-page-\($0.rawValue)")
+                    })
+            },
+            selection: Binding(
+                get: { page },
+                set: {
+                    page = $0
+                    UserDefaults.standard.set($0.rawValue, forKey: SettingsPage.storageKey)
+                }),
+            closeTitle: "app:common.close", closeIdentifier: "settings-close", onClose: { dismiss() },
+            content: dialogPage
+        )
+        #if os(macOS)
+            // A sheet sizes to its content on the Mac; on iPad the page-sized sheet sets the size (ContentView).
+            .frame(width: Size.settingsWidth, height: Size.settingsHeight)
+        #endif
+    }
 
-        private var content: some View {
+    @ViewBuilder private func dialogPage(_ page: SettingsPage) -> some View {
+        #if os(iOS)
+            // iOS pages push further screens (About → Logs): each page is a stack, its root without a bar (the
+            // dialog's header names it).
+            NavigationStack {
+                form(page).toolbar(.hidden, for: .navigationBar)
+            }
+            .id(page)
+        #else
+            form(page)
+        #endif
+    }
+
+    private func form(_ page: SettingsPage) -> some View {
+        Form {
+            SettingsPageContent(page: page)
+        }
+        .formStyle(.grouped)
+        // A fresh form per page: its scroll position and focus don't carry over to the next one.
+        .id(page)
+    }
+
+    @ViewBuilder private var hubList: some View {
+        #if os(iOS)
             NavigationStack {
                 List {
                     ForEach(Array(SettingsPage.groups.enumerated()), id: \.offset) { _, group in
@@ -178,8 +213,10 @@ struct SettingsView: View {
                 }
                 .toolbar { done }
             }
-        }
+        #endif
+    }
 
+    #if os(iOS)
         private var done: some ToolbarContent {
             ToolbarItem(placement: .confirmationAction) {
                 Button("app:settings.done") { dismiss() }
@@ -790,7 +827,7 @@ private struct AboutSection: View {
             }
             .accessibilityIdentifier("settings-diagnostics")
             #if os(macOS)
-                // The Mac's Settings pages aren't in a navigation stack: the logs open as a sheet.
+                // The Mac's Settings pages aren't in a navigation stack: the logs open as a sheet over the dialog.
                 Button("app:diagnostics.logs") { showingLogs = true }
                     .accessibilityIdentifier("settings-logs")
                     .sheet(isPresented: $showingLogs) {
@@ -802,7 +839,7 @@ private struct AboutSection: View {
                                     }
                                 }
                         }
-                        .frame(minWidth: Size.settingsWidth, minHeight: Size.settingsHeight)
+                        .frame(minWidth: Size.settingsWidth - Size.settingsSidebar, minHeight: Size.settingsHeight - Spacing.s16)
                     }
             #else
                 NavigationLink {

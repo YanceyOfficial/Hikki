@@ -40,10 +40,6 @@ struct ContentView: View {
     private let tone = ColorTone.standard
     @AppStorage(EditorPreferences.spellcheckKey) private var spellcheck = true
     @AppStorage(AIPreferences.reviewStyleKey) private var aiReviewStyle = "inline"
-    #if os(macOS)
-        @Environment(\.openSettings) private var openSettings
-    #endif
-
     /// What both of the window's editors show the same way; each holds it and replays it when its page comes up.
     private var editorSettings: EditorSettings {
         EditorSettings(
@@ -75,14 +71,10 @@ struct ContentView: View {
         }
     #endif
 
-    /// Opens Settings at a page (the Mac's Settings window, the sheet elsewhere).
+    /// Opens Settings at a page.
     private func openSettingsPage(_ page: SettingsPage) {
         UserDefaults.standard.set(page.rawValue, forKey: SettingsPage.storageKey)
-        #if os(macOS)
-            openSettings()
-        #else
-            navigator.isShowingSettings = true
-        #endif
+        navigator.isShowingSettings = true
     }
 
     /// The system split view and window toolbar (the sidebar is native rows, see SidebarView), sheets.
@@ -133,7 +125,12 @@ struct ContentView: View {
             }
         }
         #if os(iOS)
-            .sheet(isPresented: $navigator.isShowingSettings) { SettingsView().sheetOverVerticalBar() }
+            // Settings: the dialog in a page-sized sheet where the window is wide (iPad), the hub list on iPhone.
+            .sheet(isPresented: $navigator.isShowingSettings) {
+                SettingsView(hub: !wide)
+                .presentationSizing(.page)
+                .sheetOverVerticalBar()
+            }
             .sheet(isPresented: $navigator.isAskingAI) { AIChatSheet(chat: chat).sheetOverVerticalBar() }
             // Asked from a page: about that page; from the home screen: about nothing in particular.
             .onChange(of: navigator.isAskingAI) { _, asking in
@@ -156,6 +153,8 @@ struct ContentView: View {
             }
         #else
             .background(HideOnClose())
+            // Settings (⌘,): Notion's dialog over the window, its pages in a sidebar.
+            .sheet(isPresented: $navigator.isShowingSettings) { SettingsView() }
         #endif
         #if os(iOS)
             // iPhone: search takes the whole screen (a sheet's large corner and its keyboard avoidance hid the field);
@@ -471,11 +470,7 @@ struct ContentView: View {
             // HIKKI_OPEN_SETTINGS opens Settings (screenshots); a page name (`SettingsPage`) as its value opens that page.
             if let value = environment["HIKKI_OPEN_SETTINGS"] {
                 if SettingsPage(rawValue: value) != nil { UserDefaults.standard.set(value, forKey: SettingsPage.storageKey) }
-                #if os(macOS)
-                    openSettings()
-                #else
-                    navigator.isShowingSettings = true
-                #endif
+                navigator.isShowingSettings = true
             }
             // HIKKI_DEBUG_SPOTLIGHT_QUERY=<text> asks Spotlight for pages once indexing settled and logs the ids it
             // ranks (judging its semantic matching).
