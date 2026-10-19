@@ -678,7 +678,7 @@
     @apply grid h-6 w-6 cursor-pointer place-items-center rounded-md text-placeholder transition-colors duration-(--motion-pop-out) ease-out hover:bg-accent hover:text-muted-foreground;
   }
   .hk-block-grip {
-    @apply w-5 cursor-grab active:cursor-grabbing;
+    @apply cursor-grab active:cursor-grabbing;
   }
   /* While dragging a block: a ghost under the pointer, the source dimmed, a line where it lands. */
   .hk-drag-ghost {
