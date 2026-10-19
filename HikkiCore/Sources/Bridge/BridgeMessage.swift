@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of apps/editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 26
+    public static let version = 27
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -57,9 +57,9 @@ public enum BridgeMessage: Sendable, Equatable {
     /// A bottom sheet of the page's opened or closed (a touch screen's cover, icon or comment sheet): the native bars
     /// beside it step aside meanwhile (an iPhone Duo's vertical bar), so the sheet has the whole width.
     case sheet(open: Bool)
-    /// Comments (`PageComments`): a thread started on a passage with its first comment, a reply, resolving / reopening,
-    /// deleting a comment or (`commentId` nil) the whole thread.
-    case commentCreate(docId: String, threadId: String, quote: String, body: String)
+    /// Comments (`PageComments`): a thread started on a passage — or, with `blockId`, on a whole block without text —
+    /// with its first comment, a reply, resolving / reopening, deleting a comment or (`commentId` nil) the whole thread.
+    case commentCreate(docId: String, threadId: String, quote: String, body: String, blockId: String? = nil)
     case commentReply(docId: String, threadId: String, body: String)
     case commentResolve(docId: String, threadId: String, resolved: Bool)
     case commentDelete(docId: String, threadId: String, commentId: String?)
@@ -173,7 +173,7 @@ extension BridgeMessage: Decodable {
     private enum CodingKeys: String, CodingKey {
         case type, protocolVersion, snapshot, active, level, message, context, docId, icon, cover, fileExtension, dataBase64
         case size, id, url, block, text, headings, words, characters, name, top
-        case threadId, quote, body, resolved, commentId, kind, code, detail, open, status, before, after
+        case threadId, quote, body, resolved, commentId, kind, code, detail, open, status, before, after, blockId
     }
 
     public init(from decoder: Decoder) throws {
@@ -200,7 +200,8 @@ extension BridgeMessage: Decodable {
         case "commentCreate":
             self = .commentCreate(
                 docId: try c.decode(String.self, forKey: .docId), threadId: try c.decode(String.self, forKey: .threadId),
-                quote: try c.decode(String.self, forKey: .quote), body: try c.decode(String.self, forKey: .body))
+                quote: try c.decode(String.self, forKey: .quote), body: try c.decode(String.self, forKey: .body),
+                blockId: try c.decodeIfPresent(String.self, forKey: .blockId))
         case "commentReply":
             self = .commentReply(
                 docId: try c.decode(String.self, forKey: .docId), threadId: try c.decode(String.self, forKey: .threadId),
@@ -320,6 +321,21 @@ public struct AIRequestPayload: Decodable, Equatable, Sendable {
         }
     }
 
+    /// A file the question is about (the block menu's Ask AI on a picture or a PDF): a workspace asset the app reads.
+    public struct Media: Decodable, Equatable, Sendable {
+        public enum Kind: String, Decodable, Sendable { case image, pdf }
+        /// `hikki-editor://assets/<name>`.
+        public var url: String
+        public var kind: Kind
+        public var name: String?
+
+        public init(url: String, kind: Kind, name: String? = nil) {
+            self.url = url
+            self.kind = kind
+            self.name = name
+        }
+    }
+
     public var id: String
     public var action: String
     public var instruction: String?
@@ -328,11 +344,13 @@ public struct AIRequestPayload: Decodable, Equatable, Sendable {
     public var explain: Bool?
     public var units: [Unit]
     public var context: Context
+    public var media: Media?
 
     public init(
         id: String, action: String, instruction: String? = nil, answer: Bool, explain: Bool? = nil, units: [Unit],
-        context: Context
+        context: Context, media: Media? = nil
     ) {
+        self.media = media
         self.id = id
         self.action = action
         self.instruction = instruction

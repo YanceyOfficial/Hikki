@@ -38,6 +38,31 @@ struct AIPromptsTests {
                 .instructions.contains("app is in"))
     }
 
+    @Test func aPictureIsSentAsAnImagePartWithTheTaskAboutIt() {
+        let picture = AIMessage.Part.image(Data([1, 2, 3]), mimeType: "image/jpeg")
+        let task = AITask(
+            action: "extractText", answer: true, units: [], title: "Trip", before: "Day one", media: picture)
+        let request = AIPrompts.request(for: task, model: AIModelCatalog.sonnet)
+        #expect(request.instructions.contains("picture or a document"))
+        #expect(request.messages.count == 1)
+        let parts = request.messages[0].parts
+        #expect(parts.contains(picture))
+        #expect(request.messages[0].text.contains("<document>Trip</document>"))
+        #expect(request.messages[0].text.contains("Task: Write out all the text in the attached picture"))
+        #expect(!request.messages[0].text.contains("<selection>"))
+
+        // A PDF is "the document"; a question is the user's own words; a follow-up refines the last answer.
+        let pdf = AIMessage.Part.document(Data([4]), mimeType: "application/pdf", name: "a.pdf")
+        let question = AITask(action: "ask", instruction: "Who signed it?", answer: true, units: [], media: pdf)
+        #expect(AIPrompts.describe(question) == "About the attached document: Who signed it?")
+        let followUp = AITask(
+            action: "ask", instruction: "And when?", answer: true, units: [], previous: "Ada.", media: pdf)
+        let messages = AIPrompts.request(for: followUp, model: AIModelCatalog.sonnet).messages
+        #expect(messages.map(\.role) == [.user, .assistant, .user])
+        #expect(messages[2].text == "And when?")
+        #expect(messages[0].parts.contains(pdf))
+    }
+
     @Test func anAnswerGetsPlainTextAndWebSearch() {
         let task = AITask(action: "explain", answer: true, units: [unit, .init(key: "p2:1", html: "a &amp; b")])
         let request = AIPrompts.request(for: task, model: AIModelCatalog.gptSol)

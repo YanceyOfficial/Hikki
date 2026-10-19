@@ -1,11 +1,15 @@
 import Foundation
 
 /// A comment thread on a passage of a page. The passage itself is marked in the page's content (the editor's
-/// `comment` mark carries the thread's id), so the anchor moves with edits; the thread's words live here.
+/// `comment` mark carries the thread's id), so the anchor moves with edits; the thread's words live here. A thread on a
+/// whole block without text (an image, an embed, a file) names the block instead (`blockId`) and marks nothing.
 public struct CommentThread: Codable, Equatable, Sendable, Identifiable {
     public var id: String
-    /// The passage's text when the thread started (shown with the thread; the mark may since have changed).
+    /// The passage's text when the thread started (shown with the thread; the mark may since have changed) — for a
+    /// block thread, what the block was called ("Image · photo.png").
     public var quote: String
+    /// The block a block thread is on (nil: a passage). An optional key: files stay format 1.
+    public var blockId: String?
     public var createdAt: Date
     /// The last change to the thread (a comment, resolving, deleting) — what merging compares.
     public var updatedAt: Date
@@ -15,11 +19,12 @@ public struct CommentThread: Codable, Equatable, Sendable, Identifiable {
     public var comments: [PageComment]
 
     public init(
-        id: String, quote: String, createdAt: Date, updatedAt: Date, resolvedAt: Date? = nil, deletedAt: Date? = nil,
-        comments: [PageComment]
+        id: String, quote: String, blockId: String? = nil, createdAt: Date, updatedAt: Date, resolvedAt: Date? = nil,
+        deletedAt: Date? = nil, comments: [PageComment]
     ) {
         self.id = id
         self.quote = quote
+        self.blockId = blockId
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.resolvedAt = resolvedAt
@@ -115,14 +120,17 @@ public final class PageComments: @unchecked Sendable {
             .sorted { $0.createdAt < $1.createdAt }
     }
 
-    /// Starts a thread on a passage with its first comment.
-    public func create(pageId: String, threadId: String, quote: String, body: String, now: Date = .now) throws {
+    /// Starts a thread on a passage — or, with `blockId`, on a whole block — with its first comment.
+    public func create(
+        pageId: String, threadId: String, quote: String, body: String, blockId: String? = nil, now: Date = .now
+    ) throws {
         let text = try Self.clean(body)
+        let block = blockId.flatMap { $0.isEmpty ? nil : String($0.prefix(200)) }
         try change(pageId) { threads in
             guard !threads.contains(where: { $0.id == threadId }) else { return }
             threads.append(
                 CommentThread(
-                    id: threadId, quote: String(quote.prefix(500)), createdAt: now, updatedAt: now,
+                    id: threadId, quote: String(quote.prefix(500)), blockId: block, createdAt: now, updatedAt: now,
                     comments: [self.comment(text, now)]))
         }
     }
@@ -259,6 +267,9 @@ public final class PageComments: @unchecked Sendable {
             }
             merged.comments = comments.values.sorted { $0.createdAt < $1.createdAt }
             merged.deletedAt = existing.deletedAt ?? thread.deletedAt
+            // The anchor never changes after a thread starts: whichever side knows it (a device that predates block
+            // threads would have dropped the key).
+            merged.blockId = existing.blockId ?? thread.blockId
             merged.updatedAt = max(existing.updatedAt, thread.updatedAt)
             byID[thread.id] = merged
         }

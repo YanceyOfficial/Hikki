@@ -12,8 +12,10 @@ import { t } from '../core/i18n'
 import type { AIAction } from '../extensions/ai-review'
 import { MenuRow, MenuTitle } from './menu-row'
 
+type AIGroup = { label: () => string; actions: { id: string; label: () => string }[] }
+
 /** The AI actions: what the user types, then presets (edits replace the selection after review; Ask explains it). */
-const AI_GROUPS: { label: () => string; actions: { id: string; label: () => string }[] }[] = [
+const AI_GROUPS: AIGroup[] = [
   {
     label: () => t('ai.group.edit'),
     actions: [
@@ -50,20 +52,37 @@ const AI_GROUPS: { label: () => string; actions: { id: string; label: () => stri
   }
 ]
 
+/** About a picture or a PDF (the block menu on an image or a file): nothing to edit, only answers. */
+const MEDIA_GROUPS: AIGroup[] = [
+  {
+    label: () => t('ai.group.ask'),
+    actions: [
+      { id: 'describe', label: () => t('ai.action.describe') },
+      { id: 'extractText', label: () => t('ai.action.extractText') },
+      { id: 'explain', label: () => t('ai.action.explain') },
+      { id: 'summarize', label: () => t('ai.action.summarize') }
+    ]
+  }
+]
+
 export function AIPanel({
   onRun,
   onCancel,
-  autoFocus = true
+  autoFocus = true,
+  media = false
 }: {
   /** Focus the instruction field on open (off where the panel opens on hover). */
   autoFocus?: boolean
+  /** About a picture or a PDF: questions and answers only (the field asks, `ask`). */
+  media?: boolean
   onRun: (action: AIAction) => void
   onCancel: () => void
 }) {
   const [value, setValue] = useState('')
+  const placeholder = media ? t('ai.askPlaceholder') : t('ai.editPlaceholder')
   const submit = () => {
     const instruction = value.trim()
-    if (instruction) onRun({ id: 'custom', instruction })
+    if (instruction) onRun({ id: media ? 'ask' : 'custom', instruction })
   }
   return (
     <div role="menu" aria-label={t('ai.menu')}>
@@ -73,8 +92,8 @@ export function AIPanel({
             // oxlint-disable-next-line jsx-a11y/no-autofocus -- the panel opens to type an instruction
             autoFocus={autoFocus}
             className="md:text-sm"
-            placeholder={t('ai.editPlaceholder')}
-            aria-label={t('ai.editPlaceholder')}
+            placeholder={placeholder}
+            aria-label={placeholder}
             data-testid="selection-menu-ai-input"
             value={value}
             onChange={(e) => setValue(e.target.value)}
@@ -101,7 +120,7 @@ export function AIPanel({
           </InputGroupAddon>
         </InputGroup>
       </div>
-      {AI_GROUPS.map((group) => (
+      {(media ? MEDIA_GROUPS : AI_GROUPS).map((group) => (
         <div key={group.actions[0].id}>
           <MenuTitle>{group.label()}</MenuTitle>
           {group.actions.map((action) => (

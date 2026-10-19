@@ -472,6 +472,9 @@
   .tiptap .hk-embed-open {
     @apply cursor-pointer rounded-md bg-popover px-2 py-1 text-xs text-popover-foreground shadow-sm ring-1 ring-foreground/10 hover:bg-muted;
   }
+  .tiptap .hk-embed-caption {
+    @apply cursor-text px-0.5 pt-1.5 pb-1 text-sm text-muted-foreground;
+  }
   .tiptap .hk-embed-resize {
     @apply relative mx-auto -mt-3 mb-1.5 h-1.5 w-12 cursor-row-resize touch-none rounded-full bg-muted-foreground/30 opacity-0 transition-opacity group-hover/embed:opacity-100 hover:bg-muted-foreground/60 touch:opacity-100;
   }
@@ -903,6 +906,20 @@
 }
 .tiptap .hk-comment-active {
   background: var(--color-wash-yellow);
+}
+/* A thread on a whole block without text (an image, an embed, a file): the block is outlined in the comment colour. */
+.tiptap .hk-comment-block {
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-ink-yellow) 45%, transparent);
+  transition: box-shadow var(--motion-pop-out) var(--ease-out);
+}
+.tiptap .hk-comment-block-active {
+  box-shadow: 0 0 0 2px var(--color-ink-yellow);
+}
+/* A media block AI is reading (the block menu's Ask AI on an image or a PDF), then answering about. */
+.tiptap .hk-ai-media {
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 2px var(--color-selection);
 }
 /* A page with open comments, in a window that can hold the column and a margin of cards: the column moves left so
    the cards fit beside it (Notion's). 1240px = the column (708 + 2 × 96) + a card's room (340). */

@@ -1,19 +1,28 @@
 import {
+  ArrowSquareOutIcon,
   ArrowsClockwiseIcon,
+  ArrowsLeftRightIcon,
   CaretRightIcon,
+  ChatTeardropTextIcon,
   CopyIcon,
+  LinkIcon,
   LinkSimpleIcon,
   PaintBrushIcon,
   SparkleIcon,
+  SubtitlesIcon,
   TrashIcon
 } from '@phosphor-icons/react'
 import type { Editor } from '@tiptap/core'
+import type { Node as PMNode } from '@tiptap/pm/model'
 import { TextSelection } from '@tiptap/pm/state'
 import { cn } from 'cn'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
 import { Input } from '@/components/ui/input'
 
+import { blockKindLabel } from '../core/block-kinds'
+import { notify, reportError } from '../core/errors'
+import { wordCount } from '../core/extract'
 import { t } from '../core/i18n'
 import { shortcutLabel } from '../core/shortcuts'
 import type { AIAction } from '../extensions/ai-review'
@@ -28,7 +37,12 @@ import {
   type Followed
 } from '../extensions/block-units'
 import { BLOCK_COLOR_TYPES, type PaletteColor } from '../extensions/colors'
+import { blockQuote } from '../extensions/comments'
+import { openEmbedPanel, type EmbedHost } from '../extensions/embed'
+import { openCaptionPanel } from '../extensions/embed-caption'
 import { blockLabel, copyLink } from '../extensions/page-links'
+import { mediaRef } from '../lib/ai-content'
+import { isWebURL } from '../lib/embeds'
 import { AIPanel } from './ai-panel'
 import { BlockTypeList, TURN_INTO } from './block-type-list'
 import { ColorList } from './color-list'
@@ -101,6 +115,22 @@ type Item = {
   submenu?: Submenu
   destructive?: boolean
   run?: () => void
+  /** Rows of one section sit together; a line parts sections (Notion's). */
+  section: number
+}
+
+/** The embed extension's host (where an original page opens), or null without one. */
+function embedHost(editor: Editor): EmbedHost | null {
+  const embed = editor.extensionManager.extensions.find((e) => e.name === 'embed')
+  return (embed?.options as { host?: EmbedHost | null } | undefined)?.host ?? null
+}
+
+/** The block's words and characters, as the page's counts reckon them (CJK characters a word each); null without
+ * text. */
+export function blockCounts(node: PMNode): { words: number; characters: number } | null {
+  const text = node.textBetween(0, node.content.size, ' ', ' ')
+  if (!text.trim()) return null
+  return { words: wordCount(text), characters: text.length }
 }
 
 function BlockMenu({
@@ -140,8 +170,11 @@ function BlockMenu({
       panel.style.top = `${-Math.min(rect.bottom - limit, Math.max(0, rect.top - 8))}px`
   }, [submenu])
   const inputRef = useRef<HTMLInputElement>(null)
-  const typeName = TURN_INTO.find((b) => b.id === unitTypeId(editor, unit))?.label()
+  const turnable = TURN_INTO.some((b) => b.id === unitTypeId(editor, unit))
+  const kind = blockKindLabel(unit.node, editor.state.doc.resolve(unit.pos))
   const colorable = BLOCK_COLOR_TYPES.includes(unit.node.type.name)
+  const editable = editor.isEditable
+  const counts = blockCounts(unit.node)
 
   useEffect(() => {
     inputRef.current?.focus()
@@ -173,10 +206,16 @@ function BlockMenu({
   const blockId = unit.node.attrs.id as string | null | undefined
   const link = blockId ? blockLink?.(blockId) : null
 
-  // AI works on the block's text (not on code).
+  // AI works on the block's text (not on code), or reads its picture or PDF.
   const hasAIText = unitTextRange(unit) !== null
+  const media = hasAIText ? null : mediaRef(unit.node)
   const runAI = (action: AIAction) => {
     const now = follow.current
+    if (media) {
+      onClose()
+      if (now) editor.commands.aiRunMedia(now.pos, action)
+      return
+    }
     const aiRange = now ? unitTextRange(now) : null
     onClose()
     if (!aiRange) return
@@ -187,30 +226,96 @@ function BlockMenu({
     editor.commands.aiRun(action)
   }
 
+  // An embed's own actions (Notion's): another link, a caption, the original page.
+  const embed = unit.node.type.name === 'embed'
+  const original = embed ? (unit.node.attrs.original as string | null) : null
+  const host = embed ? embedHost(editor) : null
+  // A comment on the block's text (a passage), or — a block without text — on the whole block.
+  const commentable = editable && (hasAIText || typeof blockId === 'string')
+  const startComment = () => {
+    const now = follow.current
+    onClose()
+    if (!now || editor.isDestroyed) return
+    const range = unitTextRange(now)
+    if (range) {
+      editor.view.dispatch(
+        editor.state.tr.setSelection(TextSelection.create(editor.state.doc, range.from, range.to))
+      )
+      editor.commands.commentStart()
+    } else {
+      editor.commands.commentStartBlock(now.pos, blockQuote(now.node, kind))
+    }
+  }
+
   const items: Item[] = [
-    ...(hasAIText
+    ...(embed && editable
       ? [
           {
-            id: 'ai',
-            label: t('ai.menu'),
-            icon: <SparkleIcon size={18} />,
-            submenu: 'ai' as const
+            id: 'replace',
+            label: t('blockMenu.replace'),
+            icon: <ArrowsLeftRightIcon size={18} />,
+            section: 0,
+            run: () => {
+              const now = follow.current
+              onClose()
+              if (now) openEmbedPanel(editor, 'generic', now.pos)
+            }
+          },
+          {
+            id: 'caption',
+            label: t('blockMenu.caption'),
+            icon: <SubtitlesIcon size={18} />,
+            section: 0,
+            run: () => {
+              const now = follow.current
+              onClose()
+              if (now) openCaptionPanel(editor, now.pos)
+            }
           }
         ]
       : []),
-    {
-      id: 'turnInto',
-      label: t('blockMenu.turnInto'),
-      icon: <ArrowsClockwiseIcon size={18} />,
-      submenu: 'turnInto'
-    },
+    ...(original && isWebURL(original) && host
+      ? [
+          {
+            id: 'openOriginal',
+            label: t('blockMenu.openInBrowser'),
+            icon: <ArrowSquareOutIcon size={18} />,
+            section: 0,
+            run: act(() => host.openExternal(original))
+          },
+          {
+            id: 'copyOriginal',
+            label: t('blockMenu.copyOriginal'),
+            icon: <LinkIcon size={18} />,
+            section: 0,
+            run: act(() => {
+              void navigator.clipboard
+                ?.writeText(original)
+                .then(() => notify('success', t('blockMenu.linkCopied')))
+                .catch((error: unknown) => reportError('copyFailed', error))
+            })
+          }
+        ]
+      : []),
+    ...(turnable
+      ? [
+          {
+            id: 'turnInto',
+            label: t('blockMenu.turnInto'),
+            icon: <ArrowsClockwiseIcon size={18} />,
+            submenu: 'turnInto' as const,
+            section: 1
+          }
+        ]
+      : []),
     ...(colorable
       ? [
           {
             id: 'color',
             label: t('blockMenu.color'),
             icon: <PaintBrushIcon size={18} />,
-            submenu: 'color' as const
+            submenu: 'color' as const,
+            section: 1
           }
         ]
       : []),
@@ -220,6 +325,7 @@ function BlockMenu({
             id: 'copyLink',
             label: t('blockMenu.copyLink'),
             icon: <LinkSimpleIcon size={18} />,
+            section: 2,
             // A ready hyperlink (the block's text) plus the URL: pasting it lands as a link.
             run: act((now) => void copyLink(link.href, blockLabel(now.node) ?? link.pageLabel))
           }
@@ -230,6 +336,7 @@ function BlockMenu({
       label: t('blockMenu.duplicate'),
       icon: <CopyIcon size={18} />,
       keys: shortcutLabel('duplicateBlock'),
+      section: 2,
       run: act((now) => editor.view.dispatch(duplicateUnit(editor.state, now)))
     },
     {
@@ -238,8 +345,32 @@ function BlockMenu({
       icon: <TrashIcon size={18} />,
       keys: 'Del',
       destructive: true,
+      section: 2,
       run: act((now) => editor.view.dispatch(deleteUnit(editor.state, now)))
-    }
+    },
+    ...(commentable
+      ? [
+          {
+            id: 'comment',
+            label: t('blockMenu.comment'),
+            icon: <ChatTeardropTextIcon size={18} />,
+            keys: shortcutLabel('comment'),
+            section: 3,
+            run: startComment
+          }
+        ]
+      : []),
+    ...(editable && (hasAIText || media)
+      ? [
+          {
+            id: 'ai',
+            label: t('ai.menu'),
+            icon: <SparkleIcon size={18} />,
+            submenu: 'ai' as const,
+            section: 4
+          }
+        ]
+      : [])
   ]
 
   // With a query: matching actions and Turn-into targets, flat.
@@ -250,9 +381,10 @@ function BlockMenu({
       id: `turn-${block.id}`,
       label: `${t('blockMenu.turnInto')} › ${block.label()}`,
       icon: <block.icon size={18} />,
-      run: act((now) => turnUnitInto(editor, now, block.id))
+      run: act((now) => turnUnitInto(editor, now, block.id)),
+      section: 1
     }))
-    return [...items.filter((i) => !i.submenu), ...turnInto].filter((i) =>
+    return [...items.filter((i) => !i.submenu), ...(turnable ? turnInto : [])].filter((i) =>
       i.label.toLowerCase().includes(q)
     )
   })()
@@ -299,8 +431,13 @@ function BlockMenu({
             setSubmenu(null)
           }}
         />
-        {typeName && !query && (
-          <div className="px-2 pt-1 pb-1 text-xs font-medium text-muted-foreground">{typeName}</div>
+        {!query && (
+          <div
+            className="px-2 pt-1 pb-1 text-xs font-medium text-muted-foreground"
+            data-testid="block-menu-kind"
+          >
+            {kind}
+          </div>
         )}
         <div
           ref={listRef}
@@ -310,7 +447,10 @@ function BlockMenu({
           {visible.length === 0 && (
             <div className="px-2 py-1.5 text-sm text-muted-foreground">{t('editor.noResults')}</div>
           )}
-          {visible.map((item, i) => (
+          {visible.map((item, i) => [
+            !query && i > 0 && visible[i - 1].section !== item.section && (
+              <div key={`line-${item.id}`} role="separator" className="mx-2 my-1 h-px bg-border" />
+            ),
             <MenuRow
               key={item.id}
               glide
@@ -336,8 +476,18 @@ function BlockMenu({
               {item.keys && <span className="text-xs text-placeholder">{item.keys}</span>}
               {item.submenu && <CaretRightIcon size={14} aria-hidden />}
             </MenuRow>
-          ))}
+          ])}
         </div>
+        {counts && !query && (
+          <div
+            className="mt-1 border-t border-border px-2 pt-1.5 pb-1 text-xs text-muted-foreground"
+            data-testid="block-menu-counts"
+          >
+            {t('blockMenu.words', { count: counts.words })}
+            {', '}
+            {t('blockMenu.characters', { count: counts.characters })}
+          </div>
+        )}
       </div>
       {submenuShown && shownSubmenu && (
         <div
@@ -348,7 +498,12 @@ function BlockMenu({
           {shownSubmenu === 'ai' && (
             // Its field keeps its own keys (the menu's arrows and Escape stay out of the typing).
             <div onKeyDown={(e) => e.stopPropagation()}>
-              <AIPanel autoFocus={false} onRun={runAI} onCancel={() => setSubmenu(null)} />
+              <AIPanel
+                autoFocus={false}
+                media={media !== null}
+                onRun={runAI}
+                onCancel={() => setSubmenu(null)}
+              />
             </div>
           )}
           {shownSubmenu === 'turnInto' && (

@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 26
+export const PROTOCOL_VERSION = 27
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -86,6 +86,9 @@ export type ToNativeMessage =
       explain?: boolean
       units: { key: string; html: string }[]
       context: { title: string; before: string; after: string; previous?: string }
+      /** A picture or a PDF the question is about (the block menu's Ask AI on an image or a file): the workspace asset
+       * (`hikki-editor://assets/<name>`) the native side reads and sends along; `units` is then empty. */
+      media?: AIMediaRef
     }
   /** Where the page is scrolled (throttled): each tab gets its place back when it is shown again. */
   | { type: 'scroll'; docId: string; top: number }
@@ -105,8 +108,16 @@ export type ToNativeMessage =
   | { type: 'aiChangeFocus'; docId: string; id?: string }
   /** The heading the reader is in (scroll-spy) changed: the inspector's outline marks it; null above the first. */
   | { type: 'activeHeading'; docId: string; id: string | null }
-  /** Comments (the native store, `comments/<page id>.json`): a thread started on a passage with its first comment, … */
-  | { type: 'commentCreate'; docId: string; threadId: string; quote: string; body: string }
+  /** Comments (the native store, `comments/<page id>.json`): a thread started on a passage — or, with `blockId`, on a
+   * whole block without text — with its first comment, … */
+  | {
+      type: 'commentCreate'
+      docId: string
+      threadId: string
+      quote: string
+      body: string
+      blockId?: string
+    }
   /** …a reply, resolving / reopening, deleting a comment or (no `commentId`) the thread. */
   | { type: 'commentReply'; docId: string; threadId: string; body: string }
   | { type: 'commentResolve'; docId: string; threadId: string; resolved: boolean }
@@ -148,6 +159,9 @@ export type ToNativeMessage =
   | { type: 'suggestReading'; text: string }
   /** A link card's details: replies `{title, description, icon}` (each may be null), or null when the page can't be read. */
   | { type: 'linkPreview'; url: string }
+
+/** A file Ask AI reads (`aiRequest.media`): `kind` says how it goes to the model. */
+export type AIMediaRef = { url: string; kind: 'image' | 'pdf'; name?: string | null }
 
 export type AIChangeStatus = 'pending' | 'approved' | 'skipped' | 'edited' | 'stale'
 

@@ -157,6 +157,29 @@ struct BridgeMessageTests {
             try decode(["type": "commentCreate", "docId": "p1", "threadId": "t", "quote": "そうです", "body": "样态"])
                 == .commentCreate(docId: "p1", threadId: "t", quote: "そうです", body: "样态"))
         #expect(
+            try decode([
+                "type": "commentCreate", "docId": "p1", "threadId": "t", "quote": "Image", "body": "ok", "blockId": "b1",
+            ])
+                == .commentCreate(docId: "p1", threadId: "t", quote: "Image", body: "ok", blockId: "b1"))
+        #expect(
+            try decode([
+                "type": "aiRequest", "id": "r2", "action": "describe", "answer": true, "units": [],
+                "context": ["title": "Trip", "before": "", "after": ""],
+                "media": ["url": "hikki-editor://assets/a.png", "kind": "image", "name": NSNull()],
+            ])
+                == .aiRequest(
+                    AIRequestPayload(
+                        id: "r2", action: "describe", answer: true, units: [],
+                        context: .init(title: "Trip", before: "", after: ""),
+                        media: .init(url: "hikki-editor://assets/a.png", kind: .image))))
+        #expect(throws: (any Error).self) {
+            try decode([
+                "type": "aiRequest", "id": "r3", "action": "describe", "answer": true, "units": [],
+                "context": ["title": "", "before": "", "after": ""],
+                "media": ["url": "hikki-editor://assets/a.mov", "kind": "video"],
+            ])
+        }
+        #expect(
             try decode(["type": "commentReply", "docId": "p1", "threadId": "t", "body": "ok"])
                 == .commentReply(docId: "p1", threadId: "t", body: "ok"))
         #expect(

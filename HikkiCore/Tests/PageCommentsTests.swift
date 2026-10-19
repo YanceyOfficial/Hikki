@@ -34,6 +34,35 @@ struct PageCommentsTests {
         #expect(try String(contentsOf: try comments.url(for: "p"), encoding: .utf8).contains("deletedAt"))
     }
 
+    @Test func aThreadOnAWholeBlockKeepsItsBlockThroughMergesAndOlderFiles() throws {
+        let (comments, root) = store()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let t0 = Date(timeIntervalSince1970: 1_000)
+        try comments.create(pageId: "p", threadId: "b", quote: "Image · kyoto.jpg", body: "Which temple?", blockId: "img-1", now: t0)
+        try comments.create(pageId: "p", threadId: "t", quote: "passage", body: "On text", blockId: "", now: t0)
+        let threads = try comments.threads(of: "p")
+        #expect(threads.map(\.blockId) == ["img-1", nil])
+        #expect(threads[0].quote == "Image · kyoto.jpg")
+
+        // A device that predates block threads rewrote the thread without the key: the merge keeps the anchor.
+        var older = threads[0]
+        older.blockId = nil
+        older.updatedAt = t0.addingTimeInterval(60)
+        #expect(PageComments.merge([threads[0]], [older])[0].blockId == "img-1")
+        #expect(PageComments.merge([older], [threads[0]])[0].blockId == "img-1")
+
+        // A file written before block threads (no `blockId` key) still reads, its threads on passages.
+        let file = try comments.url(for: "q")
+        try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let json = """
+            {"format":1,"pageId":"q","threads":[{"id":"t","quote":"q","createdAt":"2026-10-01T00:00:00Z",\
+            "updatedAt":"2026-10-01T00:00:00Z","comments":[{"id":"c","body":"hi","createdAt":"2026-10-01T00:00:00Z"}]}]}
+            """
+        try Data(json.utf8).write(to: file)
+        let read = try comments.threads(of: "q")
+        #expect(read.count == 1 && read[0].blockId == nil)
+    }
+
     @Test func aCommentIsEditedAndTheNewerEditWinsAMerge() throws {
         let (comments, root) = store()
         defer { try? FileManager.default.removeItem(at: root) }

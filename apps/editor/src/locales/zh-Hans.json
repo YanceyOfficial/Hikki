@@ -350,7 +350,25 @@
     "copyLink": "复制块链接",
     "duplicate": "创建副本",
     "delete": "删除",
-    "add": "在下方添加块"
+    "add": "在下方添加块",
+    "replace": "替换",
+    "caption": "说明文字",
+    "captionPlaceholder": "写一段说明…",
+    "captionSave": "保存",
+    "openInBrowser": "在浏览器中打开",
+    "copyOriginal": "复制原始链接",
+    "linkCopied": "已复制链接",
+    "comment": "评论",
+    "words_one": "{{count}} 个字词",
+    "words_other": "{{count}} 个字词",
+    "characters_one": "{{count}} 个字符",
+    "characters_other": "{{count}} 个字符",
+    "kind": {
+      "block": "块",
+      "youtube": "YouTube",
+      "vimeo": "Vimeo",
+      "codepen": "CodePen"
+    }
   },
   "ruby": {
     "label": "读音",
@@ -395,7 +413,8 @@
     "insert": "嵌入",
     "open": "打开",
     "frameTitle": "嵌入内容",
-    "resize": "调整高度"
+    "resize": "调整高度",
+    "replace": "替换"
   },
   "mention": {
     "empty": "没有页面"
@@ -435,7 +454,9 @@
         "ja": "日语"
       },
       "explain": "解释",
-      "summarize": "总结"
+      "summarize": "总结",
+      "describe": "描述",
+      "extractText": "提取文字"
     },
     "editing": "正在修改…",
     "thinking": "正在思考…",
@@ -463,7 +484,8 @@
       "rejected": "请求被拒绝。",
       "rejectedWith": "请求被拒绝：{{message}}",
       "invalidResponse": "无法读取回答。请重试。",
-      "badBaseURL": "“设置 → AI”中的 {{provider}} 地址无法使用：请使用 https（http 只限本机）。"
+      "badBaseURL": "“设置 → AI”中的 {{provider}} 地址无法使用：请使用 https（http 只限本机）。",
+      "mediaUnreadable": "无法为 AI 读取此文件。仅支持存放在工作区中的图片和 PDF。"
     },
     "change": {
       "approve": "采纳",
@@ -481,7 +503,8 @@
     "pageUntouched": "替换之前页面不会改动。",
     "removed": "（删除）",
     "changesInLines_one": "{{total}} 行中的 {{changed}} 行有 {{count}} 处修改",
-    "changesInLines_other": "{{total}} 行中的 {{changed}} 行有 {{count}} 处修改"
+    "changesInLines_other": "{{total}} 行中的 {{changed}} 行有 {{count}} 处修改",
+    "askPlaceholder": "就此询问 AI…"
   },
   "comments": {
     "menu": "评论",
@@ -549,6 +572,7 @@
     "aiOffline": "没有网络连接。",
     "aiRejected": "AI 服务拒绝了请求。",
     "aiInvalidResponse": "无法读取 AI 的回复。",
+    "aiMediaUnreadable": "无法为 AI 读取此文件。",
     "searchFailed": "搜索暂时不可用。",
     "searchIndexFailed": "无法更新搜索索引。",
     "offline": "没有网络连接。",

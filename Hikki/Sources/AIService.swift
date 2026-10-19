@@ -1,6 +1,7 @@
 import Foundation
 import HikkiAI
 import HikkiCore
+import UniformTypeIdentifiers
 
 /// Runs the editor's AI requests: picks the model (Settings → AI), streams its answer and passes each event back to
 /// the page that asked. One per editor; a request is cancelled when the page asks or a new one replaces it.
@@ -12,7 +13,9 @@ final class AIService {
     func attach(_ editor: EditorController) {
         editor.onAIRequest = { [weak self, weak editor] payload in
             guard let self, let editor else { return }
-            self.run(payload) { [weak editor] event in editor?.sendAIEvent(event) }
+            // A picture or a PDF asked about: the workspace's own file (never a path the page names).
+            let file = payload.media.flatMap { AssetStore.name(fromURL: $0.url) }.flatMap(editor.assetFile(named:))
+            self.run(payload, mediaFile: file) { [weak editor] event in editor?.sendAIEvent(event) }
         }
         editor.onAICancel = { [weak self] id in self?.cancel(id) }
     }
@@ -21,7 +24,9 @@ final class AIService {
         tasks.removeValue(forKey: id)?.cancel()
     }
 
-    private func run(_ payload: AIRequestPayload, send: @escaping @MainActor ([String: Any]) -> Void) {
+    private func run(
+        _ payload: AIRequestPayload, mediaFile: URL?, send: @escaping @MainActor ([String: Any]) -> Void
+    ) {
         let id = payload.id
         let client: any AIClient
         let model: AIModel
@@ -31,13 +36,28 @@ final class AIService {
             send(Self.event(id, for: error))
             return
         }
-        let request = AIPrompts.request(for: Self.task(payload), model: model)
         Log.info(
             "AI request", category: "ai",
-            context: ["action": payload.action, "model": model.id, "units": "\(payload.units.count)"])
+            context: [
+                "action": payload.action, "model": model.id, "units": "\(payload.units.count)",
+                "media": payload.media?.kind.rawValue ?? "none",
+            ])
         tasks[id]?.cancel()
         tasks[id] = Task { [weak self] in
             var characters = 0
+            var part: AIMessage.Part?
+            if let media = payload.media {
+                do {
+                    part = try await Self.mediaPart(media, file: mediaFile)
+                } catch {
+                    if Task.isCancelled { return }
+                    Incident.report(.aiMediaUnreadable, error, category: "ai")
+                    send(["id": id, "type": "error", "code": "mediaUnreadable"])
+                    self?.tasks[id] = nil
+                    return
+                }
+            }
+            let request = AIPrompts.request(for: Self.task(payload, media: part), model: model)
             do {
                 for try await event in client.stream(request) {
                     if Task.isCancelled { return }
@@ -94,13 +114,25 @@ final class AIService {
         AIPrompts.languageName(Bundle.main.preferredLocalizations.first ?? "en")
     }
 
-    static func task(_ payload: AIRequestPayload) -> AITask {
+    /// The file a request is about, made ready for the model (pictures scaled, PDFs within the size limit), read off the
+    /// main thread. Fails when the page named no workspace file, or it can't be read.
+    @concurrent
+    nonisolated static func mediaPart(_ media: AIRequestPayload.Media, file: URL?) async throws -> AIMessage.Part {
+        guard let file else { throw AIAttachments.Failure.unreadable }
+        let data = try Data(contentsOf: file)
+        switch media.kind {
+        case .image: return try AIAttachments.image(data)
+        case .pdf: return try AIAttachments.part(data, type: .pdf, name: media.name ?? file.lastPathComponent)
+        }
+    }
+
+    static func task(_ payload: AIRequestPayload, media: AIMessage.Part? = nil) -> AITask {
         AITask(
             action: payload.action, instruction: payload.instruction, answer: payload.answer,
             explain: payload.explain ?? false,
             units: payload.units.map { AITask.Unit(key: $0.key, html: $0.html) }, title: payload.context.title,
             before: payload.context.before, after: payload.context.after, previous: payload.context.previous,
-            language: appLanguage)
+            language: appLanguage, media: media)
     }
 
     /// An answer's event as the page reads it (`AIStreamEvent` in protocol.ts).

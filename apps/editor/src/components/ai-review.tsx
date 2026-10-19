@@ -138,6 +138,8 @@ function errorText(error: NonNullable<AIReviewProps['session']['error']>): strin
       return error.message
         ? t('ai.error.rejectedWith', { message: error.message })
         : t('ai.error.rejected')
+    case 'mediaUnreadable':
+      return t('ai.error.mediaUnreadable')
     default:
       return t('ai.error.invalidResponse')
   }

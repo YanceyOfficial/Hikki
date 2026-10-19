@@ -3,6 +3,7 @@ import { DOMParser as PMDOMParser, DOMSerializer } from '@tiptap/pm/model'
 import type { EditorState } from '@tiptap/pm/state'
 
 import { isSafeHref } from '../core/links'
+import type { AIMediaRef } from '../core/protocol'
 
 /**
  * One piece of the selection AI works on: the selected part of one text block. The model gets `html` (the block's
@@ -271,4 +272,21 @@ export function parseEditReply(reply: string, keys: string[]): Map<string, strin
       out.set(id, html)
   }
   return out.size > 0 ? out : null
+}
+
+const ASSET = /^hikki-editor:\/\/assets\/[^/\\?#]+$/u
+
+/**
+ * The file a block holds that AI can read, or null: a picture stored in the workspace (the Image block), or a PDF
+ * attachment. Pictures on the web, video and audio are left out — nothing reads them on the device.
+ */
+export function mediaRef(node: PMNode): AIMediaRef | null {
+  const src = typeof node.attrs.src === 'string' ? node.attrs.src.trim() : ''
+  if (!ASSET.test(src)) return null
+  const name = typeof node.attrs.name === 'string' ? node.attrs.name : null
+  if (node.type.name === 'image')
+    return { url: src, kind: 'image', name: name ?? (node.attrs.alt as string | null) ?? null }
+  if (node.type.name === 'fileAttachment' && /\.pdf$/iu.test(name ?? src))
+    return { url: src, kind: 'pdf', name }
+  return null
 }
