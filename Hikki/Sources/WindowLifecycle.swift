@@ -3,8 +3,8 @@
     import SwiftUI
 
     /// macOS window lifecycle, like Notes or Music: closing the last main window only hides it (tabs, the
-    /// open page and the editor stay as they were), Settings closes along with it, and clicking the Dock icon
-    /// brings the same window back instead of a fresh one.
+    /// open page and the editor stay as they were) and clicking the Dock icon brings the same window back instead of
+    /// a fresh one. Settings is a sheet on the window, so it goes and comes back with it.
     enum MainWindows {
         /// The red button or ⌘W on the last tab. Other main windows (Open in new window) close for real.
         @MainActor static func closeOrHide(_ window: NSWindow?) {
@@ -13,7 +13,6 @@
                 window.close()
             } else {
                 window.orderOut(nil)
-                closeSettings()
             }
         }
 
@@ -33,22 +32,23 @@
             return true
         }
 
-        @MainActor private static func closeSettings() {
-            for window in NSApp.windows where isSettings(window) { window.close() }
+        /// The main window a request from the menu bar (or a menu with no window in front) is for: the key one (or
+        /// the one under the key sheet), else the frontmost visible one.
+        @MainActor static func requestTarget() -> NSWindow? {
+            if let key = NSApp.keyWindow, isMain(key) { return key }
+            if let owner = NSApp.keyWindow?.sheetParent, isMain(owner) { return owner }
+            return visibleMain().first
         }
 
+        /// Front to back.
         @MainActor private static func visibleMain() -> [NSWindow] {
-            NSApp.windows.filter { isMain($0) && $0.isVisible }
+            NSApp.orderedWindows.filter { isMain($0) && $0.isVisible }
         }
 
-        /// Our document windows: titled, normal level, not Settings, not panels/sheets.
+        /// Our document windows: titled, normal level, not panels/sheets.
         @MainActor private static func isMain(_ window: NSWindow) -> Bool {
-            window.styleMask.contains(.titled) && window.level == .normal && !isSettings(window) && !(window is NSPanel)
+            window.styleMask.contains(.titled) && window.level == .normal && !(window is NSPanel)
                 && window.sheetParent == nil
-        }
-
-        @MainActor private static func isSettings(_ window: NSWindow) -> Bool {
-            window.identifier?.rawValue.localizedCaseInsensitiveContains("settings") == true
         }
     }
 

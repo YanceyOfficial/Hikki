@@ -8,7 +8,7 @@ final class EditorFlowTests: XCTestCase {
     /// `workspace: nil` starts from a fresh install (onboarding); otherwise a device workspace is seeded.
     private func launch(
         language: String? = nil, workspace: String? = "Test", shortcutOverrides: String = "{}",
-        environment: [String: String] = [:], arguments: [String] = []
+        environment: [String: String] = [:], arguments: [String] = [], settingsPage: String? = "workspace"
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments += arguments
@@ -17,9 +17,11 @@ final class EditorFlowTests: XCTestCase {
         if let workspace { app.launchEnvironment["HIKKI_WORKSPACE"] = workspace }
         // Preferences outlive the data directory (UserDefaults): every test starts with the inspector closed.
         app.launchArguments += [
-            "-inspector.visible", "NO", "-inspector.tab", "outline", "-settings.page", "workspace",
+            "-inspector.visible", "NO", "-inspector.tab", "outline",
             "-shortcutOverrides", "<\(Data(shortcutOverrides.utf8).map { String(format: "%02x", $0) }.joined())>",
         ]
+        // Fixed in the argument domain, so a page picked in Settings isn't remembered; nil leaves it to the app.
+        if let settingsPage { app.launchArguments += ["-settings.page", settingsPage] }
         if let language { app.launchArguments += ["-AppleLanguages", "(\(language))", "-AppleLocale", language] }
         app.launch()
         return app
@@ -291,6 +293,33 @@ final class EditorFlowTests: XCTestCase {
         app.buttons["settings-close"].firstMatch.tap()
         openDrawerIfNeeded(app)
         XCTAssertTrue(waitOrDumpTree(app.staticTexts["Atlas"].firstMatch, in: app), "renamed workspace not shown")
+    }
+
+    /// Settings on Mac/iPad is a dialog over the window: its pages in a sidebar, the close button dismisses it, and
+    /// it opens again on the page last shown. (iPhone keeps its hub list.)
+    func testSettingsDialogRemembersItsPage() throws {
+        continueAfterFailure = false
+        let app = launch(settingsPage: nil)
+        guard app.buttons["workspace-menu"].firstMatch.waitForExistence(timeout: 5) else {
+            throw XCTSkip("iPhone: Settings is the hub list")
+        }
+        openSettings(app)
+        let about = app.descendants(matching: .any)["settings-page-about"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(about, in: app))
+        about.tap()
+        let diagnostics = app.descendants(matching: .any)["settings-diagnostics"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(diagnostics, in: app), "About not shown")
+        attachScreenshot(app, "settings-dialog")
+        app.buttons["settings-close"].firstMatch.tap()
+        XCTAssertTrue(
+            app.buttons["settings-close"].firstMatch.waitForNonExistence(timeout: 5),
+            "the close button didn't dismiss Settings")
+
+        openSettings(app)
+        XCTAssertTrue(waitOrDumpTree(diagnostics, in: app), "reopened on another page")
+        // About → Logs opens from inside the dialog (pushed on iPad, a sheet over it on the Mac).
+        app.descendants(matching: .any)["settings-logs"].firstMatch.tap()
+        XCTAssertTrue(waitOrDumpTree(app.descendants(matching: .any)["logs-level"].firstMatch, in: app), "no logs")
     }
 
     #if os(iOS)
@@ -1307,7 +1336,10 @@ final class EditorFlowTests: XCTestCase {
         let header = app.buttons["workspace-menu"].firstMatch
         if header.waitForExistence(timeout: 5) {
             header.tap()
-            let open = app.buttons["settings-open"].firstMatch
+            // iPadOS menus drop the item's identifier: there it is found by its (English) title.
+            let open = app.buttons.matching(
+                NSPredicate(format: "identifier == 'settings-open' OR (identifier == '' AND label == 'Settings')")
+            ).firstMatch
             XCTAssertTrue(waitOrDumpTree(open, in: app))
             open.tap()
         } else {

@@ -13,13 +13,14 @@ enum MenuBarPreferences {
 
     /// What the menu bar menu asked the main window to do.
     struct MenuBarRequest: Equatable, Identifiable {
-        enum Kind { case newPage, search }
+        enum Kind { case newPage, search, settings }
         let id = UUID()
         let kind: Kind
     }
 
-    /// The menu bar menu has no focused window, so it can't reach a `Navigator`: it posts a request here and the
-    /// key window's ContentView performs it (`menuBarRequests(navigator:)`).
+    /// The menu bar menu (and the app menu's Settings… with no window in front) has no focused window, so it can't
+    /// reach a `Navigator`: it posts a request here and the key main window's ContentView performs it
+    /// (`menuBarRequests(navigator:)`).
     @Observable
     final class MenuBarRequests {
         static let shared = MenuBarRequests()
@@ -41,25 +42,25 @@ enum MenuBarPreferences {
     }
 
     private struct MenuBarMenu: View {
-        @Environment(\.openSettings) private var openSettings
-
         var body: some View {
             Button("app:menubar.open") { MainWindows.showMain() }
             Button("app:page.new") { request(.newPage) }
             Button("app:menu.search") { request(.search) }
             Divider()
-            Button("app:settings.open") {
-                NSApp.activate()
-                openSettings()
-            }
+            Button("app:settings.open") { request(.settings) }
             Divider()
             Button("app:menubar.quit") { NSApp.terminate(nil) }
         }
 
-        /// Bring the main window forward first so it is the key window when the request lands.
-        private func request(_ kind: MenuBarRequest.Kind) {
+        private func request(_ kind: MenuBarRequest.Kind) { MenuBarRequests.shared.post(kind) }
+    }
+
+    extension MenuBarRequests {
+        /// Brings the main window forward first (the hidden one if the last was closed), so it is the one that
+        /// performs the request.
+        func post(_ kind: MenuBarRequest.Kind) {
             MainWindows.showMain()
-            MenuBarRequests.shared.pending = MenuBarRequest(kind: kind)
+            pending = MenuBarRequest(kind: kind)
         }
     }
 
@@ -78,11 +79,15 @@ enum MenuBarPreferences {
             content
                 .background(WindowReader(window: $window))
                 .onChange(of: MenuBarRequests.shared.pending?.id) { _, _ in
-                    guard let request = MenuBarRequests.shared.pending, let window, window.isKeyWindow else { return }
+                    // The key window, or — while the app is still activating, nothing key yet — the main window
+                    // `showMain` brought forward.
+                    guard let request = MenuBarRequests.shared.pending, let window, window === MainWindows.requestTarget()
+                    else { return }
                     MenuBarRequests.shared.pending = nil
                     switch request.kind {
                     case .newPage: navigator.newPage()
                     case .search: navigator.isSearching = true
+                    case .settings: navigator.isShowingSettings = true
                     }
                 }
         }
