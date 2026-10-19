@@ -130,51 +130,43 @@
     },
     "googleDrive": {
       "title": "Google Drive",
-      "hint": "Drive 文件、文档、表格或幻灯片"
-    },
-    "tweet": {
-      "title": "推文",
-      "hint": "X 上的一条帖子"
-    },
-    "gist": {
-      "title": "GitHub Gist",
-      "hint": "一段 Gist，带语法着色"
-    },
-    "googleMaps": {
-      "title": "Google 地图",
-      "hint": "地图上的一个地点"
+      "hint": "文档、表格、幻灯片或 Drive 文件"
     },
     "figma": {
       "title": "Figma",
-      "hint": "Figma 文件或原型"
-    },
-    "drawio": {
-      "title": "draw.io",
-      "hint": "来自 draw.io（diagrams.net）的图表"
-    },
-    "loom": {
-      "title": "Loom",
-      "hint": "Loom 视频"
-    },
-    "excalidraw": {
-      "title": "Excalidraw",
-      "hint": "Excalidraw 手绘图"
+      "hint": "Figma 设计稿、白板或原型"
     },
     "miro": {
       "title": "Miro",
       "hint": "Miro 白板"
     },
+    "loom": {
+      "title": "Loom",
+      "hint": "Loom 视频"
+    },
     "airtable": {
       "title": "Airtable",
       "hint": "共享的 Airtable 视图"
     },
-    "spotify": {
-      "title": "Spotify",
-      "hint": "单曲、专辑、歌单或播客"
+    "calendly": {
+      "title": "Calendly",
+      "hint": "预约会议的日程页面"
+    },
+    "gist": {
+      "title": "GitHub Gist",
+      "hint": "一段 Gist，样式与页面一致"
     },
     "codesandbox": {
       "title": "CodeSandbox",
       "hint": "可运行的代码沙盒"
+    },
+    "drawio": {
+      "title": "draw.io",
+      "hint": "来自 draw.io（diagrams.net）的图表"
+    },
+    "excalidraw": {
+      "title": "Excalidraw",
+      "hint": "Excalidraw 手绘图"
     }
   },
   "cover": {
@@ -370,20 +362,15 @@
       "generic": "粘贴要嵌入的链接…",
       "html": "粘贴 HTML…",
       "googleDrive": "粘贴 Google Drive、文档、表格或幻灯片链接…",
-      "tweet": "粘贴 X 帖子链接…",
-      "gist": "粘贴 Gist 链接…",
-      "googleMaps": "粘贴 Google 地图链接…",
       "figma": "粘贴 Figma 链接…",
-      "youtube": "粘贴 YouTube 链接…",
-      "vimeo": "粘贴 Vimeo 链接…",
-      "codepen": "粘贴 CodePen 链接…",
-      "drawio": "粘贴 draw.io 或 diagrams.net 链接…",
-      "loom": "粘贴 Loom 链接…",
-      "excalidraw": "粘贴 Excalidraw 分享链接…",
       "miro": "粘贴 Miro 白板链接…",
+      "loom": "粘贴 Loom 链接…",
       "airtable": "粘贴 Airtable 共享视图链接…",
-      "spotify": "粘贴 Spotify 链接…",
-      "codesandbox": "粘贴 CodeSandbox 链接…"
+      "calendly": "粘贴 Calendly 预约链接…",
+      "gist": "粘贴 Gist 链接…",
+      "codesandbox": "粘贴 CodeSandbox 链接…",
+      "drawio": "粘贴 draw.io 或 diagrams.net 链接…",
+      "excalidraw": "粘贴 Excalidraw 分享链接…"
     },
     "label": {
       "link": "要嵌入的链接",

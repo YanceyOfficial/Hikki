@@ -442,8 +442,9 @@
   .tiptap :has(> img.hk-image[data-load='failed']) {
     @apply rounded-md bg-muted;
   }
+  /* Embeds (extensions/embed.ts): frames and link cards share one card — the border, rounded-xl, the card colour. */
   .tiptap .hk-embed-card {
-    @apply my-2 flex cursor-pointer flex-col gap-1.5 rounded-xl border border-border p-5 select-none hover:bg-accent/40 focus-visible:outline-2 focus-visible:outline-ring;
+    @apply my-2 flex cursor-pointer flex-col gap-1.5 rounded-xl border border-border bg-card p-5 transition-colors duration-(--motion-pop-in) ease-out select-none hover:bg-accent/40 focus-visible:outline-2 focus-visible:outline-ring;
   }
   .tiptap .hk-embed-card-icon {
     @apply mb-1 size-6 rounded-md object-cover;
@@ -458,10 +459,10 @@
     @apply truncate text-sm text-muted-foreground;
   }
   .tiptap .hk-embed {
-    @apply relative my-2 rounded-md bg-muted;
+    @apply relative my-2 overflow-hidden rounded-xl border border-border bg-card;
   }
   .tiptap .hk-embed-frame {
-    @apply block w-full rounded-md border-0 bg-background;
+    @apply block w-full border-0 bg-transparent;
   }
   .tiptap .hk-embed[data-resizing] .hk-embed-frame {
     @apply pointer-events-none;
@@ -472,8 +473,9 @@
   .tiptap .hk-embed-open {
     @apply cursor-pointer rounded-md bg-popover px-2 py-1 text-xs text-popover-foreground shadow-sm ring-1 ring-foreground/10 hover:bg-muted;
   }
+  /* The height handle sits inside the card's bottom edge (the card clips what overflows its corners). */
   .tiptap .hk-embed-resize {
-    @apply relative mx-auto -mt-3 mb-1.5 h-1.5 w-12 cursor-row-resize touch-none rounded-full bg-muted-foreground/30 opacity-0 transition-opacity group-hover/embed:opacity-100 hover:bg-muted-foreground/60 touch:opacity-100;
+    @apply absolute bottom-1 left-1/2 h-1.5 w-12 -translate-x-1/2 cursor-row-resize touch-none rounded-full bg-muted-foreground/30 opacity-0 transition-opacity group-hover/embed:opacity-100 hover:bg-muted-foreground/60 touch:opacity-100;
   }
   .tiptap .hk-upload {
     @apply my-2 flex flex-col gap-2 rounded-md border border-dashed border-border px-3 py-2.5 text-sm text-muted-foreground;

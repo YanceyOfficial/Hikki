@@ -16,6 +16,13 @@ import {
   type EmbedProvider,
   type EmbedSource
 } from '../lib/embeds'
+import {
+  embedFrameHeight,
+  embedThemeMessage,
+  gistEmbedDocument,
+  isGistSnippet,
+  readEmbedTheme
+} from '../lib/gist-embed'
 import { followPosition, type Followed } from './block-units'
 
 /** What embeds need from the host: where the original page opens, and the BFF that shims YouTube (or null). */
@@ -35,8 +42,12 @@ declare module '@tiptap/core' {
   }
 }
 
-const dark = () =>
-  typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches
+const darkQuery = () =>
+  typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null
+const dark = () => darkQuery()?.matches ?? false
+
+/** A gist shorter than this still shows its first line and its file bar. */
+const MIN_GIST_HEIGHT = 48
 
 /** Sandbox for a third-party page: it runs, keeps its own origin, may open popups (the host sends them out). */
 const PAGE_SANDBOX = 'allow-scripts allow-same-origin allow-popups allow-forms allow-presentation'
@@ -137,6 +148,9 @@ class EmbedView implements NodeView {
   dom: HTMLElement
   private frame: HTMLIFrameElement
   private node: PMNode
+  /** A gist's content height, as its frame reports it (null until it does, and for any other embed). */
+  private contentHeight: number | null = null
+  private readonly scheme = darkQuery()
 
   constructor(
     node: PMNode,
@@ -183,15 +197,40 @@ class EmbedView implements NodeView {
     handle.addEventListener('pointerdown', this.onResizeStart)
     this.dom.append(handle)
     this.applyHeight(node.attrs.height as number)
+    window.addEventListener('message', this.onFrameMessage)
+    this.scheme?.addEventListener('change', this.onSchemeChange)
+  }
+
+  private get isGist(): boolean {
+    return isGistSnippet(this.node.attrs.html as string | null)
+  }
+
+  /** A gist's frame says how tall its content is: the frame fits it, up to the block's height. */
+  private onFrameMessage = (event: MessageEvent) => {
+    if (event.source !== this.frame.contentWindow || !this.isGist) return
+    const height = embedFrameHeight(event.data)
+    if (height === null) return
+    this.contentHeight = height
+    if (this.dom.dataset.resizing === undefined) this.applyHeight(this.node.attrs.height as number)
+  }
+
+  /** Light ↔ dark: a gist's frame takes the new colours in place (no reload, no flash). */
+  private onSchemeChange = () => {
+    if (this.isGist)
+      this.frame.contentWindow?.postMessage(embedThemeMessage(readEmbedTheme(dark())), '*')
   }
 
   private load() {
     const provider = this.node.attrs.provider as EmbedProvider
     const html = this.node.attrs.html as string | null
     const src = this.node.attrs.src as string | null
+    this.contentHeight = null
+    this.dom.toggleAttribute('data-gist', isGistSnippet(html))
     if (html !== null) {
       this.frame.setAttribute('sandbox', HTML_SANDBOX)
-      this.frame.srcdoc = htmlEmbedDocument(html, dark())
+      this.frame.srcdoc = isGistSnippet(html)
+        ? gistEmbedDocument(html, readEmbedTheme(dark()))
+        : htmlEmbedDocument(html, dark())
       return
     }
     const safe = safeFrameSrc(src)
@@ -208,8 +247,17 @@ class EmbedView implements NodeView {
     }
   }
 
-  private applyHeight(height: number) {
-    this.frame.style.height = `${clampEmbedHeight(height)}px`
+  /**
+   * The frame's height: the block's own, or — for a gist that has reported its content — the content's, up to the
+   * block's (a long gist scrolls inside). While the handle drags, the dragged height shows as it is.
+   */
+  private applyHeight(height: number, dragging = false) {
+    const block = clampEmbedHeight(height)
+    const fit =
+      !dragging && this.contentHeight !== null && this.isGist
+        ? Math.min(block, Math.max(MIN_GIST_HEIGHT, this.contentHeight))
+        : block
+    this.frame.style.height = `${fit}px`
   }
 
   private onResizeStart = (event: PointerEvent) => {
@@ -217,7 +265,9 @@ class EmbedView implements NodeView {
     event.preventDefault()
     const handle = event.currentTarget as HTMLElement
     const startY = event.clientY
-    const startHeight = clampEmbedHeight(this.node.attrs.height as number)
+    // From the height on screen: a gist fitted to its content starts there, not at the block's larger height.
+    const shown = Number.parseFloat(this.frame.style.height)
+    const startHeight = clampEmbedHeight(shown || (this.node.attrs.height as number))
     let height = startHeight
     // The frame would swallow the pointer once it is over it: it goes inert for the drag.
     this.dom.dataset.resizing = 'true'
@@ -225,7 +275,7 @@ class EmbedView implements NodeView {
     const move = (e: PointerEvent) => {
       if (e.pointerId !== event.pointerId) return
       height = clampEmbedHeight(startHeight + (e.clientY - startY))
-      this.applyHeight(height)
+      this.applyHeight(height, true)
     }
     const end = (e: PointerEvent) => {
       if (e.pointerId !== event.pointerId) return
@@ -233,6 +283,7 @@ class EmbedView implements NodeView {
       handle.removeEventListener('pointerup', end)
       handle.removeEventListener('pointercancel', end)
       delete this.dom.dataset.resizing
+      this.applyHeight(height)
       const pos = this.getPos()
       if (height !== startHeight && pos !== undefined) {
         this.editor.view.dispatch(
@@ -264,6 +315,11 @@ class EmbedView implements NodeView {
 
   ignoreMutation() {
     return true
+  }
+
+  destroy() {
+    window.removeEventListener('message', this.onFrameMessage)
+    this.scheme?.removeEventListener('change', this.onSchemeChange)
   }
 }
 

@@ -18,6 +18,8 @@ export type EmbedProvider =
   | 'airtable'
   | 'spotify'
   | 'codesandbox'
+  | 'calendly'
+  | 'typeform'
   | 'generic'
 
 export type EmbedSource =
@@ -49,6 +51,9 @@ const HEIGHT: Record<EmbedProvider, number> = {
   airtable: 533,
   spotify: 352,
   codesandbox: 500,
+  // Calendly asks for about 700 px to show a month beside the times.
+  calendly: 700,
+  typeform: 500,
   generic: 400
 }
 
@@ -61,9 +66,26 @@ export const MAX_EMBED_HEIGHT = 1200
 const host = (url: URL) => url.hostname.replace(/^www\./u, '').toLowerCase()
 
 /**
+ * Figma's embed host (developers.figma.com, "Embed a Figma file"): the file's address with www swapped for embed,
+ * the starting node kept, plus the required embed-host. Null for a Figma page that isn't a file.
+ */
+function figmaEmbedSrc(url: URL): string | null {
+  const match = /^\/(file|design|proto|board|slides|deck)\/([\w-]+)/u.exec(url.pathname)
+  if (!match) return null
+  const [, type, key] = match
+  const query = new URLSearchParams()
+  for (const name of ['node-id', 'starting-point-node-id']) {
+    const value = url.searchParams.get(name)
+    if (value && /^[\w:-]+$/u.test(value)) query.set(name, value)
+  }
+  query.set('embed-host', 'hikki')
+  return `https://embed.figma.com/${type === 'file' ? 'design' : type}/${key}?${query}`
+}
+
+/**
  * Turns a link the user pasted into what a frame can show: the providers' own embed URLs where the page
  * itself refuses to be framed (YouTube, Figma, Google Maps / Drive / Docs, Gists, tweets, CodePen, draw.io,
- * Loom, Miro, Airtable, Spotify, CodeSandbox), the link as it is otherwise. Every URL built here is https on
+ * Loom, Miro, Airtable, Spotify, CodeSandbox, Calendly, Typeform), the link as it is otherwise. Every URL built here is https on
  * the provider's own host, with ids matched to their alphabet, so nothing pasted can steer the frame elsewhere.
  * Only https; null when it is no link at all.
  */
@@ -104,12 +126,8 @@ export function embedFromURL(input: string): EmbedSource | null {
     const id = /(\d{6,})/u.exec(path)?.[1]
     if (id) return frame('vimeo', `https://player.vimeo.com/video/${id}`)
   }
-  if (h === 'figma.com' && /^\/(?:file|design|proto|board|slides|deck)\//u.test(path)) {
-    return frame(
-      'figma',
-      `https://www.figma.com/embed?embed_host=hikki&url=${encodeURIComponent(url.href)}`
-    )
-  }
+  const figma = h === 'figma.com' ? figmaEmbedSrc(url) : null
+  if (figma) return frame('figma', figma)
   if ((h === 'google.com' || h === 'maps.google.com') && path.startsWith('/maps')) {
     if (path.startsWith('/maps/embed') || url.searchParams.get('output') === 'embed')
       return frame('googleMaps', url.href)
@@ -209,6 +227,19 @@ export function embedFromURL(input: string): EmbedSource | null {
   if (h === 'codesandbox.io') {
     const id = /^\/(?:s|embed|p\/sandbox)\/([\w-]+)/u.exec(path)?.[1]
     if (id) return frame('codesandbox', `https://codesandbox.io/embed/${id}`)
+  }
+  // Calendly: any scheduling page (a person's, or one event type) loads in a frame as it is.
+  if (h === 'calendly.com') {
+    const match = /^\/([\w-]+)(?:\/([\w-]+))?\/?$/u.exec(path)
+    if (match) {
+      const [, user, event] = match
+      return frame('calendly', `https://calendly.com/${user}${event ? `/${event}` : ''}`)
+    }
+  }
+  // Typeform: a form's share link (form.typeform.com/to/<id>, or an account's own subdomain) is the frame.
+  if (h === 'typeform.com' || h.endsWith('.typeform.com')) {
+    const id = /^\/to\/([A-Za-z0-9]+)/u.exec(path)?.[1]
+    if (id) return frame('typeform', `https://form.typeform.com/to/${id}`)
   }
   return frame('generic', url.href)
 }

@@ -34,9 +34,18 @@ describe('embedFromURL', () => {
 
   it('Vimeo, Figma, CodePen → their players and embed pages', () => {
     expect(src('https://vimeo.com/123456789')).toBe('https://player.vimeo.com/video/123456789')
-    expect(src('https://www.figma.com/design/AbC123/My-file?node-id=1-2')).toBe(
-      'https://www.figma.com/embed?embed_host=hikki&url=' +
-        encodeURIComponent('https://www.figma.com/design/AbC123/My-file?node-id=1-2')
+    expect(src('https://www.figma.com/design/AbC123/My-file?node-id=1-2&t=xyz')).toBe(
+      'https://embed.figma.com/design/AbC123?node-id=1-2&embed-host=hikki'
+    )
+    // An older /file/ link is a design; boards and prototypes keep their kind.
+    expect(src('https://www.figma.com/file/AbC123/Old')).toBe(
+      'https://embed.figma.com/design/AbC123?embed-host=hikki'
+    )
+    expect(src('https://www.figma.com/board/Bo4rd/Jam')).toBe(
+      'https://embed.figma.com/board/Bo4rd?embed-host=hikki'
+    )
+    expect(src('https://www.figma.com/design/AbC123/x?node-id=1"><script>')).toBe(
+      'https://embed.figma.com/design/AbC123?embed-host=hikki'
     )
     expect(src('https://codepen.io/someone/pen/abcXYZ')).toBe(
       'https://codepen.io/someone/embed/abcXYZ?default-tab=result'
@@ -168,6 +177,29 @@ describe('embedFromURL', () => {
     expect(provider('https://open.spotify.com/user/someone')).toBe('generic')
   })
 
+  it('Calendly scheduling pages and Typeform share links → the page itself in a frame', () => {
+    expect(embedFromURL('https://calendly.com/acme/30min?month=2026-10')).toMatchObject({
+      provider: 'calendly',
+      src: 'https://calendly.com/acme/30min',
+      height: 700
+    })
+    expect(src('https://calendly.com/acme')).toBe('https://calendly.com/acme')
+    expect(provider('https://calendly.com/acme/30min/extra')).toBe('generic')
+    expect(embedFromURL('https://form.typeform.com/to/AbC123?utm=x')).toMatchObject({
+      provider: 'typeform',
+      src: 'https://form.typeform.com/to/AbC123'
+    })
+    expect(src('https://acme.typeform.com/to/Xyz9')).toBe('https://form.typeform.com/to/Xyz9')
+    expect(provider('https://www.typeform.com/pricing')).toBe('generic')
+  })
+
+  it('services dropped from the "/" menu still embed when pasted into Embed', () => {
+    expect(provider('https://form.typeform.com/to/AbC123')).toBe('typeform')
+    expect(provider('https://twitter.com/jack/status/20')).toBe('tweet')
+    expect(provider('https://open.spotify.com/album/1abc')).toBe('spotify')
+    expect(provider('https://www.google.com/maps/place/Tokyo+Tower')).toBe('googleMaps')
+  })
+
   it('CodeSandbox sandboxes → their embed page', () => {
     expect(src('https://codesandbox.io/s/new-abc12')).toBe('https://codesandbox.io/embed/new-abc12')
     expect(src('https://codesandbox.io/p/sandbox/react-xyz9')).toBe(
@@ -187,7 +219,10 @@ describe('embedFromURL', () => {
       'https://miro.com/app/board/uXjV=/',
       'https://airtable.com/shrAbc',
       'https://open.spotify.com/album/1abc',
-      'https://codesandbox.io/s/abc'
+      'https://codesandbox.io/s/abc',
+      'https://www.figma.com/design/k3y/x',
+      'https://calendly.com/acme/intro',
+      'https://acme.typeform.com/to/abc'
     ]
     const hosts = [
       'viewer.diagrams.net',
@@ -196,7 +231,10 @@ describe('embedFromURL', () => {
       'miro.com',
       'airtable.com',
       'open.spotify.com',
-      'codesandbox.io'
+      'codesandbox.io',
+      'embed.figma.com',
+      'calendly.com',
+      'form.typeform.com'
     ]
     links.forEach((link, i) => {
       const frame = src(link)!

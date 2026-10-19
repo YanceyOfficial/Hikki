@@ -9,26 +9,26 @@ import { embedFromHTML, embedFromURL, type EmbedProvider, type EmbedSource } fro
 import type { FloatingAnchor, FloatingLayer } from './floating'
 import { IconProvider } from './icons'
 
-/** Placeholders, spelled out so the l10n audit sees every key. */
-const PLACEHOLDER: Record<EmbedProvider | 'html', () => string> = {
+/**
+ * Placeholders for the services the "/" menu lists, spelled out so the l10n audit sees every key; a link of any
+ * other service is pasted into Embed (its placeholder).
+ */
+const PLACEHOLDER: Partial<Record<EmbedProvider | 'html', () => string>> = {
   generic: () => t('embed.placeholder.generic'),
   html: () => t('embed.placeholder.html'),
   googleDrive: () => t('embed.placeholder.googleDrive'),
-  tweet: () => t('embed.placeholder.tweet'),
-  gist: () => t('embed.placeholder.gist'),
-  googleMaps: () => t('embed.placeholder.googleMaps'),
   figma: () => t('embed.placeholder.figma'),
-  youtube: () => t('embed.placeholder.youtube'),
-  vimeo: () => t('embed.placeholder.vimeo'),
-  codepen: () => t('embed.placeholder.codepen'),
-  drawio: () => t('embed.placeholder.drawio'),
-  loom: () => t('embed.placeholder.loom'),
-  excalidraw: () => t('embed.placeholder.excalidraw'),
   miro: () => t('embed.placeholder.miro'),
+  loom: () => t('embed.placeholder.loom'),
   airtable: () => t('embed.placeholder.airtable'),
-  spotify: () => t('embed.placeholder.spotify'),
-  codesandbox: () => t('embed.placeholder.codesandbox')
+  calendly: () => t('embed.placeholder.calendly'),
+  gist: () => t('embed.placeholder.gist'),
+  codesandbox: () => t('embed.placeholder.codesandbox'),
+  drawio: () => t('embed.placeholder.drawio'),
+  excalidraw: () => t('embed.placeholder.excalidraw')
 }
+const placeholder = (provider: EmbedProvider | 'html') =>
+  (PLACEHOLDER[provider] ?? PLACEHOLDER.generic)?.() ?? ''
 
 type Props = {
   /** Which "/" item opened it: the placeholder names the service; `html` takes a snippet instead of a link. */
@@ -60,7 +60,7 @@ export function EmbedPanel({ provider, onDone }: Props) {
       autoFocus
       rows={5}
       className="font-mono text-sm md:text-sm"
-      placeholder={PLACEHOLDER.html()}
+      placeholder={placeholder('html')}
       aria-label={t('embed.label.html')}
       value={value}
       onChange={(e) => {
@@ -76,7 +76,7 @@ export function EmbedPanel({ provider, onDone }: Props) {
       type="url"
       inputMode="url"
       className="h-8 text-sm md:text-sm"
-      placeholder={PLACEHOLDER[provider]()}
+      placeholder={placeholder(provider)}
       aria-label={t('embed.label.link')}
       aria-invalid={invalid || undefined}
       value={value}

@@ -227,21 +227,78 @@ describe('the "/" menu’s Embeds group', () => {
     }
   })
 
-  it('offers draw.io and the other new services, each opening a panel that names it', () => {
-    const ids = embedBlocks.map((block) => block.id)
-    for (const id of [
-      'drawio',
-      'loom',
-      'excalidraw',
+  it('lists a short set of work services, each opening a panel that names it', () => {
+    expect(embedBlocks.map((block) => block.id)).toEqual([
+      'embed',
+      'html',
+      'googleDrive',
+      'figma',
       'miro',
+      'loom',
       'airtable',
-      'spotify',
-      'codesandbox'
-    ]) {
-      expect(ids).toContain(id)
-    }
+      'calendly',
+      'gist',
+      'codesandbox',
+      'drawio',
+      'excalidraw'
+    ])
     editor = createEditor(host, doc(''))
     BLOCK_TYPES.find((block) => block.id === 'drawio')!.after!(editor)
     expect(screen.getByPlaceholderText('Paste a draw.io or diagrams.net link…')).toBeTruthy()
+  })
+
+  it('logos are single-colour marks the size of the icons beside them', () => {
+    for (const block of embedBlocks.filter((b) => b.id !== 'embed' && b.id !== 'html')) {
+      const { container, unmount } = render(
+        <block.icon size={18} className="text-subtle-foreground" />
+      )
+      const svg = container.querySelector('svg')!
+      expect(svg.getAttribute('width'), block.id).toBe('18')
+      expect(svg.getAttribute('fill'), block.id).toBe('currentColor')
+      expect(svg.getAttribute('class'), block.id).toBe('text-subtle-foreground')
+      expect(svg.querySelectorAll('path'), block.id).toHaveLength(1)
+      expect(svg.querySelector('[fill]:not(svg)'), block.id).toBeNull()
+      unmount()
+    }
+  })
+})
+
+const gist = () => embedFromURL('https://gist.github.com/octocat/6cad326836d38bd3a7ae')!
+/** A frame's size report, as a gist's frame posts it (from the frame unless said otherwise). */
+const report = (height: number, source: Window | null = frame().contentWindow) =>
+  act(() => {
+    window.dispatchEvent(
+      new MessageEvent('message', { data: { hikkiEmbed: 'size', height }, source })
+    )
+  })
+
+describe('a gist embed', () => {
+  it('is styled like the page and sits in the card', () => {
+    editor.commands.insertEmbed(gist())
+    expect(host.querySelector('.hk-embed')!.hasAttribute('data-gist')).toBe(true)
+    expect(frame().srcdoc).toContain('.gist .gist-meta')
+    expect(frame().srcdoc).toContain('gist.github.com/octocat/6cad326836d38bd3a7ae.js')
+    expect(frame().getAttribute('sandbox')).toBe('allow-scripts allow-popups')
+  })
+
+  it('fits its frame to the content it reports, up to the block’s height', () => {
+    editor.commands.insertEmbed(gist())
+    expect(frame().style.height).toBe('400px')
+    report(180)
+    expect(frame().style.height).toBe('180px')
+    report(900)
+    expect(frame().style.height).toBe('400px')
+    report(10)
+    expect(frame().style.height).toBe('48px')
+    // Another window's message is ignored.
+    report(200, window)
+    expect(frame().style.height).toBe('48px')
+  })
+
+  it('a snippet that is not a gist keeps the block’s height whatever it reports', () => {
+    editor.commands.insertEmbed(embedFromHTML('<p>hi</p>')!)
+    expect(host.querySelector('.hk-embed')!.hasAttribute('data-gist')).toBe(false)
+    report(150)
+    expect(frame().style.height).toBe('400px')
   })
 })
