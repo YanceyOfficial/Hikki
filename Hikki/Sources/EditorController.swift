@@ -131,6 +131,7 @@ final class EditorController {
         let payload: [[String: Any]] = threads.map { thread in
             [
                 "id": thread.id, "quote": thread.quote, "resolved": thread.resolvedAt != nil,
+                "blockId": thread.blockId ?? NSNull(),
                 "comments": thread.comments.map { comment in
                     [
                         "id": comment.id, "body": comment.body, "author": comment.author ?? NSNull(),
@@ -714,8 +715,10 @@ final class EditorController {
             pageInfo = PageInfo(docId: docId, headings: headings, words: words, characters: characters)
         case .activeHeading(let docId, let id):
             activeHeading = (docId, id)
-        case .commentCreate(let docId, let threadId, let quote, let body):
-            applyComment(pageId: docId) { try $0.create(pageId: docId, threadId: threadId, quote: quote, body: body) }
+        case .commentCreate(let docId, let threadId, let quote, let body, let blockId):
+            applyComment(pageId: docId) {
+                try $0.create(pageId: docId, threadId: threadId, quote: quote, body: body, blockId: blockId)
+            }
         case .commentReply(let docId, let threadId, let body):
             applyComment(pageId: docId) { try $0.reply(pageId: docId, threadId: threadId, body: body) }
         case .commentResolve(let docId, let threadId, let resolved):

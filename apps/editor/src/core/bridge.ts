@@ -8,7 +8,7 @@ import { renderTouchDock } from '../components/touch-dock'
 import type { AIChangesHost } from '../extensions/ai-changes'
 import { handleAIEvent, type AIHost, type AIReviewStyle } from '../extensions/ai-review'
 import {
-  commentRanges,
+  threadRange,
   SAVE_META,
   setThreads,
   type CommentsHost,
@@ -551,8 +551,14 @@ export class EditorBridge {
 
   /** Comments on passages: written to the native store, which sends the page's threads back (`setComments`). */
   readonly commentsHost: CommentsHost = {
-    create: (threadId, quote, body) =>
-      this.sendComment({ type: 'commentCreate', threadId, quote, body }),
+    create: (threadId, quote, body, blockId) =>
+      this.sendComment({
+        type: 'commentCreate',
+        threadId,
+        quote,
+        body,
+        ...(blockId ? { blockId } : {})
+      }),
     reply: (threadId, body) => this.sendComment({ type: 'commentReply', threadId, body }),
     resolve: (threadId, resolved) =>
       this.sendComment({ type: 'commentResolve', threadId, resolved }),
@@ -574,7 +580,7 @@ export class EditorBridge {
 
   private sendComment(
     message:
-      | { type: 'commentCreate'; threadId: string; quote: string; body: string }
+      | { type: 'commentCreate'; threadId: string; quote: string; body: string; blockId?: string }
       | { type: 'commentReply'; threadId: string; body: string }
       | { type: 'commentResolve'; threadId: string; resolved: boolean }
       | { type: 'commentDelete'; threadId: string; commentId?: string }
@@ -594,7 +600,7 @@ export class EditorBridge {
   openComment(threadId: string): void {
     const editor = this.editor
     if (!editor) return
-    const range = commentRanges(editor.state.doc).get(threadId)?.[0]
+    const range = threadRange(editor.state, threadId)
     editor.commands.commentOpen(threadId)
     if (range) {
       openTogglesAround(editor, range.from)
@@ -635,7 +641,7 @@ export class EditorBridge {
     if (!editor) return false
     if (editor.commands.scrollToBlock(blockId)) return true
     // A link to a discussion ("Copy link to discussion") names a thread: open it.
-    if (!commentRanges(editor.state.doc).has(blockId)) return false
+    if (!threadRange(editor.state, blockId)) return false
     this.openComment(blockId)
     return true
   }

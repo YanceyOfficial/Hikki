@@ -23,7 +23,8 @@ import {
   isGistSnippet,
   readEmbedTheme
 } from '../lib/gist-embed'
-import { followPosition, type Followed } from './block-units'
+import { followNode, followPosition, type BlockUnit, type Followed } from './block-units'
+import { openCaptionPanel, syncCaption } from './embed-caption'
 
 /** What embeds need from the host: where the original page opens, and the BFF that shims YouTube (or null). */
 export type EmbedHost = {
@@ -84,6 +85,8 @@ export const Embed = Node.create<{ host: EmbedHost | null }>({
       title: { default: null, parseHTML: (el) => el.getAttribute('data-title') },
       description: { default: null, parseHTML: (el) => el.getAttribute('data-description') },
       icon: { default: null, parseHTML: (el) => el.getAttribute('data-icon') },
+      // A line under the embed (the block menu's Caption).
+      caption: { default: null, parseHTML: (el) => el.getAttribute('data-caption') || null },
       height: {
         default: 400,
         parseHTML: (el) => Number(el.getAttribute('data-height')) || 400,
@@ -97,7 +100,7 @@ export const Embed = Node.create<{ host: EmbedHost | null }>({
   },
 
   renderHTML({ node, HTMLAttributes }) {
-    const { src, html, provider, original, title, description, icon } = node.attrs
+    const { src, html, provider, original, title, description, icon, caption } = node.attrs
     return [
       'div',
       mergeAttributes(HTMLAttributes, {
@@ -108,7 +111,8 @@ export const Embed = Node.create<{ host: EmbedHost | null }>({
         'data-original': original,
         'data-title': title,
         'data-description': description,
-        'data-icon': icon
+        'data-icon': icon,
+        'data-caption': caption
       })
     ]
   },
@@ -199,6 +203,13 @@ class EmbedView implements NodeView {
     this.applyHeight(node.attrs.height as number)
     window.addEventListener('message', this.onFrameMessage)
     this.scheme?.addEventListener('change', this.onSchemeChange)
+    this.caption()
+  }
+
+  private caption() {
+    syncCaption(this.dom, this.node.attrs.caption as string | null, () =>
+      openCaptionPanel(this.editor, this.getPos())
+    )
   }
 
   private get isGist(): boolean {
@@ -297,7 +308,12 @@ class EmbedView implements NodeView {
   }
 
   update(node: PMNode) {
-    if (node.type !== this.node.type) return false
+    // Replaced by a link without an embed of its own: a link card draws it.
+    if (
+      node.type !== this.node.type ||
+      (node.attrs.provider === 'generic' && node.attrs.html === null)
+    )
+      return false
     const reload =
       node.attrs.src !== this.node.attrs.src ||
       node.attrs.html !== this.node.attrs.html ||
@@ -305,6 +321,7 @@ class EmbedView implements NodeView {
     this.node = node
     if (reload) this.load()
     this.applyHeight(node.attrs.height as number)
+    this.caption()
     return true
   }
 
@@ -420,6 +437,9 @@ class LinkCardView implements NodeView {
     address.textContent = url
     this.dom.append(address)
     this.dom.setAttribute('aria-label', title ?? url)
+    syncCaption(this.dom, attrs.caption as string | null, () =>
+      openCaptionPanel(this.editor, this.getPos())
+    )
   }
 
   update(node: PMNode) {
@@ -454,7 +474,7 @@ function hostOf(url: string): string {
   }
 }
 
-let open: { layer: FloatingLayer; at: Followed<number> } | null = null
+let open: { layer: FloatingLayer; at: Followed<number> | Followed<BlockUnit> } | null = null
 
 function close() {
   open?.at.stop()
@@ -464,10 +484,16 @@ function close() {
 
 /**
  * The panel that asks for the link (or the HTML) at the caret and inserts the embed; Escape or a press
- * outside cancels (the layers' bus).
+ * outside cancels (the layers' bus). With `replace` (an embed's position: the block menu's Replace) it shows that
+ * embed's link and swaps it, keeping the block (its id, height, caption, comments).
  */
-export function openEmbedPanel(editor: Editor, provider: EmbedProvider | 'html'): void {
+export function openEmbedPanel(
+  editor: Editor,
+  provider: EmbedProvider | 'html',
+  replace?: number
+): void {
   close()
+  if (replace !== undefined) return openReplacePanel(editor, replace)
   // Where the embed goes, followed through edits meanwhile (a remote reload replacing it closes the panel).
   const at = followPosition(editor, editor.state.selection.from, () => close())
   const anchor = () => {
@@ -498,6 +524,62 @@ export function openEmbedPanel(editor: Editor, provider: EmbedProvider | 'html')
         if (source.kind === 'iframe' && source.provider === 'generic')
           freshCards.add(source.original)
         editor.chain().focus().setTextSelection(pos).insertEmbed(source).run()
+      }
+    },
+    anchor
+  )
+}
+
+/** The panel on an embed's own link (or snippet), below the embed; Done puts the new one in the same block. */
+function openReplacePanel(editor: Editor, pos: number): void {
+  const node = editor.state.doc.nodeAt(pos)
+  if (node?.type.name !== 'embed') return
+  const at = followNode(editor, pos, () => close())
+  const html = node.attrs.html as string | null
+  const anchor = () => {
+    const dom = at.current ? editor.view.nodeDOM(at.current.pos) : null
+    if (!(dom instanceof HTMLElement)) return null
+    const box = dom.getBoundingClientRect()
+    return new DOMRect(box.left, box.top, box.width, box.height)
+  }
+  const layer = new FloatingLayer('hk-embed-panel w-[400px] max-w-[calc(100vw-16px)] p-2', {
+    onDismiss: () => {
+      close()
+      if (!editor.isDestroyed) editor.commands.focus()
+    }
+  })
+  open = { layer, at }
+  renderEmbedPanel(
+    layer,
+    {
+      provider: html === null ? (node.attrs.provider as EmbedProvider) : 'html',
+      initial: html ?? (node.attrs.original as string | null) ?? '',
+      replacing: true,
+      onDone: (source) => {
+        const now = at.current
+        close()
+        if (!now) return
+        if (source.kind === 'iframe' && source.provider === 'generic')
+          freshCards.add(source.original)
+        const attrs =
+          source.kind === 'iframe'
+            ? { src: source.src, html: null, provider: source.provider, original: source.original }
+            : { src: null, html: source.html, provider: 'generic', original: null }
+        editor
+          .chain()
+          .focus()
+          .command(({ tr }) => {
+            tr.setNodeMarkup(now.pos, undefined, {
+              ...now.node.attrs,
+              ...attrs,
+              // What a link card read belongs to the old link.
+              title: null,
+              description: null,
+              icon: null
+            })
+            return true
+          })
+          .run()
       }
     },
     anchor

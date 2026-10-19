@@ -227,6 +227,12 @@
       "en": "The AI's reply couldn't be read.",
       "zh": "无法读取 AI 的回复。"
     },
+    "aiMediaUnreadable": {
+      "code": 5009,
+      "severity": "error",
+      "en": "Couldn't read this file for AI.",
+      "zh": "无法为 AI 读取此文件。"
+    },
 
     "searchFailed": {
       "code": 6001,

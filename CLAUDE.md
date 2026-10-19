@@ -315,7 +315,13 @@ HikkiUITests/                 XCUITest flows
   own + / ⋮⋮ handle on pointer events (HTML5 drag-and-drop is unreliable in WebKit), centred on the block's first line;
   anything inside a toggle, quote or callout shows the outermost container's handle (`handleUnitAtPos`; drops and caret
   commands still reach the blocks inside; list items keep one each); drag shows a ghost and a drop line (side edges make columns); a click opens `apps/editor/src/components/block-menu.tsx`. Fine
-  pointers only. Block colours are `blockColor` / `blockBackground` attributes. Block-level highlights (drag
+  pointers only. The block menu is Notion's: a search field over the actions (and Turn-into targets), the block's kind
+  as its section title (`apps/editor/src/core/block-kinds.ts`: catalog labels, an embed's service), then an embed's own
+  actions (Replace — the embed panel on its link, same block; Caption — `apps/editor/src/extensions/embed-caption.ts`, a
+  `caption` attribute drawn under the frame or card; Open in browser; Copy link to original), Turn into / Color, Copy
+  link / Duplicate / Delete, Comment, Ask AI, and the block's words and characters at the foot. No "Move to" yet (moving
+  a block into another page needs a native write path into a page that may be open elsewhere) and no per-block edited
+  time (none is stored). Block colours are `blockColor` / `blockBackground` attributes. Block-level highlights (drag
   source, the block a menu is open for) are node decorations from `apps/editor/src/extensions/block-highlight.ts` —
   never classes on the node's DOM, which ProseMirror drops on redraw.
 - **Rich blocks**: toggles (`apps/editor/src/extensions/toggle.ts`; open/closed is not stored, so opening never saves; a
@@ -473,7 +479,10 @@ HikkiUITests/                 XCUITest flows
   words live natively in `comments/<page id>.json` in the workspace folder (`HikkiCore/Sources/Store/PageComments.swift`:
   format-versioned, merged by id with tombstones, iCloud conflict versions folded in), written through the
   `commentCreate` / `commentReply` / `commentResolve` / `commentDelete` bridge messages and pushed back with
-  `window.hikki.setComments`. A draft is only a highlight until it is sent; adding or removing the mark is kept out of undo but saved (`SAVE_META`
+  `window.hikki.setComments`. A block without text (an image, an embed, a file, a formula) gets a thread on the whole
+  block instead — the block menu's Comment, or ⇧⌘M on a selected block: the thread carries `blockId` (an optional
+  key in the file and in `commentCreate`; its `quote` is the block's name, "Image · photo.png"), nothing is marked,
+  the block is outlined (`hk-comment-block`), and its card / badge / sheet are the passage threads' own. A draft is only a highlight until it is sent; adding or removing the mark is kept out of undo but saved (`SAVE_META`
   — `isUserEdit` in `apps/editor/src/core/bridge.ts` otherwise skips non-undo transactions), and an open thread whose mark is
   missing is marked again where its quote occurs once (`findQuote`). `apps/editor/src/components/comments.tsx` draws
   cards in the right margin when the window is wide (`#page[data-comments]` shifts the page left at ≥ 1240 px), count
@@ -570,7 +579,12 @@ HikkiUITests/                 XCUITest flows
   While the model works the chat's "Thinking…" / "Searching the web…" line is HikkiUI's `ShimmerText` (a foreground
   band sweeping the muted text once per `Motion.loop`; still under Reduce Motion, which gets a spinner instead). Model output is untrusted: the reply is parsed tolerantly (`apps/editor/src/lib/ai-content.ts`;
   sanitized inline HTML through the schema, unknown keys dropped, an unreadable reply is an error), citations must be
-  http(s), and any change to the page closes the review. **Ask AI edits the page** (Notion's review cards): the chat
+  http(s), and any change to the page closes the review. On a picture stored in the workspace or a PDF attachment, the
+  block menu's Ask AI asks about the file (Describe, Extract text, Explain, Summarize, or a question — answers only):
+  `aiRequest.media` names the asset, `AIService` reads it off the main thread and sends it as an image part (scaled by
+  `AIAttachments`) or a PDF document part, `AIPrompts.mediaMessages` puts it beside the task, and the answer card
+  inserts below the block; an unreadable file is `aiMediaUnreadable`. Web pictures, video and audio get no AI (nothing
+  reads or transcribes them on the device). **Ask AI edits the page** (Notion's review cards): the chat
   sends the open page as blocks with their ids (`window.hikki.aiPageBlocks`, `AIPageEdits.pageJSON`) and an answer
   that changes it ends with a fenced `hikki-changes` JSON block — rewrite / insert / move / delete, one block each —
   hidden from the chat and checked against those ids (`HikkiAI/Sources/AIPageEdits.swift`). The changes

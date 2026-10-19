@@ -342,7 +342,25 @@
     "copyLink": "Copy link to block",
     "duplicate": "Duplicate",
     "delete": "Delete",
-    "add": "Add a block below"
+    "add": "Add a block below",
+    "replace": "Replace",
+    "caption": "Caption",
+    "captionPlaceholder": "Write a caption…",
+    "captionSave": "Save",
+    "openInBrowser": "Open in browser",
+    "copyOriginal": "Copy link to original",
+    "linkCopied": "Link copied",
+    "comment": "Comment",
+    "words_one": "{{count}} word",
+    "words_other": "{{count}} words",
+    "characters_one": "{{count}} character",
+    "characters_other": "{{count}} characters",
+    "kind": {
+      "block": "Block",
+      "youtube": "YouTube",
+      "vimeo": "Vimeo",
+      "codepen": "CodePen"
+    }
   },
   "ruby": {
     "label": "Reading",
@@ -382,7 +400,8 @@
     "insert": "Embed",
     "open": "Open",
     "frameTitle": "Embedded content",
-    "resize": "Resize"
+    "resize": "Resize",
+    "replace": "Replace"
   },
   "mention": {
     "empty": "No pages"
@@ -422,7 +441,9 @@
         "ja": "Japanese"
       },
       "explain": "Explain",
-      "summarize": "Summarize"
+      "summarize": "Summarize",
+      "describe": "Describe",
+      "extractText": "Extract text"
     },
     "editing": "Editing…",
     "thinking": "Thinking…",
@@ -450,7 +471,8 @@
       "rejected": "The request was refused.",
       "rejectedWith": "The request was refused: {{message}}",
       "invalidResponse": "The answer couldn’t be read. Try again.",
-      "badBaseURL": "The {{provider}} address in Settings → AI isn’t usable: use https (http only to this device)."
+      "badBaseURL": "The {{provider}} address in Settings → AI isn’t usable: use https (http only to this device).",
+      "mediaUnreadable": "This file couldn’t be read for AI. Pictures and PDFs stored in the workspace work."
     },
     "change": {
       "approve": "Approve",
@@ -468,7 +490,8 @@
     "pageUntouched": "The page changes only when you replace.",
     "removed": "(removed)",
     "changesInLines_one": "{{count}} change in {{changed}} of {{total}} lines",
-    "changesInLines_other": "{{count}} changes in {{changed}} of {{total}} lines"
+    "changesInLines_other": "{{count}} changes in {{changed}} of {{total}} lines",
+    "askPlaceholder": "Ask AI about this…"
   },
   "comments": {
     "menu": "Comment",
@@ -536,6 +559,7 @@
     "aiOffline": "No internet connection.",
     "aiRejected": "The AI provider refused the request.",
     "aiInvalidResponse": "The AI's reply couldn't be read.",
+    "aiMediaUnreadable": "Couldn't read this file for AI.",
     "searchFailed": "Search isn't available right now.",
     "searchIndexFailed": "Couldn't update the search index.",
     "offline": "No internet connection.",

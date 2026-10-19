@@ -45,6 +45,7 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
     case aiOffline
     case aiRejected
     case aiInvalidResponse
+    case aiMediaUnreadable
     case searchFailed
     case searchIndexFailed
     case offline
@@ -95,6 +96,7 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .aiOffline: 5006
         case .aiRejected: 5007
         case .aiInvalidResponse: 5008
+        case .aiMediaUnreadable: 5009
         case .searchFailed: 6001
         case .searchIndexFailed: 6002
         case .offline: 7001
@@ -165,6 +167,7 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .aiOffline: .warning
         case .aiRejected: .error
         case .aiInvalidResponse: .error
+        case .aiMediaUnreadable: .error
         case .searchFailed: .warning
         case .searchIndexFailed: .warning
         case .offline: .warning

@@ -34,11 +34,14 @@ type Props = {
   /** Which "/" item opened it: the placeholder names the service; `html` takes a snippet instead of a link. */
   provider: EmbedProvider | 'html'
   onDone: (source: EmbedSource) => void
+  /** The embed's link (or snippet) being replaced (the block menu's Replace). */
+  initial?: string
+  replacing?: boolean
 }
 
 /** Where the link goes in; the panel checks it and inserts, or says the link can't be embedded. */
-export function EmbedPanel({ provider, onDone }: Props) {
-  const [value, setValue] = useState('')
+export function EmbedPanel({ provider, onDone, initial = '', replacing = false }: Props) {
+  const [value, setValue] = useState(initial)
   const [invalid, setInvalid] = useState(false)
   const html = provider === 'html'
   const submit = () => {
@@ -101,7 +104,7 @@ export function EmbedPanel({ provider, onDone }: Props) {
           )}
         </span>
         <Button size="xs" onClick={submit} disabled={!value.trim()}>
-          {t('embed.insert')}
+          {replacing ? t('embed.replace') : t('embed.insert')}
         </Button>
       </div>
     </div>

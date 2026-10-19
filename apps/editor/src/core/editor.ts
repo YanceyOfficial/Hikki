@@ -50,7 +50,7 @@ const noPageLinks: PageLinksHost = {
   openExternal: (href) => window.open(href, '_blank', 'noopener')
 }
 
-type EditorOptions = {
+export type EditorOptions = {
   onExitTop?: () => void
   /** The stored content doesn't fit the schema (corrupt, or from a newer Hikki). See EditorBridge. */
   onContentError?: (error: Error) => void

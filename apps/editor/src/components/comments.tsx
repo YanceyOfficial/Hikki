@@ -34,6 +34,7 @@ import {
 import { notify as toast, reportError } from '../core/errors'
 import { t } from '../core/i18n'
 import {
+  blockThreadRanges,
   commentRanges,
   commentsState,
   type CommentItem,
@@ -155,7 +156,26 @@ function hasPassages(editor: Editor): boolean {
   for (const id of commentRanges(editor.state.doc).keys()) {
     if (plugin.threads.get(id)?.resolved === false) return true
   }
+  for (const id of blockThreadRanges(editor.state.doc, plugin.threads.values()).keys()) {
+    if (plugin.threads.get(id)?.resolved === false) return true
+  }
   return false
+}
+
+/** A block's box in the window (null when it isn't drawn). */
+function blockRect(editor: Editor, pos: number): DOMRect | null {
+  try {
+    const dom = editor.view.nodeDOM(pos)
+    return dom instanceof HTMLElement ? dom.getBoundingClientRect() : null
+  } catch {
+    return null
+  }
+}
+
+/** The top-level block holding `pos`. */
+function topBlock(editor: Editor, pos: number): number {
+  const $pos = editor.state.doc.resolve(pos)
+  return $pos.depth > 0 ? $pos.before(1) : pos
 }
 
 function measure(editor: Editor, column: HTMLElement): Layout {
@@ -192,9 +212,36 @@ function measure(editor: Editor, column: HTMLElement): Layout {
       blockTop: blockStart.top - columnRect.top
     })
   }
+  // Threads on whole blocks (an image, an embed): level with the block's top.
+  for (const [id, range] of blockThreadRanges(editor.state.doc, plugin.threads.values())) {
+    const thread = plugin.threads.get(id)
+    if (!thread || thread.resolved) continue
+    const rect = blockRect(editor, range.from)
+    const block = topBlock(editor, range.from)
+    const outer = block === range.from ? rect : blockRect(editor, block)
+    if (!rect || !outer) continue
+    anchors.push({
+      thread,
+      top: rect.top - columnRect.top,
+      bottom: rect.bottom - columnRect.top,
+      left: rect.left - columnRect.left,
+      block,
+      blockTop: outer.top - columnRect.top
+    })
+  }
   anchors.sort((a, b) => a.top - b.top)
   let draft: Layout['draft'] = null
-  if (plugin.draft) {
+  const blockDraft = plugin.draft?.blockId ? plugin.draft : null
+  const rect = blockDraft ? blockRect(editor, blockDraft.from) : null
+  if (blockDraft && rect) {
+    draft = {
+      id: blockDraft.id,
+      top: rect.top - columnRect.top,
+      bottom: rect.bottom - columnRect.top,
+      left: rect.left - columnRect.left,
+      quote: blockDraft.quote ?? ''
+    }
+  } else if (plugin.draft && !blockDraft) {
     const start = at(plugin.draft.from)
     const end = at(plugin.draft.to)
     if (start && end)

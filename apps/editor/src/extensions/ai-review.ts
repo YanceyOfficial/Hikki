@@ -12,11 +12,12 @@ import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { renderAIReview, type AIReviewProps } from '../components/ai-review'
 import { FloatingLayer } from '../components/floating'
 import { markdownBlocks } from '../core/convert'
-import type { AIStreamEvent } from '../core/protocol'
+import type { AIMediaRef, AIStreamEvent } from '../core/protocol'
 import {
   type AINote,
   type AIUnit,
   fragmentText,
+  mediaRef,
   parseEditNotes,
   parseEditReply,
   parseInline,
@@ -29,8 +30,9 @@ import { SelectionMenuKey } from './selection-menu'
 /** A preset or the user's own instruction. Edits replace the selection after review; answers explain it. */
 export type AIAction = { id: string; instruction?: string }
 
-/** Prose answers (nothing replaced); `ask` is a follow-up question on an answer. */
-const ANSWER_ACTIONS = new Set(['explain', 'summarize', 'ask'])
+/** Prose answers (nothing replaced); `ask` is a follow-up question on an answer. `describe` and `extractText` are
+ * about a picture or a PDF (every request about one answers). */
+const ANSWER_ACTIONS = new Set(['explain', 'summarize', 'ask', 'describe', 'extractText'])
 
 /**
  * How an edit is reviewed (Settings → AI): A `inline` — tracked changes in the page; B `diff` — before/after lines in
@@ -47,6 +49,8 @@ export type AIRequestMessage = {
   explain?: boolean
   units: { key: string; html: string }[]
   context: { title: string; before: string; after: string; previous?: string }
+  /** The picture or PDF asked about (then `units` is empty). */
+  media?: AIMediaRef
 }
 
 /** What AI review needs from the host (the bridge). */
@@ -65,6 +69,8 @@ export type AISession = {
   answer: boolean
   style: AIReviewStyle
   units: AIUnit[]
+  /** A question about a picture or a PDF: the file, and its block as the one unit (no text, nothing to edit). */
+  media?: AIMediaRef
   status: 'thinking' | 'review' | 'answer' | 'error'
   /** The status the bar was last brought into view for (once per status: streaming text doesn't move the page). */
   revealed?: AISession['status']
@@ -110,6 +116,21 @@ export function AIReview(host: AIHost) {
           (action: AIAction) =>
           ({ editor }) =>
             start(editor, host, action),
+        aiRunMedia:
+          (pos: number, action: AIAction) =>
+          ({ editor }) => {
+            const node = editor.state.doc.nodeAt(pos)
+            const media = node ? mediaRef(node) : null
+            if (!node || !media) return false
+            const unit: AIUnit = {
+              key: (node.attrs.id as string | null) ?? 'media',
+              from: pos,
+              to: pos + node.nodeSize,
+              html: '',
+              text: ''
+            }
+            return start(editor, host, action, undefined, undefined, { units: [unit], media })
+          },
         aiAccept:
           () =>
           ({ editor, tr, dispatch }) =>
@@ -185,6 +206,8 @@ declare module '@tiptap/core' {
     aiReview: {
       /** Ask AI about the selection (an edit to review, or an answer). */
       aiRun: (action: AIAction) => ReturnType
+      /** Ask AI about the picture or PDF block at `pos` (`describe`, `extractText`, `explain`, or a question). */
+      aiRunMedia: (pos: number, action: AIAction) => ReturnType
       /** Apply the edit under review, as one undo step. */
       aiAccept: () => ReturnType
       /** Close the review without changing anything. */
@@ -219,19 +242,23 @@ function start(
   host: AIHost,
   action: AIAction,
   again?: AISession,
-  previous?: string
+  previous?: string,
+  about?: { units: AIUnit[]; media: AIMediaRef }
 ): boolean {
-  const units = again?.units ?? selectionUnits(editor.state)
+  const units = again?.units ?? about?.units ?? selectionUnits(editor.state)
+  const media = again ? again.media : about?.media
   if (units.length === 0) return false
   const old = storage(editor).session
   if (old) host.cancel(old.id)
-  const answer = ANSWER_ACTIONS.has(action.id.split(':')[0])
+  // Nothing of a picture can be replaced: every request about one answers.
+  const answer = !!media || ANSWER_ACTIONS.has(action.id.split(':')[0])
   const session: AISession = {
     id: newID(),
     action,
     answer,
     style: host.style?.() ?? 'inline',
     units,
+    ...(media ? { media } : {}),
     status: 'thinking',
     reply: '',
     edits: new Map(),
@@ -249,12 +276,14 @@ function start(
     ...(action.instruction ? { instruction: action.instruction } : {}),
     answer,
     ...(session.style === 'bubble' && !answer ? { explain: true } : {}),
-    units: units.map(({ key, html }) => ({ key, html })),
+    // A picture's block has no text to send: the file goes instead.
+    units: media ? [] : units.map(({ key, html }) => ({ key, html })),
     context: {
       title: host.title(),
       ...surroundings(editor.state, from, to),
       ...(previous ? { previous } : {})
-    }
+    },
+    ...(media ? { media } : {})
   })
   // The review's range stays marked (our decoration, not the selection); the formatting menu steps aside meanwhile
   // (it re-checks only when the selection or the page changes, and asking changes neither).
@@ -371,6 +400,13 @@ function finishEdit(editor: Editor, session: AISession): void {
 function decorations(state: EditorState, session: AISession | null): DecorationSet {
   if (!session) return DecorationSet.empty
   const decos: Decoration[] = []
+  if (session.media) {
+    const unit = session.units[0]
+    const node = state.doc.nodeAt(unit.from)
+    if (node && unit.from + node.nodeSize === unit.to)
+      decos.push(Decoration.node(unit.from, unit.to, { class: 'hk-ai-media' }))
+    return DecorationSet.create(state.doc, decos)
+  }
   for (const unit of session.units) {
     // Styles B and C show the edit in the bar; the page keeps the selection marked.
     if (session.status === 'thinking' || session.answer || session.style !== 'inline') {
@@ -451,8 +487,9 @@ function close(editor: Editor, host: AIHost): void {
 function insertBelow(editor: Editor, host: AIHost, text: string): void {
   const session = storage(editor).session
   if (!session) return
-  const $end = editor.state.doc.resolve(session.units.at(-1)!.to)
-  const after = $end.after(1)
+  const end = session.units.at(-1)!.to
+  // Right after the block a picture's answer is about (in its column or callout); else after the top-level block.
+  const after = session.media ? end : editor.state.doc.resolve(end).after(1)
   // The answer's Markdown as real blocks (lists, headings, emphasis), media and non-web links left out.
   const blocks = text.trim() ? markdownBlocks(text) : []
   close(editor, host)
@@ -496,8 +533,14 @@ function draw(editor: Editor, host: AIHost): void {
     onInsertBelow: () => insertBelow(editor, host, session.reply),
     onCopy: (text) => void navigator.clipboard?.writeText(text ?? session.reply).catch(() => {})
   }
+  const mediaBottom = () => {
+    const dom = session.media ? editor.view.nodeDOM(session.units[0].from) : null
+    return dom instanceof HTMLElement ? dom.getBoundingClientRect() : null
+  }
   renderAIReview(store.layer, props, () => {
     try {
+      const box = mediaBottom()
+      if (box) return new DOMRect(box.left, box.bottom, 1, 1)
       const coords = editor.view.coordsAtPos(Math.min(end, editor.state.doc.content.size))
       return new DOMRect(coords.left, coords.bottom, 1, 1)
     } catch {
@@ -512,7 +555,9 @@ function draw(editor: Editor, host: AIHost): void {
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {
         try {
-          const below = editor.view.coordsAtPos(Math.min(end, editor.state.doc.content.size)).bottom
+          const below =
+            mediaBottom()?.bottom ??
+            editor.view.coordsAtPos(Math.min(end, editor.state.doc.content.size)).bottom
           revealBelow(element, below)
         } catch {
           // The page changed meanwhile.

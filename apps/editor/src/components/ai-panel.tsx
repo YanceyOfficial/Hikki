@@ -12,59 +12,77 @@ import { t } from '../core/i18n'
 import type { AIAction } from '../extensions/ai-review'
 import { MenuRow, MenuTitle } from './menu-row'
 
+type AIGroup = { label: () => string; actions: { id: string; label: () => string }[] }
+
 /** The AI actions: what the user types, then presets (edits replace the selection after review; Ask explains it). */
-export const AI_GROUPS: { label: () => string; actions: { id: string; label: () => string }[] }[] =
-  [
-    {
-      label: () => t('ai.group.edit'),
-      actions: [
-        { id: 'improve', label: () => t('ai.action.improve') },
-        { id: 'fix', label: () => t('ai.action.fix') },
-        { id: 'shorter', label: () => t('ai.action.shorter') },
-        { id: 'longer', label: () => t('ai.action.longer') },
-        { id: 'simplify', label: () => t('ai.action.simplify') }
-      ]
-    },
-    {
-      label: () => t('ai.group.tone'),
-      actions: [
-        { id: 'tone:professional', label: () => t('ai.action.tone.professional') },
-        { id: 'tone:casual', label: () => t('ai.action.tone.casual') },
-        { id: 'tone:friendly', label: () => t('ai.action.tone.friendly') },
-        { id: 'tone:confident', label: () => t('ai.action.tone.confident') }
-      ]
-    },
-    {
-      label: () => t('ai.group.translate'),
-      actions: [
-        { id: 'translate:zh', label: () => t('ai.action.translate.zh') },
-        { id: 'translate:en', label: () => t('ai.action.translate.en') },
-        { id: 'translate:ja', label: () => t('ai.action.translate.ja') }
-      ]
-    },
-    {
-      label: () => t('ai.group.ask'),
-      actions: [
-        { id: 'explain', label: () => t('ai.action.explain') },
-        { id: 'summarize', label: () => t('ai.action.summarize') }
-      ]
-    }
-  ]
+export const AI_GROUPS: AIGroup[] = [
+  {
+    label: () => t('ai.group.edit'),
+    actions: [
+      { id: 'improve', label: () => t('ai.action.improve') },
+      { id: 'fix', label: () => t('ai.action.fix') },
+      { id: 'shorter', label: () => t('ai.action.shorter') },
+      { id: 'longer', label: () => t('ai.action.longer') },
+      { id: 'simplify', label: () => t('ai.action.simplify') }
+    ]
+  },
+  {
+    label: () => t('ai.group.tone'),
+    actions: [
+      { id: 'tone:professional', label: () => t('ai.action.tone.professional') },
+      { id: 'tone:casual', label: () => t('ai.action.tone.casual') },
+      { id: 'tone:friendly', label: () => t('ai.action.tone.friendly') },
+      { id: 'tone:confident', label: () => t('ai.action.tone.confident') }
+    ]
+  },
+  {
+    label: () => t('ai.group.translate'),
+    actions: [
+      { id: 'translate:zh', label: () => t('ai.action.translate.zh') },
+      { id: 'translate:en', label: () => t('ai.action.translate.en') },
+      { id: 'translate:ja', label: () => t('ai.action.translate.ja') }
+    ]
+  },
+  {
+    label: () => t('ai.group.ask'),
+    actions: [
+      { id: 'explain', label: () => t('ai.action.explain') },
+      { id: 'summarize', label: () => t('ai.action.summarize') }
+    ]
+  }
+]
+
+/** About a picture or a PDF (the block menu on an image or a file): nothing to edit, only answers. */
+const MEDIA_GROUPS: AIGroup[] = [
+  {
+    label: () => t('ai.group.ask'),
+    actions: [
+      { id: 'describe', label: () => t('ai.action.describe') },
+      { id: 'extractText', label: () => t('ai.action.extractText') },
+      { id: 'explain', label: () => t('ai.action.explain') },
+      { id: 'summarize', label: () => t('ai.action.summarize') }
+    ]
+  }
+]
 
 export function AIPanel({
   onRun,
   onCancel,
-  autoFocus = true
+  autoFocus = true,
+  media = false
 }: {
   /** Focus the instruction field on open (off where the panel opens on hover). */
   autoFocus?: boolean
+  /** About a picture or a PDF: questions and answers only (the field asks, `ask`). */
+  media?: boolean
   onRun: (action: AIAction) => void
   onCancel: () => void
 }) {
   const [value, setValue] = useState('')
+  const placeholder = media ? t('ai.askPlaceholder') : t('ai.editPlaceholder')
   const submit = () => {
     const instruction = value.trim()
-    if (instruction) onRun({ id: 'custom', instruction })
+    if (instruction) onRun({ id: media ? 'ask' : 'custom', instruction })
   }
   return (
     <div role="menu" aria-label={t('ai.menu')}>
@@ -74,8 +92,8 @@ export function AIPanel({
             // oxlint-disable-next-line jsx-a11y/no-autofocus -- the panel opens to type an instruction
             autoFocus={autoFocus}
             className="md:text-sm"
-            placeholder={t('ai.editPlaceholder')}
-            aria-label={t('ai.editPlaceholder')}
+            placeholder={placeholder}
+            aria-label={placeholder}
             data-testid="selection-menu-ai-input"
             value={value}
             onChange={(e) => setValue(e.target.value)}
@@ -102,7 +120,7 @@ export function AIPanel({
           </InputGroupAddon>
         </InputGroup>
       </div>
-      {AI_GROUPS.map((group) => (
+      {(media ? MEDIA_GROUPS : AI_GROUPS).map((group) => (
         <div key={group.actions[0].id}>
           <MenuTitle>{group.label()}</MenuTitle>
           {group.actions.map((action) => (

@@ -2296,6 +2296,23 @@
         }
       }
     },
+    "app:error.aiMediaUnreadable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't read this file for AI."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法为 AI 读取此文件。"
+          }
+        }
+      }
+    },
     "app:error.aiMissingKey": {
       "extractionState": "manual",
       "localizations": {
