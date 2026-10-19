@@ -24,3 +24,6 @@ apps/editor/public/emojibase/
 !apps/editor/.env.production
 !apps/editor/.env.development
 .vercel
+
+# Agent worktrees (Claude Code)
+.claude/worktrees/
