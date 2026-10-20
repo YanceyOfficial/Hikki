@@ -77,8 +77,7 @@ struct AppCommands: Commands {
                 navigator?.toggleInspector(.outline)
             }
             .keyboardShortcut(Shortcut.toggleInspector.keyboardShortcut)
-            // Split: the inspector would describe the left page from beside the right one.
-            .disabled(navigator == nil || navigator?.isSplit == true)
+            .disabled(navigator == nil)
             Button(navigator?.isSplit == true ? "app:menu.hideSplit" : "app:menu.showSplit") {
                 navigator?.toggleSplit()
             }

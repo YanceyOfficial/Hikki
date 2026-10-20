@@ -20,14 +20,19 @@ enum InspectorPreferences {
 /// than the window growing; the window's title steps aside meanwhile (ContentView), as in Photos.
 struct InspectorPanel: View {
     let navigator: Navigator
+    /// The side of the window it belongs to (split view gives each side its own).
+    var side: PaneSide = .leading
     let editor: EditorController
     let chat: AIChat
+    /// The most it may take (a split side's share); nil: its remembered width.
+    var cap: CGFloat?
     @AppStorage(InspectorPreferences.widthKey) private var width = Double(Size.inspectorIdeal)
     @State private var dragStart: Double?
 
     var body: some View {
-        InspectorView(navigator: navigator, editor: editor, chat: chat)
-            .frame(width: CGFloat(width))
+        InspectorView(navigator: navigator, side: side, editor: editor, chat: chat)
+            // Its remembered width, or less where a split side has less room.
+            .frame(width: min(CGFloat(width), cap ?? .infinity))
             .overlay(alignment: .leading) {
                 // Apple's inspector: full height on the right, the hairline from the window's top edge.
                 Theme.border.frame(width: 1)
@@ -64,17 +69,22 @@ struct InspectorPanel: View {
 /// page.
 struct InspectorView: View {
     let navigator: Navigator
+    /// The side whose page it is about (and whose panel state it shows).
+    var side: PaneSide = .leading
     let editor: EditorController
     let chat: AIChat
     /// Shown as a sheet over the page (iPhone, narrow iPad): a heading picked in the outline closes it, so the page
     /// it scrolled is in view.
     var isSheet = false
 
+    private var mode: InspectorMode { navigator.inspector(side).mode }
+    private var pageID: String? { navigator.pane(side)?.route.pageID }
+
     var body: some View {
         VStack(spacing: Spacing.s0) {
             // No title: the toolbar's marked button already says what the panel shows, and the content already
             // starts below the toolbar. A slim row only for the AI chat's New chat, once there is one.
-            if navigator.inspectorMode == .ai && !chat.messages.isEmpty {
+            if mode == .ai && !chat.messages.isEmpty {
                 HStack(spacing: Spacing.s1) {
                     Spacer(minLength: Spacing.s2)
                     // Named, not a bare glyph: clearing the conversation shouldn't be a guess.
@@ -86,14 +96,17 @@ struct InspectorView: View {
                 Color.clear.frame(height: Spacing.s2)
             }
             Group {
-                switch navigator.inspectorMode {
-                case .outline: OutlinePane(navigator: navigator, editor: editor, closesOnPick: isSheet)
-                case .comments: CommentsPane(pageID: navigator.route.pageID, editor: editor)
+                switch mode {
+                case .outline:
+                    OutlinePane(pageID: pageID, editor: editor) {
+                        if isSheet { navigator.setInspector(side, InspectorState(isShowing: false, mode: mode)) }
+                    }
+                case .comments: CommentsPane(pageID: pageID, editor: editor)
                 case .ai:
                     // About the page beside it (cleared from the composer to ask without it).
                     AIChatView(chat: chat)
-                        .onAppear { chat.show(page: navigator.route.pageID) }
-                        .onChange(of: navigator.route.pageID) { _, id in chat.show(page: id) }
+                        .onAppear { chat.show(page: pageID) }
+                        .onChange(of: pageID) { _, id in chat.show(page: id) }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -101,7 +114,7 @@ struct InspectorView: View {
         // Full height: the panel's background runs up under the toolbar (its content starts below it).
         .background(Theme.background)
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("inspector-\(navigator.inspectorMode.rawValue)")
+        .accessibilityIdentifier("inspector-\(mode.rawValue)")
     }
 }
 
@@ -123,13 +136,14 @@ private struct EmptyPane: View {
 /// `EditorController.activeHeading`) sits on a background that glides from row to row as the reading moves, and is kept
 /// in view; one jumps to its block.
 private struct OutlinePane: View {
-    let navigator: Navigator
+    let pageID: String?
     let editor: EditorController
-    let closesOnPick: Bool
+    /// A heading was picked (a sheet closes then).
+    let picked: () -> Void
     @Namespace private var highlight
 
     var body: some View {
-        if let pageID = navigator.route.pageID {
+        if let pageID {
             if let info = editor.pageInfo, info.docId == pageID, !info.headings.isEmpty {
                 let minLevel = info.headings.map(\.level).min() ?? 1
                 let active = editor.activeHeading.flatMap { $0.docId == pageID ? $0.id : nil }
@@ -143,7 +157,7 @@ private struct OutlinePane: View {
                                 ) {
                                     guard let id = heading.id else { return }
                                     editor.scrollToHeading(id)
-                                    if closesOnPick { navigator.isShowingInspector = false }
+                                    picked()
                                 }
                                 .id(index)
                                 .accessibilityIdentifier("outline-\(heading.text)")

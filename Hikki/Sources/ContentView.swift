@@ -24,13 +24,14 @@ struct ContentView: View {
     @State private var windowWidth: CGFloat = 0
     private var editor: EditorController { editors.main }
     private var splitEditor: EditorController? { editors.split }
-    /// Where each tab's page was scrolled when another tab took over (session only), and the tab the editor shows.
+    /// Where each tab's page was scrolled when another tab took over (session only).
     @State private var tabScroll: [UUID: (docId: String, top: Double)] = [:]
-    @State private var shownTab: UUID?
     /// AI on the selection, for both editors.
     @State private var ai = AIService()
-    /// Ask AI's conversation (iPhone's bottom bar).
+    /// The chat with AI about the leading side's page (the panel beside it; iPhone's Ask AI sheet).
     @State private var chat = AIChat()
+    /// The trailing side's own, about its page (split view).
+    @State private var trailingChat = AIChat()
     @State private var navigator = Navigator()
     @State private var columns: NavigationSplitViewVisibility = .all
     @SceneStorage("tabs") private var storedTabs: Data?
@@ -52,9 +53,10 @@ struct ContentView: View {
         transfers(sceneEvents(layout))
             // Failures and confirmations (Toasts): at the bottom, above the iPhone's floating bar.
             .toastHost(bottomInset: wide ? Spacing.s4 : Size.floatingBar + Spacing.s8)
-            .focusedSceneValue(\.editor, editor)
+            // The menus act on the side being worked in (split view).
+            .focusedSceneValue(\.editor, editor(for: navigator.focusedSide))
             .focusedSceneValue(\.navigator, navigator)
-            .focusedSceneValue(\.aiChat, chat)
+            .focusedSceneValue(\.aiChat, chat(for: navigator.focusedSide))
             .focusedSceneValue(\.lockedPage, navigator.currentPage?.isLocked)
     }
 
@@ -88,22 +90,34 @@ struct ContentView: View {
         } detail: {
             // The inspector takes its room from the page, never from the screen: a panel inside the detail column
             // (SwiftUI's `.inspector` widened the window instead). A sheet on iPhone.
-            HStack(spacing: Spacing.s0) {
-                SplitDetail(navigator: navigator, splitEditor: splitEditor) {
-                    DetailView(navigator: navigator, editor: editor, phoneToolbar: !wide)
+            // Each side of the window is a `PaneColumn`: its content, and — split — its bar; then its panel beside it.
+            SplitDetail(navigator: navigator) {
+                PaneColumn(side: .leading, navigator: navigator, editor: editor, wide: wide) {
+                    DetailView(
+                        navigator: navigator, side: .leading, route: navigator.leadingPane.route, editor: editor,
+                        phoneToolbar: !wide)
+                } panel: { cap in
+                    InspectorPanel(navigator: navigator, side: .leading, editor: editor, chat: chat, cap: cap)
                 }
-                if wide && navigator.isShowingInspector && navigator.route.pageID != nil {
-                    InspectorPanel(navigator: navigator, editor: editor, chat: chat)
-                        .transition(.move(edge: .trailing).combined(with: .opacity))
+            } trailing: {
+                PaneColumn(side: .trailing, navigator: navigator, editor: splitEditor, wide: wide) {
+                    if let pane = navigator.trailingPane {
+                        DetailView(
+                            navigator: navigator, side: .trailing, route: pane.route, editor: splitEditor,
+                            phoneToolbar: false)
+                    }
+                } panel: { cap in
+                    if let splitEditor {
+                        InspectorPanel(navigator: navigator, side: .trailing, editor: splitEditor, chat: trailingChat, cap: cap)
+                    }
                 }
             }
-            .animation(Motion.easeOut(), value: navigator.isShowingInspector)
             .animation(Motion.easeOut(), value: navigator.isSplit)
             .background(Theme.background)
             #if os(macOS)
                 // Photos' way: with the inspector open the page title and subtitle leave the toolbar, so the tabs keep
-                // their width.
-                .toolbar(removing: navigator.isShowingInspector && navigator.route.pageID != nil ? .title : nil)
+                // their width. Split, each side's bar names its page.
+                .toolbar(removing: navigator.isSplit || leadingPanelOpen ? .title : nil)
             #endif
             .toolbar { if wide { NativeDetailToolbar(navigator: navigator, editor: editor) } }
             #if os(iOS)
@@ -161,13 +175,6 @@ struct ContentView: View {
             .background(HideOnClose())
             // Settings (⌘,): Notion's dialog over the window, its pages in a sidebar.
             .sheet(isPresented: $navigator.isShowingSettings) { SettingsView() }
-            // Ask AI as a sheet on the Mac only for a handoff in a split window (the inspector is off while split).
-            .sheet(isPresented: $navigator.isAskingAI) {
-                AIChatSheet(chat: chat).frame(minWidth: Size.inspectorMax, minHeight: Size.settingsHeight)
-            }
-            .onChange(of: navigator.isAskingAI) { _, asking in
-                if asking, let handoff = navigator.aiHandoff { sendAIHandoff(handoff) }
-            }
         #endif
         // AI on the selection handed a request to the chat: it comes up where it belongs and the request is sent.
         .onChange(of: navigator.aiHandoff) { _, handoff in
@@ -202,9 +209,10 @@ struct ContentView: View {
                 .presentationSizing(.page)
             }
         #endif
-        // The passage selected in the page (the main editor's) rides along to Ask AI as context, as in Notion.
-        // It keeps the page it was selected in: a question about another page goes without it.
+        // The passage selected in a side's page rides along to that side's chat as context, as in Notion. It keeps the
+        // page it was selected in: a question about another page goes without it.
         .onChange(of: editor.selection) { _, selection in chat.selection = selection }
+        .onChange(of: splitEditor?.selection) { _, selection in trailingChat.selection = selection }
         // "Open in Split View" wherever page actions are (sidebar, Home, ⋯): by the window's width, not a column's,
         // and only where it has room for two pages (`DeviceRules.allowsSplit`).
         .onGeometryChange(for: CGFloat.self) {
@@ -307,16 +315,17 @@ struct ContentView: View {
                     for editor in editors { await editor.flush(reason: "window-closed") }
                 }
             }
-            .onChange(of: navigator.route) { _, route in
-                // Each tab keeps its place: the page leaving is remembered for its tab, and a tab shown again goes back
-                // to where it was — another page opened inside a tab starts at its top.
-                let tab = navigator.tabs.activeID
-                if let shown = shownTab, let last = editor.lastScroll { tabScroll[shown] = last }
-                let restore = tab != shownTab ? tabScroll[tab].flatMap { $0.docId == route.pageID ? $0.top : nil } : nil
-                shownTab = tab
-                editor.open(documentID: route.pageID, scrollTop: restore)
-                navigator.revealCurrent()
+            // What each side shows: its editor loads it. Focus moving between the sides changes neither.
+            .onChange(of: PaneRoutes(leading: navigator.leadingPane, trailing: navigator.trailingPane)) { old, new in
+                // Each tab keeps its place: the pages leaving are remembered for their tabs (both first, as two sides
+                // swapping each take the other's), and a tab shown again goes back to where it was — another page
+                // opened inside a tab starts at its top.
+                remember(old.leading, in: editor)
+                if let pane = old.trailing, let splitEditor { remember(pane, in: splitEditor) }
+                if new.leading != old.leading { show(new.leading, after: old.leading, in: editor) }
+                if let pane = new.trailing, pane != old.trailing { show(pane, after: old.trailing, in: splitPaneEditor()) }
             }
+            .onChange(of: navigator.route) { navigator.revealCurrent() }
             .onChange(of: navigator.tabs.tabs.map(\.id)) { _, ids in
                 tabScroll = tabScroll.filter { ids.contains($0.key) }
             }
@@ -328,25 +337,24 @@ struct ContentView: View {
                 editor.apply(settings)
                 splitEditor?.apply(settings)
             }
-            // The split pane's page: its own editor, made on first use and wired like the main one.
-            .onChange(of: navigator.split) { _, split in
-                guard let id = split?.pageID else { return }
-                splitPaneEditor().open(documentID: id)
+            // A side's own outline rail steps aside while its panel shows the outline; the mode picked last is
+            // remembered.
+            .onChange(of: navigator.inspector(.leading)) { _, state in
+                UserDefaults.standard.set(state.mode.rawValue, forKey: InspectorPreferences.tabKey)
+                editor.setOutlineRail(!(state.isShowing && state.mode == .outline))
             }
-            // The inspector's state outlives the window; the page's own outline rail steps aside while the
-            // inspector shows the outline.
-            .onChange(of: navigator.isShowingInspector) { _, on in
-                editor.setOutlineRail(!(on && navigator.inspectorMode == .outline))
+            .onChange(of: navigator.inspector(.trailing)) { _, state in
+                UserDefaults.standard.set(state.mode.rawValue, forKey: InspectorPreferences.tabKey)
+                splitEditor?.setOutlineRail(!(state.isShowing && state.mode == .outline))
             }
-            .onChange(of: navigator.inspectorMode) { _, mode in
-                UserDefaults.standard.set(mode.rawValue, forKey: InspectorPreferences.tabKey)
-                editor.setOutlineRail(!(navigator.isShowingInspector && mode == .outline))
-            }
+            // Rename and search results open in the focused side: its editor takes them.
             .onChange(of: navigator.titleFocusRequest) { _, request in
-                if let request { editor.focusTitle(of: request.pageID) }
+                if let request { editor(for: navigator.focusedSide)?.focusTitle(of: request.pageID) }
             }
             .onChange(of: navigator.textRevealRequest) { _, request in
-                if let request { editor.revealText(request.terms, at: request.blockID, in: request.pageID) }
+                if let request {
+                    editor(for: navigator.focusedSide)?.revealText(request.terms, at: request.blockID, in: request.pageID)
+                }
             }
             // A page picked in Spotlight (SpotlightIndex.swift).
             .onContinueUserActivity(CSSearchableItemActionType) { activity in
@@ -358,18 +366,20 @@ struct ContentView: View {
             .onOpenURL { url in
                 guard let id = PageLink.pageID(from: url), model.tree.page(id) != nil else { return }
                 navigator.open(id)
-                if let block = PageLink.blockID(from: url) { editor.scrollToBlock(block, in: id) }
+                if let block = PageLink.blockID(from: url) { editor(for: navigator.focusedSide)?.scrollToBlock(block, in: id) }
             }
             // Menu bar extra: New Page / Search land in the key window (MenuBarExtra.swift).
             .menuBarRequests(navigator: navigator)
             // Full screen (macOS): menu bar, traffic lights and toolbar stay, as in a window (FullScreenChrome.swift).
             .fullScreenChrome()
             .onChange(of: navigator.tabs) { _, _ in storedTabs = navigator.encodedTabs() }
+            // Tabs restored from the last run may name pages this workspace doesn't have (an empty one never changes
+            // its tree, so the prune below doesn't run for it).
+            .onChange(of: model.treeLoaded) { _, loaded in if loaded { navigator.prune { model.tree.page($0) != nil } } }
             .onChange(of: model.tree) { _, tree in
                 // Pages trashed here or in another window disappear from every tab's history. Each step changes
                 // nothing (and so re-renders nothing) when nothing it shows changed — this runs on every save.
                 navigator.prune { tree.page($0) != nil }
-                navigator.pruneSplit { tree.page($0) != nil }
                 navigator.revealCurrent()
                 // Each editor: its link index when a title or icon changed, its page's lock when that changed.
                 editor.setPages(tree)
@@ -391,20 +401,27 @@ struct ContentView: View {
     /// First appearance: tabs, the editor's store and callbacks, the last run's crash, DEBUG hooks, the first page.
     private func setUp() {
         navigator.attach(model)
-        navigator.restoreTabs(from: storedTabs)
+        #if DEBUG
+            // UI tests: the window's saved tabs outlive a run (scene storage), so each test starts on fresh ones.
+            let restore = ProcessInfo.processInfo.environment["HIKKI_FRESH_TABS"] == nil
+        #else
+            let restore = true
+        #endif
+        if restore { navigator.restoreTabs(from: storedTabs) }
+        if model.treeLoaded { navigator.prune { model.tree.page($0) != nil } }
         // The editor's callbacks hold the navigator, the model and the editor weakly (each owns none of them): a
         // strong capture kept every closed window's editor and web process alive.
         let editor = editor
         editor.onOpenDocument = { [weak navigator] name, label in navigator?.showDocument(name: name, label: label) }
-        // A page dropped on the page's right edge opens beside it (split view).
+        // A page dropped on the page's right edge opens beside it (split view; split already, in the trailing side).
         editor.onOpenInSplit = { [weak navigator, weak model] id in
             navigator?.splitDropHover = false
-            if model?.tree.page(id) != nil { navigator?.openInSplit(.page(id)) }
+            if model?.tree.page(id) != nil { navigator?.openBeside(.page(id)) }
         }
         editor.onSplitDropHover = { [weak navigator] active in navigator?.splitDropHover = active }
         editor.setSplitDrop(mainSplitDrop)
         ai.attach(editor)
-        editor.onAIHandoff = { [weak navigator] handoff in navigator?.aiHandoff = handoff }
+        editor.onAIHandoff = { [weak navigator] handoff in navigator?.aiHandoff = PaneHandoff(handoff: handoff, side: .leading) }
         // Ask AI's changes to the page are reviewed in the main editor; its verdicts go back to the chat's cards.
         chat.editor = editor
         editor.onAIChange = { [weak chat] docId, id, status, before, after in
@@ -432,14 +449,44 @@ struct ContentView: View {
         // Settings' bulk import / export converts Markdown and HTML with a window's editor.
         model.bulkTransfer.register(editor, model: model)
         editor.deviceName = AppModel.deviceKind
+        // A link in the leading page opens there (split or not).
         editor.onOpenPage = { [weak navigator, weak model, weak editor] id, block in
             guard let navigator, model?.tree.page(id) != nil else { return }
+            navigator.focus(.leading)
             navigator.open(id)
             if let block { editor?.scrollToBlock(block, in: id) }
         }
         editor.setPages(model.tree)
-        shownTab = navigator.tabs.activeID
-        editor.open(documentID: navigator.route.pageID)
+        editor.open(documentID: navigator.leadingPane.route.pageID)
+        // A window restored split: the trailing side's editor too.
+        if let pane = navigator.trailingPane { splitPaneEditor().open(documentID: pane.route.pageID) }
+    }
+
+    /// The window's editor for a side (the trailing one exists once a page has shown there).
+    private func editor(for side: PaneSide) -> EditorController? {
+        side == .leading ? editor : splitEditor
+    }
+
+    /// The chat with AI about a side's page.
+    private func chat(for side: PaneSide) -> AIChat {
+        side == .leading ? chat : trailingChat
+    }
+
+    /// The leading side's panel is beside its page (the window's title steps aside).
+    private var leadingPanelOpen: Bool {
+        navigator.inspector(.leading).isShowing && navigator.leadingPane.route.pageID != nil
+    }
+
+    /// Where `pane`'s page was scrolled, kept for its tab — if the editor still shows that page.
+    private func remember(_ pane: Pane, in editor: EditorController) {
+        if let last = editor.lastScroll, last.docId == pane.route.pageID { tabScroll[pane.tab] = last }
+    }
+
+    /// `pane`'s page in a side's editor: back where it was when its tab is shown again, at its top when it is a new
+    /// page in the same tab.
+    private func show(_ pane: Pane, after old: Pane?, in editor: EditorController) {
+        let restore = pane.tab != old?.tab ? tabScroll[pane.tab].flatMap { $0.docId == pane.route.pageID ? $0.top : nil } : nil
+        editor.open(documentID: pane.route.pageID, scrollTop: restore)
     }
 
     /// The run before crashed: say so once (in every build), with the way to the diagnostics to send.
@@ -568,13 +615,12 @@ struct ContentView: View {
         }
     #endif
 
-    /// Opens the chat for a handoff: the inspector in AI mode beside the page (Mac, a wide iPad), or the Ask AI sheet
-    /// (iPhone, and a split window, where the inspector is off); then sends it.
-    private func routeAIHandoff(_ handoff: AIHandoff) {
-        switch AIHandoff.placement(wide: wide, isSplit: navigator.isSplit) {
+    /// Opens the chat for a handoff: the panel in AI mode beside the page it came from (Mac, a wide iPad — in a split
+    /// window, that side's), or the Ask AI sheet (iPhone); then sends it.
+    private func routeAIHandoff(_ handoff: PaneHandoff) {
+        switch AIHandoff.placement(wide: wide) {
         case .inspector:
-            navigator.inspectorMode = .ai
-            navigator.isShowingInspector = true
+            navigator.setInspector(handoff.side, InspectorState(isShowing: true, mode: .ai))
             sendAIHandoff(handoff)
         case .sheet:
             // An open sheet takes it at once; else when it comes up (`isAskingAI`'s change).
@@ -584,8 +630,10 @@ struct ContentView: View {
 
     /// The chat about the handoff's page, its passage as the selected context, the user's words as the next question
     /// (an answer still streaming there stops: the user just asked for something new).
-    private func sendAIHandoff(_ handoff: AIHandoff) {
+    private func sendAIHandoff(_ request: PaneHandoff) {
         navigator.aiHandoff = nil
+        let handoff = request.handoff
+        let chat = chat(for: request.side)
         chat.show(page: handoff.docId)
         chat.mention(handoff.docId)
         if chat.isStreaming { chat.stop() }
@@ -593,8 +641,8 @@ struct ContentView: View {
         chat.send(handoff.instruction, store: model.store)
     }
 
-    /// The split pane's editor, made and wired on first use: same store, assets, pages and settings as the main one; a
-    /// link clicked in it opens in the pane, a PDF attachment in a tab.
+    /// The trailing side's editor, made and wired on first use: same store, assets, pages and settings as the leading
+    /// one; a link clicked in it opens in its side, a PDF attachment over the window, as on the leading side.
     private func splitPaneEditor() -> EditorController {
         if let splitEditor { return splitEditor }
         let pane = EditorController()
@@ -605,17 +653,22 @@ struct ContentView: View {
         pane.attach(store: model.store, assets: model.assets) { [weak model] in model?.history }
         pane.onOpenPage = { [weak navigator, weak model, weak pane] id, block in
             guard let navigator, model?.tree.page(id) != nil else { return }
-            navigator.openInSplit(.page(id))
+            navigator.show(.page(id), in: .trailing)
             if let block { pane?.scrollToBlock(block, in: id) }
         }
-        pane.onOpenDocument = { [weak navigator] name, label in navigator?.openInSplit(.file(name: name, label: label)) }
-        // Dropped on the pane's own right edge: it shows that page instead.
+        pane.onOpenDocument = { [weak navigator] name, label in navigator?.showDocument(name: name, label: label) }
+        // Dropped on the side's own right edge: it shows that page instead.
         pane.onOpenInSplit = { [weak navigator, weak model] id in
-            if model?.tree.page(id) != nil { navigator?.openInSplit(.page(id)) }
+            if model?.tree.page(id) != nil { navigator?.show(.page(id), in: .trailing) }
         }
         pane.setSplitDrop(.here)
         ai.attach(pane)
-        pane.onAIHandoff = { [weak navigator] handoff in navigator?.aiHandoff = handoff }
+        pane.onAIHandoff = { [weak navigator] handoff in navigator?.aiHandoff = PaneHandoff(handoff: handoff, side: .trailing) }
+        // Its own chat: Ask AI's changes to its page are reviewed in it.
+        trailingChat.editor = pane
+        pane.onAIChange = { [weak trailingChat] docId, id, status, before, after in
+            trailingChat?.changeReviewed(docId: docId, id: id, status: status, before: before, after: after)
+        }
         pane.setPages(model.tree)
         editors.split = pane
         return pane
@@ -649,10 +702,13 @@ struct ContentView: View {
     }
 }
 
-/// The detail column: the routed content.
+/// What a side of the window shows.
 private struct DetailView: View {
     let navigator: Navigator
-    let editor: EditorController
+    let side: PaneSide
+    let route: Route
+    /// The side's editor (the trailing side has none until a page first shows there).
+    let editor: EditorController?
     /// iPhone: the page's actions live in its navigation bar.
     var phoneToolbar = true
 
@@ -663,15 +719,17 @@ private struct DetailView: View {
     }
 
     @ViewBuilder private var content: some View {
-        switch navigator.route {
+        switch route {
         case .page(let id):
-            PageScreen(pageID: id, editor: editor, navigator: navigator, phoneToolbar: phoneToolbar)
+            if let editor { PageScreen(pageID: id, editor: editor, navigator: navigator, phoneToolbar: phoneToolbar) }
         case .trash:
             TrashView()
         case .file(let name, let label):
-            DocumentPane(name: name, label: label, editor: editor)
+            if let editor { DocumentPane(name: name, label: label, editor: editor) }
         case .home:
             HomeView(navigator: navigator)
+        case .splitPicker:
+            SplitPicker(navigator: navigator, side: side)
         }
     }
 }
@@ -687,7 +745,8 @@ private struct NativeDetailToolbar: ToolbarContent {
         @Environment(\.openWindow) private var openWindow
     #endif
 
-    private var inspectorOpen: Bool { navigator.isShowingInspector && navigator.route.pageID != nil }
+    /// The (unsplit) page's panel is open beside it.
+    private var inspectorOpen: Bool { !navigator.isSplit && navigator.isShowingInspector && navigator.route.pageID != nil }
 
     // Photos' toolbar: each group is its own Liquid Glass capsule — back/forward, the tabs, the page's
     // actions. (Search lives in the sidebar's glass field.)
@@ -706,6 +765,7 @@ private struct NativeDetailToolbar: ToolbarContent {
         }
         ToolbarItem(placement: .principal) {
             TabStrip(
+                // The two tabs of a split are one joined item; its focused half is the active one.
                 items: navigator.tabs.tabs.map { tab in tabItem(tab.id, tab.route) },
                 activeID: navigator.tabs.activeID,
                 canGoBack: navigator.tabs.canGoBack,
@@ -744,23 +804,22 @@ private struct NativeDetailToolbar: ToolbarContent {
             #endif
         }
         .sharedBackgroundVisibility(.hidden)
-        if let id = navigator.route.pageID, let page = model.tree.page(id) {
-            // While split they would act on the left page only, from the right end of the window: off until it closes.
+        // Split, each side's bar has its page's tools (`PaneBar`); the toolbar keeps navigation and the tabs.
+        if !navigator.isSplit, let id = navigator.route.pageID, let page = model.tree.page(id) {
             if page.isLocked {
                 ToolbarItem(placement: .primaryAction) {
-                    LockIndicator(page: page, toolbar: true).disabled(navigator.isSplit)
+                    LockIndicator(page: page, toolbar: true)
                 }
             }
             ToolbarItemGroup(placement: .primaryAction) {
-                FavoriteButton(page: page, toolbar: true).disabled(navigator.isSplit)
-                PageMoreMenu(page: page, navigator: navigator, editor: editor, toolbar: true).disabled(navigator.isSplit)
+                FavoriteButton(page: page, toolbar: true)
+                PageMoreMenu(page: page, navigator: navigator, editor: editor, toolbar: true)
             }
         }
         // The side panel's views at the trailing end, as in Xcode: the outline and comments in one glass group (the
-        // one showing carries the selected pill), then AI in a glass circle of its own. Only where there is a page;
-        // off while split (the panel belongs to the left page). Split view itself opens by drag, ⌘\ or "Open in
-        // Split View".
-        if navigator.route.pageID != nil {
+        // one showing carries the selected pill), then AI in a glass circle of its own. Only where there is a page.
+        // Split view itself opens by drag, ⌘\ or "Open in Split View".
+        if !navigator.isSplit, navigator.route.pageID != nil {
             ToolbarSpacer(.fixed, placement: .primaryAction)
             ToolbarItemGroup(placement: .primaryAction) {
                 Toggle(isOn: inspectorBinding(.outline)) {
@@ -768,14 +827,12 @@ private struct NativeDetailToolbar: ToolbarContent {
                 }
                 .toggleStyle(.button)
                 .help("app:inspector.outline")
-                .disabled(navigator.isSplit)
                 .accessibilityIdentifier("inspector-toggle")
                 Toggle(isOn: inspectorBinding(.comments)) {
                     IconLabel("app:inspector.comments", icon: .chatTeardropText)
                 }
                 .toggleStyle(.button)
                 .help("app:inspector.comments")
-                .disabled(navigator.isSplit)
                 .accessibilityIdentifier("comments-toggle")
             }
             ToolbarSpacer(.fixed, placement: .primaryAction)
@@ -789,7 +846,6 @@ private struct NativeDetailToolbar: ToolbarContent {
                 }
                 .toggleStyle(.button)
                 .help("app:inspector.ai")
-                .disabled(navigator.isSplit)
                 .accessibilityIdentifier("ai-toggle")
             }
         }
@@ -800,7 +856,11 @@ private struct NativeDetailToolbar: ToolbarContent {
     private func tabMenuCommands(_ id: UUID) -> [[TabStripCommand]] {
         let route = navigator.route(ofTab: id)
         var first: [TabStripCommand] = [.newToRight]
-        if navigator.splitAllowed, route?.canSplit == true { first.append(.openInSplit) }
+        if navigator.tabs.split(of: id) != nil {
+            first += [.swapSides, .separate]
+        } else if navigator.splitAllowed, route?.canSplit == true {
+            first.append(.openInSplit)
+        }
         first.append(.duplicate)
         #if os(macOS)
             if route?.pageID != nil { first.append(.moveToNewWindow) }
@@ -812,6 +872,8 @@ private struct NativeDetailToolbar: ToolbarContent {
         switch command {
         case .newToRight: navigator.newTab(rightOf: id)
         case .openInSplit: navigator.openTabInSplit(id)
+        case .swapSides: withAnimation(Motion.easeOut()) { navigator.swapTab(id) }
+        case .separate: navigator.separateTab(id)
         case .duplicate: navigator.duplicateTab(id)
         case .moveToNewWindow:
             #if os(macOS)
@@ -826,13 +888,17 @@ private struct NativeDetailToolbar: ToolbarContent {
     }
 
     private func tabItem(_ id: UUID, _ route: Route) -> TabStripItem {
-        switch route {
-        case .home: TabStripItem(id: id, title: String(localized: "app:nav.home"), symbol: .house)
-        case .trash: TabStripItem(id: id, title: String(localized: "app:nav.trash"), symbol: .trash)
-        case .file(_, let label): TabStripItem(id: id, title: label, symbol: .fileText)
-        case .page(let pageID):
-            TabStripItem(id: id, title: model.tree.page(pageID)?.title ?? "", icon: model.tree.page(pageID)?.icon)
-        }
+        var item =
+            switch route {
+            case .home: TabStripItem(id: id, title: String(localized: "app:nav.home"), symbol: .house)
+            case .trash: TabStripItem(id: id, title: String(localized: "app:nav.trash"), symbol: .trash)
+            case .file(_, let label): TabStripItem(id: id, title: label, symbol: .fileText)
+            case .splitPicker: TabStripItem(id: id, title: String(localized: "app:split.pickTitle"), symbol: .squareSplitHorizontal)
+            case .page(let pageID):
+                TabStripItem(id: id, title: model.tree.page(pageID)?.title ?? "", icon: model.tree.page(pageID)?.icon)
+            }
+        item.joinedToNext = navigator.tabs.split(of: id)?.leading == id
+        return item
     }
 }
 
@@ -907,6 +973,12 @@ private struct DocumentSheet: View {
         }
         .accessibilityIdentifier("pdf-sheet")
     }
+}
+
+/// What the two sides show, compared as one so that a swap is seen whole.
+private struct PaneRoutes: Equatable {
+    let leading: Pane
+    let trailing: Pane?
 }
 
 /// A window's editors, each made once: the main one on first use, the split pane's when a page first opens there.

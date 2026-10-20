@@ -7,12 +7,16 @@ public struct TabStripItem: Identifiable, Equatable {
     public var title: String
     public var icon: String?
     public var symbol: Icon?
+    /// This tab and the next are shown side by side (split view): the strip draws the two as one joined tab, the
+    /// active half marked.
+    public var joinedToNext: Bool
 
-    public init(id: UUID, title: String, icon: String? = nil, symbol: Icon? = nil) {
+    public init(id: UUID, title: String, icon: String? = nil, symbol: Icon? = nil, joinedToNext: Bool = false) {
         self.id = id
         self.title = title
         self.icon = icon
         self.symbol = symbol
+        self.joinedToNext = joinedToNext
     }
 }
 
@@ -39,12 +43,14 @@ public struct TabStripDrop {
 
 /// A command in a tab's context menu (Chrome's tab menu).
 public enum TabStripCommand: String, CaseIterable, Hashable, Sendable {
-    case newToRight, openInSplit, duplicate, moveToNewWindow, close, closeOthers, closeToRight
+    case newToRight, openInSplit, swapSides, separate, duplicate, moveToNewWindow, close, closeOthers, closeToRight
 
     var title: LocalizedStringKey {
         switch self {
         case .newToRight: "app:tabs.newToRight"
         case .openInSplit: "app:split.openPage"
+        case .swapSides: "app:split.swap"
+        case .separate: "app:split.separate"
         case .duplicate: "app:tabs.duplicate"
         case .moveToNewWindow: "app:tabs.moveToNewWindow"
         case .close: "app:tabs.close"
@@ -57,6 +63,8 @@ public enum TabStripCommand: String, CaseIterable, Hashable, Sendable {
         switch self {
         case .newToRight: .browsers
         case .openInSplit: .squareSplitHorizontal
+        case .swapSides: .arrowsLeftRight
+        case .separate: .square
         case .duplicate: .copy
         case .moveToNewWindow: .appWindow
         case .close: .x
@@ -149,20 +157,22 @@ public struct TabStrip<Leading: View>: View {
     private var tabs: some View {
         HStack(spacing: Spacing.s1) {
             HStack(spacing: Spacing.s0_5) {
-                ForEach(items) { item in
-                    TabButton(
-                        item: item, isActive: item.id == activeID, canClose: items.count > 1,
-                        isDropTarget: dropTarget == .onto(item.id),
-                        dragItem: dragItem.map { make in { make(item.id) } },
-                        onSelect: { onSelect(item.id) }, onClose: { onClose(item.id) }
-                    )
-                    .contextMenu {
-                        if let menu { menuContent(menu, for: item.id) }
-                    }
-                    .onGeometryChange(for: CGRect.self) {
-                        $0.frame(in: .named(tabStripSpace))
-                    } action: {
-                        frames[item.id] = $0
+                ForEach(groups, id: \.first!.id) { group in
+                    if group.count > 1 {
+                        // A split: its two tabs in one outlined capsule, a hairline between them.
+                        HStack(spacing: Spacing.s0) {
+                            ForEach(group.indices, id: \.self) { index in
+                                if index > 0 {
+                                    Theme.border.frame(width: Spacing.px, height: Spacing.s4)
+                                }
+                                tab(group[index])
+                            }
+                        }
+                        .background(Capsule().strokeBorder(Theme.border, lineWidth: Spacing.px))
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier("tab-split")
+                    } else {
+                        tab(group[0])
                     }
                 }
             }
@@ -187,6 +197,36 @@ public struct TabStrip<Leading: View>: View {
         .help(Text(verbatim: ""))
         // A drop that changed the tabs is over, whatever the drag session still reports.
         .onChange(of: items) { _, _ in dropTarget = nil }
+    }
+
+    /// The tabs as the strip draws them: one each, a split's two together.
+    private var groups: [[TabStripItem]] {
+        var out: [[TabStripItem]] = []
+        for item in items {
+            if let last = out.last?.last, last.joinedToNext, out[out.count - 1].count == 1 {
+                out[out.count - 1].append(item)
+            } else {
+                out.append([item])
+            }
+        }
+        return out
+    }
+
+    private func tab(_ item: TabStripItem) -> some View {
+        TabButton(
+            item: item, isActive: item.id == activeID, canClose: items.count > 1,
+            isDropTarget: dropTarget == .onto(item.id),
+            dragItem: dragItem.map { make in { make(item.id) } },
+            onSelect: { onSelect(item.id) }, onClose: { onClose(item.id) }
+        )
+        .contextMenu {
+            if let menu { menuContent(menu, for: item.id) }
+        }
+        .onGeometryChange(for: CGRect.self) {
+            $0.frame(in: .named(tabStripSpace))
+        } action: {
+            frames[item.id] = $0
+        }
     }
 
     /// The tab's menu, its sections divided; Close / Close Other Tabs need another tab, Close Tabs to the Right one
@@ -353,9 +393,14 @@ private struct TabDrag: ViewModifier {
 #Preview {
     let a = UUID()
     let b = UUID()
+    let c = UUID()
+    let d = UUID()
     TabStrip(
-        items: [TabStripItem(id: a, title: "Welcome to Hikki", icon: "👋"), TabStripItem(id: b, title: "", symbol: .house)],
-        activeID: a, canGoBack: true, canGoForward: false,
+        items: [
+            TabStripItem(id: a, title: "Welcome to Hikki", icon: "👋"), TabStripItem(id: b, title: "", symbol: .house),
+            TabStripItem(id: c, title: "初级下", icon: "🗂", joinedToNext: true), TabStripItem(id: d, title: "N4 文法", icon: "🍀"),
+        ],
+        activeID: d, canGoBack: true, canGoForward: false,
         onSelect: { _ in }, onClose: { _ in }, onNew: {}, onBack: {}, onForward: {},
         drop: TabStripDrop(types: [.plainText], accepts: { true }, perform: { _ in true })
     )

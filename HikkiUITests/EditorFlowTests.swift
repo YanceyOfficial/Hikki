@@ -13,6 +13,8 @@ final class EditorFlowTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += arguments
         app.launchEnvironment["HIKKI_DATA_DIR"] = dataDir
+        // The window's tabs (a split among them) are saved with the scene and would carry over from the last test.
+        app.launchEnvironment["HIKKI_FRESH_TABS"] = "1"
         app.launchEnvironment.merge(environment) { _, new in new }
         if let workspace { app.launchEnvironment["HIKKI_WORKSPACE"] = workspace }
         // Preferences outlive the data directory (UserDefaults): every test starts with the inspector closed.
@@ -1119,7 +1121,8 @@ final class EditorFlowTests: XCTestCase {
             throw XCTSkip("the iPad toolbar")
         #endif
         continueAfterFailure = false
-        let app = launch(environment: ["HIKKI_DEMO_PAGES": "1", "HIKKI_DEBUG_NAV": "demo-46ffce8"])
+        // Two pages visited, so back/forward have something to do (with neither, the group draws as an empty circle).
+        let app = launch(environment: ["HIKKI_DEMO_PAGES": "1", "HIKKI_DEBUG_NAV": "demo-dba8e9bf,demo-46ffce8"])
         let forward = app.buttons["Forward"].firstMatch
         let tab = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'tab-'")).firstMatch
         let ai = app.buttons["ai-toggle"].firstMatch
@@ -1130,6 +1133,34 @@ final class EditorFlowTests: XCTestCase {
         sleep(1)
         XCTAssertGreaterThanOrEqual(tab.frame.minX, forward.frame.maxX, "the tab slid under back/forward")
         attachScreenshot(app, "tabs-with-inspector")
+    }
+
+    /// The divider's grip sits over the pages' edges (they run up to the hairline) and still takes the drag: dragging it
+    /// widens one side, a double-tap / double-click puts the boundary back in the middle.
+    func testDraggingTheDividerResizesTheSides() throws {
+        continueAfterFailure = false
+        let app = launch(environment: [
+            "HIKKI_DEMO_PAGES": "1", "HIKKI_DEBUG_NAV": "demo-46ffce8", "HIKKI_OPEN_SPLIT": "demo-dba8e9bf",
+        ])
+        guard app.buttons["nav-home"].waitForExistence(timeout: 10) else {
+            throw XCTSkip("needs a wide window — run on iPad or Mac")
+        }
+        let divider = app.descendants(matching: .any)["split-divider"].firstMatch
+        let pane = app.descendants(matching: .any)["split-pane"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(divider, in: app))
+        XCTAssertTrue(waitOrDumpTree(pane, in: app))
+        // The middle first: the fraction is a preference, kept from earlier runs.
+        divider.doubleTap()
+        sleep(1)
+        let half = pane.frame.width
+        let grip = divider.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        // Not far: on an iPad each side has little to give before it reaches `Size.splitMin`.
+        grip.press(forDuration: 0.2, thenDragTo: grip.withOffset(CGVector(dx: -40, dy: 0)))
+        sleep(1)
+        XCTAssertGreaterThan(pane.frame.width, half + 25, "dragging the grip didn't move the boundary")
+        divider.doubleTap()
+        sleep(1)
+        XCTAssertEqual(pane.frame.width, half, accuracy: 2, "a double-tap didn't put it back in the middle")
     }
 
     /// Opening split view keeps the left page on screen: the left side was built anew as the window split, and the
@@ -1153,7 +1184,8 @@ final class EditorFlowTests: XCTestCase {
         attachScreenshot(app, "split-left-page")
     }
 
-    /// iPad / Mac: split view puts a second page beside the first, each in its own editor; the pane closes again.
+    /// iPad / Mac: split view puts a second page beside the first, each in its own editor — two equal sides, each with its
+    /// own tools and panel; they swap, and a side closes again.
     func testSplitViewShowsTwoPages() throws {
         continueAfterFailure = false
         let app = launch()
@@ -1162,20 +1194,35 @@ final class EditorFlowTests: XCTestCase {
         }
         createPage(app, title: "Notes")
         createPage(app, title: "Textbook")
-        // The inspector (the left page's) closes with a split, and can't open while it lasts.
+        // The page's panel stays open as the window splits: it is the leading side's.
         let inspectorToggle = app.descendants(matching: .any)["inspector-toggle"].firstMatch
         XCTAssertTrue(waitOrDumpTree(inspectorToggle, in: app))
         inspectorToggle.tap()
-        XCTAssertTrue(waitOrDumpTree(app.descendants(matching: .any)["inspector-outline"].firstMatch, in: app))
+        let outlines = app.descendants(matching: .any).matching(identifier: "inspector-outline")
+        XCTAssertTrue(waitOrDumpTree(outlines.firstMatch, in: app))
         openInSplit(app, "Notes")
-        XCTAssertFalse(app.descendants(matching: .any)["inspector-outline"].waitForExistence(timeout: 2))
-        XCTAssertFalse(inspectorToggle.isEnabled)
-        // Two editors: the tab's page and the pane's.
+        // Two editors: the tab's page and the one beside it.
         let second = app.webViews.element(boundBy: 1)
-        XCTAssertTrue(second.waitForExistence(timeout: 10), "no second editor in the pane")
+        XCTAssertTrue(second.waitForExistence(timeout: 10), "no second editor beside the page")
         XCTAssertTrue(waitOrDumpTree(app.webViews.textViews.matching(NSPredicate(format: "value == %@", "Notes")).firstMatch, in: app))
+        XCTAssertTrue(outlines.firstMatch.exists, "the leading side's panel closed with the split")
+        // The trailing side has the same tools: its own panel opens beside its page.
+        let trailingOutline = app.descendants(matching: .any)["inspector-toggle-trailing"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(trailingOutline, in: app))
+        trailingOutline.tap()
+        let deadline = Date().addingTimeInterval(5)
+        while outlines.count < 2 && Date() < deadline { usleep(200_000) }
+        XCTAssertEqual(outlines.count, 2, "each side shows its own panel")
         attachScreenshot(app, "split-view")
-        app.descendants(matching: .any)["split-close"].firstMatch.tap()
+        // The two tabs of the split are joined in the strip; swapping trades their places.
+        XCTAssertTrue(app.descendants(matching: .any)["tab-split"].firstMatch.exists)
+        let tabX = { (title: String) in app.descendants(matching: .any)["tab-\(title)"].firstMatch.frame.minX }
+        XCTAssertLessThan(tabX("Textbook"), tabX("Notes"))
+        app.descendants(matching: .any)["split-swap-trailing"].firstMatch.tap()
+        sleep(1)
+        XCTAssertLessThan(tabX("Notes"), tabX("Textbook"), "the sides did not swap")
+        attachScreenshot(app, "split-swapped")
+        app.descendants(matching: .any)["split-close-trailing"].firstMatch.tap()
         XCTAssertFalse(app.descendants(matching: .any)["split-pane"].waitForExistence(timeout: 2))
     }
 
@@ -1196,7 +1243,7 @@ final class EditorFlowTests: XCTestCase {
 
         let notesRow = app.descendants(matching: .any)["page-row-Notes"].firstMatch
         notesRow.press(forDuration: 0.6, thenDragTo: pane, withVelocity: .slow, thenHoldForDuration: 0.6)
-        let change = app.descendants(matching: .any)["split-change"].firstMatch
+        let change = app.descendants(matching: .any)["split-change-trailing"].firstMatch
         XCTAssertTrue(waitOrDumpTree(change, in: app, timeout: 5), "the dropped page did not open in the pane")
         let pageTitle = { (title: String) in
             app.webViews.textViews.matching(NSPredicate(format: "value == %@", title)).firstMatch
@@ -1308,7 +1355,9 @@ final class EditorFlowTests: XCTestCase {
         let row = app.descendants(matching: .any)["page-row-\(title)"].firstMatch
         XCTAssertTrue(waitOrDumpTree(row, in: app))
         row.press(forDuration: 1.2)
-        let item = app.descendants(matching: .any)["open-in-split"].firstMatch
+        // iPadOS's context menus drop the item's identifier: its title finds it there.
+        let item = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier == 'open-in-split' OR label == 'Open in Split View'")).firstMatch
         XCTAssertTrue(waitOrDumpTree(item, in: app))
         item.tap()
     }
