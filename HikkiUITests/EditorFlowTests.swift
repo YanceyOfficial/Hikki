@@ -460,6 +460,46 @@ final class EditorFlowTests: XCTestCase {
             }
         }
 
+        /// A drawing: "/" Drawing adds one and opens Excalidraw over the page (its fonts and code bundled, served by the
+        /// app's scheme); a rectangle drawn and Done leave the block showing the drawing's preview.
+        func testDrawingOpensDrawsAndShowsItsPreview() throws {
+            continueAfterFailure = false
+            let app = launch()
+            let newPage = app.buttons["new-page"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+            newPage.tap()
+            let title = app.webViews.textViews["Page title"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+            title.tap()
+            title.typeText("Sketch\n")
+            let body = app.webViews.textViews["Page content"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(body, in: app), "body missing")
+            body.tap()
+            // "/" Drawing (the + panel lists it too, a few pages in).
+            body.typeText("/drawing")
+            XCTAssertTrue(waitOrDumpTree(app.webViews.otherElements["Drawing"].firstMatch, in: app), "no Drawing in the \"/\" menu")
+            body.typeText("\n")
+
+            let done = app.webViews.buttons["Done"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(done, in: app, timeout: 30), "the drawing editor did not open")
+            let rectangle = app.webViews.otherElements["Rectangle"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(rectangle, in: app), "Excalidraw's toolbar is missing")
+            rectangle.tap()
+            let window = app.windows.firstMatch
+            let from = window.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.4))
+            let to = window.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.55))
+            from.press(forDuration: 0.1, thenDragTo: to)
+            attach(app, "drawing-editor")
+            done.tap()
+
+            // The block is read out as "Drawing" only once it shows its picture (empty, it is "Empty drawing — …").
+            let preview = app.webViews.buttons["Drawing"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(preview, in: app, timeout: 20), "the drawing's preview is not in the page")
+            XCTAssertFalse(done.exists, "the drawing editor stayed open")
+            XCTAssertGreaterThan(preview.frame.height, 20)
+            attach(app, "drawing-preview")
+        }
+
         /// With words selected (a Chinese keyboard offers them for conversion meanwhile), Aa still puts the software
         /// keyboard down for its panel; putting the keyboard away lets go of the selection.
         func testFormatPanelOnASelection() throws {

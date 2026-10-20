@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of apps/editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 31
+    public static let version = 32
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -57,6 +57,9 @@ public enum BridgeMessage: Sendable, Equatable {
     /// A bottom sheet of the page's opened or closed (a touch screen's cover, icon or comment sheet): the native bars
     /// beside it step aside meanwhile (an iPhone Duo's vertical bar), so the sheet has the whole width.
     case sheet(open: Bool)
+    /// The page opened or closed something that takes the whole page (a drawing's editor): the native bars over the page
+    /// (iPhone's navigation and floating bars) step aside meanwhile.
+    case fullScreen(open: Bool)
     /// Comments (`PageComments`): a thread started on a passage — or, with `blockId`, on a whole block without text —
     /// with its first comment, a reply, resolving / reopening, deleting a comment or (`commentId` nil) the whole thread.
     case commentCreate(docId: String, threadId: String, quote: String, body: String, blockId: String? = nil)
@@ -255,6 +258,8 @@ extension BridgeMessage: Decodable {
                 docId: try c.decode(String.self, forKey: .docId), id: try c.decode(String.self, forKey: .id),
                 kind: try c.decode(IconSheetKind.self, forKey: .kind), icon: try c.decodeIfPresent(String.self, forKey: .icon),
                 color: try c.decodeIfPresent(String.self, forKey: .color))
+        case "fullScreen":
+            self = .fullScreen(open: try c.decode(Bool.self, forKey: .open))
         case "activeHeading":
             self = .activeHeading(docId: try c.decode(String.self, forKey: .docId), id: try c.decodeIfPresent(String.self, forKey: .id))
         case "pageInfo":
@@ -326,8 +331,8 @@ private func jsonData(from body: Any) throws -> Data {
 }
 
 /// The editor's AI request: an `action` preset (`improve`, `fix`, `shorter`, `longer`, `tone:<tone>`,
-/// `translate:<language>`, `explain`, `summarize`) or `custom` with an `instruction`; the selected `units` as inline
-/// HTML; `answer` for prose instead of replacement blocks; nearby text as context. Page text: never logged.
+/// `translate:<language>`, `explain`, `summarize`), `custom` with an `instruction`, or `diagram` (a drawing's Text to
+/// diagram: the `instruction` as Mermaid, no units); the selected `units` as inline HTML; `answer` for prose instead of replacement blocks; nearby text as context. Page text: never logged.
 public struct AIRequestPayload: Decodable, Equatable, Sendable {
     public struct Unit: Decodable, Equatable, Sendable {
         public var key: String

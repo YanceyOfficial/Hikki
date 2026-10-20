@@ -106,7 +106,7 @@ struct ContentTextTests {
             else { return nil }
             return [id, text]
         }
-        #expect(pairs.count == 7)
+        #expect(pairs.count == 8)
         #expect(ContentText.blocks(in: fields["doc"]).map { [$0.id, $0.text] } == pairs)
         #expect(ContentText.headings(in: fields["doc"]) == ["Plan 2026"])
     }

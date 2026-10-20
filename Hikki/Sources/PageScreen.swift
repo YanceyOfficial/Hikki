@@ -193,7 +193,7 @@ struct PageScreen: View {
 
     #if os(iOS)
         /// iPhone with the keyboard down — and no vertical bar to hold its buttons.
-        private var showsFloatingBar: Bool { phoneToolbar && !keyboardShown && verticalBar == nil }
+        private var showsFloatingBar: Bool { phoneToolbar && !keyboardShown && verticalBar == nil && !editor.fullScreen }
 
         /// The keyboard bar's photo / file sheet.
         private var mediaSheetShown: Binding<Bool> {

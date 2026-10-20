@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 31
+export const PROTOCOL_VERSION = 32
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -72,7 +72,8 @@ export type ToNativeMessage =
     }
   /**
    * AI on the selection: `action` is a preset (`improve`, `fix`, `shorter`, `longer`, `tone:<tone>`,
-   * `translate:<language>`, `explain`, `summarize`) or `custom` with the user's `instruction`. `units` are the selected
+   * `translate:<language>`, `explain`, `summarize`), `custom` with the user's `instruction`, or `diagram` — a drawing's
+   * Text to diagram: the `instruction` drawn as Mermaid (the answer's text), no `units` (`core/diagram.ts`). `units` are the selected
    * parts of each block as inline HTML; `answer` asks for prose (explain, summarize) rather than replacement blocks.
    * Replies arrive through `window.hikki.aiEvent`.
    */
@@ -155,6 +156,9 @@ export type ToNativeMessage =
   /** A bottom sheet opened or closed (a touch screen's cover, icon or comment sheet): the native bars beside the page
    * step aside meanwhile (an iPhone Duo's vertical bar), so the sheet has the whole width. */
   | { type: 'sheet'; open: boolean }
+  /** Something over the whole page opened or closed (a drawing's editor): the native bars over the page (iPhone's
+   * navigation and floating bars) step aside meanwhile. */
+  | { type: 'fullScreen'; open: boolean }
   | { type: 'log'; level: LogLevel; message: string; context?: Record<string, string> }
   /** A confirmation or note for the user ("Link copied"), already in the page's language: the app shows it as a toast. */
   | { type: 'toast'; kind: 'success' | 'info' | 'warning' | 'error'; message: string }

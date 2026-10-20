@@ -151,6 +151,9 @@ apps/website/                      the site at hikki.yancey.app (TanStack Start 
                               "Coming to the App Store" into the store link
 packages/                     shared web packages (bun workspaces `apps/*`, `packages/*`): editor extensions and code
                               more than one app uses, each its own package.json, consumed from source
+packages/excalidraw/          @hikki/excalidraw: Excalidraw 0.18.1 (pinned) for drawings — src/scene.ts (stored data,
+                              text, Mermaid), src/components/drawing-canvas.tsx (the lazy `@hikki/excalidraw/canvas` entry), vite-plugin.ts
+                              (bundles every font, drops the esm.sh fallback); tests in packages/excalidraw/test/
 HikkiUITests/                 XCUITest flows
 ```
 
@@ -329,6 +332,22 @@ HikkiUITests/                 XCUITest flows
   time (none is stored). Block colours are `blockColor` / `blockBackground` attributes. Block-level highlights (drag
   source, the block a menu is open for) are node decorations from `apps/editor/src/extensions/block-highlight.ts` —
   never classes on the node's DOM, which ProseMirror drops on redraw.
+- **Drawings** (`apps/editor/src/extensions/drawing.ts`, "/" Drawing): an atom `drawing` block storing Excalidraw's
+  live elements and its pictures as asset references (`files`: id → `{src, mimeType}`, never data URLs), shown in the
+  page as a PNG preview asset (`preview`, twice the size; dark mode inverts it as Excalidraw does). A click opens the
+  full-screen editor (`apps/editor/src/components/drawing-overlay.tsx` over `@hikki/excalidraw/canvas`, loaded on
+  first open — Excalidraw and Mermaid are their own chunks, never in the page's start-up): changes go into the block
+  as they rest (out of the page's undo, saved with `SAVE_META`), Done stores the preview; `loadDocument` closes an open
+  drawing first (`closeDrawing`, its last strokes kept). The package never touches the bridge: the editor hands it a
+  host (uploads through `uploadFile`, pictures read back with `fetch` — asset responses allow the editor's own origin
+  — and Text to diagram). Text to diagram (Excalidraw's TTD dialog) is an `aiRequest` with action `diagram`
+  (`apps/editor/src/core/diagram.ts`; `AIPrompts.diagramInstructions` asks for Mermaid only), which Excalidraw's
+  mermaid-to-excalidraw draws. No network: every font Excalidraw draws with, Xiaolai (CJK, ~12 MB) included, is copied
+  into the bundle under the editor's `excalidraw` folder (`setDrawingAssetPath`), and the build replaces Excalidraw's esm.sh fallback.
+  Its text (text elements, as typed) is one block for search and word counts — `apps/editor/src/core/extract.ts` and `ContentText` agree
+  through `design/fixtures/content-text.json`. Excalidraw's UI takes the colour tone through its CSS variables
+  (`.hk-drawing-editor .excalidraw` in style.css). Each Done stores a new preview; the old one stays in `assets/`
+  until attachment cleanup exists.
 - **Rich blocks**: toggles (`apps/editor/src/extensions/toggle.ts`; open/closed is not stored, so opening never saves; a
   summary may be a heading — `level` 1–3, set by `# `…`### ` at its start, cleared by Backspace there),
   callouts, KaTeX formulas (`apps/editor/src/extensions/math.ts`; our panel replaces Tiptap's `prompt()`), tables

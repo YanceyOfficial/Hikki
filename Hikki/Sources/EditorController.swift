@@ -63,6 +63,8 @@ final class EditorController {
         let threadId: String
         var id: String { threadId }
     }
+    /// The page shows something over all of it (a drawing's editor): iPhone's bars over the page step aside.
+    private(set) var fullScreen = false
 
     struct PageInfo: Equatable {
         var docId: String
@@ -1014,6 +1016,8 @@ final class EditorController {
             coverRequest = CoverRequest(docId: docId, cover: cover, mode: mode, bff: bff)
         case .iconSheet(let docId, let id, let kind, let icon, let color):
             iconRequest = IconRequest(docId: docId, id: id, kind: kind, icon: icon, color: color)
+        case .fullScreen(let open):
+            fullScreen = open
         case .scroll(let docId, let top):
             lastScroll = (docId, top)
         case .aiRequest(let payload):

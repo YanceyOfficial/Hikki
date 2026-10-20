@@ -69,6 +69,11 @@ public enum ContentText {
             out.blocks.append(Block(id: id ?? "", isHeading: isHeading, text: text))
             return
         }
+        if type == "drawing" {
+            let text = drawingText(attrs["elements"])
+            if !text.isEmpty { out.blocks.append(Block(id: id ?? "", isHeading: false, text: text)) }
+            return
+        }
         if type == "image" || type == "fileAttachment", case .string(let src)? = attrs["src"],
             let name = AssetStore.name(fromURL: src), seenAssets.insert(name).inserted
         {
@@ -79,6 +84,24 @@ public enum ContentText {
         if case .array(let children)? = fields["content"] {
             for child in children { visit(child, into: &out, seenAssets: &seenAssets) }
         }
+    }
+
+    /// The words in a drawing (`@hikki/excalidraw`'s `drawingText`): its live text elements, one a line in the order
+    /// drawn — the text as typed (`originalText`, before wrapping), else as shown.
+    static func drawingText(_ elements: JSONValue?) -> String {
+        guard case .array(let elements)? = elements else { return "" }
+        return elements.compactMap { element -> String? in
+            guard case .object(let fields) = element, case .string("text")? = fields["type"],
+                case .string? = fields["id"]
+            else { return nil }
+            if case .bool(true)? = fields["isDeleted"] { return nil }
+            let text: String? =
+                if case .string(let original)? = fields["originalText"] { original } else if case .string(let shown)? = fields["text"] {
+                    shown
+                } else { nil }
+            let trimmed = text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return trimmed.isEmpty ? nil : trimmed
+        }.joined(separator: "\n")
     }
 
     /// The text of a node and everything in it: a page mention as "@title", an inline formula as its LaTeX, a hard

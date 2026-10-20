@@ -167,6 +167,10 @@
     "excalidraw": {
       "title": "Excalidraw",
       "hint": "An Excalidraw drawing"
+    },
+    "drawing": {
+      "title": "Drawing",
+      "hint": "Sketch or diagram by hand"
     }
   },
   "cover": {
@@ -544,6 +548,8 @@
     "editorScriptError": "The editor hit an error.",
     "pageReadOnly": "This page opened read-only: its content isn't something this version can edit.",
     "copyFailed": "Couldn't copy to the clipboard.",
+    "drawingPreviewFailed": "Couldn't update the drawing's preview.",
+    "drawingLoadFailed": "Couldn't open the drawing editor.",
     "importFailed": "Couldn't import the file.",
     "importPartial": "Some files weren't imported.",
     "exportFailed": "Couldn't export.",
@@ -571,5 +577,12 @@
     "rateLimited": "Too many requests — try again in a moment.",
     "unsplashNotConfigured": "Unsplash isn't set up on the server.",
     "linkPreviewFailed": "Couldn't read the link's details."
+  },
+  "drawing": {
+    "title": "Drawing",
+    "empty": "Empty drawing — click to draw",
+    "noPreview": "Drawing — click to open",
+    "loading": "Opening the drawing…",
+    "done": "Done"
   }
 }

@@ -76,6 +76,21 @@
         "type": "codeBlock",
         "attrs": { "id": "c1", "language": "swift" },
         "content": [{ "type": "text", "text": "let x = 1\nlet y = 2" }]
+      },
+      {
+        "type": "drawing",
+        "attrs": {
+          "id": "dr1",
+          "elements": [
+            { "id": "r1", "type": "rectangle" },
+            { "id": "t1", "type": "text", "text": "Login", "originalText": "Login" },
+            { "id": "t2", "type": "text", "text": "gone", "isDeleted": true },
+            { "id": "t3", "type": "text", "text": "Wrapped\nline", "originalText": "Wrapped line" },
+            { "id": "t4", "type": "text", "text": "  " }
+          ],
+          "files": {},
+          "preview": null
+        }
       }
     ]
   },
@@ -86,6 +101,7 @@
     { "id": "li1", "text": "item" },
     { "id": "s1", "text": "Summary" },
     { "id": "p3", "text": "hidden" },
-    { "id": "c1", "text": "let x = 1\nlet y = 2" }
+    { "id": "c1", "text": "let x = 1\nlet y = 2" },
+    { "id": "dr1", "text": "Login\nWrapped line" }
   ]
 }

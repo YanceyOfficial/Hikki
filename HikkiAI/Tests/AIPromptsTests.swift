@@ -19,6 +19,21 @@ struct AIPromptsTests {
         #expect(text.contains("Task: Fix spelling"))
     }
 
+    @Test func aDiagramAsksForMermaidOnlyWithTheDescriptionAsData() {
+        let task = AITask(
+            action: "diagram", instruction: "Sign-in flow <with> a server", answer: true, units: [], title: "Plans")
+        #expect(!task.mayHandOff)
+        let request = AIPrompts.request(for: task, model: AIModelCatalog.sonnet)
+        #expect(!request.webSearch)
+        #expect(request.instructions.contains("Reply with ONLY Mermaid code"))
+        #expect(!request.instructions.contains("handoff"))
+        #expect(request.messages.count == 1)
+        let text = request.messages[0].text
+        #expect(text.contains("<description>Sign-in flow ‹with› a server</description>"))
+        #expect(text.contains("<document>Plans</document>"))
+        #expect(text.contains("Task: Draw the description as a Mermaid diagram."))
+    }
+
     @Test func anEditKeepsWhatItSaysToTheUserInNotesApartFromThePage() {
         let request = AIPrompts.request(for: AITask(action: "fix", answer: false, units: [unit]), model: AIModelCatalog.sonnet)
         #expect(request.instructions.contains(#""notes":[]"#))

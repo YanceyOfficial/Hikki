@@ -197,7 +197,7 @@ function FollowUp({
   )
 }
 
-function errorText(error: NonNullable<AIReviewProps['session']['error']>): string {
+export function aiErrorText(error: NonNullable<AIReviewProps['session']['error']>): string {
   switch (error.code) {
     case 'missingKey':
       return t('ai.error.missingKey', { provider: error.provider ?? '' })
@@ -271,7 +271,7 @@ export function AIReview({
     >
       {status === 'error' && error && (
         <div className="flex flex-wrap items-center gap-2">
-          <p className="m-0 min-w-0 flex-1 px-1 text-sm text-destructive">{errorText(error)}</p>
+          <p className="m-0 min-w-0 flex-1 px-1 text-sm text-destructive">{aiErrorText(error)}</p>
           <Button variant="ghost" size="sm" onClick={onRetry}>
             <ArrowClockwiseIcon aria-hidden />
             {t('ai.retry')}

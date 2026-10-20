@@ -183,6 +183,7 @@ struct BridgeMessageTests {
         #expect(try decode(["type": "aiChangeFocus", "docId": "p1"]) == .aiChangeFocus(docId: "p1", id: nil))
         #expect(try decode(["type": "selection", "docId": "p1", "text": "いいえ"]) == .selection(docId: "p1", text: "いいえ"))
         #expect(try decode(["type": "sheet", "open": true]) == .sheet(open: true))
+        #expect(try decode(["type": "fullScreen", "open": false]) == .fullScreen(open: false))
         #expect(
             try decode(["type": "commentCreate", "docId": "p1", "threadId": "t", "quote": "そうです", "body": "样态"])
                 == .commentCreate(docId: "p1", threadId: "t", quote: "そうです", body: "样态"))

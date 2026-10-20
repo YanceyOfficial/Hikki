@@ -22,6 +22,7 @@ import {
   type CommentsHost,
   type ThreadItem
 } from '../extensions/comments'
+import { closeDrawing, type DrawingEditorHost } from '../extensions/drawing'
 import { runFind, type FindMode } from '../extensions/find'
 import { UploadsKey, type MediaHost } from '../extensions/media'
 import {
@@ -44,6 +45,7 @@ import {
   type IconSheetRequest
 } from '../lib/icon-sheet'
 import { sheetPresence } from '../lib/sheet-presence'
+import { DiagramRequests } from './diagram'
 import { activeCommands, createEditor, runCommand } from './editor'
 import { plainText, wordCount } from './extract'
 import {
@@ -291,6 +293,8 @@ export class EditorBridge {
   loadDocument(payload: PagePayload): void {
     // Menus and panels belong to the page being replaced.
     dismissAllLayers()
+    // A drawing open over the page puts its last strokes into it first.
+    closeDrawing()
     // Never drop a pending edit of the previous page, nor where it was last scrolled to.
     this.flushPending()
     if (this.scrollTimer) this.sendScroll()
@@ -319,6 +323,7 @@ export class EditorBridge {
       ai: this.aiHost,
       aiChanges: this.aiChangesHost,
       comments: this.commentsHost,
+      drawing: this.drawingHost,
       ruby: this.ruby,
       linkPreview: async (url) =>
         linkCardFrom(await this.transport.post({ type: 'linkPreview', url })),
@@ -752,7 +757,24 @@ export class EditorBridge {
 
   /** `window.hikki.aiEvent`: one event of an AI request's answer. */
   aiEvent(event: AIStreamEvent): void {
+    if (this.diagrams.handle(event)) return
     if (this.editor) handleAIEvent(this.editor, this.aiHost, event)
+  }
+
+  /** Text to diagram requests in flight (a drawing's AI), apart from the page's own AI review. */
+  private readonly diagrams = new DiagramRequests((message) => void this.send(message))
+
+  /** Drawings: their pictures and previews are stored like any upload; Text to diagram asks the native AI. */
+  readonly drawingHost: DrawingEditorHost = {
+    upload: (blob, extension) =>
+      this.uploadFile(new File([blob], `drawing.${extension}`, { type: blob.type })),
+    read: async (src) => {
+      const response = await fetch(src)
+      if (!response.ok) throw new Error(`read ${response.status}`)
+      return response.blob()
+    },
+    diagram: (prompt) => this.diagrams.request(prompt, this.page.get().title),
+    fullScreen: (open) => void this.send({ type: 'fullScreen', open })
   }
 
   /** Page links in the body: labels from the index, clicks routed to the native side. */

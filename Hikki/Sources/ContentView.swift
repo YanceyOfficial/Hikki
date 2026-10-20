@@ -122,12 +122,15 @@ struct ContentView: View {
             .toolbar { if wide { NativeDetailToolbar(navigator: navigator, editor: editor) } }
             #if os(iOS)
                 // A bottom sheet of the page's is open on an iPhone Duo: its vertical bar steps aside (it sits over the
-                // sheet's side otherwise), back when the sheet closes. Elsewhere the bars stay.
+                // sheet's side otherwise), back when the sheet closes. Elsewhere the bars stay — unless the page shows
+                // something over all of it (a drawing's editor), which every bar steps aside for.
                 .toolbarVisibility(
-                    sheetOpen && DeviceRules.sheetHidesBars(hasVerticalBar: verticalBar != nil) ? .hidden : .automatic,
+                    fullScreen || (sheetOpen && DeviceRules.sheetHidesBars(hasVerticalBar: verticalBar != nil))
+                        ? .hidden : .automatic,
                     for: .navigationBar
                 )
                 .animation(Motion.easeOut(), value: sheetOpen)
+                .animation(Motion.easeOut(), value: fullScreen)
             #endif
             .sheet(
                 isPresented: Binding(
@@ -683,6 +686,9 @@ struct ContentView: View {
 
     /// One of the window's editors shows a bottom sheet (`EditorController.sheetOpen`).
     private var sheetOpen: Bool { editor.sheetOpen || splitEditor?.sheetOpen == true }
+
+    /// One of the window's editors shows something over its whole page (`EditorController.fullScreen`).
+    private var fullScreen: Bool { editor.fullScreen || splitEditor?.fullScreen == true }
 
     /// Whether this window may split into two panes: wide enough for two pages (`DeviceRules.allowsSplit`).
     private var splitAllowed: Bool {

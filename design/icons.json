@@ -283,6 +283,9 @@
     "sigma": {
       "sf": "sum"
     },
+    "scribble": {
+      "sf": "scribble.variable"
+    },
     "function": {
       "sf": "function"
     },

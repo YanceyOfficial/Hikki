@@ -30,6 +30,8 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
     case editorScriptError
     case pageReadOnly
     case copyFailed
+    case drawingPreviewFailed
+    case drawingLoadFailed
     case importFailed
     case importPartial
     case exportFailed
@@ -82,6 +84,8 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .editorScriptError: 3002
         case .pageReadOnly: 3003
         case .copyFailed: 3004
+        case .drawingPreviewFailed: 3005
+        case .drawingLoadFailed: 3006
         case .importFailed: 4001
         case .importPartial: 4002
         case .exportFailed: 4003
@@ -154,6 +158,8 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .editorScriptError: .error
         case .pageReadOnly: .warning
         case .copyFailed: .error
+        case .drawingPreviewFailed: .error
+        case .drawingLoadFailed: .error
         case .importFailed: .error
         case .importPartial: .warning
         case .exportFailed: .error

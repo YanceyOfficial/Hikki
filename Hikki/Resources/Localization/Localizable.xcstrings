@@ -3282,6 +3282,40 @@
         }
       }
     },
+    "app:error.drawingLoadFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't open the drawing editor."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法打开绘图编辑器。"
+          }
+        }
+      }
+    },
+    "app:error.drawingPreviewFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't update the drawing's preview."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法更新绘图的预览。"
+          }
+        }
+      }
+    },
     "app:error.editorCrashed": {
       "extractionState": "manual",
       "localizations": {

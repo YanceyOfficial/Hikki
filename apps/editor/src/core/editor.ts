@@ -15,6 +15,7 @@ import { CodeBlock } from '../extensions/code-block'
 import { Colors, ColorTextStyle } from '../extensions/colors'
 import { Column, Columns, ColumnsKeymap } from '../extensions/columns'
 import { Comments, type CommentsHost } from '../extensions/comments'
+import { Drawing, type DrawingEditorHost } from '../extensions/drawing'
 import { EdgeNavigation } from '../extensions/edge-navigation'
 import { Embed } from '../extensions/embed'
 import { EmojiSuggestion } from '../extensions/emoji-suggestion'
@@ -72,6 +73,8 @@ export type EditorOptions = {
   aiChanges?: AIChangesHost
   /** Comments on passages (the native store); without it the threads stay empty and nothing is written. */
   comments?: CommentsHost
+  /** Drawings: storing their pictures and previews, Text to diagram; without it a drawing shows but doesn't open. */
+  drawing?: DrawingEditorHost
 }
 
 /**
@@ -98,7 +101,8 @@ export const BLOCK_ID_TYPES = [
   'video',
   'audio',
   'fileAttachment',
-  'embed'
+  'embed',
+  'drawing'
 ]
 
 /** The page body editor. `content` must already be normalized (see normalizeBody). */
@@ -171,6 +175,7 @@ export function editorExtensions(options: EditorOptions = {}): AnyExtension[] {
     Find,
     TableOfContents,
     ...mediaExtensions(options.media ?? null),
+    Drawing.configure({ host: options.drawing ?? null }),
     PageLinks(options.pageLinks ?? noPageLinks),
     // "@" mentions a page; ":" suggests emoji.
     PageMention(options.pageLinks ?? noPageLinks),

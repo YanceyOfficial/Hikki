@@ -15,6 +15,7 @@ const NODE_KINDS: Record<string, string> = {
   video: 'video',
   audio: 'audio',
   fileAttachment: 'file',
+  drawing: 'drawing',
   horizontalRule: 'divider',
   table: 'table',
   blockMath: 'blockMath',

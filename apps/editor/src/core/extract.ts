@@ -1,3 +1,4 @@
+import { drawingText } from '@hikki/excalidraw'
 import type { JSONContent } from '@tiptap/core'
 
 const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/gu
@@ -16,10 +17,15 @@ export function textOf(node: JSONContent): string {
   return (node.content ?? []).map(textOf).join('')
 }
 
-/** Top-level blocks flattened to one line of text each (nested lists/quotes included). */
+/** Top-level blocks flattened to one line of text each (nested lists/quotes included); a drawing's words are one block. */
 export function blockTexts(doc: JSONContent): string[] {
   const out: string[] = []
   const walk = (node: JSONContent) => {
+    if (node.type === 'drawing') {
+      const text = drawingText((node.attrs?.elements as unknown[] | undefined) ?? [])
+      if (text) out.push(text)
+      return
+    }
     const children = node.content ?? []
     const isTextblock = children.length > 0 && children.every((c) => INLINE.has(c.type ?? ''))
     if (isTextblock || node.type === 'codeBlock') {

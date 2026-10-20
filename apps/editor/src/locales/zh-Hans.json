@@ -167,6 +167,10 @@
     "excalidraw": {
       "title": "Excalidraw",
       "hint": "Excalidraw 手绘图"
+    },
+    "drawing": {
+      "title": "绘图",
+      "hint": "手绘草图或图示"
     }
   },
   "cover": {
@@ -544,6 +548,8 @@
     "editorScriptError": "编辑器出错了。",
     "pageReadOnly": "页面以只读方式打开：此版本无法编辑其内容。",
     "copyFailed": "无法复制到剪贴板。",
+    "drawingPreviewFailed": "无法更新绘图的预览。",
+    "drawingLoadFailed": "无法打开绘图编辑器。",
     "importFailed": "无法导入文件。",
     "importPartial": "部分文件未能导入。",
     "exportFailed": "无法导出。",
@@ -571,5 +577,12 @@
     "rateLimited": "请求太频繁，请稍后再试。",
     "unsplashNotConfigured": "服务器未配置 Unsplash。",
     "linkPreviewFailed": "无法读取链接信息。"
+  },
+  "drawing": {
+    "title": "绘图",
+    "empty": "空白绘图——点按开始绘制",
+    "noPreview": "绘图——点按打开",
+    "loading": "正在打开绘图…",
+    "done": "完成"
   }
 }

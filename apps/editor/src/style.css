@@ -397,6 +397,25 @@
   .tiptap .hk-audio {
     @apply block w-full;
   }
+  /* A drawing (extensions/drawing.ts): its preview, or a prompt to draw; a click opens the editor. */
+  .tiptap .hk-drawing {
+    @apply my-2 flex cursor-pointer justify-center rounded-md transition-colors duration-(--motion-pop-in) ease-out select-none hover:bg-accent/40 focus-visible:outline-2 focus-visible:outline-ring;
+  }
+  .tiptap .hk-drawing[data-empty='true'] {
+    @apply min-h-32 items-center border border-dashed border-border;
+  }
+  .tiptap .hk-drawing-preview {
+    @apply block h-auto max-h-[80vh] max-w-full;
+  }
+  .tiptap .hk-drawing-empty {
+    @apply text-md text-muted-foreground;
+  }
+  /* Drawn the way Excalidraw draws its own dark theme: the light drawing, inverted. */
+  @media (prefers-color-scheme: dark) {
+    .tiptap .hk-drawing-preview {
+      filter: invert(93%) hue-rotate(180deg);
+    }
+  }
   .tiptap .hk-file {
     @apply flex w-full cursor-pointer items-center gap-3 rounded-md border border-border px-3 py-2.5 text-left hover:bg-accent;
   }
@@ -1081,4 +1100,19 @@
 /* The outline rail (right edge) gives way to the find panel, which sits in the same corner. */
 body:has(.hk-find [data-testid='find-panel']) #outline {
   display: none;
+}
+
+/* The drawing editor (components/drawing-overlay.tsx) in the app's colour tone instead of Excalidraw's violet.
+   Unlayered, as Excalidraw's own stylesheet is, and more specific than its `.excalidraw.theme--dark`. */
+.hk-drawing-editor .excalidraw,
+.hk-drawing-editor .excalidraw.theme--dark {
+  --color-primary: var(--primary);
+  --color-primary-hover: color-mix(in oklch, var(--primary), var(--foreground) 12%);
+  --color-primary-darker: color-mix(in oklch, var(--primary), var(--foreground) 20%);
+  --color-primary-darkest: color-mix(in oklch, var(--primary), var(--foreground) 30%);
+  --color-primary-light: color-mix(in oklch, var(--primary) 14%, var(--background));
+  --color-primary-light-darker: color-mix(in oklch, var(--primary) 24%, var(--background));
+  --color-surface-primary-container: color-mix(in oklch, var(--primary) 14%, var(--background));
+  --color-on-primary-container: var(--foreground);
+  --focus-highlight-color: var(--ring);
 }

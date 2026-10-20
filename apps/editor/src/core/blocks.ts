@@ -15,6 +15,7 @@ import {
   MinusIcon,
   MusicNotesIcon,
   PaperclipIcon,
+  ScribbleIcon,
   QuotesIcon,
   SigmaIcon,
   TableIcon,
@@ -289,6 +290,32 @@ export const BLOCK_TYPES: BlockType[] = [
     after: (editor) => {
       if (mediaHost) pickFiles(editor, mediaHost, 'file')
     }
+  },
+  {
+    id: 'drawing',
+    title: 'Drawing',
+    hint: 'Sketch or diagram by hand',
+    label: () => t('blocks.drawing.title'),
+    description: () => t('blocks.drawing.hint'),
+    icon: ScribbleIcon,
+    group: 'media',
+    aliases: [
+      'drawing',
+      'draw',
+      'sketch',
+      'diagram',
+      'whiteboard',
+      'excalidraw',
+      '绘图',
+      '画图',
+      '手绘',
+      '白板',
+      'huitu',
+      'huatu',
+      'shouhui',
+      'ht'
+    ],
+    apply: (c) => c.insertDrawing()
   },
   // Embeds (Notion's): each opens the link panel for its service; the block itself is the same frame.
   {

@@ -5,6 +5,8 @@ import react from '@vitejs/plugin-react'
 import type { Plugin } from 'vite'
 import { defineConfig } from 'vitest/config'
 
+import { excalidrawAssets } from '../../packages/excalidraw/vite-plugin.ts'
+
 /**
  * KaTeX's stylesheet offers every font as woff2, woff and ttf; WebKit takes woff2, so only those are kept (the other
  * two formats were ~0.5 MB the app shipped and never loaded).
@@ -23,7 +25,7 @@ function katexWoff2Only(): Plugin {
 export default defineConfig({
   // Relative URLs: the bundle is served from the app's custom scheme (hikki-editor://app/).
   base: './',
-  plugins: [katexWoff2Only(), react(), tailwindcss()],
+  plugins: [katexWoff2Only(), excalidrawAssets(), react(), tailwindcss()],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   build: {
     outDir: '../../Hikki/Resources/Editor',

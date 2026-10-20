@@ -28,6 +28,8 @@ extension ErrorCode {
         case .editorScriptError: String(localized: "app:error.editorScriptError")
         case .pageReadOnly: String(localized: "app:error.pageReadOnly")
         case .copyFailed: String(localized: "app:error.copyFailed")
+        case .drawingPreviewFailed: String(localized: "app:error.drawingPreviewFailed")
+        case .drawingLoadFailed: String(localized: "app:error.drawingLoadFailed")
         case .importFailed: String(localized: "app:error.importFailed")
         case .importPartial: String(localized: "app:error.importPartial")
         case .exportFailed: String(localized: "app:error.exportFailed")

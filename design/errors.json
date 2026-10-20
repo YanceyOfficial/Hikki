@@ -135,6 +135,18 @@
       "en": "Couldn't copy to the clipboard.",
       "zh": "无法复制到剪贴板。"
     },
+    "drawingPreviewFailed": {
+      "code": 3005,
+      "severity": "error",
+      "en": "Couldn't update the drawing's preview.",
+      "zh": "无法更新绘图的预览。"
+    },
+    "drawingLoadFailed": {
+      "code": 3006,
+      "severity": "error",
+      "en": "Couldn't open the drawing editor.",
+      "zh": "无法打开绘图编辑器。"
+    },
 
     "importFailed": {
       "code": 4001,

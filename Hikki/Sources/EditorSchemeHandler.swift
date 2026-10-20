@@ -43,6 +43,9 @@ final class EditorSchemeHandler: NSObject, WKURLSchemeHandler {
             // Assets are data, never documents: even if loaded directly they get no scripts or plugins.
             headers["Content-Security-Policy"] = "sandbox; default-src 'none'"
             headers["X-Content-Type-Options"] = "nosniff"
+            // The editor reads a drawing's pictures back with fetch (another host of the scheme: cross-origin). Only
+            // the editor's own origin may — never a page embedded in it.
+            headers["Access-Control-Allow-Origin"] = "\(Self.scheme)://app"
         }
         let partial = range.count != size
         if partial { headers["Content-Range"] = "bytes \(range.lowerBound)-\(range.upperBound - 1)/\(size)" }
