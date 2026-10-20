@@ -185,7 +185,7 @@ public struct ShortcutRecorder: View {
 
         static func dismantleUIView(_ view: CaptureView, coordinator: ()) {
             view.onResign = nil
-            view.resignFirstResponder()
+            _ = view.resignFirstResponder()
         }
 
         final class CaptureView: UIView {

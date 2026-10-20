@@ -143,7 +143,8 @@ struct PageScreen: View {
         let edited = Text("app:page.edited \(page.updatedAt, format: .relative(presentation: .named))")
         guard !ancestors.isEmpty else { return edited }
         // The page titles, shown as-is.
-        return Text(verbatim: ancestors.map(Self.title).joined(separator: " › ") + " · ") + edited
+        let path = Text(verbatim: ancestors.map(Self.title).joined(separator: " › "))
+        return Text("app:common.joined \(path) \(edited)")
     }
 
     private static func title(_ page: PageSummary) -> String {

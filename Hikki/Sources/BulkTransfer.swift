@@ -177,7 +177,7 @@ final class BulkTransfer {
                     // Writing and copying attachments (videos can be large) happen off the main thread.
                     try await Task.detached(priority: .userInitiated) {
                         try WorkspaceExport.write(data, entry: entry, in: folder)
-                        for name in fresh { try? WorkspaceExport.copyAsset(name, from: assets, to: folder) }
+                        for name in fresh { _ = try? WorkspaceExport.copyAsset(name, from: assets, to: folder) }
                     }.value
                     result.count += 1
                 } catch {

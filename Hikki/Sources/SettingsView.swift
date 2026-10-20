@@ -366,10 +366,12 @@ private struct WorkspaceSection: View {
         guard let sync = model.lastSync else { return Text("app:settings.storage.notSynced") }
         var text = Text("app:settings.storage.synced \(sync.at, format: .relative(presentation: .named))")
         if sync.report.waitingForDownload > 0 {
-            text = text + Text(verbatim: " · ") + Text("app:settings.storage.waiting \(sync.report.waitingForDownload.formatted())")
+            let waiting = Text("app:settings.storage.waiting \(sync.report.waitingForDownload.formatted())")
+            text = Text("app:common.joined \(text) \(waiting)")
         }
         if sync.report.skippedFiles > 0 {
-            text = text + Text(verbatim: " · ") + Text("app:settings.storage.skipped \(sync.report.skippedFiles.formatted())")
+            let skipped = Text("app:settings.storage.skipped \(sync.report.skippedFiles.formatted())")
+            text = Text("app:common.joined \(text) \(skipped)")
         }
         return text
     }

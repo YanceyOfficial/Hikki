@@ -16,7 +16,7 @@ public enum TextComposition {
 
         @MainActor public static var isActive: Bool { isComposing(NSApp.keyWindow?.firstResponder) }
     #elseif canImport(UIKit)
-        public static func isComposing(_ responder: Any?) -> Bool {
+        @MainActor public static func isComposing(_ responder: Any?) -> Bool {
             (responder as? UITextInput)?.markedTextRange != nil
         }
 

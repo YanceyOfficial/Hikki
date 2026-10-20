@@ -185,7 +185,7 @@ public struct PageHistoryFiles: Sendable {
         return String(name.dropFirst().dropLast(".json.icloud".count))
     }
 
-    nonisolated(unsafe) private static let stemFormat: DateFormatter = {
+    private static let stemFormat: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = TimeZone(identifier: "UTC")

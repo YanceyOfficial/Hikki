@@ -464,7 +464,7 @@ struct AIChatActions: View {
             } label: {
                 IconLabel("app:ai.newChat", icon: .notePencil)
             }
-            .help(Text("app:ai.newChat") + Text(verbatim: "  \(Shortcut.newChat.display)"))
+            .help(Text(verbatim: String(localized: "app:ai.newChat") + "  " + Shortcut.newChat.display))
             .accessibilityIdentifier("ai-chat-new")
         }
     }
@@ -781,9 +781,9 @@ struct AIChatView: View {
                     Task { @MainActor in chat.attach(fileAt: url) }
                 }
             } else if let type = [UTType.pdf, .image].first(where: { provider.hasItemConformingToTypeIdentifier($0.identifier) }) {
+                let name = provider.suggestedName ?? String(localized: "app:ai.attach.photo")
                 provider.loadDataRepresentation(forTypeIdentifier: type.identifier) { data, _ in
                     guard let data else { return }
-                    let name = provider.suggestedName ?? String(localized: "app:ai.attach.photo")
                     Task { @MainActor in chat.attach(data, type: type, name: name) }
                 }
             }

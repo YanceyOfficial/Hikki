@@ -117,7 +117,7 @@ public final class WorkspaceSync: @unchecked Sendable {
     /// then watches the folder.
     public func start() throws -> Report {
         commits = try store.observePageCommits { [weak self] changed, deletions, live in
-            self?.queue.async { self?.writeThrough(changed: changed, deletions: deletions, live: live) }
+            self?.queue.async { [weak self] in self?.writeThrough(changed: changed, deletions: deletions, live: live) }
         }
         return try queue.sync {
             started = true
