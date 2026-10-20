@@ -1,4 +1,5 @@
 #if DEBUG
+    import HikkiCore
     import HikkiUI
     import SwiftUI
 
@@ -279,7 +280,7 @@
                                     id: "1", thumbnail: URL(string: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=200")!,
                                     caption: "Kiyomizu-dera", source: URL(string: "https://example.com/kyoto")),
                                 ImageResultItem(id: "2", thumbnail: URL(string: "https://invalid.example/missing.jpg")!),
-                            ], onAdd: { _ in }, onOpen: { _ in }, onCopy: { _ in })
+                            ], onAdd: { _ in }, onOpen: { _ in }, onCopy: { _ in }, load: { try await WebImage.fetch($0).data })
                     }
                     Section("ShimmerText") {
                         ShimmerText("app:ai.thinking").font(.hk(.sm))

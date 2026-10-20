@@ -648,9 +648,12 @@ HikkiUITests/                 XCUITest flows
   keyboard's place at its height (the same subclass's `inputView`, swapped with `reloadInputViews`, the caret staying
   put): HikkiUI's `KeyboardBlockPanel` (the "/" catalog as flat two-column rows; turn into marks the current kind) and
   `KeyboardFormatPanel` (marks, Turn into, text colour and background); the bar's end button brings the keyboard
-  back, a swipe down closes both. Whether a software keyboard is up is read from the keyboard's frames (both
-  will/did change: the simulator posts only "did"), never `GCKeyboard`; without one the system keeps the keyboard's
-  area off screen, so the panel is a sheet of the keyboard's height instead. AI, link and comment open a native glass
+  back, a swipe down closes both. Whether a software keyboard is up is read from where the bar sits when a panel opens
+  (room under it: `keyboardUnderBar`) — the keyboard's frame notifications misled on a phone, and `GCKeyboard` says
+  nothing about the software keyboard; without one the system keeps the keyboard's area off screen, so the panel is a
+  sheet of the keyboard's height instead. However the keyboard goes away (✕, a swipe, a tap elsewhere) the page's
+  selection collapses (`keyboardWentAway`; WebKit would keep painting it greyed out), except under an AI edit just
+  sent from the bar; ✕ on a native field gives the page its keyboard back, selection kept. AI, link and comment open a native glass
   field over the keyboard (HikkiUI's `KeyboardAIComposer` / `KeyboardLinkComposer` / `KeyboardCommentComposer`, drawn
   by `PageScreen`) on what `touchPrepare` / `touchCommentQuote` pointed at; a comment is started and sent in one step
   (`touchComment`), so the page's own comment sheet stays shut — focusing its field scrolled the page to its end. ⋯

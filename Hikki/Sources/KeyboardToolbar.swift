@@ -41,54 +41,64 @@
         var mediaSheet = false
         /// The keyboard's height (without the bar) when it was last up: a panel takes the same, so the page stays put.
         @ObservationIgnored var keyboardHeight: CGFloat = 291
-        /// A software keyboard is on screen (with a hardware keyboard only the bar is: the system reports a frame of
-        /// the bar's height, or one below the screen). Decided from the frames, not from `GCKeyboard` — a keyboard
-        /// attached (the simulator's always is) doesn't mean the software one is hidden.
-        @ObservationIgnored private var softwareKeyboard = false
         /// With a hardware keyboard the system keeps the keyboard's area off screen, a panel in it too: the panel is a
         /// sheet of that height instead.
         @ObservationIgnored private weak var sheet: UIViewController?
         @ObservationIgnored private var observers: [NSObjectProtocol] = []
+        /// The next time the keyboard goes away, the page's selection stays (an AI edit under review on it).
+        @ObservationIgnored private var keepSelectionOnHide = false
 
         init(controller: EditorController) {
             self.controller = controller
-            let center = NotificationCenter.default
-            // Both: some keyboard changes post only the "did" one (seen with a hardware keyboard in the simulator).
-            for name in [UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardDidChangeFrameNotification] {
-                observers.append(
-                    center.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
-                        let frame = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue
-                        MainActor.assumeIsolated { self?.noteKeyboard(frame) }
-                    })
-            }
             observers.append(
-                center.addObserver(forName: UIResponder.keyboardDidHideNotification, object: nil, queue: .main) {
-                    [weak self] _ in
+                NotificationCenter.default.addObserver(
+                    forName: UIResponder.keyboardDidHideNotification, object: nil, queue: .main
+                ) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.keyboardWentAway() }
+                })
+            // A keyboard back up (the page's, after a field) means no hide is still to come for the flag.
+            observers.append(
+                NotificationCenter.default.addObserver(
+                    forName: UIResponder.keyboardDidShowNotification, object: nil, queue: .main
+                ) { [weak self] _ in
                     MainActor.assumeIsolated {
-                        // The keyboard went away altogether (or the page lost the caret): no panel stays behind.
-                        // (A panel shown as a sheet takes the focus by design.)
-                        // Only when the page really let go of the caret: swapping the keyboard for a panel may post a
-                        // hide of its own.
-                        guard let self, self.panel != nil, self.sheet == nil, self.webView?.editingContent?.isFirstResponder != true
-                        else { return }
-                        self.panel = nil
-                        self.webView?.keyboardPanel = nil
+                        guard let self, self.composer == nil else { return }
+                        self.keepSelectionOnHide = false
                     }
                 })
+        }
+
+        /// The keyboard went away altogether — the bar's button, a swipe, a tap elsewhere — or only seemed to:
+        /// swapping it for a panel or a native field may post a hide of its own, so this acts only once the page has
+        /// let go of the caret. No panel stays behind (one shown as a sheet takes the focus by design), and no
+        /// selection: WebKit would keep painting it, greyed out, with nothing to act on it (Notion's).
+        private func keyboardWentAway() {
+            guard webView?.editingContent?.isFirstResponder != true, sheet == nil else { return }
+            if panel != nil {
+                panel = nil
+                webView?.keyboardPanel = nil
+            }
+            guard composer == nil, blockActions == nil, !mediaSheet else { return }
+            if keepSelectionOnHide {
+                keepSelectionOnHide = false
+                return
+            }
+            controller?.collapseSelection()
         }
 
         isolated deinit {
             observers.forEach(NotificationCenter.default.removeObserver)
         }
 
-        private func noteKeyboard(_ frame: CGRect?) {
-            guard let frame else { return }
-            let screen = webView?.window?.screen.bounds ?? frame
-            let shown = frame.height > KeyboardAccessoryBar<EmptyView>.height * 2 && frame.minY < screen.maxY - 1
-            // While a panel is in the keyboard's place the frame is the panel's: it says nothing new.
-            guard panel == nil else { return }
-            softwareKeyboard = shown
-            if shown { keyboardHeight = frame.height - KeyboardAccessoryBar<EmptyView>.height }
+        /// The software keyboard's height under the bar, read from where the bar is now; nil when there is none (a
+        /// hardware keyboard keeps only the bar up, at the screen's foot). The keyboard's frame notifications were
+        /// tried first and misled on a phone (the panel then opened as a sheet hidden behind the keyboard); neither
+        /// is `GCKeyboard` an answer — a keyboard attached doesn't mean the software one is hidden.
+        private func keyboardUnderBar() -> CGFloat? {
+            guard let bar = webView?.keyboardToolbar, let window = bar.window else { return nil }
+            let screen = window.screen
+            let below = screen.bounds.maxY - bar.convert(bar.bounds, to: screen.coordinateSpace).maxY
+            return below > KeyboardAccessoryBar<EmptyView>.height * 2 ? below : nil
         }
 
         func toggle(_ kind: Panel) {
@@ -105,8 +115,11 @@
                 await refresh()
             }
             let host = UIHostingController(rootView: KeyboardPanelView(bar: self))
+            // Measured before the panel takes the keyboard's place (then the bar sits on the panel).
+            let software = panel == nil ? keyboardUnderBar() : keyboardHeight
+            if let software { keyboardHeight = software }
             panel = kind
-            if !softwareKeyboard, sheet == nil, let presenter = webView.window?.rootViewController?.topmostPresented {
+            if software == nil, sheet == nil, let presenter = webView.window?.rootViewController?.topmostPresented {
                 host.sheetPresentationController?.detents = [.custom { [height = keyboardHeight] _ in height }]
                 host.sheetPresentationController?.prefersGrabberVisible = true
                 host.presentationController?.delegate = sheetDelegate
@@ -159,6 +172,7 @@
         /// selects). It takes the keyboard; the page keeps painting its selection meanwhile.
         func openField(_ kind: Composer.Kind) {
             closePanel()
+            keepSelectionOnHide = false
             Task {
                 guard let target = await controller?.touchPrepare() else { return }
                 webView?.dismissEditMenu()
@@ -170,6 +184,7 @@
         /// block. The page's own comment sheet stays shut: its field taking focus scrolled the page away.
         func openComment(block: Bool = false) {
             closePanel()
+            keepSelectionOnHide = false
             let scope = block ? "block" : "selection"
             Task {
                 guard let quote = await controller?.touchCommentQuote(scope) else { return }
@@ -184,13 +199,19 @@
             Task { await controller?.touchComment(scope: scope, body: body) }
         }
 
+        /// ✕ on a field: back to the page's keyboard, its selection as it was (the field's keyboard going down first
+        /// leaves the selection be).
         func closeComposer() {
             composer = nil
+            keepSelectionOnHide = true
+            controller?.focusBody()
         }
 
         /// The composer's request: a preset (its id) or the user's own words.
         func sendAI(preset: String? = nil, instruction: String? = nil) {
             composer = nil
+            // The edit is shown on the selection: the keyboard going down with the field leaves it be.
+            keepSelectionOnHide = true
             Task { await controller?.touchAI(id: preset ?? "custom", instruction: preset == nil ? instruction : nil) }
         }
 

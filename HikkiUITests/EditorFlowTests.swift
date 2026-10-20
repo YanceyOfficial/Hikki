@@ -460,6 +460,38 @@ final class EditorFlowTests: XCTestCase {
             }
         }
 
+        /// With words selected (a Chinese keyboard offers them for conversion meanwhile), Aa still puts the software
+        /// keyboard down for its panel; putting the keyboard away lets go of the selection.
+        func testFormatPanelOnASelection() throws {
+            continueAfterFailure = false
+            let app = launch()
+            let newPage = app.buttons["new-page"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+            newPage.tap()
+            let title = app.webViews.textViews["Page title"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+            title.tap()
+            title.typeText("Plan\n")
+            let body = app.webViews.textViews["Page content"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(body, in: app), "body missing")
+            body.typeText("点点滴滴 hello world")
+            let line = app.webViews.staticTexts.containing(NSPredicate(format: "label CONTAINS 'world'")).firstMatch
+            XCTAssertTrue(waitOrDumpTree(line, in: app))
+            line.doubleTap()
+            attach(app, "selected")
+            let keyboard = app.keyboards.firstMatch
+            XCTAssertTrue(keyboard.waitForExistence(timeout: 5))
+            let softwareKeyboard = keyboard.frame.minY < app.frame.maxY - 1
+            app.buttons["Format"].firstMatch.tap()
+            let format = app.descendants(matching: .any)["keyboard-format-panel"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(format, in: app), "Aa panel did not open")
+            attach(app, "format-on-selection")
+            if softwareKeyboard {
+                let noKeyboard = NSPredicate(format: "count == 0")
+                wait(for: [expectation(for: noKeyboard, evaluatedWith: app.keyboards)], timeout: 5)
+            }
+        }
+
         /// The bar's AI and link fields are native, over the keyboard, on the word at the caret; ⋯ opens the block's
         /// actions as a sheet, whose Duplicate copies the block.
         func testKeyboardBarFieldsAndBlockActions() throws {

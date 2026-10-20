@@ -638,6 +638,12 @@ final class EditorController {
 
     /// Blurs the editor in JS (so ProseMirror's focus state stays truthful), then resigns the native first responder
     /// as a fallback in case the page is unresponsive.
+    /// The page's selection let go of once the keyboard is gone some other way than `dismissKeyboard` (a swipe, a tap
+    /// outside the page): left behind, WebKit keeps painting it greyed out.
+    func collapseSelection() {
+        Task { _ = await call("window.hikki.blur()", label: "blur") }
+    }
+
     func dismissKeyboard() {
         Task {
             _ = await call("window.hikki.blur()", label: "blur")

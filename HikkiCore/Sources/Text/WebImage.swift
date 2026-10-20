@@ -2,7 +2,10 @@ import Foundation
 
 /// A picture on the web, fetched to keep in the workspace (a picture an AI answer's web search found, added to the
 /// page): LinkPreview's rules for an address someone else chose — http/https, public hosts only, every redirect
-/// checked — and capped in time and size. Only the picture types the asset store takes come back.
+/// checked — and capped in time and size. Only the picture types the asset store takes come back. As there, the
+/// connection isn't pinned to the checked addresses (URLSession has no hook), so a DNS answer that changes between the
+/// check and the connect could reach a local address; accepted for the same reasons — a GET whose answer must parse
+/// as a picture, fetched when the user asks for it (Add to page) or to show a thumbnail on this device.
 public enum WebImage {
     public struct NotAPicture: Error {}
 

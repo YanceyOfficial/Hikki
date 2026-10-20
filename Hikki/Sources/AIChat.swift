@@ -1072,7 +1072,8 @@ private struct ChatBubble: View {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(item.id, forType: .string)
                 #endif
-            })
+            },
+            load: { try await WebImage.fetch($0).data })
     }
 
     var body: some View {

@@ -24,11 +24,15 @@ public struct ImageResultStrip: View {
     let onAdd: ((ImageResultItem) -> Void)?
     let onOpen: (ImageResultItem) -> Void
     let onCopy: (ImageResultItem) -> Void
+    /// Fetches a thumbnail's bytes. The addresses come from a model's reply or a synced file, so the caller fetches
+    /// them under its own rules (public hosts only) rather than the strip loading any URL it is given.
+    let load: @Sendable (URL) async throws -> Data
 
     public init(
         items: [ImageResultItem], onAdd: ((ImageResultItem) -> Void)? = nil, onOpen: @escaping (ImageResultItem) -> Void,
-        onCopy: @escaping (ImageResultItem) -> Void
+        onCopy: @escaping (ImageResultItem) -> Void, load: @escaping @Sendable (URL) async throws -> Data
     ) {
+        self.load = load
         self.items = items
         self.onAdd = onAdd
         self.onOpen = onOpen
@@ -60,7 +64,7 @@ public struct ImageResultStrip: View {
                             IconLabel("app:ai.pictureCopy", icon: .link)
                         }
                     } label: {
-                        ImageResultThumbnail(item: item)
+                        ImageResultThumbnail(item: item, load: load)
                     }
                     .menuStyle(.button)
                     .buttonStyle(.plain)
@@ -78,16 +82,25 @@ public struct ImageResultStrip: View {
 
 private struct ImageResultThumbnail: View {
     let item: ImageResultItem
+    let load: @Sendable (URL) async throws -> Data
+    @State private var image: Image?
+    @State private var failed = false
 
     var body: some View {
-        AsyncImage(url: item.thumbnail, transaction: Transaction(animation: Motion.easeOut())) { phase in
-            switch phase {
-            case .success(let image):
-                image.resizable().scaledToFill()
-            case .failure:
+        ZStack {
+            if let image {
+                image.resizable().scaledToFill().transition(.opacity)
+            } else if failed {
                 IconView(.image, size: TextSize.lg.rawValue).foregroundStyle(Theme.mutedForeground)
-            default:
-                Color.clear
+            }
+        }
+        .task(id: item.thumbnail) {
+            do {
+                let data = try await load(item.thumbnail)
+                guard let picture = Self.image(data) else { throw CocoaError(.fileReadCorruptFile) }
+                withAnimation(Motion.easeOut()) { image = picture }
+            } catch {
+                if !Task.isCancelled { failed = true }
             }
         }
         .frame(width: Size.aiPicture, height: Size.aiPicture)
@@ -95,6 +108,14 @@ private struct ImageResultThumbnail: View {
         .clipShape(.rect(cornerRadius: Radius.lg))
         .overlay(RoundedRectangle(cornerRadius: Radius.lg).strokeBorder(Theme.border))
         .help(Text(verbatim: item.caption ?? ""))
+    }
+
+    private static func image(_ data: Data) -> Image? {
+        #if os(iOS)
+            UIImage(data: data).map(Image.init(uiImage:))
+        #else
+            NSImage(data: data).map(Image.init(nsImage:))
+        #endif
     }
 }
 
@@ -106,7 +127,8 @@ private struct ImageResultThumbnail: View {
                 caption: "Kiyomizu-dera in autumn", source: URL(string: "https://example.com/kyoto")),
             ImageResultItem(id: "2", thumbnail: URL(string: "https://invalid.example/missing.jpg")!),
         ],
-        onAdd: { _ in }, onOpen: { _ in }, onCopy: { _ in }
+        onAdd: { _ in }, onOpen: { _ in }, onCopy: { _ in },
+        load: { try await URLSession.shared.data(from: $0).0 }
     )
     .padding()
 }
