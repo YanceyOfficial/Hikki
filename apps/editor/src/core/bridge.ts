@@ -14,6 +14,7 @@ import {
 } from '../extensions/ai-review'
 import { unitAtPos } from '../extensions/block-units'
 import {
+  commentsState,
   threadRange,
   SAVE_META,
   setThreads,
@@ -147,6 +148,13 @@ const ACTIVE_LINE = 96
  */
 /** Longest selected text sent to the native side (Ask AI's context). */
 const SELECTION_LIMIT = 4000
+
+/** What the native thread sheet asks of the page (`commentAction`). */
+export type CommentAction =
+  | { type: 'reply'; threadId: string; body: string }
+  | { type: 'resolve'; threadId: string; resolved: boolean }
+  | { type: 'delete'; threadId: string; commentId?: string }
+  | { type: 'edit'; threadId: string; commentId: string; body: string }
 
 export class EditorBridge {
   readonly page = new Store<PageState>({
@@ -328,7 +336,10 @@ export class EditorBridge {
       this.reportActive()
       this.reportSelection()
     })
-    editor.on('transaction', () => this.reportActive())
+    editor.on('transaction', () => {
+      this.reportActive()
+      this.reportCommentThread()
+    })
     this.editor = editor
     this.page.set({
       docId: payload.id,
@@ -636,6 +647,7 @@ export class EditorBridge {
     edit: (threadId, commentId, body) =>
       this.sendComment({ type: 'commentEdit', threadId, commentId, body }),
     device: () => this.device,
+    nativeThreads: () => this.nativeComments,
     pages: () => this.pageLinks.pages(),
     openPage: (pageId) => this.pageLinks.open({ pageId, blockId: null }),
     link: (threadId) => {
@@ -659,6 +671,49 @@ export class EditorBridge {
     if (docId) void this.send({ ...message, docId } as ToNativeMessage)
   }
 
+  /** The phone draws an open thread natively (`setNativeComments`): the page's own sheet stays shut. */
+  private nativeComments = false
+  /** The thread last reported open (`commentThread`). */
+  private reportedThread: string | null = null
+
+  /** `window.hikki.setNativeComments`: the native side shows open threads in its own sheet. */
+  setNativeComments(on: boolean): void {
+    this.nativeComments = on
+  }
+
+  private reportCommentThread(): void {
+    const editor = this.editor
+    const docId = this.page.get().docId
+    if (!this.nativeComments || !editor || !docId) return
+    const threadId = commentsState(editor.state)?.active ?? null
+    if (threadId === this.reportedThread) return
+    this.reportedThread = threadId
+    void this.send({ type: 'commentThread', docId, threadId })
+  }
+
+  /** `window.hikki.commentAction`: the native thread sheet's actions, run as the page's own (deleting a thread also
+   * removes its mark; resolving or deleting the open thread closes it). Closing the sheet is `openComment(null)`.
+   * Returns whether it was done. */
+  commentAction(action: CommentAction): boolean {
+    const editor = this.editor
+    if (!editor) return false
+    const commands = editor.commands
+    switch (action.type) {
+      case 'reply':
+        if (!action.body.trim()) return false
+        this.commentsHost.reply(action.threadId, action.body.trim())
+        return true
+      case 'resolve':
+        return commands.commentResolve(action.threadId, action.resolved)
+      case 'delete':
+        return action.commentId
+          ? commands.commentDeleteReply(action.threadId, action.commentId)
+          : commands.commentDelete(action.threadId)
+      case 'edit':
+        return commands.commentEdit(action.threadId, action.commentId, action.body)
+    }
+  }
+
   /** `window.hikki.setComments`: the page's threads from the native store (after loading it, and after each change). */
   setComments(docId: string, threads: ThreadItem[], device: string | null): void {
     this.device = device
@@ -666,9 +721,13 @@ export class EditorBridge {
   }
 
   /** `window.hikki.openComment`: a thread picked in the side panel — open, and its passage in view. */
-  openComment(threadId: string): void {
+  openComment(threadId: string | null): void {
     const editor = this.editor
     if (!editor) return
+    if (threadId === null) {
+      editor.commands.commentOpen(null)
+      return
+    }
     const range = threadRange(editor.state, threadId)
     editor.commands.commentOpen(threadId)
     if (range) {

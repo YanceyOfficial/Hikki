@@ -178,11 +178,12 @@ public struct KeyboardLinkComposer: View {
 }
 
 /// A composer's field and its send button (Return sends too); nothing goes out while it is blank.
-private struct ComposerSendField: View {
+struct ComposerSendField: View {
     let placeholder: LocalizedStringKey
     @Binding var text: String
     var focused: FocusState<Bool>.Binding
     let identifier: String
+    var sendIdentifier = "keyboard-composer-send"
     let onSend: (String) -> Void
     @Environment(\.colorTone) private var tone
 
@@ -207,7 +208,7 @@ private struct ComposerSendField: View {
             }
             .buttonStyle(.plain)
             .disabled(message.isEmpty)
-            .accessibilityIdentifier("keyboard-composer-send")
+            .accessibilityIdentifier(sendIdentifier)
         }
     }
 }
@@ -230,7 +231,7 @@ private struct ComposerQuote: View {
     }
 }
 
-private struct ComposerCloseButton: View {
+struct ComposerCloseButton: View {
     let action: () -> Void
 
     var body: some View {

@@ -25,6 +25,13 @@ struct BridgeMessageTests {
         #expect(try BridgeMessage.decode(scriptMessageBody: body) == .linkPreview(url: "https://www.yanceyleo.com/"))
     }
 
+    @Test func decodesTheOpenThread() throws {
+        let open: NSDictionary = ["type": "commentThread", "docId": "a", "threadId": "t1"]
+        #expect(try BridgeMessage.decode(scriptMessageBody: open) == .commentThread(docId: "a", threadId: "t1"))
+        let closed: NSDictionary = ["type": "commentThread", "docId": "a", "threadId": NSNull()]
+        #expect(try BridgeMessage.decode(scriptMessageBody: closed) == .commentThread(docId: "a", threadId: nil))
+    }
+
     @Test func decodesPageInfoWithOptionalBlockIds() throws {
         let body: NSDictionary = [
             "type": "pageInfo", "docId": "a",

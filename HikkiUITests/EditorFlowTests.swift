@@ -573,6 +573,52 @@ final class EditorFlowTests: XCTestCase {
                 app.webViews.staticTexts["Line number 2 of the page"].firstMatch.isHittable, "the page scrolled away after sending")
         }
 
+        /// A tap on a commented passage (keyboard down) opens the thread in a native sheet, not the page's: a reply
+        /// shows in it, and resolving closes it and takes the passage's highlight away.
+        func testCommentThreadOpensInANativeSheet() throws {
+            continueAfterFailure = false
+            let app = launch()
+            let newPage = app.buttons["new-page"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+            newPage.tap()
+            let title = app.webViews.textViews["Page title"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+            title.tap()
+            title.typeText("Plan\n")
+            let body = app.webViews.textViews["Page content"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(body, in: app), "body missing")
+            body.typeText("Peak is mid November")
+            let line = app.webViews.staticTexts["Peak is mid November"].firstMatch
+            XCTAssertTrue(line.waitForExistence(timeout: 5))
+            line.doubleTap()
+            app.buttons["Comment"].firstMatch.tap()
+            let field = app.textFields["keyboard-comment-field"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(field, in: app), "the comment field did not open")
+            field.typeText("Check this\n")
+            let hide = app.buttons["hide-keyboard"].firstMatch
+            if hide.waitForExistence(timeout: 3) { hide.tap() }
+
+            // The passage, now split by the comment's mark: tap the commented word.
+            let passage = app.webViews.staticTexts.containing(NSPredicate(format: "label CONTAINS 'mid'")).firstMatch
+            XCTAssertTrue(passage.waitForExistence(timeout: 5))
+            passage.tap()
+            let sheet = app.descendants(matching: .any)["comment-sheet"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(sheet, in: app), "the native thread sheet did not open")
+            XCTAssertFalse(app.webViews.otherElements["comment-sheet"].exists, "the page's own sheet opened too")
+            XCTAssertTrue(app.staticTexts["Check this"].firstMatch.exists, "the thread's first comment is missing")
+            attach(app, "thread-sheet")
+
+            let reply = app.textFields["comment-sheet-field"].firstMatch
+            reply.tap()
+            reply.typeText("Agreed\n")
+            XCTAssertTrue(app.staticTexts["Agreed"].firstMatch.waitForExistence(timeout: 5), "the reply did not show")
+            attach(app, "thread-replied")
+
+            app.buttons["comment-sheet-resolve"].firstMatch.tap()
+            let gone = NSPredicate(format: "exists == false")
+            wait(for: [expectation(for: gone, evaluatedWith: sheet)], timeout: 5)
+        }
+
         /// Photo opens our own sheet of sources (camera and scan only where the device has them), not the page's file
         /// input.
         func testKeyboardBarPhotoOpensTheMediaSheet() throws {

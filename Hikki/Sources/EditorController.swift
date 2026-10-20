@@ -30,6 +30,14 @@ final class EditorController {
     private(set) var selection: EditorSelection?
     /// One of the page's bottom sheets is open (cover, icon, comment on a touch screen): the page's bars step aside.
     private(set) var sheetOpen = false
+    /// The thread open in the page, where this side draws it (`nativeComments`: the iPhone's sheet).
+    private(set) var openThread: OpenThread?
+
+    struct OpenThread: Equatable, Identifiable {
+        let docId: String
+        let threadId: String
+        var id: String { threadId }
+    }
 
     struct PageInfo: Equatable {
         var docId: String
@@ -149,6 +157,44 @@ final class EditorController {
     /// A thread picked in the side panel: opened in the page, its passage in view.
     func openComment(_ threadId: String) {
         send("window.hikki.openComment(id)", ["id": threadId], label: "openComment")
+    }
+
+    /// Open threads are drawn here (the iPhone's sheet, `CommentThreadSheet`), not by the page.
+    @ObservationIgnored private var nativeComments = false
+
+    func setNativeComments(_ on: Bool) {
+        guard on != nativeComments else { return }
+        nativeComments = on
+        if !on { openThread = nil }
+        send("window.hikki.setNativeComments(on)", ["on": on], label: "setNativeComments")
+    }
+
+    /// The native sheet closed: the page lets go of the thread too (its passage no longer marked as open).
+    func closeThread() {
+        openThread = nil
+        send("window.hikki.openComment(id)", ["id": NSNull()], label: "openComment")
+    }
+
+    /// What the sheet does to a thread, run by the page as its own (`commentAction`): a reply, resolving, deleting a
+    /// comment or (no `commentId`) the thread with its mark, rewriting one.
+    enum ThreadAction {
+        case reply(String)
+        case resolve(Bool)
+        case delete(commentId: String?)
+        case edit(commentId: String, body: String)
+    }
+
+    func commentAction(_ action: ThreadAction, threadId: String) {
+        var payload: [String: Any] = ["threadId": threadId]
+        switch action {
+        case .reply(let body): payload.merge(["type": "reply", "body": body]) { $1 }
+        case .resolve(let resolved): payload.merge(["type": "resolve", "resolved": resolved]) { $1 }
+        case .delete(let commentId):
+            payload["type"] = "delete"
+            if let commentId { payload["commentId"] = commentId }
+        case .edit(let commentId, let body): payload.merge(["type": "edit", "commentId": commentId, "body": body]) { $1 }
+        }
+        send("window.hikki.commentAction(action)", ["action": payload], label: "commentAction")
     }
 
     /// A comment change from the page, into the store; every editor showing the page (and the side panel) hears.
@@ -769,6 +815,7 @@ final class EditorController {
         #if os(iOS)
             // The keyboard bar formats a selection here; the page's floating menu stays away.
             await call("window.hikki.setKeyboardBar(on)", ["on": true], label: "setKeyboardBar")
+            if nativeComments { await call("window.hikki.setNativeComments(on)", ["on": true], label: "setNativeComments") }
         #endif
     }
 
@@ -866,6 +913,8 @@ final class EditorController {
             selection = text.isEmpty ? nil : EditorSelection(docId: docId, text: text)
         case .sheet(let open):
             sheetOpen = open
+        case .commentThread(let docId, let threadId):
+            openThread = threadId.map { OpenThread(docId: docId, threadId: $0) }
         case .scroll(let docId, let top):
             lastScroll = (docId, top)
         case .aiRequest(let payload):

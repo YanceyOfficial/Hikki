@@ -110,6 +110,29 @@ describe('EditorBridge', () => {
     expect(JSON.stringify(changed()[1])).not.toContain('"comment"')
   })
 
+  it("a phone that draws threads natively hears which one is open, and its actions run as the page's", () => {
+    bridge.loadDocument(page('a', { content: doc('hello world') }))
+    editor().commands.setTextSelection({ from: 1, to: 6 })
+    editor().commands.commentStart()
+    editor().commands.commentSend('Nice')
+    const threads = () => sent.filter((m) => m.type === 'commentThread')
+    // Not asked to: the page keeps its own sheet and says nothing.
+    expect(threads()).toEqual([])
+    const id = (sent.find((m) => m.type === 'commentCreate') as { threadId: string }).threadId
+    bridge.setNativeComments(true)
+    bridge.openComment(null)
+    bridge.openComment(id)
+    expect(threads()).toEqual([{ type: 'commentThread', docId: 'a', threadId: id }])
+    expect(bridge.commentAction({ type: 'reply', threadId: id, body: '  Thanks ' })).toBe(true)
+    expect(sent.at(-1)).toEqual({ type: 'commentReply', docId: 'a', threadId: id, body: 'Thanks' })
+    expect(bridge.commentAction({ type: 'reply', threadId: id, body: ' ' })).toBe(false)
+    // Deleting the thread takes its mark away and closes it.
+    bridge.commentAction({ type: 'delete', threadId: id })
+    expect(sent).toContainEqual({ type: 'commentDelete', docId: 'a', threadId: id })
+    expect(JSON.stringify(editor().getJSON())).not.toContain('"comment"')
+    expect(threads().at(-1)).toEqual({ type: 'commentThread', docId: 'a', threadId: null })
+  })
+
   it('title edits are saved through the same debounced snapshot, newlines stripped', () => {
     bridge.loadDocument(page('a'))
     bridge.setTitle('Weekly\nsync')

@@ -420,7 +420,7 @@ function Narrow({
         <CommentSheet
           editor={editor}
           host={host}
-          thread={card?.thread ?? null}
+          thread={host.nativeThreads?.() ? null : (card?.thread ?? null)}
           draft={layout.draft?.quote ?? null}
         />
       ) : (

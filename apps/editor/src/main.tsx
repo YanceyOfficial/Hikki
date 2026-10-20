@@ -2,7 +2,7 @@ import './style.css'
 import { createRoot } from 'react-dom/client'
 
 import { IconProvider } from './components/icons'
-import { EditorBridge } from './core/bridge'
+import { EditorBridge, type CommentAction } from './core/bridge'
 import { exportPage, importDocument } from './core/convert'
 import { installErrorForwarding } from './core/errors'
 import { setLocale } from './core/i18n'
@@ -116,7 +116,9 @@ window.hikki = {
   // Comments: the open page's threads (native store), and a thread picked in the side panel.
   setComments: (docId: string, threads: ThreadItem[], device: string | null) =>
     bridge.setComments(docId, threads, device),
-  openComment: (threadId: string) => bridge.openComment(threadId),
+  openComment: (threadId: string | null) => bridge.openComment(threadId),
+  setNativeComments: (on: boolean) => bridge.setNativeComments(on),
+  commentAction: (action: CommentAction) => bridge.commentAction(action),
   // The split pane's editor: a loading page never takes the keyboard from the page beside it.
   setAutoFocus: (on: boolean) => bridge.setAutoFocus(on),
   // Settings → AI → Review style: inline (A) or diff (B); anything else reads as inline.

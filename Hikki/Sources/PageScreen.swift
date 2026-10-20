@@ -127,6 +127,14 @@ struct PageScreen: View {
                     .presentationDragIndicator(.visible)
                 }
             }
+            // A comment thread opened in the page (a tap on its passage): native, over the page.
+            .sheet(item: openThread) { thread in
+                CommentThreadHost(thread: thread, editor: editor)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+            }
+            .onAppear { if phoneToolbar { editor.setNativeComments(true) } }
+            .onDisappear { if phoneToolbar { editor.setNativeComments(false) } }
             .animation(Motion.easeOut(), value: editor.webView.keyboardBar?.composer)
             .animation(Motion.easeOut(), value: keyboardShown)
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
@@ -170,6 +178,11 @@ struct PageScreen: View {
             Binding(
                 get: { editor.webView.keyboardBar?.mediaSheet == true },
                 set: { if !$0 { editor.webView.keyboardBar?.mediaSheet = false } })
+        }
+
+        /// The thread the page has open; closing the sheet closes it in the page too.
+        private var openThread: Binding<EditorController.OpenThread?> {
+            Binding(get: { editor.openThread }, set: { if $0 == nil { editor.closeThread() } })
         }
 
         /// The keyboard bar's ⋯ sheet.

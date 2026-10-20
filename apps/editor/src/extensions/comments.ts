@@ -54,6 +54,8 @@ export type CommentsHost = {
   link: (threadId: string) => string | null
   /** This device's name ("Mac", "iPhone"): other devices' comments say where they were written. */
   device: () => string | null
+  /** The native side shows an open thread itself (a phone's sheet): the page draws none. */
+  nativeThreads?: () => boolean
 }
 
 export type CommentsState = {

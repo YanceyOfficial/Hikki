@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of apps/editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 28
+    public static let version = 29
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -65,6 +65,9 @@ public enum BridgeMessage: Sendable, Equatable {
     case commentDelete(docId: String, threadId: String, commentId: String?)
     /// A comment's words rewritten.
     case commentEdit(docId: String, threadId: String, commentId: String, body: String)
+    /// The thread open in the page changed (nil: none) — sent only where the native side draws threads itself
+    /// (`setNativeComments`, the iPhone layout).
+    case commentThread(docId: String, threadId: String?)
     /// Where the page is scrolled (throttled), so a tab shown again gets its place back.
     case scroll(docId: String, top: Double)
     /// AI on the selection (see `AIRequestPayload`); replies go back through `window.hikki.aiEvent`.
@@ -231,6 +234,9 @@ extension BridgeMessage: Decodable {
             self = .selection(docId: try c.decode(String.self, forKey: .docId), text: try c.decode(String.self, forKey: .text))
         case "sheet":
             self = .sheet(open: try c.decode(Bool.self, forKey: .open))
+        case "commentThread":
+            self = .commentThread(
+                docId: try c.decode(String.self, forKey: .docId), threadId: try c.decodeIfPresent(String.self, forKey: .threadId))
         case "activeHeading":
             self = .activeHeading(docId: try c.decode(String.self, forKey: .docId), id: try c.decodeIfPresent(String.self, forKey: .id))
         case "pageInfo":

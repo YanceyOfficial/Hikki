@@ -516,7 +516,12 @@ HikkiUITests/                 XCUITest flows
   window) the open thread or a new comment is a bottom sheet instead (shadcn `Drawer`, `apps/editor/src/components/ui/drawer.tsx`,
   restyled to the motion tokens): grabber, quote, comments with their actions always shown, the reply field at the
   foot riding the software keyboard (`visualViewport`) and clear of the native bottom bar (`--hk-inset-bottom`);
-  scrim, swipe down or Escape close it, and neither opening nor closing it focuses the page. A tap on a commented
+  scrim, swipe down or Escape close it, and neither opening nor closing it focuses the page. In the iPhone layout an open
+  thread is native instead: the page only reports which one is open (`commentThread`, once `setNativeComments` says
+  so — `PageScreen` does while it shows) and HikkiUI's `CommentThreadSheet` (`Hikki/Sources/CommentThreadHost.swift`:
+  the thread read from the store, again on every change) shows it — passage, comments with ⋯ (Edit in place, Copy
+  link, Delete), resolve ✓, the reply field; its actions run in the page as its own (`window.hikki.commentAction`),
+  so deleting a thread takes its mark along. A tap on a commented
   passage opens its thread without moving the caret (the plugin cancels that touch's click, so no keyboard comes up);
   a click on a Mac still places the caret. Resolved threads lose their highlight. Each comment in an
   open thread shows its actions on hover (the first: resolve ✓; all: ⋯ → Edit in place, Copy link to discussion —
