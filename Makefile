@@ -63,6 +63,7 @@ generate: editor
 
 test-web:
 	cd apps/editor && bun run typecheck && bun run test
+	cd packages/excalidraw && bun run typecheck && bun run test
 
 test-bff:
 	cd apps/bff && bun run typecheck && bun run test
