@@ -118,6 +118,21 @@ describe('EditorBridge', () => {
     expect(msg.type === 'changed' && msg.snapshot.title).toBe('Weekly sync')
   })
 
+  it('locking saves the words typed just before it at once, and nothing after', () => {
+    bridge.loadDocument(page('a', { content: doc('hello') }))
+    editor().commands.insertContentAt(6, ' world')
+    vi.advanceTimersByTime(100)
+    bridge.setLocked(true)
+    // Saved at the lock, not by the debounce once the page is locked.
+    expect(changed()).toHaveLength(1)
+    expect(JSON.stringify(changed()[0])).toContain('hello world')
+    vi.advanceTimersByTime(1000)
+    expect(changed()).toHaveLength(1)
+    bridge.setTitle('Renamed')
+    vi.advanceTimersByTime(1000)
+    expect(changed()).toHaveLength(1)
+  })
+
   it('icon and cover changes are sent immediately, not debounced', () => {
     bridge.loadDocument(page('a'))
     bridge.setIcon('👋')

@@ -672,7 +672,7 @@ HikkiUITests/                 XCUITest flows
   (`DocumentStore.setLocked`; it bumps `updatedAt` like icon/cover so other devices pick it up). The load payload
   carries `locked`, `window.hikki.setLocked` flips it while open (each editor, split pane included, for the page it
   shows — `EditorController.setPages`); title, body, icon and cover refuse changes meanwhile
-  (`EditorBridge.frozen`) and a toolbar lock (`LockIndicator`) unlocks.
+  (`EditorBridge.frozen`; words typed just before the lock are saved at the lock, not by a later debounce) and a toolbar lock (`LockIndicator`) unlocks.
 - **Workspace**: first launch shows `Hikki/Sources/OnboardingView.swift` until the workspace file (`AppPaths.workspace`) exists
   (`HikkiCore/Sources/Store/Workspace.swift`). A folder location stores a security-scoped bookmark
   (`HikkiCore/Sources/Store/FolderBookmark.swift`); page data does not live in that folder yet.

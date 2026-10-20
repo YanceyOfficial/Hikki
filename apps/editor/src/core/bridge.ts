@@ -347,6 +347,8 @@ export class EditorBridge {
 
   /** Page → Lock / Unlock while the page is open. */
   setLocked(locked: boolean): void {
+    // Words typed before the lock are saved now, as they stand — not by a debounce that would land after it.
+    if (locked) this.flushPending()
     this.page.set({ locked })
     this.editor?.setEditable(!locked && !this.page.get().readOnly)
   }
