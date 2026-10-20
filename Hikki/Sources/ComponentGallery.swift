@@ -102,6 +102,20 @@
                         .frame(height: 480)
                         .listRowInsets(EdgeInsets())
                     }
+                    Section("CommentThreadSheet") {
+                        CommentThreadSheet(
+                            quote: "Peak is mid-November",
+                            comments: [
+                                CommentThreadComment(
+                                    id: "1", author: nil, createdAt: .now.addingTimeInterval(-3600), text: "Is this still right?"),
+                                CommentThreadComment(
+                                    id: "2", author: "Yancey", device: "Mac", createdAt: .now.addingTimeInterval(-600),
+                                    edited: true, text: "Yes — checked @Kyoto trip"),
+                            ], onAction: { _ in }, onClose: {}
+                        )
+                        .frame(height: 420)
+                        .listRowInsets(EdgeInsets())
+                    }
                     Section("MediaSourceSheet") {
                         MediaSourceSheet { _ in }
                             .listRowInsets(EdgeInsets())
