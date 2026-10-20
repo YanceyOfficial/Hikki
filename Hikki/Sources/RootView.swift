@@ -35,6 +35,8 @@ struct RootView: View {
         // Settings → Appearance → Color tone: components read it from the environment; system controls via tint.
         .environment(\.colorTone, tone)
         .tint(tone.fill)
+        // The frontmost screen's title, for the system: a screenshot is named after it.
+        .publishesScreenTitle()
     }
 }
 

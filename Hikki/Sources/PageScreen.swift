@@ -17,6 +17,10 @@ struct PageScreen: View {
     #endif
 
     var body: some View {
+        screen.screenTitle(model.tree.page(pageID).map { Self.title($0) } ?? "")
+    }
+
+    @ViewBuilder private var screen: some View {
         let page = model.tree.page(pageID)
         // The page runs under the window toolbar (Photos-style glass); the toolbar's height becomes the
         // editor's top inset so the first line still starts below it.

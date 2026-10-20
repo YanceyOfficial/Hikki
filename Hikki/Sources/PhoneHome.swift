@@ -21,6 +21,10 @@
         @Environment(\.verticalBarEdge) private var verticalBar
 
         var body: some View {
+            screen.screenTitle(String(localized: "app:nav.home"))
+        }
+
+        @ViewBuilder private var screen: some View {
             SideDrawer(isOpen: $isDrawerOpen, closeLabel: "app:drawer.close") {
                 PhoneDrawer(navigator: navigator) { setDrawer(open: false) }
             } content: {

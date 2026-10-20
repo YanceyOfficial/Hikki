@@ -22,6 +22,10 @@ struct TrashView: View {
     }
 
     var body: some View {
+        screen.screenTitle(String(localized: "app:nav.trash"))
+    }
+
+    @ViewBuilder private var screen: some View {
         VStack(alignment: .leading, spacing: Spacing.s0) {
             header
                 .padding(.horizontal, Spacing.s6)

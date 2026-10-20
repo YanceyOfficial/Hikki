@@ -25,6 +25,10 @@ struct SearchPalette: View {
     @FocusState private var fieldFocused: Bool
 
     var body: some View {
+        screen.screenTitle(String(localized: "app:nav.search"))
+    }
+
+    @ViewBuilder private var screen: some View {
         VStack(spacing: Spacing.s0) {
             HStack(spacing: Spacing.s2_5) {
                 IconView(.magnifyingGlass, size: TextSize.base.rawValue).foregroundStyle(Theme.mutedForeground)

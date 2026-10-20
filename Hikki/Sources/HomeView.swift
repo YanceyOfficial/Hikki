@@ -99,6 +99,10 @@ struct HomeView: View {
     }
 
     var body: some View {
+        screen.screenTitle(String(localized: "app:nav.home"))
+    }
+
+    @ViewBuilder private var screen: some View {
         Group {
             if compact {
                 phone(rows)

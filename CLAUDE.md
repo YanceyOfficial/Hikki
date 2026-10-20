@@ -648,6 +648,9 @@ HikkiUITests/                 XCUITest flows
     off screen, so the panel is a sheet of the keyboard's height instead. Their contents and tools come from the page (`apps/editor/src/core/touch-tools.ts`:
     the catalog with Phosphor icon names the native `Icon` set shares, `touchState`, `touchRun`…); AI and link keep
     the keyboard and dock their field above the bar (`apps/editor/src/components/touch-dock.tsx`, `touchOpen`).
+- **Screen titles (iOS)**: each screen names itself (`.screenTitle(_:)`, `Hikki/Sources/ScreenTitle.swift`, the
+  frontmost by depth through `ScreenTitleStack` in HikkiCore) and the root publishes it as the scene's
+  `NSUserActivity` title (`app.yancey.hikki.viewing`), which iOS uses to name a screenshot — actovia's way.
 - **iOS input zoom**: fields under 16px make iOS zoom the page on focus (fixed panels then sit off screen); touch
   devices get 16px fields via an unlayered rule in `apps/editor/src/style.css` (the page title is exempt).
 - **Editor content safety**: content that doesn't fit the schema (corrupt, or from a newer Hikki) opens read-only and

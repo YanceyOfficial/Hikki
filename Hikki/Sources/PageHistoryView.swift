@@ -22,6 +22,10 @@ struct PageHistoryView: View {
     @State private var current: CurrentPage?
 
     var body: some View {
+        screen.screenTitle(String(localized: "app:history.title"))
+    }
+
+    @ViewBuilder private var screen: some View {
         NavigationStack {
             Group {
                 if !loaded {

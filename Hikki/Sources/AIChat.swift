@@ -427,6 +427,10 @@ struct AIChatSheet: View {
     @Bindable var chat: AIChat
 
     var body: some View {
+        screen.screenTitle(String(localized: "app:ai.ask"))
+    }
+
+    @ViewBuilder private var screen: some View {
         NavigationStack {
             AIChatView(chat: chat)
                 .navigationTitle(Text("app:ai.ask"))
