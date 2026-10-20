@@ -266,6 +266,22 @@ struct SearchIndexTests {
         #expect(Set(try await index.search("common").map(\.id)) == ["a", "b"])
     }
 
+    @Test func pruningDropsOnlyTextsNoPageAttaches() async throws {
+        let index = try SearchIndex.inMemory()
+        try index.index([page("a", "A", files: [SearchAttachment(name: "kept.pdf")])])
+        try index.setFileText("still attached", named: "kept.pdf")
+        try index.setFileText("in the trash", named: "trashed.png")
+        try index.setFileText("deleted for good", named: "gone.pdf")
+        try index.setFileText(nil, named: "gone-broken.pdf")
+        #expect(try index.pruneFileTexts(alsoKeeping: ["trashed.png"]) == 2)
+        #expect(try index.hasFileText(named: "kept.pdf"))
+        #expect(try index.hasFileText(named: "trashed.png"))
+        #expect(try !index.hasFileText(named: "gone.pdf"))
+        #expect(try !index.hasFileText(named: "gone-broken.pdf"))
+        #expect(try await index.search("still").map(\.id) == ["a"])
+        #expect(try await index.search("good").isEmpty)
+    }
+
     @Test func anUnreadableFileIsNotAskedForAgainAndMatchesNothing() async throws {
         let index = try SearchIndex.inMemory()
         try index.index([page("a", "A", files: [SearchAttachment(name: "broken.pdf")])])

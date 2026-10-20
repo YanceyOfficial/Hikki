@@ -298,6 +298,18 @@ public final class SearchIndex: Sendable {
                 """, arguments: [name, text ?? "", SearchQuery.fold(text ?? ""), text == nil])
     }
 
+    /// Drops the texts of files no page attaches any more: none indexed attaches them, nor does a page left out of the
+    /// index that may come back (`alsoKept`: those in the trash). Returns how many went.
+    @discardableResult public func pruneFileTexts(alsoKeeping alsoKept: Set<String>) throws -> Int {
+        try writer.write { db in
+            let unused = try String.fetchAll(
+                db, sql: "SELECT name FROM fileText WHERE name NOT IN (SELECT name FROM pageFile)"
+            ).filter { !alsoKept.contains($0) }
+            for name in unused { try db.execute(sql: "DELETE FROM fileText WHERE name = ?", arguments: [name]) }
+            return unused.count
+        }
+    }
+
     /// Files attached to an indexed page (among `names`, or anywhere) that have never been read, nor failed.
     public func unreadFiles(among names: [String]? = nil) throws -> [String] {
         if let names, names.isEmpty { return [] }

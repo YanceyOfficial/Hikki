@@ -423,7 +423,8 @@ HikkiUITests/                 XCUITest flows
   files (inline images and file attachments) have their text read on device — PDFs through PDFKit, images through
   Vision's text recognition (`HikkiSearch/Sources/AttachmentText.swift`) — by one background reader
   (`HikkiSearch/Sources/FileTextReader.swift`), once per file name: the file texts live apart from pages, outlive a
-  new index layout and the trash, and a file that can't be read is marked and not tried again (one not on the device
+  new index layout and the trash (a launch drops those of files no page — live or trashed — attaches any more,
+  `pruneFileTexts`), and a file that can't be read is marked and not tried again (one not on the device
   yet is, at the next launch). A hit whose only match is in a file names it and opens at the block showing it. The
   store has no search left in it. One ranked list ("Best matches"); a row shows the parent path, the excerpt
   with the terms emphasized (`HighlightedText`) and the edited time. Only for the hits shown are the matching blocks

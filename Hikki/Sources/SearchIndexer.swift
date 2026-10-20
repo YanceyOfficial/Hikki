@@ -79,7 +79,8 @@ nonisolated final class SearchIndexer: Sendable {
     private func reconcile() {
         do {
             let stamps = try index.stamps()
-            let live = try store.allDocuments().filter { $0.deletedAt == nil }
+            let all = try store.allDocuments()
+            let live = all.filter { $0.deletedAt == nil }
             let stale = live.filter { record in
                 guard let stamp = stamps[record.id] else { return true }
                 return abs(stamp.timeIntervalSince(record.updatedAt)) > 0.001
@@ -102,6 +103,10 @@ nonisolated final class SearchIndexer: Sendable {
             Log.info(
                 "search index reconciled", category: "search",
                 context: ["indexed": "\(stale.count)", "removed": "\(gone.count)", "total": "\(index.count)"])
+            // Texts of files no page attaches any more go; those of pages in the trash stay (a restore reads nothing).
+            let trashed = all.filter { $0.deletedAt != nil }
+            let pruned = try index.pruneFileTexts(alsoKeeping: Set(trashed.flatMap { $0.contentText.assets.map(\.name) }))
+            if pruned > 0 { Log.info("file texts pruned", category: "search", context: ["count": "\(pruned)"]) }
             // Every file not read yet: new ones, and those that weren't on this device last time.
             enqueueFiles(try index.unreadFiles())
         } catch {
