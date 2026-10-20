@@ -745,24 +745,30 @@ private struct NativeDetailToolbar: ToolbarContent {
         @Environment(\.openWindow) private var openWindow
     #endif
 
+    @ViewBuilder private var backForward: some View {
+        Button(action: navigator.goBack) { IconLabel("app:chrome.back", icon: .caretLeft) }
+            .disabled(!navigator.tabs.canGoBack)
+        Button(action: navigator.goForward) { IconLabel("app:chrome.forward", icon: .caretRight) }
+            .disabled(!navigator.tabs.canGoForward)
+    }
+
     /// The (unsplit) page's panel is open beside it.
     private var inspectorOpen: Bool { !navigator.isSplit && navigator.isShowingInspector && navigator.route.pageID != nil }
 
     // Photos' toolbar: each group is its own Liquid Glass capsule — back/forward, the tabs, the page's
     // actions. (Search lives in the sidebar's glass field.)
     var body: some ToolbarContent {
-        ToolbarItem(placement: .navigation) {
-            // One control with a divider between the two (‹ | ›), as in Finder/Safari.
-            ControlGroup {
-                Button(action: navigator.goBack) { IconLabel("app:chrome.back", icon: .caretLeft) }
-                    .disabled(!navigator.tabs.canGoBack)
-                Button(action: navigator.goForward) { IconLabel("app:chrome.forward", icon: .caretRight) }
-                    .disabled(!navigator.tabs.canGoForward)
+        #if os(macOS)
+            ToolbarItem(placement: .navigation) {
+                // One control with a divider between the two (‹ | ›), as in Finder/Safari.
+                ControlGroup { backForward }
+                    .controlGroupStyle(.navigation)
             }
-            #if os(macOS)
-                .controlGroupStyle(.navigation)
-            #endif
-        }
+        #else
+            // Two buttons in one glass group: an iOS ControlGroup short of room folds into a menu with no label —
+            // an empty circle on a crowded iPad toolbar.
+            ToolbarItemGroup(placement: .navigation) { backForward }
+        #endif
         ToolbarItem(placement: .principal) {
             TabStrip(
                 // The two tabs of a split are one joined item; its focused half is the active one.

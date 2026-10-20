@@ -1231,6 +1231,21 @@ final class EditorFlowTests: XCTestCase {
         attachScreenshot(app, "split-typing")
     }
 
+    /// iPad: on a page (its tools crowding the toolbar) back and forward stay two buttons — as an iOS ControlGroup they
+    /// folded into a menu with no label, an empty circle.
+    func testBackForwardStayButtonsOnACrowdedToolbar() throws {
+        #if os(iOS)
+            guard UIDevice.current.userInterfaceIdiom == .pad else { throw XCTSkip("the iPad toolbar") }
+        #else
+            throw XCTSkip("the iPad toolbar")
+        #endif
+        continueAfterFailure = false
+        let app = launch(environment: ["HIKKI_DEMO_PAGES": "1", "HIKKI_DEBUG_NAV": "demo-46ffce8"])
+        XCTAssertTrue(waitOrDumpTree(app.buttons["ai-toggle"].firstMatch, in: app))
+        XCTAssertTrue(app.buttons["Back"].firstMatch.isHittable, "back folded away")
+        XCTAssertTrue(app.buttons["Forward"].firstMatch.isHittable, "forward folded away")
+    }
+
     /// iPad: with the inspector open the tabs stay clear of back/forward. The strip was moved left by half the panel
     /// (right on a Mac, whose toolbar centres it over page and panel), and on iPad that slid it under the buttons.
     func testTabsStayClearOfBackForwardWithTheInspectorOpen() throws {
@@ -1240,7 +1255,7 @@ final class EditorFlowTests: XCTestCase {
             throw XCTSkip("the iPad toolbar")
         #endif
         continueAfterFailure = false
-        // Two pages visited, so back/forward have something to do (with neither, the group draws as an empty circle).
+        // Two pages visited, so back/forward have something to do.
         let app = launch(environment: ["HIKKI_DEMO_PAGES": "1", "HIKKI_DEBUG_NAV": "demo-dba8e9bf,demo-46ffce8"])
         let forward = app.buttons["Forward"].firstMatch
         let tab = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'tab-'")).firstMatch
