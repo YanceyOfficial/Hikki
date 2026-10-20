@@ -26,6 +26,8 @@ final class AppModel {
     /// nil until onboarding creates one (first launch).
     private(set) var workspace: Workspace?
     private(set) var tree = PageTree([])
+    /// The store's pages have come in once (an empty tree before that means "not read yet", not "no pages").
+    private(set) var treeLoaded = false
     private(set) var trash: [PageSummary] = []
     /// What the last pass over the workspace folder found (Settings → Storage shows it).
     private(set) var lastSync: SyncStatus?
@@ -325,7 +327,10 @@ final class AppModel {
 
     private func observePages() async {
         do {
-            for try await pages in store.observePages() { tree = PageTree(pages) }
+            for try await pages in store.observePages() {
+                tree = PageTree(pages)
+                if !treeLoaded { treeLoaded = true }
+            }
         } catch {
             Log.error("page observation failed: \(error)", category: "store")
         }

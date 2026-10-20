@@ -16,15 +16,15 @@ public struct AIHandoff: Equatable, Sendable {
 
     /// Where the chat comes up for a handoff.
     public enum Placement: Equatable, Sendable {
-        /// The inspector beside the page, in AI mode (opened if closed, switched from the outline or comments).
+        /// The panel beside the page it came from, in AI mode (opened if closed, switched from the outline or comments) —
+        /// in a split window, the panel of the side it came from.
         case inspector
-        /// Ask AI as a sheet: on iPhone (a compact window), and in a split window — the inspector belongs to the left
-        /// page and is off while split, and the request may come from either side.
+        /// Ask AI as a sheet: on iPhone (a compact window), which has no panel beside the page.
         case sheet
     }
 
-    /// `wide`: the Mac / iPad layout (a regular width), where the inspector sits beside the page.
-    public static func placement(wide: Bool, isSplit: Bool) -> Placement {
-        wide && !isSplit ? .inspector : .sheet
+    /// `wide`: the Mac / iPad layout (a regular width), where the panel sits beside the page.
+    public static func placement(wide: Bool) -> Placement {
+        wide ? .inspector : .sheet
     }
 }

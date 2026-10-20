@@ -9,6 +9,8 @@ nonisolated enum Route: Hashable, Codable, Sendable {
     case page(String)
     /// An attached file shown in a pane of its own (a PDF): the asset's name and the file's own name.
     case file(name: String, label: String)
+    /// A split pane with nothing in it yet: recent pages and PDFs to pick from. Only ever inside a split.
+    case splitPicker
 
     var pageID: String? {
         if case .page(let id) = self { id } else { nil }
@@ -18,7 +20,7 @@ nonisolated enum Route: Hashable, Codable, Sendable {
     var canSplit: Bool {
         switch self {
         case .page, .file: true
-        case .home, .trash: false
+        case .home, .trash, .splitPicker: false
         }
     }
 }
@@ -42,6 +44,29 @@ struct DocumentSheetRequest: Equatable, Identifiable {
     let name: String
     let label: String
     var id: String { name }
+}
+
+/// A side of a split window. Neither is the "main" one: the leading side is simply the split's first tab.
+enum PaneSide: String, Hashable, Sendable {
+    case leading, trailing
+}
+
+/// What a side of the window shows: a tab, and the page (or Home, a PDF…) it is on.
+struct Pane: Equatable {
+    let tab: UUID
+    let route: Route
+}
+
+/// A side's panel beside its page (outline, comments, AI).
+struct InspectorState: Equatable {
+    var isShowing = false
+    var mode: InspectorMode = .outline
+}
+
+/// A request AI on the selection handed to the chat, and the side whose editor it came from — that side's panel takes it.
+struct PaneHandoff: Equatable {
+    let handoff: AIHandoff
+    let side: PaneSide
 }
 
 struct TitleFocusRequest: Equatable {
@@ -104,30 +129,45 @@ final class Navigator {
     var importDrop: ImportDrop?
     /// An attached PDF shown over the page (`showDocument`).
     var documentSheet: DocumentSheetRequest?
-    /// Split view (Mac/iPad): the window shows a second pane beside the current tab.
-    private(set) var isSplit = false
     /// Whether this window may split (`DeviceRules.allowsSplit`); set by ContentView. A window that
-    /// can no longer split closes its pane.
+    /// can no longer split comes apart.
     var splitAllowed = true {
         didSet { if !splitAllowed && isSplit { closeSplit() } }
     }
-    /// What the second pane shows — a page or a file; nil while it offers a picker.
-    private(set) var split: Route?
-    /// While split: a page is held over the left side's right edge, so dropping it replaces the right side — which
-    /// outlines itself whole (the left side draws no zone of its own; a half-width one read as a third column).
+    /// While split: a page is held over the leading side's right edge, so dropping it replaces the trailing side —
+    /// which outlines itself whole (the leading side draws no zone of its own; a half-width one read as a third column).
     var splitDropHover = false
-    /// The trailing inspector (outline, info, calendar) — remembered across launches by ContentView.
-    var isShowingInspector = false
-    var inspectorMode: InspectorMode = .outline
+    /// Each side's panel (outline, comments, AI), by position; they trade places with the pages when the sides swap.
+    private var inspectors: [PaneSide: InspectorState] = [:]
+    /// The mode a side's panel opens on when it has none yet (the last one picked, remembered by ContentView).
+    private var lastInspectorMode: InspectorMode = .outline
 
-    /// A toolbar button for one mode: opens the panel on it, or closes the panel when it already shows it.
-    func toggleInspector(_ mode: InspectorMode) {
-        if isShowingInspector && inspectorMode == mode {
-            isShowingInspector = false
-        } else {
-            inspectorMode = mode
-            isShowingInspector = true
-        }
+    func inspector(_ side: PaneSide) -> InspectorState {
+        inspectors[side] ?? InspectorState(isShowing: false, mode: lastInspectorMode)
+    }
+
+    func setInspector(_ side: PaneSide, _ state: InspectorState) {
+        guard inspector(side) != state else { return }
+        inspectors[side] = state
+        lastInspectorMode = state.mode
+    }
+
+    /// The focused side's panel — what the menus and the shortcuts act on.
+    var isShowingInspector: Bool {
+        get { inspector(focusedSide).isShowing }
+        set { setInspector(focusedSide, InspectorState(isShowing: newValue, mode: inspector(focusedSide).mode)) }
+    }
+
+    var inspectorMode: InspectorMode {
+        get { inspector(focusedSide).mode }
+        set { setInspector(focusedSide, InspectorState(isShowing: inspector(focusedSide).isShowing, mode: newValue)) }
+    }
+
+    /// A button for one mode: opens the side's panel on it, or closes the panel when it already shows it.
+    func toggleInspector(_ mode: InspectorMode, side: PaneSide? = nil) {
+        let side = side ?? focusedSide
+        let state = inspector(side)
+        setInspector(side, InspectorState(isShowing: !(state.isShowing && state.mode == mode), mode: mode))
     }
     /// Bumped by "Rename": the editor selects that page's title once it has loaded it.
     private(set) var titleFocusRequest: TitleFocusRequest?
@@ -189,9 +229,9 @@ final class Navigator {
 
     /// Ask AI opened with a question to send at once, about these pages (Home's suggestions); ContentView sends it.
     var pendingAIQuestion: (text: String, pageIDs: [String])?
-    /// A request AI on the selection handed to the chat (either editor), waiting for ContentView to open the chat —
-    /// the inspector, or the Ask AI sheet (`AIHandoff.placement`) — and send it there.
-    var aiHandoff: AIHandoff?
+    /// A request AI on the selection handed to the chat (either side's editor), waiting for ContentView to open the chat —
+    /// that side's panel, or the Ask AI sheet (`AIHandoff.placement`) — and send it there.
+    var aiHandoff: PaneHandoff?
 
     func newPage(parentId: String? = nil) {
         guard let id = model?.createPage(parentId: parentId) else { return }
@@ -223,39 +263,113 @@ final class Navigator {
 
     // MARK: Split view
 
-    /// Opens (or replaces) the pane beside the current tab. The same page can't be on both sides (two editors on one page
-    /// would overwrite each other), so asking for the left side's page swaps nothing and shows the picker instead.
+    /// Split view (Mac/iPad): two tabs side by side, equals (`NavigationTabs.Split`) — the window shows one when its
+    /// focused tab is in one.
+    var isSplit: Bool { tabs.activeSplit != nil }
+
+    /// What the leading side shows: the split's first tab, or the focused tab when the window isn't split.
+    var leadingPane: Pane {
+        let id = tabs.activeSplit?.leading ?? tabs.activeID
+        return Pane(tab: id, route: route(ofTab: id) ?? tabs.route)
+    }
+
+    /// What the trailing side shows; nil when the window isn't split.
+    var trailingPane: Pane? {
+        guard let id = tabs.activeSplit?.trailing, let route = route(ofTab: id) else { return nil }
+        return Pane(tab: id, route: route)
+    }
+
+    func pane(_ side: PaneSide) -> Pane? {
+        side == .leading ? leadingPane : trailingPane
+    }
+
+    /// The side the reader is working in: menus, shortcuts and the sidebar act on it, and its half of the tab is marked.
+    var focusedSide: PaneSide {
+        tabs.activeSplit?.trailing == tabs.activeID ? .trailing : .leading
+    }
+
+    /// A click or a tap in a side: it gets the focus.
+    func focus(_ side: PaneSide) {
+        guard let pane = pane(side), pane.tab != tabs.activeID else { return }
+        tabs.select(pane.tab)
+        syncSelection()
+    }
+
+    /// Shows `route` beside the focused side: in the other side when split (replacing what it shows), else in a new tab
+    /// joined to the focused one. The same page may be on both sides (write on one, read on the other): the editors
+    /// reload each other's saves (`EditorController.pageSavedInEditor`).
     func openInSplit(_ route: Route) {
-        guard splitAllowed, route.canSplit else { return }
-        isSplit = true
-        isShowingInspector = false
-        // The same page may be on both sides (write on the left, read on the right): the editors reload each
-        // other's saves (`EditorController.pageSavedInEditor`).
-        split = route
+        guard splitAllowed, route.canSplit || route == .splitPicker else { return }
+        tabs.openSplit(route, beside: tabs.activeID)
         if let id = route.pageID { reveal(id) }
+        tidyTabs()
     }
 
-    /// The split pane with nothing in it yet: it offers recent pages and PDFs to pick from.
-    func showSplitPicker() {
+    /// A page dropped on the leading side's right edge: beside it — in the trailing side when split already.
+    func openBeside(_ route: Route) {
+        if isSplit { show(route, in: .trailing) } else { openInSplit(route) }
+    }
+
+    /// A side with nothing in it yet: it offers recent pages and PDFs to pick from. Beside the focused side, or — given
+    /// a side — in that side ("More…" in its title's menu).
+    func showSplitPicker(in side: PaneSide? = nil) {
         guard splitAllowed else { return }
-        isSplit = true
-        // The inspector belongs to the left page but would sit beside the right one: it closes with a split.
-        isShowingInspector = false
-        split = nil
+        if let side, let pane = pane(side) {
+            tabs.navigate(pane.tab, to: .splitPicker)
+            syncSelection()
+        } else {
+            openInSplit(.splitPicker)
+        }
     }
 
+    /// What a side shows, picked in it (its picker, its title's menu, a page dropped on it): the picker gives way to it
+    /// with no history entry; a page shown before goes into the side's history. The side gets the focus.
+    func show(_ route: Route, in side: PaneSide) {
+        guard let pane = pane(side) else { return }
+        if pane.route == .splitPicker {
+            tabs.replace(pane.tab, with: route)
+            tabs.select(pane.tab)
+        } else {
+            tabs.navigate(pane.tab, to: route)
+        }
+        if let id = route.pageID { reveal(id) }
+        syncSelection()
+    }
+
+    /// Ends the split (⌘\): both pages stay tabs, the focused one shown (an empty side just goes).
     func closeSplit() {
-        isSplit = false
-        split = nil
+        guard let split = tabs.activeSplit else { return }
+        if focusedSide == .trailing { inspectors[.leading] = inspectors[.trailing] }
+        inspectors[.trailing] = nil
+        tabs.separate(split.leading)
+        tidyTabs()
+        syncSelection()
+    }
+
+    /// A side's ✕: its tab closes and the other side has the window.
+    func closePane(_ side: PaneSide) {
+        guard isSplit, let pane = pane(side) else { return }
+        closeTab(pane.tab)
+    }
+
+    /// The two sides trade places, each with its panel.
+    func swapSides() {
+        guard isSplit else { return }
+        tabs.swapSplit(tabs.activeID)
+        let leading = inspectors[.leading]
+        inspectors[.leading] = inspectors[.trailing]
+        inspectors[.trailing] = leading
     }
 
     func toggleSplit() {
         if isSplit { closeSplit() } else { showSplitPicker() }
     }
 
-    /// The pane's page left the workspace (trashed, deleted): the pane closes.
-    func pruneSplit(existing: (String) -> Bool) {
-        if let id = split?.pageID, !existing(id) { closeSplit() }
+    /// An empty side is only ever part of a split: one left on its own (its split came apart) closes.
+    private func tidyTabs() {
+        guard tabs.tabs.contains(where: { $0.route == .splitPicker && tabs.split(of: $0.id) == nil }) else { return }
+        tabs.closeLoose({ $0 == .splitPicker }, fallback: .home)
+        syncSelection()
     }
 
     /// A sidebar row: its tab gets focus, or it joins the strip as a new tab (the oldest leaves past the limit).
@@ -290,7 +404,15 @@ final class Navigator {
     /// False when it was the last tab (the caller may close the window instead).
     @discardableResult
     func closeTab(_ id: UUID) -> Bool {
-        defer { syncSelection() }
+        if let split = tabs.activeSplit, split.contains(id) {
+            // A side of the split on screen going: the other one has the window, its panel with it.
+            if id == split.leading { inspectors[.leading] = inspectors[.trailing] }
+            inspectors[.trailing] = nil
+        }
+        defer {
+            tidyTabs()
+            syncSelection()
+        }
         return tabs.close(id)
     }
 
@@ -314,17 +436,41 @@ final class Navigator {
 
     func closeOtherTabs(_ id: UUID) {
         tabs.closeOthers(id)
+        tidyTabs()
         syncSelection()
     }
 
     func closeTabs(rightOf id: UUID) {
         tabs.closeTabs(after: id)
+        tidyTabs()
         syncSelection()
     }
 
-    /// "Open in Split View": the tab's page (or file) in the pane beside the current tab; the tab stays.
+    /// "Open in Split View": the tab joins the focused one, on its right (the focused tab itself: an empty side beside
+    /// it).
     func openTabInSplit(_ id: UUID) {
-        if let route = route(ofTab: id) { openInSplit(route) }
+        guard splitAllowed else { return }
+        if id == tabs.activeID {
+            if !isSplit { openInSplit(.splitPicker) }
+            return
+        }
+        tabs.join(tabs.activeID, with: id)
+        tidyTabs()
+    }
+
+    /// "Separate" in a split tab's menu: both stay tabs.
+    func separateTab(_ id: UUID) {
+        if tabs.activeSplit?.contains(id) == true {
+            closeSplit()
+        } else {
+            tabs.separate(id)
+            tidyTabs()
+        }
+    }
+
+    /// "Swap Sides" in a split tab's menu.
+    func swapTab(_ id: UUID) {
+        if tabs.activeSplit?.contains(id) == true { swapSides() } else { tabs.swapSplit(id) }
     }
 
     /// Drops trashed pages from every tab's history.
@@ -349,6 +495,10 @@ final class Navigator {
     func restoreTabs(from data: Data?) {
         guard let data, let restored = try? JSONDecoder().decode(NavigationTabs<Route>.self, from: data) else { return }
         tabs = restored
+        // A side's picker is for the moment it's open: it leaves every history, and a side that held nothing else
+        // doesn't come back (the window opens on the page beside it, unsplit).
+        tabs.prune(fallback: .home) { $0 == .splitPicker }
+        tidyTabs()
     }
 
     /// Page → Copy Link (⌥⌘C): the open page's hikki://page/<id>.

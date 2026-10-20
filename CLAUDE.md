@@ -216,7 +216,7 @@ HikkiUITests/                 XCUITest flows
   top inset and the editor makes that room itself (`setInsets` with `bleed`, `--hk-bleed-top`), so a cover fills it
   behind the status bar and the glass buttons (`.hk-cover`) and a page without one starts below them.
 - **Data directory**: `HIKKI_DATA_DIR` overrides it (UI tests, demos). DEBUG hooks: `HIKKI_OPEN_TABS=a,b`,
-  `HIKKI_OPEN_SEARCH`, `HIKKI_OPEN_FIND`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SPOTLIGHT_QUERY=<text>` (logs the page ids Spotlight ranks), `HIKKI_OPEN_FILE=<asset>` (the PDF viewer), `HIKKI_OPEN_SPLIT=<page id>|file:<asset>|picker` (split view), `HIKKI_DEBUG_SIDEBAR` (hide + show the split view sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_DEBUG_TOAST` (a sample failure toast), `HIKKI_OPEN_AI`, `HIKKI_OPEN_PAGE_ACTIONS`, `HIKKI_DEBUG_COVER_SHEET` (opens the page's cover sheet), `HIKKI_DEBUG_AI_ASK=<question>` (asks the AI panel about the open page) and `HIKKI_DEBUG_AI_EDIT=<words>` (selects them and runs Improve writing through `window.hikki.demoAI`) — screenshots of AI at work, which need a provider key, `HIKKI_DEMO_PAGES` (an empty workspace gets sample pages, ids fixed per title — `Hikki/Sources/DemoPages.swift`; `=<n>` above 1: n pages "Page 001"…, every tenth with three subpages), `HIKKI_ACTIVATE`, `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
+  `HIKKI_OPEN_SEARCH`, `HIKKI_OPEN_FIND`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SPOTLIGHT_QUERY=<text>` (logs the page ids Spotlight ranks), `HIKKI_OPEN_FILE=<asset>` (the PDF viewer), `HIKKI_OPEN_SPLIT=<page id>|file:<asset>|picker` (split view), `HIKKI_DEBUG_SIDEBAR` (hide + show the split view sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_DEBUG_TOAST` (a sample failure toast), `HIKKI_OPEN_AI`, `HIKKI_OPEN_PAGE_ACTIONS`, `HIKKI_DEBUG_COVER_SHEET` (opens the page's cover sheet), `HIKKI_DEBUG_AI_ASK=<question>` (asks the AI panel about the open page) and `HIKKI_DEBUG_AI_EDIT=<words>` (selects them and runs Improve writing through `window.hikki.demoAI`) — screenshots of AI at work, which need a provider key, `HIKKI_DEMO_PAGES` (an empty workspace gets sample pages, ids fixed per title — `Hikki/Sources/DemoPages.swift`; `=<n>` above 1: n pages "Page 001"…, every tenth with three subpages), `HIKKI_ACTIVATE`, `HIKKI_FRESH_TABS` (skips the window's saved tabs; UI tests set it), `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
   UI tests set it by default — pass `workspace: nil` to `launch()` to test onboarding).
 - **Storage (option C)**: the workspace folder is the source of truth — one JSON file per page
   (`HikkiCore/Sources/Store/PageFile.swift`: `pages/<id>.json`, format-versioned, content as JSON); SQLite is a
@@ -459,18 +459,37 @@ HikkiUITests/                 XCUITest flows
   `HIKKI_DEBUG_FULLSCREEN` forces the layout on in a window, `HIKKI_DEBUG_ENTER_FULLSCREEN` enters full screen 1.5 s
   after launch, `HIKKI_DEBUG_QUIT_AFTER=<s>` quits — own-instance checks.
 - **Split view** (a window at least 800 pt wide, on any device — `DeviceRules.allowsSplit`, `Navigator.splitAllowed`;
-  `Hikki/Sources/SplitView.swift`): the current tab and a second pane side by side, either
-  holding a page or a PDF (`Navigator.split`, `isSplit`). The pane's page has its own editor (a second web view, made
-  on first use and wired like the main one in `ContentView`). Opened from the
-  View → Show Split View (⌘\\) (no toolbar button: drag is the way) — an empty pane offers the left page's PDF attachments, PDFs
-  open in tabs and recent pages — or a page's "Open in Split View". The divider drags (fraction remembered); the pane's editor never takes the keyboard when its page loads
-  (`window.hikki.setAutoFocus(false)` — an empty page's title would otherwise grab it from the page beside); the pane's
-  bar closes it, and its title is a chooser (recent pages, More… for the picker) to show another page; the same page may be on both sides (write left, read right — each editor reloads the other's saves, `pageSavedInEditor`). The inspector belongs to the left page, so it
-  closes when the window splits; its toggle, ⌥⌘I and the page's star / ⋯ / lock buttons are off while split. By drag: a sidebar row or a page's tab dropped onto the pane shows there (`PageDrop`), and
-  dropped on the right edge of the left side — the right quarter, 96–240 pt — opens beside it: native content
-  (Home, a PDF) through `EdgeDrop` in `Hikki/Sources/SplitView.swift`, a page through the editor's own edge
+  `Hikki/Sources/SplitView.swift`): two tabs side by side, equals — Chrome's split view. `NavigationTabs` joins two
+  adjacent tabs into a `Split` (leading, trailing); the window splits while its focused tab is in one, and the strip
+  draws the pair as one joined tab with the focused half marked (`TabStripItem.joinedToNext`). Each side is a
+  `PaneColumn` — the same view twice, so the sides can't drift apart: its bar (`PaneBar`: what it shows as a chooser —
+  recent pages, More… for the picker — then the page's lock / star / ⋯, the panel's outline / comments / AI, swap
+  sides, close this side) over its content, its own panel beside it (`Navigator.inspector(side)`, capped at 45 % of the
+  side; the panels trade places with the pages on a swap) and its own AI chat (`trailingChat`); not split, the
+  page's tools stay in the window toolbar. A click or a tap in a side focuses it before the view under it gets it
+  (`PointerDownMonitor`: a local event monitor on the Mac, a touch-began recognizer on the iOS window, against each
+  side's frame), so links, sidebar picks, menus and shortcuts (`focusedSceneValue(\.editor)`, ⌥⌘I, ⇧⌘N, Find, Lock…)
+  act on the focused side, and back / forward walk the focused side's own history. Editors are by position: the
+  window's main one draws the leading side, a second one (made on first use) the trailing; `PaneRoutes` changes load
+  them, so focus moving changes nothing and a swap reloads both at their remembered scroll. An empty side is
+  `Route.splitPicker` (the other side's PDF attachments, PDFs open in tabs, recent pages; a pick replaces it with no
+  history entry; one left outside a split closes). Opened from View → Show Split View (⌘\\, again: the two separate into
+  tabs), a page's "Open in Split View" (beside the focused side, or in the other side when split) or a tab's (it joins
+  the focused tab; a split tab's menu has Swap Sides and Separate into Tabs). The sides meet at a hairline, each page (a cover too) running up to it; the grip over it is a native view
+  (`SplitGrip`: AppKit / UIKit give a press to the topmost view, so it gets the drag over the web views) and drags the
+  boundary (fraction remembered, each side at least `Size.splitMin`; a double-click puts it back in the middle);
+  the trailing editor never takes the keyboard when its page loads (`window.hikki.setAutoFocus(false)` — an empty
+  page's title would otherwise grab it from the page beside). The same page may be on both sides (write on one, read on
+  the other — each editor reloads the other's saves, `pageSavedInEditor`). An AI handoff opens the panel of the side
+  it came from (`PaneHandoff`). Nothing in a side's structure may depend on whether the window is split (a conditional
+  modifier rebuilt the leading page's view and took the window's one web view with it: a blank page) — only the bar is
+  an optional child; on iOS `EditorView` hosts the web view in a container of its own and puts it back on every update,
+  since a stale wrapper going away still took it along under XCUITest. A saved split comes back without a side that was
+  still a picker, and a side whose pages are all gone closes (`NavigationTabs.prune`). By drag: a sidebar row or a page's tab dropped onto a side shows there (`PageDrop`), and
+  dropped on the right edge of the leading side — the right quarter, 96–240 pt — opens beside it: native content
+  (Home, a PDF) through `EdgeDrop`, a page through the editor's own edge
   (`apps/editor/src/extensions/split-drop.ts`, `openInSplit` bridge message, `window.hikki.setSplitDrop`), since the web
-  view takes the drags over it. Split already, that edge replaces the right side, so the right pane outlines itself
+  view takes the drags over it. Split already, that edge replaces the trailing side, so it outlines itself
   whole (`Navigator.splitDropHover`, set by `EdgeDrop` and the editor's `splitDropHover` message) — a half-width zone
   on the left read as a third column. iPadOS keeps the screen's very edge for "open in a new window".
 - **PDF viewer**: a PDF attachment clicked in a page opens over it (`Navigator.showDocument` → `DocumentSheet` in
@@ -575,8 +594,7 @@ HikkiUITests/                 XCUITest flows
   back-and-forth; the prompt lists the everyday edits that never hand off). An answer that starts like JSON is held back
   meanwhile. The editor closes its review and posts `aiHandoff {docId, instruction, selection}`; ContentView opens the
   chat by `AIHandoff.placement` (HikkiCore) — the inspector in AI mode (opened, or switched from outline / comments) on
-  Mac and a wide iPad, the Ask AI sheet on iPhone and in a split window (the inspector is off while split; the sheet is
-  about the page that handed off, either side) — then sets the passage as the chat's selection and sends the
+  Mac and a wide iPad — in a split window, the panel of the side that handed off — the Ask AI sheet on iPhone — then sets the passage as the chat's selection and sends the
   instruction as the next turn of that page's conversation. Answers get a card (Insert below, Copy) that draws their
   Markdown as page blocks (`markdownBlocks` / `markdownDOM` in `apps/editor/src/core/convert.ts`: no media, web links only)
   and inserts it as blocks; answers and reasons are written in the app's language (`AIPrompts.languageLine`). The chat's

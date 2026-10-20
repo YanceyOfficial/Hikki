@@ -8739,19 +8739,19 @@
         }
       }
     },
-    "app:split.close": {
+    "app:split.closeSide": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Close Split View"
+            "value": "Close This Side"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "关闭分栏"
+            "value": "关闭这一侧"
           }
         }
       }
@@ -8922,6 +8922,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "最近的页面"
+          }
+        }
+      }
+    },
+    "app:split.separate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Separate into Tabs"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拆回两个标签页"
+          }
+        }
+      }
+    },
+    "app:split.swap": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Swap Sides"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左右交换"
           }
         }
       }

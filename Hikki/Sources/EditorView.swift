@@ -17,8 +17,17 @@ struct EditorView: PlatformViewRepresentable {
     var bottomInset: CGFloat = 0
 
     #if os(iOS)
-        func makeUIView(context: Context) -> HikkiWebView { controller.webView }
-        func updateUIView(_ view: HikkiWebView, context: Context) {
+        /// A container of its own, the web view put back into it on every update: SwiftUI may build this wrapper
+        /// again (a side of the window rebuilt as it splits), and an older wrapper going away took the window's one
+        /// web view out of the newer one with it — a blank page (seen under XCUITest on iPad).
+        func makeUIView(context: Context) -> UIView { UIView() }
+        func updateUIView(_ host: UIView, context: Context) {
+            let view = controller.webView!
+            if view.superview !== host {
+                view.frame = host.bounds
+                view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                host.addSubview(view)
+            }
             // The page runs to the top of the screen and makes the toolbar's room itself (`bleed`): a cover fills
             // it behind the status bar and the glass buttons (immersive), a page without one starts below them.
             controller.setInsets(top: topInset, bottom: bottomInset, bleed: true)

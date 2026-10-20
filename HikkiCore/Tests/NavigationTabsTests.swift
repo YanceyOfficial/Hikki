@@ -327,4 +327,175 @@ struct NavigationTabsTests {
         tabs.closeTabs(after: b)
         #expect(tabs.activeID == a)
     }
+
+    // MARK: Split
+
+    @Test func openSplitJoinsANewTabBesideTheFocusedOne() throws {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        tabs.openTab("z")
+        tabs.select(left)
+        let opened = tabs.openSplit("b", beside: left)
+        let right = try #require(opened)
+        #expect(tabs.tabs.map(\.route) == ["a", "b", "z"])
+        #expect(tabs.activeID == left, "the reader stays where they were")
+        #expect(tabs.activeSplit == .init(leading: left, trailing: right))
+        // Split already: the other side shows it.
+        let other = tabs.openSplit("c", beside: left)
+        #expect(other == right)
+        #expect(tabs.tabs.map(\.route) == ["a", "c", "z"])
+        #expect(tabs.tabs[1].history == ["b", "c"])
+    }
+
+    @Test func aSideWithNothingLeftClosesAndTheOtherTakesTheWindow() throws {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        let opened = tabs.openSplit("x", beside: left)
+        let right = try #require(opened)
+        tabs.select(right)
+        tabs.prune(fallback: "home") { $0 == "x" }
+        #expect(tabs.tabs.map(\.route) == ["a"], "no Home in half the window")
+        #expect(tabs.activeID == left)
+        #expect(tabs.activeSplit == nil)
+        // Both sides gone: one tab is left, on the fallback.
+        let again = tabs.openSplit("y", beside: left)
+        _ = try #require(again)
+        tabs.prune(fallback: "home") { $0 == "a" || $0 == "y" }
+        #expect(tabs.tabs.map(\.route) == ["home"])
+        #expect(tabs.activeSplit == nil)
+    }
+
+    @Test func focusMovesBetweenSidesWithoutGrowingTheWindowsHistory() throws {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        let opened = tabs.openSplit("b", beside: left)
+        let right = try #require(opened)
+        let visits = tabs.visits
+        tabs.select(right)
+        tabs.select(left)
+        #expect(tabs.visits == visits)
+        #expect(tabs.activeSplit != nil)
+    }
+
+    @Test func backAndForwardInASplitWalkTheFocusedSide() throws {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        let opened = tabs.openSplit("b", beside: left)
+        let right = try #require(opened)
+        tabs.navigate(to: "a2")
+        tabs.select(right)
+        tabs.navigate(to: "b2")
+        #expect(tabs.canGoBack)
+        tabs.goBack()
+        #expect(tabs.route == "b")
+        #expect(tabs.activeID == right)
+        #expect(tabs.tabs[0].route == "a2", "the other side is left alone")
+        #expect(!tabs.canGoBack)
+        tabs.goForward()
+        #expect(tabs.route == "b2")
+    }
+
+    @Test func swappingTradesPlacesAndKeepsTheFocus() throws {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        let opened = tabs.openSplit("b", beside: left)
+        let right = try #require(opened)
+        tabs.swapSplit(left)
+        #expect(tabs.tabs.map(\.route) == ["b", "a"])
+        #expect(tabs.activeSplit == .init(leading: right, trailing: left))
+        #expect(tabs.activeID == left)
+    }
+
+    @Test func closingASideFocusesTheOtherAndEndsTheSplit() throws {
+        var tabs = Tabs(initial: "x")
+        tabs.openTab("a")
+        let left = tabs.activeID
+        tabs.openTab("y")
+        tabs.select(left)
+        let opened = tabs.openSplit("b", beside: left)
+        let right = try #require(opened)
+        tabs.select(right)
+        tabs.close(right)
+        #expect(tabs.activeID == left)
+        #expect(tabs.splits.isEmpty)
+    }
+
+    @Test func newTabsNeverLandBetweenTheSides() throws {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        tabs.openSplit("b", beside: left)
+        tabs.openTab("c", after: left)
+        #expect(tabs.tabs.map(\.route) == ["a", "b", "c"])
+        tabs.duplicate(left)
+        #expect(tabs.tabs.map(\.route) == ["a", "b", "a", "c"])
+        tabs.openTab("d", at: 1)
+        #expect(tabs.tabs.map(\.route) == ["a", "b", "d", "a", "c"])
+        #expect(tabs.splits.count == 1)
+    }
+
+    @Test func sidebarPicksShowInTheFocusedSide() throws {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        let opened = tabs.openSplit("b", beside: left)
+        let right = try #require(opened)
+        tabs.select(right)
+        tabs.openRecent("c", limit: 6)
+        #expect(tabs.tabs.map(\.route) == ["a", "c"])
+        #expect(tabs.activeID == right)
+        // A page open on the other side gets the focus there.
+        tabs.openRecent("a", limit: 6)
+        #expect(tabs.activeID == left)
+    }
+
+    @Test func evictionSparesTheSplit() throws {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        tabs.openSplit("b", beside: left)
+        tabs.openTab("c")  // leaves the split
+        tabs.openRecent("d", limit: 3)
+        #expect(tabs.tabs.map(\.route) == ["a", "b", "d"])
+        #expect(tabs.splits.count == 1)
+    }
+
+    @Test func joinMovesATabBesideAndSeparateKeepsBoth() {
+        var tabs = Tabs(initial: "a")
+        let a = tabs.activeID
+        tabs.openTab("b")
+        let c = tabs.openTab("c")
+        tabs.select(a)
+        tabs.join(a, with: c)
+        #expect(tabs.tabs.map(\.route) == ["a", "c", "b"])
+        #expect(tabs.activeSplit == .init(leading: a, trailing: c))
+        tabs.separate(c)
+        #expect(tabs.splits.isEmpty)
+        #expect(tabs.tabs.count == 3)
+    }
+
+    @Test func aPickerLeftOutsideASplitCloses() throws {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        let opened = tabs.openSplit("picker", beside: left)
+        let right = try #require(opened)
+        tabs.closeLoose({ $0 == "picker" }, fallback: "home")
+        #expect(tabs.tabs.count == 2, "still in its split")
+        tabs.replace(right, with: "b")
+        #expect(tabs.tabs[1].history == ["b"])
+        tabs.openSplit("picker", beside: left)
+        tabs.separate(left)
+        tabs.closeLoose({ $0 == "picker" }, fallback: "home")
+        #expect(tabs.tabs.map(\.route) == ["a"])
+    }
+
+    @Test func splitsSurviveEncodingAndBrokenOnesAreDropped() throws {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        tabs.openSplit("b", beside: left)
+        let data = try JSONEncoder().encode(tabs)
+        #expect(try JSONDecoder().decode(Tabs.self, from: data) == tabs)
+        // Saved before splits were tabs: none.
+        var object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        object.removeValue(forKey: "splits")
+        let old = try JSONDecoder().decode(Tabs.self, from: JSONSerialization.data(withJSONObject: object))
+        #expect(old.splits.isEmpty)
+    }
 }
