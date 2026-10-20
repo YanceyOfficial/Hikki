@@ -17,10 +17,12 @@ public struct ChatTurn: Codable, Equatable, Sendable, Identifiable {
     public var changes: [AIPageChange]?
     /// How the answer was worked out: the model's thinking and its web searches, in order (the chat's timeline).
     public var thinking: ChatThinking?
+    /// Pictures the answer's web search found (absent in older files and answers without any).
+    public var images: [ChatImage]?
 
     public init(
         id: String, role: Role, text: String, sentAt: Date, attachments: [String] = [], citations: [ChatCitation] = [],
-        changes: [AIPageChange]? = nil, thinking: ChatThinking? = nil
+        changes: [AIPageChange]? = nil, thinking: ChatThinking? = nil, images: [ChatImage]? = nil
     ) {
         self.id = id
         self.role = role
@@ -30,6 +32,7 @@ public struct ChatTurn: Codable, Equatable, Sendable, Identifiable {
         self.citations = citations
         self.changes = changes
         self.thinking = thinking
+        self.images = images
     }
 }
 
@@ -75,6 +78,29 @@ public struct ChatCitation: Codable, Hashable, Sendable {
         self.url = url
         self.title = title
     }
+}
+
+/// A picture an answer's web search found: the picture, a smaller copy to show, the page it is on, what it shows.
+public struct ChatImage: Codable, Hashable, Sendable {
+    public var url: String
+    public var thumbnail: String?
+    public var source: String?
+    public var caption: String?
+
+    public init(url: String, thumbnail: String? = nil, source: String? = nil, caption: String? = nil) {
+        self.url = url
+        self.thumbnail = thumbnail
+        self.source = source
+        self.caption = caption
+    }
+
+    /// The picture's address when it is on the web — like a citation's, checked where it is shown (kept turns come
+    /// from the workspace folder).
+    public var webURL: URL? { ChatCitation(url: url, title: nil).webURL }
+    /// The copy to show: the thumbnail when it is on the web, else the picture.
+    public var thumbnailURL: URL? { thumbnail.flatMap { ChatCitation(url: $0, title: nil).webURL } ?? webURL }
+    /// The page the picture is on, when that is on the web.
+    public var sourceURL: URL? { source.flatMap { ChatCitation(url: $0, title: nil).webURL } }
 }
 
 /// What a long conversation's older turns said, written by the model: sent in their place, so a conversation can go
@@ -309,6 +335,7 @@ public final class PageChats: @unchecked Sendable {
                 known.text = turn.text
                 known.citations = turn.citations
                 known.thinking = turn.thinking ?? known.thinking
+                known.images = turn.images ?? known.images
             }
             // Each card keeps the review furthest along (approved on one device, still pending on the other).
             if let changes = turn.changes {

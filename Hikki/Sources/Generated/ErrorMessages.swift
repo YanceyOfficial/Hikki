@@ -35,6 +35,7 @@ extension ErrorCode {
         case .fileTooLarge: String(localized: "app:error.fileTooLarge")
         case .fileOpenFailed: String(localized: "app:error.fileOpenFailed")
         case .fileTypeNotAllowed: String(localized: "app:error.fileTypeNotAllowed")
+        case .webImageUnavailable: String(localized: "app:error.webImageUnavailable")
         case .aiMissingKey: String(localized: "app:error.aiMissingKey")
         case .aiBadBaseURL: String(localized: "app:error.aiBadBaseURL")
         case .aiUnauthorized: String(localized: "app:error.aiUnauthorized")

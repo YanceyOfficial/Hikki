@@ -8,7 +8,8 @@ enum RequestBuilders {
     /// Tokens Anthropic's models may think with before answering (extended thinking's minimum is 1024).
     static let anthropicThinkingBudget = 4096
 
-    /// OpenAI's Responses API: `instructions` + `input` messages (images as data URLs), the `web_search` tool, streamed.
+    /// OpenAI's Responses API: `instructions` + `input` messages (images as data URLs), the `web_search` tool (with its
+    /// image results when asked), streamed.
     static func openAI(_ request: AIRequest, apiKey: String, url: URL = openAIURL) throws -> URLRequest {
         var body: [String: Any] = [
             "model": request.model.id,
@@ -19,7 +20,16 @@ enum RequestBuilders {
             // Nothing kept on OpenAI's side (each request carries its own history).
             "store": false,
         ]
-        if request.webSearch { body["tools"] = [["type": "web_search"]] }
+        if request.webSearch {
+            var tool: [String: Any] = ["type": "web_search"]
+            if request.imageResults > 0 {
+                // Pictures come back in the search call's results, which are left out unless included.
+                tool["search_content_types"] = ["text", "image"]
+                tool["image_settings"] = ["max_results": request.imageResults, "caption": true]
+                body["include"] = ["web_search_call.results"]
+            }
+            body["tools"] = [tool]
+        }
         // Reasoning models think anyway; this asks for the summary of it to be streamed.
         if request.reasoning { body["reasoning"] = ["summary": "auto"] }
         var http = URLRequest(url: url)

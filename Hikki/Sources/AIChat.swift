@@ -42,6 +42,8 @@ final class AIChat {
         /// Names of files sent with a question in an earlier session (the files themselves aren't kept).
         var attachmentNames: [String] = []
         var citations: [AICitation] = []
+        /// Pictures the answer's web search found.
+        var images: [ChatImage] = []
         /// Changes the answer proposes to the page, with how each was reviewed.
         var changes: [AIPageChange] = []
         /// A web search under way (its query, when the provider says it).
@@ -50,6 +52,9 @@ final class AIChat {
         var thinking: ChatThinking?
         var error: String?
     }
+
+    /// How many pictures a web search may bring.
+    static let imageResults = 6
 
     var messages: [Message] = []
     /// What the conversation's older turns said, sent in their place (`ChatCompaction`).
@@ -256,6 +261,8 @@ final class AIChat {
             selection: contextSelection, model: model, webSearch: webSearch, language: AIService.appLanguage)
         // The model thinks first; its thinking streams into the answer's timeline.
         request.reasoning = true
+        // A search may bring pictures too, shown under the answer (OpenAI's search; Anthropic's has none).
+        if webSearch { request.imageResults = Self.imageResults }
         Log.info(
             "AI chat", category: "ai",
             context: [
@@ -266,6 +273,15 @@ final class AIChat {
         run.start(
             client.stream(request), onEvent: { [weak self] event in self?.apply(event) },
             onEnd: { [weak self] error in self?.finish(error: error) })
+    }
+
+    /// A picture can go into the page the chat sits beside.
+    var canAddPictures: Bool { openPageID != nil && editor != nil }
+
+    /// A picture the answer's search found, added to the open page at its caret.
+    func addPicture(_ image: ChatImage) {
+        guard let url = image.webURL, let editor else { return }
+        Task { await editor.insertWebImage(url, caption: image.caption) }
     }
 
     func stop() {
@@ -377,6 +393,10 @@ final class AIChat {
                 !messages[last].citations.contains(citation)
             else { return }
             messages[last].citations.append(citation)
+        case .image(let image):
+            let picture = ChatImage(url: image.url, thumbnail: image.thumbnail, source: image.source, caption: image.caption)
+            guard picture.webURL != nil, !messages[last].images.contains(where: { $0.url == picture.url }) else { return }
+            messages[last].images.append(picture)
         case .finished:
             break
         }
@@ -408,7 +428,7 @@ extension AIChat.Message {
         self.init(
             id: turn.id, role: turn.role, text: turn.text, sentAt: turn.sentAt, attachmentNames: turn.attachments,
             citations: turn.citations.filter { $0.webURL != nil }.map { AICitation(url: $0.url, title: $0.title) },
-            changes: turn.changes ?? [],
+            images: (turn.images ?? []).filter { $0.webURL != nil }, changes: turn.changes ?? [],
             thinking: turn.thinking)
     }
 
@@ -417,7 +437,7 @@ extension AIChat.Message {
         ChatTurn(
             id: id, role: role, text: text, sentAt: sentAt, attachments: attachmentNames + attachments.map(\.name),
             citations: citations.map { ChatCitation(url: $0.url, title: $0.title) }, changes: changes.isEmpty ? nil : changes,
-            thinking: thinking.flatMap(ChatTimeline.kept))
+            thinking: thinking.flatMap(ChatTimeline.kept), images: images.isEmpty ? nil : images)
     }
 }
 
@@ -1033,6 +1053,27 @@ private struct ChatBubble: View {
     /// Where an answer's changes to the page are reviewed.
     var chat: AIChat?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.openURL) private var openURL
+
+    /// The pictures the answer's search found (web addresses only, however they got here).
+    private var pictures: some View {
+        let shown = message.images.compactMap { image in
+            image.thumbnailURL.map { ImageResultItem(id: image.url, thumbnail: $0, caption: image.caption, source: image.sourceURL) }
+        }
+        let byID = Dictionary(message.images.map { ($0.url, $0) }, uniquingKeysWith: { a, _ in a })
+        return ImageResultStrip(
+            items: shown,
+            onAdd: chat?.canAddPictures == true ? { item in if let image = byID[item.id] { chat?.addPicture(image) } } : nil,
+            onOpen: { item in if let source = item.source { openURL(source) } },
+            onCopy: { item in
+                #if os(iOS)
+                    UIPasteboard.general.string = item.id
+                #else
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(item.id, forType: .string)
+                #endif
+            })
+    }
 
     var body: some View {
         switch message.role {
@@ -1087,6 +1128,7 @@ private struct ChatBubble: View {
                         }
                     }
                 }
+                if !message.images.isEmpty { pictures }
                 if !isStreaming && !message.text.isEmpty {
                     HStack(spacing: Spacing.s1) {
                         Button {

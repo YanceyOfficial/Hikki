@@ -158,7 +158,7 @@ public struct LinkPreview: Equatable, Sendable {
 }
 
 /// Refuses redirects to a host that isn't public (each hop is checked like the first).
-private final class RedirectGuard: NSObject, URLSessionTaskDelegate, Sendable {
+final class RedirectGuard: NSObject, URLSessionTaskDelegate, Sendable {
     // The completion-handler form: the async one crashed the compiler (Swift 6.x, @objc thunk for an async method).
     func urlSession(
         _ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,

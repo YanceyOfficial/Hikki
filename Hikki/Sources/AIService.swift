@@ -141,8 +141,8 @@ final class AIService {
         case .searching(let query): ["id": id, "type": "searching", "query": query ?? NSNull()]
         case .citation(let citation): ["id": id, "type": "citation", "url": citation.url, "title": citation.title ?? NSNull()]
         case .finished: ["id": id, "type": "done"]
-        // The page's requests don't ask for thinking (only the chat's timeline shows it).
-        case .reasoning, .reasoningStep: nil
+        // The page's requests don't ask for thinking or pictures (only the chat shows them).
+        case .reasoning, .reasoningStep, .image: nil
         }
     }
 

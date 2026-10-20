@@ -38,6 +38,26 @@ struct OpenAIStreamDecoderTests {
             ])
     }
 
+    @Test func picturesTheSearchFoundOnceEach() {
+        let image =
+            #"{"type":"image_result","image_url":"https://cdn.example/gg.jpg","thumbnail_url":"https://cdn.example/gg-t.jpg","source_website_url":"https://example.com/gg","caption":"Golden Gate at sunset"}"#
+        let lines = [
+            #"data: {"type":"response.output_item.done","item":{"type":"web_search_call","status":"completed","action":{"type":"search","query":"golden gate"},"results":["#
+                + image + #",{"type":"text_result","url":"https://example.com"},"# + image
+                + #",{"type":"image_result","image_url":"https://cdn.example/bare.png"}]}}"#,
+            #"data: {"type":"response.output_item.done","item":{"type":"web_search_call","results":["# + image + "]}}",
+        ]
+        #expect(
+            decode(OpenAIStreamDecoder(), lines).events == [
+                .searching("golden gate"),
+                .image(
+                    AIImageResult(
+                        url: "https://cdn.example/gg.jpg", thumbnail: "https://cdn.example/gg-t.jpg",
+                        source: "https://example.com/gg", caption: "Golden Gate at sunset")),
+                .image(AIImageResult(url: "https://cdn.example/bare.png")),
+            ])
+    }
+
     @Test func failuresThrowInTheUsersTerms() {
         let failed = decode(
             OpenAIStreamDecoder(),
@@ -156,6 +176,31 @@ struct RequestBuilderTests {
         #expect(user[1]["image_url"] as? String == "data:image/png;base64,AQID")
         let assistant = try #require(input[1]["content"] as? [[String: Any]])
         #expect(assistant[0]["type"] as? String == "output_text")
+    }
+}
+
+struct ImageSearchRequestTests {
+    private func json(_ http: URLRequest) throws -> [String: Any] {
+        let body = try #require(http.httpBody)
+        return try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
+    }
+
+    @Test func openAIAsksForPicturesOnlyWhenTold() throws {
+        var request = AIRequest(model: AIModelCatalog.gptSol, instructions: "", messages: [.user("hi")], webSearch: true)
+        var body = try json(RequestBuilders.openAI(request, apiKey: "k"))
+        #expect((body["tools"] as? [[String: Any]])?.first?["search_content_types"] == nil)
+        #expect(body["include"] == nil)
+        request.imageResults = 6
+        body = try json(RequestBuilders.openAI(request, apiKey: "k"))
+        let tool = try #require((body["tools"] as? [[String: Any]])?.first)
+        #expect(tool["search_content_types"] as? [String] == ["text", "image"])
+        #expect((tool["image_settings"] as? [String: Any])?["max_results"] as? Int == 6)
+        #expect((tool["image_settings"] as? [String: Any])?["caption"] as? Bool == true)
+        #expect(body["include"] as? [String] == ["web_search_call.results"])
+        // No search, no pictures.
+        request.webSearch = false
+        body = try json(RequestBuilders.openAI(request, apiKey: "k"))
+        #expect(body["tools"] == nil && body["include"] == nil)
     }
 }
 

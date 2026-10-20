@@ -219,6 +219,7 @@ public nonisolated enum Size {
     public static let pdfSheetHeight: CGFloat = 720
     public static let homeFilter: CGFloat = 220
     public static let homeNarrow: CGFloat = 600
+    public static let aiPicture: CGFloat = 96
     public static let homeCard: CGFloat = 240
     public static let splitMin: CGFloat = 320
     public static let historyList: CGFloat = 240

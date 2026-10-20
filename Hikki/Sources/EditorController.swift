@@ -538,6 +538,25 @@ final class EditorController {
         }
     #endif
 
+    /// A picture on the web (one an AI answer's search found) added to the page: fetched into the workspace's assets,
+    /// then put in at the caret as a picked one is (`touchInsertMedia`), named by its caption. A failure is a toast.
+    func insertWebImage(_ url: URL, caption: String?) async {
+        guard let assets else { return }
+        do {
+            let (data, ext) = try await WebImage.fetch(url)
+            let src = try assets.save(data, fileExtension: ext, maxBytes: data.count)
+            let title = (caption ?? "").replacingOccurrences(of: "/", with: "-").trimmingCharacters(in: .whitespacesAndNewlines)
+            let fallback = String(localized: "app:ai.picture")
+            let name = "\(title.isEmpty ? fallback : String(title.prefix(80))).\(ext)"
+            Log.info("web picture added", category: "ai", context: ["ext": ext, "bytes": "\(data.count)"])
+            await call(
+                "window.hikki.touchInsertMedia(items)", ["items": [["src": src, "name": name, "size": data.count]]],
+                label: "touchInsertMedia")
+        } catch {
+            Toasts.report(.webImageUnavailable, error, category: "ai")
+        }
+    }
+
     /// What the phone's comment field quotes (`touchCommentQuote`); nil where no thread can start.
     func touchCommentQuote(_ scope: String) async -> String? {
         await call("return window.hikki.touchCommentQuote(scope)", ["scope": scope], label: "touchCommentQuote") as? String

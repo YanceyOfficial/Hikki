@@ -85,6 +85,28 @@ struct PageChatsTests {
         }
     }
 
+    @Test func picturesShowOnlyFromTheWebAndAreKept() throws {
+        let picture = ChatImage(
+            url: "https://cdn.example/gg.jpg", thumbnail: "file:///etc/hosts", source: "javascript:alert(1)", caption: "Bridge")
+        // A thumbnail or a page that isn't on the web is left out; the picture itself stands in for its thumbnail.
+        #expect(picture.thumbnailURL?.absoluteString == "https://cdn.example/gg.jpg")
+        #expect(picture.sourceURL == nil)
+        #expect(ChatImage(url: "file:///etc/hosts").webURL == nil)
+
+        let (chats, root) = store()
+        defer { try? FileManager.default.removeItem(at: root) }
+        var answer = turn("a", .assistant, text: "Here", at: 0)
+        answer.images = [picture]
+        try chats.save([answer], pageId: "p")
+        #expect(try chats.conversation(of: "p", now: t0).turns.first?.images == [picture])
+        // A longer copy of the answer from a device that kept no pictures keeps these.
+        var longer = turn("a", .assistant, text: "Here it is", at: 0)
+        longer.images = nil
+        let mac = PageChats.File(format: 1, pageId: "p", clearedAt: nil, turns: [answer])
+        let phone = PageChats.File(format: 1, pageId: "p", clearedAt: nil, turns: [longer])
+        #expect(PageChats.merge(mac, phone).turns.first?.images == [picture])
+    }
+
     @Test func oldTurnsGoAfterTheRetention() throws {
         let (chats, root) = store()
         defer { try? FileManager.default.removeItem(at: root) }

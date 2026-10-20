@@ -75,3 +75,19 @@ struct LinkPreviewTests {
         #expect(preview.title == nil)
     }
 }
+
+struct WebImageTests {
+    @Test func onlyPictureTypesTheStoreTakes() {
+        #expect(WebImage.fileExtension(forContentType: "image/jpeg") == "jpg")
+        #expect(WebImage.fileExtension(forContentType: "Image/PNG; charset=binary") == "png")
+        #expect(WebImage.fileExtension(forContentType: "image/webp") == "webp")
+        for type in ["image/svg+xml", "text/html", "application/octet-stream", "", nil] as [String?] {
+            #expect(WebImage.fileExtension(forContentType: type) == nil, "\(type ?? "nil")")
+        }
+    }
+
+    @Test func aLocalAddressIsRefused() async {
+        await #expect(throws: PublicHost.Refused.self) { _ = try await WebImage.fetch(URL(string: "http://127.0.0.1/x.png")!) }
+        await #expect(throws: PublicHost.Refused.self) { _ = try await WebImage.fetch(URL(string: "file:///etc/hosts")!) }
+    }
+}

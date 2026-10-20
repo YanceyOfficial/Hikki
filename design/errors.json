@@ -178,6 +178,12 @@
       "en": "This block doesn't take that kind of file.",
       "zh": "此块不支持这种文件类型。"
     },
+    "webImageUnavailable": {
+      "code": 4008,
+      "severity": "warning",
+      "en": "Couldn't download this picture.",
+      "zh": "无法下载这张图片。"
+    },
 
     "aiMissingKey": {
       "code": 5001,

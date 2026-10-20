@@ -615,7 +615,7 @@ HikkiUITests/                 XCUITest flows
   (actovia's): live, the step it is on shimmering; then "Thought for 12 seconds", opening into the steps (thinking
   titled by its bold first line, `AIThinking`; web searches by query), grown by `ChatTimeline` and kept on the turn
   (`ChatTurn.thinking`). The page's own AI requests don't ask for thinking.
-  While the model works the chat's "Thinking…" / "Searching the web…" line is HikkiUI's `ShimmerText` (a foreground
+  With web search on, the chat also asks OpenAI's search for pictures (`AIRequest.imageResults`: `search_content_types` + `include: web_search_call.results`, read from the search call's `image_result`s as `.image`) and shows them under the answer (HikkiUI's `ImageResultStrip`, kept as `ChatTurn.images`): Add to page fetches one into the assets (`WebImage`, `HikkiCore/Sources/Text/WebImage.swift`: LinkPreview's public-host rules) and puts it at the caret (`EditorController.insertWebImage`). While the model works the chat's "Thinking…" / "Searching the web…" line is HikkiUI's `ShimmerText` (a foreground
   band sweeping the muted text once per `Motion.loop`; still under Reduce Motion, which gets a spinner instead). Model output is untrusted: the reply is parsed tolerantly (`apps/editor/src/lib/ai-content.ts`;
   sanitized inline HTML through the schema, unknown keys dropped, an unreadable reply is an error), citations must be
   http(s), and any change to the page closes the review. On a picture stored in the workspace or a PDF attachment, the

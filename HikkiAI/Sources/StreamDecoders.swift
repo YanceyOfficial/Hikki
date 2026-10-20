@@ -16,10 +16,11 @@ func sseJSON(_ line: some StringProtocol) -> [String: Any]? {
 }
 
 /// OpenAI's Responses API stream: `response.output_text.delta` (text), `response.reasoning_summary_*` (thinking), `response.web_search_call.*` and the finished
-/// `web_search_call` item (the query), `response.output_text.annotation.added` (`url_citation`), `response.completed`,
+/// `web_search_call` item (the query, and its `image_result`s), `response.output_text.annotation.added` (`url_citation`), `response.completed`,
 /// and `response.failed` / `error`.
 struct OpenAIStreamDecoder: StreamDecoder {
     private var cited = Set<String>()
+    private var pictures = Set<String>()
 
     mutating func consume(_ json: [String: Any]) throws -> [AIEvent] {
         switch json["type"] as? String {
@@ -34,10 +35,21 @@ struct OpenAIStreamDecoder: StreamDecoder {
         case "response.web_search_call.in_progress":
             return [.searching(nil)]
         case "response.output_item.done":
-            guard let item = json["item"] as? [String: Any], item["type"] as? String == "web_search_call",
-                let action = item["action"] as? [String: Any], let query = action["query"] as? String, !query.isEmpty
-            else { return [] }
-            return [.searching(query)]
+            guard let item = json["item"] as? [String: Any], item["type"] as? String == "web_search_call" else { return [] }
+            var events: [AIEvent] = []
+            if let action = item["action"] as? [String: Any], let query = action["query"] as? String, !query.isEmpty {
+                events.append(.searching(query))
+            }
+            // Pictures it found (`image_result`s, when the request asked for them), once each.
+            for result in item["results"] as? [[String: Any]] ?? [] where result["type"] as? String == "image_result" {
+                guard let url = result["image_url"] as? String, !url.isEmpty, pictures.insert(url).inserted else { continue }
+                events.append(
+                    .image(
+                        AIImageResult(
+                            url: url, thumbnail: result["thumbnail_url"] as? String,
+                            source: result["source_website_url"] as? String, caption: result["caption"] as? String)))
+            }
+            return events
         case "response.output_text.annotation.added":
             guard let annotation = json["annotation"] as? [String: Any],
                 annotation["type"] as? String == "url_citation", let url = annotation["url"] as? String,

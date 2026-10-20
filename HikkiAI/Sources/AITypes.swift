@@ -71,10 +71,12 @@ public struct AIRequest: Sendable {
     public var maxOutputTokens: Int
     /// Let the model think first and stream (a summary of) its thinking as `.reasoning` (the chat's timeline).
     public var reasoning: Bool
+    /// With `webSearch`, how many pictures the search may also return (as `.image`s; OpenAI only — 0: none).
+    public var imageResults: Int
 
     public init(
         model: AIModel, instructions: String, messages: [AIMessage], webSearch: Bool = false, maxOutputTokens: Int = 4096,
-        reasoning: Bool = false
+        reasoning: Bool = false, imageResults: Int = 0
     ) {
         self.model = model
         self.instructions = instructions
@@ -82,6 +84,7 @@ public struct AIRequest: Sendable {
         self.webSearch = webSearch
         self.maxOutputTokens = maxOutputTokens
         self.reasoning = reasoning
+        self.imageResults = imageResults
     }
 }
 
@@ -96,6 +99,22 @@ public struct AICitation: Hashable, Codable, Sendable {
     }
 }
 
+/// A picture the provider's web search found: the picture, a smaller copy, the page it is on, a line saying what it
+/// shows. Addresses as the provider gave them — whoever shows one checks it is a web address first.
+public struct AIImageResult: Hashable, Codable, Sendable {
+    public var url: String
+    public var thumbnail: String?
+    public var source: String?
+    public var caption: String?
+
+    public init(url: String, thumbnail: String? = nil, source: String? = nil, caption: String? = nil) {
+        self.url = url
+        self.thumbnail = thumbnail
+        self.source = source
+        self.caption = caption
+    }
+}
+
 /// What a stream yields, in order: text as it is written, web searches as they start, the sources cited, the end.
 public enum AIEvent: Equatable, Sendable {
     case text(String)
@@ -106,6 +125,8 @@ public enum AIEvent: Equatable, Sendable {
     /// A web search began (the query when the provider says it).
     case searching(String?)
     case citation(AICitation)
+    /// A picture the web search found (only when the request asks for `imageResults`).
+    case image(AIImageResult)
     case finished
 }
 

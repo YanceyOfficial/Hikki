@@ -272,6 +272,15 @@
                                 .init(id: 1, kind: .search, title: "Searched for “Kyoto weather May”"),
                             ])
                     }
+                    Section("ImageResultStrip") {
+                        ImageResultStrip(
+                            items: [
+                                ImageResultItem(
+                                    id: "1", thumbnail: URL(string: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=200")!,
+                                    caption: "Kiyomizu-dera", source: URL(string: "https://example.com/kyoto")),
+                                ImageResultItem(id: "2", thumbnail: URL(string: "https://invalid.example/missing.jpg")!),
+                            ], onAdd: { _ in }, onOpen: { _ in }, onCopy: { _ in })
+                    }
                     Section("ShimmerText") {
                         ShimmerText("app:ai.thinking").font(.hk(.sm))
                         ShimmerText("app:ai.searching").font(.hk(.sm))
