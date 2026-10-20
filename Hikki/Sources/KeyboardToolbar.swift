@@ -1,19 +1,32 @@
 #if os(iOS)
-    import GameController
     import HikkiCore
     import HikkiUI
     import ObjectiveC
     import SwiftUI
+    import UniformTypeIdentifiers
     import WebKit
 
-    /// The bar over the software keyboard (Notion's): one row of tools — with a caret, + · AI · @ · to-do · photo ·
-    /// comment · Aa · link · indent · outdent · undo; with a selection, Aa · B · I · U · S · colour · AI · link ·
-    /// comment. Tools that need no typing (+, Aa, colour) put their panel where the keyboard was, at its height
-    /// (the web view's input view), and the end button brings the keyboard back; tools that need typing (AI, link)
-    /// keep the keyboard and dock their field above the bar (the page's `touchOpen`).
+    /// The bar over the software keyboard (Notion's): one glass capsule of tools — with a caret, AI · + · Aa · file ·
+    /// photo · turn into · undo · emoji · comment, then (scrolled) @ · delete · indent · outdent · move up · move down ·
+    /// ⋯; with a selection, Aa · B · I · U · S · colour · AI · link · comment · ⋯. Tools that need no typing (+, Aa,
+    /// turn into, colour) put their panel where the keyboard was, at its height (the web view's input view), and the
+    /// end button brings the keyboard back; AI and link open a native field over the keyboard (`composer`, drawn by
+    /// the page screen), ⋯ the block's actions as a sheet (`blockActions`).
     @MainActor @Observable
     final class KeyboardBar {
-        enum Panel { case blocks, format }
+        enum Panel { case blocks, format, turnInto }
+
+        /// The native field over the keyboard for AI or a link, on the words `touchPrepare` selected — or a comment,
+        /// on the selection or the caret's block (`commentScope`).
+        struct Composer: Identifiable, Equatable {
+            enum Kind { case ai, link, comment }
+            let id = UUID()
+            var kind: Kind
+            var quote: String
+            var href: String?
+            var presets: [AIComposerPreset]
+            var commentScope = "selection"
+        }
 
         @ObservationIgnored weak var controller: EditorController?
         @ObservationIgnored weak var webView: HikkiWebView?
@@ -21,8 +34,17 @@
         private(set) var blocks: [KeyboardBlockSection] = []
         private(set) var turnInto: [KeyboardBlockItem] = []
         private(set) var state = EditorController.TouchState()
+        private(set) var composer: Composer?
+        /// The ⋯ sheet's block (nil: closed); the page screen presents it.
+        var blockActions: BlockActionsInfo?
+        /// The photo / file sheet is open (`MediaPickerSheet`, presented by the page screen).
+        var mediaSheet = false
         /// The keyboard's height (without the bar) when it was last up: a panel takes the same, so the page stays put.
         @ObservationIgnored var keyboardHeight: CGFloat = 291
+        /// A software keyboard is on screen (with a hardware keyboard only the bar is: the system reports a frame of
+        /// the bar's height, or one below the screen). Decided from the frames, not from `GCKeyboard` — a keyboard
+        /// attached (the simulator's always is) doesn't mean the software one is hidden.
+        @ObservationIgnored private var softwareKeyboard = false
         /// With a hardware keyboard the system keeps the keyboard's area off screen, a panel in it too: the panel is a
         /// sheet of that height instead.
         @ObservationIgnored private weak var sheet: UIViewController?
@@ -31,19 +53,24 @@
         init(controller: EditorController) {
             self.controller = controller
             let center = NotificationCenter.default
-            observers.append(
-                center.addObserver(forName: UIResponder.keyboardWillChangeFrameNotification, object: nil, queue: .main) {
-                    [weak self] note in
-                    let frame = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue
-                    MainActor.assumeIsolated { self?.noteKeyboard(frame) }
-                })
+            // Both: some keyboard changes post only the "did" one (seen with a hardware keyboard in the simulator).
+            for name in [UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardDidChangeFrameNotification] {
+                observers.append(
+                    center.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+                        let frame = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue
+                        MainActor.assumeIsolated { self?.noteKeyboard(frame) }
+                    })
+            }
             observers.append(
                 center.addObserver(forName: UIResponder.keyboardDidHideNotification, object: nil, queue: .main) {
                     [weak self] _ in
                     MainActor.assumeIsolated {
                         // The keyboard went away altogether (or the page lost the caret): no panel stays behind.
                         // (A panel shown as a sheet takes the focus by design.)
-                        guard let self, self.panel != nil, self.sheet == nil else { return }
+                        // Only when the page really let go of the caret: swapping the keyboard for a panel may post a
+                        // hide of its own.
+                        guard let self, self.panel != nil, self.sheet == nil, self.webView?.editingContent?.isFirstResponder != true
+                        else { return }
                         self.panel = nil
                         self.webView?.keyboardPanel = nil
                     }
@@ -55,8 +82,13 @@
         }
 
         private func noteKeyboard(_ frame: CGRect?) {
-            guard panel == nil, let frame, frame.height > KeyboardAccessoryBar<EmptyView>.height * 2 else { return }
-            keyboardHeight = frame.height - KeyboardAccessoryBar<EmptyView>.height
+            guard let frame else { return }
+            let screen = webView?.window?.screen.bounds ?? frame
+            let shown = frame.height > KeyboardAccessoryBar<EmptyView>.height * 2 && frame.minY < screen.maxY - 1
+            // While a panel is in the keyboard's place the frame is the panel's: it says nothing new.
+            guard panel == nil else { return }
+            softwareKeyboard = shown
+            if shown { keyboardHeight = frame.height - KeyboardAccessoryBar<EmptyView>.height }
         }
 
         func toggle(_ kind: Panel) {
@@ -68,13 +100,13 @@
             switch kind {
             case .blocks:
                 blocks = await controller.touchBlockMenu()
-            case .format:
+            case .format, .turnInto:
                 turnInto = await controller.touchTurnIntoMenu()
                 await refresh()
             }
             let host = UIHostingController(rootView: KeyboardPanelView(bar: self))
             panel = kind
-            if GCKeyboard.coalesced != nil, sheet == nil, let presenter = webView.window?.rootViewController?.topmostPresented {
+            if !softwareKeyboard, sheet == nil, let presenter = webView.window?.rootViewController?.topmostPresented {
                 host.sheetPresentationController?.detents = [.custom { [height = keyboardHeight] _ in height }]
                 host.sheetPresentationController?.prefersGrabberVisible = true
                 host.presentationController?.delegate = sheetDelegate
@@ -123,15 +155,121 @@
             }
         }
 
-        /// AI or link: the keyboard stays and the page docks the field above the bar.
-        func openField(_ kind: String) {
+        /// AI or link: a native field over the keyboard, on the selection (or the word at the caret, which the page
+        /// selects). It takes the keyboard; the page keeps painting its selection meanwhile.
+        func openField(_ kind: Composer.Kind) {
             closePanel()
-            Task { await controller?.touchOpen(kind) }
+            Task {
+                guard let target = await controller?.touchPrepare() else { return }
+                webView?.dismissEditMenu()
+                composer = Composer(kind: kind, quote: target.quote, href: target.href, presets: target.presets)
+            }
         }
 
+        /// Comment: a native field over the keyboard on the selection, or else (and from the ⋯ sheet) the caret's
+        /// block. The page's own comment sheet stays shut: its field taking focus scrolled the page away.
+        func openComment(block: Bool = false) {
+            closePanel()
+            let scope = block ? "block" : "selection"
+            Task {
+                guard let quote = await controller?.touchCommentQuote(scope) else { return }
+                webView?.dismissEditMenu()
+                composer = Composer(kind: .comment, quote: quote, href: nil, presets: [], commentScope: scope)
+            }
+        }
+
+        func sendComment(_ body: String) {
+            guard let scope = composer?.commentScope else { return }
+            composer = nil
+            Task { await controller?.touchComment(scope: scope, body: body) }
+        }
+
+        func closeComposer() {
+            composer = nil
+        }
+
+        /// The composer's request: a preset (its id) or the user's own words.
+        func sendAI(preset: String? = nil, instruction: String? = nil) {
+            composer = nil
+            Task { await controller?.touchAI(id: preset ?? "custom", instruction: preset == nil ? instruction : nil) }
+        }
+
+        func setLink(_ href: String?) {
+            composer = nil
+            Task { await controller?.touchLink(href) }
+        }
+
+        /// ⋯: the block at the caret's actions, as a sheet over the page (the keyboard goes down).
+        func openBlockActions() {
+            closePanel()
+            Task {
+                guard let controller, let info = await controller.touchBlockInfo() else { return }
+                let items = info.turnInto == nil ? [] : await controller.touchTurnIntoMenu()
+                let link = await controller.touchBlockLink() != nil
+                blockActions = BlockActionsInfo(
+                    kind: info.kind, turnInto: info.turnInto, turnIntoItems: items, textColor: info.textColor,
+                    backgroundColor: info.backgroundColor, colorable: info.colorable, copyLink: link, comment: info.comment,
+                    askAI: info.ai, words: info.words, characters: info.characters)
+                webView?.endEditing(true)
+            }
+        }
+
+        func runBlockAction(_ action: BlockAction) {
+            Task {
+                guard let controller else { return }
+                switch action {
+                case .copyLink:
+                    guard let link = await controller.touchBlockLink() else { return }
+                    Self.copyLink(href: link.href, label: link.label)
+                    Toasts.shared.show(.success, String(localized: "app:blockActions.linkCopied"))
+                case .askAI:
+                    await controller.touchBlockAction("selectText")
+                    openField(.ai)
+                case .comment:
+                    openComment(block: true)
+                case .insertBelow, .duplicate, .delete:
+                    await controller.touchBlockAction(action.rawValue)
+                }
+            }
+        }
+
+        /// A ready hyperlink (the block's text) plus the URL, as the page's own Copy link puts them: pasted into a
+        /// page it lands as a link, anywhere else as the address.
+        private static func copyLink(href: String, label: String) {
+            let text = label.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;")
+                .replacingOccurrences(of: ">", with: "&gt;")
+            let attribute = href.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "\"", with: "&quot;")
+            var item: [String: Any] = [
+                UTType.html.identifier: "<a href=\"\(attribute)\">\(text)</a>", UTType.utf8PlainText.identifier: href,
+            ]
+            if let url = URL(string: href) { item[UTType.url.identifier] = url }
+            UIPasteboard.general.setItems([item])
+        }
+
+        func setBlockColor(_ kind: KeyboardFormatPanel.ColorKind, _ color: String?) {
+            Task { await controller?.touchBlockColor(kind, color) }
+        }
+
+        /// A block from "+"; pictures, video, audio and files come through the photo / file sheet instead of the
+        /// page's file input.
         func insertBlock(_ id: String) {
+            if Self.mediaBlocks.contains(id) { return openMedia() }
             closePanel()
             Task { await controller?.touchInsertBlock(id) }
+        }
+
+        private static let mediaBlocks: Set<String> = ["image", "video", "audio", "file"]
+
+        /// Photo and file: our own sheet of sources (camera, Photos, Files, scan); what is picked goes in at the caret.
+        func openMedia() {
+            closePanel()
+            mediaSheet = true
+            webView?.endEditing(true)
+        }
+
+        func insertMedia(_ picked: [PickedMedia]) {
+            mediaSheet = false
+            Task { await controller?.insertMedia(picked) }
         }
 
         func turnInto(_ id: String) {
@@ -180,24 +318,28 @@
                     tool("app:format.underline", .textUnderline, isActive: marked("underline")) { bar.run("underline") }
                     tool("app:format.strikethrough", .textStrikethrough, isActive: marked("strike")) { bar.run("strike") }
                     tool("app:keyboard.color", .textAUnderline) { bar.toggle(.format) }
-                    divider
-                    tool("app:keyboard.askAI", .sparkle) { bar.openField("ai") }
-                    tool("app:format.link", .link) { bar.openField("link") }
-                    tool("app:keyboard.comment", .chatTeardropText) { bar.run("comment") }
+                    tool("app:keyboard.askAI", .sparkle) { bar.openField(.ai) }
+                    tool("app:format.link", .link) { bar.openField(.link) }
+                    tool("app:keyboard.comment", .chatTeardropText) { bar.openComment() }
+                    tool("app:keyboard.more", .dotsThree) { bar.openBlockActions() }
                 } else {
+                    // Notion's order: what a line becomes first, then the block's own moves after a scroll.
+                    tool("app:keyboard.askAI", .sparkle) { bar.openField(.ai) }
                     tool("app:keyboard.addBlock", .plus, isActive: bar.panel == .blocks) { bar.toggle(.blocks) }
-                    tool("app:keyboard.askAI", .sparkle) { bar.openField("ai") }
-                    tool("app:keyboard.mention", .at) { bar.run("mention") }
-                    divider
-                    tool("app:format.todoList", .checkSquare, isActive: on("taskList")) { bar.run("todo") }
-                    tool("app:keyboard.photo", .image) { bar.insertBlock("image") }
-                    tool("app:keyboard.comment", .chatTeardropText) { bar.run("comment") }
-                    divider
                     tool("app:keyboard.format", .textAa, isActive: bar.panel == .format) { bar.toggle(.format) }
-                    tool("app:format.link", .link) { bar.openField("link") }
+                    tool("app:keyboard.file", .paperclip) { bar.openMedia() }
+                    tool("app:keyboard.photo", .image) { bar.openMedia() }
+                    tool("app:keyboard.turnInto", .arrowsClockwise, isActive: bar.panel == .turnInto) { bar.toggle(.turnInto) }
+                    tool("app:format.undo", .arrowUUpLeft) { bar.run("undo") }
+                    tool("app:keyboard.emoji", .smiley) { bar.run("emoji") }
+                    tool("app:keyboard.comment", .chatTeardropText) { bar.openComment() }
+                    tool("app:keyboard.mention", .at) { bar.run("mention") }
+                    tool("app:keyboard.deleteBlock", .trash) { bar.run("delete") }
                     tool("app:keyboard.indent", .textIndent) { bar.run("indent") }
                     tool("app:keyboard.outdent", .textOutdent) { bar.run("outdent") }
-                    tool("app:format.undo", .arrowUUpLeft) { bar.run("undo") }
+                    tool("app:shortcut.moveBlockUp", .arrowUp) { bar.run("moveUp") }
+                    tool("app:shortcut.moveBlockDown", .arrowDown) { bar.run("moveDown") }
+                    tool("app:keyboard.more", .dotsThree) { bar.openBlockActions() }
                 }
             }
             // A selection made or cleared: the marks the panel shows follow.
@@ -208,10 +350,6 @@
             -> some View
         {
             ToolbarIconButton(title, symbol: icon, isActive: isActive, action: action)
-        }
-
-        private var divider: some View {
-            Rectangle().fill(Theme.border).frame(width: Spacing.px, height: Spacing.s5).padding(.horizontal, Spacing.s1)
         }
     }
 
@@ -224,11 +362,19 @@
                 switch bar.panel {
                 case .blocks:
                     KeyboardBlockPanel(sections: bar.blocks, onPick: bar.insertBlock)
+                case .turnInto:
+                    KeyboardBlockPanel(
+                        sections: [.init(id: "turnInto", title: String(localized: "app:keyboard.turnInto"), items: bar.turnInto)],
+                        current: bar.state.block,
+                        onPick: { id in
+                            bar.turnInto(id)
+                            bar.closePanel()
+                        })
                 case .format:
                     KeyboardFormatPanel(
                         marks: Set(bar.state.marks.compactMap(KeyboardFormatPanel.Mark.init(rawValue:))), turnInto: bar.turnInto,
                         block: bar.state.block, textColor: bar.state.textColor, backgroundColor: bar.state.backgroundColor,
-                        onMark: { mark in mark == .link ? bar.openField("link") : bar.run(mark.rawValue) },
+                        onMark: { mark in mark == .link ? bar.openField(.link) : bar.run(mark.rawValue) },
                         onTurnInto: bar.turnInto(_:), onColor: bar.setColor)
                 case nil:
                     Color.clear
@@ -257,7 +403,7 @@
             host.view.autoresizingMask = [.flexibleWidth]
             keyboardToolbar = host.view
 
-            guard let content = contentView else {
+            guard let content = editingContent else {
                 Log.warn("keyboard toolbar: WKContentView not found", category: "ui")
                 return
             }
@@ -270,10 +416,21 @@
 
         /// The keyboard swaps for the panel (or back), the caret staying put.
         func reloadKeyboardViews() {
-            contentView?.reloadInputViews()
+            editingContent?.reloadInputViews()
         }
 
-        private var contentView: UIView? {
+        /// WebKit's Cut / Copy / Paste menu goes away: a native field over the keyboard leaves it hanging over the page.
+        func dismissEditMenu() {
+            // WebKit hangs the interaction on one of its content view's subviews, not on the content view itself.
+            func dismiss(in view: UIView) {
+                for case let menu as UIEditMenuInteraction in view.interactions { menu.dismissMenu() }
+                view.subviews.forEach(dismiss)
+            }
+            dismiss(in: self)
+        }
+
+        /// WebKit's content view: the first responder while the page is edited.
+        var editingContent: UIView? {
             scrollView.subviews.first { NSStringFromClass(type(of: $0)).hasPrefix("WKContent") }
         }
 

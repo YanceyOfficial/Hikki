@@ -638,16 +638,27 @@ HikkiUITests/                 XCUITest flows
   `window.hikki.setSpellcheck`). `window.hikki.setInsets` gives the page the toolbar height for fixed panels and, on
   iPhone, the floating bar's room at the foot (`--hk-inset-bottom`, 0 while the keyboard is up).
 - **Keyboard bar (iOS)**, Notion's (`Hikki/Sources/KeyboardToolbar.swift`): native SwiftUI over the software keyboard
-  as the web view's input accessory (a runtime subclass of WebKit's content view, no private API). With a caret:
-  - · AI · @ · to-do · photo · comment · Aa · link · indent · outdent · undo; with a selection: Aa · B · I · U · S ·
-    colour · AI · link · comment — the page's floating selection menu stays away meanwhile (`window.hikki.setKeyboardBar`).
-  - and Aa open a panel in the keyboard's place at its height (the same subclass's `inputView`, swapped with
-    `reloadInputViews`, the caret staying put): HikkiUI's `KeyboardBlockPanel` (the "/" catalog as flat two-column rows)
-    and `KeyboardFormatPanel` (marks, Turn into, text colour and background); the bar's end button brings the keyboard
-    back, a swipe down closes both. With a hardware keyboard (`GCKeyboard`) the system keeps the keyboard's area
-    off screen, so the panel is a sheet of the keyboard's height instead. Their contents and tools come from the page (`apps/editor/src/core/touch-tools.ts`:
-    the catalog with Phosphor icon names the native `Icon` set shares, `touchState`, `touchRun`…); AI and link keep
-    the keyboard and dock their field above the bar (`apps/editor/src/components/touch-dock.tsx`, `touchOpen`).
+  as the web view's input accessory (a runtime subclass of WebKit's content view, no private API) — one Liquid Glass
+  capsule (HikkiUI's `KeyboardAccessoryBar`: tools scroll inside it, the keyboard button pinned at its end). With a
+  caret: AI · + · Aa · file · photo · turn into · undo · emoji · comment · @ · delete · indent · outdent · move up ·
+  move down · ⋯; with a selection: Aa · B · I · U · S · colour · AI · link · comment · ⋯ — the page's floating
+  selection menu stays away meanwhile (`window.hikki.setKeyboardBar`). +, Aa and turn into open a panel in the
+  keyboard's place at its height (the same subclass's `inputView`, swapped with `reloadInputViews`, the caret staying
+  put): HikkiUI's `KeyboardBlockPanel` (the "/" catalog as flat two-column rows; turn into marks the current kind) and
+  `KeyboardFormatPanel` (marks, Turn into, text colour and background); the bar's end button brings the keyboard
+  back, a swipe down closes both. Whether a software keyboard is up is read from the keyboard's frames (both
+  will/did change: the simulator posts only "did"), never `GCKeyboard`; without one the system keeps the keyboard's
+  area off screen, so the panel is a sheet of the keyboard's height instead. AI, link and comment open a native glass
+  field over the keyboard (HikkiUI's `KeyboardAIComposer` / `KeyboardLinkComposer` / `KeyboardCommentComposer`, drawn
+  by `PageScreen`) on what `touchPrepare` / `touchCommentQuote` pointed at; a comment is started and sent in one step
+  (`touchComment`), so the page's own comment sheet stays shut — focusing its field scrolled the page to its end. ⋯
+  is HikkiUI's `BlockActionsSheet` (the caret's block: Turn into, Color, Insert below; Copy link, Duplicate, Delete;
+  Comment; Ask AI; its words). Photo, file and the "+" panel's media blocks open our own sheet (HikkiUI's
+  `MediaSourceSheet`, hosted by `Hikki/Sources/MediaPicker.swift`: Camera and Photos tiles, Files, Scan document
+  through VisionKit as one PDF); picks move into the workspace's assets natively (`EditorController.insertMedia`) and
+  go in at the caret (`touchInsertMedia`). Contents and tools come from the page (`apps/editor/src/core/touch-tools.ts`:
+  the catalog with Phosphor icon names the native `Icon` set shares, `touchState`, `touchRun`…). The page's web view
+  ignores the keyboard's safe area (`PageScreen`), so the keyboard coming and going never resizes it (it juddered).
 - **Screen titles (iOS)**: each screen names itself (`.screenTitle(_:)`, `Hikki/Sources/ScreenTitle.swift`, the
   frontmost by depth through `ScreenTitleStack` in HikkiCore) and the root publishes it as the scene's
   `NSUserActivity` title (`app.yancey.hikki.viewing`), which iOS uses to name a screenshot — actovia's way.

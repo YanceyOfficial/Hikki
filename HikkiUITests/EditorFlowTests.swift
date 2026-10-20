@@ -411,7 +411,7 @@ final class EditorFlowTests: XCTestCase {
 
     #if os(iOS)
         /// The keyboard bar's panels take the keyboard's place: + inserts a block and the keyboard comes back; Aa
-        /// stays until the bar's keyboard button.
+        /// puts the keyboard down and stays until the bar's keyboard button brings it back.
         func testKeyboardBarPanels() throws {
             continueAfterFailure = false
             let app = launch()
@@ -436,16 +436,135 @@ final class EditorFlowTests: XCTestCase {
             body.typeText("Day one")
             XCTAssertTrue(waitOrDumpTree(app.webViews.staticTexts["Day one"].firstMatch, in: app), "heading text missing")
 
+            // A software keyboard on screen (a phone): the panel takes its place — the keyboard goes, the bar stays above
+            // the panel, and its keyboard button brings the keyboard back. A hardware keyboard (this simulator has one
+            // attached; the software keyboard stays off screen): a sheet of that height, closed by a swipe down.
+            let keyboard = app.keyboards.firstMatch
+            let softwareKeyboard = keyboard.exists && keyboard.frame.minY < app.frame.maxY - 1
             app.buttons["Format"].firstMatch.tap()
             let format = app.descendants(matching: .any)["keyboard-format-panel"].firstMatch
             XCTAssertTrue(waitOrDumpTree(format, in: app), "Aa panel did not open")
             attach(app, "format-panel")
-            // In the keyboard's place the bar's keyboard button closes it; as a sheet (a hardware keyboard, as the
-            // simulator usually has), a swipe down.
-            let showKeyboard = app.buttons["show-keyboard"].firstMatch
-            if showKeyboard.isHittable { showKeyboard.tap() } else { format.swipeDown(velocity: .fast) }
             let gone = NSPredicate(format: "exists == false")
-            wait(for: [expectation(for: gone, evaluatedWith: format)], timeout: 5)
+            if softwareKeyboard {
+                let noKeyboard = NSPredicate(format: "count == 0")
+                wait(for: [expectation(for: noKeyboard, evaluatedWith: app.keyboards)], timeout: 5)
+                let showKeyboard = app.buttons["show-keyboard"].firstMatch
+                XCTAssertTrue(showKeyboard.isHittable, "the bar should stay above the Aa panel")
+                showKeyboard.tap()
+                wait(for: [expectation(for: gone, evaluatedWith: format)], timeout: 5)
+                XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5), "keyboard did not come back after Aa")
+            } else {
+                format.swipeDown(velocity: .fast)
+                wait(for: [expectation(for: gone, evaluatedWith: format)], timeout: 5)
+            }
+        }
+
+        /// The bar's AI and link fields are native, over the keyboard, on the word at the caret; ⋯ opens the block's
+        /// actions as a sheet, whose Duplicate copies the block.
+        func testKeyboardBarFieldsAndBlockActions() throws {
+            continueAfterFailure = false
+            let app = launch()
+            let newPage = app.buttons["new-page"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+            newPage.tap()
+            let title = app.webViews.textViews["Page title"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+            title.tap()
+            title.typeText("Plan\n")
+            let body = app.webViews.textViews["Page content"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(body, in: app), "body missing")
+            body.typeText("Hello world")
+
+            app.buttons["Ask AI"].firstMatch.tap()
+            let ai = app.descendants(matching: .any)["keyboard-ai-composer"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(ai, in: app), "the AI field did not open")
+            XCTAssertTrue(app.buttons["keyboard-ai-improve"].firstMatch.exists, "AI's presets missing")
+            attach(app, "ai-composer")
+            app.buttons["keyboard-composer-close"].firstMatch.tap()
+            let gone = NSPredicate(format: "exists == false")
+            wait(for: [expectation(for: gone, evaluatedWith: ai)], timeout: 5)
+
+            body.tap()
+            app.buttons["Link"].firstMatch.tap()
+            let field = app.textFields["keyboard-link-field"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(field, in: app), "the link field did not open")
+            attach(app, "link-composer")
+            field.typeText("https://example.com\n")
+            XCTAssertTrue(app.webViews.links["world"].firstMatch.waitForExistence(timeout: 5), "the word at the caret wasn't linked")
+
+            body.tap()
+            app.buttons["More actions"].firstMatch.tap()
+            let sheet = app.descendants(matching: .any)["block-actions-sheet"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(sheet, in: app), "the ⋯ sheet did not open")
+            attach(app, "block-actions")
+            app.buttons["block-action-duplicate"].firstMatch.tap()
+            wait(for: [expectation(for: gone, evaluatedWith: sheet)], timeout: 5)
+            let copies = NSPredicate(format: "count == 2")
+            wait(for: [expectation(for: copies, evaluatedWith: app.webViews.links.matching(identifier: "world"))], timeout: 5)
+        }
+
+        /// The bar's comment opens a native field over the keyboard; the page stays where it was (the page's own sheet
+        /// focusing its field scrolled the page to its end) and sending closes it.
+        func testKeyboardBarCommentKeepsThePlace() throws {
+            continueAfterFailure = false
+            let app = launch()
+            let newPage = app.buttons["new-page"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+            newPage.tap()
+            let title = app.webViews.textViews["Page title"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+            title.tap()
+            title.typeText("Plan\n")
+            let body = app.webViews.textViews["Page content"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(body, in: app), "body missing")
+            for line in 1...30 { body.typeText("Line number \(line) of the page\n") }
+            app.swipeDown(velocity: .fast)
+            app.swipeDown(velocity: .fast)
+            let line = app.webViews.staticTexts["Line number 3 of the page"].firstMatch
+            XCTAssertTrue(line.waitForExistence(timeout: 5))
+            line.doubleTap()
+
+            app.buttons["Comment"].firstMatch.tap()
+            let composer = app.descendants(matching: .any)["keyboard-comment-composer"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(composer, in: app), "the comment field did not open")
+            attach(app, "comment-composer")
+            XCTAssertFalse(app.webViews.textFields["Add a comment…"].exists, "the page's own comment sheet opened")
+            XCTAssertTrue(line.isHittable, "the page scrolled away from the passage")
+            XCTAssertFalse(app.menuItems["Copy"].exists, "the page's edit menu stayed over it")
+            app.textFields["keyboard-comment-field"].firstMatch.typeText("Check this\n")
+            let gone = NSPredicate(format: "exists == false")
+            wait(for: [expectation(for: gone, evaluatedWith: composer)], timeout: 5)
+            attach(app, "comment-sent")
+            // The comment's mark splits line 3 into pieces; the line above it stands for the place.
+            XCTAssertTrue(
+                app.webViews.staticTexts["Line number 2 of the page"].firstMatch.isHittable, "the page scrolled away after sending")
+        }
+
+        /// Photo opens our own sheet of sources (camera and scan only where the device has them), not the page's file
+        /// input.
+        func testKeyboardBarPhotoOpensTheMediaSheet() throws {
+            continueAfterFailure = false
+            let app = launch()
+            let newPage = app.buttons["new-page"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+            newPage.tap()
+            let title = app.webViews.textViews["Page title"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+            title.tap()
+            title.typeText("Plan\n")
+            let body = app.webViews.textViews["Page content"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(body, in: app), "body missing")
+
+            app.buttons["Photo"].firstMatch.tap()
+            let sheet = app.descendants(matching: .any)["media-source-sheet"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(sheet, in: app), "the media sheet did not open")
+            XCTAssertTrue(app.buttons["media-source-library"].firstMatch.exists, "Photos missing")
+            XCTAssertTrue(app.buttons["media-source-files"].firstMatch.exists, "Files missing")
+            attach(app, "media-sheet")
+            sheet.swipeDown(velocity: .fast)
+            let gone = NSPredicate(format: "exists == false")
+            wait(for: [expectation(for: gone, evaluatedWith: sheet)], timeout: 5)
         }
 
         private func attach(_ app: XCUIApplication, _ name: String) {

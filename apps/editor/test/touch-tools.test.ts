@@ -6,14 +6,21 @@ import { createEditor } from '../src/core/editor'
 import {
   phosphorName,
   selectAroundCaret,
+  touchBlockAction,
+  touchBlockColor,
+  touchBlockInfo,
   touchBlockMenu,
+  touchComment,
+  touchCommentQuote,
   touchInsertBlock,
+  touchInsertMedia,
   touchRun,
   touchSetColor,
   touchState,
   touchTurnInto,
   touchTurnIntoMenu
 } from '../src/core/touch-tools'
+import { commentsState } from '../src/extensions/comments'
 import { stripIds } from './helpers'
 
 let host: HTMLElement
@@ -26,6 +33,10 @@ function open(content: object[]) {
   editor = createEditor(host, { type: 'doc', content })
 }
 const types = () => (stripIds(editor.getJSON()).content as { type: string }[]).map((n) => n.type)
+const texts = () =>
+  (stripIds(editor.getJSON()).content as { content?: { text: string }[] }[]).map(
+    (n) => n.content?.[0]?.text ?? ''
+  )
 
 beforeEach(() => {
   host = document.createElement('div')
@@ -106,5 +117,121 @@ describe('the phone keyboard bar', () => {
     expect(selectAroundCaret(editor)).toBe(true)
     const { from, to } = editor.state.selection
     expect(editor.state.doc.textBetween(from, to)).toBe('this')
+  })
+
+  it('moves, duplicates and deletes the block at the caret', () => {
+    open([para('one'), para('two'), para('three')])
+    editor.commands.setTextSelection(7) // in "two"
+    expect(touchRun(editor, 'moveUp')).toBe(true)
+    expect(texts()).toEqual(['two', 'one', 'three'])
+    expect(touchRun(editor, 'moveDown')).toBe(true)
+    expect(touchRun(editor, 'moveDown')).toBe(true)
+    expect(texts()).toEqual(['one', 'three', 'two'])
+    expect(touchRun(editor, 'duplicate')).toBe(true)
+    expect(texts()).toEqual(['one', 'three', 'two', 'two'])
+    expect(touchRun(editor, 'delete')).toBe(true)
+    expect(texts()).toEqual(['one', 'three', 'two'])
+  })
+
+  it('the emoji tool types ":" — spaced from the word before it — and the suggestion takes over', () => {
+    open([para('hi')])
+    editor.commands.setTextSelection(3)
+    expect(touchRun(editor, 'emoji')).toBe(true)
+    expect(texts()).toEqual(['hi :'])
+  })
+
+  it("the ⋯ sheet describes the caret's block and acts on it", () => {
+    open([
+      { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Plan it' }] },
+      para('next')
+    ])
+    editor.commands.setTextSelection(2)
+    expect(touchBlockInfo(editor)).toMatchObject({
+      turnInto: 'heading2',
+      colorable: true,
+      comment: true,
+      ai: true,
+      words: 2,
+      characters: 7,
+      textColor: null
+    })
+    expect(touchBlockColor(editor, 'background', 'blue')).toBe(true)
+    expect(touchBlockColor(editor, 'text', 'not-a-colour')).toBe(true)
+    expect(touchBlockInfo(editor)).toMatchObject({ backgroundColor: 'blue', textColor: null })
+
+    expect(touchBlockAction(editor, 'insertBelow')).toBe(true)
+    expect(texts()).toEqual(['Plan it', '', 'next'])
+    expect(editor.state.selection.$from.parent.textContent).toBe('')
+
+    editor.commands.setTextSelection(2)
+    expect(touchBlockAction(editor, 'selectText')).toBe(true)
+    const { from, to } = editor.state.selection
+    expect(editor.state.doc.textBetween(from, to)).toBe('Plan it')
+  })
+})
+
+describe('the native comment field', () => {
+  const created: string[] = []
+  function openWithComments(content: object[]) {
+    created.length = 0
+    editor = createEditor(
+      host,
+      { type: 'doc', content },
+      {
+        comments: {
+          create: (_id, quote, body) => created.push(`${quote}|${body}`),
+          reply: () => {},
+          resolve: () => {},
+          remove: () => {},
+          edit: () => {},
+          device: () => 'iPhone',
+          pages: () => [],
+          openPage: () => {},
+          link: () => null
+        }
+      }
+    )
+  }
+
+  it('comments on the selection in one step, leaving no draft or open thread for the page sheet', () => {
+    openWithComments([para('Hello world')])
+    editor.commands.setTextSelection({ from: 7, to: 12 })
+    expect(touchCommentQuote(editor, 'selection')).toBe('world')
+    expect(touchComment(editor, 'selection', 'Nice')).toBe(true)
+    expect(created).toEqual(['world|Nice'])
+    const plugin = commentsState(editor.state)
+    expect(plugin?.draft).toBeNull()
+    expect(plugin?.active).toBeNull()
+    expect(editor.state.doc.rangeHasMark(7, 12, editor.schema.marks.comment)).toBe(true)
+  })
+
+  it("comments on the caret's whole block without a selection, and refuses an empty body", () => {
+    openWithComments([para('First'), para('Second line')])
+    editor.commands.setTextSelection(10)
+    expect(touchCommentQuote(editor, 'selection')).toBe('Second line')
+    expect(touchComment(editor, 'selection', '  ')).toBe(false)
+    expect(touchComment(editor, 'block', 'Why?')).toBe(true)
+    expect(created).toEqual(['Second line|Why?'])
+  })
+})
+
+describe('touchInsertMedia', () => {
+  const photo = { src: 'hikki-editor://assets/a1.jpg', name: 'IMG_0001.jpg', size: 2048 }
+  const scan = { src: 'hikki-editor://assets/b2.pdf', name: 'Scan.pdf', size: 4096 }
+
+  it('replaces an empty line with the files, each as its kind, the caret after them', () => {
+    open([para('Intro'), para()])
+    editor.commands.setTextSelection(8)
+    expect(touchInsertMedia(editor, [photo, scan])).toBe(true)
+    expect(types()).toEqual(['paragraph', 'image', 'fileAttachment', 'paragraph'])
+    expect(editor.state.selection.$from.parent.type.name).toBe('paragraph')
+  })
+
+  it("goes below the caret's block, and refuses what isn't a stored file", () => {
+    open([para('Intro'), para('After')])
+    editor.commands.setTextSelection(3)
+    expect(touchInsertMedia(editor, [{ ...photo, src: 'javascript:alert(1)' }])).toBe(false)
+    expect(touchInsertMedia(editor, [photo])).toBe(true)
+    expect(types()).toEqual(['paragraph', 'image', 'paragraph'])
   })
 })

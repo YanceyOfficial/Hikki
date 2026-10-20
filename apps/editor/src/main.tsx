@@ -15,8 +15,9 @@ import {
   type PagePayload
 } from './core/protocol'
 import { applyShortcutOverrides, type ShortcutOverride } from './core/shortcuts'
-import type { TouchTool } from './core/touch-tools'
+import type { TouchBlockAction, TouchCommentScope, TouchMedia, TouchTool } from './core/touch-tools'
 import { devTransport, webkitTransport } from './core/transport'
+import type { AIAction } from './extensions/ai-review'
 import type { ThreadItem } from './extensions/comments'
 import { findShortcut, type FindMode } from './extensions/find'
 import type { PageIndexEntry } from './extensions/page-links'
@@ -81,7 +82,18 @@ window.hikki = {
   touchRun: (tool: TouchTool) => bridge.touchRun(tool),
   touchSetColor: (kind: 'text' | 'background', color: string | null) =>
     bridge.touchSetColor(kind, color),
-  touchOpen: (kind: 'ai' | 'link') => bridge.touchOpen(kind),
+  // Its AI and link fields (native, over the keyboard) and the ⋯ sheet of the caret's block.
+  touchPrepare: () => bridge.touchPrepare(),
+  touchAI: (action: AIAction) => bridge.touchAI(action),
+  touchLink: (href: string | null) => bridge.touchLink(href),
+  touchInsertMedia: (items: TouchMedia[]) => bridge.touchInsertMedia(items),
+  touchCommentQuote: (scope: TouchCommentScope) => bridge.touchCommentQuote(scope),
+  touchComment: (scope: TouchCommentScope, body: string) => bridge.touchComment(scope, body),
+  touchBlockInfo: () => bridge.touchBlockInfo(),
+  touchBlockAction: (action: TouchBlockAction) => bridge.touchBlockAction(action),
+  touchBlockColor: (kind: 'text' | 'background', color: string | null) =>
+    bridge.touchBlockColor(kind, color),
+  touchBlockLink: () => bridge.touchBlockLink(),
   // A tab shown again scrolls back to where it was.
   restoreScroll: (top: number) => bridge.restoreScroll(top),
   // The inspector's outline: a heading to the top of the page, marked as the one being read.

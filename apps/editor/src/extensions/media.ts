@@ -1,7 +1,7 @@
 import { Extension, mergeAttributes, Node, type Editor } from '@tiptap/core'
 import FileHandler from '@tiptap/extension-file-handler'
 import Image from '@tiptap/extension-image'
-import type { Node as PMNode } from '@tiptap/pm/model'
+import type { Node as PMNode, Schema } from '@tiptap/pm/model'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet, type NodeView } from '@tiptap/pm/view'
 import { createRoot } from 'react-dom/client'
@@ -429,18 +429,25 @@ export function insertFiles(
 }
 
 function nodeFor(kind: MediaKind, src: string, file: File) {
-  return (editor: Editor) => {
-    const { schema } = editor.state
-    switch (kind) {
-      case 'image':
-        return schema.nodes.image.create({ src, alt: file.name })
-      case 'video':
-        return schema.nodes.video.create({ src, name: file.name })
-      case 'audio':
-        return schema.nodes.audio.create({ src, name: file.name })
-      case 'file':
-        return schema.nodes.fileAttachment.create({ src, name: file.name, size: file.size })
-    }
+  return (editor: Editor) => storedFileNode(editor.state.schema, kind, src, file)
+}
+
+/** The block for a stored file: a picture, video, audio or attachment (by `kind`), named after the file. */
+export function storedFileNode(
+  schema: Schema,
+  kind: MediaKind,
+  src: string,
+  file: { name: string; size: number }
+): PMNode {
+  switch (kind) {
+    case 'image':
+      return schema.nodes.image.create({ src, alt: file.name })
+    case 'video':
+      return schema.nodes.video.create({ src, name: file.name })
+    case 'audio':
+      return schema.nodes.audio.create({ src, name: file.name })
+    case 'file':
+      return schema.nodes.fileAttachment.create({ src, name: file.name, size: file.size })
   }
 }
 

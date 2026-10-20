@@ -107,6 +107,14 @@ public nonisolated enum Icon: String, CaseIterable, Sendable {
     case textOutdent = "text-outdent"
     case textUnderline = "text-underline"
     case textAUnderline = "text-a-underline"
+    case arrowsClockwise = "arrows-clockwise"
+    case smiley = "smiley"
+    case arrowDown = "arrow-down"
+    case camera = "camera"
+    case images = "images"
+    case scan = "scan"
+    case paintBrush = "paint-brush"
+    case file = "file"
 
     /// The SF Symbol drawn for this icon, if any.
     public var systemName: String? {
@@ -206,6 +214,14 @@ public nonisolated enum Icon: String, CaseIterable, Sendable {
         case .textIndent: "increase.indent"
         case .textOutdent: "decrease.indent"
         case .textUnderline: "underline"
+        case .arrowsClockwise: "arrow.triangle.2.circlepath"
+        case .smiley: "face.smiling"
+        case .arrowDown: "arrow.down"
+        case .camera: "camera"
+        case .images: "photo.on.rectangle"
+        case .scan: "doc.viewfinder"
+        case .paintBrush: "paintbrush"
+        case .file: "doc"
         default: nil
         }
     }

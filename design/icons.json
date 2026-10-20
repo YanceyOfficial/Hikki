@@ -298,6 +298,30 @@
     "text-underline": {
       "sf": "underline"
     },
-    "text-a-underline": {}
+    "text-a-underline": {},
+    "arrows-clockwise": {
+      "sf": "arrow.triangle.2.circlepath"
+    },
+    "smiley": {
+      "sf": "face.smiling"
+    },
+    "arrow-down": {
+      "sf": "arrow.down"
+    },
+    "camera": {
+      "sf": "camera"
+    },
+    "images": {
+      "sf": "photo.on.rectangle"
+    },
+    "scan": {
+      "sf": "doc.viewfinder"
+    },
+    "paint-brush": {
+      "sf": "paintbrush"
+    },
+    "file": {
+      "sf": "doc"
+    }
   }
 }

@@ -27,6 +27,10 @@ struct PageScreen: View {
         GeometryReader { proxy in
             EditorView(controller: editor, topInset: proxy.safeAreaInsets.top, bottomInset: bottomBarInset)
                 .ignoresSafeArea(.container, edges: underBars)
+                // WebKit makes room for the keyboard itself (the scroll view's inset, the caret kept in view). SwiftUI
+                // shrinking the web view as well resized the page on every frame of the keyboard's animation — it
+                // stuttered as the keyboard came and went.
+                .ignoresSafeArea(.keyboard)
         }
         // iPhone: the page shows its own title; the bar keeps only its glass buttons.
         .navigationTitle(phoneToolbar ? "" : page.map { Self.title($0) } ?? "")
@@ -102,6 +106,28 @@ struct PageScreen: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
+            // The keyboard bar's AI and link fields: native, over the keyboard (the page's own selection stays painted).
+            .overlay(alignment: .bottom) {
+                if let bar = editor.webView.keyboardBar, let composer = bar.composer {
+                    KeyboardComposerHost(bar: bar, composer: composer)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .sheet(isPresented: blockActionsShown) {
+                if let bar = editor.webView.keyboardBar, let info = bar.blockActions {
+                    BlockActionsSheet(info: info, onAction: bar.runBlockAction, onTurnInto: bar.turnInto, onColor: bar.setBlockColor)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                }
+            }
+            .sheet(isPresented: mediaSheetShown) {
+                if let bar = editor.webView.keyboardBar {
+                    MediaPickerSheet(onPicked: bar.insertMedia)
+                    .presentationDetents([.height(Size.mediaSheet)])
+                    .presentationDragIndicator(.visible)
+                }
+            }
+            .animation(Motion.easeOut(), value: editor.webView.keyboardBar?.composer)
             .animation(Motion.easeOut(), value: keyboardShown)
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
                 keyboardShown = true
@@ -138,6 +164,20 @@ struct PageScreen: View {
     #if os(iOS)
         /// iPhone with the keyboard down — and no vertical bar to hold its buttons.
         private var showsFloatingBar: Bool { phoneToolbar && !keyboardShown && verticalBar == nil }
+
+        /// The keyboard bar's photo / file sheet.
+        private var mediaSheetShown: Binding<Bool> {
+            Binding(
+                get: { editor.webView.keyboardBar?.mediaSheet == true },
+                set: { if !$0 { editor.webView.keyboardBar?.mediaSheet = false } })
+        }
+
+        /// The keyboard bar's ⋯ sheet.
+        private var blockActionsShown: Binding<Bool> {
+            Binding(
+                get: { editor.webView.keyboardBar?.blockActions != nil },
+                set: { if !$0 { editor.webView.keyboardBar?.blockActions = nil } })
+        }
     #endif
 
     /// Parents of the page, nearest last (root first).
@@ -345,3 +385,31 @@ private struct PageFacts: View {
         }
     }
 }
+
+#if os(iOS)
+    /// The keyboard bar's field over the keyboard: Ask AI (presets or the user's words) or a link.
+    private struct KeyboardComposerHost: View {
+        let bar: KeyboardBar
+        let composer: KeyboardBar.Composer
+
+        var body: some View {
+            switch composer.kind {
+            case .ai:
+                KeyboardAIComposer(
+                    quote: composer.quote, presets: composer.presets, onSend: { bar.sendAI(instruction: $0) },
+                    onPreset: { bar.sendAI(preset: $0) }, onClose: bar.closeComposer
+                )
+                .id(composer.id)
+            case .link:
+                KeyboardLinkComposer(
+                    quote: composer.quote, href: composer.href, onApply: { bar.setLink($0) }, onRemove: { bar.setLink(nil) },
+                    onClose: bar.closeComposer
+                )
+                .id(composer.id)
+            case .comment:
+                KeyboardCommentComposer(quote: composer.quote, onSend: { bar.sendComment($0) }, onClose: bar.closeComposer)
+                    .id(composer.id)
+            }
+        }
+    }
+#endif

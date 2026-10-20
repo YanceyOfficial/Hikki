@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Round glass "hide keyboard" button. In a multi-line editor Return inserts a newline, so without it
-/// the only way out of the keyboard is a gesture people don't find. With a panel in the keyboard's place
-/// (`showsKeyboard`), it brings the keyboard back instead.
+/// The keyboard bar's end button: puts the keyboard away — or, while a panel is in the keyboard's place
+/// (`showsKeyboard`), closes the panel and brings the keyboard back. Drawn as the bar's other tools are, inside its
+/// glass capsule.
 public struct KeyboardDismissButton: View {
     private let showsKeyboard: Bool
     private let action: () -> Void
@@ -13,22 +13,18 @@ public struct KeyboardDismissButton: View {
     }
 
     public var body: some View {
-        Button(action: action) {
-            IconLabel(
-                showsKeyboard ? "app:keyboard.show" : "app:keyboard.hide", icon: showsKeyboard ? .keyboardFill : .keyboard,
-                size: TextSize.base.rawValue
-            )
-            .labelStyle(.iconOnly)
-            // The keyboard glyph is wider than the formatting icons; at full scale its circle would dominate the bar.
-            .imageScale(.small)
-        }
-        .buttonStyle(.glass)
-        .buttonBorderShape(.circle)
+        ToolbarIconButton(
+            showsKeyboard ? "app:keyboard.show" : "app:keyboard.hide", symbol: showsKeyboard ? .x : .keyboard,
+            action: action
+        )
         .accessibilityIdentifier(showsKeyboard ? "show-keyboard" : "hide-keyboard")
     }
 }
 
 #Preview {
-    KeyboardDismissButton {}
-        .padding()
+    HStack {
+        KeyboardDismissButton {}
+        KeyboardDismissButton(showsKeyboard: true) {}
+    }
+    .padding()
 }

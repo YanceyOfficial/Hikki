@@ -66,7 +66,7 @@ function DrawerOverlay({ className, ...props }: DrawerPrimitive.Backdrop.Props) 
     <DrawerPrimitive.Backdrop
       data-slot="drawer-overlay"
       className={cn(
-        'fixed inset-0 z-50 min-h-dvh bg-black/25 dark:bg-black/50 opacity-[max(var(--drawer-overlay-min-opacity,0),calc(1-var(--drawer-swipe-progress)))] transition-opacity duration-(--motion-pop-in) ease-out motion-reduce:transition-none select-none data-ending-style:pointer-events-none data-ending-style:opacity-0 data-ending-style:duration-(--motion-pop-out) data-snap-points:[--drawer-overlay-min-opacity:0.5] data-starting-style:opacity-0 data-swiping:duration-0 supports-[-webkit-touch-callout:none]:absolute', // design-lint: allow — duration-0: it follows the finger while swiped
+        'fixed inset-0 z-50 min-h-dvh bg-black/25 dark:bg-black/50 opacity-[max(var(--drawer-overlay-min-opacity,0),calc(1-var(--drawer-swipe-progress)))] transition-opacity duration-(--motion-pop-in) ease-out motion-reduce:transition-none select-none data-ending-style:pointer-events-none data-ending-style:opacity-0 data-ending-style:duration-(--motion-pop-out) data-snap-points:[--drawer-overlay-min-opacity:0.5] data-starting-style:opacity-0 data-swiping:duration-0', // design-lint: allow — duration-0: it follows the finger while swiped. Fixed on iOS too (shadcn makes it absolute there for Safari's toolbar): absolute, it dimmed only the top of a scrolled page
         className
       )}
       {...props}

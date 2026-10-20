@@ -26,13 +26,15 @@ public struct KeyboardBlockSection: Identifiable, Equatable, Sendable {
 }
 
 /// The phone's "+" panel, in the keyboard's place: the block catalog as flat two-column rows (icon + name, Notion's),
-/// grouped as the "/" menu is.
+/// grouped as the "/" menu is. Also the bar's Turn into, with the block's current kind marked (`current`).
 public struct KeyboardBlockPanel: View {
     let sections: [KeyboardBlockSection]
+    let current: String?
     let onPick: (String) -> Void
 
-    public init(sections: [KeyboardBlockSection], onPick: @escaping (String) -> Void) {
+    public init(sections: [KeyboardBlockSection], current: String? = nil, onPick: @escaping (String) -> Void) {
         self.sections = sections
+        self.current = current
         self.onPick = onPick
     }
 
@@ -41,7 +43,7 @@ public struct KeyboardBlockPanel: View {
             LazyVStack(alignment: .leading, spacing: Spacing.s2) {
                 ForEach(sections) { section in
                     PanelTitle(verbatim: section.title)
-                    BlockGrid(items: section.items, current: nil, onPick: onPick)
+                    BlockGrid(items: section.items, current: current, onPick: onPick)
                         .padding(.bottom, Spacing.s2)
                 }
             }

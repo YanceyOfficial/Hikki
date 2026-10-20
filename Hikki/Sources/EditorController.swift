@@ -478,9 +478,117 @@ final class EditorController {
             ["kind": kind == .text ? "text" : "background", "color": color ?? NSNull()], label: "touchSetColor")
     }
 
-    /// Ask AI or a link's field, docked above the keyboard.
-    func touchOpen(_ kind: String) async {
-        await call("window.hikki.touchOpen(kind)", ["kind": kind], label: "touchOpen")
+    /// What the bar's AI or link field will act on: the selection (or the word at the caret, which the page selects),
+    /// the link there, and AI's presets. Nil: nothing to act on.
+    struct TouchTarget {
+        var quote: String
+        var href: String?
+        var presets: [AIComposerPreset]
+    }
+
+    func touchPrepare() async -> TouchTarget? {
+        guard let value = await call("return window.hikki.touchPrepare()", label: "touchPrepare") as? [String: Any] else {
+            return nil
+        }
+        let presets = ((value["presets"] as? [[String: Any]]) ?? []).compactMap { preset -> AIComposerPreset? in
+            guard let id = preset["id"] as? String, let label = preset["label"] as? String else { return nil }
+            return AIComposerPreset(id: id, label: label)
+        }
+        return TouchTarget(quote: value["quote"] as? String ?? "", href: value["href"] as? String, presets: presets)
+    }
+
+    /// The composer's request on the prepared selection: a preset's id, or `custom` with the user's words.
+    func touchAI(id: String, instruction: String?) async {
+        var action: [String: Any] = ["id": id]
+        if let instruction { action["instruction"] = instruction }
+        await call("window.hikki.touchAI(action)", ["action": action], label: "touchAI")
+    }
+
+    /// A link on the prepared selection (nil removes the one there).
+    func touchLink(_ href: String?) async {
+        await call("window.hikki.touchLink(href)", ["href": href ?? NSNull()], label: "touchLink")
+    }
+
+    #if os(iOS)
+        /// Files the phone's photo / file sheet picked: each moves into the workspace's assets, then they go into the
+        /// page at the caret as blocks (`touchInsertMedia`). One that can't be stored is said in a toast; the rest go in.
+        func insertMedia(_ picked: [PickedMedia]) async {
+            guard let assets else { return }
+            var items: [[String: Any]] = []
+            for media in picked {
+                let name = media.url.lastPathComponent
+                let size = (try? media.url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                do {
+                    let src = try assets.importFile(at: media.url, fileExtension: media.url.pathExtension)
+                    items.append(["src": src, "name": name, "size": size])
+                } catch {
+                    let code: ErrorCode =
+                        switch error as? AssetStore.AssetError {
+                        case .tooLarge?: .fileTooLarge
+                        case .unsupportedType?: .fileTypeNotAllowed
+                        default: .uploadFailed
+                        }
+                    Toasts.report(code, error, category: "media", context: ["ext": media.url.pathExtension.lowercased()])
+                }
+                try? FileManager.default.removeItem(at: media.url.deletingLastPathComponent())
+            }
+            guard !items.isEmpty else { return }
+            Log.info("media picked", category: "media", context: ["count": "\(items.count)"])
+            await call("window.hikki.touchInsertMedia(items)", ["items": items], label: "touchInsertMedia")
+        }
+    #endif
+
+    /// What the phone's comment field quotes (`touchCommentQuote`); nil where no thread can start.
+    func touchCommentQuote(_ scope: String) async -> String? {
+        await call("return window.hikki.touchCommentQuote(scope)", ["scope": scope], label: "touchCommentQuote") as? String
+    }
+
+    /// The comment field's Send: the thread and its first comment in one step.
+    func touchComment(scope: String, body: String) async {
+        await call("window.hikki.touchComment(scope, body)", ["scope": scope, "body": body], label: "touchComment")
+    }
+
+    /// The ⋯ sheet's block at the caret (`touchBlockInfo` in touch-tools.ts).
+    struct TouchBlockInfo {
+        var kind: String
+        var turnInto: String?
+        var textColor: String?
+        var backgroundColor: String?
+        var colorable: Bool
+        var comment: Bool
+        var ai: Bool
+        var words: Int?
+        var characters: Int?
+    }
+
+    func touchBlockInfo() async -> TouchBlockInfo? {
+        guard let value = await call("return window.hikki.touchBlockInfo()", label: "touchBlockInfo") as? [String: Any]
+        else { return nil }
+        return TouchBlockInfo(
+            kind: value["kind"] as? String ?? "", turnInto: value["turnInto"] as? String,
+            textColor: value["textColor"] as? String, backgroundColor: value["backgroundColor"] as? String,
+            colorable: value["colorable"] as? Bool ?? false, comment: value["comment"] as? Bool ?? false,
+            ai: value["ai"] as? Bool ?? false, words: (value["words"] as? NSNumber)?.intValue,
+            characters: (value["characters"] as? NSNumber)?.intValue)
+    }
+
+    /// insertBelow, duplicate, delete, comment or selectText, on the caret's block.
+    func touchBlockAction(_ action: String) async {
+        await call("window.hikki.touchBlockAction(action)", ["action": action], label: "touchBlockAction")
+    }
+
+    func touchBlockColor(_ kind: KeyboardFormatPanel.ColorKind, _ color: String?) async {
+        await call(
+            "window.hikki.touchBlockColor(kind, color)",
+            ["kind": kind == .text ? "text" : "background", "color": color ?? NSNull()], label: "touchBlockColor")
+    }
+
+    /// The caret's block's link and its text, for Copy link.
+    func touchBlockLink() async -> (href: String, label: String)? {
+        guard let value = await call("return window.hikki.touchBlockLink()", label: "touchBlockLink") as? [String: Any],
+            let href = value["href"] as? String
+        else { return nil }
+        return (href, value["label"] as? String ?? "")
     }
 
     /// Selects the page title for typing — now if that page is loaded, otherwise right after it loads.

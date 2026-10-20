@@ -75,6 +75,36 @@
                         }
                         .listRowInsets(EdgeInsets())
                     }
+                    Section("KeyboardAIComposer") {
+                        KeyboardAIComposer(
+                            quote: "Hello world", presets: [.init(id: "improve", label: "Improve writing")], onSend: { _ in },
+                            onPreset: { _ in }, onClose: {}
+                        )
+                        .listRowInsets(EdgeInsets())
+                    }
+                    Section("KeyboardLinkComposer") {
+                        KeyboardLinkComposer(quote: "Hikki", href: nil, onApply: { _ in }, onRemove: {}, onClose: {})
+                            .listRowInsets(EdgeInsets())
+                    }
+                    Section("KeyboardCommentComposer") {
+                        KeyboardCommentComposer(quote: "Line number 3", onSend: { _ in }, onClose: {})
+                            .listRowInsets(EdgeInsets())
+                    }
+                    Section("BlockActionsSheet") {
+                        BlockActionsSheet(
+                            info: .init(
+                                kind: "Text", turnInto: "paragraph", turnIntoItems: [.init(id: "paragraph", label: "Text", icon: .textT)],
+                                textColor: nil, backgroundColor: nil, colorable: true, copyLink: true, comment: true, askAI: true,
+                                words: 2, characters: 11),
+                            onAction: { _ in }, onTurnInto: { _ in }, onColor: { _, _ in }
+                        )
+                        .frame(height: 480)
+                        .listRowInsets(EdgeInsets())
+                    }
+                    Section("MediaSourceSheet") {
+                        MediaSourceSheet { _ in }
+                            .listRowInsets(EdgeInsets())
+                    }
                     Section("ShortcutRecorder") {
                         LabeledContent("Bold") {
                             ShortcutRecorder(

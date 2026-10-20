@@ -362,6 +362,16 @@ describe('EditorBridge', () => {
     expect(editor().isFocused).toBe(false)
   })
 
+  it('blur() leaves no selection behind: WebKit would keep painting it, with its edit menu over it', () => {
+    bridge.loadDocument(page('a', { content: doc('hello world') }))
+    editor().commands.setTextSelection({ from: 1, to: 6 })
+    window.getSelection()?.selectAllChildren(host)
+    bridge.blur()
+    expect(editor().state.selection.empty).toBe(true)
+    expect(editor().state.selection.from).toBe(6)
+    expect(window.getSelection()?.rangeCount ?? 0).toBe(0)
+  })
+
   it('enterFromTitle focuses the body synchronously and starts a fresh first line', () => {
     bridge.loadDocument(page('a', { content: doc('existing') }))
     bridge.enterFromTitle()

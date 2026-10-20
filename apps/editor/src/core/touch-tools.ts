@@ -1,7 +1,14 @@
 import type { Editor } from '@tiptap/core'
 import { TextSelection } from '@tiptap/pm/state'
 
-import { PALETTE, type PaletteColor } from '../extensions/colors'
+import { blockCounts, unitTypeId } from '../components/block-menu'
+import { TURN_INTO } from '../components/block-type-list'
+import { BLOCK_UNIT_ACTIONS } from '../extensions/block-controls'
+import { deleteUnit, duplicateUnit, unitAtPos, unitTextRange } from '../extensions/block-units'
+import { BLOCK_COLOR_TYPES, PALETTE, type PaletteColor } from '../extensions/colors'
+import { blockQuote } from '../extensions/comments'
+import { mediaKindOf, safeMediaSrc, storedFileNode } from '../extensions/media'
+import { blockKindLabel } from './block-kinds'
 import { BLOCK_GROUPS, BLOCK_TYPES, type BlockGroup, type BlockType } from './blocks'
 import { t } from './i18n'
 
@@ -82,6 +89,46 @@ export function touchInsertBlock(editor: Editor, id: string): boolean {
   return done
 }
 
+/** A file the phone's native sheet stored (Photos, the camera, Files, a scan), to go in at the caret. */
+export type TouchMedia = { src: string; name: string; size: number }
+
+/**
+ * The phone's photo / file sheet: the stored files go in as blocks (by their kind) where "+" puts a block — in place
+ * of an empty line, else after the caret's block or the whole list it is in — with the caret after them.
+ */
+export function touchInsertMedia(editor: Editor, items: TouchMedia[]): boolean {
+  if (!editor.isEditable) return false
+  const nodes = items.flatMap((item) => {
+    const kind = mediaKindOf({ type: '', name: item.name })
+    const src = safeMediaSrc(item.src, kind)
+    return src ? [storedFileNode(editor.schema, kind, src, item)] : []
+  })
+  if (nodes.length === 0) return false
+  const { $from } = editor.state.selection
+  const size = nodes.reduce((sum, node) => sum + node.nodeSize, 0)
+  const tr = editor.state.tr
+  let start: number
+  if (
+    $from.parent.type.name === 'paragraph' &&
+    $from.parent.content.size === 0 &&
+    !WHOLE.has($from.node(-1)?.type.name ?? '')
+  ) {
+    start = $from.before()
+    tr.replaceWith(start, $from.after(), nodes)
+  } else {
+    let depth = $from.depth
+    while (depth > 1 && WHOLE.has($from.node(depth - 1).type.name)) depth -= 1
+    start = $from.after(depth)
+    tr.insert(start, nodes)
+  }
+  // The caret goes on the line after them, a new one unless a text line follows.
+  const after = start + size
+  if (!tr.doc.nodeAt(after)?.isTextblock) tr.insert(after, editor.schema.nodes.paragraph.create())
+  tr.setSelection(TextSelection.create(tr.doc, after + 1))
+  editor.view.dispatch(tr.scrollIntoView())
+  return true
+}
+
 export function touchTurnInto(editor: Editor, id: string): boolean {
   const block = BLOCK_TYPES.find((b) => b.id === id)
   if (!block?.turnInto || !editor.isEditable) return false
@@ -131,8 +178,13 @@ export type TouchTool =
   | 'undo'
   | 'redo'
   | 'mention'
+  | 'emoji'
   | 'todo'
   | 'comment'
+  | 'delete'
+  | 'duplicate'
+  | 'moveUp'
+  | 'moveDown'
 
 export function touchRun(editor: Editor, tool: TouchTool): boolean {
   if (!editor.isEditable && tool !== 'comment') return false
@@ -158,17 +210,127 @@ export function touchRun(editor: Editor, tool: TouchTool): boolean {
     case 'redo':
       return chain.redo().run()
     case 'mention':
-      // A space first when the "@" would stick to a word (the suggestion starts only after a space).
-      return chain
-        .insertContent(
-          /\S$/u.test(editor.state.selection.$from.nodeBefore?.text ?? '') ? ' @' : '@'
-        )
-        .run()
+      return chain.insertContent(trigger(editor, '@')).run()
+    case 'emoji':
+      return chain.insertContent(trigger(editor, ':')).run()
     case 'todo':
       return chain.toggleTaskList().run()
     case 'comment':
       return editor.commands.commentStart()
+    case 'delete': {
+      const unit = unitAtPos(editor.state, editor.state.selection.from)
+      if (!unit) return false
+      editor.view.dispatch(deleteUnit(editor.state, unit))
+      return true
+    }
+    case 'duplicate':
+      return BLOCK_UNIT_ACTIONS.duplicateBlock?.(editor) ?? false
+    case 'moveUp':
+      return BLOCK_UNIT_ACTIONS.moveBlockUp?.(editor) ?? false
+    case 'moveDown':
+      return BLOCK_UNIT_ACTIONS.moveBlockDown?.(editor) ?? false
   }
+}
+
+/** A suggestion's trigger character, a space first when it would stick to a word (suggestions start after one). */
+function trigger(editor: Editor, char: string): string {
+  return /\S$/u.test(editor.state.selection.$from.nodeBefore?.text ?? '') ? ` ${char}` : char
+}
+
+/**
+ * The ⋯ sheet (Notion's block actions) for the block at the caret: what it is, what applies to it — Turn into (its
+ * catalog id), its colours, a comment, AI — and its words and characters.
+ */
+export type TouchBlockInfo = {
+  kind: string
+  turnInto: string | null
+  textColor: PaletteColor | null
+  backgroundColor: PaletteColor | null
+  colorable: boolean
+  comment: boolean
+  ai: boolean
+  words: number | null
+  characters: number | null
+}
+
+export function touchBlockInfo(editor: Editor): TouchBlockInfo | null {
+  const unit = unitAtPos(editor.state, editor.state.selection.from)
+  if (!unit) return null
+  const type = unitTypeId(editor, unit)
+  const counts = blockCounts(unit.node)
+  const hasText = unitTextRange(unit) !== null
+  const editable = editor.isEditable
+  return {
+    kind: blockKindLabel(unit.node, editor.state.doc.resolve(unit.pos)),
+    turnInto: editable && TURN_INTO.some((b) => b.id === type) ? type : null,
+    textColor: (unit.node.attrs.blockColor as PaletteColor | null | undefined) ?? null,
+    backgroundColor: (unit.node.attrs.blockBackground as PaletteColor | null | undefined) ?? null,
+    colorable: editable && BLOCK_COLOR_TYPES.includes(unit.node.type.name),
+    comment: editable && (hasText || typeof unit.node.attrs.id === 'string'),
+    ai: editable && hasText,
+    words: counts?.words ?? null,
+    characters: counts?.characters ?? null
+  }
+}
+
+/** The ⋯ sheet's actions on the caret's block (Turn into is `touchTurnInto`, AI the bar's own field). */
+export type TouchBlockAction = 'insertBelow' | 'duplicate' | 'delete' | 'comment' | 'selectText'
+
+export function touchBlockAction(editor: Editor, action: TouchBlockAction): boolean {
+  const unit = unitAtPos(editor.state, editor.state.selection.from)
+  if (!unit || (!editor.isEditable && action !== 'comment')) return false
+  switch (action) {
+    case 'insertBelow': {
+      const end = unit.pos + unit.node.nodeSize
+      const tr = editor.state.tr.insert(end, editor.schema.nodes.paragraph.create())
+      tr.setSelection(TextSelection.create(tr.doc, end + 1))
+      editor.view.dispatch(tr.scrollIntoView())
+      return true
+    }
+    case 'duplicate':
+      editor.view.dispatch(duplicateUnit(editor.state, unit))
+      return true
+    case 'delete':
+      editor.view.dispatch(deleteUnit(editor.state, unit))
+      return true
+    case 'comment': {
+      // On its text (a passage), or — a block without text — on the whole block.
+      const range = unitTextRange(unit)
+      if (!range) {
+        const kind = blockKindLabel(unit.node, editor.state.doc.resolve(unit.pos))
+        return editor.commands.commentStartBlock(unit.pos, blockQuote(unit.node, kind))
+      }
+      editor.view.dispatch(
+        editor.state.tr.setSelection(TextSelection.create(editor.state.doc, range.from, range.to))
+      )
+      return editor.commands.commentStart()
+    }
+    case 'selectText': {
+      // What Ask AI then acts on: the block's text.
+      const range = unitTextRange(unit)
+      if (!range) return false
+      editor.view.dispatch(
+        editor.state.tr.setSelection(TextSelection.create(editor.state.doc, range.from, range.to))
+      )
+      return true
+    }
+  }
+}
+
+/** The ⋯ sheet's Color: the block's own text or background colour (null clears it). */
+export function touchBlockColor(
+  editor: Editor,
+  kind: 'text' | 'background',
+  color: string | null
+): boolean {
+  const unit = unitAtPos(editor.state, editor.state.selection.from)
+  if (!unit || !editor.isEditable || !BLOCK_COLOR_TYPES.includes(unit.node.type.name)) return false
+  const value = (PALETTE as readonly string[]).includes(color ?? '') ? color : null
+  const attrs = kind === 'text' ? { blockColor: value } : { blockBackground: value }
+  editor.view.dispatch(
+    editor.state.tr.setNodeMarkup(unit.pos, undefined, { ...unit.node.attrs, ...attrs })
+  )
+  return true
 }
 
 /** A colour from the Aa panel; null clears it. */
@@ -205,4 +367,45 @@ export function selectAroundCaret(editor: Editor): boolean {
     editor.state.tr.setSelection(TextSelection.create(doc, start + from, start + to))
   )
   return true
+}
+
+/** Where the phone's native comment field puts its thread: the selection, or the caret's whole block. */
+export type TouchCommentScope = 'selection' | 'block'
+
+const commentScope = (editor: Editor, scope: TouchCommentScope): TouchCommentScope =>
+  scope === 'selection' && !editor.state.selection.empty ? 'selection' : 'block'
+
+/**
+ * What the native comment field quotes: the selected words or — no selection, or `block` — the caret's block (its
+ * text; a block without text by its name). Null where no thread can start (code, nothing at the caret).
+ */
+export function touchCommentQuote(editor: Editor, scope: TouchCommentScope): string | null {
+  const { state } = editor
+  if (commentScope(editor, scope) === 'selection') {
+    const { from, to, $from } = state.selection
+    if ($from.parent.type.spec.code) return null
+    const text = state.doc.textBetween(from, to, ' ').trim()
+    return text ? text.slice(0, 200) : null
+  }
+  const unit = unitAtPos(state, state.selection.from)
+  if (!unit || unit.node.type.spec.code) return null
+  const range = unitTextRange(unit)
+  if (!range) return blockQuote(unit.node, blockKindLabel(unit.node, state.doc.resolve(unit.pos)))
+  return state.doc.textBetween(range.from, range.to, ' ').trim().slice(0, 200) || null
+}
+
+/**
+ * The native comment field's Send: the thread starts where `touchCommentQuote` looked and takes its first comment in
+ * the same step, so the page's own comment sheet never opens (focusing a field in it scrolled the page away).
+ */
+export function touchComment(editor: Editor, scope: TouchCommentScope, body: string): boolean {
+  if (!body.trim()) return false
+  const started =
+    commentScope(editor, scope) === 'selection'
+      ? editor.commands.commentStart()
+      : touchBlockAction(editor, 'comment')
+  if (!started) return false
+  const sent = editor.commands.commentSend(body)
+  editor.commands.commentOpen(null)
+  return sent
 }

@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// Bar for above the software keyboard: scrolling tools on the leading side, a hide-keyboard button pinned
-/// trailing so it is always reachable however many tools there are. While a panel takes the keyboard's place
-/// (`panelOpen`), that button brings the keyboard back.
+/// Bar for above the software keyboard (Notion's): one Liquid Glass capsule floating just over the keyboard, its
+/// tools scrolling inside it and the keyboard button pinned at its end, past a hairline, however many tools there
+/// are. While a panel takes the keyboard's place (`panelOpen`), that button closes the panel and brings the keyboard
+/// back.
 public struct KeyboardAccessoryBar<Tools: View>: View {
     public static var height: CGFloat { Size.keyboardBar }
 
@@ -19,20 +20,24 @@ public struct KeyboardAccessoryBar<Tools: View>: View {
     public var body: some View {
         HStack(spacing: Spacing.s0) {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Spacing.s0_5) { tools }
-                    .padding(.horizontal, Spacing.s2)
+                HStack(spacing: Spacing.s0) { tools }
+                    .padding(.horizontal, Spacing.s1)
             }
             // Fades tools out under the pinned button instead of cutting them off.
             .mask(
                 LinearGradient(
-                    stops: [.init(color: .black, location: 0.9), .init(color: .clear, location: 1)], startPoint: .leading,
+                    stops: [.init(color: .black, location: 0.92), .init(color: .clear, location: 1)], startPoint: .leading,
                     endPoint: .trailing)
             )
+            Rectangle().fill(Theme.border).frame(width: Spacing.px, height: Spacing.s6)
             KeyboardDismissButton(showsKeyboard: panelOpen, action: onDismiss)
-                .padding(.trailing, Spacing.s2)
+                .padding(.horizontal, Spacing.s1)
         }
-        .frame(height: Self.height)
-        .background(.bar)
+        .frame(height: Size.toolbarButtonHeight + Spacing.s2)
+        .glassEffect(.regular, in: .capsule)
+        .padding(.horizontal, Spacing.s2)
+        .padding(.bottom, Spacing.s1)
+        .frame(height: Self.height, alignment: .top)
     }
 }
 
@@ -40,9 +45,9 @@ public struct KeyboardAccessoryBar<Tools: View>: View {
     VStack {
         Spacer()
         KeyboardAccessoryBar(onDismiss: {}) {
-            let icons: [Icon] = [.textB, .textItalic, .textStrikethrough, .listBullets, .listNumbers, .listChecks, .quotes, .codeBlock]
+            let icons: [Icon] = [.sparkle, .plus, .textAa, .paperclip, .image, .arrowsClockwise, .arrowUUpLeft, .smiley]
             ForEach(icons, id: \.self) { icon in
-                ToolbarIconButton(LocalizedStringKey(icon.rawValue), symbol: icon, isActive: icon == .textB) {}
+                ToolbarIconButton(LocalizedStringKey(icon.rawValue), symbol: icon, isActive: icon == .plus) {}
             }
         }
     }

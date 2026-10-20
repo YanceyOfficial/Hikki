@@ -51,6 +51,8 @@ let project = Project(
                 "UIApplicationSceneManifest": ["UIApplicationSupportsMultipleScenes": true],
                 // Pages picked in Spotlight arrive as this activity (SpotlightIndex.swift).
                 "NSUserActivityTypes": ["com.apple.corespotlightitem", "app.yancey.hikki.viewing"],
+                // The keyboard bar's photo sheet: Camera and Scan document (InfoPlist.xcstrings has the translations).
+                "NSCameraUsageDescription": "Hikki uses the camera to add photos and scanned documents to your pages.",
             ]),
             sources: ["Hikki/Sources/**"],
             // Built by `make editor` (vite). A folder reference keeps the bundle's relative layout intact.

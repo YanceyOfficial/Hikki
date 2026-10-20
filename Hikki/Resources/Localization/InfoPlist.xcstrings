@@ -1,0 +1,23 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSCameraUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hikki uses the camera to add photos and scanned documents to your pages."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hikki 使用相机为页面添加照片和扫描的文稿。"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

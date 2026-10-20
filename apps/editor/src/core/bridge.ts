@@ -2,11 +2,17 @@ import type { Editor, JSONContent } from '@tiptap/core'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import type { Transaction } from '@tiptap/pm/state'
 
+import { AI_GROUPS } from '../components/ai-panel'
 import { setBlockLinkBuilder } from '../components/block-menu'
-import { dismissAllLayers, FloatingLayer } from '../components/floating'
-import { renderTouchDock } from '../components/touch-dock'
+import { dismissAllLayers } from '../components/floating'
 import type { AIChangesHost } from '../extensions/ai-changes'
-import { handleAIEvent, type AIHost, type AIReviewStyle } from '../extensions/ai-review'
+import {
+  handleAIEvent,
+  type AIAction,
+  type AIHost,
+  type AIReviewStyle
+} from '../extensions/ai-review'
+import { unitAtPos } from '../extensions/block-units'
 import {
   threadRange,
   SAVE_META,
@@ -16,7 +22,12 @@ import {
 } from '../extensions/comments'
 import { runFind, type FindMode } from '../extensions/find'
 import { UploadsKey, type MediaHost } from '../extensions/media'
-import { pageLinkHref, type PageIndexEntry, type PageLinksHost } from '../extensions/page-links'
+import {
+  blockLabel,
+  pageLinkHref,
+  type PageIndexEntry,
+  type PageLinksHost
+} from '../extensions/page-links'
 import { notifyPageIndexChanged } from '../extensions/page-mention'
 import { rubySegmentsFrom, type RubyHost } from '../extensions/ruby'
 import { setKeyboardBar } from '../extensions/selection-menu'
@@ -48,18 +59,35 @@ import {
 import { Store } from './store'
 import {
   selectAroundCaret,
+  touchComment,
+  touchCommentQuote,
+  type TouchCommentScope,
+  touchBlockAction,
+  touchBlockColor,
+  touchBlockInfo,
   touchBlockMenu,
   touchInsertBlock,
+  touchInsertMedia,
+  type TouchMedia,
   touchRun,
   touchSetColor,
   touchState,
   touchTurnInto,
   touchTurnIntoMenu,
   type TouchBlock,
+  type TouchBlockAction,
   type TouchBlockGroup,
+  type TouchBlockInfo,
   type TouchState,
   type TouchTool
 } from './touch-tools'
+
+/** What the phone's native AI / link field acts on (`touchPrepare`). */
+export type TouchTarget = {
+  quote: string
+  href: string | null
+  presets: { id: string; label: string }[]
+}
 
 export interface Transport {
   post(message: ToNativeMessage): Promise<unknown>
@@ -506,44 +534,79 @@ export class EditorBridge {
     return !this.frozen && !!this.editor && touchSetColor(this.editor, kind, color)
   }
 
-  private touchDock: FloatingLayer | null = null
-
-  /** The bar's AI or link: a field docked above the keyboard, acting on the selection (or the word at the caret). */
-  touchOpen(kind: 'ai' | 'link'): boolean {
+  /**
+   * The bar's AI or link (a native field over the keyboard): the selection — or the word at the caret, now selected —
+   * it will act on, the link there, and AI's presets as the selection menu offers them. Null: nothing to act on.
+   */
+  touchPrepare(): TouchTarget | null {
     const editor = this.editor
-    if (!editor || this.frozen || !selectAroundCaret(editor)) return false
-    this.touchDock?.destroy()
-    const close = () => {
-      layer.destroy()
-      if (this.touchDock === layer) this.touchDock = null
+    if (!editor || this.frozen || !selectAroundCaret(editor)) return null
+    const { from, to } = editor.state.selection
+    return {
+      quote: editor.state.doc.textBetween(from, to, ' ').trim().slice(0, 200),
+      href: (editor.getAttributes('link').href as string | undefined) ?? null,
+      presets: AI_GROUPS.flatMap((group) =>
+        group.actions.map((action) => ({ id: action.id, label: action.label() }))
+      )
     }
-    const layer = new FloatingLayer('hk-touch-dock', { onDismiss: close })
-    this.touchDock = layer
-    if (kind === 'ai') {
-      renderTouchDock(layer, {
-        kind,
-        onClose: close,
-        onRun: (action) => {
-          close()
-          editor.commands.aiRun(action)
-        }
-      })
-    } else {
-      renderTouchDock(layer, {
-        kind,
-        href: (editor.getAttributes('link').href as string | undefined) ?? null,
-        onClose: close,
-        onApply: (href) => {
-          close()
-          editor.chain().focus().extendMarkRange('link').setLink({ href }).run()
-        },
-        onRemove: () => {
-          close()
-          editor.chain().focus().extendMarkRange('link').unsetLink().run()
-        }
-      })
+  }
+
+  /** The native AI field's request: a preset, or the user's words, on the selection `touchPrepare` made. */
+  touchAI(action: AIAction): boolean {
+    const editor = this.editor
+    if (!editor || this.frozen || editor.state.selection.empty) return false
+    return editor.commands.aiRun(action)
+  }
+
+  /** The native link field: a link on the selection (null removes the one there). */
+  touchLink(href: string | null): boolean {
+    const editor = this.editor
+    if (!editor || this.frozen) return false
+    const chain = editor.chain().focus().extendMarkRange('link')
+    return (href ? chain.setLink({ href }) : chain.unsetLink()).run()
+  }
+
+  /** Files the phone's photo / file sheet stored, as blocks at the caret. */
+  touchInsertMedia(items: TouchMedia[]): boolean {
+    return !this.frozen && !!this.editor && touchInsertMedia(this.editor, items)
+  }
+
+  /** The native comment field: what it quotes, then its Send (`touch-tools.ts`). */
+  touchCommentQuote(scope: TouchCommentScope): string | null {
+    return this.editor ? touchCommentQuote(this.editor, scope) : null
+  }
+
+  touchComment(scope: TouchCommentScope, body: string): boolean {
+    return !!this.editor && touchComment(this.editor, scope, body)
+  }
+
+  touchBlockInfo(): TouchBlockInfo | null {
+    return this.editor ? touchBlockInfo(this.editor) : null
+  }
+
+  touchBlockAction(action: TouchBlockAction): boolean {
+    return (
+      !!this.editor &&
+      (action === 'comment' || !this.frozen) &&
+      touchBlockAction(this.editor, action)
+    )
+  }
+
+  touchBlockColor(kind: 'text' | 'background', color: string | null): boolean {
+    return !this.frozen && !!this.editor && touchBlockColor(this.editor, kind, color)
+  }
+
+  /** The ⋯ sheet's Copy link: the block's link and its text (the native side puts both on the clipboard). */
+  touchBlockLink(): { href: string; label: string } | null {
+    const editor = this.editor
+    const docId = this.page.get().docId
+    const unit = editor ? unitAtPos(editor.state, editor.state.selection.from) : null
+    const blockId = unit?.node.attrs.id as string | null | undefined
+    if (!unit || !docId || !blockId) return null
+    return {
+      href: pageLinkHref(docId, blockId),
+      label: blockLabel(unit.node) ?? this.page.get().title
     }
-    return true
   }
 
   /** `window.hikki.aiPageBlocks`: the open page's text blocks with their ids, for Ask AI to propose changes by. */
@@ -835,8 +898,14 @@ export class EditorBridge {
 
   /** Drops DOM focus so the software keyboard goes away (native "hide keyboard" button). */
   blur(): void {
-    this.editor?.commands.blur()
+    const editor = this.editor
+    // A selection left behind stays painted with no keyboard to act on it, iOS's edit menu still over it: it
+    // collapses to its end (Notion's).
+    if (editor && !editor.state.selection.empty)
+      editor.commands.setTextSelection(editor.state.selection.to)
+    editor?.commands.blur()
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+    window.getSelection()?.removeAllRanges()
   }
 
   /** The page's hover rail: to the heading at this place in the outline (where it is now, looked up again). */
