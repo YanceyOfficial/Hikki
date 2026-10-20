@@ -113,6 +113,7 @@ function DrawingEditor({ data, host, title, handleRef, onChange, onDone, onFail 
   const canvasHost: DrawingHost = {
     upload: host.upload,
     read: host.read,
+    openLink: host.openLink,
     diagram: host.diagram,
     language: excalidrawLanguage(i18n.language),
     theme

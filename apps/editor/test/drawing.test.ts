@@ -67,7 +67,8 @@ beforeEach(() => {
       async (_blob: Blob, extension: string) => `hikki-editor://assets/new.${extension}`
     ),
     read: async () => new Blob(),
-    diagram: null
+    diagram: null,
+    openLink: vi.fn()
   }
   editor = createEditor(element, drawingDoc({ elements: [rect, label] }), { drawing: host })
 })
@@ -113,11 +114,55 @@ describe('a drawing block', () => {
     )
     // Read out by what it shows: only the picture is "Drawing".
     expect(element.querySelector('.hk-drawing')?.getAttribute('aria-label')).toMatch(
-      /^Drawing(:|$)/
+      /^Drawing(:|$)/u
     )
     // A stored preview that isn't ours or a web picture never renders.
     editor.commands.setContent(drawingDoc({ elements: [rect], preview: 'javascript:alert(1)' }))
     expect(element.querySelector('.hk-drawing-preview')).toBeNull()
+  })
+
+  it('loads nothing off the device: pictures and a preview named by address are left out', () => {
+    editor.commands.setContent(
+      drawingDoc({
+        elements: [
+          rect,
+          { ...label, link: 'javascript:alert(1)' },
+          { id: 'e1', type: 'embeddable' }
+        ],
+        files: {
+          f1: { src: 'https://tracker.example/p.png', mimeType: 'image/png' },
+          f2: { src: 'http://tracker.example/p.png', mimeType: 'image/png' },
+          f3: { src: 'hikki-editor://assets/p.png', mimeType: 'image/png' }
+        },
+        preview: 'https://tracker.example/preview.png'
+      })
+    )
+    expect(element.querySelector('.hk-drawing-preview')).toBeNull()
+    expect(editor.getHTML()).not.toContain('tracker.example/preview.png')
+    // Pasted HTML naming a web picture as the preview doesn't bring it in either.
+    editor.commands.setContent(
+      '<div data-type="drawing" data-elements="[]"><img src="https://tracker.example/preview.png"></div>'
+    )
+    expect(drawingAttrs().preview).toBeNull()
+
+    editor.commands.setContent(
+      drawingDoc({
+        elements: [
+          rect,
+          { ...label, link: 'javascript:alert(1)' },
+          { id: 'e1', type: 'embeddable' }
+        ],
+        files: {
+          f1: { src: 'https://tracker.example/p.png', mimeType: 'image/png' },
+          f3: { src: 'hikki-editor://assets/p.png', mimeType: 'image/png' }
+        }
+      })
+    )
+    openDrawing(editor, host, drawingPos())
+    expect(overlays[0].props.data.files).toEqual({
+      f3: { src: 'hikki-editor://assets/p.png', mimeType: 'image/png' }
+    })
+    expect(overlays[0].props.data.elements).toEqual([rect, { ...label, link: null }])
   })
 
   it('is in the "/" menu and named in the block menu', () => {

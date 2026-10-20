@@ -25,6 +25,16 @@ export type MediaHost = {
 const ASSET = /^hikki-editor:\/\/assets\/[^/\\?#]+$/u
 
 /**
+ * A src that names a file on this device: one of our assets, or a blob: URL (the browser dev build's uploads) —
+ * never an address on the network. For content that must not load anything from outside (a drawing's pictures).
+ */
+export function localAssetSrc(src: unknown): string | null {
+  if (typeof src !== 'string') return null
+  const value = src.trim()
+  return ASSET.test(value) || value.startsWith('blob:') ? value : null
+}
+
+/**
  * A src the editor will render. Stored content (synced, imported, pasted) can carry anything, so it's an
  * allowlist: our assets everywhere; web images (http/https) and raster data URLs for images; https for
  * video/audio; blob: URLs (the browser dev build). Anything else renders as nothing.

@@ -22,14 +22,25 @@ import {
   type RefObject
 } from 'react'
 
-import { storedElements, usedFileIds, type DrawingData, type DrawingFileRef } from '../scene'
+import {
+  checkPaste,
+  inlineFiles,
+  isDrawableType,
+  safeDrawingLink,
+  storedElements,
+  usedFileIds,
+  type DrawingData,
+  type DrawingFileRef
+} from '../scene'
 
 /** What the drawing editor needs from the app; the package never talks to the native side itself. */
 export type DrawingHost = {
   /** Stores a file (a picture placed in the drawing, the preview); resolves to its URL. */
   upload: (blob: Blob, extension: string) => Promise<string>
-  /** Reads a stored file back. */
+  /** Reads a stored file back (the editor's own assets only). */
   read: (src: string) => Promise<Blob>
+  /** Opens a web address (an element's link, http or https only) in the browser. */
+  openLink: (url: string) => void
   /** Text to diagram: the user's words as a Mermaid diagram (AI); null hides it. Rejects with a message to show. */
   diagram: ((prompt: string) => Promise<string>) | null
   /** Excalidraw's language code (`excalidrawLanguage`). */
@@ -88,6 +99,9 @@ async function loadFiles(
   return loaded.filter((file): file is BinaryFileData => file !== null)
 }
 
+/** In place of a web page in a frame (Excalidraw draws one only when this returns nothing). */
+const blockedEmbed = () => <span hidden />
+
 /**
  * Excalidraw, as a page's drawing opens in it: the page's language and theme, no file menu (the page is where it is
  * kept), Text to diagram through the host's AI. Fills its parent.
@@ -120,7 +134,7 @@ export function DrawingCanvas({ initial, host, handleRef, onChange, topRight }: 
           refs[id] = kept
           continue
         }
-        const file = files[id]
+        const file = inlineFiles({ [id]: files[id] })[id]
         if (!file) continue
         const blob = await (await fetch(file.dataURL)).blob()
         const src = await host.upload(blob, extensionOf(file.mimeType))
@@ -146,6 +160,13 @@ export function DrawingCanvas({ initial, host, handleRef, onChange, topRight }: 
 
   const changed = useCallback(
     (elements: Parameters<NonNullable<Parameters<typeof Excalidraw>[0]['onChange']>>[0]) => {
+      // Nothing that loads a page stays in a drawing, however it came in (a library, a paste): see isDrawableType.
+      if (elements.some((element) => !element.isDeleted && !isDrawableType(element.type))) {
+        api.current?.updateScene({
+          elements: elements.filter((element) => isDrawableType(element.type))
+        })
+        return
+      }
       const version = getSceneVersion(elements)
       if (version === lastVersion.current) return
       const first = lastVersion.current === -1
@@ -169,6 +190,16 @@ export function DrawingCanvas({ initial, host, handleRef, onChange, topRight }: 
       onChange={changed}
       renderTopRightUI={topRight ? (isMobile) => (isMobile ? null : topRight) : undefined}
       aiEnabled={diagram !== null}
+      // Scenes are hostile (synced, imported, pasted): no web pages in frames, links only to the web and through the
+      // app, pasted content checked like stored content.
+      validateEmbeddable={false}
+      renderEmbeddable={blockedEmbed}
+      onLinkOpen={(element, event) => {
+        event.preventDefault()
+        const url = safeDrawingLink(element.link)
+        if (url) host.openLink(url)
+      }}
+      onPaste={checkPaste}
       UIOptions={{
         canvasActions: {
           loadScene: false,

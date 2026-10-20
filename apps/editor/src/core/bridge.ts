@@ -24,7 +24,7 @@ import {
 } from '../extensions/comments'
 import { closeDrawing, type DrawingEditorHost } from '../extensions/drawing'
 import { runFind, type FindMode } from '../extensions/find'
-import { UploadsKey, type MediaHost } from '../extensions/media'
+import { localAssetSrc, UploadsKey, type MediaHost } from '../extensions/media'
 import {
   blockLabel,
   pageLinkHref,
@@ -769,11 +769,15 @@ export class EditorBridge {
     upload: (blob, extension) =>
       this.uploadFile(new File([blob], `drawing.${extension}`, { type: blob.type })),
     read: async (src) => {
-      const response = await fetch(src)
+      // Only this workspace's files: a drawing's stored references never send a request anywhere else.
+      const local = localAssetSrc(src)
+      if (!local) throw new Error('not a workspace file')
+      const response = await fetch(local)
       if (!response.ok) throw new Error(`read ${response.status}`)
       return response.blob()
     },
     diagram: (prompt) => this.diagrams.request(prompt, this.page.get().title),
+    openLink: (url) => void this.send({ type: 'openLink', url }),
     fullScreen: (open) => void this.send({ type: 'fullScreen', open })
   }
 

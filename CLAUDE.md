@@ -347,7 +347,12 @@ HikkiUITests/                 XCUITest flows
   Its text (text elements, as typed) is one block for search and word counts — `apps/editor/src/core/extract.ts` and `ContentText` agree
   through `design/fixtures/content-text.json`. Excalidraw's UI takes the colour tone through its CSS variables
   (`.hk-drawing-editor .excalidraw` in style.css). Each Done stores a new preview; the old one stays in `assets/`
-  until attachment cleanup exists.
+  until attachment cleanup exists. Scenes are hostile (synced, imported, pasted — the same rules as embeds): only
+  drawable element kinds are kept (no `embeddable` / `iframe` / magic frame, no `customData`), links are http(s) only
+  and open through `openLink`, pictures and the preview are workspace assets only (`localAssetSrc`), pastes are
+  checked like stored scenes (`checkPaste`) and Mermaid loses anything that loads (`safeMermaid`); the build also
+  stops Excalidraw fetching pictures named in pasted HTML and running an iframe element's HTML (`REMOTE_PATCHES` in
+  the package's vite plugin, its test fails if an Excalidraw update moves them).
 - **Rich blocks**: toggles (`apps/editor/src/extensions/toggle.ts`; open/closed is not stored, so opening never saves; a
   summary may be a heading — `level` 1–3, set by `# `…`### ` at its start, cleared by Backspace there),
   callouts, KaTeX formulas (`apps/editor/src/extensions/math.ts`; our panel replaces Tiptap's `prompt()`), tables

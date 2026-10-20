@@ -14,14 +14,16 @@ import { reportError } from '../core/errors'
 import { t } from '../core/i18n'
 import { followNode, type Followed, type BlockUnit } from './block-units'
 import { SAVE_META } from './comments'
-import { safeMediaSrc } from './media'
+import { localAssetSrc } from './media'
 
 /** What a drawing needs from the editor's host: storing files and Text to diagram (AI). */
 export type DrawingEditorHost = {
   /** Stores a file (a picture placed in the drawing, its preview); resolves to its asset URL. */
   upload: (blob: Blob, extension: string) => Promise<string>
-  /** Reads a stored file back. */
+  /** Reads a stored file back (one of the editor's own assets). */
   read: (src: string) => Promise<Blob>
+  /** Opens a drawing's link (http or https) in the browser. */
+  openLink: (url: string) => void
   /** The user's words as a Mermaid diagram; null without AI. Rejects with a message to show. */
   diagram: ((prompt: string) => Promise<string>) | null
   /** The drawing's editor took the whole page, or gave it back: the native bars over the page step aside meanwhile. */
@@ -37,8 +39,8 @@ declare module '@tiptap/core' {
   }
 }
 
-const isSafeFileSrc = (src: string) =>
-  safeMediaSrc(src, 'image') !== null && !src.startsWith('data:')
+/** A drawing's pictures and preview are files of this workspace only: a scene never loads anything off the device. */
+const isSafeFileSrc = (src: string) => localAssetSrc(src) !== null
 
 /** A drawing's stored data, checked (stored content can carry anything). */
 export function drawingData(node: PMNode): DrawingData {
@@ -169,7 +171,7 @@ class DrawingView implements NodeView {
   }
 
   private render() {
-    const preview = safeMediaSrc(this.node.attrs.preview, 'image')
+    const preview = localAssetSrc(this.node.attrs.preview)
     const empty = storedElements(this.node.attrs.elements).length === 0
     this.dom.replaceChildren()
     this.dom.dataset.empty = String(empty || !preview)
@@ -236,7 +238,7 @@ export const Drawing = Node.create<{ host: DrawingEditorHost | null }>({
       files: jsonAttribute('files', () => ({})),
       preview: {
         default: null,
-        parseHTML: (el) => safeMediaSrc(el.querySelector('img')?.getAttribute('src'), 'image'),
+        parseHTML: (el) => localAssetSrc(el.querySelector('img')?.getAttribute('src')),
         renderHTML: () => ({})
       }
     }
@@ -245,7 +247,7 @@ export const Drawing = Node.create<{ host: DrawingEditorHost | null }>({
     return [{ tag: 'div[data-type="drawing"]' }]
   },
   renderHTML({ node, HTMLAttributes }) {
-    const preview = safeMediaSrc(node.attrs.preview, 'image')
+    const preview = localAssetSrc(node.attrs.preview)
     const alt = drawingText(node.attrs.elements as unknown[])
     const attrs = mergeAttributes(HTMLAttributes, { 'data-type': 'drawing' })
     return preview ? ['div', attrs, ['img', { src: preview, alt }]] : ['div', attrs]
