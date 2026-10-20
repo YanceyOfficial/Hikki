@@ -369,7 +369,8 @@ HikkiUITests/                 XCUITest flows
   (`/embed/youtube/<id>`, `apps/bff/src/index.ts`) and the player sees that as its referrer.
 - **Home** (`Hikki/Sources/HomeView.swift`) is a database of every page (Notion's): a native `Table` (Name, Location,
   Created, Edited, Words, Favorite — click a header to sort, double-click or Return opens) or a gallery of cards, with
-  a filter and New Page on top; iPhone gets a list. Sorting is `HomeSort` (Sendable, for Swift 6's table). The sidebar
+  a filter and New Page on top; iPhone gets a list, and so does a Home narrower than the table's columns
+  (`Size.homeNarrow`: a side of a split view), its filter on a line of its own. Sorting is `HomeSort` (Sendable, for Swift 6's table). The sidebar
   shows Home and Trash as Notion's row of icons (the open one widens into a pill with its name) and no section title.
   Trash has the same layout (table: deleted, deleted for good, Restore/Delete). Settings → Workspace → Keep deleted pages
   (7/30/90 days or until emptied, default 30; `TrashPreferences`) purges older trash at launch and activation

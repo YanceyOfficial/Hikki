@@ -86,6 +86,8 @@ struct HomeView: View {
     /// The rows as shown: built (a path per page) and sorted when the pages, the filter or the order change — not on
     /// every redraw.
     @State private var rows: [HomeRow] = []
+    /// Too narrow for the table's columns (a side of a split view): pages as the phone's list instead.
+    @State private var narrow = false
     #if os(iOS)
         @Environment(\.horizontalSizeClass) private var sizeClass
     #endif
@@ -127,12 +129,21 @@ struct HomeView: View {
                 empty("app:home.noMatches")
             } else {
                 switch layout {
+                case .table where narrow:
+                    ScrollView {
+                        pageList(rows).padding(.horizontal, Spacing.s6).padding(.bottom, Spacing.s6)
+                    }
                 case .table: table(rows)
                 case .gallery: gallery(rows)
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .onGeometryChange(for: Bool.self) {
+            $0.size.width < Size.homeNarrow
+        } action: {
+            narrow = $0
+        }
         // One surface with the table under the title (Music's): the table's own background, not the page's darker one.
         .background(Theme.listSurface)
         .navigationTitle("app:nav.home")
@@ -182,28 +193,35 @@ struct HomeView: View {
                     .accessibilityIdentifier("home-layout")
                 }
                 Spacer()
-                HStack(spacing: Spacing.s1_5) {
-                    IconView(.magnifyingGlass, size: TextSize.sm.rawValue).foregroundStyle(Theme.mutedForeground)
-                    TextField("app:home.filter", text: $filter)
-                        .textFieldStyle(.plain)
-                        .font(.hk(.md))
-                        .accessibilityIdentifier("home-filter")
-                }
-                .padding(.horizontal, Spacing.s2_5)
-                .frame(width: Size.homeFilter, height: Size.searchField)
-                .background(Theme.muted, in: .rect(cornerRadius: Radius.md))
-                if compact || layout == .gallery {
+                if !narrow { filterField.frame(width: Size.homeFilter) }
+                if compact || narrow || layout == .gallery {
                     sortMenu
                 }
                 Button {
                     navigator.newPage()
                 } label: {
                     IconLabel("app:page.new", icon: .notePencil)
+                        .labelStyle(NarrowLabelStyle(iconOnly: narrow))
                 }
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("home-new-page")
             }
+            // A narrow side: the filter on a line of its own, the full width.
+            if narrow { filterField }
         }
+    }
+
+    private var filterField: some View {
+        HStack(spacing: Spacing.s1_5) {
+            IconView(.magnifyingGlass, size: TextSize.sm.rawValue).foregroundStyle(Theme.mutedForeground)
+            TextField("app:home.filter", text: $filter)
+                .textFieldStyle(.plain)
+                .font(.hk(.md))
+                .accessibilityIdentifier("home-filter")
+        }
+        .padding(.horizontal, Spacing.s2_5)
+        .frame(height: Size.searchField)
+        .background(Theme.muted, in: .rect(cornerRadius: Radius.md))
     }
 
     /// The gallery and the phone list have no column headers to click: a menu picks the order.
@@ -217,6 +235,7 @@ struct HomeView: View {
             }
         } label: {
             IconLabel("app:home.sort", icon: .caretUpDown)
+                .labelStyle(NarrowLabelStyle(iconOnly: narrow))
         }
         .fixedSize()
         .accessibilityIdentifier("home-sort")
@@ -333,18 +352,8 @@ struct HomeView: View {
                     empty("app:home.empty").padding(.top, Spacing.s12)
                 } else if rows.isEmpty {
                     empty("app:home.noMatches").padding(.top, Spacing.s12)
-                } else if sortField.wrappedValue == .edited {
-                    ForEach(RecencyGroup.grouped(rows, by: \.updatedAt), id: \.group) { group in
-                        Text(Self.heading(group.group))
-                            .font(.hk(.md, .semibold))
-                            .foregroundStyle(Theme.mutedForeground)
-                            .padding(.top, Spacing.s4)
-                            .padding(.bottom, Spacing.s1)
-                            .accessibilityAddTraits(.isHeader)
-                        ForEach(group.items) { phoneRow($0, group: group.group) }
-                    }
                 } else {
-                    ForEach(rows) { phoneRow($0, group: nil) }
+                    pageList(rows)
                 }
             }
             .padding(.horizontal, Spacing.s4)
@@ -377,6 +386,25 @@ struct HomeView: View {
             .padding(.trailing, Spacing.s4)
             .padding(.bottom, Spacing.s2)
             .accessibilityIdentifier("home-new-page")
+        }
+    }
+
+    /// The pages as plain rows, under day headings when ordered by edit time (the phone's Home, a narrow side).
+    @ViewBuilder private func pageList(_ rows: [HomeRow]) -> some View {
+        LazyVStack(alignment: .leading, spacing: Spacing.s0) {
+            if sortField.wrappedValue == .edited {
+                ForEach(RecencyGroup.grouped(rows, by: \.updatedAt), id: \.group) { group in
+                    Text(Self.heading(group.group))
+                        .font(.hk(.md, .semibold))
+                        .foregroundStyle(Theme.mutedForeground)
+                        .padding(.top, Spacing.s4)
+                        .padding(.bottom, Spacing.s1)
+                        .accessibilityAddTraits(.isHeader)
+                    ForEach(group.items) { phoneRow($0, group: group.group) }
+                }
+            } else {
+                ForEach(rows) { phoneRow($0, group: nil) }
+            }
         }
     }
 
@@ -460,5 +488,18 @@ private struct HomeCard: View {
         .contentShape(.rect(cornerRadius: Radius.xl))
         .onHover { hovering = $0 }
         .animation(Motion.easeOut(Motion.popOut), value: hovering)
+    }
+}
+
+/// The title beside its icon, or the icon alone where room is short.
+private struct NarrowLabelStyle: LabelStyle {
+    let iconOnly: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        if iconOnly {
+            configuration.icon
+        } else {
+            Label(configuration)
+        }
     }
 }

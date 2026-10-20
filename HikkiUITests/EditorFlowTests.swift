@@ -1231,6 +1231,22 @@ final class EditorFlowTests: XCTestCase {
         attachScreenshot(app, "split-typing")
     }
 
+    /// Home in a side of a split view, too narrow for the table's columns, lists its pages instead — the table scrolled
+    /// sideways and slid under the sidebar.
+    func testHomeInANarrowSideListsItsPages() throws {
+        continueAfterFailure = false
+        let app = launch(environment: ["HIKKI_DEMO_PAGES": "1", "HIKKI_OPEN_SPLIT": "demo-46ffce8"])
+        guard app.descendants(matching: .any)["split-divider"].firstMatch.waitForExistence(timeout: 10) else {
+            throw XCTSkip("needs a wide window — run on iPad or Mac")
+        }
+        let row = app.buttons["home-row-Career Planning"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(row, in: app), "Home's list missing")
+        XCTAssertFalse(app.descendants(matching: .any)["home-table"].exists, "the table was kept")
+        XCTAssertTrue(row.isHittable)
+        row.tap()
+        XCTAssertTrue(app.webViews.textViews["Page content"].firstMatch.waitForExistence(timeout: 10), "the page didn't open")
+    }
+
     /// iPad: on a page (its tools crowding the toolbar) back and forward stay two buttons — as an iOS ControlGroup they
     /// folded into a menu with no label, an empty circle.
     func testBackForwardStayButtonsOnACrowdedToolbar() throws {
