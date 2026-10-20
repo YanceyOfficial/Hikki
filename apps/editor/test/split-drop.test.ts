@@ -96,12 +96,14 @@ describe('dropping a page on the right edge', () => {
     expect(hovers).toEqual([true, false, true, false])
   })
 
-  it('says what the drop does: show here on the right one', () => {
+  it('on the right side itself the app outlines that whole side too', () => {
     mode = 'here'
     editor.view.dom.dispatchEvent(drag('dragover', 700, link))
-    expect(hint().textContent).toBe('Show here')
+    expect(hint().dataset.open).toBe('false')
+    expect(hovers).toEqual([true])
     editor.view.dom.dispatchEvent(drag('drop', 700, link))
     expect(opened).toEqual(['notes'])
+    expect(hovers).toEqual([true, false])
   })
 
   it('leaves drops elsewhere, text drags and phones alone', () => {

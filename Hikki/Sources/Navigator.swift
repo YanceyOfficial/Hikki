@@ -137,6 +137,8 @@ final class Navigator {
     /// While split: a page is held over the leading side's right edge, so dropping it replaces the trailing side —
     /// which outlines itself whole (the leading side draws no zone of its own; a half-width one read as a third column).
     var splitDropHover = false
+    /// A page held over the trailing side's own right edge: dropped, that side shows it (outlined whole, as above).
+    var splitDropHere = false
     /// Each side's panel (outline, comments, AI), by position; they trade places with the pages when the sides swap.
     private var inspectors: [PaneSide: InspectorState] = [:]
     /// The mode a side's panel opens on when it has none yet (the last one picked, remembered by ContentView).

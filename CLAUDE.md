@@ -492,7 +492,7 @@ HikkiUITests/                 XCUITest flows
   (Home, a PDF) through `EdgeDrop`, a page through the editor's own edge
   (`apps/editor/src/extensions/split-drop.ts`, `openInSplit` bridge message, `window.hikki.setSplitDrop`), since the web
   view takes the drags over it. Split already, that edge replaces the trailing side, so it outlines itself
-  whole (`Navigator.splitDropHover`, set by `EdgeDrop` and the editor's `splitDropHover` message) — a half-width zone
+  whole — as it does for a page held over its own right edge (`splitDropHere`) (`Navigator.splitDropHover`, set by `EdgeDrop` and the editor's `splitDropHover` message) — a half-width zone
   on the left read as a third column. iPadOS keeps the screen's very edge for "open in a new window".
 - **PDF viewer**: a PDF attachment clicked in a page opens over it (`Navigator.showDocument` → `DocumentSheet` in
   ContentView: a page-sized sheet on the Mac, a full-screen cover on iOS, Close and Open in Split View in its bar),

@@ -16,8 +16,8 @@ export type SplitDropHost = {
   mode: () => SplitDropMode
   /** Open this page in the pane on the right. */
   open: (pageId: string) => void
-  /** `replace`: a page is held over the edge (or no longer) — the app outlines the whole right side instead of this
-   * editor drawing a half-width zone that reads as a third column. */
+  /** `replace` and `here`: a page is held over the edge (or no longer) — the app outlines the whole right side instead
+   * of this editor drawing a zone over part of it (on the left page it read as a third column). */
   hover: (active: boolean) => void
 }
 
@@ -84,11 +84,12 @@ export function SplitDrop(host: SplitDropHost) {
             let hovering = false
             const show = (open: boolean) => {
               const mode = host.mode()
-              if (mode === 'replace' || hovering) {
-                const active = open && mode === 'replace'
+              const outlined = mode === 'replace' || mode === 'here'
+              if (outlined || hovering) {
+                const active = open && outlined
                 if (active !== hovering) host.hover(active)
                 hovering = active
-                if (mode === 'replace') open = false
+                if (outlined) open = false
               }
               if (open && mode !== 'off') label.textContent = HINT[mode]()
               if (hint.dataset.open !== String(open)) hint.dataset.open = String(open)

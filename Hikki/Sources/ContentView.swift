@@ -659,8 +659,10 @@ struct ContentView: View {
         pane.onOpenDocument = { [weak navigator] name, label in navigator?.showDocument(name: name, label: label) }
         // Dropped on the side's own right edge: it shows that page instead.
         pane.onOpenInSplit = { [weak navigator, weak model] id in
+            navigator?.splitDropHere = false
             if model?.tree.page(id) != nil { navigator?.show(.page(id), in: .trailing) }
         }
+        pane.onSplitDropHover = { [weak navigator] active in navigator?.splitDropHere = active }
         pane.setSplitDrop(.here)
         ai.attach(pane)
         pane.onAIHandoff = { [weak navigator] handoff in navigator?.aiHandoff = PaneHandoff(handoff: handoff, side: .trailing) }

@@ -100,6 +100,9 @@ struct PaneColumn<Content: View, Panel: View>: View {
     @State private var dropTargeted = false
     @State private var width: CGFloat = 0
 
+    /// A page is held over an edge whose drop shows it on the trailing side (the leading page's, or its own).
+    private var heldOverEdge: Bool { navigator.splitDropHover || navigator.splitDropHere }
+
     private var pane: Pane? { navigator.pane(side) }
 
     var body: some View {
@@ -116,9 +119,7 @@ struct PaneColumn<Content: View, Panel: View>: View {
                     .overlay {
                         // A page held over the side (the trailing one also when it is over the leading page's right
                         // edge): dropping it shows it here. An empty side's picker has a drop area of its own.
-                        if navigator.isSplit
-                            && (dropTargeted && pane?.route != .splitPicker || side == .trailing && navigator.splitDropHover)
-                        {
+                        if navigator.isSplit && (dropTargeted && pane?.route != .splitPicker || side == .trailing && heldOverEdge) {
                             DropTargetArea(
                                 navigator.splitDropHover ? "app:split.drop.replace" : "app:split.drop.here", isTargeted: true
                             )
@@ -138,6 +139,7 @@ struct PaneColumn<Content: View, Panel: View>: View {
         .modifier(PaneDrop(navigator: navigator, side: side, targeted: $dropTargeted))
         .animation(Motion.easeOut(), value: dropTargeted)
         .animation(Motion.easeOut(), value: navigator.splitDropHover)
+        .animation(Motion.easeOut(), value: navigator.splitDropHere)
         .animation(Motion.easeOut(), value: navigator.inspector(side))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(side == .trailing ? "split-pane" : "pane-leading")
