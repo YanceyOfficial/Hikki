@@ -262,6 +262,14 @@ public final class DocumentStore: Sendable {
         try writer.read { try DocumentRecord.fetchOne($0, key: id) }
     }
 
+    /// Whether a page (live or in the trash) has this id, ignoring case: page files are named by id, and the file
+    /// system ignores case, so `ABC` and `abc` would be the same file.
+    public func hasDocument(matching id: String) throws -> Bool {
+        try writer.read { db in
+            try Bool.fetchOne(db, sql: "SELECT EXISTS(SELECT 1 FROM document WHERE id = ? COLLATE NOCASE)", arguments: [id]) ?? false
+        }
+    }
+
     /// Live (not trashed) pages, in sibling order.
     public func pages() throws -> [PageSummary] {
         try writer.read { try Self.pagesRequest.fetchAll($0) }

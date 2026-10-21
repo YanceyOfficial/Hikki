@@ -148,6 +148,22 @@ struct WorkspaceTransferTests {
         #expect(Set(ids).count == 4)
     }
 
+    /// Ids name files on a file system that ignores case: `ABC` must not land on `abc`'s file.
+    @Test func keptIdsNeverCollideIgnoringCase() throws {
+        let store = try DocumentStore.inMemory()
+        _ = try store.create(id: "abc")
+        #expect(try store.hasDocument(matching: "ABC"))
+        #expect(try !store.hasDocument(matching: "abd"))
+        let item = { (id: String) in WorkspaceImport.Item(source: .folder(name: "x"), parent: nil, root: URL(filePath: "/"), pageID: id) }
+        let (ids, _) = WorkspaceImport.assignIDs([item("ABC"), item("Page-1"), item("page-1"), item("日本")]) { id in
+            (try? store.hasDocument(matching: id)) ?? true
+        }
+        #expect(ids[0] != "ABC")
+        #expect(ids[1] == "Page-1")
+        #expect(ids[2] != "page-1")
+        #expect(ids[3] != "日本")
+    }
+
     @Test func linksAndMentionsFollowRenamedPages() {
         func text(_ value: String, href: String? = nil) -> JSONValue {
             var node: [String: JSONValue] = ["type": .string("text"), "text": .string(value)]
@@ -304,7 +320,7 @@ struct WorkspaceTransferTests {
         // shape, linking each other rather than the pages they were copied from.
         let again = WorkspaceImport.plan([folder])
         let (ids, renamed) = WorkspaceImport.assignIDs(again.items) { id in
-            do { return try target.document(id: id) != nil } catch { return true }
+            do { return try target.hasDocument(matching: id) } catch { return true }
         }
         var copies: [String] = []
         for (index, item) in again.items.enumerated() {

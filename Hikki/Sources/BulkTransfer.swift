@@ -92,7 +92,7 @@ final class BulkTransfer {
             let store = model.store
             // A page in the trash holds its id too; a store that can't say counts as holding it.
             let (ids, links) = WorkspaceImport.assignIDs(plan.items) { id in
-                do { return try store.document(id: id) != nil } catch { return true }
+                do { return try store.hasDocument(matching: id) } catch { return true }
             }
             var created: [String?] = []
             for (index, item) in plan.items.enumerated() {

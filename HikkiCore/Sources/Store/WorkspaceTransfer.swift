@@ -389,22 +389,29 @@ public enum WorkspaceImport {
     }
 
     /// The id each item's page gets: the one it had (`pageID`) when no page here has it and no earlier item took it —
-    /// links between the imported pages then stay as they are — else a new one. `links` maps each original id no
+    /// links between the imported pages then stay as they are — else a new one. Ids are file names (`pages/<id>.json`)
+    /// on a file system that ignores case, so only a plain ASCII id is kept, compared ignoring case (`isTaken` too:
+    /// `DocumentStore.hasDocument(matching:)`). `links` maps each original id no
     /// item kept to its first new one, for `PageLink.rewrite` (one an earlier item kept, links already reach).
     public static func assignIDs(_ items: [Item], isTaken: (String) -> Bool) -> (ids: [String], links: [String: String]) {
         var used = Set<String>()
         var links: [String: String] = [:]
         let ids = items.map { item in
             guard let original = item.pageID else { return UUID().uuidString }
-            if PageFiles.isValid(original), !used.contains(original), !isTaken(original) {
-                used.insert(original)
+            if keepable(original), !used.contains(original.lowercased()), !isTaken(original) {
+                used.insert(original.lowercased())
                 return original
             }
             let id = UUID().uuidString
-            if !used.contains(original), links[original] == nil { links[original] = id }
+            if !used.contains(original.lowercased()), links[original] == nil { links[original] = id }
             return id
         }
         return (ids, links)
+    }
+
+    /// An id a page may bring along: a valid one, plain ASCII (case is all the file system then ignores).
+    static func keepable(_ id: String) -> Bool {
+        PageFiles.isValid(id) && id.allSatisfy(\.isASCII)
     }
 
     private static func header(of url: URL) -> Result<Header, Reason> {
@@ -466,7 +473,7 @@ public enum WorkspaceImport {
         assets: AssetStore
     ) throws -> String {
         var page = try PageFiles.decode(Data(contentsOf: url))
-        let id = try id ?? (store.document(id: page.id) == nil ? page.id : UUID().uuidString)
+        let id = try id ?? (keepable(page.id) && !store.hasDocument(matching: page.id) ? page.id : UUID().uuidString)
         page.content = page.content.map { PageLink.rewrite($0, ids: links) }
         let base = url.deletingLastPathComponent()
         let copy: (String) -> Void = { name in
