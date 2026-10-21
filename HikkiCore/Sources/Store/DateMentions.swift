@@ -17,6 +17,9 @@ public struct DateMention: Sendable, Equatable {
     /// A snoozed reminder rings at this wall-clock time instead ("2026-10-22T10:00").
     public var snoozed: String?
 
+    /// The furthest ahead a reminder may ring: a year, in minutes.
+    public static let maxRemind = 525_600
+
     /// When a reminder on a whole day rings.
     public static let dayTime = "09:00"
 
@@ -37,7 +40,11 @@ public struct DateMention: Sendable, Equatable {
         self.date = date
         id = if case .string(let id)? = attrs["id"], !id.isEmpty { id } else { nil }
         time = if case .string(let time)? = attrs["time"], Self.components(date: date, time: time) != nil { time } else { nil }
-        remind = if case .number(let minutes)? = attrs["remind"], minutes >= 0 { Int(minutes) } else { nil }
+        // Synced content is untrusted: a reminder past a year before, or not a whole number, is none (`Int(_:)` traps).
+        remind =
+            if case .number(let minutes)? = attrs["remind"], (0...Double(Self.maxRemind)).contains(minutes) {
+                Int(exactly: minutes)
+            } else { nil }
         done = attrs["done"] == .bool(true)
         snoozed = if case .string(let snoozed)? = attrs["snoozed"], !snoozed.isEmpty { snoozed } else { nil }
     }

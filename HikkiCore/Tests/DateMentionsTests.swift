@@ -87,6 +87,17 @@ struct DateMentionsTests {
         #expect(found[1].mention.remind == 0)
     }
 
+    @Test func aReminderFromSyncedContentStaysInRange() {
+        func remind(_ value: JSONValue) -> Int? {
+            DateMention(attrs: .object(["date": .string("2026-10-22"), "remind": value]))?.remind
+        }
+        #expect(remind(.number(60)) == 60)
+        #expect(remind(.number(1e300)) == nil)
+        #expect(remind(.number(-5)) == nil)
+        #expect(remind(.number(1.5)) == nil)
+        #expect(remind(.number(Double(DateMention.maxRemind + 1))) == nil)
+    }
+
     @Test func theStoreListsOnlyLivePagesWithDates() throws {
         let store = try DocumentStore.inMemory()
         let dated = try store.create()
