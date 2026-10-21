@@ -461,7 +461,8 @@ final class EditorFlowTests: XCTestCase {
         }
 
         /// A drawing: "/" Drawing adds one and opens Excalidraw over the page (its fonts and code bundled, served by the
-        /// app's scheme); a rectangle drawn and Done leave the block showing the drawing's preview.
+        /// app's scheme); a rectangle drawn and Done leave the block showing the drawing's preview. Typing in it
+        /// brings the keyboard without the page's keyboard bar.
         func testDrawingOpensDrawsAndShowsItsPreview() throws {
             continueAfterFailure = false
             let app = launch()
@@ -475,6 +476,8 @@ final class EditorFlowTests: XCTestCase {
             let body = app.webViews.textViews["Page content"].firstMatch
             XCTAssertTrue(waitOrDumpTree(body, in: app), "body missing")
             body.tap()
+            let barFormat = app.buttons["Format"].firstMatch
+            XCTAssertTrue(barFormat.waitForExistence(timeout: 5), "the keyboard bar is missing on the page")
             // "/" Drawing (the + panel lists it too, a few pages in).
             body.typeText("/drawing")
             XCTAssertTrue(waitOrDumpTree(app.webViews.otherElements["Drawing"].firstMatch, in: app), "no Drawing in the \"/\" menu")
@@ -489,11 +492,23 @@ final class EditorFlowTests: XCTestCase {
             let from = window.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.4))
             let to = window.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.55))
             from.press(forDuration: 0.1, thenDragTo: to)
+            // A text in the drawing: Excalidraw's own field takes the keyboard, and the page's bar stays away.
+            let text = app.webViews.otherElements["Text"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(text, in: app), "Excalidraw's Text tool is missing")
+            text.tap()
+            window.coordinate(withNormalizedOffset: CGVector(dx: 0.4, dy: 0.75)).tap()
+            XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5), "no keyboard for the drawing's text")
+            app.typeText("Hi")
             attach(app, "drawing-editor")
+            XCTAssertFalse(barFormat.exists, "the page's keyboard bar showed over the drawing")
+            // A tap on the canvas ends the text; the keyboard goes.
+            window.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.3)).tap()
+            wait(for: [expectation(for: NSPredicate(format: "count == 0"), evaluatedWith: app.keyboards)], timeout: 5)
             done.tap()
 
-            // The block is read out as "Drawing" only once it shows its picture (empty, it is "Empty drawing — …").
-            let preview = app.webViews.buttons["Drawing"].firstMatch
+            // The block is read out as "Drawing: <its words>" only once it shows its picture (empty, it is
+            // "Empty drawing — …").
+            let preview = app.webViews.buttons.matching(NSPredicate(format: "label == 'Drawing: Hi'")).firstMatch
             XCTAssertTrue(waitOrDumpTree(preview, in: app, timeout: 20), "the drawing's preview is not in the page")
             XCTAssertFalse(done.exists, "the drawing editor stayed open")
             XCTAssertGreaterThan(preview.frame.height, 20)

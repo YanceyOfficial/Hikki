@@ -69,7 +69,7 @@ const jsonAttribute = (name: string, fallback: () => unknown) => ({
 })
 
 /** The drawing open in the full-screen editor, if any (one at a time). */
-let open: { overlay: DrawingOverlay; close: () => void } | null = null
+let open: { overlay: DrawingOverlay; close: () => void; finish: () => Promise<void> } | null = null
 
 /**
  * Closes the open drawing with what it holds now, at once: its page is about to be replaced (`loadDocument`), so
@@ -77,6 +77,15 @@ let open: { overlay: DrawingOverlay; close: () => void } | null = null
  */
 export function closeDrawing(): void {
   open?.close()
+}
+
+/**
+ * Closes the open drawing as Done does — its pictures stored, its preview drawn — before the native side saves the
+ * page and shows another (`window.hikki.finishDrawing`, awaited ahead of the flush). `closeDrawing` can't wait for
+ * the preview, so without this a drawing left by opening another page kept the preview of its last Done.
+ */
+export async function finishDrawing(): Promise<void> {
+  await open?.finish()
 }
 
 /**
@@ -101,12 +110,29 @@ export function openDrawing(editor: Editor, host: DrawingEditorHost, pos: number
         .setMeta(SAVE_META, true)
     )
   }
+  let closed = false
   const finish = () => {
+    closed = true
     followed?.stop()
     overlay.destroy()
     if (open?.overlay === overlay) open = null
     host.fullScreen?.(false)
   }
+  // The drawing and its preview into the block, then closed (Done, or the page about to change) — once: whichever
+  // asks second waits for the first.
+  let saving: Promise<void> | null = null
+  const store = async (data: DrawingData, preview: Blob | null) => {
+    let src: string | null = (followed?.current?.node.attrs.preview as string | null) ?? null
+    try {
+      src = preview ? await host.upload(preview, 'png') : null
+    } catch (error) {
+      reportError('drawingPreviewFailed', error)
+    }
+    if (closed) return
+    write({ elements: data.elements, files: data.files, preview: src })
+    finish()
+  }
+  const save = (data: DrawingData, preview: Blob | null) => (saving ??= store(data, preview))
   const overlay = renderDrawingOverlay({
     data: drawingData(node),
     host,
@@ -114,14 +140,7 @@ export function openDrawing(editor: Editor, host: DrawingEditorHost, pos: number
     onChange: (data) => write({ elements: data.elements, files: data.files }),
     onFail: () => finish(),
     onDone: async (data, preview) => {
-      let src: string | null = (followed?.current?.node.attrs.preview as string | null) ?? null
-      try {
-        src = preview ? await host.upload(preview, 'png') : null
-      } catch (error) {
-        reportError('drawingPreviewFailed', error)
-      }
-      write({ elements: data.elements, files: data.files, preview: src })
-      finish()
+      await save(data, preview)
       if (!editor.isDestroyed) editor.commands.focus()
     }
   })
@@ -138,6 +157,15 @@ export function openDrawing(editor: Editor, host: DrawingEditorHost, pos: number
       const elements = overlay.elements()
       if (elements) write({ elements })
       finish()
+    },
+    finish: async () => {
+      if (saving) return saving
+      const done = await overlay.done().catch((error: unknown) => {
+        // A picture couldn't be stored: what `closeDrawing` keeps, at the page's change, is all there is.
+        reportError('uploadFailed', error, { kind: 'drawing' })
+        return null
+      })
+      if (done) await save(done.data, done.preview)
     }
   }
 }

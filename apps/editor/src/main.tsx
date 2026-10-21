@@ -104,6 +104,8 @@ window.hikki = {
     importDocument(text, format, fallbackTitle),
   exec: (command: string) => bridge.exec(command),
   flush: () => bridge.flush(),
+  // Before a page switch's flush: an open drawing closed as Done closes it, its preview drawn.
+  finishDrawing: () => bridge.finishDrawing(),
   focus: () => bridge.focus(),
   blur: () => bridge.blur(),
   focusTitle: () => bridge.focusTitle(),

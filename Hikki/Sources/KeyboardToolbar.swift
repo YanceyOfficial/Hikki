@@ -464,7 +464,10 @@
                 while let current = ancestor, !(current is HikkiWebView) { ancestor = current.superview }
                 return ancestor as? HikkiWebView
             }
-            let accessory: @convention(block) (UIView) -> UIView? = { webView($0)?.keyboardToolbar }
+            let accessory: @convention(block) (UIView) -> UIView? = { view in
+                guard let webView = webView(view), !webView.hidesKeyboardBar else { return nil }
+                return webView.keyboardToolbar
+            }
             let input: @convention(block) (UIView) -> UIView? = { webView($0)?.keyboardPanel }
             class_addMethod(subclass, #selector(getter: UIResponder.inputAccessoryView), imp_implementationWithBlock(accessory), "@@:")
             class_addMethod(subclass, #selector(getter: UIResponder.inputView), imp_implementationWithBlock(input), "@@:")

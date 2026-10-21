@@ -8,7 +8,12 @@ import { DiagramRequests } from '../src/core/diagram'
 import { createEditor } from '../src/core/editor'
 import { blockTexts } from '../src/core/extract'
 import type { ToNativeMessage } from '../src/core/protocol'
-import { closeDrawing, openDrawing, type DrawingEditorHost } from '../src/extensions/drawing'
+import {
+  closeDrawing,
+  finishDrawing,
+  openDrawing,
+  type DrawingEditorHost
+} from '../src/extensions/drawing'
 import { settle } from './helpers'
 
 // The overlay itself is Excalidraw (a canvas happy-dom can't draw): the test plays its part.
@@ -18,13 +23,25 @@ type OverlayProps = {
   onDone: (data: { elements: unknown[]; files: object }, preview: Blob | null) => Promise<void>
   onFail: () => void
 }
-const overlays: { props: OverlayProps; destroyed: boolean; live: unknown[] | null }[] = []
+type Done = { data: { elements: unknown[]; files: object }; preview: Blob | null }
+const overlays: {
+  props: OverlayProps
+  destroyed: boolean
+  live: unknown[] | null
+  done: () => Promise<Done | null>
+}[] = []
 vi.mock('../src/components/drawing-overlay', () => ({
   renderDrawingOverlay: (props: OverlayProps) => {
-    const overlay = { props, destroyed: false, live: null as unknown[] | null }
+    const overlay = {
+      props,
+      destroyed: false,
+      live: null as unknown[] | null,
+      done: async (): Promise<Done | null> => null
+    }
     overlays.push(overlay)
     return {
       elements: () => overlay.live,
+      done: () => overlay.done(),
       destroy: () => {
         overlay.destroyed = true
       }
@@ -249,6 +266,54 @@ describe('editing a drawing', () => {
     closeDrawing()
     expect(drawingAttrs().elements).toEqual([label])
     expect(overlays[0].destroyed).toBe(true)
+  })
+
+  it('finished for another page, it closes as Done does: its preview drawn and stored', async () => {
+    editor.commands.setContent(
+      drawingDoc({ elements: [rect], preview: 'hikki-editor://assets/old.png' })
+    )
+    openDrawing(editor, host, drawingPos())
+    overlays[0].done = async () => ({
+      data: { elements: [rect, label], files: {} },
+      preview: new Blob(['png'])
+    })
+    await finishDrawing()
+    expect(host.upload).toHaveBeenCalledWith(expect.any(Blob), 'png')
+    expect(drawingAttrs().preview).toBe('hikki-editor://assets/new.png')
+    expect(drawingAttrs().elements).toEqual([rect, label])
+    expect(overlays[0].destroyed).toBe(true)
+  })
+
+  it('finished while Done is saving, it is stored and written once', async () => {
+    openDrawing(editor, host, drawingPos())
+    const done = vi.fn(async () => ({ data: { elements: [label], files: {} }, preview: null }))
+    overlays[0].done = done
+    const writes = vi.fn()
+    editor.on('transaction', ({ transaction }) => {
+      if (transaction.getMeta('hikkiSave')) writes()
+    })
+    await Promise.all([
+      overlays[0].props.onDone({ elements: [rect], files: {} }, new Blob(['png'])),
+      finishDrawing()
+    ])
+    expect(writes).toHaveBeenCalledTimes(1)
+    expect(host.upload).toHaveBeenCalledTimes(1)
+    expect(done).not.toHaveBeenCalled()
+    expect(drawingAttrs().elements).toEqual([rect])
+  })
+
+  it("left open when its pictures can't be stored, for the page's change to close at once", async () => {
+    openDrawing(editor, host, drawingPos())
+    overlays[0].done = () => Promise.reject(new Error('disk full'))
+    await finishDrawing()
+    expect(overlays[0].destroyed).toBe(false)
+    overlays[0].live = [label]
+    closeDrawing()
+    expect(drawingAttrs().elements).toEqual([label])
+  })
+
+  it('finishing with no drawing open does nothing', async () => {
+    await expect(finishDrawing()).resolves.toBeUndefined()
   })
 
   it('follows its block when the page above it changes', () => {

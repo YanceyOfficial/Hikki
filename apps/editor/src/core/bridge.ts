@@ -22,7 +22,7 @@ import {
   type CommentsHost,
   type ThreadItem
 } from '../extensions/comments'
-import { closeDrawing, type DrawingEditorHost } from '../extensions/drawing'
+import { closeDrawing, finishDrawing, type DrawingEditorHost } from '../extensions/drawing'
 import { runFind, type FindMode } from '../extensions/find'
 import { localAssetSrc, UploadsKey, type MediaHost } from '../extensions/media'
 import {
@@ -878,6 +878,11 @@ export class EditorBridge {
    * Returns the pending (unsaved) snapshot and cancels the debounce, or null when nothing changed —
    * the native side calls this on page switch / backgrounding and saves whatever it gets.
    */
+  /** Closes an open drawing as its Done does (preview included), ahead of a page switch's flush. */
+  finishDrawing(): Promise<void> {
+    return finishDrawing()
+  }
+
   flush(): Snapshot | null {
     this.clearTimer()
     if (!this.dirty) return null

@@ -160,6 +160,9 @@ function DrawingEditor({ data, host, title, handleRef, onChange, onDone, onFail 
 export type DrawingOverlay = {
   /** The drawing's live elements now (null before Excalidraw has loaded). */
   elements: () => StoredElement[] | null
+  /** What Done hands over — the drawing, its pictures stored, and its preview — or null before Excalidraw has
+   * loaded. Rejects when a picture can't be stored. */
+  done: () => Promise<{ data: DrawingData; preview: Blob | null } | null>
   destroy: () => void
 }
 
@@ -179,6 +182,10 @@ export function renderDrawingOverlay(props: Omit<Props, 'handleRef'>): DrawingOv
   let destroyed = false
   return {
     elements: () => handleRef.current?.elements() ?? null,
+    done: async () => {
+      const handle = handleRef.current
+      return handle ? { data: await handle.data(), preview: await handle.preview() } : null
+    },
     destroy: () => {
       if (destroyed) return
       destroyed = true

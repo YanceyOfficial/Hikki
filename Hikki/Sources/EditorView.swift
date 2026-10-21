@@ -57,5 +57,14 @@ final class HikkiWebView: WKWebView {
         var keyboardPanel: UIView?
         /// The bar's state (its panels, what the page reports for them).
         var keyboardBar: KeyboardBar?
+        /// Something of its own covers the page (a drawing's editor): the keyboard comes without our bar, whose tools
+        /// act on the page under it.
+        var hidesKeyboardBar = false {
+            didSet {
+                guard hidesKeyboardBar != oldValue else { return }
+                if hidesKeyboardBar { keyboardBar?.closePanel() }
+                reloadKeyboardViews()
+            }
+        }
     #endif
 }

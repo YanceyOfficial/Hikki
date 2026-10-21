@@ -5,6 +5,8 @@ import Foundation
 /// folder (`assets/`), so they sync with the pages; the app-data directory used before stays readable.
 public final class AssetStore: @unchecked Sendable {
     public static let urlPrefix = "hikki-editor://assets/"
+    /// The folder in the workspace that holds them.
+    static let assetsFolderName = "assets"
 
     public enum Kind: String, Sendable, Equatable {
         case image, video, audio, file
@@ -70,7 +72,7 @@ public final class AssetStore: @unchecked Sendable {
     public func useWorkspaceFolder(_ root: URL) {
         lock.withLock {
             if let current = workspaceAssets { previous.append(current) }
-            workspaceAssets = root.appending(path: "assets", directoryHint: .isDirectory)
+            workspaceAssets = root.appending(path: Self.assetsFolderName, directoryHint: .isDirectory)
         }
     }
 

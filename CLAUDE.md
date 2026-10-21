@@ -238,7 +238,7 @@ HikkiUITests/                 XCUITest flows
   posts `pagesChangedOnDisk`, so an open editor
   reloads a page another device changed (`window.hikki.reload`, declined while it has unsaved edits). While files
   are still downloading (iCloud placeholders / half-written files) it passes again with backoff — kqueue events are
-  unreliable in iOS file-provider folders. Assets live in `<folder>/assets`. **Conflict copies**: nothing two devices
+  unreliable in iOS file-provider folders. Assets live in `<folder>/assets`; once a day at launch the ones nothing names any more — no string in any of the folder's JSON files (pages, history, comments, chats) or the database's rows — and untouched for 30 days are deleted (`HikkiCore/Sources/Store/AssetSweep.swift`; a file still downloading or unreadable skips the sweep). **Conflict copies**: nothing two devices
   wrote is lost. When iCloud kept several versions of a page file (`NSFileVersion`, behind the `FileVersionStore`
   protocol in `HikkiCore/Sources/Store/FileConflicts.swift`; tests fake it), the newest edit wins as the page and every
   other version that says something different becomes a sibling page titled "<title> (conflicted copy <device>,
@@ -337,8 +337,10 @@ HikkiUITests/                 XCUITest flows
   page as a PNG preview asset (`preview`, twice the size; dark mode inverts it as Excalidraw does). A click opens the
   full-screen editor (`apps/editor/src/components/drawing-overlay.tsx` over `@hikki/excalidraw/canvas`, loaded on
   first open — Excalidraw and Mermaid are their own chunks, never in the page's start-up): changes go into the block
-  as they rest (out of the page's undo, saved with `SAVE_META`), Done stores the preview; `loadDocument` closes an open
-  drawing first (`closeDrawing`, its last strokes kept). The package never touches the bridge: the editor hands it a
+  as they rest (out of the page's undo, saved with `SAVE_META`), Done stores the preview; before a page switch's flush the
+  native side awaits `window.hikki.finishDrawing()`, which closes an open drawing as Done does (preview included), and
+  `loadDocument` still closes one at once (`closeDrawing`, its last strokes kept) when that couldn't. While it is open
+  the iOS keyboard bar stays away (`HikkiWebView.hidesKeyboardBar`, from the `fullScreen` message). The package never touches the bridge: the editor hands it a
   host (uploads through `uploadFile`, pictures read back with `fetch` — asset responses allow the editor's own origin
   — and Text to diagram). Text to diagram (Excalidraw's TTD dialog) is an `aiRequest` with action `diagram`
   (`apps/editor/src/core/diagram.ts`; `AIPrompts.diagramInstructions` asks for Mermaid only), which Excalidraw's
@@ -346,8 +348,8 @@ HikkiUITests/                 XCUITest flows
   into the bundle under the editor's `excalidraw` folder (`setDrawingAssetPath`), and the build replaces Excalidraw's esm.sh fallback.
   Its text (text elements, as typed) is one block for search and word counts — `apps/editor/src/core/extract.ts` and `ContentText` agree
   through `design/fixtures/content-text.json`. Excalidraw's UI takes the colour tone through its CSS variables
-  (`.hk-drawing-editor .excalidraw` in style.css). Each Done stores a new preview; the old one stays in `assets/`
-  until attachment cleanup exists. Scenes are hostile (synced, imported, pasted — the same rules as embeds): only
+  (`.hk-drawing-editor .excalidraw` in style.css). Each Done stores a new preview; the old one leaves `assets/`
+  through the asset sweep (see Storage) once no version names it. Scenes are hostile (synced, imported, pasted — the same rules as embeds): only
   drawable element kinds are kept (no `embeddable` / `iframe` / magic frame, no `customData`), links are http(s) only
   and open through `openLink`, pictures and the preview are workspace assets only (`localAssetSrc`), pastes are
   checked like stored scenes (`checkPaste`) and Mermaid loses anything that loads (`safeMermaid`); the build also

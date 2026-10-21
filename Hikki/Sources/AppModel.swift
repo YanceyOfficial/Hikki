@@ -110,6 +110,7 @@ final class AppModel {
             assets.useWorkspaceFolder(folder)
             let assets = assets
             Task.detached(priority: .utility) { assets.copyLegacyAssets() }
+            sweepAssets(in: folder)
             // Page history lives in the folder too (`history/<page id>/`), so versions sync with the pages.
             let history = PageHistory(root: folder, policy: Self.historyPolicy, device: Self.deviceName)
             self.history = history
@@ -402,6 +403,25 @@ final class AppModel {
 
     /// Deletes what has been in the trash longer than Settings → Keep deleted pages allows (at launch and when the
     /// app comes back to the front). Other devices follow through the workspace folder.
+    /// Attachments no page, version, comment or chat names any more leave the folder (`AssetSweep`), once a day.
+    private func sweepAssets(in folder: URL) {
+        let key = "assets.sweptAt"
+        if let last = UserDefaults.standard.object(forKey: key) as? Date, Date.now.timeIntervalSince(last) < 86_400 { return }
+        let store = store
+        Task.detached(priority: .background) {
+            let rows: [String]
+            do {
+                rows = try store.allDocuments().flatMap { [$0.content, $0.icon, $0.cover].compactMap { $0 } }
+            } catch {
+                Log.warn("asset sweep skipped: \(error)", category: "assets")
+                return
+            }
+            guard let removed = AssetSweep.sweep(root: folder, rows: rows) else { return }
+            Log.info("unused assets removed", category: "assets", context: ["count": "\(removed.count)"])
+            await MainActor.run { UserDefaults.standard.set(Date.now, forKey: key) }
+        }
+    }
+
     func purgeTrash(now: Date = .now) {
         let days = TrashPreferences.keepDays
         guard days > 0, let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: now) else { return }

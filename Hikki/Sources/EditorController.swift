@@ -923,6 +923,8 @@ final class EditorController {
             pendingDocumentID = .some(id)
             return
         }
+        // A drawing left open closes as its Done would (its preview drawn and stored), so the flush saves that.
+        _ = await call("return window.hikki.finishDrawing()", label: "finishDrawing")
         await flush(reason: "switch")
         currentDocumentID = id
         guard let id else {
@@ -1018,6 +1020,9 @@ final class EditorController {
             iconRequest = IconRequest(docId: docId, id: id, kind: kind, icon: icon, color: color)
         case .fullScreen(let open):
             fullScreen = open
+            #if os(iOS)
+                webView.hidesKeyboardBar = open
+            #endif
         case .scroll(let docId, let top):
             lastScroll = (docId, top)
         case .aiRequest(let payload):
