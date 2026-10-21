@@ -24,6 +24,7 @@ import { findShortcut, type FindMode } from './extensions/find'
 import type { PageIndexEntry } from './extensions/page-links'
 import type { SplitDropMode } from './extensions/split-drop'
 import { setAIModels } from './lib/ai-models'
+import type { DateSheetChange } from './lib/date-sheet'
 import { installScrollContainment } from './lib/scroll-containment'
 import { Outline } from './page/outline'
 import { PageHeader } from './page/page-header'
@@ -125,6 +126,8 @@ window.hikki = {
   setNativeIcons: (on: boolean) => bridge.setNativeIcons(on),
   applyIcon: (id: string, icon: string | null) => bridge.applyIcon(id, icon),
   applyIconColor: (id: string, color: string | null) => bridge.applyIconColor(id, color),
+  setNativeDates: (on: boolean) => bridge.setNativeDates(on),
+  applyDate: (id: string, change: DateSheetChange) => bridge.applyDate(id, change),
   // Settings → Editor → Check spelling.
   setSpellcheck: (on: boolean) => bridge.setSpellcheck(on),
   // Comments: the open page's threads (native store), and a thread picked in the side panel.

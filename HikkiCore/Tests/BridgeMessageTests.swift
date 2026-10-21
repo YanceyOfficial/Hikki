@@ -55,6 +55,21 @@ struct BridgeMessageTests {
             try BridgeMessage.decode(scriptMessageBody: page) == .iconSheet(docId: "a", id: "r2", kind: .page, icon: nil, color: nil))
     }
 
+    @Test func decodesTheDateSheetRequest() throws {
+        let reminder: NSDictionary = [
+            "type": "dateSheet", "docId": "a", "id": "r1", "date": "2026-10-22", "time": "09:30", "remind": 60, "done": false,
+        ]
+        #expect(
+            try BridgeMessage.decode(scriptMessageBody: reminder)
+                == .dateSheet(docId: "a", id: "r1", mention: DateMention(id: nil, date: "2026-10-22", time: "09:30", remind: 60)))
+        let day: NSDictionary = [
+            "type": "dateSheet", "docId": "a", "id": "r2", "date": "2026-10-23", "time": NSNull(), "remind": NSNull(), "done": true,
+        ]
+        #expect(
+            try BridgeMessage.decode(scriptMessageBody: day)
+                == .dateSheet(docId: "a", id: "r2", mention: DateMention(id: nil, date: "2026-10-23", done: true)))
+    }
+
     @Test func decodesPageInfoWithOptionalBlockIds() throws {
         let body: NSDictionary = [
             "type": "pageInfo", "docId": "a",

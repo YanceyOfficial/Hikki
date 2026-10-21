@@ -145,6 +145,24 @@
                         MediaSourceSheet { _ in }
                             .listRowInsets(EdgeInsets())
                     }
+                    Section("DateSheet") {
+                        DateSheet(
+                            value: DateSheetValue(day: .now, time: .now, remind: 60), dayTime: "09:00", onChange: { _ in },
+                            onDone: {}, onRemove: {}
+                        )
+                        .frame(height: 640)
+                        .listRowInsets(EdgeInsets())
+                    }
+                    Section("UpcomingList") {
+                        UpcomingList(
+                            rows: [
+                                .init(id: "1", text: "Send the invoice", when: "Yesterday 5:00 PM", page: "Work", kind: .overdue),
+                                .init(id: "2", text: "Book the ryokan", when: "Tomorrow", page: "Trip to Kyoto", kind: .reminder),
+                                .init(id: "3", text: "Dentist", when: "Friday 9:30 AM", page: "Errands", kind: .date),
+                                .init(id: "4", text: "Renew passport", when: "Oct 30", page: "Errands", kind: .done),
+                            ], limit: 3
+                        ) { _ in }
+                    }
                     Section("ShortcutRecorder") {
                         LabeledContent("Bold") {
                             ShortcutRecorder(

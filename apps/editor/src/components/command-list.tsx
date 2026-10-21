@@ -1,14 +1,16 @@
-import { useEffect, useRef } from 'react'
+import { Fragment, useEffect, useRef, type ReactNode } from 'react'
 
 import type { FloatingAnchor, FloatingLayer } from './floating'
 import { GlidingHighlight } from './gliding-highlight'
-import { MenuRow } from './menu-row'
+import { MenuRow, MenuTitle } from './menu-row'
 
 export type CommandListItem = {
   id: string
   title: string
   hint?: string
-  icon?: string
+  icon?: ReactNode
+  /** A title over the rows that share it ("@": Date, then Pages); rows without one have none. */
+  group?: string
 }
 
 type Props = {
@@ -45,34 +47,38 @@ export function CommandList({ items, selectedIndex, emptyText, onSelect, onHover
         <div className="hk-command-empty p-2 text-md text-muted-foreground">{emptyText}</div>
       ) : (
         items.map((item, index) => (
-          <MenuRow
-            key={item.id}
-            glide
-            role="option"
-            aria-selected={index === selectedIndex}
-            aria-label={item.title}
-            data-index={index}
-            className="hk-command-item h-auto min-h-10 py-1 coarse:h-auto coarse:min-h-12"
-            // Keep editor focus (and the iOS keyboard) when tapping an item.
-            onMouseDown={(e) => e.preventDefault()}
-            onMouseEnter={() => onHover?.(index)}
-            onClick={() => onSelect(index)}
-          >
-            {item.icon && (
-              <span
-                className="grid size-10 flex-none place-items-center rounded-md border border-border bg-background text-md font-semibold text-subtle-foreground"
-                aria-hidden
-              >
-                {item.icon}
-              </span>
+          <Fragment key={item.id}>
+            {item.group && item.group !== items[index - 1]?.group && (
+              <MenuTitle>{item.group}</MenuTitle>
             )}
-            <span className="flex min-w-0 flex-col">
-              <span className="hk-command-title text-sm text-foreground">{item.title}</span>
-              {item.hint && (
-                <span className="truncate text-xs text-muted-foreground">{item.hint}</span>
+            <MenuRow
+              glide
+              role="option"
+              aria-selected={index === selectedIndex}
+              aria-label={item.title}
+              data-index={index}
+              className="hk-command-item h-auto min-h-10 py-1 coarse:h-auto coarse:min-h-12"
+              // Keep editor focus (and the iOS keyboard) when tapping an item.
+              onMouseDown={(e) => e.preventDefault()}
+              onMouseEnter={() => onHover?.(index)}
+              onClick={() => onSelect(index)}
+            >
+              {item.icon && (
+                <span
+                  className="grid size-10 flex-none place-items-center rounded-md border border-border bg-background text-md font-semibold text-subtle-foreground"
+                  aria-hidden
+                >
+                  {item.icon}
+                </span>
               )}
-            </span>
-          </MenuRow>
+              <span className="flex min-w-0 flex-col">
+                <span className="hk-command-title text-sm text-foreground">{item.title}</span>
+                {item.hint && (
+                  <span className="truncate text-xs text-muted-foreground">{item.hint}</span>
+                )}
+              </span>
+            </MenuRow>
+          </Fragment>
         ))
       )}
     </div>

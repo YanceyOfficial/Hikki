@@ -61,6 +61,16 @@ final class EditorController {
         let color: String?
     }
 
+    /// The date chip the page asked to edit, where this side draws it (`nativeDates`: the iPhone's sheet).
+    private(set) var dateRequest: DateRequest?
+
+    struct DateRequest: Equatable, Identifiable {
+        let docId: String
+        /// The page's name for this opening; the answer goes back under it.
+        let id: String
+        let mention: DateMention
+    }
+
     struct OpenThread: Equatable, Identifiable {
         let docId: String
         let threadId: String
@@ -230,6 +240,33 @@ final class EditorController {
 
     func closeIconSheet() {
         iconRequest = nil
+    }
+
+    /// Date chips are edited here (HikkiUI's `DateSheet`), not in the page's popover.
+    @ObservationIgnored private var nativeDates = false
+
+    func setNativeDates(_ on: Bool) {
+        guard on != nativeDates else { return }
+        nativeDates = on
+        if !on { dateRequest = nil }
+        send("window.hikki.setNativeDates(on)", ["on": on], label: "setNativeDates")
+    }
+
+    func closeDateSheet() {
+        dateRequest = nil
+    }
+
+    /// The date sheet's answer for the opening `id` names — the chip's day, time, reminder and done, or nil to remove
+    /// it — set by the page as its own edit; refused once the page has moved on or is locked.
+    func applyDate(_ mention: DateMention?, id: String) async {
+        let change: Any =
+            mention.map { m -> [String: Any] in
+                [
+                    "date": m.date, "time": m.time ?? NSNull(), "remind": m.remind.map { $0 as Any } ?? NSNull(),
+                    "done": m.done,
+                ]
+            } ?? NSNull()
+        await call("window.hikki.applyDate(id, change)", ["id": id, "change": change], label: "applyDate")
     }
 
     /// The icon picker's emoji (nil: Remove) for the opening `id` names, set by the page as its own pick; refused once
@@ -952,6 +989,7 @@ final class EditorController {
             if nativeComments { await call("window.hikki.setNativeComments(on)", ["on": true], label: "setNativeComments") }
             if nativeCover { await call("window.hikki.setNativeCover(on)", ["on": true], label: "setNativeCover") }
             if nativeIcons { await call("window.hikki.setNativeIcons(on)", ["on": true], label: "setNativeIcons") }
+            if nativeDates { await call("window.hikki.setNativeDates(on)", ["on": true], label: "setNativeDates") }
         #endif
     }
 
@@ -1057,6 +1095,8 @@ final class EditorController {
             coverRequest = CoverRequest(docId: docId, cover: cover, mode: mode, bff: bff)
         case .iconSheet(let docId, let id, let kind, let icon, let color):
             iconRequest = IconRequest(docId: docId, id: id, kind: kind, icon: icon, color: color)
+        case .dateSheet(let docId, let id, let mention):
+            dateRequest = DateRequest(docId: docId, id: id, mention: mention)
         case .fullScreen(let open):
             fullScreen = open
             #if os(iOS)

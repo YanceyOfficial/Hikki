@@ -410,7 +410,8 @@
     "replace": "Replace"
   },
   "mention": {
-    "empty": "No pages"
+    "empty": "No pages",
+    "pages": "Pages"
   },
   "split": {
     "drop": {
@@ -550,6 +551,7 @@
     "commentFailed": "Couldn't save the comment.",
     "blockMoveFailed": "Couldn't move the block.",
     "blockMoveLocked": "That page is locked. Unlock it to move blocks into it.",
+    "reminderUpdateFailed": "Couldn't update the reminder.",
     "workspaceUnavailable": "The workspace folder can't be reached.",
     "workspaceSyncFailed": "Couldn't sync with the workspace folder.",
     "workspaceOpenFailed": "Couldn't open the workspace.",
@@ -597,5 +599,33 @@
     "loading": "Opening the drawing…",
     "done": "Done",
     "close": "Close"
+  },
+  "date": {
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "yesterday": "Yesterday",
+    "group": "Date",
+    "title": "Date",
+    "remindMe": "Remind me {{when}}",
+    "field": "Date",
+    "placeholder": "Tomorrow 9am, Fri, 10/30…",
+    "includeTime": "Include time",
+    "time": "Time",
+    "markDone": "Mark done",
+    "markNotDone": "Mark not done",
+    "remove": "Remove date",
+    "back": "Back",
+    "remind": {
+      "label": "Remind",
+      "none": "None",
+      "atTime": "At time of event",
+      "minutes5": "5 minutes before",
+      "hour1": "1 hour before",
+      "day1": "1 day before",
+      "minutes": "{{count}} minutes before",
+      "onDay": "On the day ({{time}})",
+      "dayBefore": "1 day before ({{time}})",
+      "weekBefore": "1 week before ({{time}})"
+    }
   }
 }

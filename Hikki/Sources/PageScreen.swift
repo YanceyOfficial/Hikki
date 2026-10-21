@@ -148,17 +148,25 @@ struct PageScreen: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
+            // A date chip's day, time and reminder.
+            .sheet(item: dateRequest) { request in
+                DateSheetHost(request: request, editor: editor)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+            }
             .onAppear {
                 guard phoneToolbar else { return }
                 editor.setNativeComments(true)
                 editor.setNativeCover(true)
                 editor.setNativeIcons(true)
+                editor.setNativeDates(true)
             }
             .onDisappear {
                 guard phoneToolbar else { return }
                 editor.setNativeComments(false)
                 editor.setNativeCover(false)
                 editor.setNativeIcons(false)
+                editor.setNativeDates(false)
             }
             .animation(Motion.easeOut(), value: editor.webView.keyboardBar?.composer)
             .animation(Motion.easeOut(), value: keyboardShown)
@@ -218,6 +226,11 @@ struct PageScreen: View {
         /// The icon picker the page asked for; closing it lets the request go.
         private var iconRequest: Binding<EditorController.IconRequest?> {
             Binding(get: { editor.iconRequest }, set: { if $0 == nil { editor.closeIconSheet() } })
+        }
+
+        /// The date chip the page asked to edit; closing the sheet lets the request go.
+        private var dateRequest: Binding<EditorController.DateRequest?> {
+            Binding(get: { editor.dateRequest }, set: { if $0 == nil { editor.closeDateSheet() } })
         }
 
         /// The keyboard bar's ⋯ sheet.

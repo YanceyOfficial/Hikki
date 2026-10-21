@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 35
+export const PROTOCOL_VERSION = 36
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -152,6 +152,17 @@ export type ToNativeMessage =
       kind: 'page' | 'callout'
       icon: string | null
       color: string | null
+    }
+  /** A date chip opened for editing, where the native side draws its sheet (`setNativeDates`, a phone). The answer
+   * comes back as `window.hikki.applyDate(id, change)` (null removes the chip). */
+  | {
+      type: 'dateSheet'
+      docId: string
+      id: string
+      date: string
+      time: string | null
+      remind: number | null
+      done: boolean
     }
   /** The selected text (debounced; "" when nothing is): Ask AI offers it as context. Capped at 4000 characters. */
   | { type: 'selection'; docId: string; text: string }

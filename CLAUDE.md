@@ -453,6 +453,29 @@ HikkiUITests/                 XCUITest flows
   are `suggestionMenu` (`apps/editor/src/extensions/suggestion-menu.ts`) over the shared `CommandList`. Typography turns
   -- … -> (c) into their characters; quotes, fractions and × stay as typed. Text extraction (search, word counts)
   treats mentions, ruby and inline math as part of the line.
+- **Dates and reminders** (Notion's "@" dates): the "@" menu lists a Date group above the pages — what the words
+  read as (`parseDateQuery` in `apps/editor/src/lib/dates.ts`, our own parser: English, Chinese and Japanese words,
+  weekdays with Monday-first weeks, month names, M/D, ISO, "in 3 days", 3天后, times like 3pm / 下午3点半 / 午後3時)
+  and the same as a reminder; the menu keeps spaces only while the words can still become a date (`datePrefix`).
+  It puts a `dateMention` chip (`apps/editor/src/extensions/date-mention.ts`: an inline atom with `id`, `date`,
+  `time` — wall-clock, "09:00" is 9:00 wherever the reader is — `remind` in minutes before, at 9:00 on a whole day,
+  `done` and `snoozed`), drawn relative to today (`dateLabel`, redrawn each minute) by
+  `apps/editor/src/components/date-chip.tsx`, blue with a reminder, red once it has rung until Mark done. A click
+  opens its popover (typed words, shadcn `Calendar`, Include time, Remind, Mark done, Remove); in the iPhone layout
+  HikkiUI's `DateSheet` instead (`setNativeDates`, the `dateSheet` request, `window.hikki.applyDate` — one answer per
+  opening, sent when the sheet closes; `Hikki/Sources/DateSheetHost.swift`). As text (search, Markdown) a chip is
+  "2026-10-22 09:30" (`dateText` / `DateMention.text`, held together by `design/fixtures/content-text.json`); as HTML a
+  `<time datetime>`. Natively `HikkiCore/Sources/Store/DateMentions.swift` reads chips out of content (`DateEntry`:
+  the line's words and block id), works out when each rings (`fireComponents`, the editor's `fireMoment`) and what
+  Home lists (`Upcoming.items`: rung and not done first, then the next 7 days). `Hikki/Sources/Reminders.swift` keeps
+  every live page's dates (`pagesWithDates` at launch, then the store's commit feed) and schedules the reminders
+  still to ring as local notifications (`ReminderCenter`, at most 64, calendar triggers, the line as the title and
+  the page under it; permission asked at the first one), so every device with the workspace rings. Mark done and
+  Snooze (15 minutes) on a notification change the chip in its page (`AppModel.updateDate`, the move-blocks way:
+  editors flushed, saved, open editors reload); a tap opens the page at the chip's block (`PageOpenRequests`; on
+  the Mac through `MenuBarRequests`). A run on its own data folder schedules nothing unless `HIKKI_REMINDERS=1`.
+  Home shows Upcoming (`Hikki/Sources/UpcomingSection.swift` over HikkiUI's `UpcomingList`) above the table and,
+  on iPhone, after Jump back in; nothing when nothing is coming. No date ranges.
 - **Ruby / furigana** (`apps/editor/src/extensions/ruby.ts`): an inline node (`<ruby><rb>…</rb><rt>…</rt></ruby>`, reading as
   an attribute); ⇧⌘R or Format → More → Ruby opens the reading panel, prefilled from the native tokenizer
   (`HikkiCore/Sources/Text/JapaneseReading.swift`, `suggestReading` message): a phrase comes back as kanji runs with

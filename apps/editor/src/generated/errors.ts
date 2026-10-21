@@ -21,6 +21,7 @@ export const ERRORS = {
   commentFailed: { code: 2010, severity: 'error' },
   blockMoveFailed: { code: 2011, severity: 'error' },
   blockMoveLocked: { code: 2012, severity: 'warning' },
+  reminderUpdateFailed: { code: 2013, severity: 'error' },
   workspaceUnavailable: { code: 2101, severity: 'error' },
   workspaceSyncFailed: { code: 2102, severity: 'warning' },
   workspaceOpenFailed: { code: 2103, severity: 'error' },
@@ -106,6 +107,8 @@ export function errorMessage(id: ErrorId): string {
       return t('error.blockMoveFailed')
     case 'blockMoveLocked':
       return t('error.blockMoveLocked')
+    case 'reminderUpdateFailed':
+      return t('error.reminderUpdateFailed')
     case 'workspaceUnavailable':
       return t('error.workspaceUnavailable')
     case 'workspaceSyncFailed':

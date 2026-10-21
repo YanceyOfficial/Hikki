@@ -123,6 +123,17 @@ struct HomeView: View {
                 .padding(.horizontal, Spacing.s6)
                 .padding(.top, Spacing.s6)
                 .padding(.bottom, Spacing.s3)
+            if !model.tree.all.isEmpty {
+                UpcomingSection(navigator: navigator) {
+                    Text("app:home.upcoming")
+                        .font(.hk(.sm, .semibold))
+                        .foregroundStyle(Theme.mutedForeground)
+                        .padding(.horizontal, Spacing.s3)
+                        .accessibilityAddTraits(.isHeader)
+                }
+                .padding(.horizontal, Spacing.s3)
+                .padding(.bottom, Spacing.s3)
+            }
             if model.tree.all.isEmpty {
                 empty("app:home.empty")
             } else if rows.isEmpty {

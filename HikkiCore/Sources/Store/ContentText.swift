@@ -104,8 +104,8 @@ public enum ContentText {
         }.joined(separator: "\n")
     }
 
-    /// The text of a node and everything in it: a page mention as "@title", an inline formula as its LaTeX, a hard
-    /// break as `hardBreak` (a space by default; a block's text keeps it as a line break, as the editor does).
+    /// The text of a node and everything in it: a page mention as "@title", a date as "2026-10-22 09:00", an inline
+    /// formula as its LaTeX, a hard break as `hardBreak` (a space by default; a block's text keeps it as a line break, as the editor does).
     static func plainText(of node: JSONValue, hardBreak: String = " ") -> String {
         guard case .object(let fields) = node else { return "" }
         if case .string(let text)? = fields["text"] { return text }
@@ -117,6 +117,8 @@ public enum ContentText {
         case .string("inlineMath"):
             if case .object(let attrs)? = fields["attrs"], case .string(let latex)? = attrs["latex"] { return latex }
             return ""
+        case .string("dateMention"):
+            return DateMention(attrs: fields["attrs"]).map { $0.text } ?? ""
         default: break
         }
         guard case .array(let children)? = fields["content"] else { return "" }

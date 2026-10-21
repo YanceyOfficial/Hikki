@@ -82,6 +82,10 @@
                 VStack(alignment: .leading, spacing: Spacing.s6) {
                     places
                     if !recents.isEmpty { recentCards }
+                    UpcomingSection(navigator: navigator) {
+                        SectionTitle("app:home.upcoming").padding(.horizontal, Spacing.s3)
+                    }
+                    .padding(.horizontal, Spacing.s1)
                     quickCreate
                     askAI
                     weekCard.padding(.horizontal, Spacing.s4)

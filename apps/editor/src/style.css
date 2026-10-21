@@ -185,6 +185,19 @@
   .tiptap a.hk-mention[data-missing='true'] {
     @apply text-muted-foreground;
   }
+  /* A date (extensions/date-mention.ts): muted like a mention's words; a reminder in blue, red once it has rung. */
+  .tiptap .hk-date {
+    @apply inline-flex cursor-pointer items-center gap-1 rounded-sm px-1 align-baseline font-medium whitespace-nowrap text-muted-foreground transition-colors duration-(--motion-pop-in) select-none hover:bg-accent;
+  }
+  .tiptap .hk-date svg {
+    @apply flex-none self-center;
+  }
+  .tiptap .hk-date[data-state='remind'] {
+    @apply text-ink-blue;
+  }
+  .tiptap .hk-date[data-state='overdue'] {
+    @apply text-ink-red;
+  }
   .tiptap code {
     @apply rounded-sm bg-code px-1.5 py-0.5 font-mono text-code-foreground;
     font-size: 85%;

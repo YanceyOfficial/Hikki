@@ -390,6 +390,16 @@ struct ContentView: View {
                 navigator.open(id)
                 if let block = PageLink.blockID(from: url) { editor(for: navigator.focusedSide)?.scrollToBlock(block, in: id) }
             }
+            #if os(iOS)
+                // A reminder's notification tapped (Reminders.swift) — also the one that launched the app. The Mac's
+                // goes through `menuBarRequests`, which picks the window.
+                .task(id: [PageOpenRequests.shared.pending?.id.uuidString, "\(model.treeLoaded)"]) {
+                    guard let request = PageOpenRequests.shared.pending, model.treeLoaded else { return }
+                    PageOpenRequests.shared.pending = nil
+                    guard model.tree.page(request.pageId) != nil else { return }
+                    navigator.open(request.pageId, at: request.blockId, revealing: [])
+                }
+            #endif
             // Menu bar extra: New Page / Search land in the key window (MenuBarExtra.swift).
             .menuBarRequests(navigator: navigator)
             // Full screen (macOS): menu bar, traffic lights and toolbar stay, as in a window (FullScreenChrome.swift).

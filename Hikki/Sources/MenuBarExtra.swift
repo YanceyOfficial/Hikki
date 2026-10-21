@@ -13,7 +13,11 @@ enum MenuBarPreferences {
 
     /// What the menu bar menu asked the main window to do.
     struct MenuBarRequest: Equatable, Identifiable {
-        enum Kind { case newPage, search, settings }
+        enum Kind: Equatable {
+            case newPage, search, settings
+            /// A reminder's notification was tapped: its page, at the chip's block.
+            case openPage(String, blockId: String?)
+        }
         let id = UUID()
         let kind: Kind
     }
@@ -88,6 +92,7 @@ enum MenuBarPreferences {
                     case .newPage: navigator.newPage()
                     case .search: navigator.isSearching = true
                     case .settings: navigator.isShowingSettings = true
+                    case .openPage(let id, let blockId): navigator.open(id, at: blockId, revealing: [])
                     }
                 }
         }

@@ -39,6 +39,8 @@ import type { SplitDropHost, SplitDropMode } from '../extensions/split-drop'
 import { openTogglesAround } from '../extensions/toggle'
 import { pageBlocks, type AIPageBlock } from '../lib/ai-content'
 import { bffURL } from '../lib/bff'
+import { setDateSheetOpener, type DateSheetChange } from '../lib/date-sheet'
+import { localMoment } from '../lib/dates'
 import { setDrawingsReadOnly } from '../lib/drawing-mode'
 import { linkCardFrom } from '../lib/embeds'
 import {
@@ -1038,6 +1040,46 @@ export class EditorBridge {
     if (!onColor || this.frozen) return false
     if (color !== null && !(PALETTE as readonly string[]).includes(color)) return false
     onColor(color as PaletteColor | null)
+    return true
+  }
+
+  /** The date chip whose native sheet is open (`dateSheet`) and what its answer does; a newer one replaces it. */
+  private dateSheet: { id: string; onChange: (change: DateSheetChange) => void } | null = null
+
+  /** `window.hikki.setNativeDates`: the native side edits date chips in a sheet of its own. */
+  setNativeDates(on: boolean): void {
+    setDateSheetOpener(
+      on
+        ? (attrs, onChange) => {
+            const { docId } = this.page.get()
+            if (!docId || this.frozen) return true
+            const id = crypto.randomUUID()
+            this.dateSheet = { id, onChange }
+            void this.send({
+              type: 'dateSheet',
+              docId,
+              id,
+              date: attrs.date,
+              time: attrs.time,
+              remind: attrs.remind,
+              done: attrs.done
+            })
+            return true
+          }
+        : null
+    )
+    if (!on) this.dateSheet = null
+  }
+
+  /** `window.hikki.applyDate`: the native sheet's answer for the opening `id` names — the chip's new day, time,
+   * reminder and done, or null to remove it. Returns whether it was taken (still that opening, a well-formed date,
+   * the page not locked). */
+  applyDate(id: string, change: DateSheetChange): boolean {
+    if (this.dateSheet?.id !== id || this.frozen) return false
+    if (change !== null && !localMoment(change.date, change.time)) return false
+    const { onChange } = this.dateSheet
+    this.dateSheet = null
+    onChange(change)
     return true
   }
 

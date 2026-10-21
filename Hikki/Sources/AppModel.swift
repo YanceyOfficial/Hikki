@@ -18,6 +18,8 @@ final class AppModel {
 
     let store: DocumentStore
     let searchIndexer: SearchIndexer
+    /// Every date in the pages: Home's Upcoming and the reminders' notifications (Reminders.swift).
+    let reminders: Reminders
     let assets: AssetStore
     let crashReporter: CrashReporter
     let workspaceStore: WorkspaceStore
@@ -45,6 +47,7 @@ final class AppModel {
     ) {
         self.store = store
         self.searchIndexer = SearchIndexer(index: searchIndex, store: store, assets: assets)
+        self.reminders = Reminders(store: store)
         // Semantic search was removed (2026-10-15): its settings go too.
         for key in ["semantic.enabled", "semantic.endpoint", "semantic.model"] { UserDefaults.standard.removeObject(forKey: key) }
         self.assets = assets
@@ -58,6 +61,7 @@ final class AppModel {
         }
         startWorkspaceSync()
         searchIndexer.start()
+        reminders.start()
         purgeTrash()
         // One observation for the app (every window reads the same tree): it was a task per window, each writing it.
         observation = Task { [weak self] in await self?.observe() }

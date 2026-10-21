@@ -1,8 +1,18 @@
 import { mergeAttributes } from '@tiptap/core'
 import Mention from '@tiptap/extension-mention'
 import { PluginKey } from '@tiptap/pm/state'
+import { findSuggestionMatch } from '@tiptap/suggestion'
 
+import { dateMenuIcon } from '../components/date-chip'
 import { t } from '../core/i18n'
+import {
+  dateLabel,
+  dateLong,
+  datePrefix,
+  parseDateQuery,
+  remindLabel,
+  type DateValue
+} from '../lib/dates'
 import { pageLinkHref, type PageIndexEntry, type PageLinksHost } from './page-links'
 import { suggestionMenu } from './suggestion-menu'
 
@@ -23,6 +33,34 @@ export function pageMentionItems(
   const prefix = pages.filter((p) => title(p).startsWith(q))
   const rest = pages.filter((p) => !title(p).startsWith(q) && title(p).includes(q))
   return [...prefix, ...rest].slice(0, MAX_ITEMS)
+}
+
+/** A row of the "@" menu: a date (with a reminder, or not), or a page. */
+export type MentionItem =
+  | { kind: 'date'; id: string; value: DateValue; remind: boolean }
+  | { kind: 'page'; id: string; page: PageIndexEntry }
+
+const dateItem = (value: DateValue, remind: boolean): MentionItem => ({
+  kind: 'date',
+  id: `date-${remind ? 'remind' : 'day'}-${value.date}-${value.time ?? ''}`,
+  value,
+  remind
+})
+
+/**
+ * The dates "@query" offers above the pages: with nothing typed, Today, Tomorrow and a reminder tomorrow; else the
+ * date the words read as ("fri 3pm", "明天", "来週の金曜") and a reminder on it — none when they aren't a date.
+ */
+export function dateMentionItems(query: string, now = new Date()): MentionItem[] {
+  const q = query.trim()
+  if (!q) {
+    const today = parseDateQuery('today', now)!
+    const tomorrow = parseDateQuery('tomorrow', now)!
+    return [dateItem(today, false), dateItem(tomorrow, false), dateItem(tomorrow, true)]
+  }
+  const value = parseDateQuery(q, now)
+  if (!value) return []
+  return [dateItem(value, false), dateItem(value, true)]
 }
 
 /** Mention chips redraw when the sidebar's pages change (a rename, a new icon, a deletion). */
@@ -106,9 +144,30 @@ export function PageMention(host: PageLinksHost) {
           !!$from.parent.type.contentMatch.matchType(state.schema.nodes.mention)
         )
       },
-      items: ({ query }) => pageMentionItems(host.pages(), query, host.untitled()),
+      // A space may stay in what's typed while it still reads as a date ("@next fri 3pm").
+      findSuggestionMatch: (config) => {
+        const wide = findSuggestionMatch({ ...config, allowSpaces: true })
+        if (wide && /\s/u.test(wide.query.trim()) && datePrefix(wide.query)) return wide
+        return findSuggestionMatch({ ...config, allowSpaces: false })
+      },
+      items: ({ query }): MentionItem[] => [
+        ...dateMentionItems(query),
+        ...pageMentionItems(host.pages(), query, host.untitled()).map((page): MentionItem => ({
+          kind: 'page',
+          id: page.id,
+          page
+        }))
+      ],
       command: ({ editor, range, props }) => {
-        const page = props as unknown as PageIndexEntry
+        const item = props as unknown as MentionItem
+        if (item.kind === 'date') {
+          editor.commands.insertDateMention(range, {
+            ...item.value,
+            remind: item.remind ? 0 : null
+          })
+          return
+        }
+        const { page } = item
         editor
           .chain()
           .focus()
@@ -121,10 +180,26 @@ export function PageMention(host: PageLinksHost) {
           ])
           .run()
       },
-      render: suggestionMenu<PageIndexEntry>(
+      render: suggestionMenu<MentionItem>(
         PageMentionKey,
         'hk-mention-menu',
-        (p) => ({ id: p.id, title: titleOf(p), icon: p.icon ?? '📄' }),
+        (item) =>
+          item.kind === 'page'
+            ? {
+                id: item.page.id,
+                title: titleOf(item.page),
+                icon: item.page.icon ?? '📄',
+                group: t('mention.pages')
+              }
+            : {
+                id: item.id,
+                title: item.remind
+                  ? t('date.remindMe', { when: dateLabel(item.value) })
+                  : dateLabel(item.value),
+                hint: item.remind ? remindLabel(0, item.value.time !== null) : dateLong(item.value),
+                icon: dateMenuIcon(item.remind),
+                group: t('date.group')
+              },
         () => t('mention.empty')
       )
     }

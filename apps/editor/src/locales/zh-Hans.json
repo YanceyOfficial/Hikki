@@ -410,7 +410,8 @@
     "replace": "替换"
   },
   "mention": {
-    "empty": "没有页面"
+    "empty": "没有页面",
+    "pages": "页面"
   },
   "split": {
     "drop": {
@@ -550,6 +551,7 @@
     "commentFailed": "无法保存评论。",
     "blockMoveFailed": "无法移动该块。",
     "blockMoveLocked": "该页面已锁定，解锁后才能将块移入。",
+    "reminderUpdateFailed": "无法更新提醒。",
     "workspaceUnavailable": "无法访问工作区文件夹。",
     "workspaceSyncFailed": "无法与工作区文件夹同步。",
     "workspaceOpenFailed": "无法打开工作区。",
@@ -597,5 +599,33 @@
     "loading": "正在打开绘图…",
     "done": "完成",
     "close": "关闭"
+  },
+  "date": {
+    "today": "今天",
+    "tomorrow": "明天",
+    "yesterday": "昨天",
+    "group": "日期",
+    "title": "日期",
+    "remindMe": "提醒我：{{when}}",
+    "field": "日期",
+    "placeholder": "明天上午9点、周五、10/30…",
+    "includeTime": "包含时间",
+    "time": "时间",
+    "markDone": "标记为完成",
+    "markNotDone": "标记为未完成",
+    "remove": "移除日期",
+    "back": "返回",
+    "remind": {
+      "label": "提醒",
+      "none": "无",
+      "atTime": "事件开始时",
+      "minutes5": "提前 5 分钟",
+      "hour1": "提前 1 小时",
+      "day1": "提前 1 天",
+      "minutes": "提前 {{count}} 分钟",
+      "onDay": "当天（{{time}}）",
+      "dayBefore": "提前 1 天（{{time}}）",
+      "weekBefore": "提前 1 周（{{time}}）"
+    }
   }
 }

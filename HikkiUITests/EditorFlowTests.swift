@@ -846,6 +846,57 @@ final class EditorFlowTests: XCTestCase {
             XCTAssertTrue(waitOrDumpTree(add, in: app), "the icon was not removed")
         }
 
+        /// "@tom" puts tomorrow's date; on a phone a tap on the chip opens the native sheet, whose reminder comes back
+        /// to the chip — and Home lists it under Upcoming.
+        func testDateMentionOpensANativeSheet() throws {
+            continueAfterFailure = false
+            let app = launch()
+            let newPage = app.buttons["new-page"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+            newPage.tap()
+            let title = app.webViews.textViews["Page title"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+            title.tap()
+            title.typeText("Trip\n")
+            let body = app.webViews.textViews["Page content"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(body, in: app), "body missing")
+            body.typeText("Book the ryokan @tom")
+            let remindRow = app.webViews.descendants(matching: .any)["Remind me Tomorrow"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(remindRow, in: app), "no date in the menu")
+            attach(app, "date-menu")
+            body.typeText("\n")
+            let chip = app.webViews.descendants(matching: .any)["Tomorrow"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(chip, in: app), "no date chip")
+            let hide = app.buttons["hide-keyboard"].firstMatch
+            if hide.waitForExistence(timeout: 3) { hide.tap() }
+
+            chip.tap()
+            let sheet = app.descendants(matching: .any)["date-sheet"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(sheet, in: app), "the native date sheet did not open")
+            XCTAssertFalse(app.webViews.otherElements["date-popover"].exists, "the page's own popover opened too")
+            app.buttons["date-sheet-remind"].firstMatch.tap()
+            let onTheDay = app.buttons["On the day (09:00)"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(onTheDay, in: app), "no reminder choices")
+            onTheDay.tap()
+            attach(app, "date-sheet")
+            app.buttons["date-sheet-done"].firstMatch.tap()
+            let gone = NSPredicate(format: "exists == false")
+            wait(for: [expectation(for: gone, evaluatedWith: sheet)], timeout: 5)
+
+            // The chip took the reminder: the sheet opens on it again.
+            chip.tap()
+            XCTAssertTrue(waitOrDumpTree(sheet, in: app))
+            XCTAssertTrue(app.buttons["date-sheet-mark-done"].firstMatch.exists, "the reminder didn't reach the chip")
+            app.buttons["date-sheet-done"].firstMatch.tap()
+            wait(for: [expectation(for: gone, evaluatedWith: sheet)], timeout: 5)
+
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+            let upcoming = app.descendants(matching: .any)["upcoming-row"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(upcoming, in: app), "Home lists nothing upcoming")
+            XCTAssertTrue(app.staticTexts["Book the ryokan"].firstMatch.exists)
+            attach(app, "home-upcoming")
+        }
+
         /// Photo opens our own sheet of sources (camera and scan only where the device has them), not the page's file
         /// input.
         func testKeyboardBarPhotoOpensTheMediaSheet() throws {

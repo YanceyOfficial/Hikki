@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of apps/editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 35
+    public static let version = 36
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -79,6 +79,10 @@ public enum BridgeMessage: Sendable, Equatable {
     /// or a callout's (with its background, a palette name). The pick goes back under `id` as `window.hikki.applyIcon`
     /// (and `applyIconColor` for a callout's colour).
     case iconSheet(docId: String, id: String, kind: IconSheetKind, icon: String?, color: String?)
+    /// A date chip opened for editing, sent only where the native side draws its sheet (`setNativeDates`, the iPhone
+    /// layout). The answer goes back under `id` as `window.hikki.applyDate` (the chip's new day, time, reminder and
+    /// done — or null to remove it).
+    case dateSheet(docId: String, id: String, mention: DateMention)
     /// Where the page is scrolled (throttled), so a tab shown again gets its place back.
     case scroll(docId: String, top: Double)
     /// AI on the selection (see `AIRequestPayload`); replies go back through `window.hikki.aiEvent`.
@@ -197,7 +201,7 @@ extension BridgeMessage: Decodable {
         case type, protocolVersion, snapshot, active, level, message, context, docId, icon, cover, fileExtension, dataBase64
         case size, id, url, block, text, headings, words, characters, name, top
         case threadId, quote, body, resolved, commentId, kind, code, detail, open, status, before, after, blockId
-        case instruction, selection, mode, bff, color, items, target, blocks
+        case instruction, selection, mode, bff, color, items, target, blocks, date, time, remind, done
     }
 
     public init(from decoder: Decoder) throws {
@@ -265,6 +269,14 @@ extension BridgeMessage: Decodable {
                 docId: try c.decode(String.self, forKey: .docId), id: try c.decode(String.self, forKey: .id),
                 kind: try c.decode(IconSheetKind.self, forKey: .kind), icon: try c.decodeIfPresent(String.self, forKey: .icon),
                 color: try c.decodeIfPresent(String.self, forKey: .color))
+        case "dateSheet":
+            self = .dateSheet(
+                docId: try c.decode(String.self, forKey: .docId), id: try c.decode(String.self, forKey: .id),
+                mention: DateMention(
+                    id: nil, date: try c.decode(String.self, forKey: .date),
+                    time: try c.decodeIfPresent(String.self, forKey: .time),
+                    remind: try c.decodeIfPresent(Int.self, forKey: .remind),
+                    done: try c.decodeIfPresent(Bool.self, forKey: .done) ?? false))
         case "fullScreen":
             self = .fullScreen(open: try c.decode(Bool.self, forKey: .open))
         case "activeHeading":

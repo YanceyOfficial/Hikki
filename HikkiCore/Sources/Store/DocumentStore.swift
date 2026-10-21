@@ -258,6 +258,14 @@ public final class DocumentStore: Sendable {
         try writer.read { try DocumentRecord.order(Column("createdAt")).fetchAll($0) }
     }
 
+    /// Live pages whose content holds a date (`dateMention`): what reminders and Home's Upcoming read at launch,
+    /// without parsing every page.
+    public func pagesWithDates() throws -> [DocumentRecord] {
+        try writer.read {
+            try DocumentRecord.filter(Column("deletedAt") == nil && Column("content").like("%\"dateMention\"%")).fetchAll($0)
+        }
+    }
+
     public func document(id: String) throws -> DocumentRecord? {
         try writer.read { try DocumentRecord.fetchOne($0, key: id) }
     }

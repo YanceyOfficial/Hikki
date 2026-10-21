@@ -35,6 +35,25 @@
           { "type": "text", "text": "Café", "marks": [{ "type": "bold" }] }
         ]
       },
+      {
+        "type": "paragraph",
+        "attrs": { "id": "dt1" },
+        "content": [
+          { "type": "text", "text": "Call " },
+          { "type": "dateMention", "attrs": { "id": "m1", "date": "2026-10-22", "time": null } },
+          { "type": "text", "text": " and " },
+          {
+            "type": "dateMention",
+            "attrs": {
+              "id": "m2",
+              "date": "2026-10-23",
+              "time": "09:30",
+              "remind": 0,
+              "done": false
+            }
+          }
+        ]
+      },
       { "type": "paragraph", "attrs": { "id": "empty" } },
       {
         "type": "bulletList",
@@ -98,6 +117,7 @@
     { "id": "h1", "text": "Plan\n2026" },
     { "id": "p1", "text": "See @Roadmap and E=mc^2 first" },
     { "id": "p2", "text": "役に立つ Café" },
+    { "id": "dt1", "text": "Call 2026-10-22 and 2026-10-23 09:30" },
     { "id": "li1", "text": "item" },
     { "id": "s1", "text": "Summary" },
     { "id": "p3", "text": "hidden" },

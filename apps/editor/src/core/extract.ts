@@ -5,15 +5,18 @@ const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hang
 // Letters+digits as one run; deliberately not \b, which treats "abc123" oddly across scripts.
 const WORD = /[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu
 
-/** Inline nodes: text and the atoms that sit in a line (a page mention, a ruby, an inline formula). */
-const INLINE = new Set(['text', 'hardBreak', 'mention', 'ruby', 'inlineMath'])
+/** Inline nodes: text and the atoms that sit in a line (a page mention, a date, a ruby, an inline formula). */
+const INLINE = new Set(['text', 'hardBreak', 'mention', 'dateMention', 'ruby', 'inlineMath'])
 
-/** A node's text: a line break as "\n", a page mention as "@label", an inline formula as its LaTeX. */
+/** A node's text: a line break as "\n", a page mention as "@label", a date as "2026-10-22 09:00", an inline formula
+ * as its LaTeX. */
 export function textOf(node: JSONContent): string {
   if (node.type === 'text') return node.text ?? ''
   if (node.type === 'hardBreak') return '\n'
   if (node.type === 'mention') return `@${node.attrs?.label ?? ''}`
   if (node.type === 'inlineMath') return node.attrs?.latex ?? ''
+  if (node.type === 'dateMention')
+    return node.attrs?.time ? `${node.attrs.date} ${node.attrs.time}` : (node.attrs?.date ?? '')
   return (node.content ?? []).map(textOf).join('')
 }
 

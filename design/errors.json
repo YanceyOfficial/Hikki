@@ -92,6 +92,12 @@
       "en": "That page is locked. Unlock it to move blocks into it.",
       "zh": "该页面已锁定，解锁后才能将块移入。"
     },
+    "reminderUpdateFailed": {
+      "code": 2013,
+      "severity": "error",
+      "en": "Couldn't update the reminder.",
+      "zh": "无法更新提醒。"
+    },
     "workspaceUnavailable": {
       "code": 2101,
       "severity": "error",

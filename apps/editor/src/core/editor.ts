@@ -15,6 +15,7 @@ import { CodeBlock } from '../extensions/code-block'
 import { Colors, ColorTextStyle } from '../extensions/colors'
 import { Column, Columns, ColumnsKeymap } from '../extensions/columns'
 import { Comments, type CommentsHost } from '../extensions/comments'
+import { DateMention } from '../extensions/date-mention'
 import { Drawing, type DrawingEditorHost } from '../extensions/drawing'
 import { EdgeNavigation } from '../extensions/edge-navigation'
 import { Embed } from '../extensions/embed'
@@ -177,8 +178,9 @@ export function editorExtensions(options: EditorOptions = {}): AnyExtension[] {
     ...mediaExtensions(options.media ?? null),
     Drawing.configure({ host: options.drawing ?? null }),
     PageLinks(options.pageLinks ?? noPageLinks),
-    // "@" mentions a page; ":" suggests emoji.
+    // "@" mentions a page or puts a date (a chip, optionally a reminder); ":" suggests emoji.
     PageMention(options.pageLinks ?? noPageLinks),
+    DateMention,
     SplitDrop(options.splitDrop ?? { mode: () => 'off', open: () => {}, hover: () => {} }),
     AIReview(options.ai ?? { request: () => {}, cancel: () => {}, title: () => '' }),
     AIChanges(options.aiChanges ?? { report: () => {}, focused: () => {} }),
