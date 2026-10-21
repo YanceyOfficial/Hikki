@@ -9,6 +9,7 @@ import { setLocale } from './core/i18n'
 import {
   PROTOCOL_VERSION,
   type AIChangeInput,
+  type AIModelMenu,
   type AIStreamEvent,
   type ExportFormat,
   type ImportFormat,
@@ -22,6 +23,7 @@ import type { ThreadItem } from './extensions/comments'
 import { findShortcut, type FindMode } from './extensions/find'
 import type { PageIndexEntry } from './extensions/page-links'
 import type { SplitDropMode } from './extensions/split-drop'
+import { setAIModels } from './lib/ai-models'
 import { installScrollContainment } from './lib/scroll-containment'
 import { Outline } from './page/outline'
 import { PageHeader } from './page/page-header'
@@ -133,6 +135,8 @@ window.hikki = {
   setAutoFocus: (on: boolean) => bridge.setAutoFocus(on),
   // Settings → AI → Review style: inline (A) or diff (B); anything else reads as inline.
   setAIReviewStyle: (style: string) => bridge.setAIReviewStyle(style),
+  // The models the AI panel may run one request on, and the default (Settings → AI, the chat's last pick).
+  setAIModels: (menu: AIModelMenu) => setAIModels(menu),
   // Split view (Mac, a wide iPad): what a page dropped on the right edge does — open / replace / here / off.
   setSplitDrop: (mode: SplitDropMode) => bridge.setSplitDrop(mode),
   // Page → Lock / Unlock while the page is open.

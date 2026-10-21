@@ -147,6 +147,22 @@ describe('AI review (style A)', () => {
     expect(aiReviewOpen(editor)).toBe(false)
   })
 
+  it('a model picked for the request goes with it, and with its follow-ups', async () => {
+    editor.commands.aiRun({ id: 'explain', model: 'claude-opus-5-5' })
+    expect(requests[0]).toMatchObject({ action: 'explain', model: 'claude-opus-5-5' })
+    send({ type: 'text', delta: 'Foxes are quick.' })
+    send({ type: 'done' })
+    const input = document.querySelector<HTMLInputElement>('[data-testid="ai-review"] input')!
+    const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+    setValue.call(input, 'Why?')
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    await tick()
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    expect(requests[1]).toMatchObject({ action: 'ask', model: 'claude-opus-5-5' })
+    editor.commands.aiRun({ id: 'improve' })
+    expect(requests[2]).not.toHaveProperty('model')
+  })
+
   it('a follow-up on an answer stays an answer, about the same text', async () => {
     editor.commands.aiRun({ id: 'explain' })
     send({ type: 'text', delta: 'Foxes are quick.' })

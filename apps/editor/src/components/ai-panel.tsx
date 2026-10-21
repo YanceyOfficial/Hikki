@@ -1,6 +1,7 @@
-import { ArrowUpIcon } from '@phosphor-icons/react'
-import { useState } from 'react'
+import { ArrowUpIcon, CaretDownIcon, CheckIcon } from '@phosphor-icons/react'
+import { useRef, useState } from 'react'
 
+import { Button } from '@/components/ui/button'
 import {
   InputGroup,
   InputGroupAddon,
@@ -9,7 +10,9 @@ import {
 } from '@/components/ui/input-group'
 
 import { t } from '../core/i18n'
+import type { AIModelMenu } from '../core/protocol'
 import type { AIAction } from '../extensions/ai-review'
+import { aiModels, modelName } from '../lib/ai-models'
 import { MenuRow, MenuTitle } from './menu-row'
 
 type AIGroup = { label: () => string; actions: { id: string; label: () => string }[] }
@@ -79,16 +82,29 @@ export function AIPanel({
   onCancel: () => void
 }) {
   const [value, setValue] = useState('')
+  // The models this request may run on (none without a key); a pick holds for this request only — the default
+  // stays the chat's.
+  const [menu] = useState(aiModels)
+  const [model, setModel] = useState<string | null>(null)
+  const [picking, setPicking] = useState(false)
+  const field = useRef<HTMLInputElement>(null)
   const placeholder = media ? t('ai.askPlaceholder') : t('ai.editPlaceholder')
+  const run = (action: AIAction) => onRun(model ? { ...action, model } : action)
   const submit = () => {
     const instruction = value.trim()
-    if (instruction) onRun({ id: media ? 'ask' : 'custom', instruction })
+    if (instruction) run({ id: media ? 'ask' : 'custom', instruction })
+  }
+  const pick = (id: string) => {
+    setModel(id === menu?.choice ? null : id)
+    setPicking(false)
+    field.current?.focus()
   }
   return (
     <div role="menu" aria-label={t('ai.menu')}>
       <div className="p-1">
         <InputGroup className="h-8 shadow-none">
           <InputGroupInput
+            ref={field}
             // oxlint-disable-next-line jsx-a11y/no-autofocus -- the panel opens to type an instruction
             autoFocus={autoFocus}
             className="md:text-sm"
@@ -104,7 +120,8 @@ export function AIPanel({
                 submit()
               } else if (e.key === 'Escape') {
                 e.preventDefault()
-                onCancel()
+                if (picking) setPicking(false)
+                else onCancel()
               }
             }}
           />
@@ -119,20 +136,86 @@ export function AIPanel({
             </InputGroupButton>
           </InputGroupAddon>
         </InputGroup>
+        {/* On a line of its own, so the field keeps its width. */}
+        {menu && (
+          <Button
+            variant="ghost"
+            size="xs"
+            className="mt-1 max-w-full text-muted-foreground"
+            aria-label={t('ai.model.label')}
+            aria-expanded={picking}
+            data-testid="ai-model"
+            onClick={() => setPicking(!picking)}
+          >
+            <span className="truncate">{choiceName(model ?? menu.choice)}</span>
+            <CaretDownIcon data-icon="inline-end" aria-hidden />
+          </Button>
+        )}
       </div>
-      {(media ? MEDIA_GROUPS : AI_GROUPS).map((group) => (
-        <div key={group.actions[0].id}>
-          <MenuTitle>{group.label()}</MenuTitle>
-          {group.actions.map((action) => (
-            <MenuRow
-              key={action.id}
-              role="menuitem"
-              data-testid={`ai-action-${action.id}`}
-              onClick={() => onRun({ id: action.id })}
-            >
-              <span className="flex-1 truncate">{action.label()}</span>
-            </MenuRow>
-          ))}
+      {menu && picking ? (
+        <ModelList menu={menu} current={model ?? menu.choice} onPick={pick} />
+      ) : (
+        (media ? MEDIA_GROUPS : AI_GROUPS).map((group) => (
+          <div key={group.actions[0].id}>
+            <MenuTitle>{group.label()}</MenuTitle>
+            {group.actions.map((action) => (
+              <MenuRow
+                key={action.id}
+                role="menuitem"
+                data-testid={`ai-action-${action.id}`}
+                onClick={() => run({ id: action.id })}
+              >
+                <span className="flex-1 truncate">{action.label()}</span>
+              </MenuRow>
+            ))}
+          </div>
+        ))
+      )}
+    </div>
+  )
+}
+
+const choiceName = (choice: string): string => modelName(choice) ?? t('ai.model.auto')
+
+const GROUP_TITLES: Record<AIModelMenu['groups'][number]['kind'], () => string> = {
+  favorites: () => t('ai.model.favorites'),
+  recommended: () => t('ai.model.recommended'),
+  other: () => t('ai.model.other')
+}
+
+/** The models to run this request on, in the panel's place (a popup of its own would take the menu's focus). */
+function ModelList({
+  menu,
+  current,
+  onPick
+}: {
+  menu: AIModelMenu
+  current: string
+  onPick: (id: string) => void
+}) {
+  const row = (id: string, name: string, detail?: string) => (
+    <MenuRow
+      key={id}
+      role="menuitemradio"
+      aria-checked={id === current}
+      data-testid={`ai-model-${id}`}
+      onClick={() => onPick(id)}
+    >
+      <span className="flex-1 truncate">
+        {name}
+        {detail && <span className="text-muted-foreground"> · {detail}</span>}
+      </span>
+      {id === current && <CheckIcon size={14} aria-hidden />}
+    </MenuRow>
+  )
+  return (
+    <div role="group" aria-label={t('ai.model.label')}>
+      <MenuTitle>{t('ai.model.label')}</MenuTitle>
+      {row('auto', t('ai.model.auto'), menu.auto ?? undefined)}
+      {menu.groups.map((group) => (
+        <div key={group.kind}>
+          <MenuTitle>{GROUP_TITLES[group.kind]()}</MenuTitle>
+          {group.models.map((m) => row(m.id, m.name))}
         </div>
       ))}
     </div>

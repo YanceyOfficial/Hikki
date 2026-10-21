@@ -495,7 +495,14 @@
     },
     "changesInLines_one": "{{total}} 行中的 {{changed}} 行有 {{count}} 处修改",
     "changesInLines_other": "{{total}} 行中的 {{changed}} 行有 {{count}} 处修改",
-    "askPlaceholder": "就此询问 AI…"
+    "askPlaceholder": "就此询问 AI…",
+    "model": {
+      "label": "模型",
+      "auto": "自动",
+      "favorites": "收藏",
+      "recommended": "推荐",
+      "other": "其他模型"
+    }
   },
   "comments": {
     "menu": "评论",

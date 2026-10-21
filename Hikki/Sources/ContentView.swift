@@ -1,4 +1,5 @@
 import CoreSpotlight
+import HikkiAI
 import HikkiCore
 import HikkiUI
 import QuickLook
@@ -41,11 +42,17 @@ struct ContentView: View {
     private let tone = ColorTone.standard
     @AppStorage(EditorPreferences.spellcheckKey) private var spellcheck = true
     @AppStorage(AIPreferences.reviewStyleKey) private var aiReviewStyle = "inline"
+    @AppStorage(AIPreferences.modelKey) private var aiModel = AIModelCatalog.autoID
+    @AppStorage(AIPreferences.favoritesKey) private var aiFavorites = ""
+    /// The providers with a key (the Keychain): read as the window comes up and again whenever Settings opens or
+    /// closes (where keys change), never on a redraw.
+    @State private var aiProviders: Set<AIProvider> = []
     /// What both of the window's editors show the same way; each holds it and replays it when its page comes up.
     private var editorSettings: EditorSettings {
         EditorSettings(
             tone: tone, spellcheck: spellcheck,
-            aiReviewStyle: ReviewStyleThumbnail.Sketch(stored: aiReviewStyle).rawValue, shortcuts: ShortcutStore.shared.overrides)
+            aiReviewStyle: ReviewStyleThumbnail.Sketch(stored: aiReviewStyle).rawValue, shortcuts: ShortcutStore.shared.overrides,
+            aiModels: PageModelMenu(choice: aiModel, favorites: AIModelFavorites(stored: aiFavorites), available: aiProviders))
     }
 
     var body: some View {
@@ -334,8 +341,9 @@ struct ContentView: View {
             }
             .onChange(of: wide) { editor.setSplitDrop(mainSplitDrop) }
             .onChange(of: navigator.isSplit) { editor.setSplitDrop(mainSplitDrop) }
-            // Tone, spelling, the AI review style and Settings → Shortcuts' rebindings (the page handles the editor's
+            // Tone, spelling, the AI review style and models and Settings → Shortcuts' rebindings (the page handles the editor's
             // own keys): both editors, as they change.
+            .onChange(of: navigator.isShowingSettings, initial: true) { aiProviders = AIPreferences.available }
             .onChange(of: editorSettings, initial: true) { _, settings in
                 editor.apply(settings)
                 splitEditor?.apply(settings)

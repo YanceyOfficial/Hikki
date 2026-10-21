@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 33
+export const PROTOCOL_VERSION = 34
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -88,6 +88,8 @@ export type ToNativeMessage =
       /** A picture or a PDF the question is about (the block menu's Ask AI on an image or a file): the workspace asset
        * (`hikki-editor://assets/<name>`) the native side reads and sends along; `units` is then empty. */
       media?: AIMediaRef
+      /** A model picked for this request in the AI panel (`AIModelMenu`); absent: the default. */
+      model?: string
     }
   /** Where the page is scrolled (throttled): each tab gets its place back when it is shown again. */
   | { type: 'scroll'; docId: string; top: number }
@@ -194,6 +196,17 @@ export type ToNativeMessage =
   | { type: 'drawingLibrary' }
   /** The Library changed: its items, checked (`storedLibraryItems`), replace the stored ones. */
   | { type: 'saveDrawingLibrary'; items: unknown[] }
+
+/**
+ * What the AI panel may run one request on (`window.hikki.setAIModels`): the default (`choice`: "auto" or a model id),
+ * the model Auto runs on now (null: no API key, nothing to choose), then the models with a key in the chat menu's
+ * groups.
+ */
+export type AIModelMenu = {
+  choice: string
+  auto: string | null
+  groups: { kind: 'favorites' | 'recommended' | 'other'; models: { id: string; name: string }[] }[]
+}
 
 /** A file Ask AI reads (`aiRequest.media`): `kind` says how it goes to the model. */
 export type AIMediaRef = { url: string; kind: 'image' | 'pdf'; name?: string | null }

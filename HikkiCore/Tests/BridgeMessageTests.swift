@@ -238,6 +238,15 @@ struct BridgeMessageTests {
                         units: [.init(key: "p1:0", html: "Hello <strong>there</strong>")],
                         context: .init(title: "Notes", before: "", after: "Bye"))))
         #expect(
+            try decode([
+                "type": "aiRequest", "id": "r4", "action": "fix", "answer": false, "units": [],
+                "context": ["title": "", "before": "", "after": ""], "model": "claude-opus-5-5",
+            ])
+                == .aiRequest(
+                    AIRequestPayload(
+                        id: "r4", action: "fix", answer: false, units: [], context: .init(title: "", before: "", after: ""),
+                        model: "claude-opus-5-5")))
+        #expect(
             try decode(["type": "aiHandoff", "docId": "p1", "instruction": "Write a report on this", "selection": "Foxes"])
                 == .aiHandoff(AIHandoff(docId: "p1", instruction: "Write a report on this", selection: "Foxes")))
         #expect(throws: (any Error).self) { try decode(["type": "aiHandoff", "docId": "p1", "instruction": "x"]) }

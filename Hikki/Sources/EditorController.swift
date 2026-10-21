@@ -1,3 +1,4 @@
+import HikkiAI
 import HikkiCore
 import HikkiUI
 import Observation
@@ -14,6 +15,8 @@ struct EditorSettings: Equatable {
     var aiReviewStyle = "inline"
     /// Settings → Shortcuts: the user's rebindings (the page handles the editor's own keys).
     var shortcuts = ShortcutOverrides()
+    /// The models the page's AI panel offers for one request, and the default (Settings → AI, the chat's pick).
+    var aiModels = PageModelMenu(choice: nil, favorites: .init(), available: [])
 }
 
 /// Owns one long-lived WKWebView running the Tiptap bundle and mediates every bridge call.
@@ -833,6 +836,9 @@ final class EditorController {
         }
         if new.aiReviewStyle != old?.aiReviewStyle {
             await call("window.hikki.setAIReviewStyle(style)", ["style": new.aiReviewStyle], label: "setAIReviewStyle")
+        }
+        if new.aiModels != old?.aiModels {
+            await call("window.hikki.setAIModels(menu)", ["menu": new.aiModels.payload], label: "setAIModels")
         }
         if new.shortcuts != old?.shortcuts {
             await call(

@@ -29,7 +29,8 @@ import { changeCount, diffText, type DiffSegment } from '../lib/ai-diff'
 import { SelectionMenuKey } from './selection-menu'
 
 /** A preset or the user's own instruction. Edits replace the selection after review; answers explain it. */
-export type AIAction = { id: string; instruction?: string }
+/** What to ask; `model` is one picked in the panel for this request (a retry or a follow-up keeps it). */
+export type AIAction = { id: string; instruction?: string; model?: string }
 
 /** Prose answers (nothing replaced); `ask` is a follow-up question on an answer. `describe` and `extractText` are
  * about a picture or a PDF (every request about one answers). */
@@ -53,6 +54,7 @@ export type AIRequestMessage = {
   context: { title: string; before: string; after: string; previous?: string }
   /** The picture or PDF asked about (then `units` is empty). */
   media?: AIMediaRef
+  model?: string
 }
 
 /** What AI review needs from the host (the bridge). */
@@ -269,6 +271,8 @@ function start(
   if (units.length === 0) return false
   const old = storage(editor).session
   if (old) host.cancel(old.id)
+  const model = action.model ?? again?.action.model
+  if (model) action = { ...action, model }
   // Nothing of a picture can be replaced: every request about one answers.
   const answer = !!media || ANSWER_ACTIONS.has(action.id.split(':')[0])
   const session: AISession = {
@@ -302,7 +306,8 @@ function start(
       ...surroundings(editor.state, from, to),
       ...(previous ? { previous } : {})
     },
-    ...(media ? { media } : {})
+    ...(media ? { media } : {}),
+    ...(model ? { model } : {})
   })
   // The review's range stays marked (our decoration, not the selection); the formatting menu steps aside meanwhile
   // (it re-checks only when the selection or the page changes, and asking changes neither).

@@ -3,7 +3,7 @@ import HikkiAI
 import HikkiCore
 import UniformTypeIdentifiers
 
-/// Runs the editor's AI requests: picks the model (Settings → AI), streams its answer and passes each event back to
+/// Runs the editor's AI requests: picks the model (the panel's pick, else Settings → AI), streams its answer and passes each event back to
 /// the page that asked. One per editor; a request is cancelled when the page asks or a new one replaces it.
 @MainActor
 final class AIService {
@@ -30,7 +30,8 @@ final class AIService {
         let id = payload.id
         let client: any AIClient
         let model: AIModel
-        switch Self.connect(UserDefaults.standard.string(forKey: AIPreferences.modelKey)) {
+        // A model picked in the panel for this request, else the default (Settings → AI, the chat's last pick).
+        switch Self.connect(payload.model ?? UserDefaults.standard.string(forKey: AIPreferences.modelKey)) {
         case .success(let connection): (model, client) = connection
         case .failure(let error):
             send(Self.event(id, for: error))

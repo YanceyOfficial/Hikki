@@ -495,7 +495,14 @@
     },
     "changesInLines_one": "{{count}} change in {{changed}} of {{total}} lines",
     "changesInLines_other": "{{count}} changes in {{changed}} of {{total}} lines",
-    "askPlaceholder": "Ask AI about this…"
+    "askPlaceholder": "Ask AI about this…",
+    "model": {
+      "label": "Model",
+      "auto": "Auto",
+      "favorites": "Favorites",
+      "recommended": "Recommended",
+      "other": "Other models"
+    }
   },
   "comments": {
     "menu": "Comment",

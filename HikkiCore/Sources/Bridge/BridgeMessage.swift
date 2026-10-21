@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of apps/editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 33
+    public static let version = 34
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -387,12 +387,15 @@ public struct AIRequestPayload: Decodable, Equatable, Sendable {
     public var units: [Unit]
     public var context: Context
     public var media: Media?
+    /// A model picked for this request in the page's AI panel (a catalog id or "auto"); nil: the default.
+    public var model: String?
 
     public init(
         id: String, action: String, instruction: String? = nil, answer: Bool, units: [Unit],
-        context: Context, media: Media? = nil
+        context: Context, media: Media? = nil, model: String? = nil
     ) {
         self.media = media
+        self.model = model
         self.id = id
         self.action = action
         self.instruction = instruction

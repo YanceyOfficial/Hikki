@@ -635,7 +635,10 @@ HikkiUITests/                 XCUITest flows
   the edited text, a translation added after each sentence), `notes` everything said to the user (Markdown: answers, a
   check's verdict, why — reasons too, when asked; the per-change `explain` of the retired card style is gone) — an
   answer for short Markdown with web search; page text is wrapped in tags as data. In the page: the selection menu's
-  "Ask AI" (`apps/editor/src/components/ai-panel.tsx`) runs a preset or the user's words;
+  "Ask AI" (`apps/editor/src/components/ai-panel.tsx`) runs a preset or the user's words, on the default model or
+  one picked in the panel for that request (its chip opens the list in the panel's place: Auto, then the chat menu's
+  groups with only the models that have a key — `PageModelMenu` in HikkiAI, sent with `window.hikki.setAIModels`,
+  keys re-read as Settings opens or closes; `aiRequest.model`, kept by a retry or a follow-up);
   `apps/editor/src/extensions/ai-review.ts` shows an edit in the review style picked in Settings → AI (thumbnails:
   `ReviewStyleThumbnail` / `ThumbnailOption` in HikkiUI; `ai.reviewStyle`, sent with `window.hikki.setAIReviewStyle`; a
   stored `bubble` reads as `inline`): A `inline` (default) — removals struck through and additions as widgets in the
