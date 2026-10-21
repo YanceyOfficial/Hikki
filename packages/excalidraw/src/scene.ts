@@ -285,15 +285,22 @@ export function looksLikeMermaid(text: string): boolean {
  * no `click` / `href` lines, no `%%{init}%%` directives, no CSS `url(…)` in styles.
  */
 export function safeMermaid(text: string): string {
-  return text
-    .replaceAll(/%%\{[\s\S]*?\}%%/gu, '')
-    .split('\n')
-    .filter((line) => !/^\s*(?:click|href)\b/iu.test(line))
-    .join('\n')
-    .replaceAll(/[#&]#?(?:lt|gt|x0*3c|x0*3e|0*60|0*62);/giu, '')
-    .replaceAll(/<(?!br\s*\/?>)\/?[a-z][^>]*>?/giu, '')
-    .replaceAll(/url\s*\(/giu, '')
-    .trim()
+  // Until nothing changes: taking one piece out can join what is around it into another (`#l#lt;t;`, `<<b>img`).
+  let previous: string
+  let current = text
+  do {
+    previous = current
+    current = current
+      .replaceAll(/%%\{[\s\S]*?\}%%/gu, '')
+      .split('\n')
+      .filter((line) => !/^\s*(?:click|href)\b/iu.test(line))
+      .join('\n')
+      .replaceAll(/[#&]#?(?:lt|gt|x0*3c|x0*3e|0*60|0*62);/giu, '')
+      .replaceAll(/<(?!br\s*\/?>)\/?[a-z][^>]*>?/giu, '')
+      .replaceAll(/url\s*\(/giu, '')
+  } while (current !== previous)
+  // Mermaid renders it at its default `securityLevel: 'strict'` (labels through DOMPurify) — a second layer.
+  return current.trim()
 }
 
 type PastedData = { elements?: unknown; files?: unknown; text?: unknown }

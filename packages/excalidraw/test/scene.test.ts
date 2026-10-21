@@ -223,6 +223,11 @@ describe('a hostile scene', () => {
     expect(
       safeMermaid('graph TD\n  A[#lt;img src=x#gt;] --> B[&#60;img src=y&#62;]\n  C[<img src=z')
     ).toBe('graph TD\n  A[img src=x] --> B[img src=y]\n  C[')
+    // Pieces that join into a tag once another is taken out go too.
+    expect(safeMermaid('A[#l#lt;t;img src=x#g#gt;t;] --> B[<<b>img src=y>] --> C[u<b>rl(x)]')).toBe(
+      'A[img src=x] --> B[] --> C[x)]'
+    )
+    expect(safeMermaid('graph TD\n  %%{in%%{x}%%it: {}}%%\n  A')).not.toContain('%%{')
     // A model's answer goes through the same.
     expect(mermaidFromAnswer('```mermaid\ngraph TD\n  A[<img src=https://x>] --> B\n```')).toBe(
       'graph TD\n  A[] --> B'
