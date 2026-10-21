@@ -8,6 +8,7 @@ import type { ToNativeMessage } from '../src/core/protocol'
 import { unitAtPos } from '../src/extensions/block-units'
 import { openEmbedPanel } from '../src/extensions/embed'
 import { insertFiles } from '../src/extensions/media'
+import { drawingsReadOnly } from '../src/lib/drawing-mode'
 import { doc, page, stripIds } from './helpers'
 
 const heading = (level: number, text: string) => ({
@@ -587,6 +588,35 @@ describe('EditorBridge', () => {
       expect(editor().state.selection.from).toBe(4)
       bridge.reload(page('a', { content: doc('hi') }))
       expect(editor().state.selection.from).toBeLessThanOrEqual(editor().state.doc.content.size)
+    })
+  })
+
+  describe("a drawing's Library", () => {
+    it('is offered only once the app says it keeps one; read-only rides along', () => {
+      expect(bridge.drawingHost.library?.()).toBeNull()
+      bridge.setDrawings({ library: true, readOnly: false })
+      expect(bridge.drawingHost.library?.()).not.toBeNull()
+      bridge.setDrawings({ library: false, readOnly: true })
+      expect(drawingsReadOnly()).toBe(true)
+      bridge.setDrawings({ library: false, readOnly: false })
+    })
+
+    it("reads the stored items, and fails when the app can't read them", async () => {
+      const replies: unknown[] = [{ items: [{ id: 'a' }] }, null]
+      bridge = new EditorBridge(host, {
+        post: async (m) => {
+          sent.push(m)
+          return m.type === 'drawingLibrary' ? replies.shift() : null
+        }
+      })
+      bridge.setDrawings({ library: true, readOnly: false })
+      const library = bridge.drawingHost.library?.()
+      await expect(library?.load()).resolves.toEqual([{ id: 'a' }])
+      await expect(library?.load()).rejects.toThrow()
+      library?.save([])
+      expect(sent.filter((m) => m.type === 'saveDrawingLibrary')).toEqual([
+        { type: 'saveDrawingLibrary', items: [] }
+      ])
     })
   })
 })

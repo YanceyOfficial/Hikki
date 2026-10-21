@@ -460,10 +460,46 @@ final class EditorFlowTests: XCTestCase {
             }
         }
 
-        /// A drawing: "/" Drawing adds one and opens Excalidraw over the page (its fonts and code bundled, served by the
-        /// app's scheme); a rectangle drawn and Done leave the block showing the drawing's preview. Typing in it
-        /// brings the keyboard without the page's keyboard bar.
+        /// On a phone a drawing is only looked at: "/" offers no Drawing, and one already in a page (imported here) opens
+        /// in Excalidraw's view mode — no tools, no Library — with Close, which leaves the page as it was.
+        func testDrawingIsReadOnlyOnAPhone() throws {
+            guard UIDevice.current.userInterfaceIdiom == .phone else { throw XCTSkip("the iPhone layout") }
+            continueAfterFailure = false
+            let source = dataDir + "-drawing.html"
+            let elements = #"[{"id":"r1","type":"rectangle","x":0,"y":0,"width":120,"height":80}]"#
+            try "<h1>Sketch</h1><p>Before</p><div data-type=\"drawing\" data-elements='\(elements)'></div>"
+                .write(toFile: source, atomically: true, encoding: .utf8)
+            let app = launch(environment: ["HIKKI_IMPORT_FILE": source])
+            let body = app.webViews.textViews["Page content"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(body, in: app, timeout: 30), "the imported page did not open")
+            let block = app.webViews.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Drawing'")).firstMatch
+            XCTAssertTrue(waitOrDumpTree(block, in: app), "the drawing block is missing")
+
+            // No Drawing in the "/" menu here.
+            app.webViews.staticTexts["Before"].firstMatch.tap()
+            body.typeText("\n/drawing")
+            XCTAssertTrue(waitOrDumpTree(app.webViews.otherElements["Excalidraw"].firstMatch, in: app), "no \"/\" menu")
+            XCTAssertFalse(app.webViews.otherElements["Drawing"].exists, "\"/\" offers a Drawing on a phone")
+            body.typeText(XCUIKeyboardKey.escape.rawValue)
+
+            block.tap()
+            let close = app.webViews.buttons["Close"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(close, in: app, timeout: 30), "the drawing did not open")
+            attach(app, "drawing-read-only")
+            XCTAssertFalse(app.webViews.buttons["Done"].exists, "a drawing opened to edit on a phone")
+            XCTAssertFalse(app.webViews.otherElements["Rectangle"].exists, "Excalidraw's tools show on a phone")
+            XCTAssertFalse(app.webViews.switches["Library"].exists, "Excalidraw's Library shows on a phone")
+            close.tap()
+            let gone = NSPredicate(format: "exists == false")
+            wait(for: [expectation(for: gone, evaluatedWith: close)], timeout: 5)
+            XCTAssertTrue(block.exists, "the drawing block went away")
+        }
+
+        /// A drawing (an iPad — a phone only looks at drawings): "/" Drawing adds one and opens Excalidraw over the page
+        /// (its fonts and code bundled, served by the app's scheme), without the Mac's Library; a rectangle drawn and
+        /// Done leave the block showing the drawing's preview. Typing in it comes without the page's keyboard bar.
         func testDrawingOpensDrawsAndShowsItsPreview() throws {
+            guard UIDevice.current.userInterfaceIdiom != .phone else { throw XCTSkip("drawings are read-only on a phone") }
             continueAfterFailure = false
             let app = launch()
             let newPage = app.buttons["new-page"].firstMatch
@@ -487,6 +523,8 @@ final class EditorFlowTests: XCTestCase {
             XCTAssertTrue(waitOrDumpTree(done, in: app, timeout: 30), "the drawing editor did not open")
             let rectangle = app.webViews.otherElements["Rectangle"].firstMatch
             XCTAssertTrue(waitOrDumpTree(rectangle, in: app), "Excalidraw's toolbar is missing")
+            // The Library is the Mac's: no button for it here.
+            XCTAssertFalse(app.webViews.switches["Library"].exists, "Excalidraw's Library shows on iOS")
             rectangle.tap()
             let window = app.windows.firstMatch
             let from = window.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.4))
@@ -497,11 +535,12 @@ final class EditorFlowTests: XCTestCase {
             XCTAssertTrue(waitOrDumpTree(text, in: app), "Excalidraw's Text tool is missing")
             text.tap()
             window.coordinate(withNormalizedOffset: CGVector(dx: 0.4, dy: 0.75)).tap()
-            XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5), "no keyboard for the drawing's text")
+            // A software keyboard comes up unless a hardware one is connected (a simulator's default on iPad).
+            _ = app.keyboards.firstMatch.waitForExistence(timeout: 3)
             app.typeText("Hi")
             attach(app, "drawing-editor")
             XCTAssertFalse(barFormat.exists, "the page's keyboard bar showed over the drawing")
-            // A tap on the canvas ends the text; the keyboard goes.
+            // A tap on the canvas ends the text.
             window.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.3)).tap()
             wait(for: [expectation(for: NSPredicate(format: "count == 0"), evaluatedWith: app.keyboards)], timeout: 5)
             done.tap()

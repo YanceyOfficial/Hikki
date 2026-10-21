@@ -14,6 +14,7 @@ import {
   openDrawing,
   type DrawingEditorHost
 } from '../src/extensions/drawing'
+import { setDrawingsReadOnly } from '../src/lib/drawing-mode'
 import { settle } from './helpers'
 
 // The overlay itself is Excalidraw (a canvas happy-dom can't draw): the test plays its part.
@@ -22,6 +23,7 @@ type OverlayProps = {
   onChange: (data: { elements: unknown[]; files: object }) => void
   onDone: (data: { elements: unknown[]; files: object }, preview: Blob | null) => Promise<void>
   onFail: () => void
+  readOnly?: boolean
 }
 type Done = { data: { elements: unknown[]; files: object }; preview: Blob | null }
 const overlays: {
@@ -90,6 +92,7 @@ beforeEach(() => {
   editor = createEditor(element, drawingDoc({ elements: [rect, label] }), { drawing: host })
 })
 afterEach(() => {
+  setDrawingsReadOnly(false)
   closeDrawing()
   editor.destroy()
   element.remove()
@@ -310,6 +313,32 @@ describe('editing a drawing', () => {
     overlays[0].live = [label]
     closeDrawing()
     expect(drawingAttrs().elements).toEqual([label])
+  })
+
+  it('on a phone opens to look at only: closing it, at once or as Done, writes nothing', async () => {
+    // A phone-sized screen (the app says so).
+    setDrawingsReadOnly(true)
+    const before = editor.state.doc
+    openDrawing(editor, host, drawingPos())
+    expect(overlays[0].props.readOnly).toBe(true)
+    overlays[0].live = [label]
+    overlays[0].done = async () => ({
+      data: { elements: [label], files: {} },
+      preview: new Blob(['png'])
+    })
+    await finishDrawing()
+    expect(overlays[0].destroyed).toBe(true)
+    openDrawing(editor, host, drawingPos())
+    overlays[1].live = [label]
+    closeDrawing()
+    expect(overlays[1].destroyed).toBe(true)
+    expect(host.upload).not.toHaveBeenCalled()
+    expect(editor.state.doc.eq(before)).toBe(true)
+  })
+
+  it('opens to edit anywhere else', () => {
+    openDrawing(editor, host, drawingPos())
+    expect(overlays[0].props.readOnly).toBe(false)
   })
 
   it('finishing with no drawing open does nothing', async () => {

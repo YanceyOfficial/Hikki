@@ -141,6 +141,12 @@
       "en": "Couldn't update the drawing's preview.",
       "zh": "无法更新绘图的预览。"
     },
+    "drawingLibrarySaveFailed": {
+      "code": 3007,
+      "severity": "error",
+      "en": "Couldn't save the drawing library.",
+      "zh": "无法保存绘图素材库。"
+    },
     "drawingLoadFailed": {
       "code": 3006,
       "severity": "error",

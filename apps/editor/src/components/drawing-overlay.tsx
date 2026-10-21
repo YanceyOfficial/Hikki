@@ -68,9 +68,22 @@ type Props = {
   onDone: (data: DrawingData, preview: Blob | null) => Promise<void>
   /** Excalidraw couldn't load: close without writing anything. */
   onFail: () => void
+  /** Opened to look at only (a phone-sized screen): Excalidraw's view mode, and Close in place of Done, which writes nothing. */
+  readOnly?: boolean
 }
 
-function DrawingEditor({ data, host, title, handleRef, onChange, onDone, onFail }: Props) {
+function DrawingEditor({
+  data,
+  host,
+  title,
+  handleRef,
+  onChange,
+  onDone,
+  onFail,
+  readOnly = false
+}: Props) {
+  // Decided once per opening: the app offers a Library or not (`window.hikki.setDrawings`); never to look at.
+  const [library] = useState(() => (readOnly ? null : (host.library?.() ?? null)))
   const theme = useTheme()
   const compact = useMediaQuery(COMPACT_DRAWING_QUERY)
   const [saving, setSaving] = useState(false)
@@ -104,7 +117,11 @@ function DrawingEditor({ data, host, title, handleRef, onChange, onDone, onFail 
     }
   }
 
-  const doneButton = (
+  const doneButton = readOnly ? (
+    <Button size="sm" variant="secondary" onClick={onFail}>
+      {t('drawing.close')}
+    </Button>
+  ) : (
     <Button size="sm" disabled={saving} onClick={() => void done()}>
       {t('drawing.done')}
     </Button>
@@ -115,12 +132,15 @@ function DrawingEditor({ data, host, title, handleRef, onChange, onDone, onFail 
     read: host.read,
     openLink: host.openLink,
     diagram: host.diagram,
+    library,
     language: excalidrawLanguage(i18n.language),
     theme
   }
   return (
     <div
       className="hk-drawing-editor flex h-full flex-col bg-background"
+      // Without a Library (iOS) its button goes (style.css).
+      data-library={library ? 'on' : 'off'}
       // Clear of what stays over the page (the Mac's toolbar; a phone's status bar and home indicator).
       style={{
         paddingTop: 'max(var(--hk-inset-top, 0px), env(safe-area-inset-top, 0px))',
@@ -148,8 +168,9 @@ function DrawingEditor({ data, host, title, handleRef, onChange, onDone, onFail 
             initial={data}
             host={canvasHost}
             handleRef={handleRef}
-            onChange={changed}
+            onChange={readOnly ? undefined : changed}
             topRight={doneButton}
+            readOnly={readOnly}
           />
         </Suspense>
       </CanvasBoundary>

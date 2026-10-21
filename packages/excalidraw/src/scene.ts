@@ -184,6 +184,42 @@ export function storedElements(value: unknown): StoredElement[] {
   return value.map(storedElement).filter((element): element is StoredElement => element !== null)
 }
 
+/** A library item as the Library keeps it: Excalidraw's own shape, its elements checked like a drawing's. */
+export type StoredLibraryItem = {
+  id: string
+  status: 'published' | 'unpublished'
+  created: number
+  name?: string
+  elements: StoredElement[]
+}
+
+/** How many items a Library keeps (one stored file, read whole whenever a drawing opens). */
+export const LIBRARY_LIMIT = 1000
+
+/**
+ * A Library's stored items — synced, imported from a file, added from any drawing — kept only as far as a drawing's
+ * elements would be: Excalidraw's item shape (an older array-of-arrays library reads as nothing), each item's elements
+ * through `storedElements`, items left empty dropped.
+ */
+export function storedLibraryItems(value: unknown): StoredLibraryItem[] {
+  if (!Array.isArray(value)) return []
+  const items: StoredLibraryItem[] = []
+  for (const item of value) {
+    if (items.length >= LIBRARY_LIMIT) break
+    if (!isObject(item) || typeof item.id !== 'string' || !isSafeKey(item.id)) continue
+    const elements = storedElements(item.elements)
+    if (elements.length === 0) continue
+    items.push({
+      id: item.id,
+      status: item.status === 'published' ? 'published' : 'unpublished',
+      created: typeof item.created === 'number' && Number.isFinite(item.created) ? item.created : 0,
+      ...(typeof item.name === 'string' && item.name.length <= 200 ? { name: item.name } : {}),
+      elements
+    })
+  }
+  return items
+}
+
 /**
  * Whether a live element (in the open editor) is already as a drawing keeps it: a kept kind, a link only as
  * `safeDrawingLink` takes it, no `customData`. Elements change while the editor is open (a library, a paste, a

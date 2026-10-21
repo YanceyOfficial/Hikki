@@ -22,6 +22,7 @@ import {
   type RefObject
 } from 'react'
 
+import { libraryKeeper, type DrawingLibraryHost } from '../library'
 import {
   checkPaste,
   inlineFiles,
@@ -34,6 +35,8 @@ import {
   type DrawingFileRef
 } from '../scene'
 
+export type { DrawingLibraryHost } from '../library'
+
 /** What the drawing editor needs from the app; the package never talks to the native side itself. */
 export type DrawingHost = {
   /** Stores a file (a picture placed in the drawing, the preview); resolves to its URL. */
@@ -44,6 +47,8 @@ export type DrawingHost = {
   openLink: (url: string) => void
   /** Text to diagram: the user's words as a Mermaid diagram (AI); null hides it. Rejects with a message to show. */
   diagram: ((prompt: string) => Promise<string>) | null
+  /** Excalidraw's Library (shapes kept for every drawing); null: none — its button is hidden by the editor. */
+  library: DrawingLibraryHost | null
   /** Excalidraw's language code (`excalidrawLanguage`). */
   language: string
   theme: 'light' | 'dark'
@@ -68,6 +73,8 @@ type Props = {
   /** Drawn at the top right, beside Excalidraw's own controls (the editor's Done button) — not in Excalidraw's phone
    * layout, whose toolbar fills the top: the editor puts it in a bar of its own there (`isCompactDrawing`). */
   topRight?: ReactElement
+  /** Looked at only: Excalidraw's view mode (pan and zoom, nothing changes). */
+  readOnly?: boolean
 }
 
 const extensionOf = (mimeType: string) =>
@@ -107,16 +114,18 @@ const blockedEmbed = () => <span hidden />
  * Excalidraw, as a page's drawing opens in it: the page's language and theme, no file menu (the page is where it is
  * kept), Text to diagram through the host's AI. Fills its parent.
  */
-export function DrawingCanvas({ initial, host, handleRef, onChange, topRight }: Props) {
+export function DrawingCanvas({ initial, host, handleRef, onChange, topRight, readOnly }: Props) {
   const api = useRef<ExcalidrawImperativeAPI | null>(null)
   /** Pictures already stored, by file id: kept as they are, new ones are uploaded once. */
   const stored = useRef<Record<string, DrawingFileRef>>({ ...initial.files })
   const lastVersion = useRef(-1)
+  const [library] = useState(() => (host.library ? libraryKeeper(host.library) : null))
 
-  // The drawing loads once per opening.
+  // The drawing loads once per opening, the Library with it.
   const [initialData] = useState(() => async () => ({
     elements: storedElements(initial.elements) as never,
     files: Object.fromEntries((await loadFiles(initial.files, host)).map((f) => [f.id, f])),
+    libraryItems: ((await library?.load()) ?? []) as never,
     scrollToContent: true,
     appState: { viewBackgroundColor: 'transparent' }
   }))
@@ -196,7 +205,9 @@ export function DrawingCanvas({ initial, host, handleRef, onChange, topRight }: 
       theme={host.theme}
       langCode={host.language}
       autoFocus
+      viewModeEnabled={readOnly}
       onChange={changed}
+      onLibraryChange={library ? (items) => library.changed(items) : undefined}
       renderTopRightUI={topRight ? (isMobile) => (isMobile ? null : topRight) : undefined}
       aiEnabled={diagram !== null}
       // Scenes are hostile (synced, imported, pasted): no web pages in frames, links only to the web and through the

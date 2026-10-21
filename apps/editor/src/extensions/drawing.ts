@@ -4,7 +4,8 @@ import {
   storedFiles,
   usedFileIds,
   type DrawingData,
-  type StoredElement
+  type StoredElement,
+  type StoredLibraryItem
 } from '@hikki/excalidraw'
 import { mergeAttributes, Node, type Editor } from '@tiptap/core'
 import type { Node as PMNode } from '@tiptap/pm/model'
@@ -13,6 +14,7 @@ import type { NodeView } from '@tiptap/pm/view'
 import { renderDrawingOverlay, type DrawingOverlay } from '../components/drawing-overlay'
 import { reportError } from '../core/errors'
 import { t } from '../core/i18n'
+import { drawingsReadOnly } from '../lib/drawing-mode'
 import { followNode, type Followed, type BlockUnit } from './block-units'
 import { SAVE_META } from './comments'
 import { localAssetSrc } from './media'
@@ -29,6 +31,12 @@ export type DrawingEditorHost = {
   diagram: ((prompt: string) => Promise<string>) | null
   /** The drawing's editor took the whole page, or gave it back: the native bars over the page step aside meanwhile. */
   fullScreen?: (open: boolean) => void
+  /** Excalidraw's Library where the app keeps one (the Mac), asked as a drawing opens; null or absent: no Library. */
+  library?: () => {
+    /** The stored items; rejects when they can't be read. */
+    load: () => Promise<unknown>
+    save: (items: StoredLibraryItem[]) => void
+  } | null
 }
 
 declare module '@tiptap/core' {
@@ -90,13 +98,15 @@ export async function finishDrawing(): Promise<void> {
 
 /**
  * Opens the drawing at `pos` in the full-screen editor. Changes go into the block as they are made (out of the page's
- * undo — the drawing has its own — but saved), the preview when it closes.
+ * undo — the drawing has its own — but saved), the preview when it closes. On a phone-sized screen it opens to look
+ * at only (`setDrawingsReadOnly`), and closing it writes nothing.
  */
 export function openDrawing(editor: Editor, host: DrawingEditorHost, pos: number): void {
   if (!editor.isEditable) return
   const node = editor.state.doc.nodeAt(pos)
   if (node?.type.name !== 'drawing') return
   closeDrawing()
+  const lookOnly = drawingsReadOnly()
   let followed: Followed<BlockUnit> | null = null
   const write = (
     attrs: Partial<{ elements: StoredElement[]; files: object; preview: string | null }>
@@ -137,6 +147,7 @@ export function openDrawing(editor: Editor, host: DrawingEditorHost, pos: number
     data: drawingData(node),
     host,
     title: t('drawing.title'),
+    readOnly: lookOnly,
     onChange: (data) => write({ elements: data.elements, files: data.files }),
     onFail: () => finish(),
     onDone: async (data, preview) => {
@@ -154,11 +165,12 @@ export function openDrawing(editor: Editor, host: DrawingEditorHost, pos: number
   open = {
     overlay,
     close: () => {
-      const elements = overlay.elements()
+      const elements = lookOnly ? null : overlay.elements()
       if (elements) write({ elements })
       finish()
     },
     finish: async () => {
+      if (lookOnly) return finish()
       if (saving) return saving
       const done = await overlay.done().catch((error: unknown) => {
         // A picture couldn't be stored: what `closeDrawing` keeps, at the page's change, is all there is.

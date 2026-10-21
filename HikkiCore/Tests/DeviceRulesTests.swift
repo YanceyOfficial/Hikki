@@ -14,6 +14,14 @@ struct DeviceRulesTests {
         #expect(DeviceRules.orientation(screen: CGSize(width: 1032, height: 1376)) == .landscape)  // iPad Pro 13"
     }
 
+    @Test func drawingsAreOnlyLookedAtOnPhoneSizedScreens() {
+        #expect(DeviceRules.drawingsReadOnly(screen: CGSize(width: 402, height: 874)))  // iPhone
+        #expect(DeviceRules.drawingsReadOnly(screen: CGSize(width: 956, height: 440)))  // a Pro Max on its side
+        #expect(DeviceRules.drawingsReadOnly(screen: CGSize(width: 466, height: 678)))  // Duo, folded
+        #expect(!DeviceRules.drawingsReadOnly(screen: CGSize(width: 669, height: 951)))  // Duo, unfolded
+        #expect(!DeviceRules.drawingsReadOnly(screen: CGSize(width: 744, height: 1133)))  // iPad mini
+    }
+
     @Test func aWindowSplitsWhenItIsWideEnoughForTwoPages() {
         #expect(DeviceRules.allowsSplit(windowWidth: 820))
         #expect(DeviceRules.allowsSplit(windowWidth: 1133))  // iPad mini on its side

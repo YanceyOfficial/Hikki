@@ -1102,6 +1102,18 @@ body:has(.hk-find [data-testid='find-panel']) #outline {
   display: none;
 }
 
+/* Excalidraw's Library only where the app keeps one (the Mac): elsewhere its button goes (the phone layout draws it
+   as a bare label among its side tools). Browse libraries never
+   shows — it leaves for excalidraw.com, which can't hand a library back to the app. */
+.hk-drawing-editor[data-library='off'] .excalidraw .default-sidebar-trigger,
+.hk-drawing-editor[data-library='off']
+  .excalidraw
+  .mobile-misc-tools-container
+  > .sidebar-trigger__label-element,
+.hk-drawing-editor .excalidraw .library-menu-browse-button {
+  display: none;
+}
+
 /* The drawing editor (components/drawing-overlay.tsx) in the app's colour tone instead of Excalidraw's violet.
    Unlayered, as Excalidraw's own stylesheet is, and more specific than its `.excalidraw.theme--dark`. */
 .hk-drawing-editor .excalidraw,

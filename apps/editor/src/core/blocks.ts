@@ -47,6 +47,7 @@ import { openEmbedPanel } from '../extensions/embed'
 import { openMathEditor } from '../extensions/math'
 import { pickFiles, type MediaHost } from '../extensions/media'
 import { openToggleAtSelection } from '../extensions/toggle'
+import { drawingsReadOnly } from '../lib/drawing-mode'
 import { t } from './i18n'
 
 /** Sections of the "/" menu, in display order. */
@@ -84,7 +85,12 @@ export type BlockType = {
   isActive?: (editor: Editor) => boolean
   /** Runs after `apply` (e.g. open the formula editor on the new equation). */
   after?: (editor: Editor) => void
+  /** Whether it can be added on this device now (absent: always) — a drawing isn't, on a phone. */
+  available?: () => boolean
 }
+
+/** The blocks that can be added here (the "/" menu, the touch "+" panel). */
+export const isAvailable = (type: BlockType): boolean => type.available?.() ?? true
 
 /** Set by the editor for "/" media items (the file picker needs the bridge). */
 let mediaHost: MediaHost | null = null
@@ -315,7 +321,9 @@ export const BLOCK_TYPES: BlockType[] = [
       'shouhui',
       'ht'
     ],
-    apply: (c) => c.insertDrawing()
+    apply: (c) => c.insertDrawing(),
+    // Drawings are read-only on a phone-sized screen (too small to draw on): opened to look at, never added there.
+    available: () => !drawingsReadOnly()
   },
   // Embeds (Notion's): each opens the link panel for its service; the block itself is the same frame.
   {
@@ -680,7 +688,10 @@ function findNear(editor: Editor, type: string): number | null {
 }
 
 /** Ranks exact alias/title match, then prefix, then substring; empty query keeps catalog order. */
-export function filterBlockTypes(query: string, types: BlockType[] = BLOCK_TYPES): BlockType[] {
+export function filterBlockTypes(
+  query: string,
+  types: BlockType[] = BLOCK_TYPES.filter(isAvailable)
+): BlockType[] {
   const q = query.trim().toLowerCase()
   if (!q) return types
   const score = (type: BlockType): number => {

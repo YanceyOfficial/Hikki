@@ -9,7 +9,7 @@ import { BLOCK_COLOR_TYPES, PALETTE, type PaletteColor } from '../extensions/col
 import { blockQuote } from '../extensions/comments'
 import { mediaKindOf, safeMediaSrc, storedFileNode } from '../extensions/media'
 import { blockKindLabel } from './block-kinds'
-import { BLOCK_GROUPS, BLOCK_TYPES, type BlockGroup, type BlockType } from './blocks'
+import { BLOCK_GROUPS, BLOCK_TYPES, isAvailable, type BlockGroup, type BlockType } from './blocks'
 import { t } from './i18n'
 
 /**
@@ -46,7 +46,7 @@ export function touchBlockMenu(): TouchBlockGroup[] {
     id: group,
     label: GROUP_LABEL[group](),
     blocks: BLOCK_TYPES.filter(
-      (b) => b.group === group && (group !== 'embeds' || b.id === 'embed')
+      (b) => isAvailable(b) && b.group === group && (group !== 'embeds' || b.id === 'embed')
     ).map((b) => ({ id: b.id, label: b.label(), icon: phosphorName(b.icon) }))
   })).filter((g) => g.blocks.length > 0)
 }

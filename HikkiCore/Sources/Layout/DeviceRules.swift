@@ -4,13 +4,13 @@ import CoreGraphics
 /// only separates the Mac from iOS (compile time); everything below is decided at run time, from the screen or the
 /// window, never from the device's name or idiom (Apple's "Preparing your app for iPhone Duo").
 ///
-/// | Device                          | Orientation | Layout (by window width) | Split view      | Vertical bar |
-/// |---------------------------------|-------------|--------------------------|-----------------|--------------|
-/// | iPhone                          | portrait    | iPhone (compact)         | no              | —            |
-/// | iPhone Duo, folded              | portrait    | iPhone (compact)         | no              | yes          |
-/// | iPhone Duo, unfolded            | landscape   | iPad (regular)           | if ≥ 800 pt     | yes          |
-/// | iPad (mini to 13")              | landscape   | iPad (regular)           | if ≥ 800 pt     | —            |
-/// | Mac                             | any         | iPad (regular)           | yes             | —            |
+/// | Device                          | Orientation | Layout (by window width) | Split view      | Vertical bar | Drawings  |
+/// |---------------------------------|-------------|--------------------------|-----------------|--------------|-----------|
+/// | iPhone                          | portrait    | iPhone (compact)         | no              | —            | read-only |
+/// | iPhone Duo, folded              | portrait    | iPhone (compact)         | no              | yes          | read-only |
+/// | iPhone Duo, unfolded            | landscape   | iPad (regular)           | if ≥ 800 pt     | yes          | edited    |
+/// | iPad (mini to 13")              | landscape   | iPad (regular)           | if ≥ 800 pt     | —            | edited    |
+/// | Mac                             | any         | iPad (regular)           | yes             | —            | edited    |
 ///
 /// Where the system has a vertical bar (iOS 27.1's `toolbarVerticalEdge`, read once in `RootView`): the iPhone's
 /// floating bar and top bar hand their buttons to it, the page runs under it, top bars keep `topEdgeClearance` from the
@@ -28,6 +28,15 @@ public enum DeviceRules {
     /// Which way the window may turn on this screen: a phone-sized one upright, a tablet-sized one on its side.
     public static func orientation(screen: CGSize) -> Orientation {
         min(screen.width, screen.height) >= tabletShortSide ? .landscape : .portrait
+    }
+
+    // MARK: Drawings
+
+    /// Whether drawings are only looked at on this screen: a phone-sized one is too small to draw on (the editor's
+    /// "/" offers no Drawing there, and one opens in Excalidraw's view mode). By the screen, not the window, so an iPad
+    /// page beside its sidebar still draws.
+    public static func drawingsReadOnly(screen: CGSize) -> Bool {
+        min(screen.width, screen.height) < tabletShortSide
     }
 
     // MARK: Split view

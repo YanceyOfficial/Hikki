@@ -66,5 +66,12 @@ final class HikkiWebView: WKWebView {
                 reloadKeyboardViews()
             }
         }
+        /// Placed in a window (the page may already be up by then, and told nothing of its screen).
+        var onMoveToWindow: (() -> Void)?
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            if window != nil { onMoveToWindow?() }
+        }
     #endif
 }

@@ -3282,6 +3282,23 @@
         }
       }
     },
+    "app:error.drawingLibrarySaveFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't save the drawing library."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法保存绘图素材库。"
+          }
+        }
+      }
+    },
     "app:error.drawingLoadFailed": {
       "extractionState": "manual",
       "localizations": {

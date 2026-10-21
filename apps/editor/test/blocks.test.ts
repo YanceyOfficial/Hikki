@@ -1,8 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import { BLOCK_TYPES, filterBlockTypes } from '../src/core/blocks'
+import { touchBlockMenu } from '../src/core/touch-tools'
+import { setDrawingsReadOnly } from '../src/lib/drawing-mode'
 
 const ids = (q: string) => filterBlockTypes(q).map((t) => t.id)
+const touchIds = () => touchBlockMenu().flatMap((g) => g.blocks.map((b) => b.id))
 
 describe('filterBlockTypes', () => {
   it('returns the whole catalog in order for an empty query', () => {
@@ -35,5 +38,18 @@ describe('filterBlockTypes', () => {
 
   it('returns nothing for unrelated text', () => {
     expect(ids('zzz')).toEqual([])
+  })
+
+  describe('on a phone-sized screen', () => {
+    afterEach(() => setDrawingsReadOnly(false))
+
+    it('offers no drawing to add — drawings are only looked at there', () => {
+      expect(ids('draw')).toContain('drawing')
+      expect(touchIds()).toContain('drawing')
+      setDrawingsReadOnly(true)
+      expect(ids('draw')).not.toContain('drawing')
+      expect(ids('')).not.toContain('drawing')
+      expect(touchIds()).not.toContain('drawing')
+    })
   })
 })

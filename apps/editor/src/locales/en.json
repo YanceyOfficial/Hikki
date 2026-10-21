@@ -549,6 +549,7 @@
     "pageReadOnly": "This page opened read-only: its content isn't something this version can edit.",
     "copyFailed": "Couldn't copy to the clipboard.",
     "drawingPreviewFailed": "Couldn't update the drawing's preview.",
+    "drawingLibrarySaveFailed": "Couldn't save the drawing library.",
     "drawingLoadFailed": "Couldn't open the drawing editor.",
     "importFailed": "Couldn't import the file.",
     "importPartial": "Some files weren't imported.",
@@ -583,6 +584,7 @@
     "empty": "Empty drawing — click to draw",
     "noPreview": "Drawing — click to open",
     "loading": "Opening the drawing…",
-    "done": "Done"
+    "done": "Done",
+    "close": "Close"
   }
 }

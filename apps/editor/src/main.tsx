@@ -74,6 +74,9 @@ window.hikki = {
   aiPageBlocks: (docId: string) => bridge.aiPageBlocks(docId),
   // The phone's keyboard bar (native): the "+" and "Aa" panels' contents, the page's state for them, and their tools.
   setKeyboardBar: (on: boolean) => bridge.setKeyboardBar(on),
+  // How drawings behave here: the Mac keeps Excalidraw's Library (drawings/library.json in the workspace), a
+  // phone-sized screen only looks at them.
+  setDrawings: (settings: { library: boolean; readOnly: boolean }) => bridge.setDrawings(settings),
   touchBlockMenu: () => bridge.touchBlockMenu(),
   touchTurnIntoMenu: () => bridge.touchTurnIntoMenu(),
   touchState: () => bridge.touchState(),

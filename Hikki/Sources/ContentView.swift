@@ -449,6 +449,7 @@ struct ContentView: View {
         editor.apply(editorSettings)
         editor.attach(store: model.store, assets: model.assets) { [weak model] in model?.history }
         editor.comments = { [weak model] in model?.comments }
+        editor.drawingLibrary = { [weak model] in model?.drawingLibrary }
         // Settings' bulk import / export converts Markdown and HTML with a window's editor.
         model.bulkTransfer.register(editor, model: model)
         editor.deviceName = AppModel.deviceKind
@@ -652,6 +653,7 @@ struct ContentView: View {
         pane.apply(editorSettings)
         pane.setAutoFocus(false)
         pane.comments = { [weak model] in model?.comments }
+        pane.drawingLibrary = { [weak model] in model?.drawingLibrary }
         pane.deviceName = AppModel.deviceKind
         pane.attach(store: model.store, assets: model.assets) { [weak model] in model?.history }
         pane.onOpenPage = { [weak navigator, weak model, weak pane] id, block in

@@ -77,6 +77,8 @@ final class AppModel {
     @ObservationIgnored private(set) var comments: PageComments?
     /// Each page's AI conversation (`ai/<page id>.json`), in the folder too.
     @ObservationIgnored private(set) var chats: PageChats?
+    /// Excalidraw's Library (`drawings/library.json`), in the folder too.
+    @ObservationIgnored private(set) var drawingLibrary: DrawingLibrary?
 
     /// Notion-like: a version per editing session (10 quiet minutes apart), all of the last day, then one a day for
     /// 30 days. DEBUG: `HIKKI_HISTORY_INTERVAL=<seconds>` shortens the session (UI tests).
@@ -118,6 +120,7 @@ final class AppModel {
             self.comments = comments
             let chats = PageChats(root: folder)
             self.chats = chats
+            drawingLibrary = DrawingLibrary(root: folder)
             let retention = AIPreferences.chatRetention
             Task.detached(priority: .utility) { chats.prune(retention) }
             // Every pass — launch, activation, or the folder watcher noticing another device — tells open

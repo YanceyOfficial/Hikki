@@ -29,6 +29,7 @@ extension ErrorCode {
         case .pageReadOnly: String(localized: "app:error.pageReadOnly")
         case .copyFailed: String(localized: "app:error.copyFailed")
         case .drawingPreviewFailed: String(localized: "app:error.drawingPreviewFailed")
+        case .drawingLibrarySaveFailed: String(localized: "app:error.drawingLibrarySaveFailed")
         case .drawingLoadFailed: String(localized: "app:error.drawingLoadFailed")
         case .importFailed: String(localized: "app:error.importFailed")
         case .importPartial: String(localized: "app:error.importPartial")

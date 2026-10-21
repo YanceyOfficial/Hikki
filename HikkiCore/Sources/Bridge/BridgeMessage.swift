@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of apps/editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 32
+    public static let version = 33
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -122,6 +122,10 @@ public enum BridgeMessage: Sendable, Equatable {
     case suggestReading(text: String)
     /// A link card's details: expects `{title, description, icon}` (each may be null), or nil, as the reply.
     case linkPreview(url: String)
+    /// Excalidraw's Library (the Mac, `setDrawings`): expects `{items}` as the reply, or nil when it can't be read.
+    case drawingLibrary
+    /// The Library changed: its items (checked by the editor) replace the stored ones.
+    case saveDrawingLibrary(items: JSONValue)
 }
 
 public enum BridgeError: Error, Equatable {
@@ -190,7 +194,7 @@ extension BridgeMessage: Decodable {
         case type, protocolVersion, snapshot, active, level, message, context, docId, icon, cover, fileExtension, dataBase64
         case size, id, url, block, text, headings, words, characters, name, top
         case threadId, quote, body, resolved, commentId, kind, code, detail, open, status, before, after, blockId
-        case instruction, selection, mode, bff, color
+        case instruction, selection, mode, bff, color, items
     }
 
     public init(from decoder: Decoder) throws {
@@ -308,6 +312,8 @@ extension BridgeMessage: Decodable {
         case "openLink": self = .openLink(url: try c.decode(String.self, forKey: .url))
         case "suggestReading": self = .suggestReading(text: try c.decode(String.self, forKey: .text))
         case "linkPreview": self = .linkPreview(url: try c.decode(String.self, forKey: .url))
+        case "drawingLibrary": self = .drawingLibrary
+        case "saveDrawingLibrary": self = .saveDrawingLibrary(items: try c.decode(JSONValue.self, forKey: .items))
         default: throw BridgeError.unknownType(type)
         }
     }

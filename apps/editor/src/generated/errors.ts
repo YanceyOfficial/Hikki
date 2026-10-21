@@ -29,6 +29,7 @@ export const ERRORS = {
   pageReadOnly: { code: 3003, severity: 'warning' },
   copyFailed: { code: 3004, severity: 'error' },
   drawingPreviewFailed: { code: 3005, severity: 'error' },
+  drawingLibrarySaveFailed: { code: 3007, severity: 'error' },
   drawingLoadFailed: { code: 3006, severity: 'error' },
   importFailed: { code: 4001, severity: 'error' },
   importPartial: { code: 4002, severity: 'warning' },
@@ -119,6 +120,8 @@ export function errorMessage(id: ErrorId): string {
       return t('error.copyFailed')
     case 'drawingPreviewFailed':
       return t('error.drawingPreviewFailed')
+    case 'drawingLibrarySaveFailed':
+      return t('error.drawingLibrarySaveFailed')
     case 'drawingLoadFailed':
       return t('error.drawingLoadFailed')
     case 'importFailed':

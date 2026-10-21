@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 32
+export const PROTOCOL_VERSION = 33
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -189,6 +189,11 @@ export type ToNativeMessage =
   | { type: 'suggestReading'; text: string }
   /** A link card's details: replies `{title, description, icon}` (each may be null), or null when the page can't be read. */
   | { type: 'linkPreview'; url: string }
+  /** Excalidraw's Library (where `setDrawings` says the app keeps one): replies `{items}` — the stored items, `[]` when there are none — or null
+   * when they can't be read. */
+  | { type: 'drawingLibrary' }
+  /** The Library changed: its items, checked (`storedLibraryItems`), replace the stored ones. */
+  | { type: 'saveDrawingLibrary'; items: unknown[] }
 
 /** A file Ask AI reads (`aiRequest.media`): `kind` says how it goes to the model. */
 export type AIMediaRef = { url: string; kind: 'image' | 'pdf'; name?: string | null }

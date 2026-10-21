@@ -156,6 +156,8 @@ final class EditorController {
 
     /// The workspace's comment store (`comments/<page id>.json`), set by ContentView once the folder is known.
     @ObservationIgnored var comments: (() -> PageComments?) = { nil }
+    /// Excalidraw's Library (`drawings/library.json`), the same way; the Mac's only.
+    @ObservationIgnored var drawingLibrary: (() -> DrawingLibrary?) = { nil }
     /// This device's name, shown on comments written elsewhere ("on iPhone").
     @ObservationIgnored var deviceName: String?
 
@@ -895,6 +897,21 @@ final class EditorController {
         ["top": Double(topInset), "bottom": Double(bottomInset), "bleed": bleedTop]
     }
 
+    /// How drawings behave here: a Library on the Mac only (where diagrams get drawn), read-only on a phone-sized
+    /// screen (`DeviceRules.drawingsReadOnly`). Sent on ready and again when the window changes size class (an
+    /// iPhone Duo folded or unfolded moves it to the other screen).
+    func sendDrawingSettings() async {
+        #if os(macOS)
+            let settings: [String: Any] = ["library": true, "readOnly": false]
+        #else
+            guard let screen = webView.window?.windowScene?.screen else { return }
+            let settings: [String: Any] = [
+                "library": false, "readOnly": DeviceRules.drawingsReadOnly(screen: screen.bounds.size),
+            ]
+        #endif
+        await call("window.hikki.setDrawings(settings)", ["settings": settings], label: "setDrawings")
+    }
+
     /// Everything the page is told besides its document, in order, when it comes up (first load, a crashed web
     /// process reloaded).
     private func replayState() async {
@@ -907,6 +924,7 @@ final class EditorController {
             await call("window.hikki.setOutlineRail(visible)", ["visible": false], label: "setOutlineRail")
         }
         if let arguments = pageIndexArguments() { await call("window.hikki.setPages(pages)", arguments, label: "setPages") }
+        await sendDrawingSettings()
         #if os(iOS)
             // The keyboard bar formats a selection here; the page's floating menu stays away.
             await call("window.hikki.setKeyboardBar(on)", ["on": true], label: "setKeyboardBar")
@@ -1099,6 +1117,20 @@ final class EditorController {
             #endif
         case .linkPreview:
             return nil  // answered by the message proxy (it needs the network)
+        case .drawingLibrary:
+            guard let library = drawingLibrary() else { return nil }
+            do {
+                return ["items": try library.items().foundationObject()]
+            } catch {
+                Log.warn("drawing library unreadable: \(error)", category: "drawing")
+                return nil
+            }
+        case .saveDrawingLibrary(let items):
+            do {
+                try drawingLibrary()?.save(items)
+            } catch {
+                Toasts.report(.drawingLibrarySaveFailed, error, category: "drawing")
+            }
         case .suggestReading(let text):
             // Short selections only: a reading is for a word or phrase, and the tokenizer runs on the main thread.
             guard text.count <= 80, let segments = JapaneseReading.segments(for: text) else { return nil }
@@ -1172,6 +1204,17 @@ final class EditorController {
         #endif
         #if os(iOS)
             webView.installKeyboardToolbar(controller: self)
+            // Placed in a window, or moved to the other screen (a Duo folded or unfolded): drawings may change mode.
+            // Before the page is up there is nothing to tell; ready replays it.
+            webView.onMoveToWindow = { [weak self] in
+                guard let self, isReady else { return }
+                Task { await self.sendDrawingSettings() }
+            }
+            webView.registerForTraitChanges([UITraitHorizontalSizeClass.self, UITraitVerticalSizeClass.self]) {
+                [weak self] (_: HikkiWebView, _: UITraitCollection) in
+                guard let self, isReady else { return }
+                Task { await self.sendDrawingSettings() }
+            }
         #endif
         loadStartedAt = .now
         webView.load(URLRequest(url: EditorSchemeHandler.entryURL))

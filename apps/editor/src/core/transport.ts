@@ -23,8 +23,12 @@ export function webkitTransport(): Transport | null {
 /** Browser dev transport: logs to the console and keeps uploaded assets as data URLs. */
 export function devTransport(): Transport {
   const uploads = new Map<string, { type: string; parts: BlobPart[] }>()
+  // A drawing's Library, kept for the session (`window.hikki.setDrawings({ library: true, readOnly: false })` shows it).
+  let library: unknown[] = []
   return {
     post: async (m: ToNativeMessage) => {
+      if (m.type === 'drawingLibrary') return { items: library }
+      if (m.type === 'saveDrawingLibrary') library = m.items
       if (m.type === 'saveAsset') return `data:image/${m.fileExtension};base64,${m.dataBase64}`
       // Uploads become blob: URLs in the browser (gone on reload — dev only).
       if (m.type === 'beginUpload') {

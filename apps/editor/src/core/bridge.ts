@@ -38,6 +38,7 @@ import type { SplitDropHost, SplitDropMode } from '../extensions/split-drop'
 import { openTogglesAround } from '../extensions/toggle'
 import { pageBlocks, type AIPageBlock } from '../lib/ai-content'
 import { bffURL } from '../lib/bff'
+import { setDrawingsReadOnly } from '../lib/drawing-mode'
 import { linkCardFrom } from '../lib/embeds'
 import {
   setIconSheetOpener,
@@ -778,7 +779,28 @@ export class EditorBridge {
     },
     diagram: (prompt) => this.diagrams.request(prompt, this.page.get().title),
     openLink: (url) => void this.send({ type: 'openLink', url }),
-    fullScreen: (open) => void this.send({ type: 'fullScreen', open })
+    fullScreen: (open) => void this.send({ type: 'fullScreen', open }),
+    library: () =>
+      this.drawingLibrary
+        ? {
+            load: async () => {
+              const reply = await this.transport.post({ type: 'drawingLibrary' })
+              if (reply === null || typeof reply !== 'object' || !('items' in reply))
+                throw new Error('library unreadable')
+              return reply.items
+            },
+            save: (items) => void this.send({ type: 'saveDrawingLibrary', items })
+          }
+        : null
+  }
+
+  /** Whether the app keeps Excalidraw's Library (the Mac). */
+  private drawingLibrary = false
+
+  /** `window.hikki.setDrawings`: a Library where the app keeps one, read-only on a phone-sized screen. */
+  setDrawings({ library, readOnly }: { library: boolean; readOnly: boolean }): void {
+    this.drawingLibrary = library
+    setDrawingsReadOnly(readOnly)
   }
 
   /** Page links in the body: labels from the index, clicks routed to the native side. */

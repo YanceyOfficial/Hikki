@@ -549,6 +549,7 @@
     "pageReadOnly": "页面以只读方式打开：此版本无法编辑其内容。",
     "copyFailed": "无法复制到剪贴板。",
     "drawingPreviewFailed": "无法更新绘图的预览。",
+    "drawingLibrarySaveFailed": "无法保存绘图素材库。",
     "drawingLoadFailed": "无法打开绘图编辑器。",
     "importFailed": "无法导入文件。",
     "importPartial": "部分文件未能导入。",
@@ -583,6 +584,7 @@
     "empty": "空白绘图——点按开始绘制",
     "noPreview": "绘图——点按打开",
     "loading": "正在打开绘图…",
-    "done": "完成"
+    "done": "完成",
+    "close": "关闭"
   }
 }

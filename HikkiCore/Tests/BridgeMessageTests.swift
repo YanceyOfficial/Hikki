@@ -184,6 +184,10 @@ struct BridgeMessageTests {
         #expect(try decode(["type": "selection", "docId": "p1", "text": "いいえ"]) == .selection(docId: "p1", text: "いいえ"))
         #expect(try decode(["type": "sheet", "open": true]) == .sheet(open: true))
         #expect(try decode(["type": "fullScreen", "open": false]) == .fullScreen(open: false))
+        #expect(try decode(["type": "drawingLibrary"]) == .drawingLibrary)
+        #expect(
+            try decode(["type": "saveDrawingLibrary", "items": [["id": "a", "elements": []]]])
+                == .saveDrawingLibrary(items: .array([.object(["id": .string("a"), "elements": .array([])])])))
         #expect(
             try decode(["type": "commentCreate", "docId": "p1", "threadId": "t", "quote": "そうです", "body": "样态"])
                 == .commentCreate(docId: "p1", threadId: "t", quote: "そうです", body: "样态"))

@@ -337,10 +337,19 @@ HikkiUITests/                 XCUITest flows
   page as a PNG preview asset (`preview`, twice the size; dark mode inverts it as Excalidraw does). A click opens the
   full-screen editor (`apps/editor/src/components/drawing-overlay.tsx` over `@hikki/excalidraw/canvas`, loaded on
   first open — Excalidraw and Mermaid are their own chunks, never in the page's start-up): changes go into the block
-  as they rest (out of the page's undo, saved with `SAVE_META`), Done stores the preview; before a page switch's flush the
+  as they rest (out of the page's undo, saved with `SAVE_META`), Done stores the preview. On a phone-sized screen
+  (`DeviceRules.drawingsReadOnly`: the screen, not the window, so an iPad page beside its sidebar still draws) drawings
+  are read-only: one opens in Excalidraw's view mode with Close, which writes nothing, and "/" and the keyboard's "+"
+  panel offer no Drawing (`BlockType.available`); before a page switch's flush the
   native side awaits `window.hikki.finishDrawing()`, which closes an open drawing as Done does (preview included), and
   `loadDocument` still closes one at once (`closeDrawing`, its last strokes kept) when that couldn't. While it is open
-  the iOS keyboard bar stays away (`HikkiWebView.hidesKeyboardBar`, from the `fullScreen` message). The package never touches the bridge: the editor hands it a
+  the iOS keyboard bar stays away (`HikkiWebView.hidesKeyboardBar`, from the `fullScreen` message). Excalidraw's
+  Library is the Mac's (`window.hikki.setDrawings({library, readOnly})`, sent on ready and on a size-class change; elsewhere its button is hidden, and Browse
+  libraries everywhere — excalidraw.com can't hand a library back): kept in the workspace folder as
+  `<folder>/drawings/library.json` (`HikkiCore/Sources/Store/DrawingLibrary.swift`, format-versioned, the later write wins),
+  read with the `drawingLibrary` request and written with `saveDrawingLibrary`; items are checked like scenes
+  (`storedLibraryItems`) and written only when they changed, never over a Library that couldn't be read
+  (`packages/excalidraw/src/library.ts`). The package never touches the bridge: the editor hands it a
   host (uploads through `uploadFile`, pictures read back with `fetch` — asset responses allow the editor's own origin
   — and Text to diagram). Text to diagram (Excalidraw's TTD dialog) is an `aiRequest` with action `diagram`
   (`apps/editor/src/core/diagram.ts`; `AIPrompts.diagramInstructions` asks for Mermaid only), which Excalidraw's

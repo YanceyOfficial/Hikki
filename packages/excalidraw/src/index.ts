@@ -6,6 +6,7 @@ export {
   inlineFiles,
   isDrawableType,
   isSafeLiveElement,
+  LIBRARY_LIMIT,
   looksLikeMermaid,
   mermaidFromAnswer,
   safeDrawingLink,
@@ -13,8 +14,10 @@ export {
   setDrawingAssetPath,
   storedElements,
   storedFiles,
+  storedLibraryItems,
   usedFileIds,
   type DrawingData,
   type DrawingFileRef,
+  type StoredLibraryItem,
   type StoredElement
 } from './scene'
