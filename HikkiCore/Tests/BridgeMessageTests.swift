@@ -239,6 +239,14 @@ struct BridgeMessageTests {
                         context: .init(title: "Notes", before: "", after: "Bye"))))
         #expect(
             try decode([
+                "type": "moveBlocks", "docId": "p1", "target": "p2", "blocks": [["type": "paragraph"]], "text": "", "words": 0,
+            ])
+                == .moveBlocks(docId: "p1", target: "p2", blocks: [.object(["type": .string("paragraph")])], text: "", words: 0))
+        #expect(throws: (any Error).self) {
+            try decode(["type": "moveBlocks", "docId": "p1", "target": "p2", "blocks": "x", "text": "", "words": 0])
+        }
+        #expect(
+            try decode([
                 "type": "aiRequest", "id": "r4", "action": "fix", "answer": false, "units": [],
                 "context": ["title": "", "before": "", "after": ""], "model": "claude-opus-5-5",
             ])

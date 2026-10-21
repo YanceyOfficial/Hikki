@@ -67,6 +67,17 @@ struct ContentView: View {
             .focusedSceneValue(\.lockedPage, navigator.currentPage?.isLocked)
     }
 
+    /// Block menu → Move to, from either side's editor: the app writes the blocks into the target, and the
+    /// confirmation offers to open it.
+    private static func moveBlocks(_ request: BlockMoveRequest, model: AppModel?, navigator: Navigator?) async -> Bool {
+        guard let model, let title = await model.moveBlocks(request) else { return false }
+        let name = title.isEmpty ? String(localized: "app:page.untitled") : title
+        Toasts.shared.show(.success, String(localized: "app:toast.blocksMoved \(name)"), actionTitle: "app:toast.openPage") {
+            [weak navigator] in navigator?.open(request.target)
+        }
+        return true
+    }
+
     #if os(iOS)
         /// ⌘K / the search button: full screen in a compact window (a phone, a folded iPhone Duo), a sheet otherwise.
         private var phoneSearch: Binding<Bool> {
@@ -458,6 +469,7 @@ struct ContentView: View {
         editor.attach(store: model.store, assets: model.assets) { [weak model] in model?.history }
         editor.comments = { [weak model] in model?.comments }
         editor.drawingLibrary = { [weak model] in model?.drawingLibrary }
+        editor.moveBlocks = { [weak model, weak navigator] in await Self.moveBlocks($0, model: model, navigator: navigator) }
         // Settings' bulk import / export converts Markdown and HTML with a window's editor.
         model.bulkTransfer.register(editor, model: model)
         editor.deviceName = AppModel.deviceKind
@@ -662,6 +674,7 @@ struct ContentView: View {
         pane.setAutoFocus(false)
         pane.comments = { [weak model] in model?.comments }
         pane.drawingLibrary = { [weak model] in model?.drawingLibrary }
+        pane.moveBlocks = { [weak model, weak navigator] in await Self.moveBlocks($0, model: model, navigator: navigator) }
         pane.deviceName = AppModel.deviceKind
         pane.attach(store: model.store, assets: model.assets) { [weak model] in model?.history }
         pane.onOpenPage = { [weak navigator, weak model, weak pane] id, block in

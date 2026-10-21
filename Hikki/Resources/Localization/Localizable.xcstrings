@@ -1854,6 +1854,23 @@
         }
       }
     },
+    "app:blockActions.searchPages": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search pages"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "搜索页面"
+          }
+        }
+      }
+    },
     "app:blockActions.title": {
       "extractionState": "manual",
       "localizations": {
@@ -3193,6 +3210,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "请求无效。"
+          }
+        }
+      }
+    },
+    "app:error.blockMoveFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't move the block."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法移动该块。"
+          }
+        }
+      }
+    },
+    "app:error.blockMoveLocked": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That page is locked. Unlock it to move blocks into it."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "该页面已锁定，解锁后才能将块移入。"
           }
         }
       }
@@ -10388,6 +10439,23 @@
         }
       }
     },
+    "app:toast.blocksMoved %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moved to “%@”"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已移动到“%@”"
+          }
+        }
+      }
+    },
     "app:toast.close": {
       "extractionState": "manual",
       "localizations": {
@@ -10469,6 +10537,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "已导入 %@ 个页面"
+          }
+        }
+      }
+    },
+    "app:toast.openPage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开"
           }
         }
       }

@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of apps/editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 34
+    public static let version = 35
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -126,6 +126,9 @@ public enum BridgeMessage: Sendable, Equatable {
     case drawingLibrary
     /// The Library changed: its items (checked by the editor) replace the stored ones.
     case saveDrawingLibrary(items: JSONValue)
+    /// Block menu → Move to: append `blocks` (as the target takes them) to page `target`; the reply is true once they
+    /// are there. `text` / `words`: what they add to its text and word count (`BlockMove`).
+    case moveBlocks(docId: String, target: String, blocks: [JSONValue], text: String, words: Int)
 }
 
 public enum BridgeError: Error, Equatable {
@@ -194,7 +197,7 @@ extension BridgeMessage: Decodable {
         case type, protocolVersion, snapshot, active, level, message, context, docId, icon, cover, fileExtension, dataBase64
         case size, id, url, block, text, headings, words, characters, name, top
         case threadId, quote, body, resolved, commentId, kind, code, detail, open, status, before, after, blockId
-        case instruction, selection, mode, bff, color, items
+        case instruction, selection, mode, bff, color, items, target, blocks
     }
 
     public init(from decoder: Decoder) throws {
@@ -314,6 +317,11 @@ extension BridgeMessage: Decodable {
         case "linkPreview": self = .linkPreview(url: try c.decode(String.self, forKey: .url))
         case "drawingLibrary": self = .drawingLibrary
         case "saveDrawingLibrary": self = .saveDrawingLibrary(items: try c.decode(JSONValue.self, forKey: .items))
+        case "moveBlocks":
+            self = .moveBlocks(
+                docId: try c.decode(String.self, forKey: .docId), target: try c.decode(String.self, forKey: .target),
+                blocks: try c.decode([JSONValue].self, forKey: .blocks), text: try c.decode(String.self, forKey: .text),
+                words: try c.decode(Int.self, forKey: .words))
         default: throw BridgeError.unknownType(type)
         }
     }

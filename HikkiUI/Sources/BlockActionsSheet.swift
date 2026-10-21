@@ -15,11 +15,15 @@ public struct BlockActionsInfo: Equatable, Sendable {
     public var askAI: Bool
     public var words: Int?
     public var characters: Int?
+    /// The pages it can move to (none: no Move to — a read-only page, or no other page).
+    public var moveTargets: [PageChoice]
 
     public init(
         kind: String, turnInto: String?, turnIntoItems: [KeyboardBlockItem], textColor: String?, backgroundColor: String?,
-        colorable: Bool, copyLink: Bool, comment: Bool, askAI: Bool, words: Int?, characters: Int?
+        colorable: Bool, copyLink: Bool, comment: Bool, askAI: Bool, words: Int?, characters: Int?,
+        moveTargets: [PageChoice] = []
     ) {
+        self.moveTargets = moveTargets
         self.kind = kind
         self.turnInto = turnInto
         self.turnIntoItems = turnIntoItems
@@ -34,28 +38,43 @@ public struct BlockActionsInfo: Equatable, Sendable {
     }
 }
 
+/// A page to pick (Move to): its id, title (empty: untitled) and icon.
+public struct PageChoice: Identifiable, Equatable, Sendable {
+    public let id: String
+    public let title: String
+    public let icon: String?
+
+    public init(id: String, title: String, icon: String?) {
+        self.id = id
+        self.title = title
+        self.icon = icon
+    }
+}
+
 /// The sheet's actions that need no further choice (Turn into and Color open their own lists).
 public enum BlockAction: String, Sendable {
     case insertBelow, copyLink, duplicate, delete, comment, askAI
 }
 
 /// The phone's ⋯ on the keyboard bar (Notion's block actions): Turn into, Color, Insert below; Copy link, Duplicate,
-/// Delete; Comment; Ask AI — the block's words and characters at the foot. Each action closes the sheet.
+/// Move to, Delete; Comment; Ask AI — the block's words and characters at the foot. Each action closes the sheet.
 public struct BlockActionsSheet: View {
     let info: BlockActionsInfo
     let onAction: (BlockAction) -> Void
     let onTurnInto: (String) -> Void
     let onColor: (KeyboardFormatPanel.ColorKind, String?) -> Void
+    let onMove: (String) -> Void
     @Environment(\.dismiss) private var dismiss
 
     public init(
         info: BlockActionsInfo, onAction: @escaping (BlockAction) -> Void, onTurnInto: @escaping (String) -> Void,
-        onColor: @escaping (KeyboardFormatPanel.ColorKind, String?) -> Void
+        onColor: @escaping (KeyboardFormatPanel.ColorKind, String?) -> Void, onMove: @escaping (String) -> Void = { _ in }
     ) {
         self.info = info
         self.onAction = onAction
         self.onTurnInto = onTurnInto
         self.onColor = onColor
+        self.onMove = onMove
     }
 
     public var body: some View {
@@ -85,6 +104,17 @@ public struct BlockActionsSheet: View {
                 Section {
                     if info.copyLink { row(.copyLink, "app:blockActions.copyLink", icon: .link) }
                     row(.duplicate, "app:page.duplicate", icon: .copy)
+                    if !info.moveTargets.isEmpty {
+                        NavigationLink {
+                            PageChoiceList(pages: info.moveTargets) { page in
+                                dismiss()
+                                onMove(page)
+                            }
+                        } label: {
+                            IconLabel("app:page.moveTo", icon: .arrowBendUpRight)
+                        }
+                        .accessibilityIdentifier("block-action-moveTo")
+                    }
                     row(.delete, "app:common.delete", icon: .trash, role: .destructive)
                 }
                 if info.comment {
@@ -119,6 +149,39 @@ public struct BlockActionsSheet: View {
                 .foregroundStyle(role == .destructive ? Theme.destructive : Theme.foreground)
         }
         .accessibilityIdentifier("block-action-\(action.rawValue)")
+    }
+}
+
+/// Move to: every other page, searchable by title; a pick closes the sheet.
+private struct PageChoiceList: View {
+    let pages: [PageChoice]
+    let onPick: (String) -> Void
+    @State private var query = ""
+
+    private var shown: [PageChoice] {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return pages }
+        return pages.filter { title($0).localizedStandardContains(q) }
+    }
+
+    private func title(_ page: PageChoice) -> String {
+        page.title.isEmpty ? String(localized: "app:page.untitled") : page.title
+    }
+
+    var body: some View {
+        List(shown) { page in
+            Button {
+                onPick(page.id)
+            } label: {
+                HStack(spacing: Spacing.s3) {
+                    Text(verbatim: page.icon ?? "📄").frame(width: Spacing.s6)
+                    Text(verbatim: title(page)).foregroundStyle(Theme.foreground).lineLimit(1)
+                }
+            }
+            .accessibilityIdentifier("block-move-\(page.id)")
+        }
+        .searchable(text: $query, prompt: Text("app:blockActions.searchPages"))
+        .navigationTitle(Text("app:page.moveTo"))
     }
 }
 
@@ -197,6 +260,6 @@ private struct BlockColorList: View {
             kind: "Quote", turnInto: "blockquote",
             turnIntoItems: [.init(id: "paragraph", label: "Text", icon: .textT), .init(id: "blockquote", label: "Quote", icon: .quotes)],
             textColor: nil, backgroundColor: "yellow", colorable: true, copyLink: true, comment: true, askAI: true, words: 29,
-            characters: 56),
+            characters: 56, moveTargets: [.init(id: "a", title: "Trip to Kyoto", icon: "🗾"), .init(id: "b", title: "", icon: nil)]),
         onAction: { _ in }, onTurnInto: { _ in }, onColor: { _, _ in })
 }

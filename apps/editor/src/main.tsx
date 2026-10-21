@@ -96,6 +96,8 @@ window.hikki = {
   touchComment: (scope: TouchCommentScope, body: string) => bridge.touchComment(scope, body),
   touchBlockInfo: () => bridge.touchBlockInfo(),
   touchBlockAction: (action: TouchBlockAction) => bridge.touchBlockAction(action),
+  // The ⋯ sheet's Move to: the caret's block to the end of another page; true once it is there.
+  touchMoveBlock: (target: string) => bridge.touchMoveBlock(target),
   touchBlockColor: (kind: 'text' | 'background', color: string | null) =>
     bridge.touchBlockColor(kind, color),
   touchBlockLink: () => bridge.touchBlockLink(),

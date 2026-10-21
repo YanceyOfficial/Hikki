@@ -8,6 +8,7 @@ import type { ToNativeMessage } from '../src/core/protocol'
 import { unitAtPos } from '../src/extensions/block-units'
 import { openEmbedPanel } from '../src/extensions/embed'
 import { insertFiles } from '../src/extensions/media'
+import { moveBlockHost } from '../src/extensions/move-block'
 import { drawingsReadOnly } from '../src/lib/drawing-mode'
 import { doc, page, stripIds } from './helpers'
 
@@ -588,6 +589,33 @@ describe('EditorBridge', () => {
       expect(editor().state.selection.from).toBe(4)
       bridge.reload(page('a', { content: doc('hi') }))
       expect(editor().state.selection.from).toBeLessThanOrEqual(editor().state.doc.content.size)
+    })
+  })
+
+  describe('moving a block to another page', () => {
+    it('sends it with the page it leaves, and takes WebKit’s 1 as yes', async () => {
+      const replies: unknown[] = [1, false, null]
+      bridge = new EditorBridge(host, {
+        post: async (m) => {
+          sent.push(m)
+          return m.type === 'moveBlocks' ? replies.shift() : null
+        }
+      })
+      bridge.loadDocument(page('a', { content: doc('go', 'stay', 'also') }))
+      const mover = moveBlockHost()!
+      await expect(mover.move('b', [{ type: 'paragraph' }], 'go', 1)).resolves.toBe(true)
+      expect(sent.filter((m) => m.type === 'moveBlocks')).toEqual([
+        {
+          type: 'moveBlocks',
+          docId: 'a',
+          target: 'b',
+          blocks: [{ type: 'paragraph' }],
+          text: 'go',
+          words: 1
+        }
+      ])
+      await expect(mover.move('b', [], '', 0)).resolves.toBe(false)
+      await expect(mover.move('b', [], '', 0)).resolves.toBe(false)
     })
   })
 

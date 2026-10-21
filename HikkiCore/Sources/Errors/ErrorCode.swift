@@ -21,6 +21,8 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
     case trashEmptyFailed
     case historyRestoreFailed
     case commentFailed
+    case blockMoveFailed
+    case blockMoveLocked
     case workspaceUnavailable
     case workspaceSyncFailed
     case workspaceOpenFailed
@@ -76,6 +78,8 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .trashEmptyFailed: 2008
         case .historyRestoreFailed: 2009
         case .commentFailed: 2010
+        case .blockMoveFailed: 2011
+        case .blockMoveLocked: 2012
         case .workspaceUnavailable: 2101
         case .workspaceSyncFailed: 2102
         case .workspaceOpenFailed: 2103
@@ -151,6 +155,8 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .trashEmptyFailed: .error
         case .historyRestoreFailed: .error
         case .commentFailed: .error
+        case .blockMoveFailed: .error
+        case .blockMoveLocked: .warning
         case .workspaceUnavailable: .error
         case .workspaceSyncFailed: .warning
         case .workspaceOpenFailed: .error

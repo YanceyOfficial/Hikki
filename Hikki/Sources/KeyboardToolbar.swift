@@ -230,7 +230,8 @@
                 blockActions = BlockActionsInfo(
                     kind: info.kind, turnInto: info.turnInto, turnIntoItems: items, textColor: info.textColor,
                     backgroundColor: info.backgroundColor, colorable: info.colorable, copyLink: link, comment: info.comment,
-                    askAI: info.ai, words: info.words, characters: info.characters)
+                    askAI: info.ai, words: info.words, characters: info.characters,
+                    moveTargets: info.movable ? controller.moveTargets() : [])
                 webView?.endEditing(true)
             }
         }
@@ -291,6 +292,11 @@
         func insertMedia(_ picked: [PickedMedia]) {
             mediaSheet = false
             Task { await controller?.insertMedia(picked) }
+        }
+
+        func moveBlock(to target: String) {
+            blockActions = nil
+            Task { await controller?.touchMoveBlock(to: target) }
         }
 
         func turnInto(_ id: String) {

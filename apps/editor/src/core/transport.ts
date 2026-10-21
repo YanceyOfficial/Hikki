@@ -47,6 +47,8 @@ export function devTransport(): Transport {
         return upload ? URL.createObjectURL(new Blob(upload.parts)) : null
       }
       if (m.type === 'suggestReading') return null
+      // Nowhere to move to in the browser: the block is said to be there, and leaves.
+      if (m.type === 'moveBlocks') return true
       if (m.type === 'log')
         console[m.level === 'debug' ? 'log' : m.level]('[native]', m.message, m.context ?? '')
       else console.debug('[native]', m.type, m)

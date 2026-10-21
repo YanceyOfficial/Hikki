@@ -8,6 +8,7 @@ import { deleteUnit, duplicateUnit, unitAtPos, unitTextRange } from '../extensio
 import { BLOCK_COLOR_TYPES, PALETTE, type PaletteColor } from '../extensions/colors'
 import { blockQuote } from '../extensions/comments'
 import { mediaKindOf, safeMediaSrc, storedFileNode } from '../extensions/media'
+import { moveUnitTo } from '../extensions/move-block'
 import { blockKindLabel } from './block-kinds'
 import { BLOCK_GROUPS, BLOCK_TYPES, isAvailable, type BlockGroup, type BlockType } from './blocks'
 import { t } from './i18n'
@@ -251,6 +252,8 @@ export type TouchBlockInfo = {
   ai: boolean
   words: number | null
   characters: number | null
+  /** Move to another page is offered (the page isn't read-only; the app lists the pages). */
+  movable: boolean
 }
 
 export function touchBlockInfo(editor: Editor): TouchBlockInfo | null {
@@ -269,8 +272,15 @@ export function touchBlockInfo(editor: Editor): TouchBlockInfo | null {
     comment: editable && (hasText || typeof unit.node.attrs.id === 'string'),
     ai: editable && hasText,
     words: counts?.words ?? null,
-    characters: counts?.characters ?? null
+    characters: counts?.characters ?? null,
+    movable: editable
   }
+}
+
+/** The ⋯ sheet's Move to: the caret's block to the end of page `target` (`moveUnitTo`). */
+export function touchMoveBlock(editor: Editor, target: string): Promise<boolean> {
+  const unit = unitAtPos(editor.state, editor.state.selection.from)
+  return unit ? moveUnitTo(editor, unit, target) : Promise.resolve(false)
 }
 
 /** The ⋯ sheet's actions on the caret's block (Turn into is `touchTurnInto`, AI the bar's own field). */

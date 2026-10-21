@@ -161,6 +161,9 @@ final class EditorController {
     @ObservationIgnored var comments: (() -> PageComments?) = { nil }
     /// Excalidraw's Library (`drawings/library.json`), the same way; the Mac's only.
     @ObservationIgnored var drawingLibrary: (() -> DrawingLibrary?) = { nil }
+    /// Block menu → Move to: appends the blocks to another page (the app's write, `AppModel.moveBlocks`); true once
+    /// they are there.
+    @ObservationIgnored var moveBlocks: ((BlockMoveRequest) async -> Bool) = { _ in false }
     /// This device's name, shown on comments written elsewhere ("on iPhone").
     @ObservationIgnored var deviceName: String?
 
@@ -724,6 +727,8 @@ final class EditorController {
         var ai: Bool
         var words: Int?
         var characters: Int?
+        /// It can go to another page (the page isn't read-only).
+        var movable: Bool
     }
 
     func touchBlockInfo() async -> TouchBlockInfo? {
@@ -734,7 +739,17 @@ final class EditorController {
             textColor: value["textColor"] as? String, backgroundColor: value["backgroundColor"] as? String,
             colorable: value["colorable"] as? Bool ?? false, comment: value["comment"] as? Bool ?? false,
             ai: value["ai"] as? Bool ?? false, words: (value["words"] as? NSNumber)?.intValue,
-            characters: (value["characters"] as? NSNumber)?.intValue)
+            characters: (value["characters"] as? NSNumber)?.intValue, movable: value["movable"] as? Bool ?? false)
+    }
+
+    /// The ⋯ sheet's Move to: every other live page, in the sidebar's order.
+    func moveTargets() -> [PageChoice] {
+        (tree?.all ?? []).filter { $0.id != currentDocumentID }.map { PageChoice(id: $0.id, title: $0.title, icon: $0.icon) }
+    }
+
+    /// The ⋯ sheet's Move to on the caret's block (the editor's own move: the app writes it, then it leaves the page).
+    func touchMoveBlock(to target: String) async {
+        await call("return window.hikki.touchMoveBlock(target)", ["target": target], label: "touchMoveBlock")
     }
 
     /// insertBelow, duplicate, delete, comment or selectText, on the caret's block.
@@ -1131,6 +1146,8 @@ final class EditorController {
                 Log.warn("drawing library unreadable: \(error)", category: "drawing")
                 return nil
             }
+        case .moveBlocks:
+            return nil  // answered by the message proxy (the write waits for every editor's unsaved edits)
         case .saveDrawingLibrary(let items):
             do {
                 try drawingLibrary()?.save(items)
@@ -1265,6 +1282,10 @@ private final class ScriptMessageProxy: NSObject, WKScriptMessageHandlerWithRepl
         do {
             let decoded = try BridgeMessage.decode(scriptMessageBody: message.body)
             // A link card's details come from the network: answered here, off the main actor's synchronous path.
+            if case .moveBlocks(let docId, let target, let blocks, let text, let words) = decoded {
+                let request = BlockMoveRequest(source: docId, target: target, blocks: blocks, text: text, words: words)
+                return (await owner?.moveBlocks(request) ?? false, nil)
+            }
             if case .linkPreview(let url) = decoded {
                 guard let target = URL(string: url), let preview = try? await LinkPreview.fetch(target) else { return (nil, nil) }
                 let reply: [String: Any] = [

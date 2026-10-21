@@ -25,6 +25,7 @@ import {
 import { closeDrawing, finishDrawing, type DrawingEditorHost } from '../extensions/drawing'
 import { runFind, type FindMode } from '../extensions/find'
 import { localAssetSrc, UploadsKey, type MediaHost } from '../extensions/media'
+import { setMoveBlockHost } from '../extensions/move-block'
 import {
   blockLabel,
   pageLinkHref,
@@ -74,6 +75,7 @@ import {
   touchCommentQuote,
   type TouchCommentScope,
   touchBlockAction,
+  touchMoveBlock,
   touchBlockColor,
   touchBlockInfo,
   touchBlockMenu,
@@ -314,6 +316,24 @@ export class EditorBridge {
       return {
         href: pageLinkHref(docId, blockId),
         pageLabel: pageTitle.trim() || t('page.untitled')
+      }
+    })
+    setMoveBlockHost({
+      pages: () => this.pageIndex,
+      currentPageId: () => this.page.get().docId,
+      move: async (target, blocks, text, words) => {
+        const { docId } = this.page.get()
+        if (!docId || this.frozen) return false
+        const reply = await this.transport.post({
+          type: 'moveBlocks',
+          docId,
+          target,
+          blocks,
+          text,
+          words
+        })
+        // WebKit hands a Swift Bool back as a number.
+        return reply === true || reply === 1
       }
     })
     const editor = createEditor(this.host, body, {
@@ -616,6 +636,12 @@ export class EditorBridge {
       (action === 'comment' || !this.frozen) &&
       touchBlockAction(this.editor, action)
     )
+  }
+
+  touchMoveBlock(target: string): Promise<boolean> {
+    return !this.frozen && this.editor
+      ? touchMoveBlock(this.editor, target)
+      : Promise.resolve(false)
   }
 
   touchBlockColor(kind: 'text' | 'background', color: string | null): boolean {

@@ -19,6 +19,8 @@ extension ErrorCode {
         case .trashEmptyFailed: String(localized: "app:error.trashEmptyFailed")
         case .historyRestoreFailed: String(localized: "app:error.historyRestoreFailed")
         case .commentFailed: String(localized: "app:error.commentFailed")
+        case .blockMoveFailed: String(localized: "app:error.blockMoveFailed")
+        case .blockMoveLocked: String(localized: "app:error.blockMoveLocked")
         case .workspaceUnavailable: String(localized: "app:error.workspaceUnavailable")
         case .workspaceSyncFailed: String(localized: "app:error.workspaceSyncFailed")
         case .workspaceOpenFailed: String(localized: "app:error.workspaceOpenFailed")

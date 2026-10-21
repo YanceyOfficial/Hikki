@@ -19,6 +19,8 @@ export const ERRORS = {
   trashEmptyFailed: { code: 2008, severity: 'error' },
   historyRestoreFailed: { code: 2009, severity: 'error' },
   commentFailed: { code: 2010, severity: 'error' },
+  blockMoveFailed: { code: 2011, severity: 'error' },
+  blockMoveLocked: { code: 2012, severity: 'warning' },
   workspaceUnavailable: { code: 2101, severity: 'error' },
   workspaceSyncFailed: { code: 2102, severity: 'warning' },
   workspaceOpenFailed: { code: 2103, severity: 'error' },
@@ -100,6 +102,10 @@ export function errorMessage(id: ErrorId): string {
       return t('error.historyRestoreFailed')
     case 'commentFailed':
       return t('error.commentFailed')
+    case 'blockMoveFailed':
+      return t('error.blockMoveFailed')
+    case 'blockMoveLocked':
+      return t('error.blockMoveLocked')
     case 'workspaceUnavailable':
       return t('error.workspaceUnavailable')
     case 'workspaceSyncFailed':

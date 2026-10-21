@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 34
+export const PROTOCOL_VERSION = 35
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -194,6 +194,16 @@ export type ToNativeMessage =
   /** Excalidraw's Library (where `setDrawings` says the app keeps one): replies `{items}` — the stored items, `[]` when there are none — or null
    * when they can't be read. */
   | { type: 'drawingLibrary' }
+  /** Block menu → Move to: append `blocks` to page `target`; the reply is true once they are there (then they leave
+   * this page). `text` / `words`: what they add to its text and word count. */
+  | {
+      type: 'moveBlocks'
+      docId: string
+      target: string
+      blocks: unknown[]
+      text: string
+      words: number
+    }
   /** The Library changed: its items, checked (`storedLibraryItems`), replace the stored ones. */
   | { type: 'saveDrawingLibrary'; items: unknown[] }
 

@@ -611,8 +611,17 @@ final class EditorFlowTests: XCTestCase {
             let gone = NSPredicate(format: "exists == false")
             wait(for: [expectation(for: gone, evaluatedWith: ai)], timeout: 5)
 
-            body.tap()
-            app.buttons["Link"].firstMatch.tap()
+            // Link is a selection's tool: select "world" first (a tap gives the page its focus back, then the double tap
+            // on the word selects it — the line's middle is the space between the words).
+            let line = body.staticTexts["Hello world"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(line, in: app))
+            let world = line.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.5))
+            world.tap()
+            world.doubleTap()
+            attach(app, "selected")
+            let link = app.buttons["Link"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(link, in: app), "no Link with the word selected")
+            link.tap()
             let field = app.textFields["keyboard-link-field"].firstMatch
             XCTAssertTrue(waitOrDumpTree(field, in: app), "the link field did not open")
             attach(app, "link-composer")
@@ -628,6 +637,42 @@ final class EditorFlowTests: XCTestCase {
             wait(for: [expectation(for: gone, evaluatedWith: sheet)], timeout: 5)
             let copies = NSPredicate(format: "count == 2")
             wait(for: [expectation(for: copies, evaluatedWith: app.webViews.links.matching(identifier: "world"))], timeout: 5)
+        }
+
+        /// ⋯ → Move to sends the caret's block to the end of the page picked: it leaves this page and is stored on
+        /// that one.
+        func testBlockActionsMoveABlockToAnotherPage() throws {
+            guard UIDevice.current.userInterfaceIdiom == .phone else { throw XCTSkip("the iPhone layout") }
+            continueAfterFailure = false
+            let app = launch(environment: ["HIKKI_DEMO_PAGES": "1", "HIKKI_DEBUG_NAV": "demo-46ffce8"])
+            let body = app.webViews.textViews["Page content"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(body, in: app, timeout: 30))
+            let line = body.staticTexts["山へ行くんですか。"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(line, in: app))
+            line.tap()
+            app.buttons["More actions"].firstMatch.tap()
+            let sheet = app.descendants(matching: .any)["block-actions-sheet"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(sheet, in: app), "the ⋯ sheet did not open")
+            app.buttons["block-action-moveTo"].firstMatch.tap()
+            let search = app.searchFields.firstMatch
+            XCTAssertTrue(waitOrDumpTree(search, in: app), "the page list has no search")
+            search.tap()
+            search.typeText("OKR")
+            let target = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'block-move-'")).firstMatch
+            XCTAssertTrue(waitOrDumpTree(target, in: app), "OKRs isn't offered")
+            attach(app, "move-to")
+            target.tap()
+            let gone = NSPredicate(format: "exists == false")
+            wait(for: [expectation(for: gone, evaluatedWith: sheet)], timeout: 5)
+            wait(for: [expectation(for: gone, evaluatedWith: line)], timeout: 10)
+            attach(app, "moved-away")
+            // It is on OKRs now, stored: open that page afresh.
+            app.terminate()
+            let again = launch(environment: ["HIKKI_DEMO_PAGES": "1", "HIKKI_DEBUG_NAV": "demo-250d3d"])
+            let moved = again.webViews.staticTexts["山へ行くんですか。"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(moved, in: again, timeout: 30), "the block isn't on the page it moved to")
+            XCTAssertTrue(again.webViews.staticTexts["OKRs"].firstMatch.exists, "a different page opened")
+            attach(again, "moved")
         }
 
         /// The bar's comment opens a native field over the keyboard; the page stays where it was (the page's own sheet

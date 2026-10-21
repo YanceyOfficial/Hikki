@@ -364,7 +364,9 @@
       "youtube": "YouTube",
       "vimeo": "Vimeo",
       "codepen": "CodePen"
-    }
+    },
+    "moveTo": "Move to",
+    "searchPages": "Search pages…"
   },
   "ruby": {
     "label": "Reading",
@@ -546,6 +548,8 @@
     "trashEmptyFailed": "Couldn't empty the trash.",
     "historyRestoreFailed": "Couldn't restore that version.",
     "commentFailed": "Couldn't save the comment.",
+    "blockMoveFailed": "Couldn't move the block.",
+    "blockMoveLocked": "That page is locked. Unlock it to move blocks into it.",
     "workspaceUnavailable": "The workspace folder can't be reached.",
     "workspaceSyncFailed": "Couldn't sync with the workspace folder.",
     "workspaceOpenFailed": "Couldn't open the workspace.",

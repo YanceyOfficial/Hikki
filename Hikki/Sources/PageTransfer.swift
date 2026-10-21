@@ -31,6 +31,45 @@ extension AppModel {
         }
     }
 
+    // MARK: - Moving blocks
+
+    enum BlockMoveError: Error {
+        case gone, locked
+    }
+
+    /// Block menu → Move to: the blocks go at the end of the target page, written here — every editor hands over its
+    /// unsaved edits first, and an editor showing the target reloads it (as restoring a version does). The target as
+    /// it was is kept in its history. Returns the target's title once the blocks are there (the editor then takes
+    /// them out of the source page); nil when they couldn't go, said in a toast.
+    func moveBlocks(_ request: BlockMoveRequest) async -> String? {
+        await EditorController.flushAll(reason: "move blocks")
+        do {
+            guard let record = try store.document(id: request.target), record.deletedAt == nil else {
+                throw BlockMoveError.gone
+            }
+            guard !record.isLocked else { throw BlockMoveError.locked }
+            let current = try record.content.map { try JSONValue(jsonData: Data($0.utf8)) }
+            let content = BlockMove.appending(request.blocks, to: current)
+            if let history {
+                try history.recordBeforeEdit(pageID: record.id, newTitle: record.title, newContent: content) { record }
+            }
+            try store.saveContent(
+                Snapshot(
+                    docId: record.id, content: content, title: record.title,
+                    text: BlockMove.text(record.plainText, adding: request.text), wordCount: record.wordCount + request.words))
+            Log.info(
+                "blocks moved", category: "store",
+                context: ["from": request.source, "to": record.id, "blocks": "\(request.blocks.count)"])
+            NotificationCenter.default.post(name: .pageSavedInEditor, object: nil, userInfo: ["id": record.id])
+            return record.title
+        } catch BlockMoveError.locked {
+            Toasts.report(.blockMoveLocked, BlockMoveError.locked, category: "store", context: ["docId": request.target])
+        } catch {
+            Toasts.report(.blockMoveFailed, error, category: "store", context: ["docId": request.target])
+        }
+        return nil
+    }
+
     // MARK: - Import
 
     /// Files larger than this aren't read as text.

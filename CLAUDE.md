@@ -327,9 +327,13 @@ HikkiUITests/                 XCUITest flows
   as its section title (`apps/editor/src/core/block-kinds.ts`: catalog labels, an embed's service), then an embed's own
   actions (Replace — the embed panel on its link, same block; Caption — `apps/editor/src/extensions/embed-caption.ts`, a
   `caption` attribute drawn under the frame or card; Open in browser; Copy link to original), Turn into / Color, Copy
-  link / Duplicate / Delete, Comment, Ask AI, and the block's words and characters at the foot. No "Move to" yet (moving
-  a block into another page needs a native write path into a page that may be open elsewhere) and no per-block edited
-  time (none is stored). Block colours are `blockColor` / `blockBackground` attributes. Block-level highlights (drag
+  link / Duplicate / Move to / Delete, Comment, Ask AI, and the block's words and characters at the foot. Move to
+  (`apps/editor/src/extensions/move-block.ts`, its list `apps/editor/src/components/page-picker.tsx`; on iPhone the
+  ⋯ sheet's searchable list, `touchMoveBlock`) sends the block — a list item in its list, comment marks left behind —
+  with its text and words as `moveBlocks`; the app (`AppModel.moveBlocks`) flushes every editor, appends it to the
+  target through the store (`BlockMove`: a blank page takes it in place of its empty line; the target as it was kept
+  in its history; a locked target refused) and reloads editors showing it, and only once the reply says it is there
+  does it leave the page (one undo step) — a failure never loses it. No per-block edited time (none is stored). Block colours are `blockColor` / `blockBackground` attributes. Block-level highlights (drag
   source, the block a menu is open for) are node decorations from `apps/editor/src/extensions/block-highlight.ts` —
   never classes on the node's DOM, which ProseMirror drops on redraw.
 - **Drawings** (`apps/editor/src/extensions/drawing.ts`, "/" Drawing): an atom `drawing` block storing Excalidraw's
@@ -715,7 +719,7 @@ HikkiUITests/                 XCUITest flows
   field over the keyboard (HikkiUI's `KeyboardAIComposer` / `KeyboardLinkComposer` / `KeyboardCommentComposer`, drawn
   by `PageScreen`) on what `touchPrepare` / `touchCommentQuote` pointed at; a comment is started and sent in one step
   (`touchComment`), so the page's own comment sheet stays shut — focusing its field scrolled the page to its end. ⋯
-  is HikkiUI's `BlockActionsSheet` (the caret's block: Turn into, Color, Insert below; Copy link, Duplicate, Delete;
+  is HikkiUI's `BlockActionsSheet` (the caret's block: Turn into, Color, Insert below; Copy link, Duplicate, Move to, Delete;
   Comment; Ask AI; its words). Photo, file and the "+" panel's media blocks open our own sheet (HikkiUI's
   `MediaSourceSheet`, hosted by `Hikki/Sources/MediaPicker.swift`: Camera and Photos tiles, Files, Scan document
   through VisionKit as one PDF); picks move into the workspace's assets natively (`EditorController.insertMedia`) and

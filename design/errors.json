@@ -80,6 +80,18 @@
       "en": "Couldn't save the comment.",
       "zh": "无法保存评论。"
     },
+    "blockMoveFailed": {
+      "code": 2011,
+      "severity": "error",
+      "en": "Couldn't move the block.",
+      "zh": "无法移动该块。"
+    },
+    "blockMoveLocked": {
+      "code": 2012,
+      "severity": "warning",
+      "en": "That page is locked. Unlock it to move blocks into it.",
+      "zh": "该页面已锁定，解锁后才能将块移入。"
+    },
     "workspaceUnavailable": {
       "code": 2101,
       "severity": "error",

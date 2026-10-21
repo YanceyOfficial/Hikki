@@ -96,7 +96,7 @@
                             info: .init(
                                 kind: "Text", turnInto: "paragraph", turnIntoItems: [.init(id: "paragraph", label: "Text", icon: .textT)],
                                 textColor: nil, backgroundColor: nil, colorable: true, copyLink: true, comment: true, askAI: true,
-                                words: 2, characters: 11),
+                                words: 2, characters: 11, moveTargets: [.init(id: "a", title: "Trip to Kyoto", icon: "🗾")]),
                             onAction: { _ in }, onTurnInto: { _ in }, onColor: { _, _ in }
                         )
                         .frame(height: 480)

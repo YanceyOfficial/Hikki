@@ -115,7 +115,10 @@ struct PageScreen: View {
             }
             .sheet(isPresented: blockActionsShown) {
                 if let bar = editor.webView.keyboardBar, let info = bar.blockActions {
-                    BlockActionsSheet(info: info, onAction: bar.runBlockAction, onTurnInto: bar.turnInto, onColor: bar.setBlockColor)
+                    BlockActionsSheet(
+                        info: info, onAction: bar.runBlockAction, onTurnInto: bar.turnInto, onColor: bar.setBlockColor,
+                        onMove: bar.moveBlock
+                    )
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
                 }

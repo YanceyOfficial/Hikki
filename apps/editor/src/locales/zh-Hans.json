@@ -364,7 +364,9 @@
       "youtube": "YouTube",
       "vimeo": "Vimeo",
       "codepen": "CodePen"
-    }
+    },
+    "moveTo": "移动到",
+    "searchPages": "搜索页面…"
   },
   "ruby": {
     "label": "读音",
@@ -546,6 +548,8 @@
     "trashEmptyFailed": "无法清空废纸篓。",
     "historyRestoreFailed": "无法恢复该版本。",
     "commentFailed": "无法保存评论。",
+    "blockMoveFailed": "无法移动该块。",
+    "blockMoveLocked": "该页面已锁定，解锁后才能将块移入。",
     "workspaceUnavailable": "无法访问工作区文件夹。",
     "workspaceSyncFailed": "无法与工作区文件夹同步。",
     "workspaceOpenFailed": "无法打开工作区。",

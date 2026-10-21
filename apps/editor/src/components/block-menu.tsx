@@ -1,4 +1,5 @@
 import {
+  ArrowBendUpRightIcon,
   ArrowSquareOutIcon,
   ArrowsClockwiseIcon,
   ArrowsLeftRightIcon,
@@ -40,6 +41,7 @@ import { BLOCK_COLOR_TYPES, type PaletteColor } from '../extensions/colors'
 import { blockQuote } from '../extensions/comments'
 import { openEmbedPanel, type EmbedHost } from '../extensions/embed'
 import { openCaptionPanel } from '../extensions/embed-caption'
+import { moveBlockHost, moveUnitTo } from '../extensions/move-block'
 import { blockLabel, copyLink } from '../extensions/page-links'
 import { mediaRef } from '../lib/ai-content'
 import { isWebURL } from '../lib/embeds'
@@ -50,6 +52,7 @@ import { FloatingLayer, usePresence } from './floating'
 import { GlidingHighlight } from './gliding-highlight'
 import { IconProvider } from './icons'
 import { MenuRow } from './menu-row'
+import { PagePicker } from './page-picker'
 
 let open: { layer: FloatingLayer; close: () => void } | null = null
 
@@ -105,7 +108,7 @@ export function openBlockMenu(editor: Editor, unit: BlockUnit, anchor: DOMRect):
   )
 }
 
-type Submenu = 'ai' | 'turnInto' | 'color'
+type Submenu = 'ai' | 'turnInto' | 'color' | 'moveTo'
 
 type Item = {
   id: string
@@ -175,6 +178,9 @@ function BlockMenu({
   const colorable = BLOCK_COLOR_TYPES.includes(unit.node.type.name)
   const editable = editor.isEditable
   const counts = blockCounts(unit.node)
+  // Move to: any other page the sidebar knows.
+  const mover = moveBlockHost()
+  const movable = editable && !!mover
 
   useEffect(() => {
     inputRef.current?.focus()
@@ -339,6 +345,17 @@ function BlockMenu({
       section: 2,
       run: act((now) => editor.view.dispatch(duplicateUnit(editor.state, now)))
     },
+    ...(movable
+      ? [
+          {
+            id: 'moveTo',
+            label: t('blockMenu.moveTo'),
+            icon: <ArrowBendUpRightIcon size={18} />,
+            submenu: 'moveTo' as const,
+            section: 2
+          }
+        ]
+      : []),
     {
       id: 'delete',
       label: t('blockMenu.delete'),
@@ -503,6 +520,20 @@ function BlockMenu({
                 media={media !== null}
                 onRun={runAI}
                 onCancel={() => setSubmenu(null)}
+              />
+            </div>
+          )}
+          {shownSubmenu === 'moveTo' && mover && (
+            // Its field keeps its own keys, as the AI panel's does.
+            <div onKeyDown={(e) => e.stopPropagation()}>
+              <PagePicker
+                title={t('blockMenu.moveTo')}
+                pages={mover.pages().filter((p) => p.id !== mover.currentPageId())}
+                onPick={(page) => {
+                  const now = follow.current
+                  onClose()
+                  if (now) void moveUnitTo(editor, now, page.id)
+                }}
               />
             </div>
           )}
