@@ -282,9 +282,13 @@ HikkiUITests/                 XCUITest flows
   the chosen folder, not out), Hikki page files (JSON) come back as they were, keeping their id when it is free and
   their place by `parentId` too (a flat `pages/` folder rebuilds its tree). Export writes every live page into a new
   folder (`WorkspaceExport`: `Title.<ext>` plus `Title/` for subpages, sibling names safe and unique ignoring case,
-  attachments once in the top `assets/` linked with `../`); Markdown/HTML through any window's editor (each window
-  registers its own), JSON = the page files with attachments kept by name, so a JSON export imported into an empty
-  workspace is the same workspace. DEBUG: `HIKKI_BULK_IMPORT=<path>|<path>`, `HIKKI_BULK_EXPORT=<format>|<folder>`.
+  attachments once in the top `assets/` linked with `../`; a page whose parent is in the trash at the top, as the
+  sidebar shows it); Markdown/HTML through any window's editor (each window registers its own), each stamped with the
+  page's id and sibling place (`TransferStamp`: YAML front matter / `<meta>` tags; any front matter is stripped before
+  a Markdown import), JSON = the page files with attachments kept by name, so a JSON export imported into an empty
+  workspace is the same workspace. An import settles every page's id first (`WorkspaceImport.assignIDs`: the one it
+  had when free here) and renames links and mentions between the imported pages to match (`PageLink.rewrite`), and
+  stamped documents come back in their sibling order. DEBUG: `HIKKI_BULK_IMPORT=<path>|<path>`, `HIKKI_BULK_EXPORT=<format>|<folder>`.
 - **Workspace identity** lives in the folder (a workspace.json next to `pages/`: id, name, icon — `WorkspaceIdentity`); the per-device
   record (`AppPaths.workspace`) only adds the location. A device picking a folder that has one _opens_ that workspace
   (onboarding says so), and a newer identity from another device replaces the local name/icon on activation. Settings →

@@ -1059,6 +1059,7 @@ final class EditorFlowTests: XCTestCase {
         try "<h1>Soup</h1><p>Miso.</p>".write(toFile: source + "/Recipes/Soup.html", atomically: true, encoding: .utf8)
 
         let app = launch(environment: ["HIKKI_BULK_IMPORT": source, "HIKKI_BULK_EXPORT": "json|" + exportDir])
+        openDrawerIfNeeded(app)
         XCTAssertTrue(waitOrDumpTree(app.descendants(matching: .any)["page-row-Trip"].firstMatch, in: app, timeout: 30))
         XCTAssertTrue(waitOrDumpTree(app.descendants(matching: .any)["page-row-Recipes"].firstMatch, in: app))
 
@@ -1076,6 +1077,52 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertEqual(try fm.contentsOfDirectory(atPath: root).sorted(), ["Recipes", "Recipes.json", "Trip", "Trip.json"])
         let day = try String(contentsOfFile: root + "/Trip/Day one.json", encoding: .utf8)
         XCTAssertTrue(day.contains("Museum."), day)
+    }
+
+    /// An export's Markdown comes back as it was: siblings in their order, not by name; the front matter isn't page
+    /// text; and a link to a page that had to take a new id here (its own is a demo page's) follows it.
+    func testBulkMarkdownImportKeepsOrderAndLinks() throws {
+        continueAfterFailure = false
+        let fm = FileManager.default
+        let source = dataDir + "-bulk-md"
+        let exportDir = dataDir + "-bulk-md-export"
+        try fm.createDirectory(atPath: source, withIntermediateDirectories: true)
+        try fm.createDirectory(atPath: exportDir, withIntermediateDirectories: true)
+        let taken = "demo-95cb6b3a"  // "Travel" among the demo pages
+        try "---\nhikki-id: \(taken)\nhikki-order: 0\n---\n\n# Zebra\n\nStripes.\n"
+            .write(toFile: source + "/Zebra.md", atomically: true, encoding: .utf8)
+        try "---\nhikki-id: apple-1\nhikki-order: 1\n---\n\n# Apple\n\nSee [Zebra](hikki://page/\(taken)).\n"
+            .write(toFile: source + "/Apple.md", atomically: true, encoding: .utf8)
+
+        let app = launch(environment: [
+            "HIKKI_DEMO_PAGES": "1", "HIKKI_BULK_IMPORT": source, "HIKKI_BULK_EXPORT": "json|" + exportDir,
+        ])
+        openDrawerIfNeeded(app)
+        XCTAssertTrue(waitOrDumpTree(app.descendants(matching: .any)["page-row-Apple"].firstMatch, in: app, timeout: 30))
+
+        var folder: String?
+        let written = expectation(
+            for: NSPredicate { _, _ in
+                guard let name = try? fm.contentsOfDirectory(atPath: exportDir).first else { return false }
+                folder = exportDir + "/" + name
+                return fm.fileExists(atPath: exportDir + "/" + name + "/Apple.json")
+            }, evaluatedWith: nil)
+        wait(for: [written], timeout: 20)
+        func page(_ name: String) throws -> (fields: [String: Any], text: String) {
+            let data = try Data(contentsOf: URL(filePath: try XCTUnwrap(folder) + "/" + name + ".json"))
+            let fields = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+            return (fields, String(decoding: data, as: UTF8.self).replacingOccurrences(of: "\\/", with: "/"))
+        }
+        let zebra = try page("Zebra")
+        let apple = try page("Apple")
+        let zebraID = try XCTUnwrap(zebra.fields["id"] as? String)
+        XCTAssertNotEqual(zebraID, taken, "the demo page's id was taken over")
+        XCTAssertEqual(apple.fields["id"] as? String, "apple-1", "a free id wasn't kept")
+        XCTAssertLessThan(
+            try XCTUnwrap(zebra.fields["sortKey"] as? Double), try XCTUnwrap(apple.fields["sortKey"] as? Double),
+            "siblings came back by name")
+        XCTAssertTrue(apple.text.contains("hikki://page/\(zebraID)"), apple.text)
+        XCTAssertFalse(zebra.text.contains("hikki-id"), "the front matter became page text")
     }
 
     /// Regression: on iPhone, tag-based List selection didn't navigate; rows must be NavigationLinks.

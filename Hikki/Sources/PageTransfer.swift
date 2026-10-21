@@ -92,14 +92,21 @@ extension AppModel {
 
     /// One Markdown / HTML / text file as a new page under `parentId`, converted by the editor. Files it links
     /// relatively come along when they are inside `root` (the folder the user chose; the file's own folder when nil).
-    func importConverted(_ url: URL, root: URL? = nil, parentId: String?, editor: EditorController) async throws -> String {
+    func importConverted(
+        _ url: URL, root: URL? = nil, id: String = UUID().uuidString, parentId: String?, links: [String: String] = [:],
+        editor: EditorController
+    ) async throws -> String {
         let format = ImportFormat(fileExtension: url.pathExtension) ?? .text
-        let (text, bytes) = try await Self.readText(url)
+        var (text, bytes) = try await Self.readText(url)
+        // Front matter (an export's stamp, or another app's) is metadata, not the page's first paragraphs.
+        if format == .markdown { text = TransferStamp.stripFrontMatter(text) }
         // Only the conversion runs on the main thread (in the editor's web view).
         let page = try await editor.importDocument(text, format: format, fallbackTitle: url.deletingPathExtension().lastPathComponent)
         // Pictures beside the document (inside the chosen folder only) become the page's own.
-        let (content, copied) = await Self.relink(page.content, base: url.deletingLastPathComponent(), root: root, assets: assets)
-        let record = try store.create(parentId: parentId)
+        var (content, copied) = await Self.relink(page.content, base: url.deletingLastPathComponent(), root: root, assets: assets)
+        // Links to the other pages of a bulk import, under the ids they got here.
+        content = PageLink.rewrite(content, ids: links)
+        let record = try store.create(id: id, parentId: parentId)
         try store.saveContent(
             Snapshot(docId: record.id, content: content, title: page.title, text: page.text, wordCount: page.wordCount))
         Log.info(

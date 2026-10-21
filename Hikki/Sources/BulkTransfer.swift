@@ -88,8 +88,14 @@ final class BulkTransfer {
             let plan = await Task.detached(priority: .userInitiated) { WorkspaceImport.plan(urls) }.value
             progress?.total = plan.items.count
             var result = Summary(kind: .importing, count: 0, skipped: plan.skipped)
+            // Every page's id is settled first, so each body can link the others under their ids here.
+            let store = model.store
+            // A page in the trash holds its id too; a store that can't say counts as holding it.
+            let (ids, links) = WorkspaceImport.assignIDs(plan.items) { id in
+                do { return try store.document(id: id) != nil } catch { return true }
+            }
             var created: [String?] = []
-            for item in plan.items {
+            for (index, item) in plan.items.enumerated() {
                 if Task.isCancelled {
                     result.cancelled = true
                     break
@@ -97,7 +103,7 @@ final class BulkTransfer {
                 // Under the page its folder made; at the top when that one couldn't be made.
                 let parent = item.parent.flatMap { created[$0] }
                 do {
-                    created.append(try await importItem(item, parentId: parent, model: model))
+                    created.append(try await importItem(item, id: ids[index], parentId: parent, links: links, model: model))
                     result.count += 1
                 } catch {
                     created.append(nil)
@@ -111,16 +117,18 @@ final class BulkTransfer {
         }
     }
 
-    private func importItem(_ item: WorkspaceImport.Item, parentId: String?, model: AppModel) async throws -> String {
+    private func importItem(
+        _ item: WorkspaceImport.Item, id: String, parentId: String?, links: [String: String], model: AppModel
+    ) async throws -> String {
         switch item.source {
         case .document(let url, _):
             guard let editor = converter else { throw TransferError.noEditor }
-            return try await model.importConverted(url, root: item.root, parentId: parentId, editor: editor)
+            return try await model.importConverted(url, root: item.root, id: id, parentId: parentId, links: links, editor: editor)
         case .pageFile(let url):
             return try WorkspaceImport.importPageFile(
-                at: url, root: item.root, parentId: parentId, store: model.store, assets: model.assets)
+                at: url, root: item.root, id: id, parentId: parentId, links: links, store: model.store, assets: model.assets)
         case .folder(let name):
-            return try WorkspaceImport.createFolderPage(named: name, parentId: parentId, store: model.store)
+            return try WorkspaceImport.createFolderPage(named: name, id: id, parentId: parentId, store: model.store)
         }
     }
 
@@ -202,7 +210,7 @@ final class BulkTransfer {
         case .markdown, .html:
             guard let editor = converter else { throw TransferError.noEditor }
             let text = try await editor.exportText(record, format: format == .markdown ? .markdown : .html)
-            return WorkspaceExport.document(text: text, entry: entry)
+            return WorkspaceExport.document(text: text, entry: entry, format: format)
         }
     }
 

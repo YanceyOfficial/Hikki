@@ -29,6 +29,31 @@ public enum PageLink {
         return fragment.contains("/") ? nil : fragment
     }
 
+    /// A page body with the pages `ids` renames (old id → new) linked under their new ids: `hikki://page/<id>` in any
+    /// string (a link's href, its `#block` kept) and a mention's `id`. Imported pages that took new ids keep pointing
+    /// at each other.
+    public static func rewrite(_ content: JSONValue, ids: [String: String]) -> JSONValue {
+        guard !ids.isEmpty else { return content }
+        switch content {
+        case .string(let text) where text.contains("hikki://page/"):
+            return .string(
+                text.replacing(#/hikki://page/([\w-]+)/#) { match in "hikki://page/" + (ids[String(match.1)] ?? String(match.1)) })
+        case .array(let items):
+            return .array(items.map { rewrite($0, ids: ids) })
+        case .object(var object):
+            for (key, value) in object { object[key] = rewrite(value, ids: ids) }
+            if object["type"] == .string("mention"), case .object(var attrs)? = object["attrs"], case .string(let id)? = attrs["id"],
+                let renamed = ids[id]
+            {
+                attrs["id"] = .string(renamed)
+                object["attrs"] = .object(attrs)
+            }
+            return .object(object)
+        default:
+            return content
+        }
+    }
+
     /// The page id in a `hikki://page/<id>` link, or nil for anything else.
     public static func pageID(from url: URL) -> String? {
         guard url.scheme?.lowercased() == scheme, url.host()?.lowercased() == "page" else { return nil }

@@ -29,11 +29,14 @@ public enum WorkspaceExport {
         public var path: String
         /// How many folders down the document is (0 at the top), so its links reach `assets/` with that many `../`.
         public var depth: Int
+        /// Its place among its siblings (0 first), stamped into the document so an import puts it back there.
+        public var order: Int
 
-        public init(id: String, path: String, depth: Int) {
+        public init(id: String, path: String, depth: Int, order: Int = 0) {
             self.id = id
             self.path = path
             self.depth = depth
+            self.order = order
         }
 
         /// The prefix its attachment links get (`assets/`, `../assets/`…).
@@ -44,7 +47,7 @@ public enum WorkspaceExport {
     public static let assetsFolder = "assets"
 
     /// Every live page's file, parents before their children, siblings in their order. A page whose parent isn't
-    /// among `pages` sits at the top.
+    /// among `pages` (one in the trash) sits at the top, where the sidebar shows it.
     public static func plan(_ pages: [PageSummary], fileExtension: String, fallback: String) -> [Entry] {
         let ids = Set(pages.map(\.id))
         var children: [String?: [PageSummary]] = [:]
@@ -60,9 +63,9 @@ public enum WorkspaceExport {
         func walk(_ parent: String?, folder: String, depth: Int) {
             // The top level keeps the attachments folder's name free.
             var taken: Set<String> = depth == 0 ? [key(assetsFolder)] : []
-            for page in children[parent] ?? [] where visited.insert(page.id).inserted {
+            for (order, page) in (children[parent] ?? []).enumerated() where visited.insert(page.id).inserted {
                 let name = uniqueName(PageExport.fileName(for: page.title, fallback: fallback), taken: &taken)
-                entries.append(Entry(id: page.id, path: folder + name + "." + fileExtension, depth: depth))
+                entries.append(Entry(id: page.id, path: folder + name + "." + fileExtension, depth: depth, order: order))
                 walk(page.id, folder: folder + name + "/", depth: depth + 1)
             }
         }
@@ -97,10 +100,11 @@ public enum WorkspaceExport {
     }
 
     /// A Markdown / HTML document (the editor's) ready to write: its attachment links pointed at the export's
-    /// `assets/`, and the attachments it needs.
-    public static func document(text: String, entry: Entry) -> (data: Data, assets: [String]) {
+    /// `assets/`, stamped with the page's id and place (`TransferStamp`), and the attachments it needs.
+    public static func document(text: String, entry: Entry, format: Format) -> (data: Data, assets: [String]) {
         let (relinked, names) = PageExport.relinkAssets(in: text, prefix: entry.assetPrefix)
-        return (Data(relinked.utf8), names)
+        let stamped = TransferStamp.stamp(relinked, id: entry.id, order: entry.order, format: format)
+        return (Data(stamped.utf8), names)
     }
 
     /// The page file as stored, and the attachments it names (body and cover) — kept by name, so they import back
@@ -174,6 +178,9 @@ public enum WorkspaceImport {
         public var parent: Int?
         /// The folder the user chose (or the chosen file's folder): relative links reach files inside it only.
         public var root: URL
+        /// The page's id where it came from (a page file's, or an exported document's stamp): links between the
+        /// imported pages name it.
+        public var pageID: String? = nil
 
         /// The file's name without its extension (a document's title when it has none of its own), or the folder's.
         public var name: String {
@@ -234,12 +241,12 @@ public enum WorkspaceImport {
         let pageParent: String?
         var children: [Node] = []
 
-        init(source: Source, root: URL, header: Header? = nil) {
+        init(source: Source, root: URL, id: String? = nil, sortKey: Double? = nil, parent: String? = nil) {
             self.source = source
             self.root = root
-            sortKey = header?.sortKey
-            pageID = header?.id
-            pageParent = header?.parentId
+            self.sortKey = sortKey
+            pageID = id
+            pageParent = parent
         }
 
         var name: String {
@@ -266,7 +273,7 @@ public enum WorkspaceImport {
         var items: [Item] = []
         func flatten(_ nodes: [Node], parent: Int?) {
             for node in nodes {
-                items.append(Item(source: node.source, parent: parent, root: node.root))
+                items.append(Item(source: node.source, parent: parent, root: node.root, pageID: node.pageID))
                 flatten(node.children, parent: items.count - 1)
             }
         }
@@ -331,7 +338,7 @@ public enum WorkspaceImport {
         }
     }
 
-    /// Page files in their stored order, the rest by name (as Finder lists them).
+    /// Page files and stamped documents in their stored order, the rest by name (as Finder lists them).
     private static func sorted(_ nodes: [Node]) -> [Node] {
         nodes.sorted { a, b in
             switch (a.sortKey, b.sortKey) {
@@ -356,7 +363,7 @@ public enum WorkspaceImport {
                 skipped.append(Skipped(name: name, reason: .inTrash))
                 return nil
             case .success(let header):
-                return Node(source: .pageFile(url), root: root, header: header)
+                return Node(source: .pageFile(url), root: root, id: header.id, sortKey: header.sortKey, parent: header.parentId)
             case .failure(let reason):
                 skipped.append(Skipped(name: name, reason: reason))
                 return nil
@@ -370,7 +377,34 @@ public enum WorkspaceImport {
             skipped.append(Skipped(name: name, reason: .tooLarge))
             return nil
         }
-        return Node(source: .document(url, format), root: root)
+        let stamp = format == .text ? TransferStamp.Read() : TransferStamp.read(head(of: url), format: format)
+        return Node(source: .document(url, format), root: root, id: stamp.id, sortKey: stamp.order)
+    }
+
+    /// The start of a document, where an export's stamp is.
+    private static func head(of url: URL) -> String {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return "" }
+        defer { try? handle.close() }
+        return String(decoding: (try? handle.read(upToCount: 16 * 1024)) ?? Data(), as: UTF8.self)
+    }
+
+    /// The id each item's page gets: the one it had (`pageID`) when no page here has it and no earlier item took it —
+    /// links between the imported pages then stay as they are — else a new one. `links` maps each original id no
+    /// item kept to its first new one, for `PageLink.rewrite` (one an earlier item kept, links already reach).
+    public static func assignIDs(_ items: [Item], isTaken: (String) -> Bool) -> (ids: [String], links: [String: String]) {
+        var used = Set<String>()
+        var links: [String: String] = [:]
+        let ids = items.map { item in
+            guard let original = item.pageID else { return UUID().uuidString }
+            if PageFiles.isValid(original), !used.contains(original), !isTaken(original) {
+                used.insert(original)
+                return original
+            }
+            let id = UUID().uuidString
+            if !used.contains(original), links[original] == nil { links[original] = id }
+            return id
+        }
+        return (ids, links)
     }
 
     private static func header(of url: URL) -> Result<Header, Reason> {
@@ -422,15 +456,18 @@ public enum WorkspaceImport {
         return kept
     }
 
-    /// Imports a page file as a new page under `parentId`: its title, icon, cover, favorite and lock, and body.
-    /// It keeps its id when the store has no page by that id (links between imported pages keep working), else
-    /// gets a new one. Attachments it names that the store lacks are copied from the nearest `assets/` folder above
-    /// it (inside `root`) under the same names. Returns the page's id in this workspace.
+    /// Imports a page file as a new page under `parentId`: its title, icon, cover, favorite and lock, and body, its
+    /// links to other imported pages renamed by `links` (`assignIDs`). It takes `id`, or — without one — keeps its own
+    /// when the store has no page by that id, else gets a new one. Attachments it names that the store lacks are
+    /// copied from the nearest `assets/` folder above it (inside `root`) under the same names. Returns the page's id in
+    /// this workspace.
     public static func importPageFile(
-        at url: URL, root: URL, parentId: String?, store: DocumentStore, assets: AssetStore
+        at url: URL, root: URL, id: String? = nil, parentId: String?, links: [String: String] = [:], store: DocumentStore,
+        assets: AssetStore
     ) throws -> String {
-        let page = try PageFiles.decode(Data(contentsOf: url))
-        let id = try store.document(id: page.id) == nil ? page.id : UUID().uuidString
+        var page = try PageFiles.decode(Data(contentsOf: url))
+        let id = try id ?? (store.document(id: page.id) == nil ? page.id : UUID().uuidString)
+        page.content = page.content.map { PageLink.rewrite($0, ids: links) }
         let base = url.deletingLastPathComponent()
         let copy: (String) -> Void = { name in
             guard assets.file(named: name) == nil, let file = assetFile(name, from: base, root: root) else { return }
@@ -444,8 +481,10 @@ public enum WorkspaceImport {
     }
 
     /// A folder with no document of its own, as an empty page titled with its name under `parentId`.
-    public static func createFolderPage(named name: String, parentId: String?, store: DocumentStore) throws -> String {
-        let record = try store.create(parentId: parentId)
+    public static func createFolderPage(
+        named name: String, id: String = UUID().uuidString, parentId: String?, store: DocumentStore
+    ) throws -> String {
+        let record = try store.create(id: id, parentId: parentId)
         let empty: JSONValue = .object(["type": .string("doc"), "content": .array([.object(["type": .string("paragraph")])])])
         try store.saveContent(Snapshot(docId: record.id, content: empty, title: name, text: "", wordCount: 0))
         return record.id
@@ -463,5 +502,80 @@ public enum WorkspaceImport {
             folder = folder.deletingLastPathComponent()
         }
         return nil
+    }
+}
+
+/// What a bulk export writes into each Markdown / HTML document so that importing the folder puts the pages back as
+/// they were: the page's id (links between the pages name it) and its place among its siblings (a folder lists them
+/// by name). Markdown carries it as YAML front matter, HTML as `<meta>` tags in its head.
+public enum TransferStamp {
+    static let idKey = "hikki-id"
+    static let orderKey = "hikki-order"
+
+    public struct Read: Equatable, Sendable {
+        public var id: String?
+        public var order: Double?
+
+        public init(id: String? = nil, order: Double? = nil) {
+            self.id = id
+            self.order = order
+        }
+    }
+
+    public static func stamp(_ text: String, id: String, order: Int, format: WorkspaceExport.Format) -> String {
+        switch format {
+        case .markdown:
+            return "---\n\(idKey): \(id)\n\(orderKey): \(order)\n---\n\n" + text
+        case .html:
+            guard let head = text.range(of: "<head>") else { return text }
+            let meta = "\n<meta name=\"\(idKey)\" content=\"\(id)\">\n<meta name=\"\(orderKey)\" content=\"\(order)\">"
+            return text.replacingCharacters(in: head.upperBound..<head.upperBound, with: meta)
+        case .json:
+            return text
+        }
+    }
+
+    /// The stamp at the start of a document, if it has one (a valid page id, a number).
+    public static func read(_ text: String, format: ImportFormat) -> Read {
+        var values: [String: String] = [:]
+        switch format {
+        case .markdown:
+            values = frontMatter(text)?.values ?? [:]
+        case .html:
+            for key in [idKey, orderKey] {
+                let pattern = #"<meta\s+name=["']"# + key + #"["']\s+content=["']([^"']*)["']"#
+                if let range = text.range(of: pattern, options: [.regularExpression, .caseInsensitive]),
+                    let value = text[range].split(separator: "content=", maxSplits: 1).last
+                {
+                    values[key] = value.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+                }
+            }
+        case .text:
+            break
+        }
+        let id = values[idKey].flatMap { PageFiles.isValid($0) ? $0 : nil }
+        return Read(id: id, order: values[orderKey].flatMap(Double.init))
+    }
+
+    /// Markdown without its front matter (`---` on the first line to the next `---` or `...`): metadata, not part
+    /// of the page — the editor would read it as a rule and a paragraph.
+    public static func stripFrontMatter(_ text: String) -> String {
+        frontMatter(text)?.body ?? text
+    }
+
+    private static func frontMatter(_ text: String) -> (values: [String: String], body: String)? {
+        let lines = text.split(separator: "\n", maxSplits: 200, omittingEmptySubsequences: false)
+        guard lines.first?.trimmingCharacters(in: .whitespaces) == "---" else { return nil }
+        guard let end = lines.indices.dropFirst().first(where: { ["---", "..."].contains(lines[$0].trimmingCharacters(in: .whitespaces)) })
+        else { return nil }
+        var values: [String: String] = [:]
+        for line in lines[1..<end] {
+            let parts = line.split(separator: ":", maxSplits: 1)
+            guard parts.count == 2 else { continue }
+            let quoted = CharacterSet.whitespaces.union(["\"", "'"])
+            values[parts[0].trimmingCharacters(in: .whitespaces)] = parts[1].trimmingCharacters(in: quoted)
+        }
+        let rest = lines[(end + 1)...].joined(separator: "\n")
+        return (values, String(rest.drop { $0 == "\n" || $0 == "\r" }))
     }
 }
