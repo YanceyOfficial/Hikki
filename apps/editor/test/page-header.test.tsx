@@ -269,6 +269,38 @@ describe('PageHeader', () => {
     expect(await screen.findByRole('button', { name: 'Ocean' })).toBeTruthy()
   })
 
+  it('where the native side draws the cover sheet, the page asks for it and takes its pick back', async () => {
+    render(<PageHeader bridge={bridge} />)
+    load({ cover: 'gradient:dusk' })
+    bridge.setNativeCover(true)
+    act(() => {
+      bridge.editCover()
+    })
+    // No sheet of the page's own: a request with what the native sheet needs.
+    expect(screen.queryByTestId('cover-sheet')).toBeNull()
+    expect(sent).toContainEqual(
+      expect.objectContaining({
+        type: 'coverSheet',
+        docId: 'a',
+        cover: 'gradient:dusk',
+        mode: 'actions'
+      })
+    )
+    // The pick lands as the page's own: shown and saved; a pick for another page, or on a locked one, is refused.
+    let taken = false
+    act(() => {
+      taken = bridge.applyCover('a', 'gradient:ocean')
+    })
+    expect(taken).toBe(true)
+    expect(screen.getByTestId('cover').getAttribute('style')).toContain('var(--cover-ocean)')
+    await settle()
+    expect(sent).toContainEqual({ type: 'setCover', docId: 'a', cover: 'gradient:ocean' })
+    expect(bridge.applyCover('b', null)).toBe(false)
+    act(() => bridge.setLocked(true))
+    expect(bridge.applyCover('a', null)).toBe(false)
+    expect(bridge.page.get().cover).toBe('gradient:ocean')
+  })
+
   it('on a touch screen the icon picker is a bottom sheet', async () => {
     vi.stubGlobal('matchMedia', (query: string) => ({
       matches: query === '(pointer: coarse)' || query === '(any-pointer: coarse)',

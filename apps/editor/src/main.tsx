@@ -111,6 +111,8 @@ window.hikki = {
   find: (mode: FindMode) => bridge.find(mode),
   // The page ⋯ menu's Cover…: the cover's sheet (its actions, or the picker on a page without a cover).
   editCover: () => bridge.editCover(),
+  setNativeCover: (on: boolean) => bridge.setNativeCover(on),
+  applyCover: (docId: string, cover: string | null) => bridge.applyCover(docId, cover),
   // Settings → Editor → Check spelling.
   setSpellcheck: (on: boolean) => bridge.setSpellcheck(on),
   // Comments: the open page's threads (native store), and a thread picked in the side panel.

@@ -619,6 +619,51 @@ final class EditorFlowTests: XCTestCase {
             wait(for: [expectation(for: gone, evaluatedWith: sheet)], timeout: 5)
         }
 
+        /// The page ⋯ menu's Cover… opens the native cover sheet, not the page's: on a page without a cover its picker
+        /// (a gradient picked becomes the cover), with one its actions (Remove takes it away).
+        func testCoverSheetIsNative() throws {
+            continueAfterFailure = false
+            let app = launch()
+            let newPage = app.buttons["new-page"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+            newPage.tap()
+            let title = app.webViews.textViews["Page title"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+            title.tap()
+            title.typeText("Trip\n")
+            let hide = app.buttons["hide-keyboard"].firstMatch
+            if hide.waitForExistence(timeout: 3) { hide.tap() }
+            let gone = NSPredicate(format: "exists == false")
+
+            func openCover() {
+                app.buttons["page-more"].firstMatch.tap()
+                let row = app.descendants(matching: .any)["page-cover"].firstMatch
+                XCTAssertTrue(waitOrDumpTree(row, in: app), "Cover… missing from the page menu")
+                row.tap()
+            }
+
+            openCover()
+            let tabs = app.descendants(matching: .any)["cover-tabs"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(tabs, in: app), "the native picker did not open")
+            XCTAssertFalse(app.webViews.otherElements["cover-sheet"].exists, "the page's own sheet opened too")
+            attach(app, "cover-picker")
+            app.buttons["cover-gradient-ocean"].firstMatch.tap()
+            wait(for: [expectation(for: gone, evaluatedWith: tabs)], timeout: 5)
+
+            // Now with a cover: its actions.
+            openCover()
+            let remove = app.buttons["cover-sheet-remove"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(remove, in: app), "the cover's actions did not open — the pick wasn't kept")
+            XCTAssertTrue(app.buttons["cover-sheet-change"].firstMatch.exists)
+            attach(app, "cover-actions")
+            remove.tap()
+            wait(for: [expectation(for: gone, evaluatedWith: remove)], timeout: 5)
+
+            // Removed: the picker again.
+            openCover()
+            XCTAssertTrue(waitOrDumpTree(tabs, in: app), "the cover was not removed")
+        }
+
         /// Photo opens our own sheet of sources (camera and scan only where the device has them), not the page's file
         /// input.
         func testKeyboardBarPhotoOpensTheMediaSheet() throws {

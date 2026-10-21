@@ -60,9 +60,16 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
   }
   // The page ⋯ menu's Cover…: its actions when there is a cover, the picker when there isn't.
   const hasCover = page.cover !== null
+  // A phone draws the sheet natively (the page only asks for it); elsewhere the page header shows its own.
+  const openCoverSheet = useCallback(
+    (mode: CoverSheetMode) => {
+      if (!bridge.requestCoverSheet(mode)) setCoverSheet(mode)
+    },
+    [bridge]
+  )
   useEffect(
-    () => bridge.onCoverRequest(() => setCoverSheet(hasCover ? 'actions' : 'picker')),
-    [bridge, hasCover]
+    () => bridge.onCoverRequest(() => openCoverSheet(hasCover ? 'actions' : 'picker')),
+    [bridge, hasCover, openCoverSheet]
   )
   const cover = draftY !== null && page.cover ? withCoverPosition(page.cover, draftY) : page.cover
   const background = coverBackground(cover)
@@ -106,7 +113,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
           image={coverImage(cover)}
           repositioning={draftY !== null}
           onDrag={setDraftY}
-          onLongPress={touch && !frozen ? () => setCoverSheet('actions') : undefined}
+          onLongPress={touch && !frozen ? () => openCoverSheet('actions') : undefined}
         >
           {draftY !== null ? (
             <CoverActions>

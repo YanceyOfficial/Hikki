@@ -32,6 +32,17 @@ struct BridgeMessageTests {
         #expect(try BridgeMessage.decode(scriptMessageBody: closed) == .commentThread(docId: "a", threadId: nil))
     }
 
+    @Test func decodesTheCoverSheetRequest() throws {
+        let body: NSDictionary = [
+            "type": "coverSheet", "docId": "a", "cover": "gradient:dusk", "mode": "actions", "bff": "https://unsplash.yancey.app",
+        ]
+        #expect(
+            try BridgeMessage.decode(scriptMessageBody: body)
+                == .coverSheet(docId: "a", cover: "gradient:dusk", mode: .actions, bff: URL(string: "https://unsplash.yancey.app")))
+        let bare: NSDictionary = ["type": "coverSheet", "docId": "a", "cover": NSNull(), "mode": "picker", "bff": NSNull()]
+        #expect(try BridgeMessage.decode(scriptMessageBody: bare) == .coverSheet(docId: "a", cover: nil, mode: .picker, bff: nil))
+    }
+
     @Test func decodesPageInfoWithOptionalBlockIds() throws {
         let body: NSDictionary = [
             "type": "pageInfo", "docId": "a",

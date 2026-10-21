@@ -133,8 +133,22 @@ struct PageScreen: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
-            .onAppear { if phoneToolbar { editor.setNativeComments(true) } }
-            .onDisappear { if phoneToolbar { editor.setNativeComments(false) } }
+            // The cover's sheet (a long press on the cover, the ⋯ menu's Cover…): native too.
+            .sheet(item: coverRequest) { request in
+                CoverSheetHost(request: request, editor: editor)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+            }
+            .onAppear {
+                guard phoneToolbar else { return }
+                editor.setNativeComments(true)
+                editor.setNativeCover(true)
+            }
+            .onDisappear {
+                guard phoneToolbar else { return }
+                editor.setNativeComments(false)
+                editor.setNativeCover(false)
+            }
             .animation(Motion.easeOut(), value: editor.webView.keyboardBar?.composer)
             .animation(Motion.easeOut(), value: keyboardShown)
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
@@ -183,6 +197,11 @@ struct PageScreen: View {
         /// The thread the page has open; closing the sheet closes it in the page too.
         private var openThread: Binding<EditorController.OpenThread?> {
             Binding(get: { editor.openThread }, set: { if $0 == nil { editor.closeThread() } })
+        }
+
+        /// The cover's sheet the page asked for; closing it lets the request go.
+        private var coverRequest: Binding<EditorController.CoverRequest?> {
+            Binding(get: { editor.coverRequest }, set: { if $0 == nil { editor.closeCoverSheet() } })
         }
 
         /// The keyboard bar's ⋯ sheet.

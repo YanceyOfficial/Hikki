@@ -106,6 +106,9 @@
   --size-history-height: 600px;
   --size-thumbnail: 84px;
   --size-media-sheet: 300px;
+  --size-cover-swatch: 96px;
+  --size-cover-swatch-height: 56px;
+  --size-cover-photo: 150px;
   --size-floating-bar: 52px;
   --size-recent-card: 132px;
   --size-model-menu: 280px;
@@ -116,6 +119,16 @@
   --motion-pop-in: 200ms;
   --motion-pop-out: 150ms;
   --motion-loop: 1400ms;
+  --cover-dusk: linear-gradient(135deg, #f6d5f7 0%, #fbe9d7 100%);
+  --cover-ocean: linear-gradient(135deg, #c2e9fb 0%, #a1c4fd 100%);
+  --cover-meadow: linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%);
+  --cover-peach: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+  --cover-lavender: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+  --cover-sand: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+  --cover-night: linear-gradient(135deg, #2b5876 0%, #4e4376 100%);
+  --cover-ember: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --cover-forest: linear-gradient(135deg, #134e5e 0%, #71b280 100%);
+  --cover-slate: linear-gradient(135deg, #485563 0%, #29323c 100%);
   --radius: 8px;
 }
 

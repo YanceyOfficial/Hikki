@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 29
+export const PROTOCOL_VERSION = 30
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -129,6 +129,16 @@ export type ToNativeMessage =
   /** The thread open in the page changed (null: none) — only where the native side draws threads itself
    * (`setNativeComments`, a phone): it shows the thread in a sheet of its own. */
   | { type: 'commentThread'; docId: string; threadId: string | null }
+  /** The cover's sheet, where the native side draws it (`setNativeCover`, a phone): its actions (a long press on the
+   * cover, the ⋯ menu's Cover… on a page with one) or the picker. `bff` is the editor's backend (Unsplash), null
+   * when this build has none. The pick comes back as `window.hikki.applyCover`. */
+  | {
+      type: 'coverSheet'
+      docId: string
+      cover: string | null
+      mode: 'actions' | 'picker'
+      bff: string | null
+    }
   /** The selected text (debounced; "" when nothing is): Ask AI offers it as context. Capped at 4000 characters. */
   | { type: 'selection'; docId: string; text: string }
   /** A bottom sheet opened or closed (a touch screen's cover, icon or comment sheet): the native bars beside the page

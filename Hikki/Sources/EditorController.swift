@@ -33,6 +33,18 @@ final class EditorController {
     /// The thread open in the page, where this side draws it (`nativeComments`: the iPhone's sheet).
     private(set) var openThread: OpenThread?
 
+    /// The cover's sheet the page asked for, where this side draws it (`nativeCover`: the iPhone's sheet).
+    private(set) var coverRequest: CoverRequest?
+
+    struct CoverRequest: Equatable, Identifiable {
+        let docId: String
+        let cover: String?
+        let mode: CoverSheetMode
+        /// The editor's backend (Unsplash); nil in a build without one.
+        let bff: URL?
+        let id = UUID()
+    }
+
     struct OpenThread: Equatable, Identifiable {
         let docId: String
         let threadId: String
@@ -168,6 +180,49 @@ final class EditorController {
         if !on { openThread = nil }
         send("window.hikki.setNativeComments(on)", ["on": on], label: "setNativeComments")
     }
+
+    /// The cover's sheet is drawn here (HikkiUI's `CoverSheet`), not by the page.
+    @ObservationIgnored private var nativeCover = false
+
+    func setNativeCover(_ on: Bool) {
+        guard on != nativeCover else { return }
+        nativeCover = on
+        if !on { coverRequest = nil }
+        send("window.hikki.setNativeCover(on)", ["on": on], label: "setNativeCover")
+    }
+
+    func closeCoverSheet() {
+        coverRequest = nil
+    }
+
+    /// The cover sheet's pick (nil: Remove), set by the page as its own — shown at once, saved through `setCover`,
+    /// refused on a page that is locked or no longer the one shown.
+    func applyCover(_ cover: String?, docId: String) async {
+        await call(
+            "window.hikki.applyCover(docId, cover)", ["docId": docId, "cover": cover ?? NSNull()], label: "applyCover")
+    }
+
+    #if os(iOS)
+        /// A picture picked for the cover: moved into the workspace's assets, then the page's cover. A file that can't
+        /// be stored is said in a toast.
+        func uploadCover(_ media: PickedMedia, docId: String) async {
+            defer { try? FileManager.default.removeItem(at: media.url.deletingLastPathComponent()) }
+            guard let assets else { return }
+            do {
+                let src = try assets.importFile(at: media.url, fileExtension: media.url.pathExtension)
+                Log.info("cover uploaded", category: "covers", context: ["ext": media.url.pathExtension.lowercased()])
+                await applyCover(src, docId: docId)
+            } catch {
+                let code: ErrorCode =
+                    switch error as? AssetStore.AssetError {
+                    case .tooLarge?: .fileTooLarge
+                    case .unsupportedType?: .fileTypeNotAllowed
+                    default: .uploadFailed
+                    }
+                Toasts.report(code, error, category: "covers", context: ["ext": media.url.pathExtension.lowercased()])
+            }
+        }
+    #endif
 
     /// The native sheet closed: the page lets go of the thread too (its passage no longer marked as open).
     func closeThread() {
@@ -816,6 +871,7 @@ final class EditorController {
             // The keyboard bar formats a selection here; the page's floating menu stays away.
             await call("window.hikki.setKeyboardBar(on)", ["on": true], label: "setKeyboardBar")
             if nativeComments { await call("window.hikki.setNativeComments(on)", ["on": true], label: "setNativeComments") }
+            if nativeCover { await call("window.hikki.setNativeCover(on)", ["on": true], label: "setNativeCover") }
         #endif
     }
 
@@ -915,6 +971,8 @@ final class EditorController {
             sheetOpen = open
         case .commentThread(let docId, let threadId):
             openThread = threadId.map { OpenThread(docId: docId, threadId: $0) }
+        case .coverSheet(let docId, let cover, let mode, let bff):
+            coverRequest = CoverRequest(docId: docId, cover: cover, mode: mode, bff: bff)
         case .scroll(let docId, let top):
             lastScroll = (docId, top)
         case .aiRequest(let payload):

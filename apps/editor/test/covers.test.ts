@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -22,6 +25,16 @@ describe('covers', () => {
     expect(coverBackground('gradient:nope')).toBeNull()
     expect(coverBackground('javascript:alert(1)')).toBeNull()
     expect(coverBackground(null)).toBeNull()
+  })
+
+  it('the built-in covers are the design tokens’ (the native side draws the same list)', () => {
+    // vitest runs from apps/editor (happy-dom rewrites import.meta.url, so resolve from the cwd).
+    const tokens = JSON.parse(
+      readFileSync(join(process.cwd(), '../../design/tokens.json'), 'utf8')
+    ) as { cover: Record<string, unknown> }
+    const ids = Object.keys(tokens.cover).filter((k) => !k.startsWith('$'))
+    expect(GRADIENTS.map((g) => g.id)).toEqual(ids)
+    expect(coverBackground('gradient:night')).toBe('var(--cover-night)')
   })
 
   it('escapes quotes in image URLs', () => {

@@ -341,7 +341,13 @@ HikkiUITests/                 XCUITest flows
   one pixel per pixel over its overflow and saves or cancels — Mac only. Touch screens (`pointer: coarse`) have no
   buttons over the cover and no Reposition: a long press on it, or the page ⋯ menu's Cover… (`window.hikki.editCover`),
   opens its sheet (Change cover, Remove; `apps/editor/src/page/cover-sheet.tsx`), and the page and callout icon pickers open
-  as the same bottom sheet (`apps/editor/src/components/bottom-sheet.tsx`, keyboard-aware) instead of popovers.
+  as the same bottom sheet (`apps/editor/src/components/bottom-sheet.tsx`, keyboard-aware) instead of popovers. In the
+  iPhone layout the cover's sheet is native: `PageScreen` says so (`window.hikki.setNativeCover`), the page only asks
+  (`coverSheet`, with the editor's BFF address) and HikkiUI's `CoverSheet` (`Hikki/Sources/CoverSheetHost.swift`:
+  actions, then Gallery · Upload — photo library, camera, Files into the assets — · Link · Unsplash through
+  `UnsplashClient` in `HikkiCore/Sources/Text/Unsplash.swift`, credited, a pick reported as a download) hands the pick
+  back as the page's own (`window.hikki.applyCover`). The built-in gradients are design tokens (`cover` in
+  `design/tokens.json` → `--cover-<id>` for the web, `CoverGradient` in Swift).
 - **Embeds** (`apps/editor/src/extensions/embed.ts`, transforms in `apps/editor/src/lib/embeds.ts`): one `embed` block — an
   `<iframe>` on a third-party page (sandboxed, keeps its origin) or on a snippet of HTML (`srcdoc`, no origin) — behind
   the "/" menu's Embeds group — a short list of work services: Embed, HTML, Google Drive, Figma, Miro, Loom, Airtable,

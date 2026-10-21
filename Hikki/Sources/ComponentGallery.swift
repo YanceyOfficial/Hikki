@@ -116,6 +116,15 @@
                         .frame(height: 420)
                         .listRowInsets(EdgeInsets())
                     }
+                    Section("CoverSheet") {
+                        CoverSheet(
+                            current: "gradient:ocean", startsInPicker: true,
+                            search: { _ in .failed(busy: true) },
+                            onSelect: { _ in }, onPickPhoto: { _ in }, onUpload: { _ in }, onRemove: {}
+                        )
+                        .frame(height: 420)
+                        .listRowInsets(EdgeInsets())
+                    }
                     Section("MediaSourceSheet") {
                         MediaSourceSheet { _ in }
                             .listRowInsets(EdgeInsets())

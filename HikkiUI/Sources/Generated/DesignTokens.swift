@@ -227,6 +227,9 @@ public nonisolated enum Size {
     public static let historyHeight: CGFloat = 600
     public static let thumbnail: CGFloat = 84
     public static let mediaSheet: CGFloat = 300
+    public static let coverSwatch: CGFloat = 96
+    public static let coverSwatchHeight: CGFloat = 56
+    public static let coverPhoto: CGFloat = 150
     public static let floatingBar: CGFloat = 52
     public static let recentCard: CGFloat = 132
     public static let modelMenu: CGFloat = 280
@@ -248,4 +251,32 @@ public nonisolated enum Motion {
     public static func easeOut(_ duration: TimeInterval = popIn) -> Animation { .timingCurve(0.25, 1, 0.5, 1, duration: duration) }
     /// Strong ease-in-out — for something already on screen moving to a new place.
     public static func easeInOut(_ duration: TimeInterval = popIn) -> Animation { .timingCurve(0.77, 0, 0.175, 1, duration: duration) }
+}
+
+/// Built-in page covers (stored as `gradient:<id>`): two colours from the top-leading corner to the bottom-trailing one.
+public nonisolated enum CoverGradient: String, CaseIterable, Sendable, Identifiable {
+    case dusk, ocean, meadow, peach, lavender, sand, night, ember, forest, slate
+
+    public var id: String { rawValue }
+    /// The value a page stores for it.
+    public var cover: String { "gradient:\(rawValue)" }
+
+    public var colors: [Color] {
+        switch self {
+        case .dusk: [Color(.sRGB, red: 0.9647, green: 0.8353, blue: 0.9686), Color(.sRGB, red: 0.9843, green: 0.9137, blue: 0.8431)]
+        case .ocean: [Color(.sRGB, red: 0.7608, green: 0.9137, blue: 0.9843), Color(.sRGB, red: 0.6314, green: 0.7686, blue: 0.9922)]
+        case .meadow: [Color(.sRGB, red: 0.8314, green: 0.9882, blue: 0.4745), Color(.sRGB, red: 0.5882, green: 0.902, blue: 0.6314)]
+        case .peach: [Color(.sRGB, red: 1, green: 0.9255, blue: 0.8235), Color(.sRGB, red: 0.9882, green: 0.7137, blue: 0.6235)]
+        case .lavender: [Color(.sRGB, red: 0.8784, green: 0.7647, blue: 0.9882), Color(.sRGB, red: 0.5569, green: 0.7725, blue: 0.9882)]
+        case .sand: [Color(.sRGB, red: 0.9922, green: 0.9843, blue: 0.9843), Color(.sRGB, red: 0.9216, green: 0.9294, blue: 0.9333)]
+        case .night: [Color(.sRGB, red: 0.1686, green: 0.3451, blue: 0.4627), Color(.sRGB, red: 0.3059, green: 0.2627, blue: 0.4627)]
+        case .ember: [Color(.sRGB, red: 0.9412, green: 0.5765, blue: 0.9843), Color(.sRGB, red: 0.9608, green: 0.3412, blue: 0.4235)]
+        case .forest: [Color(.sRGB, red: 0.0745, green: 0.3059, blue: 0.3686), Color(.sRGB, red: 0.4431, green: 0.698, blue: 0.502)]
+        case .slate: [Color(.sRGB, red: 0.2824, green: 0.3333, blue: 0.3882), Color(.sRGB, red: 0.1608, green: 0.1961, blue: 0.2353)]
+        }
+    }
+
+    public var gradient: LinearGradient {
+        LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
 }

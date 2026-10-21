@@ -128,7 +128,7 @@
         }
 
         /// "IMG_20261020_174012.jpg", as a camera names a picture.
-        private static func photoName() -> String { "IMG_\(stamp()).jpg" }
+        static func photoName() -> String { "IMG_\(stamp()).jpg" }
 
         private static func stamp() -> String {
             let formatter = DateFormatter()
@@ -151,7 +151,7 @@
     }
 
     /// The system camera, for one picture (nil: cancelled).
-    private struct CameraPicker: UIViewControllerRepresentable {
+    struct CameraPicker: UIViewControllerRepresentable {
         let onDone: (UIImage?) -> Void
 
         func makeUIViewController(context: Context) -> UIImagePickerController {

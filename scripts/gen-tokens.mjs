@@ -163,8 +163,40 @@ function swift() {
     `    public static func easeInOut(_ duration: TimeInterval = popIn) -> Animation { .timingCurve(${curve('ease-in-out')}, duration: duration) }`
   )
   lines.push('}', '')
+  lines.push(
+    '/// Built-in page covers (stored as `gradient:<id>`): two colours from the top-leading corner to the bottom-trailing one.'
+  )
+  lines.push(
+    'public nonisolated enum CoverGradient: String, CaseIterable, Sendable, Identifiable {'
+  )
+  lines.push(
+    `    case ${entries(tokens.cover)
+      .map(([id]) => id)
+      .join(', ')}`,
+    ''
+  )
+  lines.push('    public var id: String { rawValue }')
+  lines.push('    /// The value a page stores for it.')
+  lines.push('    public var cover: String { "gradient:\\(rawValue)" }', '')
+  lines.push('    public var colors: [Color] {', '        switch self {')
+  for (const [id, stops] of entries(tokens.cover))
+    lines.push(
+      `        case .${id}: [${stops.map((s) => swiftColor(parseColor(s).rgb)).join(', ')}]`
+    )
+  lines.push('        }', '    }', '')
+  lines.push('    public var gradient: LinearGradient {')
+  lines.push(
+    '        LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)'
+  )
+  lines.push('    }', '}', '')
   return lines.join('\n')
 }
+
+/** A fixed sRGB colour (the same in both schemes). */
+const swiftColor = (rgb) =>
+  `Color(.sRGB, red: ${channels(rgb)
+    .map((v, i) => `${['', 'green: ', 'blue: '][i]}${+(v / 255).toFixed(4)}`)
+    .join(', ')})`
 
 /** The four control points of a motion easing, comma-separated. */
 const curve = (name) => tokens.motion[name].join(', ')
@@ -202,6 +234,9 @@ function css() {
   L.push(':root {', ...colorVars('light', '  '))
   for (const [k, v] of entries(tokens.size)) L.push(`  --size-${k}: ${v}px;`)
   for (const k of ['pop-in', 'pop-out', 'loop']) L.push(`  --motion-${k}: ${tokens.motion[k]}ms;`)
+  // Built-in covers: the page header and the picker paint `var(--cover-<id>)` (src/lib/covers.ts).
+  for (const [id, [from, to]] of entries(tokens.cover))
+    L.push(`  --cover-${id}: linear-gradient(135deg, ${from} 0%, ${to} 100%);`)
   // shadcn's base radius: its components derive odd sizes from it (`calc(var(--radius) - 5px)` for xs).
   L.push(`  --radius: ${tokens.radius.lg}px;`)
   L.push(

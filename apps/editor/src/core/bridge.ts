@@ -35,6 +35,7 @@ import { setKeyboardBar } from '../extensions/selection-menu'
 import type { SplitDropHost, SplitDropMode } from '../extensions/split-drop'
 import { openTogglesAround } from '../extensions/toggle'
 import { pageBlocks, type AIPageBlock } from '../lib/ai-content'
+import { bffURL } from '../lib/bff'
 import { linkCardFrom } from '../lib/embeds'
 import { sheetPresence } from '../lib/sheet-presence'
 import { activeCommands, createEditor, runCommand } from './editor'
@@ -893,6 +894,32 @@ export class EditorBridge {
     if (!this.editor || this.frozen || this.page.get().readOnly) return false
     for (const listener of this.coverRequests) listener()
     return this.coverRequests.size > 0
+  }
+
+  /** The phone draws the cover's sheet natively (`setNativeCover`): the page asks for it instead of opening its own. */
+  private nativeCover = false
+
+  /** `window.hikki.setNativeCover`: the native side shows the cover's sheet itself. */
+  setNativeCover(on: boolean): void {
+    this.nativeCover = on
+  }
+
+  /** The cover's sheet, where the native side draws it: asks for it (`coverSheet`) and returns true; false means the
+   * page header opens its own. */
+  requestCoverSheet(mode: 'actions' | 'picker'): boolean {
+    if (!this.nativeCover) return false
+    const { docId, cover } = this.page.get()
+    if (docId && !this.frozen)
+      void this.send({ type: 'coverSheet', docId, cover, mode, bff: bffURL() })
+    return true
+  }
+
+  /** `window.hikki.applyCover`: the native sheet's pick (null: Remove), on the page it was opened for — as the page
+   * header's own pick. Returns whether it was taken (not another page now, not locked). */
+  applyCover(docId: string, cover: string | null): boolean {
+    if (this.page.get().docId !== docId || this.frozen) return false
+    this.setCover(cover)
+    return true
   }
 
   find(mode: FindMode): boolean {

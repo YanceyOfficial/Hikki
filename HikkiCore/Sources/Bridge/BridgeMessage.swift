@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of apps/editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 29
+    public static let version = 30
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -68,6 +68,10 @@ public enum BridgeMessage: Sendable, Equatable {
     /// The thread open in the page changed (nil: none) — sent only where the native side draws threads itself
     /// (`setNativeComments`, the iPhone layout).
     case commentThread(docId: String, threadId: String?)
+    /// The cover's sheet, sent only where the native side draws it (`setNativeCover`, the iPhone layout): its actions
+    /// or the picker, with the page's cover and the editor's backend (`bff`, for Unsplash; nil in a build without one).
+    /// The pick goes back as `window.hikki.applyCover`.
+    case coverSheet(docId: String, cover: String?, mode: CoverSheetMode, bff: URL?)
     /// Where the page is scrolled (throttled), so a tab shown again gets its place back.
     case scroll(docId: String, top: Double)
     /// AI on the selection (see `AIRequestPayload`); replies go back through `window.hikki.aiEvent`.
@@ -179,7 +183,7 @@ extension BridgeMessage: Decodable {
         case type, protocolVersion, snapshot, active, level, message, context, docId, icon, cover, fileExtension, dataBase64
         case size, id, url, block, text, headings, words, characters, name, top
         case threadId, quote, body, resolved, commentId, kind, code, detail, open, status, before, after, blockId
-        case instruction, selection
+        case instruction, selection, mode, bff
     }
 
     public init(from decoder: Decoder) throws {
@@ -237,6 +241,11 @@ extension BridgeMessage: Decodable {
         case "commentThread":
             self = .commentThread(
                 docId: try c.decode(String.self, forKey: .docId), threadId: try c.decodeIfPresent(String.self, forKey: .threadId))
+        case "coverSheet":
+            self = .coverSheet(
+                docId: try c.decode(String.self, forKey: .docId), cover: try c.decodeIfPresent(String.self, forKey: .cover),
+                mode: try c.decode(CoverSheetMode.self, forKey: .mode),
+                bff: try c.decodeIfPresent(String.self, forKey: .bff).flatMap(URL.init(string:)))
         case "activeHeading":
             self = .activeHeading(docId: try c.decode(String.self, forKey: .docId), id: try c.decodeIfPresent(String.self, forKey: .id))
         case "pageInfo":
@@ -371,4 +380,9 @@ public struct AIRequestPayload: Decodable, Equatable, Sendable {
         self.units = units
         self.context = context
     }
+}
+
+/// What the cover's sheet opens on: the cover's actions (Change cover, Remove) or the picker.
+public enum CoverSheetMode: String, Sendable, Equatable, Decodable {
+    case actions, picker
 }
