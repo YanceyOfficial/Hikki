@@ -52,36 +52,154 @@ export const isDrawableType = (type: unknown): boolean =>
   typeof type === 'string' && DRAWABLE_TYPES.has(type)
 
 /**
- * An element's link as a drawing keeps it: a web address (http or https, opened in the browser through the app) —
- * anything else (`javascript:`, `data:`, a relative path that would navigate the page) is dropped.
+ * An element's link as a drawing keeps it: an absolute web address — `new URL` parses it, its scheme is http or https
+ * and it names a host — opened in the browser through the app. Anything else (`javascript:` in any case or spacing,
+ * `data:`, a relative path or `?element=` that would navigate the page, `https:` with no host) is dropped.
  */
 export function safeDrawingLink(link: unknown): string | null {
   if (typeof link !== 'string') return null
+  let url: URL
   try {
-    const url = new URL(link.trim())
-    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : null
+    url = new URL(link.trim())
   } catch {
     return null
   }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null
+  return url.hostname.length > 0 ? url.href : null
 }
 
 /**
- * The elements of a stored drawing: objects with a string id and a kind a drawing keeps, deleted ones dropped.
- * Stored content can carry anything (synced, imported, pasted), so it is treated as hostile: links only to the web,
- * no `customData` (where Excalidraw keeps HTML a frame runs), nothing that loads a page.
+ * The fields of an Excalidraw element a drawing keeps (every kind's, 0.18). Whatever else a scene carries — above
+ * all `customData`, where Excalidraw keeps the HTML a frame runs — is left out.
+ */
+const ELEMENT_FIELDS = new Set([
+  'id',
+  'type',
+  'x',
+  'y',
+  'width',
+  'height',
+  'angle',
+  'strokeColor',
+  'backgroundColor',
+  'fillStyle',
+  'strokeWidth',
+  'strokeStyle',
+  'roundness',
+  'roughness',
+  'opacity',
+  'seed',
+  'version',
+  'versionNonce',
+  'index',
+  'isDeleted',
+  'groupIds',
+  'frameId',
+  'boundElements',
+  'updated',
+  'link',
+  'locked',
+  // text
+  'text',
+  'originalText',
+  'fontSize',
+  'fontFamily',
+  'textAlign',
+  'verticalAlign',
+  'containerId',
+  'autoResize',
+  'lineHeight',
+  'baseline',
+  // lines and arrows
+  'points',
+  'lastCommittedPoint',
+  'startBinding',
+  'endBinding',
+  'startArrowhead',
+  'endArrowhead',
+  'elbowed',
+  'fixedSegments',
+  'startIsSpecial',
+  'endIsSpecial',
+  // freehand
+  'pressures',
+  'simulatePressure',
+  // pictures
+  'fileId',
+  'status',
+  'scale',
+  'crop',
+  // frames
+  'name'
+])
+
+/** Keys never copied out of stored content, at any depth: they reach object prototypes. */
+const PROTOTYPE_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
+
+/** A key stored content may use for a picture (Excalidraw's file ids: hashes and nanoids). */
+const isSafeKey = (key: string) => !PROTOTYPE_KEYS.has(key) && /^[\w-]{1,128}$/u.test(key)
+
+/**
+ * A stored value as plain data: strings, finite numbers, booleans and null, arrays and objects of them (prototype
+ * keys dropped), at most a few levels deep — what an element's fields hold (points, bindings, roundness).
+ */
+function plainData(value: unknown, depth = 0): unknown {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined
+  if (depth >= 4) return undefined
+  if (Array.isArray(value)) return value.map((item) => plainData(item, depth + 1) ?? null)
+  if (!isObject(value)) return undefined
+  const out: Record<string, unknown> = {}
+  for (const [key, item] of Object.entries(value)) {
+    if (PROTOTYPE_KEYS.has(key)) continue
+    const clean = plainData(item, depth + 1)
+    if (clean !== undefined) out[key] = clean
+  }
+  return out
+}
+
+/**
+ * An element as a drawing keeps it, or null: a string id, a kind a drawing keeps, not deleted; only
+ * `ELEMENT_FIELDS`, as plain data; its link, if it has one, only as `safeDrawingLink` takes it.
+ */
+function storedElement(element: unknown): StoredElement | null {
+  if (!isObject(element) || typeof element.id !== 'string') return null
+  if (!isDrawableType(element.type) || element.isDeleted === true) return null
+  const kept: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(element)) {
+    if (!ELEMENT_FIELDS.has(key)) continue
+    const clean = key === 'link' ? safeDrawingLink(value) : plainData(value)
+    if (clean !== undefined) kept[key] = clean
+  }
+  return kept as StoredElement
+}
+
+/**
+ * The elements of a stored drawing (`storedElement` each). Stored content can carry anything (synced, imported,
+ * pasted), so it is treated as hostile: an allowlist of kinds and fields, links only to the web, nothing that loads a
+ * page.
  */
 export function storedElements(value: unknown): StoredElement[] {
   if (!Array.isArray(value)) return []
-  const elements: StoredElement[] = []
-  for (const element of value) {
-    if (!isObject(element) || typeof element.id !== 'string') continue
-    if (!isDrawableType(element.type) || element.isDeleted === true) continue
-    const { customData: _customData, ...rest } = element
-    elements.push(
-      ('link' in rest ? { ...rest, link: safeDrawingLink(rest.link) } : rest) as StoredElement
-    )
-  }
-  return elements
+  return value.map(storedElement).filter((element): element is StoredElement => element !== null)
+}
+
+/**
+ * Whether a live element (in the open editor) is already as a drawing keeps it: a kept kind, a link only as
+ * `safeDrawingLink` takes it, no `customData`. Elements change while the editor is open (a library, a paste, a
+ * link typed in), so the editor checks them on every change.
+ */
+export function isSafeLiveElement(element: {
+  type: unknown
+  link?: unknown
+  customData?: unknown
+}): boolean {
+  if (!isDrawableType(element.type) || element.customData !== undefined) return false
+  return (
+    element.link === null ||
+    element.link === undefined ||
+    safeDrawingLink(element.link) === element.link
+  )
 }
 
 /** The picture references of a stored drawing whose `src` passes `isSafeSrc` and whose type is a picture's. */
@@ -92,7 +210,7 @@ export function storedFiles(
   if (!isObject(value)) return {}
   const files: Record<string, DrawingFileRef> = {}
   for (const [id, ref] of Object.entries(value)) {
-    if (!isObject(ref)) continue
+    if (!isSafeKey(id) || !isObject(ref)) continue
     const { src, mimeType } = ref
     if (typeof src !== 'string' || typeof mimeType !== 'string') continue
     if (!PICTURE_TYPES.has(mimeType) || !isSafeSrc(src)) continue
@@ -112,7 +230,7 @@ export function inlineFiles<T extends { dataURL?: unknown; mimeType?: unknown }>
 ): Record<string, T> {
   const kept: Record<string, T> = {}
   for (const [id, file] of Object.entries(files ?? {})) {
-    if (!isObject(file) || typeof file.dataURL !== 'string') continue
+    if (!isSafeKey(id) || !isObject(file) || typeof file.dataURL !== 'string') continue
     if (typeof file.mimeType !== 'string' || !PICTURE_TYPES.has(file.mimeType)) continue
     if (PICTURE_DATA_URL.test(file.dataURL)) kept[id] = file
   }
@@ -163,7 +281,8 @@ export function looksLikeMermaid(text: string): boolean {
 /**
  * Mermaid as a drawing renders it (a model's answer or pasted text — untrusted either way): Mermaid draws it in the
  * page to measure it, so nothing in it may load or run — no HTML tags but line breaks (an `<img>` in a label would be
- * fetched), no `click` / `href` lines, no `%%{init}%%` directives, no CSS `url(…)` in styles.
+ * fetched; unclosed ones too), no `<` / `>` spelled as entities (`#lt;`, `&#60;` — Mermaid turns them back into tags),
+ * no `click` / `href` lines, no `%%{init}%%` directives, no CSS `url(…)` in styles.
  */
 export function safeMermaid(text: string): string {
   return text
@@ -171,7 +290,8 @@ export function safeMermaid(text: string): string {
     .split('\n')
     .filter((line) => !/^\s*(?:click|href)\b/iu.test(line))
     .join('\n')
-    .replaceAll(/<(?!br\s*\/?>)\/?[a-z][^>]*>/giu, '')
+    .replaceAll(/[#&]#?(?:lt|gt|x0*3c|x0*3e|0*60|0*62);/giu, '')
+    .replaceAll(/<(?!br\s*\/?>)\/?[a-z][^>]*>?/giu, '')
     .replaceAll(/url\s*\(/giu, '')
     .trim()
 }

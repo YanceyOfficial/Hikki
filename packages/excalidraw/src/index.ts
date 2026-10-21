@@ -5,6 +5,7 @@ export {
   excalidrawLanguage,
   inlineFiles,
   isDrawableType,
+  isSafeLiveElement,
   looksLikeMermaid,
   mermaidFromAnswer,
   safeDrawingLink,

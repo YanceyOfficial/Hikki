@@ -9,6 +9,7 @@ import {
   drawingText,
   excalidrawLanguage,
   inlineFiles,
+  isSafeLiveElement,
   mermaidFromAnswer,
   safeDrawingLink,
   safeMermaid,
@@ -142,6 +143,49 @@ describe('a hostile scene', () => {
     expect(safeDrawingLink(42)).toBeNull()
   })
 
+  it('keeps only the fields an element has, as plain data', () => {
+    // `JSON.parse` keeps `__proto__` as an own key, as stored content would carry it.
+    const stored = JSON.parse(
+      '{"id":"a","type":"arrow","x":1,"points":[[0,0],[10,5]],"startBinding":{"elementId":"b","focus":0.5,"__proto__":{"polluted":true}},"onclick":"alert(1)","customData":{"html":"<script>"}}'
+    )
+    stored.strokeWidth = Number.POSITIVE_INFINITY
+    const [element] = storedElements([stored])
+    expect(element).toEqual({
+      id: 'a',
+      type: 'arrow',
+      x: 1,
+      points: [
+        [0, 0],
+        [10, 5]
+      ],
+      startBinding: { elementId: 'b', focus: 0.5 }
+    })
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined()
+  })
+
+  it('takes a link only with a host, and picture ids only as ids', () => {
+    expect(safeDrawingLink('https:example.com')).toBe('https://example.com/')
+    expect(safeDrawingLink('https://')).toBeNull()
+    expect(safeDrawingLink('http:/')).toBeNull()
+    const files = storedFiles(
+      JSON.parse(
+        '{"ok":{"src":"hikki-editor://assets/a.png","mimeType":"image/png"},"__proto__":{"src":"hikki-editor://assets/b.png","mimeType":"image/png"},"a b":{"src":"hikki-editor://assets/c.png","mimeType":"image/png"}}'
+      ),
+      safe
+    )
+    expect(Object.keys(files)).toEqual(['ok'])
+  })
+
+  it('checks elements as they change in the open editor', () => {
+    expect(isSafeLiveElement({ type: 'rectangle', link: null })).toBe(true)
+    expect(isSafeLiveElement({ type: 'text', link: 'https://example.com/' })).toBe(true)
+    expect(isSafeLiveElement({ type: 'text', link: 'javascript:alert(1)' })).toBe(false)
+    // Not yet as `safeDrawingLink` writes it: cleared and put back by the editor.
+    expect(isSafeLiveElement({ type: 'text', link: 'https://example.com' })).toBe(false)
+    expect(isSafeLiveElement({ type: 'rectangle', customData: {} })).toBe(false)
+    expect(isSafeLiveElement({ type: 'embeddable' })).toBe(false)
+  })
+
   it('takes pictures only as data, never by address', () => {
     const files = inlineFiles({
       ok: { mimeType: 'image/png', dataURL: 'data:image/png;base64,iVBORw0KGgo=' },
@@ -175,6 +219,10 @@ describe('a hostile scene', () => {
     ).toBe(
       'graph LR\n  A[Bold<br/>next] <--> B\n  style A fill:https://x.example/a.svg)\n  B -->|go| C'
     )
+    // Tags spelled as entities (Mermaid turns them back) and left unclosed go too.
+    expect(
+      safeMermaid('graph TD\n  A[#lt;img src=x#gt;] --> B[&#60;img src=y&#62;]\n  C[<img src=z')
+    ).toBe('graph TD\n  A[img src=x] --> B[img src=y]\n  C[')
     // A model's answer goes through the same.
     expect(mermaidFromAnswer('```mermaid\ngraph TD\n  A[<img src=https://x>] --> B\n```')).toBe(
       'graph TD\n  A[] --> B'

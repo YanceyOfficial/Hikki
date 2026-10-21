@@ -26,6 +26,7 @@ import {
   checkPaste,
   inlineFiles,
   isDrawableType,
+  isSafeLiveElement,
   safeDrawingLink,
   storedElements,
   usedFileIds,
@@ -160,10 +161,18 @@ export function DrawingCanvas({ initial, host, handleRef, onChange, topRight }: 
 
   const changed = useCallback(
     (elements: Parameters<NonNullable<Parameters<typeof Excalidraw>[0]['onChange']>>[0]) => {
-      // Nothing that loads a page stays in a drawing, however it came in (a library, a paste): see isDrawableType.
-      if (elements.some((element) => !element.isDeleted && !isDrawableType(element.type))) {
+      // Nothing that loads a page stays in a drawing, however it came in (a library, a paste, an element changed
+      // in place, a link typed in): kinds that load pages go, links that aren't the web's are cleared, `customData`
+      // is dropped — then the next change saves what is left.
+      if (elements.some((element) => !isSafeLiveElement(element))) {
         api.current?.updateScene({
-          elements: elements.filter((element) => isDrawableType(element.type))
+          elements: elements
+            .filter((element) => isDrawableType(element.type))
+            .map((element) =>
+              isSafeLiveElement(element)
+                ? element
+                : { ...element, link: safeDrawingLink(element.link), customData: undefined }
+            )
         })
         return
       }

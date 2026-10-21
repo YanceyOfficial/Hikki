@@ -2,6 +2,7 @@ import {
   drawingText,
   storedElements,
   storedFiles,
+  usedFileIds,
   type DrawingData,
   type StoredElement
 } from '@hikki/excalidraw'
@@ -44,10 +45,13 @@ const isSafeFileSrc = (src: string) => localAssetSrc(src) !== null
 
 /** A drawing's stored data, checked (stored content can carry anything). */
 export function drawingData(node: PMNode): DrawingData {
-  return {
-    elements: storedElements(node.attrs.elements),
-    files: storedFiles(node.attrs.files, isSafeFileSrc)
-  }
+  const elements = storedElements(node.attrs.elements)
+  // Only the pictures a kept image element shows: entries for dropped elements (or none) are never read.
+  const used = new Set(usedFileIds(elements))
+  const files = Object.fromEntries(
+    Object.entries(storedFiles(node.attrs.files, isSafeFileSrc)).filter(([id]) => used.has(id))
+  )
+  return { elements, files }
 }
 
 const jsonAttribute = (name: string, fallback: () => unknown) => ({

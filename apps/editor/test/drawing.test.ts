@@ -150,11 +150,15 @@ describe('a drawing block', () => {
         elements: [
           rect,
           { ...label, link: 'javascript:alert(1)' },
-          { id: 'e1', type: 'embeddable' }
+          { id: 'e1', type: 'embeddable' },
+          { id: 'i1', type: 'image', fileId: 'f3' },
+          { id: 'i2', type: 'image', fileId: 'f1' }
         ],
         files: {
           f1: { src: 'https://tracker.example/p.png', mimeType: 'image/png' },
-          f3: { src: 'hikki-editor://assets/p.png', mimeType: 'image/png' }
+          f3: { src: 'hikki-editor://assets/p.png', mimeType: 'image/png' },
+          // A local picture no element shows is never read either.
+          f4: { src: 'hikki-editor://assets/q.png', mimeType: 'image/png' }
         }
       })
     )
@@ -162,7 +166,12 @@ describe('a drawing block', () => {
     expect(overlays[0].props.data.files).toEqual({
       f3: { src: 'hikki-editor://assets/p.png', mimeType: 'image/png' }
     })
-    expect(overlays[0].props.data.elements).toEqual([rect, { ...label, link: null }])
+    expect(overlays[0].props.data.elements).toEqual([
+      rect,
+      { ...label, link: null },
+      { id: 'i1', type: 'image', fileId: 'f3' },
+      { id: 'i2', type: 'image', fileId: 'f1' }
+    ])
   })
 
   it('is in the "/" menu and named in the block menu', () => {
