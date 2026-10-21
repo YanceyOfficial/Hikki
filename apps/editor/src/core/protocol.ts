@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 30
+export const PROTOCOL_VERSION = 31
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -138,6 +138,17 @@ export type ToNativeMessage =
       cover: string | null
       mode: 'actions' | 'picker'
       bff: string | null
+    }
+  /** An icon's sheet, where the native side draws it (`setNativeIcons`, a phone): the page's icon or a callout's (with
+   * its background colour). `id` names this opening; picks come back as `window.hikki.applyIcon(id, …)` /
+   * `applyIconColor(id, …)`. */
+  | {
+      type: 'iconSheet'
+      docId: string
+      id: string
+      kind: 'page' | 'callout'
+      icon: string | null
+      color: string | null
     }
   /** The selected text (debounced; "" when nothing is): Ask AI offers it as context. Capped at 4000 characters. */
   | { type: 'selection'; docId: string; text: string }

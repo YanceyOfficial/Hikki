@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of apps/editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 30
+    public static let version = 31
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -72,6 +72,10 @@ public enum BridgeMessage: Sendable, Equatable {
     /// or the picker, with the page's cover and the editor's backend (`bff`, for Unsplash; nil in a build without one).
     /// The pick goes back as `window.hikki.applyCover`.
     case coverSheet(docId: String, cover: String?, mode: CoverSheetMode, bff: URL?)
+    /// An icon picker, sent only where the native side draws it (`setNativeIcons`, the iPhone layout): the page's icon
+    /// or a callout's (with its background, a palette name). The pick goes back under `id` as `window.hikki.applyIcon`
+    /// (and `applyIconColor` for a callout's colour).
+    case iconSheet(docId: String, id: String, kind: IconSheetKind, icon: String?, color: String?)
     /// Where the page is scrolled (throttled), so a tab shown again gets its place back.
     case scroll(docId: String, top: Double)
     /// AI on the selection (see `AIRequestPayload`); replies go back through `window.hikki.aiEvent`.
@@ -183,7 +187,7 @@ extension BridgeMessage: Decodable {
         case type, protocolVersion, snapshot, active, level, message, context, docId, icon, cover, fileExtension, dataBase64
         case size, id, url, block, text, headings, words, characters, name, top
         case threadId, quote, body, resolved, commentId, kind, code, detail, open, status, before, after, blockId
-        case instruction, selection, mode, bff
+        case instruction, selection, mode, bff, color
     }
 
     public init(from decoder: Decoder) throws {
@@ -246,6 +250,11 @@ extension BridgeMessage: Decodable {
                 docId: try c.decode(String.self, forKey: .docId), cover: try c.decodeIfPresent(String.self, forKey: .cover),
                 mode: try c.decode(CoverSheetMode.self, forKey: .mode),
                 bff: try c.decodeIfPresent(String.self, forKey: .bff).flatMap(URL.init(string:)))
+        case "iconSheet":
+            self = .iconSheet(
+                docId: try c.decode(String.self, forKey: .docId), id: try c.decode(String.self, forKey: .id),
+                kind: try c.decode(IconSheetKind.self, forKey: .kind), icon: try c.decodeIfPresent(String.self, forKey: .icon),
+                color: try c.decodeIfPresent(String.self, forKey: .color))
         case "activeHeading":
             self = .activeHeading(docId: try c.decode(String.self, forKey: .docId), id: try c.decodeIfPresent(String.self, forKey: .id))
         case "pageInfo":
@@ -385,4 +394,9 @@ public struct AIRequestPayload: Decodable, Equatable, Sendable {
 /// What the cover's sheet opens on: the cover's actions (Change cover, Remove) or the picker.
 public enum CoverSheetMode: String, Sendable, Equatable, Decodable {
     case actions, picker
+}
+
+/// What an icon picker is for: the page's icon, or a callout's (which also picks its background).
+public enum IconSheetKind: String, Sendable, Equatable, Decodable {
+    case page, callout
 }

@@ -10,6 +10,7 @@ import { DEFAULT_CALLOUT_ICON } from '../extensions/callout'
 import { colorLabel, PALETTE, type PaletteColor } from '../extensions/colors'
 import { useMediaQuery } from '../hooks/use-media-query'
 import { TOUCH } from '../lib/device'
+import { openNativeIconSheet } from '../lib/icon-sheet'
 import { BottomSheet } from './bottom-sheet'
 import { EmojiPickerPanel } from './emoji-picker-panel'
 import { IconProvider } from './icons'
@@ -79,7 +80,14 @@ export function CalloutIcon({ icon, color, editable, onIcon, onColor }: Props) {
           variant="ghost"
           className="size-7 cursor-pointer rounded-md p-0 hover:bg-foreground/5 dark:hover:bg-foreground/5"
           aria-label={t('callout.icon')}
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            // A phone draws the picker (and the colours) natively.
+            const native = openNativeIconSheet(
+              { kind: 'callout', icon: icon || DEFAULT_CALLOUT_ICON, color },
+              { onIcon: (next) => onIcon(next ?? DEFAULT_CALLOUT_ICON), onColor }
+            )
+            if (!native) setOpen(true)
+          }}
         >
           {glyph}
         </Button>

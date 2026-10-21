@@ -347,7 +347,12 @@ HikkiUITests/                 XCUITest flows
   actions, then Gallery · Upload — photo library, camera, Files into the assets — · Link · Unsplash through
   `UnsplashClient` in `HikkiCore/Sources/Text/Unsplash.swift`, credited, a pick reported as a download) hands the pick
   back as the page's own (`window.hikki.applyCover`). The built-in gradients are design tokens (`cover` in
-  `design/tokens.json` → `--cover-<id>` for the web, `CoverGradient` in Swift).
+  `design/tokens.json` → `--cover-<id>` for the web, `CoverGradient` in Swift). The icon pickers (page and callout)
+  go native the same way (`setNativeIcons`; the page asks with `iconSheet` through `apps/editor/src/lib/icon-sheet.ts`,
+  each opening under an id): HikkiUI's `IconPickerSheet` (`Hikki/Sources/IconSheetHost.swift`: search, categories,
+  recent picks, Random, Remove, a callout's background) over the emojibase data the editor ships, read natively by
+  `EmojiCatalog` (`HikkiCore/Sources/Text/EmojiCatalog.swift`), answered with `window.hikki.applyIcon` /
+  `applyIconColor`.
 - **Embeds** (`apps/editor/src/extensions/embed.ts`, transforms in `apps/editor/src/lib/embeds.ts`): one `embed` block — an
   `<iframe>` on a third-party page (sandboxed, keeps its origin) or on a snippet of HTML (`srcdoc`, no origin) — behind
   the "/" menu's Embeds group — a short list of work services: Embed, HTML, Google Drive, Figma, Miro, Loom, Airtable,

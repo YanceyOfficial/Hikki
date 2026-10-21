@@ -45,6 +45,19 @@ final class EditorController {
         let id = UUID()
     }
 
+    /// The icon picker the page asked for, where this side draws it (`nativeIcons`: the iPhone's sheet).
+    private(set) var iconRequest: IconRequest?
+
+    struct IconRequest: Equatable, Identifiable {
+        let docId: String
+        /// The page's name for this opening; picks go back under it.
+        let id: String
+        let kind: IconSheetKind
+        let icon: String?
+        /// A callout's background (a palette name; nil: the default).
+        let color: String?
+    }
+
     struct OpenThread: Equatable, Identifiable {
         let docId: String
         let threadId: String
@@ -193,6 +206,31 @@ final class EditorController {
 
     func closeCoverSheet() {
         coverRequest = nil
+    }
+
+    /// The icon pickers are drawn here (HikkiUI's `IconPickerSheet`), not by the page.
+    @ObservationIgnored private var nativeIcons = false
+
+    func setNativeIcons(_ on: Bool) {
+        guard on != nativeIcons else { return }
+        nativeIcons = on
+        if !on { iconRequest = nil }
+        send("window.hikki.setNativeIcons(on)", ["on": on], label: "setNativeIcons")
+    }
+
+    func closeIconSheet() {
+        iconRequest = nil
+    }
+
+    /// The icon picker's emoji (nil: Remove) for the opening `id` names, set by the page as its own pick; refused once
+    /// the page has moved on or is locked.
+    func applyIcon(_ icon: String?, id: String) async {
+        await call("window.hikki.applyIcon(id, icon)", ["id": id, "icon": icon ?? NSNull()], label: "applyIcon")
+    }
+
+    /// A callout's background from the icon picker (nil: the default).
+    func applyIconColor(_ color: String?, id: String) async {
+        await call("window.hikki.applyIconColor(id, color)", ["id": id, "color": color ?? NSNull()], label: "applyIconColor")
     }
 
     /// The cover sheet's pick (nil: Remove), set by the page as its own — shown at once, saved through `setCover`,
@@ -872,6 +910,7 @@ final class EditorController {
             await call("window.hikki.setKeyboardBar(on)", ["on": true], label: "setKeyboardBar")
             if nativeComments { await call("window.hikki.setNativeComments(on)", ["on": true], label: "setNativeComments") }
             if nativeCover { await call("window.hikki.setNativeCover(on)", ["on": true], label: "setNativeCover") }
+            if nativeIcons { await call("window.hikki.setNativeIcons(on)", ["on": true], label: "setNativeIcons") }
         #endif
     }
 
@@ -973,6 +1012,8 @@ final class EditorController {
             openThread = threadId.map { OpenThread(docId: docId, threadId: $0) }
         case .coverSheet(let docId, let cover, let mode, let bff):
             coverRequest = CoverRequest(docId: docId, cover: cover, mode: mode, bff: bff)
+        case .iconSheet(let docId, let id, let kind, let icon, let color):
+            iconRequest = IconRequest(docId: docId, id: id, kind: kind, icon: icon, color: color)
         case .scroll(let docId, let top):
             lastScroll = (docId, top)
         case .aiRequest(let payload):

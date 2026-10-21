@@ -322,6 +322,9 @@
     },
     "file": {
       "sf": "doc"
+    },
+    "shuffle": {
+      "sf": "shuffle"
     }
   }
 }

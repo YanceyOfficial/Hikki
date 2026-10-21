@@ -230,6 +230,8 @@ public nonisolated enum Size {
     public static let coverSwatch: CGFloat = 96
     public static let coverSwatchHeight: CGFloat = 56
     public static let coverPhoto: CGFloat = 150
+    public static let emojiCell: CGFloat = 44
+    public static let colorSwatch: CGFloat = 24
     public static let floatingBar: CGFloat = 52
     public static let recentCard: CGFloat = 132
     public static let modelMenu: CGFloat = 280

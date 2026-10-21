@@ -301,6 +301,36 @@ describe('PageHeader', () => {
     expect(bridge.page.get().cover).toBe('gradient:ocean')
   })
 
+  it('where the native side draws icon sheets, the page icon asks for one and takes its pick back', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query === '(pointer: coarse)' || query === '(any-pointer: coarse)',
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {}
+    }))
+    render(<PageHeader bridge={bridge} />)
+    load({ icon: '🌸' })
+    bridge.setNativeIcons(true)
+    fireEvent.click(screen.getByLabelText('Change icon'))
+    expect(screen.queryByTestId('icon-sheet')).toBeNull()
+    const request = sent.find((m) => m.type === 'iconSheet')
+    expect(request).toMatchObject({ docId: 'a', kind: 'page', icon: '🌸', color: null })
+    const id = (request as { id: string }).id
+    // Only the opening it names; a callout's colour means nothing for the page.
+    expect(bridge.applyIcon('stale', '🌊')).toBe(false)
+    expect(bridge.applyIconColor(id, 'red')).toBe(false)
+    act(() => {
+      expect(bridge.applyIcon(id, '🌊')).toBe(true)
+    })
+    expect(screen.getByLabelText('Change icon').textContent).toBe('🌊')
+    await settle()
+    expect(sent).toContainEqual({ type: 'setIcon', docId: 'a', icon: '🌊' })
+    // Turned off: the page's own sheet again.
+    bridge.setNativeIcons(false)
+    fireEvent.click(screen.getByLabelText('Change icon'))
+    expect(await screen.findByTestId('icon-sheet')).toBeTruthy()
+  })
+
   it('on a touch screen the icon picker is a bottom sheet', async () => {
     vi.stubGlobal('matchMedia', (query: string) => ({
       matches: query === '(pointer: coarse)' || query === '(any-pointer: coarse)',

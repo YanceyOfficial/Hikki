@@ -125,6 +125,22 @@
                         .frame(height: 420)
                         .listRowInsets(EdgeInsets())
                     }
+                    Section("IconPickerSheet") {
+                        IconPickerSheet(
+                            title: "app:icon.title",
+                            sections: [
+                                IconPickerSection(
+                                    id: "smileys", title: "Smileys & emotion",
+                                    emojis: ["😀", "😃", "😄", "😁", "😆", "😅", "😂", "🙂"].map {
+                                        IconPickerEmoji(emoji: $0, label: $0)
+                                    })
+                            ],
+                            recents: [IconPickerEmoji(emoji: "💡", label: "💡")], current: "💡", search: { _ in [] },
+                            onPick: { _ in }, onRandom: {}, color: (selected: "blue", onPick: { _ in })
+                        )
+                        .frame(height: 420)
+                        .listRowInsets(EdgeInsets())
+                    }
                     Section("MediaSourceSheet") {
                         MediaSourceSheet { _ in }
                             .listRowInsets(EdgeInsets())

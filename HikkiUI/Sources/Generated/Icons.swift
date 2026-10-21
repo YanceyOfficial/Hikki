@@ -115,6 +115,7 @@ public nonisolated enum Icon: String, CaseIterable, Sendable {
     case scan = "scan"
     case paintBrush = "paint-brush"
     case file = "file"
+    case shuffle = "shuffle"
 
     /// The SF Symbol drawn for this icon, if any.
     public var systemName: String? {
@@ -222,6 +223,7 @@ public nonisolated enum Icon: String, CaseIterable, Sendable {
         case .scan: "doc.viewfinder"
         case .paintBrush: "paintbrush"
         case .file: "doc"
+        case .shuffle: "shuffle"
         default: nil
         }
     }

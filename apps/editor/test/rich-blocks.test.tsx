@@ -11,6 +11,11 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { SelectionMenu } from '../src/components/selection-menu'
 import { BLOCK_TYPES } from '../src/core/blocks'
 import { createEditor } from '../src/core/editor'
+import {
+  setIconSheetOpener,
+  type IconSheetHandlers,
+  type IconSheetRequest
+} from '../src/lib/icon-sheet'
 import { doc, settle, stripIds } from './helpers'
 
 let host: HTMLElement
@@ -223,6 +228,44 @@ describe('callout', () => {
     await waitFor(() =>
       expect(host.querySelector('.hk-callout [aria-label="Change icon"]')?.textContent).toBe('💡')
     )
+  })
+
+  it('on a phone its icon opens the native sheet, whose picks set the icon and the colour', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query === '(pointer: coarse)',
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {}
+    }))
+    const opened: IconSheetRequest[] = []
+    let handlers: IconSheetHandlers | null = null
+    setIconSheetOpener((request, next) => {
+      opened.push(request)
+      handlers = next
+      return true
+    })
+    try {
+      editor = createEditor(host, null)
+      editor.commands.setContent('<div data-type="callout" data-icon="🔥"><p>Hot</p></div>')
+      const button = await waitFor(() => {
+        const found = host.querySelector<HTMLElement>('.hk-callout [aria-label="Change icon"]')
+        expect(found).toBeTruthy()
+        return found!
+      })
+      fireEvent.click(button)
+      expect(opened).toEqual([{ kind: 'callout', icon: '🔥', color: null }])
+      act(() => {
+        handlers!.onIcon('🌊')
+        handlers!.onColor!('blue')
+      })
+      expect(editor.getJSON().content?.[0]).toMatchObject({ attrs: { icon: '🌊', color: 'blue' } })
+      // Remove leaves the callout its default icon (a callout always has one).
+      act(() => handlers!.onIcon(null))
+      expect(editor.getJSON().content?.[0]).toMatchObject({ attrs: { icon: '💡' } })
+    } finally {
+      setIconSheetOpener(null)
+      vi.unstubAllGlobals()
+    }
   })
 
   it('round-trips through HTML (icon and palette color)', () => {

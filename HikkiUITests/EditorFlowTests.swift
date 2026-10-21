@@ -664,6 +664,49 @@ final class EditorFlowTests: XCTestCase {
             XCTAssertTrue(waitOrDumpTree(tabs, in: app), "the cover was not removed")
         }
 
+        /// The page icon's picker on a phone is native: a search finds an emoji and picks it, Remove takes it off.
+        func testIconPickerIsNative() throws {
+            continueAfterFailure = false
+            let app = launch()
+            let newPage = app.buttons["new-page"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+            newPage.tap()
+            let title = app.webViews.textViews["Page title"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+            title.tap()
+            title.typeText("Pets\n")
+            let hide = app.buttons["hide-keyboard"].firstMatch
+            if hide.waitForExistence(timeout: 3) { hide.tap() }
+            let gone = NSPredicate(format: "exists == false")
+
+            let add = app.webViews.buttons["Add icon"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(add, in: app))
+            add.tap()
+            let change = app.webViews.buttons["Change icon"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(change, in: app))
+            change.tap()
+            let sheet = app.descendants(matching: .any)["icon-picker-sheet"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(sheet, in: app), "the native picker did not open")
+            XCTAssertFalse(app.webViews.otherElements["icon-sheet"].exists, "the page's own sheet opened too")
+            let search = app.textFields["icon-search"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(search, in: app))
+            attach(app, "icon-picker")
+            search.tap()
+            search.typeText("dog face")
+            let dog = app.buttons["dog face"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(dog, in: app), "the search found no dog")
+            dog.tap()
+            wait(for: [expectation(for: gone, evaluatedWith: sheet)], timeout: 5)
+
+            // Picked: it is recent now, and Remove takes the icon off the page.
+            change.tap()
+            XCTAssertTrue(waitOrDumpTree(app.staticTexts["Recent"].firstMatch, in: app), "the pick isn't among the recent ones")
+            let remove = app.buttons["icon-remove"].firstMatch
+            XCTAssertTrue(remove.exists)
+            remove.tap()
+            XCTAssertTrue(waitOrDumpTree(add, in: app), "the icon was not removed")
+        }
+
         /// Photo opens our own sheet of sources (camera and scan only where the device has them), not the page's file
         /// input.
         func testKeyboardBarPhotoOpensTheMediaSheet() throws {

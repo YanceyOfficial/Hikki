@@ -43,6 +43,18 @@ struct BridgeMessageTests {
         #expect(try BridgeMessage.decode(scriptMessageBody: bare) == .coverSheet(docId: "a", cover: nil, mode: .picker, bff: nil))
     }
 
+    @Test func decodesTheIconSheetRequest() throws {
+        let callout: NSDictionary = [
+            "type": "iconSheet", "docId": "a", "id": "r1", "kind": "callout", "icon": "💡", "color": "blue",
+        ]
+        #expect(
+            try BridgeMessage.decode(scriptMessageBody: callout)
+                == .iconSheet(docId: "a", id: "r1", kind: .callout, icon: "💡", color: "blue"))
+        let page: NSDictionary = ["type": "iconSheet", "docId": "a", "id": "r2", "kind": "page", "icon": NSNull(), "color": NSNull()]
+        #expect(
+            try BridgeMessage.decode(scriptMessageBody: page) == .iconSheet(docId: "a", id: "r2", kind: .page, icon: nil, color: nil))
+    }
+
     @Test func decodesPageInfoWithOptionalBlockIds() throws {
         let body: NSDictionary = [
             "type": "pageInfo", "docId": "a",

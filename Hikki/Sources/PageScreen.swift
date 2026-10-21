@@ -139,15 +139,23 @@ struct PageScreen: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
+            // The page's and callouts' icon pickers.
+            .sheet(item: iconRequest) { request in
+                IconSheetHost(request: request, editor: editor)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+            }
             .onAppear {
                 guard phoneToolbar else { return }
                 editor.setNativeComments(true)
                 editor.setNativeCover(true)
+                editor.setNativeIcons(true)
             }
             .onDisappear {
                 guard phoneToolbar else { return }
                 editor.setNativeComments(false)
                 editor.setNativeCover(false)
+                editor.setNativeIcons(false)
             }
             .animation(Motion.easeOut(), value: editor.webView.keyboardBar?.composer)
             .animation(Motion.easeOut(), value: keyboardShown)
@@ -202,6 +210,11 @@ struct PageScreen: View {
         /// The cover's sheet the page asked for; closing it lets the request go.
         private var coverRequest: Binding<EditorController.CoverRequest?> {
             Binding(get: { editor.coverRequest }, set: { if $0 == nil { editor.closeCoverSheet() } })
+        }
+
+        /// The icon picker the page asked for; closing it lets the request go.
+        private var iconRequest: Binding<EditorController.IconRequest?> {
+            Binding(get: { editor.iconRequest }, set: { if $0 == nil { editor.closeIconSheet() } })
         }
 
         /// The keyboard bar's ⋯ sheet.

@@ -33,6 +33,7 @@ import {
   withCoverPosition
 } from '../lib/covers'
 import { ANY_TOUCH, matches, TOUCH } from '../lib/device'
+import { openNativeIconSheet } from '../lib/icon-sheet'
 import { CoverPicker } from './cover-picker'
 import { CoverSheet, type CoverSheetMode } from './cover-sheet'
 
@@ -183,7 +184,14 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
                 className={iconButtonClass}
                 aria-label={t('page.changeIcon')}
                 disabled={frozen}
-                onClick={() => setIconOpen(true)}
+                onClick={() => {
+                  // A phone draws the picker natively; elsewhere the page's own sheet.
+                  const native = openNativeIconSheet(
+                    { kind: 'page', icon: page.icon },
+                    { onIcon: (icon) => bridge.setIcon(icon) }
+                  )
+                  if (!native) setIconOpen(true)
+                }}
               >
                 {page.icon}
               </Button>

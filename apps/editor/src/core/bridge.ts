@@ -13,6 +13,7 @@ import {
   type AIReviewStyle
 } from '../extensions/ai-review'
 import { unitAtPos } from '../extensions/block-units'
+import { PALETTE, type PaletteColor } from '../extensions/colors'
 import {
   commentsState,
   threadRange,
@@ -37,6 +38,11 @@ import { openTogglesAround } from '../extensions/toggle'
 import { pageBlocks, type AIPageBlock } from '../lib/ai-content'
 import { bffURL } from '../lib/bff'
 import { linkCardFrom } from '../lib/embeds'
+import {
+  setIconSheetOpener,
+  type IconSheetHandlers,
+  type IconSheetRequest
+} from '../lib/icon-sheet'
 import { sheetPresence } from '../lib/sheet-presence'
 import { activeCommands, createEditor, runCommand } from './editor'
 import { plainText, wordCount } from './extract'
@@ -911,6 +917,48 @@ export class EditorBridge {
     const { docId, cover } = this.page.get()
     if (docId && !this.frozen)
       void this.send({ type: 'coverSheet', docId, cover, mode, bff: bffURL() })
+    return true
+  }
+
+  /** The sheet opened last (`iconSheet`) and what its picks do; a newer one replaces it. */
+  private iconSheet: { id: string; handlers: IconSheetHandlers } | null = null
+
+  /** `window.hikki.setNativeIcons`: the native side shows the page's and callouts' icon pickers itself. */
+  setNativeIcons(on: boolean): void {
+    setIconSheetOpener(on ? (request, handlers) => this.requestIconSheet(request, handlers) : null)
+    if (!on) this.iconSheet = null
+  }
+
+  private requestIconSheet(request: IconSheetRequest, handlers: IconSheetHandlers): boolean {
+    const { docId } = this.page.get()
+    if (!docId || this.frozen) return true
+    const id = crypto.randomUUID()
+    this.iconSheet = { id, handlers }
+    void this.send({
+      type: 'iconSheet',
+      docId,
+      id,
+      kind: request.kind,
+      icon: request.icon,
+      color: request.kind === 'callout' ? request.color : null
+    })
+    return true
+  }
+
+  /** `window.hikki.applyIcon`: the native sheet's emoji (null: Remove) for the opening `id` names. Returns whether it
+   * was taken (still that opening, the page not locked). */
+  applyIcon(id: string, icon: string | null): boolean {
+    if (this.iconSheet?.id !== id || this.frozen) return false
+    this.iconSheet.handlers.onIcon(icon)
+    return true
+  }
+
+  /** `window.hikki.applyIconColor`: a callout's background colour from the native sheet (null: the default). */
+  applyIconColor(id: string, color: string | null): boolean {
+    const onColor = this.iconSheet?.id === id ? this.iconSheet.handlers.onColor : undefined
+    if (!onColor || this.frozen) return false
+    if (color !== null && !(PALETTE as readonly string[]).includes(color)) return false
+    onColor(color as PaletteColor | null)
     return true
   }
 
