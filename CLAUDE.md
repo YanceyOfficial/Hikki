@@ -384,8 +384,9 @@ HikkiUITests/                 XCUITest flows
   one pixel per pixel over its overflow and saves or cancels — Mac only. Touch screens (`pointer: coarse`) have no
   buttons over the cover and no Reposition: a long press on it, or the page ⋯ menu's Cover… (`window.hikki.editCover`),
   opens its sheet (Change cover, Remove; `apps/editor/src/page/cover-sheet.tsx`), and the page and callout icon pickers open
-  as the same bottom sheet (`apps/editor/src/components/bottom-sheet.tsx`, keyboard-aware) instead of popovers. In the
-  iPhone layout the cover's sheet is native: `PageScreen` says so (`window.hikki.setNativeCover`), the page only asks
+  as the same bottom sheet (`apps/editor/src/components/bottom-sheet.tsx`, keyboard-aware) instead of popovers. On every
+  touch screen (iPhone and iPad) the cover's sheet is native: the editor says so when the page is ready
+  (`window.hikki.setNativeCover`), the page only asks
   (`coverSheet`, with the editor's BFF address) and HikkiUI's `CoverSheet` (`Hikki/Sources/CoverSheetHost.swift`:
   actions, then Gallery · Upload — photo library, camera, Files into the assets — · Link · Unsplash through
   `UnsplashClient` in `HikkiCore/Sources/Text/Unsplash.swift`, credited, a pick reported as a download) hands the pick

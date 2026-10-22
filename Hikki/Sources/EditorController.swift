@@ -36,7 +36,7 @@ final class EditorController {
     /// The thread open in the page, where this side draws it (`nativeComments`: the iPhone's sheet).
     private(set) var openThread: OpenThread?
 
-    /// The cover's sheet the page asked for, where this side draws it (`nativeCover`: the iPhone's sheet).
+    /// The cover's sheet the page asked for, where this side draws it (`nativeCover`: a touch screen's sheet).
     private(set) var coverRequest: CoverRequest?
 
     struct CoverRequest: Equatable, Identifiable {
@@ -48,7 +48,7 @@ final class EditorController {
         let id = UUID()
     }
 
-    /// The icon picker the page asked for, where this side draws it (`nativeIcons`: the iPhone's sheet).
+    /// The icon picker the page asked for, where this side draws it (`nativeIcons`: a touch screen's sheet).
     private(set) var iconRequest: IconRequest?
 
     struct IconRequest: Equatable, Identifiable {
@@ -214,28 +214,18 @@ final class EditorController {
         send("window.hikki.setNativeComments(on)", ["on": on], label: "setNativeComments")
     }
 
-    /// The cover's sheet is drawn here (HikkiUI's `CoverSheet`), not by the page.
-    @ObservationIgnored private var nativeCover = false
-
-    func setNativeCover(_ on: Bool) {
-        guard on != nativeCover else { return }
-        nativeCover = on
-        if !on { coverRequest = nil }
-        send("window.hikki.setNativeCover(on)", ["on": on], label: "setNativeCover")
-    }
+    /// The cover's sheet and the icon pickers are drawn here (HikkiUI's `CoverSheet`, `IconPickerSheet`), not by the
+    /// page, on every touch screen (iPhone and iPad) — told to the page when it is ready.
+    #if os(iOS)
+        private let nativeCover = true
+        private let nativeIcons = true
+    #else
+        private let nativeCover = false
+        private let nativeIcons = false
+    #endif
 
     func closeCoverSheet() {
         coverRequest = nil
-    }
-
-    /// The icon pickers are drawn here (HikkiUI's `IconPickerSheet`), not by the page.
-    @ObservationIgnored private var nativeIcons = false
-
-    func setNativeIcons(_ on: Bool) {
-        guard on != nativeIcons else { return }
-        nativeIcons = on
-        if !on { iconRequest = nil }
-        send("window.hikki.setNativeIcons(on)", ["on": on], label: "setNativeIcons")
     }
 
     func closeIconSheet() {

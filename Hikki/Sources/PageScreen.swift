@@ -154,18 +154,16 @@ struct PageScreen: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
             }
+            // Comments and dates are native in the iPhone layout only (the iPad keeps the page's cards and popover);
+            // the cover's sheet and the icon pickers on every touch screen (`EditorController.init`).
             .onAppear {
                 guard phoneToolbar else { return }
                 editor.setNativeComments(true)
-                editor.setNativeCover(true)
-                editor.setNativeIcons(true)
                 editor.setNativeDates(true)
             }
             .onDisappear {
                 guard phoneToolbar else { return }
                 editor.setNativeComments(false)
-                editor.setNativeCover(false)
-                editor.setNativeIcons(false)
                 editor.setNativeDates(false)
             }
             .animation(Motion.easeOut(), value: editor.webView.keyboardBar?.composer)
