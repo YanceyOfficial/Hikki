@@ -6,6 +6,7 @@ import { EditorBridge, type CommentAction } from './core/bridge'
 import { exportPage, importDocument } from './core/convert'
 import { installErrorForwarding } from './core/errors'
 import { setLocale } from './core/i18n'
+import type { PictureItem, PicturePlace } from './core/pictures'
 import {
   PROTOCOL_VERSION,
   type AIChangeInput,
@@ -93,6 +94,8 @@ window.hikki = {
   touchAI: (action: AIAction) => bridge.touchAI(action),
   touchLink: (href: string | null) => bridge.touchLink(href),
   touchInsertMedia: (items: TouchMedia[]) => bridge.touchInsertMedia(items),
+  insertPictures: (docId: string, items: PictureItem[], place: PicturePlace) =>
+    bridge.insertPictures(docId, items, place),
   touchCommentQuote: (scope: TouchCommentScope) => bridge.touchCommentQuote(scope),
   touchComment: (scope: TouchCommentScope, body: string) => bridge.touchComment(scope, body),
   touchBlockInfo: () => bridge.touchBlockInfo(),

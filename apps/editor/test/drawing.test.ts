@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { blockKindLabel } from '../src/core/block-kinds'
 import { BLOCK_TYPES } from '../src/core/blocks'
-import { DiagramRequests } from '../src/core/diagram'
+import { DiagramError, DiagramRequests } from '../src/core/diagram'
 import { createEditor } from '../src/core/editor'
 import { blockTexts } from '../src/core/extract'
 import type { ToNativeMessage } from '../src/core/protocol'
@@ -24,6 +24,7 @@ type OverlayProps = {
   onDone: (data: { elements: unknown[]; files: object }, preview: Blob | null) => Promise<void>
   onFail: () => void
   readOnly?: boolean
+  mermaid?: string
 }
 type Done = { data: { elements: unknown[]; files: object }; preview: Blob | null }
 const overlays: {
@@ -405,14 +406,63 @@ describe('text to diagram', () => {
     expect(requests.handle({ id: 'ai-1', type: 'done' })).toBe(false)
   })
 
-  it('fails with the message the AI panel shows', async () => {
+  it('fails with the message the AI panel shows, and the code it is reported under', async () => {
     const { sent, requests } = setup()
     const answer = requests.request('x', '')
     const { id } = sent[0] as { id: string }
     requests.handle({ id, type: 'error', code: 'missingKey', provider: 'OpenAI' })
     await expect(answer).rejects.toThrow('Add your OpenAI API key in Settings → AI')
+    await expect(answer).rejects.toMatchObject({ id: 'aiMissingKey' })
     const empty = requests.request('y', '')
     requests.handle({ id: (sent[1] as { id: string }).id, type: 'done' })
     await expect(empty).rejects.toThrow()
+  })
+})
+
+function selectBefore() {
+  editor.commands.setTextSelection({ from: 1, to: 7 })
+}
+
+describe('a diagram of the selection', () => {
+  it('goes below the passage as a drawing that says it is coming, then opens with the shapes', async () => {
+    let answer: ((mermaid: string) => void) | undefined
+    host.diagram = vi.fn(() => new Promise<string>((resolve) => (answer = resolve)))
+    selectBefore()
+    expect(editor.can().insertDiagram('before')).toBe(true)
+    expect(editor.commands.insertDiagram('before')).toBe(true)
+    await settle()
+    expect(host.diagram).toHaveBeenCalledWith('before')
+    const drawings = element.querySelectorAll('.hk-drawing')
+    expect(drawings).toHaveLength(2)
+    expect(drawings[0].getAttribute('aria-label')).toBe('Making a diagram…')
+    expect(editor.state.doc.child(1).type.name).toBe('drawing')
+    answer?.('flowchart LR\n  A --> B')
+    await settle()
+    expect(overlays).toHaveLength(1)
+    expect(overlays[0].props.mermaid).toBe('flowchart LR\n  A --> B')
+    expect(element.querySelectorAll('.hk-drawing')[0].getAttribute('aria-label')).not.toBe(
+      'Making a diagram…'
+    )
+  })
+
+  it('takes its empty drawing away again when no diagram comes', async () => {
+    host.diagram = vi.fn(async () => {
+      throw new DiagramError('No key', 'aiMissingKey')
+    })
+    selectBefore()
+    editor.commands.insertDiagram('before')
+    await settle()
+    expect(overlays).toHaveLength(0)
+    expect(element.querySelectorAll('.hk-drawing')).toHaveLength(1)
+  })
+
+  it('needs AI, words, and a screen drawings can be added on', () => {
+    selectBefore()
+    expect(editor.can().insertDiagram('before')).toBe(false)
+    host.diagram = vi.fn(async () => 'flowchart LR')
+    expect(editor.can().insertDiagram('  ')).toBe(false)
+    setDrawingsReadOnly(true)
+    expect(editor.can().insertDiagram('before')).toBe(false)
+    expect(host.diagram).not.toHaveBeenCalled()
   })
 })

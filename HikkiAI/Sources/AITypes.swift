@@ -146,6 +146,8 @@ public enum AIError: Error, Equatable, Sendable {
     case offline
     /// The request itself was refused (bad model id, content policy, too long), with the provider's words.
     case rejected(String)
+    /// The provider's filter declined to make a picture (its description, or what came out).
+    case refused
     /// The reply couldn't be read.
     case invalidResponse
     case cancelled

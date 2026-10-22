@@ -21,6 +21,17 @@ struct ChatAttachment: Identifiable, Equatable {
     }
 }
 
+/// A picture's bytes as an image to draw.
+enum PlatformImage {
+    static func image(_ data: Data) -> Image? {
+        #if os(iOS)
+            UIImage(data: data).map(Image.init(uiImage:))
+        #else
+            NSImage(data: data).map(Image.init(nsImage:))
+        #endif
+    }
+}
+
 /// A conversation with AI (Ask AI): the turns, the model picked for it, web search on or off, and the page it is
 /// about. One per window; the answer streams into the last message. Page text goes to the model only as context, and
 /// nothing of it is logged.
@@ -46,6 +57,10 @@ final class AIChat {
         var images: [ChatImage] = []
         /// Changes the answer proposes to the page, with how each was reviewed.
         var changes: [AIPageChange] = []
+        /// Pictures the answer makes (OpenAI's image model), with how far each got.
+        var pictures: [ChatPicture] = []
+        /// Where in the page the answer's pictures go (the chat was opened for pictures from there).
+        var picturePlace: PicturePlace?
         /// A web search under way (its query, when the provider says it).
         var searching: String?
         /// The model's thinking and searches so far (the timeline above the answer).
@@ -81,6 +96,8 @@ final class AIChat {
         guard id != openPageID else { return }
         // An answer still arriving belongs to the page it was asked on: it stops, and what came is kept there.
         if isStreaming { stop() }
+        // So do its pictures (kept as stopped there, with Try again).
+        stopPictures()
         openPageID = id
         pageID = id
         extraPageIDs.removeAll { $0 == id }
@@ -178,10 +195,14 @@ final class AIChat {
         if text == nil { draft = "" }
         attachError = nil
         let asked = Message(role: .user, text: question, attachments: attachments)
+        // Set up for pictures, the answer's go where the page asked for them; else where the last ones went.
+        let place = pictureSetup?.place ?? messages.last(where: { $0.picturePlace != nil })?.picturePlace
+        let pictureRequest = pictureSetup.map { (shape: $0.shape, detailed: $0.detailed) }
+        pictureSetup = nil
         messages.append(asked)
         keep([asked])
         attachments = []
-        messages.append(Message(role: .assistant, text: ""))
+        messages.append(Message(role: .assistant, text: "", picturePlace: place))
         let pages = ([pageID].compactMap { $0 } + extraPageIDs)
             .compactMap { try? store?.document(id: $0) }
             .map { (title: $0.title, text: $0.plainText) }
@@ -193,7 +214,7 @@ final class AIChat {
             Task { [weak self] in
                 let blocks = await self?.openPageBlocks()
                 await self?.compactIfNeeded(model: model, client: client)
-                self?.ask(pages: pages, blocks: blocks, model: model, client: client)
+                self?.ask(pages: pages, blocks: blocks, model: model, client: client, pictureRequest: pictureRequest)
             }
         }
     }
@@ -243,13 +264,18 @@ final class AIChat {
     }
 
     private func ask(
-        pages: [(title: String, text: String)], blocks: [[String: String]]?, model: AIModel, client: any AIClient
+        pages: [(title: String, text: String)], blocks: [[String: String]]?, model: AIModel, client: any AIClient,
+        pictureRequest: (shape: PictureShape, detailed: Bool)?
     ) {
         // Stopped (or moved to another page) while compacting.
         guard isStreaming else { return }
         askedBlocks = blocks.map { Set($0.compactMap { $0["id"] }) }
         let turns: [AIMessage] = turnsToSend.map { message in
-            guard message.role == .user else { return .assistant(message.text) }
+            // An answer's pictures are named by id, so a later answer can change one.
+            guard message.role == .user else {
+                let made = message.pictures.filter { $0.status == .done }.map { AIPictures.reference(id: $0.id, prompt: $0.prompt) }
+                return .assistant(made.isEmpty ? message.text : message.text + "\n\n" + made.joined(separator: "\n"))
+            }
             var parts: [AIMessage.Part] = [.text(message.text)] + message.attachments.map(\.part)
             if !message.attachmentNames.isEmpty {
                 parts.append(.text("(Files attached then, not available now: \(message.attachmentNames.joined(separator: ", ")))"))
@@ -258,7 +284,8 @@ final class AIChat {
         }
         var request = AIPrompts.chat(
             turns, summary: summary?.text, pages: pages, openPageBlocks: blocks.map { AIPageEdits.pageJSON($0) },
-            selection: contextSelection, model: model, webSearch: webSearch, language: AIService.appLanguage)
+            selection: contextSelection, model: model, webSearch: webSearch, language: AIService.appLanguage,
+            pictures: canMakePictures, pictureRequest: pictureRequest)
         // The model thinks first; its thinking streams into the answer's timeline.
         request.reasoning = true
         // A search may bring pictures too, shown under the answer (OpenAI's search; Anthropic's has none).
@@ -285,6 +312,7 @@ final class AIChat {
     }
 
     func stop() {
+        stopPictures()
         run.stop()
         isStreaming = false
         guard let last = messages.indices.last else { return }
@@ -323,6 +351,245 @@ final class AIChat {
                 self.offerChanges()
             }
         }
+    }
+
+    // MARK: - Pictures
+
+    /// The composer set up for pictures (the page asked for them: "/" AI pictures, a selection's or a picture's Make):
+    /// where they go, and the shape and model the user picked for them. Sent with the next question, then cleared.
+    struct PictureSetup: Equatable {
+        var place: PicturePlace
+        var shape: PictureShape = .wide
+        var detailed = false
+        /// It changes a picture in the page (attached to the question): adding replaces it.
+        var changing: Bool { place.replace }
+    }
+
+    var pictureSetup: PictureSetup?
+    /// Pictures can be made: there is an OpenAI key (the image model is OpenAI's).
+    var canMakePictures: Bool { AIPreferences.key(.openAI) != nil }
+    /// Pictures being made (queued or drawing), those drawing now, and the rough versions they have shown (not kept).
+    private(set) var makingPictures: Set<String> = []
+    private(set) var drawingPictures: Set<String> = []
+    private(set) var roughPictures: [String: Data] = [:]
+    @ObservationIgnored private var pictureRuns: [String: Task<Void, Never>] = [:]
+    @ObservationIgnored private var pictureQueue: [(id: String, request: PictureRequest)] = []
+    /// Made pictures, read once from their files.
+    @ObservationIgnored private var pictureImages: [String: Image] = [:]
+    /// Pictures went into the page (the iPhone sheet closes on it).
+    @ObservationIgnored var onPicturesAdded: (() -> Void)?
+    /// Two at a time: each takes up to a minute.
+    private static let pictureLanes = 2
+
+    var isMakingPictures: Bool { !makingPictures.isEmpty }
+
+    /// The pictures a finished answer asks for: it may change an earlier one by id, or the picture attached to the
+    /// question.
+    private func proposedPictures(answer index: Int) -> [ChatPicture] {
+        var known = Set(messages.flatMap(\.pictures).filter { $0.status == .done }.map(\.id))
+        if attachedPicture(before: index) != nil { known.insert(AIPictures.attached) }
+        let id = messages[index].id
+        return AIPictures.pictures(in: messages[index].text, known: known).enumerated().map { n, spec in
+            ChatPicture(id: "\(id)-\(n)", prompt: spec.prompt, shape: spec.shape.rawValue, detailed: spec.detailed, from: spec.from)
+        }
+    }
+
+    /// The picture attached to the question an answer replies to.
+    private func attachedPicture(before index: Int) -> (data: Data, mimeType: String)? {
+        guard index > 0 else { return nil }
+        for attachment in messages[index - 1].attachments {
+            if case .image(let data, let mimeType) = attachment.part { return (data, mimeType) }
+        }
+        return nil
+    }
+
+    /// Where a picture is (and its index), in whichever answer has it.
+    private func picturePosition(_ id: String) -> (message: Int, picture: Int)? {
+        for (m, message) in messages.enumerated() {
+            if let p = message.pictures.firstIndex(where: { $0.id == id }) { return (m, p) }
+        }
+        return nil
+    }
+
+    /// The file a made picture is (a workspace asset).
+    private func pictureFile(_ asset: String?) -> URL? {
+        guard let asset, asset.hasPrefix(AssetStore.urlPrefix) else { return nil }
+        return AppModel.current?.assets.file(named: String(asset.dropFirst(AssetStore.urlPrefix.count)))
+    }
+
+    /// What a picture changes, read for the image model: the attached picture, or an earlier made one. Gone (the
+    /// attachment isn't kept past a restart): it is made anew from its words.
+    private func source(of picture: ChatPicture, answer index: Int) -> (data: Data, mimeType: String)? {
+        guard let from = picture.from else { return nil }
+        if from == AIPictures.attached { return attachedPicture(before: index) }
+        guard let done = messages.flatMap(\.pictures).first(where: { $0.id == from }), let file = pictureFile(done.asset),
+            let data = try? Data(contentsOf: file)
+        else { return nil }
+        return (data, UTType(filenameExtension: file.pathExtension)?.preferredMIMEType ?? "image/jpeg")
+    }
+
+    /// Makes an answer's pictures (or one again): queued, two at a time.
+    private func makePictures(_ ids: [String], answer: String) {
+        guard let index = messages.firstIndex(where: { $0.id == answer }) else { return }
+        for id in ids {
+            guard let p = messages[index].pictures.firstIndex(where: { $0.id == id }) else { continue }
+            let picture = messages[index].pictures[p]
+            let shape = PictureShape(rawValue: picture.shape) ?? .wide
+            messages[index].pictures[p].status = .making
+            messages[index].pictures[p].error = nil
+            makingPictures.insert(id)
+            pictureQueue.append(
+                (
+                    id,
+                    PictureRequest(
+                        prompt: picture.prompt, shape: shape, detailed: picture.detailed, source: source(of: picture, answer: index))
+                ))
+        }
+        if !ids.isEmpty { Log.info("AI pictures", category: "ai", context: ["count": "\(ids.count)"]) }
+        startPictures()
+    }
+
+    private func startPictures() {
+        while pictureRuns.count < Self.pictureLanes, !pictureQueue.isEmpty {
+            let (id, request) = pictureQueue.removeFirst()
+            drawingPictures.insert(id)
+            pictureRuns[id] = Task { [weak self] in await self?.makePicture(id, request) }
+        }
+    }
+
+    private func makePicture(_ id: String, _ request: PictureRequest) async {
+        var failure: Error?
+        var made = false
+        do {
+            guard let base = AIPreferences.base(.openAI) else { throw AIError.badBaseURL(.openAI) }
+            let client = try OpenAIPictureClient.make(key: AIPreferences.key(.openAI), base: base)
+            for try await event in client.make(request) {
+                switch event {
+                case .partial(let data):
+                    roughPictures[id] = data
+                case .done(let data, let fileExtension):
+                    guard let assets = AppModel.current?.assets else { throw AIError.cancelled }
+                    let src: String
+                    do {
+                        src = try assets.save(data, fileExtension: fileExtension, maxBytes: data.count)
+                    } catch {
+                        Incident.report(.aiPictureSaveFailed, error, category: "ai")
+                        updatePicture(id) {
+                            $0.status = .failed
+                            $0.error = Self.saveFailed
+                        }
+                        made = true
+                        continue
+                    }
+                    made = true
+                    updatePicture(id) {
+                        $0.status = .done
+                        $0.asset = src
+                    }
+                }
+            }
+        } catch {
+            failure = error
+        }
+        if Task.isCancelled || failure as? AIError == .cancelled {
+            updatePicture(id) { $0.status = .stopped }
+        } else if !made {
+            let error = failure as? AIError ?? .invalidResponse
+            if let code = error.errorCode { Incident.report(code, error, category: "ai") }
+            updatePicture(id) {
+                $0.status = .failed
+                $0.error = error.legacyName
+            }
+        }
+        roughPictures[id] = nil
+        pictureRuns[id] = nil
+        makingPictures.remove(id)
+        drawingPictures.remove(id)
+        if let (m, _) = picturePosition(id) { keep([messages[m]]) }
+        startPictures()
+    }
+
+    private func updatePicture(_ id: String, _ change: (inout ChatPicture) -> Void) {
+        guard let (m, p) = picturePosition(id) else { return }
+        change(&messages[m].pictures[p])
+    }
+
+    /// Pictures being made stop (Stop, New chat, another page): they say so, with Try again.
+    private func stopPictures() {
+        for (id, _) in pictureQueue { updatePicture(id) { $0.status = .stopped } }
+        let stopped = pictureQueue.map(\.id) + Array(pictureRuns.keys)
+        pictureQueue = []
+        pictureRuns.values.forEach { $0.cancel() }
+        pictureRuns = [:]
+        roughPictures = [:]
+        makingPictures = []
+        drawingPictures = []
+        for id in stopped { updatePicture(id) { if $0.status == .making { $0.status = .stopped } } }
+        let touched = Set(stopped.compactMap { picturePosition($0)?.message })
+        if !touched.isEmpty { keep(touched.sorted().map { messages[$0] }) }
+    }
+
+    /// Try again: the picture is made once more (a made one is replaced on its tile).
+    func retryPicture(_ id: String) {
+        guard let (m, _) = picturePosition(id), pictureRuns[id] == nil else { return }
+        makePictures([id], answer: messages[m].id)
+    }
+
+    /// What a tile shows: the made picture, or the rough version so far.
+    func pictureImage(_ picture: ChatPicture) -> Image? {
+        if let rough = roughPictures[picture.id] { return PlatformImage.image(rough) }
+        guard picture.status == .done, let asset = picture.asset else { return nil }
+        if let image = pictureImages[asset] { return image }
+        guard let file = pictureFile(asset), let data = try? Data(contentsOf: file), let image = PlatformImage.image(data) else {
+            return nil
+        }
+        pictureImages[asset] = image
+        return image
+    }
+
+    /// Made pictures put into the page the chat sits beside, where the answer's pictures go; marked added there.
+    func addPictures(_ ids: [String], answer: String) {
+        guard let page = openPageID, let editor, let m = messages.firstIndex(where: { $0.id == answer }) else { return }
+        let pictures = messages[m].pictures.filter { ids.contains($0.id) && $0.status == .done && $0.asset != nil }
+        guard !pictures.isEmpty else { return }
+        let place = messages[m].picturePlace
+        let items = pictures.map { ["src": $0.asset ?? "", "alt": String($0.prompt.prefix(200))] }
+        Task { [weak self] in
+            guard await editor.insertPictures(docId: page, items: items, place: place), let self else { return }
+            Log.info("AI pictures added", category: "ai", context: ["count": "\(items.count)"])
+            for picture in pictures { self.updatePicture(picture.id) { $0.added = true } }
+            if let m = self.messages.firstIndex(where: { $0.id == answer }) { self.keep([self.messages[m]]) }
+            self.onPicturesAdded?()
+        }
+    }
+
+    /// A made picture as the page's cover.
+    func useAsCover(_ id: String) {
+        guard let page = openPageID, let editor, let (m, p) = picturePosition(id), let asset = messages[m].pictures[p].asset
+        else { return }
+        Task { await editor.applyCover(asset, docId: page) }
+    }
+
+    /// `ChatPicture.error` for a picture made but not stored.
+    static let saveFailed = "saveFailed"
+
+    /// Why a picture wasn't made, in the user's words (its error's name, as kept).
+    static func pictureFailure(_ picture: ChatPicture) -> String {
+        if picture.status == .stopped { return String(localized: "app:ai.pictures.stopped") }
+        let error: AIError? =
+            switch picture.error {
+            case "missingKey": .missingKey(.openAI)
+            case "badBaseURL": .badBaseURL(.openAI)
+            case "unauthorized": .unauthorized
+            case "rateLimited": .rateLimited
+            case "unavailable": .unavailable
+            case "offline": .offline
+            case "rejected": .rejected("")
+            case "refused": .refused
+            case Self.saveFailed: nil
+            default: .invalidResponse
+            }
+        return error.map(AIService.message(for:)) ?? String(localized: "app:ai.pictures.saveFailed")
     }
 
     // MARK: - Changes to the page
@@ -409,8 +676,10 @@ final class AIChat {
         if messages[last].role == .assistant, !messages[last].text.isEmpty {
             messages[last].sentAt = .now
             if error == nil, let blocks = askedBlocks { messages[last].changes = proposedChanges(in: messages[last], blocks: blocks) }
+            if error == nil { messages[last].pictures = proposedPictures(answer: last) }
             keep([messages[last]])
             if !messages[last].changes.isEmpty { offerChanges() }
+            makePictures(messages[last].pictures.map(\.id), answer: messages[last].id)
         }
         askedBlocks = nil
         if let error {
@@ -429,7 +698,13 @@ extension AIChat.Message {
             id: turn.id, role: turn.role, text: turn.text, sentAt: turn.sentAt, attachmentNames: turn.attachments,
             citations: turn.citations.filter { $0.webURL != nil }.map { AICitation(url: $0.url, title: $0.title) },
             images: (turn.images ?? []).filter { $0.webURL != nil }, changes: turn.changes ?? [],
-            thinking: turn.thinking)
+            // One being made when the chat was left (or on another device) isn't being made here.
+            pictures: (turn.pictures ?? []).map { picture in
+                var picture = picture
+                if picture.status == .making { picture.status = .stopped }
+                return picture
+            },
+            picturePlace: turn.picturePlace, thinking: turn.thinking)
     }
 
     /// The turn as it is kept.
@@ -437,7 +712,8 @@ extension AIChat.Message {
         ChatTurn(
             id: id, role: role, text: text, sentAt: sentAt, attachments: attachmentNames + attachments.map(\.name),
             citations: citations.map { ChatCitation(url: $0.url, title: $0.title) }, changes: changes.isEmpty ? nil : changes,
-            thinking: thinking.flatMap(ChatTimeline.kept), images: images.isEmpty ? nil : images)
+            thinking: thinking.flatMap(ChatTimeline.kept), images: images.isEmpty ? nil : images,
+            pictures: pictures.isEmpty ? nil : pictures, picturePlace: picturePlace)
     }
 }
 
@@ -599,6 +875,7 @@ struct AIChatView: View {
                     }
                     .scrollIndicators(.hidden)
                 }
+                if let setup = chat.pictureSetup { pictureChips(setup) }
                 if !contextPages.isEmpty || chat.contextSelection != nil {
                     ScrollView(.horizontal) {
                         HStack(spacing: Spacing.s1_5) {
@@ -695,31 +972,75 @@ struct AIChatView: View {
     /// The question field: a little smaller than body text, as Notion's; Return sends, or picks a page while the @ list
     /// is open (arrows move in it).
     private var field: some View {
-        TextField("app:ai.chat.placeholder", text: $chat.draft, axis: .vertical)
-            .textFieldStyle(.plain)
-            .font(.hk(.sm))
-            .lineLimit(2...8)
-            .focused($composing)
-            .submitLabel(.send)
-            .onSubmit { mentionQuery == nil ? chat.send(store: model.store) : pickHighlighted() }
-            // While an input method is composing, its candidates own these keys.
-            .onKeyPress(.downArrow) { TextComposition.isActive ? .ignored : moveMention(1) }
-            .onKeyPress(.upArrow) { TextComposition.isActive ? .ignored : moveMention(-1) }
-            .onKeyPress(.return) {
-                guard mentionQuery != nil, !TextComposition.isActive else { return .ignored }
-                pickHighlighted()
-                return .handled
+        TextField(
+            chat.pictureSetup == nil ? "app:ai.chat.placeholder" : "app:ai.pictures.placeholder", text: $chat.draft,
+            axis: .vertical
+        )
+        .textFieldStyle(.plain)
+        .font(.hk(.sm))
+        .lineLimit(2...8)
+        .focused($composing)
+        .submitLabel(.send)
+        .onSubmit { mentionQuery == nil ? chat.send(store: model.store) : pickHighlighted() }
+        // While an input method is composing, its candidates own these keys.
+        .onKeyPress(.downArrow) { TextComposition.isActive ? .ignored : moveMention(1) }
+        .onKeyPress(.upArrow) { TextComposition.isActive ? .ignored : moveMention(-1) }
+        .onKeyPress(.return) {
+            guard mentionQuery != nil, !TextComposition.isActive else { return .ignored }
+            pickHighlighted()
+            return .handled
+        }
+        .onKeyPress(.escape) {
+            guard mentionQuery != nil, !TextComposition.isActive else { return .ignored }
+            if let range = chat.draft.range(of: "@", options: .backwards) { chat.draft.removeSubrange(range) }
+            return .handled
+        }
+        .onChange(of: mentionQuery) { mentionIndex = 0 }
+        #if os(macOS)
+            .onPasteCommand(of: [.fileURL, .image, .pdf]) { receive($0) }
+        #endif
+        .accessibilityIdentifier("ai-chat-field")
+    }
+
+    /// Set up for pictures (opened from the page for them): what is asked for, its shape and the detailed model.
+    private func pictureChips(_ setup: AIChat.PictureSetup) -> some View {
+        HStack(spacing: Spacing.s1_5) {
+            ContextChip(label: "app:ai.pictures.cancel", remove: { chat.pictureSetup = nil }) {
+                IconView(.images, size: TextSize.sm.rawValue).foregroundStyle(ColorTone.standard.ink)
+                Text(setup.changing ? "app:ai.pictures.changing" : "app:ai.pictures.asking")
             }
-            .onKeyPress(.escape) {
-                guard mentionQuery != nil, !TextComposition.isActive else { return .ignored }
-                if let range = chat.draft.range(of: "@", options: .backwards) { chat.draft.removeSubrange(range) }
-                return .handled
+            .accessibilityIdentifier("ai-pictures-setup")
+            Menu {
+                Picker("app:ai.pictures.shape", selection: Binding(get: { setup.shape }, set: { chat.pictureSetup?.shape = $0 })) {
+                    ForEach(PictureShape.allCases, id: \.self) { shape in Text(Self.shapeName(shape)).tag(shape) }
+                }
+                .pickerStyle(.inline)
+            } label: {
+                Text(Self.shapeName(setup.shape)).modifier(ChipStyle())
             }
-            .onChange(of: mentionQuery) { mentionIndex = 0 }
-            #if os(macOS)
-                .onPasteCommand(of: [.fileURL, .image, .pdf]) { receive($0) }
-            #endif
-            .accessibilityIdentifier("ai-chat-field")
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .accessibilityIdentifier("ai-pictures-shape")
+            Toggle(isOn: Binding(get: { setup.detailed }, set: { chat.pictureSetup?.detailed = $0 })) {
+                Text("app:ai.pictures.detailed")
+            }
+            .toggleStyle(.button)
+            .buttonStyle(.plain)
+            .modifier(ChipStyle())
+            .background(setup.detailed ? ColorTone.standard.selectionFill : .clear, in: .capsule)
+            .help("app:ai.pictures.detailedHint")
+            .accessibilityIdentifier("ai-pictures-detailed")
+        }
+    }
+
+    private static func shapeName(_ shape: PictureShape) -> LocalizedStringKey {
+        switch shape {
+        case .wide: "app:ai.pictures.wide"
+        case .square: "app:ai.pictures.square"
+        case .tall: "app:ai.pictures.tall"
+        }
     }
 
     private var attachButton: some View {
@@ -819,14 +1140,16 @@ struct AIChatView: View {
     }
 
     private var sendButton: some View {
-        Button {
-            if chat.isStreaming { chat.stop() } else { chat.send(store: model.store) }
+        // Pictures being made stop with it too.
+        let working = chat.isStreaming || chat.isMakingPictures
+        return Button {
+            if working { chat.stop() } else { chat.send(store: model.store) }
         } label: {
-            IconView(chat.isStreaming ? .stop : .arrowUp, size: TextSize.base.rawValue)
+            IconView(working ? .stop : .arrowUp, size: TextSize.base.rawValue)
         }
         .buttonStyle(SendButtonStyle())
-        .disabled(!chat.isStreaming && !canSend)
-        .accessibilityLabel(Text(chat.isStreaming ? "app:ai.stop" : "app:ai.send"))
+        .disabled(!working && !canSend)
+        .accessibilityLabel(Text(working ? "app:ai.stop" : "app:ai.send"))
         .accessibilityIdentifier("ai-chat-send")
     }
 }
@@ -977,13 +1300,7 @@ private struct AttachmentThumbnail: View {
         .accessibilityLabel(Text(verbatim: attachment.name))
     }
 
-    private func platformImage(_ data: Data) -> Image? {
-        #if os(iOS)
-            UIImage(data: data).map(Image.init(uiImage:))
-        #else
-            NSImage(data: data).map(Image.init(nsImage:))
-        #endif
-    }
+    private func platformImage(_ data: Data) -> Image? { PlatformImage.image(data) }
 }
 
 /// A context chip in the composer (the page, the selected passage): a hairline capsule, removable.
@@ -1104,10 +1421,14 @@ private struct ChatBubble: View {
                 if let timeline { timeline }
                 // The changes block never shows as text: the cards below stand for it.
                 if !prose.isEmpty { AnswerText(text: prose, isStreaming: isStreaming) }
-                if isStreaming, isCompacting || AIPageEdits.hasChanges(message.text) || !message.text.isEmpty && message.searching != nil {
+                if isStreaming,
+                    isCompacting || AIPageEdits.hasChanges(message.text) || AIPictures.hasPictures(message.text)
+                        || !message.text.isEmpty && message.searching != nil
+                {
                     working
                 }
                 if let chat, !message.changes.isEmpty { changeReview(chat) }
+                if let chat, !message.pictures.isEmpty { pictureTiles(chat) }
                 if let error = message.error {
                     Text(verbatim: error).font(.hk(.sm)).foregroundStyle(.red)
                 }
@@ -1165,6 +1486,30 @@ private struct ChatBubble: View {
         return AIChangeReview(
             items: items, reviewed: reviewed, activeID: chat.focusedChange, onFocus: chat.focusChange,
             onApprove: chat.approveChange, onSkip: chat.skipChange, onApproveAll: chat.approveAllChanges)
+    }
+
+    /// The pictures the answer makes, as tiles forming in place; made ones go into the page where it asked for them.
+    private func pictureTiles(_ chat: AIChat) -> some View {
+        let replacing = message.picturePlace?.replace == true
+        let items = message.pictures.map { picture in
+            let shape = PictureShape(rawValue: picture.shape) ?? .wide
+            let state: PictureTileItem.State =
+                switch picture.status {
+                case .making: chat.drawingPictures.contains(picture.id) ? .forming : .waiting
+                case .done: .done
+                case .stopped, .failed: .failed(AIChat.pictureFailure(picture))
+                }
+            return PictureTileItem(
+                id: picture.id, state: state, image: chat.pictureImage(picture),
+                aspect: shape.aspect, description: picture.prompt, added: picture.added == true)
+        }
+        return PictureTiles(
+            items: items, replacing: replacing,
+            onAdd: chat.canAddPictures ? { chat.addPictures([$0], answer: message.id) } : nil,
+            onCover: chat.canAddPictures ? { chat.useAsCover($0) } : nil,
+            onRetry: chat.retryPicture,
+            onAddAll: chat.canAddPictures
+                ? { chat.addPictures(message.pictures.filter { $0.added != true }.map(\.id), answer: message.id) } : nil)
     }
 
     private var userText: some View {
@@ -1238,6 +1583,8 @@ private struct ChatBubble: View {
                 ShimmerText(query.isEmpty ? "app:ai.searching" : "app:ai.searchingFor \(query)")
             } else if AIPageEdits.hasChanges(message.text) {
                 ShimmerText("app:ai.changes.preparing")
+            } else if AIPictures.hasPictures(message.text) {
+                ShimmerText("app:ai.pictures.preparing")
             } else {
                 ShimmerText(isCompacting ? "app:ai.compacting" : "app:ai.thinking")
             }

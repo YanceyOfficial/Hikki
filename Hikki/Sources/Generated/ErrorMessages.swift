@@ -51,6 +51,8 @@ extension ErrorCode {
         case .aiRejected: String(localized: "app:error.aiRejected")
         case .aiInvalidResponse: String(localized: "app:error.aiInvalidResponse")
         case .aiMediaUnreadable: String(localized: "app:error.aiMediaUnreadable")
+        case .aiPictureRefused: String(localized: "app:error.aiPictureRefused")
+        case .aiPictureSaveFailed: String(localized: "app:error.aiPictureSaveFailed")
         case .searchFailed: String(localized: "app:error.searchFailed")
         case .searchIndexFailed: String(localized: "app:error.searchIndexFailed")
         case .offline: String(localized: "app:error.offline")

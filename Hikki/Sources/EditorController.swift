@@ -542,6 +542,8 @@ final class EditorController {
     @ObservationIgnored var onAICancel: ((String) -> Void)?
     /// AI on the selection handed the request to the chat (too big for an edit): ContentView opens the chat with it.
     @ObservationIgnored var onAIHandoff: ((AIHandoff) -> Void)?
+    /// The page asked for pictures ("/" AI pictures, a selection's or a picture's Make): the chat opens set up for them.
+    @ObservationIgnored var onAIPictures: ((PicturesHandoff) -> Void)?
 
     /// One event of an AI request's answer, to the page (`window.hikki.aiEvent`).
     func sendAIEvent(_ event: [String: Any]) {
@@ -741,6 +743,15 @@ final class EditorController {
         } catch {
             Toasts.report(.webImageUnavailable, error, category: "ai")
         }
+    }
+
+    /// Pictures an AI answer made (workspace assets) put into the page at their place (`insertPictures` in
+    /// pictures.ts); false when the page refused them (not the one shown, locked).
+    func insertPictures(docId: String, items: [[String: String]], place: PicturePlace?) async -> Bool {
+        let where_: Any = place.map { ["blockId": $0.blockId ?? NSNull(), "replace": $0.replace] as [String: Any] } ?? NSNull()
+        return await call(
+            "return window.hikki.insertPictures(docId, items, place)", ["docId": docId, "items": items, "place": where_],
+            label: "insertPictures") as? Bool ?? false
     }
 
     /// What the phone's comment field quotes (`touchCommentQuote`); nil where no thread can start.
@@ -1111,6 +1122,9 @@ final class EditorController {
         case .aiHandoff(let handoff):
             Log.info("AI handoff", category: "ai", context: ["docId": handoff.docId])
             onAIHandoff?(handoff)
+        case .aiPictures(let request):
+            Log.info("AI pictures asked", category: "ai", context: ["docId": request.docId, "replace": "\(request.replace)"])
+            onAIPictures?(request)
         case .aiChange(let docId, let id, let status, let before, let after):
             // A page loaded again is offered only what is still pending.
             if aiChangeOffer?.docId == docId, let index = aiChangeOffer?.changes.firstIndex(where: { $0.id == id }) {

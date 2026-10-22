@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 36
+export const PROTOCOL_VERSION = 37
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -99,6 +99,17 @@ export type ToNativeMessage =
    * answer (`{"handoff": …}`): the app continues it in the chat — `instruction` as the question, `selection` (the
    * passage's text) as its context. */
   | { type: 'aiHandoff'; docId: string; instruction: string; selection: string }
+  /** Ask for pictures ("/" AI pictures, a selection's Pictures…, an image's Edit with AI): the app opens the chat set
+   * up for them. They go in after `blockId` (in place of it while it is an empty line) or, `mode: 'replace'`, in place
+   * of the picture at `url` being changed; `selection` is the passage they are of. */
+  | {
+      type: 'aiPictures'
+      docId: string
+      blockId: string | null
+      mode: 'after' | 'replace'
+      selection?: string
+      url?: string
+    }
   /** A change Ask AI proposed (`window.hikki.aiChanges`) was reviewed in the page, or went stale; with the block's text
    * before and after, for the chat's reviewed stack. */
   | {
@@ -227,6 +238,8 @@ export type AIModelMenu = {
   choice: string
   auto: string | null
   groups: { kind: 'favorites' | 'recommended' | 'other'; models: { id: string; name: string }[] }[]
+  /** Pictures can be made (an OpenAI key is set; absent from an older app: no). */
+  pictures?: boolean
 }
 
 /** A file Ask AI reads (`aiRequest.media`): `kind` says how it goes to the model. */

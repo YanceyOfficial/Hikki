@@ -107,6 +107,40 @@ struct PageChatsTests {
         #expect(PageChats.merge(mac, phone).turns.first?.images == [picture])
     }
 
+    @Test func madePicturesAreKeptAndAMadeOneWinsAMerge() throws {
+        func answer(_ pictures: [ChatPicture]) -> ChatTurn {
+            var turn = turn("a", .assistant, text: "Three pictures", at: 1)
+            turn.pictures = pictures
+            turn.picturePlace = PicturePlace(blockId: "b2")
+            return turn
+        }
+        let making = ChatPicture(id: "a-0", prompt: "Pagoda", shape: "wide")
+        var made = making
+        made.status = .done
+        made.asset = "hikki-editor://assets/pagoda.jpg"
+        var stopped = ChatPicture(id: "a-1", prompt: "Bamboo", shape: "tall", status: .stopped)
+        var added = stopped
+        added.added = true
+        added.status = .stopped
+        stopped.added = nil
+
+        let (chats, root) = store()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try chats.save([answer([made, stopped])], pageId: "p")
+        let kept = try chats.conversation(of: "p", now: t0).turns.first
+        #expect(kept?.pictures == [made, stopped])
+        #expect(kept?.picturePlace == PicturePlace(blockId: "b2"))
+
+        // The device still making it loses to the one that made it; added on either stays added.
+        let mac = PageChats.File(format: 1, pageId: "p", turns: [answer([making, added])])
+        let phone = PageChats.File(format: 1, pageId: "p", turns: [answer([made, stopped])])
+        for merged in [PageChats.merge(mac, phone), PageChats.merge(phone, mac)] {
+            #expect(merged.turns[0].pictures?.map(\.status) == [.done, .stopped])
+            #expect(merged.turns[0].pictures?[0].asset == made.asset)
+            #expect(merged.turns[0].pictures?[1].added == true)
+        }
+    }
+
     @Test func oldTurnsGoAfterTheRetention() throws {
         let (chats, root) = store()
         defer { try? FileManager.default.removeItem(at: root) }

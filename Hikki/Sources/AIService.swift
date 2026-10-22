@@ -106,6 +106,7 @@ final class AIService {
         case .rejected(let message) where !message.isEmpty:
             String(localized: "app:ai.error.rejectedWith \(String(message.prefix(300)))")
         case .rejected: String(localized: "app:ai.error.rejected")
+        case .refused: String(localized: "app:ai.error.refused")
         case .invalidResponse, .cancelled: String(localized: "app:ai.error.invalidResponse")
         }
     }
@@ -170,6 +171,7 @@ extension AIError {
         case .unavailable: .aiUnavailable
         case .offline: .aiOffline
         case .rejected: .aiRejected
+        case .refused: .aiPictureRefused
         case .invalidResponse: .aiInvalidResponse
         case .cancelled: nil
         }
@@ -185,6 +187,7 @@ extension AIError {
         case .unavailable: "unavailable"
         case .offline: "offline"
         case .rejected: "rejected"
+        case .refused: "refused"
         case .invalidResponse: "invalidResponse"
         case .cancelled: "cancelled"
         }

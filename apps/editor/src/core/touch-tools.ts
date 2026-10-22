@@ -1,5 +1,6 @@
 import type { Editor } from '@tiptap/core'
-import { TextSelection } from '@tiptap/pm/state'
+import type { Node as PMNode, ResolvedPos } from '@tiptap/pm/model'
+import { TextSelection, type Transaction } from '@tiptap/pm/state'
 
 import { blockCounts, unitTypeId } from '../components/block-menu'
 import { TURN_INTO } from '../components/block-type-list'
@@ -28,7 +29,8 @@ const GROUP_LABEL: Record<BlockGroup, () => string> = {
   media: () => t('slash.group.media'),
   embeds: () => t('slash.group.embeds'),
   other: () => t('slash.group.other'),
-  advanced: () => t('slash.group.advanced')
+  advanced: () => t('slash.group.advanced'),
+  ai: () => t('slash.group.ai')
 }
 
 /** A Phosphor component's name as the icon set spells it (`TextHOneIcon` → `text-h-one`); null for a brand logo. */
@@ -105,9 +107,18 @@ export function touchInsertMedia(editor: Editor, items: TouchMedia[]): boolean {
     return src ? [storedFileNode(editor.schema, kind, src, item)] : []
   })
   if (nodes.length === 0) return false
-  const { $from } = editor.state.selection
+  editor.view.dispatch(
+    insertBlocksAt(editor.state.tr, nodes, editor.state.selection.$from).scrollIntoView()
+  )
+  return true
+}
+
+/**
+ * Blocks put in where "+" puts one, from `$from` — in place of an empty line, else after its block or the whole list
+ * it is in — with the caret on the line after them (a new one unless a text line follows).
+ */
+export function insertBlocksAt(tr: Transaction, nodes: PMNode[], $from: ResolvedPos): Transaction {
   const size = nodes.reduce((sum, node) => sum + node.nodeSize, 0)
-  const tr = editor.state.tr
   let start: number
   if (
     $from.parent.type.name === 'paragraph' &&
@@ -122,12 +133,10 @@ export function touchInsertMedia(editor: Editor, items: TouchMedia[]): boolean {
     start = $from.after(depth)
     tr.insert(start, nodes)
   }
-  // The caret goes on the line after them, a new one unless a text line follows.
   const after = start + size
-  if (!tr.doc.nodeAt(after)?.isTextblock) tr.insert(after, editor.schema.nodes.paragraph.create())
-  tr.setSelection(TextSelection.create(tr.doc, after + 1))
-  editor.view.dispatch(tr.scrollIntoView())
-  return true
+  if (!tr.doc.nodeAt(after)?.isTextblock)
+    tr.insert(after, nodes[0].type.schema.nodes.paragraph.create())
+  return tr.setSelection(TextSelection.create(tr.doc, after + 1))
 }
 
 export function touchTurnInto(editor: Editor, id: string): boolean {

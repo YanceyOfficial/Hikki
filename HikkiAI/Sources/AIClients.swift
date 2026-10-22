@@ -48,12 +48,18 @@ enum HTTPErrors {
         let json = (try? JSONSerialization.jsonObject(with: body)) as? [String: Any]
         let error = json?["error"] as? [String: Any]
         let message = (error?["message"] as? String) ?? (json?["message"] as? String) ?? ""
+        if error?["code"] as? String == "moderation_blocked" { return .refused }
         switch status {
         case 401, 403: return .unauthorized
         case 429: return .rateLimited
         case 500...599: return .unavailable
         default: return .rejected(message)
         }
+    }
+
+    /// A picture stream's error event.
+    static func pictureError(code: String?, message: String) -> AIError {
+        code == "moderation_blocked" ? .refused : OpenAIStreamDecoder.error(code: code, message: message)
     }
 
     static func map(_ error: Error) -> Error {

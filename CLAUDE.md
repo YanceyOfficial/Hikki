@@ -700,6 +700,21 @@ HikkiUITests/                 XCUITest flows
   (actovia's): live, the step it is on shimmering; then "Thought for 12 seconds", opening into the steps (thinking
   titled by its bold first line, `AIThinking`; web searches by query), grown by `ChatTimeline` and kept on the turn
   (`ChatTurn.thinking`). The page's own AI requests don't ask for thinking.
+  **Making pictures** (`HikkiAI/Sources/AIPictures.swift`): with an OpenAI key the chat may make pictures — any chat
+  model plans them in a hidden fenced `hikki-pictures` block (`{"pictures":[{prompt, shape, detailed, from}]}`, at
+  most 4; `from` an earlier picture's id, named to the model as `[picture <id>]`, or `attached`), and
+  `OpenAIPictureClient` draws them (OpenAI's Image API: generations, or edits with the source; streamed with
+  partial pictures; Flare by default, Sunburst when detailed or changing one; a declined picture is `.refused`),
+  two at a time, into the workspace's assets. They are `ChatTurn.pictures` (`ChatPicture`: making / done / stopped /
+  failed, merged like turns) drawn by HikkiUI's `PictureTiles` (forming blurred, then Add to page — Replace in page
+  when changing one — Use as cover, Try again; Add all), going in where the page asked (`ChatTurn.picturePlace`,
+  `insertPictures` in `apps/editor/src/core/pictures.ts`: after the block, in place of an empty line or the picture
+  changed, else at the caret, one undo step). The page asks with `aiPictures` ("/" AI pictures — the "/" menu's AI
+  group —, the selection's and an image's Ask AI → Make): the chat opens where a handoff's does, set up for pictures
+  (`AIChat.PictureSetup`: shape and Detailed chips, the picture being changed attached), and waits for the user's
+  words; with no OpenAI key, Settings → AI instead. Make → Diagram stays in the page: a drawing block below the
+  selection, "Making a diagram…", then Excalidraw opened on the Mermaid (`insertDiagram` in `apps/editor/src/extensions/drawing.ts`,
+  mermaid-to-excalidraw in the package).
   With web search on, the chat also asks OpenAI's search for pictures (`AIRequest.imageResults`: `search_content_types` + `include: web_search_call.results`, read from the search call's `image_result`s as `.image`) and shows them under the answer (HikkiUI's `ImageResultStrip`, kept as `ChatTurn.images`): Add to page fetches one into the assets (`WebImage`, `HikkiCore/Sources/Text/WebImage.swift`: LinkPreview's public-host rules) and puts it at the caret (`EditorController.insertWebImage`). While the model works the chat's "Thinking…" / "Searching the web…" line is HikkiUI's `ShimmerText` (a foreground
   band sweeping the muted text once per `Motion.loop`; still under Reduce Motion, which gets a spinner instead). Model output is untrusted: the reply is parsed tolerantly (`apps/editor/src/lib/ai-content.ts`;
   sanitized inline HTML through the schema, unknown keys dropped, an unreadable reply is an error), citations must be

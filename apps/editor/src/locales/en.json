@@ -171,6 +171,11 @@
     "drawing": {
       "title": "Drawing",
       "hint": "Sketch or diagram by hand"
+    },
+    "aiPictures": {
+      "title": "AI pictures",
+      "hint": "Describe them in the AI panel",
+      "needsKey": "Needs an OpenAI key (Settings → AI)"
     }
   },
   "cover": {
@@ -225,7 +230,8 @@
       "other": "Other",
       "advanced": "Advanced",
       "media": "Media",
-      "embeds": "Embeds"
+      "embeds": "Embeds",
+      "ai": "AI"
     },
     "close": "Close menu"
   },
@@ -505,6 +511,14 @@
       "favorites": "Favorites",
       "recommended": "Recommended",
       "other": "Other models"
+    },
+    "make": {
+      "title": "Make",
+      "diagram": "Diagram",
+      "diagramHint": "An editable drawing, here in the page",
+      "pictures": "Pictures…",
+      "changePicture": "Change with AI…",
+      "inChat": "In the AI panel"
     }
   },
   "comments": {
@@ -581,6 +595,8 @@
     "aiRejected": "The AI provider refused the request.",
     "aiInvalidResponse": "The AI's reply couldn't be read.",
     "aiMediaUnreadable": "Couldn't read this file for AI.",
+    "aiPictureRefused": "OpenAI declined to make this picture.",
+    "aiPictureSaveFailed": "Couldn't save the picture.",
     "searchFailed": "Search isn't available right now.",
     "searchIndexFailed": "Couldn't update the search index.",
     "offline": "No internet connection.",
@@ -598,7 +614,8 @@
     "noPreview": "Drawing — click to open",
     "loading": "Opening the drawing…",
     "done": "Done",
-    "close": "Close"
+    "close": "Close",
+    "making": "Making a diagram…"
   },
   "date": {
     "today": "Today",

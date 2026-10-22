@@ -1,5 +1,6 @@
 import '@excalidraw/excalidraw/index.css'
 import {
+  convertToExcalidrawElements,
   Excalidraw,
   exportToBlob,
   getSceneVersion,
@@ -29,6 +30,7 @@ import {
   isDrawableType,
   isSafeLiveElement,
   safeDrawingLink,
+  safeMermaid,
   storedElements,
   usedFileIds,
   type DrawingData,
@@ -75,6 +77,8 @@ type Props = {
   topRight?: ReactElement
   /** Looked at only: Excalidraw's view mode (pan and zoom, nothing changes). */
   readOnly?: boolean
+  /** A diagram the model wrote (a selection's Diagram): an empty drawing opens with it as shapes. */
+  mermaid?: string
 }
 
 const extensionOf = (mimeType: string) =>
@@ -107,6 +111,22 @@ async function loadFiles(
   return loaded.filter((file): file is BinaryFileData => file !== null)
 }
 
+/** Mermaid as shapes (with nothing in it that loads, `safeMermaid`); null when it can't be read as a diagram. */
+async function mermaidScene(
+  mermaid: string
+): Promise<{ elements: unknown[]; files: BinaryFiles } | null> {
+  try {
+    const { parseMermaidToExcalidraw } = await import('@excalidraw/mermaid-to-excalidraw')
+    const { elements, files } = await parseMermaidToExcalidraw(safeMermaid(mermaid))
+    return {
+      elements: convertToExcalidrawElements(elements, { regenerateIds: true }),
+      files: files ?? {}
+    }
+  } catch {
+    return null
+  }
+}
+
 /** In place of a web page in a frame (Excalidraw draws one only when this returns nothing). */
 const blockedEmbed = () => <span hidden />
 
@@ -114,7 +134,15 @@ const blockedEmbed = () => <span hidden />
  * Excalidraw, as a page's drawing opens in it: the page's language and theme, no file menu (the page is where it is
  * kept), Text to diagram through the host's AI. Fills its parent.
  */
-export function DrawingCanvas({ initial, host, handleRef, onChange, topRight, readOnly }: Props) {
+export function DrawingCanvas({
+  initial,
+  host,
+  handleRef,
+  onChange,
+  topRight,
+  readOnly,
+  mermaid
+}: Props) {
   const api = useRef<ExcalidrawImperativeAPI | null>(null)
   /** Pictures already stored, by file id: kept as they are, new ones are uploaded once. */
   const stored = useRef<Record<string, DrawingFileRef>>({ ...initial.files })
@@ -122,13 +150,19 @@ export function DrawingCanvas({ initial, host, handleRef, onChange, topRight, re
   const [library] = useState(() => (host.library ? libraryKeeper(host.library) : null))
 
   // The drawing loads once per opening, the Library with it.
-  const [initialData] = useState(() => async () => ({
-    elements: storedElements(initial.elements) as never,
-    files: Object.fromEntries((await loadFiles(initial.files, host)).map((f) => [f.id, f])),
-    libraryItems: ((await library?.load()) ?? []) as never,
-    scrollToContent: true,
-    appState: { viewBackgroundColor: 'transparent' }
-  }))
+  const [initialData] = useState(() => async () => {
+    const diagram = mermaid && initial.elements.length === 0 ? await mermaidScene(mermaid) : null
+    return {
+      elements: (diagram?.elements ?? storedElements(initial.elements)) as never,
+      files: {
+        ...Object.fromEntries((await loadFiles(initial.files, host)).map((f) => [f.id, f])),
+        ...diagram?.files
+      },
+      libraryItems: ((await library?.load()) ?? []) as never,
+      scrollToContent: true,
+      appState: { viewBackgroundColor: 'transparent' }
+    }
+  })
 
   useImperativeHandle(handleRef, () => ({
     elements: () => storedElements(api.current?.getSceneElements() ?? initial.elements),

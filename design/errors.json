@@ -275,6 +275,18 @@
       "en": "Couldn't read this file for AI.",
       "zh": "无法为 AI 读取此文件。"
     },
+    "aiPictureRefused": {
+      "code": 5010,
+      "severity": "warning",
+      "en": "OpenAI declined to make this picture.",
+      "zh": "OpenAI 拒绝生成这张图片。"
+    },
+    "aiPictureSaveFailed": {
+      "code": 5011,
+      "severity": "error",
+      "en": "Couldn't save the picture.",
+      "zh": "无法保存图片。"
+    },
 
     "searchFailed": {
       "code": 6001,

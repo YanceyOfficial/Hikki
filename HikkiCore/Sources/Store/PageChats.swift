@@ -19,10 +19,15 @@ public struct ChatTurn: Codable, Equatable, Sendable, Identifiable {
     public var thinking: ChatThinking?
     /// Pictures the answer's web search found (absent in older files and answers without any).
     public var images: [ChatImage]?
+    /// Pictures the answer made (absent in older files and answers without any).
+    public var pictures: [ChatPicture]?
+    /// Where in the page the answer's pictures go (the chat was opened for pictures from there).
+    public var picturePlace: PicturePlace?
 
     public init(
         id: String, role: Role, text: String, sentAt: Date, attachments: [String] = [], citations: [ChatCitation] = [],
-        changes: [AIPageChange]? = nil, thinking: ChatThinking? = nil, images: [ChatImage]? = nil
+        changes: [AIPageChange]? = nil, thinking: ChatThinking? = nil, images: [ChatImage]? = nil,
+        pictures: [ChatPicture]? = nil, picturePlace: PicturePlace? = nil
     ) {
         self.id = id
         self.role = role
@@ -33,6 +38,71 @@ public struct ChatTurn: Codable, Equatable, Sendable, Identifiable {
         self.changes = changes
         self.thinking = thinking
         self.images = images
+        self.pictures = pictures
+        self.picturePlace = picturePlace
+    }
+}
+
+/// A picture an answer made (OpenAI's image model): what it was asked to draw, and — once made — the workspace asset
+/// it is. Kept with the turn, so it is there after a restart and on other devices (the asset syncs with the folder).
+public struct ChatPicture: Codable, Equatable, Sendable, Identifiable {
+    public enum Status: String, Codable, Sendable {
+        /// Being made (on the device that asked; elsewhere, or after a restart, it reads as stopped).
+        case making
+        case done
+        /// Stopped before it was finished.
+        case stopped
+        case failed
+    }
+
+    public var id: String
+    public var prompt: String
+    /// wide, square or tall.
+    public var shape: String
+    public var detailed: Bool
+    /// The earlier picture it changes ("attached": the one the user attached).
+    public var from: String?
+    public var status: Status
+    /// The picture's address in the page (a workspace asset), once made.
+    public var asset: String?
+    /// Why it failed (the AI error's name).
+    public var error: String?
+    /// It was put into the page (shown on its tile).
+    public var added: Bool?
+
+    public init(
+        id: String, prompt: String, shape: String, detailed: Bool = false, from: String? = nil, status: Status = .making,
+        asset: String? = nil, error: String? = nil, added: Bool? = nil
+    ) {
+        self.id = id
+        self.prompt = prompt
+        self.shape = shape
+        self.detailed = detailed
+        self.from = from
+        self.status = status
+        self.asset = asset
+        self.error = error
+        self.added = added
+    }
+
+    /// Two devices' versions as one: a made picture wins over one still making (or stopped, or failed), the later
+    /// try over the earlier; added on either is added.
+    public static func merged(_ a: ChatPicture, _ b: ChatPicture) -> ChatPicture {
+        var picture = a.status != .done && b.status == .done || a.status == b.status && b.asset != nil ? b : a
+        if a.added == true || b.added == true { picture.added = true }
+        return picture
+    }
+}
+
+/// Where an answer's pictures go in its page: after `blockId` (in place of it while it is an empty line), or in place
+/// of it (`replace`: the picture being changed). No block: at the caret.
+public struct PicturePlace: Codable, Equatable, Sendable {
+    public var blockId: String?
+    public var replace: Bool
+
+    public init(blockId: String?, replace: Bool = false) {
+        self.blockId = blockId
+        self.replace = replace
     }
 }
 
@@ -341,6 +411,11 @@ public final class PageChats: @unchecked Sendable {
             if let changes = turn.changes {
                 let mine = Dictionary((known.changes ?? []).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
                 known.changes = changes.map { change in mine[change.id].map { AIPageChange.merged($0, change) } ?? change }
+            }
+            if let pictures = turn.pictures {
+                let mine = Dictionary((known.pictures ?? []).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+                known.pictures = pictures.map { picture in mine[picture.id].map { ChatPicture.merged($0, picture) } ?? picture }
+                known.picturePlace = known.picturePlace ?? turn.picturePlace
             }
             byID[turn.id] = known
         }

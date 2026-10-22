@@ -339,6 +339,15 @@
                                 ImageResultItem(id: "2", thumbnail: URL(string: "https://invalid.example/missing.jpg")!),
                             ], onAdd: { _ in }, onOpen: { _ in }, onCopy: { _ in }, load: { try await WebImage.fetch($0).data })
                     }
+                    Section("PictureTiles") {
+                        PictureTiles(
+                            items: [
+                                PictureTileItem(id: "1", state: .done, aspect: 1.5, description: "Torii gates", added: true),
+                                PictureTileItem(id: "2", state: .forming, aspect: 1.5, description: "Bamboo grove"),
+                                PictureTileItem(id: "3", state: .waiting, aspect: 1.5, description: "Pagoda"),
+                                PictureTileItem(id: "4", state: .failed("Stopped"), aspect: 1.5, description: "Night"),
+                            ], onAdd: { _ in }, onCover: { _ in }, onRetry: { _ in }, onAddAll: {})
+                    }
                     Section("ShimmerText") {
                         ShimmerText("app:ai.thinking").font(.hk(.sm))
                         ShimmerText("app:ai.searching").font(.hk(.sm))

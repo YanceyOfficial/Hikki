@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of apps/editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 36
+    public static let version = 37
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -91,6 +91,8 @@ public enum BridgeMessage: Sendable, Equatable {
     case aiCancel(id: String)
     /// AI on the selection judged the request too big for it (`{"handoff": …}`): the app continues it in the chat.
     case aiHandoff(AIHandoff)
+    /// The page asks for pictures: the chat opens set up for them (`PicturesHandoff`).
+    case aiPictures(PicturesHandoff)
     /// A change Ask AI proposed to the page was reviewed in it (approved, skipped, edited) or went stale; with the
     /// block's text before and after, for the reviewed stack.
     case aiChange(docId: String, id: String, status: AIPageChange.Status, before: String?, after: String?)
@@ -223,6 +225,14 @@ extension BridgeMessage: Decodable {
                     docId: try c.decode(String.self, forKey: .docId),
                     instruction: try c.decode(String.self, forKey: .instruction),
                     selection: try c.decode(String.self, forKey: .selection)))
+        case "aiPictures":
+            self = .aiPictures(
+                PicturesHandoff(
+                    docId: try c.decode(String.self, forKey: .docId),
+                    blockId: try c.decodeIfPresent(String.self, forKey: .blockId),
+                    replace: try c.decodeIfPresent(String.self, forKey: .mode) == "replace",
+                    selection: try c.decodeIfPresent(String.self, forKey: .selection) ?? "",
+                    source: try c.decodeIfPresent(String.self, forKey: .url)))
         case "aiChange":
             self = .aiChange(
                 docId: try c.decode(String.self, forKey: .docId), id: try c.decode(String.self, forKey: .id),

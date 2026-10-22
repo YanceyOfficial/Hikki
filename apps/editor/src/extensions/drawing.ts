@@ -12,6 +12,7 @@ import type { Node as PMNode } from '@tiptap/pm/model'
 import type { NodeView } from '@tiptap/pm/view'
 
 import { renderDrawingOverlay, type DrawingOverlay } from '../components/drawing-overlay'
+import { DiagramError } from '../core/diagram'
 import { reportError } from '../core/errors'
 import { t } from '../core/i18n'
 import { drawingsReadOnly } from '../lib/drawing-mode'
@@ -44,6 +45,9 @@ declare module '@tiptap/core' {
     drawing: {
       /** Adds an empty drawing at the selection and opens it. */
       insertDrawing: () => ReturnType
+      /** A diagram of `text` (the selection's Diagram): a drawing below the selection's block, opened with the
+       * model's Mermaid as shapes once it comes. */
+      insertDiagram: (text: string) => ReturnType
     }
   }
 }
@@ -101,7 +105,12 @@ export async function finishDrawing(): Promise<void> {
  * undo — the drawing has its own — but saved), the preview when it closes. On a phone-sized screen it opens to look
  * at only (`setDrawingsReadOnly`), and closing it writes nothing.
  */
-export function openDrawing(editor: Editor, host: DrawingEditorHost, pos: number): void {
+export function openDrawing(
+  editor: Editor,
+  host: DrawingEditorHost,
+  pos: number,
+  mermaid?: string
+): void {
   if (!editor.isEditable) return
   const node = editor.state.doc.nodeAt(pos)
   if (node?.type.name !== 'drawing') return
@@ -148,6 +157,7 @@ export function openDrawing(editor: Editor, host: DrawingEditorHost, pos: number
     host,
     title: t('drawing.title'),
     readOnly: lookOnly,
+    mermaid,
     onChange: (data) => write({ elements: data.elements, files: data.files }),
     onFail: () => finish(),
     onDone: async (data, preview) => {
@@ -207,6 +217,7 @@ class DrawingView implements NodeView {
       }
     })
     this.render()
+    shown.add(this)
   }
 
   private open = () => {
@@ -222,7 +233,13 @@ class DrawingView implements NodeView {
     const text = drawingText(this.node.attrs.elements as unknown[])
     // Read out as what shows: the picture ("Drawing", its words), or the placeholder's own line.
     const shows = preview && !empty
-    const name = shows ? t('drawing.title') : empty ? t('drawing.empty') : t('drawing.noPreview')
+    const name = making.has(this.node.attrs.id as string)
+      ? t('drawing.making')
+      : shows
+        ? t('drawing.title')
+        : empty
+          ? t('drawing.empty')
+          : t('drawing.noPreview')
     this.dom.setAttribute('aria-label', text ? `${name}: ${text}` : name)
     if (shows) {
       const img = document.createElement('img')
@@ -241,6 +258,12 @@ class DrawingView implements NodeView {
     label.className = 'hk-drawing-empty'
     label.textContent = name
     this.dom.append(label)
+  }
+
+  refresh = () => this.render()
+
+  destroy() {
+    shown.delete(this)
   }
 
   update(node: PMNode) {
@@ -313,6 +336,60 @@ export const Drawing = Node.create<{ host: DrawingEditorHost | null }>({
               })
           }
           return true
+        },
+      insertDiagram:
+        (text: string) =>
+        ({ editor, tr, dispatch }) => {
+          const host = this.options.host
+          const { $to } = tr.selection
+          if (
+            !host?.diagram ||
+            !text.trim() ||
+            !editor.isEditable ||
+            drawingsReadOnly() ||
+            $to.depth < 1
+          )
+            return false
+          // `can()`: it would go in.
+          if (!dispatch) return true
+          const at = $to.after(1)
+          const id = crypto.randomUUID()
+          making.add(id)
+          tr.insert(at, this.type.create({ id })).scrollIntoView()
+          const diagram = host.diagram
+          // Followed once the block is in the page (the transaction applied).
+          queueMicrotask(() => {
+            const pos = findById(editor, id)
+            if (pos === null) {
+              doneMaking(id)
+              return
+            }
+            const followed = followNode(editor, pos, () => doneMaking(id))
+            const settle = () => {
+              const unit = followed.current
+              followed.stop()
+              doneMaking(id)
+              return unit
+            }
+            diagram(text).then(
+              (mermaid) => {
+                const unit = settle()
+                if (unit) openDrawing(editor, host, unit.pos, mermaid)
+              },
+              (error: unknown) => {
+                const unit = settle()
+                reportError(diagramErrorId(error), error)
+                // Nothing came: the empty drawing it was for goes again.
+                if (unit && storedElements(unit.node.attrs.elements).length === 0)
+                  editor.view.dispatch(
+                    editor.state.tr
+                      .delete(unit.pos, unit.pos + unit.node.nodeSize)
+                      .setMeta('addToHistory', false)
+                  )
+              }
+            )
+          })
+          return true
         }
     }
   },
@@ -322,6 +399,28 @@ export const Drawing = Node.create<{ host: DrawingEditorHost | null }>({
 })
 
 /** The empty drawing just inserted around `near` (the first at or after it). */
+const diagramErrorId = (error: unknown) =>
+  error instanceof DiagramError ? error.id : 'aiInvalidResponse'
+
+/** Drawings waiting for their diagram (`insertDiagram`), by block id: they say so instead of "click to draw". */
+const making = new Set<string>()
+/** The drawings shown, redrawn when one stops waiting. */
+const shown = new Set<{ refresh: () => void }>()
+
+function doneMaking(id: string): void {
+  if (making.delete(id)) for (const view of shown) view.refresh()
+}
+
+function findById(editor: Editor, id: string): number | null {
+  let found: number | null = null
+  editor.state.doc.descendants((node, pos) => {
+    if (found !== null) return false
+    if (node.type.name === 'drawing' && node.attrs.id === id) found = pos
+    return found === null
+  })
+  return found
+}
+
 function findInserted(editor: Editor, near: number): number | null {
   let found: number | null = null
   editor.state.doc.descendants((node, pos) => {

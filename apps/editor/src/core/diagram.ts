@@ -1,7 +1,30 @@
 import { mermaidFromAnswer } from '@hikki/excalidraw'
 
 import { aiErrorText } from '../components/ai-review'
+import type { ErrorId } from '../generated/errors'
 import type { AIStreamEvent, ToNativeMessage } from './protocol'
+
+/** A diagram that didn't come, with its message and the code it is reported under. */
+export class DiagramError extends Error {
+  constructor(
+    message: string,
+    readonly id: ErrorId
+  ) {
+    super(message)
+  }
+}
+
+/** The error code of an AI failure the native side named (`AIError`'s names). */
+const ERROR_IDS: Record<string, ErrorId> = {
+  missingKey: 'aiMissingKey',
+  badBaseURL: 'aiBadBaseURL',
+  unauthorized: 'aiUnauthorized',
+  rateLimited: 'aiRateLimited',
+  unavailable: 'aiUnavailable',
+  offline: 'aiOffline',
+  rejected: 'aiRejected',
+  refused: 'aiPictureRefused'
+}
 
 type Pending = { reply: string; resolve: (mermaid: string) => void; reject: (error: Error) => void }
 
@@ -44,12 +67,17 @@ export class DiagramRequests {
         this.pending.delete(event.id)
         const mermaid = mermaidFromAnswer(request.reply)
         if (mermaid) request.resolve(mermaid)
-        else request.reject(new Error(aiErrorText({ code: 'invalidResponse' })))
+        else
+          request.reject(
+            new DiagramError(aiErrorText({ code: 'invalidResponse' }), 'aiInvalidResponse')
+          )
         break
       }
       case 'error':
         this.pending.delete(event.id)
-        request.reject(new Error(aiErrorText(event)))
+        request.reject(
+          new DiagramError(aiErrorText(event), ERROR_IDS[event.code] ?? 'aiInvalidResponse')
+        )
         break
       default:
         break

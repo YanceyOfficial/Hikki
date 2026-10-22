@@ -273,6 +273,12 @@ struct BridgeMessageTests {
             try decode(["type": "aiHandoff", "docId": "p1", "instruction": "Write a report on this", "selection": "Foxes"])
                 == .aiHandoff(AIHandoff(docId: "p1", instruction: "Write a report on this", selection: "Foxes")))
         #expect(throws: (any Error).self) { try decode(["type": "aiHandoff", "docId": "p1", "instruction": "x"]) }
+        #expect(
+            try decode(["type": "aiPictures", "docId": "p1", "blockId": "b2", "mode": "after", "selection": "Day 1"])
+                == .aiPictures(PicturesHandoff(docId: "p1", blockId: "b2", selection: "Day 1")))
+        #expect(
+            try decode(["type": "aiPictures", "docId": "p1", "blockId": "img", "mode": "replace", "url": "hikki-editor://assets/a.jpg"])
+                == .aiPictures(PicturesHandoff(docId: "p1", blockId: "img", replace: true, source: "hikki-editor://assets/a.jpg")))
         #expect(try decode(["type": "activeHeading", "docId": "p1", "id": NSNull()]) == .activeHeading(docId: "p1", id: nil))
         #expect(try decode(["type": "openLink", "url": "https://example.com"]) == .openLink(url: "https://example.com"))
         #expect(try decode(["type": "suggestReading", "text": "漢字"]) == .suggestReading(text: "漢字"))

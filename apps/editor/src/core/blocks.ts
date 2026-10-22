@@ -8,6 +8,7 @@ import {
   FilmStripIcon,
   FunctionIcon,
   ImageSquareIcon,
+  ImagesIcon,
   InfoIcon,
   ListBulletsIcon,
   ListMagnifyingGlassIcon,
@@ -47,11 +48,20 @@ import { openEmbedPanel } from '../extensions/embed'
 import { openMathEditor } from '../extensions/math'
 import { pickFiles, type MediaHost } from '../extensions/media'
 import { openToggleAtSelection } from '../extensions/toggle'
+import { aiModels } from '../lib/ai-models'
 import { drawingsReadOnly } from '../lib/drawing-mode'
 import { t } from './i18n'
 
 /** Sections of the "/" menu, in display order. */
-export const BLOCK_GROUPS = ['basic', 'lists', 'media', 'embeds', 'other', 'advanced'] as const
+export const BLOCK_GROUPS = [
+  'basic',
+  'lists',
+  'media',
+  'embeds',
+  'other',
+  'advanced',
+  'ai'
+] as const
 export type BlockGroup = (typeof BLOCK_GROUPS)[number]
 
 /**
@@ -669,6 +679,36 @@ export const BLOCK_TYPES: BlockType[] = [
     after: (editor) => {
       const pos = findNear(editor, 'inlineMath')
       if (pos !== null) openMathEditor(editor, pos, 'inline')
+    }
+  },
+  // AI pictures (OpenAI's image model) are made in the AI panel: this opens it, set up to put them on this line.
+  {
+    id: 'aiPictures',
+    title: 'AI pictures',
+    hint: 'Describe them in the AI panel',
+    label: () => t('blocks.aiPictures.title'),
+    description: () =>
+      aiModels()?.pictures ? t('blocks.aiPictures.hint') : t('blocks.aiPictures.needsKey'),
+    icon: ImagesIcon,
+    group: 'ai',
+    aliases: [
+      'ai pictures',
+      'picture',
+      'image',
+      'generate',
+      'illustration',
+      'draw',
+      '图片',
+      '生成图片',
+      '配图',
+      '插图',
+      'tupian',
+      'peitu',
+      'tp'
+    ],
+    apply: (c) => c,
+    after: (editor) => {
+      editor.commands.aiPictures('here')
     }
   }
 ]

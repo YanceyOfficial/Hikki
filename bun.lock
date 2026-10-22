@@ -106,6 +106,7 @@
       "name": "@hikki/excalidraw",
       "dependencies": {
         "@excalidraw/excalidraw": "0.18.1",
+        "@excalidraw/mermaid-to-excalidraw": "2.2.2",
       },
       "devDependencies": {
         "@types/react": "^19.3.0",

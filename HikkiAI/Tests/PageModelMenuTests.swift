@@ -23,4 +23,11 @@ struct PageModelMenuTests {
         #expect(menu.auto == nil)
         #expect(menu.groups.isEmpty)
     }
+
+    @Test func picturesNeedAnOpenAIKey() {
+        #expect(!PageModelMenu(choice: nil, favorites: .init(), available: [.anthropic]).pictures)
+        let menu = PageModelMenu(choice: nil, favorites: .init(), available: [.anthropic, .openAI])
+        #expect(menu.pictures)
+        #expect(menu.payload["pictures"] as? Bool == true)
+    }
 }

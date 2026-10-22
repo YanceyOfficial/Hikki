@@ -1,4 +1,12 @@
-import { ArrowUpIcon, CaretDownIcon, CheckIcon } from '@phosphor-icons/react'
+import {
+  ArrowUpIcon,
+  CaretDownIcon,
+  CheckIcon,
+  ImagesIcon,
+  MagicWandIcon,
+  ScribbleIcon,
+  type Icon
+} from '@phosphor-icons/react'
 import { useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -68,9 +76,33 @@ const MEDIA_GROUPS: AIGroup[] = [
   }
 ]
 
+/** What the panel can make instead of editing: a diagram here in the page; pictures, or a changed picture, in the
+ * AI panel (the chat). */
+export type AIMake = 'diagram' | 'pictures' | 'changePicture'
+
+const MAKE: Record<AIMake, { icon: Icon; label: () => string; hint: () => string }> = {
+  diagram: {
+    icon: ScribbleIcon,
+    label: () => t('ai.make.diagram'),
+    hint: () => t('ai.make.diagramHint')
+  },
+  pictures: {
+    icon: ImagesIcon,
+    label: () => t('ai.make.pictures'),
+    hint: () => t('ai.make.inChat')
+  },
+  changePicture: {
+    icon: MagicWandIcon,
+    label: () => t('ai.make.changePicture'),
+    hint: () => t('ai.make.inChat')
+  }
+}
+
 export function AIPanel({
   onRun,
   onCancel,
+  onMake,
+  makes = [],
   autoFocus = true,
   media = false
 }: {
@@ -80,6 +112,9 @@ export function AIPanel({
   media?: boolean
   onRun: (action: AIAction) => void
   onCancel: () => void
+  /** The Make section's rows, at the end (none: no section). */
+  makes?: AIMake[]
+  onMake?: (make: AIMake) => void
 }) {
   const [value, setValue] = useState('')
   // The models this request may run on (none without a key); a pick holds for this request only — the default
@@ -155,21 +190,46 @@ export function AIPanel({
       {menu && picking ? (
         <ModelList menu={menu} current={model ?? menu.choice} onPick={pick} />
       ) : (
-        (media ? MEDIA_GROUPS : AI_GROUPS).map((group) => (
-          <div key={group.actions[0].id}>
-            <MenuTitle>{group.label()}</MenuTitle>
-            {group.actions.map((action) => (
-              <MenuRow
-                key={action.id}
-                role="menuitem"
-                data-testid={`ai-action-${action.id}`}
-                onClick={() => run({ id: action.id })}
-              >
-                <span className="flex-1 truncate">{action.label()}</span>
-              </MenuRow>
-            ))}
-          </div>
-        ))
+        <>
+          {(media ? MEDIA_GROUPS : AI_GROUPS).map((group) => (
+            <div key={group.actions[0].id}>
+              <MenuTitle>{group.label()}</MenuTitle>
+              {group.actions.map((action) => (
+                <MenuRow
+                  key={action.id}
+                  role="menuitem"
+                  data-testid={`ai-action-${action.id}`}
+                  onClick={() => run({ id: action.id })}
+                >
+                  <span className="flex-1 truncate">{action.label()}</span>
+                </MenuRow>
+              ))}
+            </div>
+          ))}
+          {makes.length > 0 && onMake && (
+            <div>
+              <MenuTitle>{t('ai.make.title')}</MenuTitle>
+              {makes.map((make) => {
+                const { icon: MakeIcon, label, hint } = MAKE[make]
+                return (
+                  <MenuRow
+                    key={make}
+                    role="menuitem"
+                    className="h-auto py-1.5 coarse:h-auto"
+                    data-testid={`ai-make-${make}`}
+                    onClick={() => onMake(make)}
+                  >
+                    <MakeIcon className="self-start text-muted-foreground" aria-hidden />
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate">{label()}</span>
+                      <span className="truncate text-xs text-muted-foreground">{hint()}</span>
+                    </span>
+                  </MenuRow>
+                )
+              })}
+            </div>
+          )}
+        </>
       )}
     </div>
   )

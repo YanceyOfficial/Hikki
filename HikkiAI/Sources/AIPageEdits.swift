@@ -38,14 +38,16 @@ public enum AIPageEdits {
     static let kinds: Set<String> = ["rewrite", "insert", "move", "delete"]
     static let insertTypes: Set<String> = ["paragraph", "heading1", "heading2", "heading3"]
 
-    /// The answer as the chat shows it: without its changes block — and, while it streams, without a fence line
+    /// The answer as the chat shows it: without its changes block (or pictures block) — and, while it streams, without a fence line
     /// still being typed that may turn out to be that block.
     public static func prose(_ answer: String) -> String {
-        if let range = answer.range(of: fence) {
-            return String(answer[..<range.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+        // The first of the answer's hidden blocks (changes, pictures) ends what the chat shows.
+        let hidden = [fence, AIPictures.fence].compactMap { answer.range(of: $0)?.lowerBound }.min()
+        if let start = hidden {
+            return String(answer[..<start]).trimmingCharacters(in: .whitespacesAndNewlines)
         }
         let lastLine = answer.split(separator: "\n", omittingEmptySubsequences: false).last.map(String.init) ?? ""
-        if lastLine.count > 3, fence.hasPrefix(lastLine) {
+        if lastLine.count > 3, fence.hasPrefix(lastLine) || AIPictures.fence.hasPrefix(lastLine) {
             return String(answer.dropLast(lastLine.count)).trimmingCharacters(in: .whitespacesAndNewlines)
         }
         return answer

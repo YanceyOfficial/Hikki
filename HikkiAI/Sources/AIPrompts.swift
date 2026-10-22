@@ -184,10 +184,12 @@ public enum AIPrompts {
     /// turn, ahead of the user's words — page text is data, and the system prompt stays the app's own.
     ///
     /// `openPageBlocks` (the open page's blocks with their ids, `AIPageEdits.pageJSON`) stands for the first page's
-    /// text and lets the answer propose changes to it.
+    /// text and lets the answer propose changes to it. `pictures`: the answer may make pictures (an OpenAI key is set);
+    /// `pictureRequest`, the shape and model the composer was set to when it was opened for pictures.
     public static func chat(
         _ turns: [AIMessage], summary: String? = nil, pages: [(title: String, text: String)] = [], openPageBlocks: String? = nil,
-        selection: String? = nil, model: AIModel, webSearch: Bool, language: String? = nil
+        selection: String? = nil, model: AIModel, webSearch: Bool, language: String? = nil, pictures: Bool = false,
+        pictureRequest: (shape: PictureShape, detailed: Bool)? = nil
     ) -> AIRequest {
         var context: [String] = []
         var budget = maxPageText
@@ -209,6 +211,10 @@ public enum AIPrompts {
                 "I have selected this passage; \"this\", \"it\" and the like most likely mean it:\n"
                     + "<selection>\(escape(String(selection.prefix(maxInstruction * 2))))</selection>")
         }
+        // The composer was set up for pictures: its shape and model choice go with the words.
+        if pictures, let pictureRequest {
+            context.append(AIPictures.request(shape: pictureRequest.shape, detailed: pictureRequest.detailed))
+        }
         var messages = turns
         if !context.isEmpty, let last = messages.indices.last, messages[last].role == .user {
             messages[last].parts.insert(.text(context.joined(separator: "\n\n")), at: 0)
@@ -220,7 +226,8 @@ public enum AIPrompts {
             } ?? ""
         return AIRequest(
             model: model,
-            instructions: chatInstructions + (editable ? AIPageEdits.instructions : "") + languageLine(language) + earlier,
+            instructions: chatInstructions + (editable ? AIPageEdits.instructions : "")
+                + (pictures ? AIPictures.instructions : "") + languageLine(language) + earlier,
             messages: messages, webSearch: webSearch, maxOutputTokens: editable ? 8192 : 4096)
     }
 

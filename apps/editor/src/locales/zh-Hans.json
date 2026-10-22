@@ -171,6 +171,11 @@
     "drawing": {
       "title": "绘图",
       "hint": "手绘草图或图示"
+    },
+    "aiPictures": {
+      "title": "AI 图片",
+      "hint": "在 AI 面板中描述",
+      "needsKey": "需要 OpenAI 密钥（设置 → AI）"
     }
   },
   "cover": {
@@ -225,7 +230,8 @@
       "other": "其他",
       "advanced": "高级",
       "media": "媒体",
-      "embeds": "嵌入"
+      "embeds": "嵌入",
+      "ai": "AI"
     },
     "close": "关闭菜单"
   },
@@ -505,6 +511,14 @@
       "favorites": "收藏",
       "recommended": "推荐",
       "other": "其他模型"
+    },
+    "make": {
+      "title": "生成",
+      "diagram": "图表",
+      "diagramHint": "可编辑的绘图，就在页面里",
+      "pictures": "图片…",
+      "changePicture": "用 AI 修改…",
+      "inChat": "在 AI 面板中"
     }
   },
   "comments": {
@@ -581,6 +595,8 @@
     "aiRejected": "AI 服务拒绝了请求。",
     "aiInvalidResponse": "无法读取 AI 的回复。",
     "aiMediaUnreadable": "无法为 AI 读取此文件。",
+    "aiPictureRefused": "OpenAI 拒绝生成这张图片。",
+    "aiPictureSaveFailed": "无法保存图片。",
     "searchFailed": "搜索暂时不可用。",
     "searchIndexFailed": "无法更新搜索索引。",
     "offline": "没有网络连接。",
@@ -598,7 +614,8 @@
     "noPreview": "绘图——点按打开",
     "loading": "正在打开绘图…",
     "done": "完成",
-    "close": "关闭"
+    "close": "关闭",
+    "making": "正在生成图表…"
   },
   "date": {
     "today": "今天",

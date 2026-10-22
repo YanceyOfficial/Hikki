@@ -70,6 +70,8 @@ type Props = {
   onFail: () => void
   /** Opened to look at only (a phone-sized screen): Excalidraw's view mode, and Close in place of Done, which writes nothing. */
   readOnly?: boolean
+  /** A diagram to open an empty drawing with (`insertDiagram`). */
+  mermaid?: string
 }
 
 function DrawingEditor({
@@ -80,7 +82,8 @@ function DrawingEditor({
   onChange,
   onDone,
   onFail,
-  readOnly = false
+  readOnly = false,
+  mermaid
 }: Props) {
   // Decided once per opening: the app offers a Library or not (`window.hikki.setDrawings`); never to look at.
   const [library] = useState(() => (readOnly ? null : (host.library?.() ?? null)))
@@ -171,6 +174,7 @@ function DrawingEditor({
             onChange={readOnly ? undefined : changed}
             topRight={doneButton}
             readOnly={readOnly}
+            mermaid={mermaid}
           />
         </Suspense>
       </CanvasBoundary>

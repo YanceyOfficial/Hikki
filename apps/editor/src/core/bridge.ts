@@ -61,6 +61,7 @@ import {
 } from './headings'
 import { t } from './i18n'
 import { normalizeBody } from './normalize'
+import { insertPictures, type PictureItem, type PicturePlace } from './pictures'
 import {
   COMMANDS,
   type AIChangeInput,
@@ -500,6 +501,10 @@ export class EditorBridge {
     handoff: ({ instruction, selection }) => {
       const { docId } = this.page.get()
       if (docId) void this.send({ type: 'aiHandoff', docId, instruction, selection })
+    },
+    pictures: (request) => {
+      const { docId } = this.page.get()
+      if (docId && !this.frozen) void this.send({ type: 'aiPictures', docId, ...request })
     }
   }
 
@@ -617,6 +622,12 @@ export class EditorBridge {
   /** Files the phone's photo / file sheet stored, as blocks at the caret. */
   touchInsertMedia(items: TouchMedia[]): boolean {
     return !this.frozen && !!this.editor && touchInsertMedia(this.editor, items)
+  }
+
+  /** `window.hikki.insertPictures`: pictures the chat made, on the page they were asked for (`insertPictures`). */
+  insertPictures(docId: string, items: PictureItem[], place: PicturePlace): boolean {
+    if (this.page.get().docId !== docId || this.frozen || !this.editor) return false
+    return insertPictures(this.editor, items, place)
   }
 
   /** The native comment field: what it quotes, then its Send (`touch-tools.ts`). */
