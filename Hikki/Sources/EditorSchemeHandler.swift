@@ -11,9 +11,15 @@ final class EditorSchemeHandler: NSObject, WKURLSchemeHandler {
 
     private let root: URL? = Bundle.main.url(forResource: "Editor", withExtension: nil)
     var assets: AssetStore?
+    /// Symbols drawn so far, by name and size (`SymbolRequest.cacheKey`).
+    private var symbols: [String: Data] = [:]
 
     func webView(_ webView: WKWebView, start urlSchemeTask: any WKURLSchemeTask) {
         guard let url = urlSchemeTask.request.url else { return }
+        if url.host == SymbolRequest.host {
+            serveSymbol(url, task: urlSchemeTask)
+            return
+        }
         let relative = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let isAsset = url.host == "assets"
         let file: URL?
@@ -75,6 +81,53 @@ final class EditorSchemeHandler: NSObject, WKURLSchemeHandler {
         }
         return type?.preferredMIMEType ?? "application/octet-stream"
     }
+
+    /// `hikki-editor://sf/<symbol>.png?pt=<points>`: the SF Symbol drawn natively — black on clear, at 3×, in a square
+    /// of its larger side — for the page to paint as a mask in its own colour (lib/sf-icons.ts). iOS only: the Mac's
+    /// page keeps Phosphor, so there the route answers nothing.
+    private func serveSymbol(_ url: URL, task: any WKURLSchemeTask) {
+        #if canImport(UIKit)
+            guard let request = SymbolRequest.parse(url), let png = symbolPNG(request) else {
+                fail(task, "no symbol: \(url.lastPathComponent)")
+                return
+            }
+            let headers = [
+                "Content-Type": "image/png", "Content-Length": "\(png.count)", "Cache-Control": "max-age=86400",
+                "X-Content-Type-Options": "nosniff",
+                // A mask is a cross-origin load from the page's origin (another host of the scheme); only the page may.
+                "Access-Control-Allow-Origin": "\(Self.scheme)://app",
+            ]
+            let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: headers)!
+            task.didReceive(response)
+            task.didReceive(png)
+            task.didFinish()
+        #else
+            fail(task, "symbols are drawn on iOS only: \(url.lastPathComponent)")
+        #endif
+    }
+
+    #if canImport(UIKit)
+        private func symbolPNG(_ request: SymbolRequest) -> Data? {
+            if let cached = symbols[request.cacheKey] { return cached }
+            let configuration = UIImage.SymbolConfiguration(pointSize: request.points, weight: .regular)
+            guard
+                let image = UIImage(systemName: request.name, withConfiguration: configuration)?  // design-lint: allow
+                    .withTintColor(.black, renderingMode: .alwaysOriginal)
+            else { return nil }
+            let side = max(image.size.width, image.size.height)
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = 3
+            format.opaque = false
+            let png = UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format).pngData { _ in
+                image.draw(
+                    in: CGRect(
+                        x: (side - image.size.width) / 2, y: (side - image.size.height) / 2, width: image.size.width,
+                        height: image.size.height))
+            }
+            symbols[request.cacheKey] = png
+            return png
+        }
+    #endif
 
     func webView(_ webView: WKWebView, stop urlSchemeTask: any WKURLSchemeTask) {}
 

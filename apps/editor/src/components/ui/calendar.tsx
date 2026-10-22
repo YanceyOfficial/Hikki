@@ -1,4 +1,3 @@
-import { CaretLeftIcon, CaretRightIcon, CaretDownIcon } from '@phosphor-icons/react'
 import { cn } from 'cn'
 import * as React from 'react'
 import {
@@ -12,6 +11,8 @@ import {
 } from 'react-day-picker'
 
 import { Button, buttonVariants } from '@/components/ui/button'
+
+import { CaretLeftIcon, CaretRightIcon, CaretDownIcon } from '../../generated/icons'
 
 function Calendar({
   className,

@@ -1,4 +1,3 @@
-import { CaretDownIcon, CheckIcon, CopyIcon } from '@phosphor-icons/react'
 import { cn } from 'cn'
 import { useEffect, useRef, useState } from 'react'
 import type { Root } from 'react-dom/client'
@@ -10,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { reportError } from '../core/errors'
 import { t } from '../core/i18n'
 import { filterLanguages, findLanguage } from '../extensions/code-languages'
+import { CaretDownIcon, CheckIcon, CopyIcon } from '../generated/icons'
 import { handleListKey } from './command-list'
 import { GlidingHighlight } from './gliding-highlight'
 import { IconProvider } from './icons'

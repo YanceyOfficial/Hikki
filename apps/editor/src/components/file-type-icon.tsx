@@ -1,3 +1,7 @@
+import { type Icon } from '@phosphor-icons/react'
+import { cn } from 'cn'
+import type { Root } from 'react-dom/client'
+
 import {
   FileAudioIcon,
   FileCodeIcon,
@@ -10,12 +14,8 @@ import {
   FileTextIcon,
   FileVideoIcon,
   FileXlsIcon,
-  FileZipIcon,
-  type Icon
-} from '@phosphor-icons/react'
-import { cn } from 'cn'
-import type { Root } from 'react-dom/client'
-
+  FileZipIcon
+} from '../generated/icons'
 import { fileTypeOf, type FileType } from '../lib/file-types'
 import { IconProvider } from './icons'
 

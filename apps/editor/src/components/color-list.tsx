@@ -1,8 +1,8 @@
-import { CheckIcon } from '@phosphor-icons/react'
 import type { ReactNode } from 'react'
 
 import { t } from '../core/i18n'
 import { colorLabel, PALETTE, type PaletteColor } from '../extensions/colors'
+import { CheckIcon } from '../generated/icons'
 import { MenuRow, MenuTitle } from './menu-row'
 
 /** The "A" swatch in a text and background colour (`data-*-color`, styled from the `ink-*` / `wash-*` tokens). */

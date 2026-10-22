@@ -1,4 +1,3 @@
-import { ImageBrokenIcon } from '@phosphor-icons/react'
 import { cn } from 'cn'
 import {
   type CSSProperties,
@@ -8,6 +7,8 @@ import {
 } from 'react'
 
 import { Skeleton } from '@/components/ui/skeleton'
+
+import { ImageBrokenIcon } from '../generated/icons'
 
 /**
  * Every image fetched from the network (exodus's `LazyLoadImage`, the owner's rule): a skeleton while it loads, a fade

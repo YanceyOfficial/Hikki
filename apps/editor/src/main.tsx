@@ -27,6 +27,7 @@ import type { SplitDropMode } from './extensions/split-drop'
 import { setAIModels } from './lib/ai-models'
 import type { DateSheetChange } from './lib/date-sheet'
 import { installScrollContainment } from './lib/scroll-containment'
+import { type IconStyle, setIconStyle } from './lib/sf-icons'
 import { Outline } from './page/outline'
 import { PageHeader } from './page/page-header'
 
@@ -161,6 +162,8 @@ window.hikki = {
   },
   // iOS's text size (Dynamic Type): the page's own words follow it; the UI keeps its size.
   setTextScale: (scale: number) => bridge.setTextScale(scale),
+  // iOS: the page's icons are SF Symbols, as the chrome around it draws (lib/sf-icons.ts).
+  setIconStyle: (style: IconStyle) => setIconStyle(style),
   setLocale: (tag: string) => setLocale(tag),
   // Settings → Shortcuts: the user's rebindings (only those; the rest keep the registry's keys).
   setShortcuts: (overrides: Record<string, ShortcutOverride>) => applyShortcutOverrides(overrides),

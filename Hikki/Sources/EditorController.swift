@@ -1001,6 +1001,8 @@ final class EditorController {
         await call("window.hikki.setInsets({ top, bottom, bleed })", insetArguments, label: "setInsets")
         #if os(iOS)
             await call("window.hikki.setTextScale(scale)", textScaleArguments, label: "setTextScale")
+            // The page's icons are SF Symbols here, as the chrome around it (lib/sf-icons.ts).
+            await call("window.hikki.setIconStyle(style)", ["style": "sf"], label: "setIconStyle")
         #endif
         if !outlineRailVisible {
             await call("window.hikki.setOutlineRail(visible)", ["visible": false], label: "setOutlineRail")

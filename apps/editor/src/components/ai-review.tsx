@@ -1,11 +1,3 @@
-import {
-  ArrowClockwiseIcon,
-  ArrowUpIcon,
-  CheckIcon,
-  CopyIcon,
-  GlobeIcon,
-  TextAlignLeftIcon
-} from '@phosphor-icons/react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -20,6 +12,14 @@ import { Kbd } from '@/components/ui/kbd'
 import { markdownDOM } from '../core/convert'
 import { t } from '../core/i18n'
 import type { AIReviewStyle } from '../extensions/ai-review'
+import {
+  ArrowClockwiseIcon,
+  ArrowUpIcon,
+  CheckIcon,
+  CopyIcon,
+  GlobeIcon,
+  TextAlignLeftIcon
+} from '../generated/icons'
 import { DiffReview, type AIReviewLine } from './ai-review-styles'
 import type { FloatingAnchor, FloatingLayer } from './floating'
 

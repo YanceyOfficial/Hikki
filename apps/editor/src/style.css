@@ -1153,3 +1153,14 @@ body:has(.hk-find [data-testid='find-panel']) #outline {
     font-size: calc(var(--text-3xl) * var(--hk-text-scale, 1));
   }
 }
+
+/* An SF Symbol standing in for a Phosphor icon on iOS (lib/sf-icons.ts): the native glyph as a mask in the text's
+   colour, in the box the svg would take. */
+.hk-sf {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: middle;
+  background-color: currentColor;
+  -webkit-mask: var(--sf) center / contain no-repeat;
+  mask: var(--sf) center / contain no-repeat;
+}

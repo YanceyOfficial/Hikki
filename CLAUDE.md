@@ -46,7 +46,11 @@ These rules are mandatory. Automated ones are noted.
   `from 'cn'` as the generated components do (`apps/editor/src/lib/utils.ts` is the one-line re-export `shadcn init` writes).
 - **Icons go through one list** (`design/icons.json`, `make icons`). The native shell draws SF Symbols (each icon's
   `"sf"` name; the generated `Icon` enum, `IconView` / `IconLabel`, `Icon.glyph` for system-sized spots), falling
-  back to the bundled Phosphor asset where there is no symbol; the web editor uses `@phosphor-icons/react`. No raw
+  back to the bundled Phosphor asset where there is no symbol; the web editor imports the same icons from the generated `apps/editor/src/generated/icons.ts` (Phosphor's component
+  names), never `@phosphor-icons/react` directly: on iOS each wrapper draws the icon's SF Symbol instead — rendered
+  natively by `EditorSchemeHandler` (`hikki-editor://sf/<name>.png`, `SymbolRequest` in HikkiCore) and painted as a
+  mask in the text colour (`apps/editor/src/lib/sf-icons.ts`, told by `window.hikki.setIconStyle`); the Mac's page
+  keeps Phosphor. No raw
   `Image(systemName:)` / `systemImage:` — _enforced by `make lint-design`_.
 - **Keyboard shortcuts come from one registry.** `design/shortcuts.json` → `make shortcuts` generates
   `Hikki/Sources/Generated/Shortcuts.swift` (`Shortcut.x.keyboardShortcut` / `.display`) and

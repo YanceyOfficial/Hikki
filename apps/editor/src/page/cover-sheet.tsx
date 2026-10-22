@@ -1,4 +1,3 @@
-import { ImageIcon, TrashIcon } from '@phosphor-icons/react'
 import { cn } from 'cn'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -6,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 
 import { BottomSheet } from '../components/bottom-sheet'
+import { ImageIcon, TrashIcon } from '../generated/icons'
 import { CoverPicker } from './cover-picker'
 
 /** What the cover's sheet shows: its actions (a long press on the cover), or the picker (Change cover). */

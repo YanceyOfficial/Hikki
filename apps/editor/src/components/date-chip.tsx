@@ -1,12 +1,3 @@
-import {
-  BellSimpleIcon,
-  CalendarBlankIcon,
-  CaretLeftIcon,
-  CaretRightIcon,
-  CheckCircleIcon,
-  CheckIcon,
-  TrashIcon
-} from '@phosphor-icons/react'
 import { enUS, zhCN } from 'date-fns/locale'
 import { useState, type ReactNode } from 'react'
 import type { Root } from 'react-dom/client'
@@ -17,6 +8,15 @@ import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 
 import i18n, { t } from '../core/i18n'
+import {
+  BellSimpleIcon,
+  CalendarBlankIcon,
+  CaretLeftIcon,
+  CaretRightIcon,
+  CheckCircleIcon,
+  CheckIcon,
+  TrashIcon
+} from '../generated/icons'
 import {
   DAY_TIME,
   REMIND_DAY,

@@ -1,10 +1,3 @@
-import {
-  ArrowsOutIcon,
-  TextAlignCenterIcon,
-  TextAlignLeftIcon,
-  TextAlignRightIcon,
-  TrashIcon
-} from '@phosphor-icons/react'
 import type { Editor } from '@tiptap/core'
 import { NodeSelection } from '@tiptap/pm/state'
 import type { Root } from 'react-dom/client'
@@ -15,6 +8,13 @@ import { Toggle } from '@/components/ui/toggle'
 
 import { t } from '../core/i18n'
 import { safeMediaSrc, type MediaHost } from '../extensions/media'
+import {
+  ArrowsOutIcon,
+  TextAlignCenterIcon,
+  TextAlignLeftIcon,
+  TextAlignRightIcon,
+  TrashIcon
+} from '../generated/icons'
 import { useEditorSnapshot } from '../hooks/use-editor-snapshot'
 import { IconProvider } from './icons'
 

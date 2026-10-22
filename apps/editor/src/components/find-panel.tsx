@@ -1,11 +1,3 @@
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  ArrowsLeftRightIcon,
-  TextAaIcon,
-  TextTIcon,
-  XIcon
-} from '@phosphor-icons/react'
 import type { Editor } from '@tiptap/core'
 import { cn } from 'cn'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
@@ -26,6 +18,14 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { t } from '../core/i18n'
 import { shortcutLabel } from '../core/shortcuts'
 import { revealCurrentMatch } from '../extensions/find'
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  ArrowsLeftRightIcon,
+  TextAaIcon,
+  TextTIcon,
+  XIcon
+} from '../generated/icons'
 import { useEditorSnapshot } from '../hooks/use-editor-snapshot'
 import { usePresence } from './floating'
 import { IconProvider } from './icons'

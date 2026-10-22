@@ -1,6 +1,5 @@
-import { CheckIcon } from '@phosphor-icons/react'
-
 import { BLOCK_TYPES, type BlockType } from '../core/blocks'
+import { CheckIcon } from '../generated/icons'
 import { MenuRow, MenuTitle } from './menu-row'
 
 /** The kinds a block can be turned into (the catalog's `turnInto` entries). */

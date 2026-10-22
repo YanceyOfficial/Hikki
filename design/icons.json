@@ -1,5 +1,5 @@
 {
-  "$comment": "Phosphor icons used by the native app (web uses @phosphor-icons/react with the same names). Run `make icons` after editing; generated: HikkiUI/Resources/Icons.xcassets and HikkiUI/Sources/Generated/Icons.swift. Map: Swift case = camelCase name (+ weight suffix when not baseWeight). baseWeight + strokeBoost (an outline stroke in 256-grid units that thickens base-weight icons; 4 ≈ halfway between regular and bold) are mirrored by apps/editor/src/ui/icons.tsx (checked by a test). \"sf\": the SF Symbol the native shell draws instead (a name, or {weight: name}); icons without one fall back to the Phosphor asset. The web editor always uses Phosphor.",
+  "$comment": "Phosphor icons used by the native app (web uses @phosphor-icons/react with the same names). Run `make icons` after editing; generated: HikkiUI/Resources/Icons.xcassets and HikkiUI/Sources/Generated/Icons.swift. Map: Swift case = camelCase name (+ weight suffix when not baseWeight). baseWeight + strokeBoost (an outline stroke in 256-grid units that thickens base-weight icons; 4 ≈ halfway between regular and bold) are mirrored by apps/editor/src/ui/icons.tsx (checked by a test). \"sf\": the SF Symbol the native shell draws instead (a name, or {weight: name}); icons without one fall back to the Phosphor asset. The web editor always uses Phosphor. An icon with \"native\": false is the page's alone: no asset, no Swift case (the web wrapper still gets its \"sf\" for iOS).",
   "baseWeight": "regular",
   "strokeBoost": 4,
   "icons": {
@@ -225,7 +225,8 @@
     "check-circle": {
       "weights": ["fill"],
       "sf": {
-        "fill": "checkmark.circle.fill"
+        "fill": "checkmark.circle.fill",
+        "regular": "checkmark.circle"
       }
     },
     "files": {
@@ -331,6 +332,138 @@
     },
     "shuffle": {
       "sf": "shuffle"
+    },
+    "arrow-clockwise": {
+      "sf": "arrow.clockwise",
+      "native": false
+    },
+    "arrow-square-out": {
+      "sf": "arrow.up.right.square",
+      "native": false
+    },
+    "arrows-in-line-horizontal": {
+      "sf": "arrow.right.and.line.vertical.and.arrow.left",
+      "native": false
+    },
+    "arrows-out": {
+      "sf": "arrow.up.left.and.arrow.down.right",
+      "native": false
+    },
+    "calendar-blank": {
+      "sf": "calendar",
+      "native": false
+    },
+    "columns-plus-left": {
+      "sf": "rectangle.lefthalf.inset.filled",
+      "native": false
+    },
+    "dots-six": {
+      "sf": "line.3.horizontal",
+      "native": false
+    },
+    "eraser": {
+      "sf": "eraser",
+      "native": false
+    },
+    "file-audio": {
+      "sf": "waveform",
+      "native": false
+    },
+    "file-code": {
+      "sf": "chevron.left.forwardslash.chevron.right",
+      "native": false
+    },
+    "file-csv": {
+      "sf": "tablecells",
+      "native": false
+    },
+    "file-doc": {
+      "sf": "doc.text",
+      "native": false
+    },
+    "file-image": {
+      "sf": "photo",
+      "native": false
+    },
+    "file-pdf": {
+      "sf": "doc.richtext",
+      "native": false
+    },
+    "file-ppt": {
+      "sf": "play.rectangle",
+      "native": false
+    },
+    "file-video": {
+      "sf": "film",
+      "native": false
+    },
+    "file-xls": {
+      "sf": "tablecells",
+      "native": false
+    },
+    "file-zip": {
+      "sf": "doc.zipper",
+      "native": false
+    },
+    "image-broken": {
+      "sf": "photo.badge.exclamationmark",
+      "native": false
+    },
+    "link-simple": {
+      "sf": "link",
+      "native": false
+    },
+    "magic-wand": {
+      "sf": "wand.and.stars",
+      "native": false
+    },
+    "math-operations": {
+      "sf": "function",
+      "native": false
+    },
+    "paint-bucket": {
+      "sf": "paintbrush",
+      "native": false
+    },
+    "rows-plus-bottom": {
+      "sf": "rectangle.bottomhalf.inset.filled",
+      "native": false
+    },
+    "rows-plus-top": {
+      "sf": "rectangle.tophalf.inset.filled",
+      "native": false
+    },
+    "sort-ascending": {
+      "sf": "arrow.up",
+      "native": false
+    },
+    "sort-descending": {
+      "sf": "arrow.down",
+      "native": false
+    },
+    "subtitles": {
+      "sf": "captions.bubble",
+      "native": false
+    },
+    "text-align-center": {
+      "sf": "text.aligncenter",
+      "native": false
+    },
+    "text-align-left": {
+      "sf": "text.alignleft",
+      "native": false
+    },
+    "text-align-right": {
+      "sf": "text.alignright",
+      "native": false
+    },
+    "text-subscript": {
+      "sf": "textformat.subscript",
+      "native": false
+    },
+    "text-superscript": {
+      "sf": "textformat.superscript",
+      "native": false
     }
   }
 }

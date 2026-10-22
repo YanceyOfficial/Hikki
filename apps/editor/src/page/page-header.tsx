@@ -1,4 +1,3 @@
-import { ImageIcon, LockSimpleIcon, SmileyIcon } from '@phosphor-icons/react'
 import { cn } from 'cn'
 import {
   useCallback,
@@ -21,6 +20,7 @@ import { BottomSheet } from '../components/bottom-sheet'
 import { EmojiPickerPanel } from '../components/emoji-picker-panel'
 import { LazyLoadImage } from '../components/lazy-load-image'
 import type { EditorBridge } from '../core/bridge'
+import { ImageIcon, LockSimpleIcon, SmileyIcon } from '../generated/icons'
 import { useMediaQuery } from '../hooks/use-media-query'
 import {
   coverBackground,

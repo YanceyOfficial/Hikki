@@ -1,19 +1,3 @@
-import {
-  ArrowsInLineHorizontalIcon,
-  ColumnsPlusLeftIcon,
-  ColumnsPlusRightIcon,
-  DotsSixIcon,
-  DotsSixVerticalIcon,
-  EraserIcon,
-  PaintBucketIcon,
-  PlusIcon,
-  RowsPlusBottomIcon,
-  RowsPlusTopIcon,
-  SortAscendingIcon,
-  SortDescendingIcon,
-  SquareSplitHorizontalIcon,
-  TrashIcon
-} from '@phosphor-icons/react'
 import type { Editor } from '@tiptap/core'
 import type { CellSelection } from '@tiptap/pm/tables'
 import { cn } from 'cn'
@@ -46,6 +30,22 @@ import {
   setCellBackground,
   sortColumn
 } from '../extensions/table-ops'
+import {
+  ArrowsInLineHorizontalIcon,
+  ColumnsPlusLeftIcon,
+  ColumnsPlusRightIcon,
+  DotsSixIcon,
+  DotsSixVerticalIcon,
+  EraserIcon,
+  PaintBucketIcon,
+  PlusIcon,
+  RowsPlusBottomIcon,
+  RowsPlusTopIcon,
+  SortAscendingIcon,
+  SortDescendingIcon,
+  SquareSplitHorizontalIcon,
+  TrashIcon
+} from '../generated/icons'
 import { IconProvider } from './icons'
 
 export type TableHover = {

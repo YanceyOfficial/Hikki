@@ -724,6 +724,25 @@ final class EditorFlowTests: XCTestCase {
             attach(app, "page-sheet-facts")
         }
 
+        /// iOS: the page's own menus draw SF Symbols (lib/sf-icons.ts) — the "/" menu, for a look at the glyphs beside
+        /// the native chrome.
+        func testPageMenusDrawSFGlyphsOnIOS() throws {
+            continueAfterFailure = false
+            let app = launch()
+            let newPage = app.buttons["new-page"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+            newPage.tap()
+            let title = app.webViews.textViews["Page title"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+            title.tap()
+            title.typeText("Glyphs\n")
+            // The list blocks: every one of them has a symbol (the headings keep Phosphor's H1–H4).
+            app.typeText("/list")
+            let row = app.webViews.otherElements["Bulleted list"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(row, in: app), "no \"/\" menu")
+            attach(app, "slash-menu-sf-glyphs")
+        }
+
         /// iPhone: the floating bar's Outline lists the page's headings in a sheet; one picked closes it.
         func testOutlineSheetOnAPhone() throws {
             guard UIDevice.current.userInterfaceIdiom == .phone else { throw XCTSkip("the iPhone layout") }

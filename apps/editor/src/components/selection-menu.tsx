@@ -1,21 +1,4 @@
-import {
-  CaretRightIcon,
-  ChatTeardropTextIcon,
-  CodeIcon,
-  DotsThreeIcon,
-  EraserIcon,
-  LinkSimpleIcon,
-  MathOperationsIcon,
-  SparkleIcon,
-  TextAaIcon,
-  TextBIcon,
-  TextItalicIcon,
-  TextStrikethroughIcon,
-  TextSubscriptIcon,
-  TextSuperscriptIcon,
-  TextUnderlineIcon,
-  type Icon
-} from '@phosphor-icons/react'
+import { type Icon } from '@phosphor-icons/react'
 import type { Editor } from '@tiptap/core'
 import { cn } from 'cn'
 import { useLayoutEffect, useRef, useState } from 'react'
@@ -31,6 +14,23 @@ import { t } from '../core/i18n'
 import { isSafeHref, normalizeHref } from '../core/links'
 import { shortcutLabel } from '../core/shortcuts'
 import type { PaletteColor } from '../extensions/colors'
+import {
+  CaretRightIcon,
+  ChatTeardropTextIcon,
+  CodeIcon,
+  DotsThreeIcon,
+  EraserIcon,
+  LinkSimpleIcon,
+  MathOperationsIcon,
+  SparkleIcon,
+  TextAaIcon,
+  TextBIcon,
+  TextItalicIcon,
+  TextStrikethroughIcon,
+  TextSubscriptIcon,
+  TextSuperscriptIcon,
+  TextUnderlineIcon
+} from '../generated/icons'
 import { useEditorSnapshot } from '../hooks/use-editor-snapshot'
 import { AIPanel, type AIMake } from './ai-panel'
 import { BlockTypeList, TURN_INTO } from './block-type-list'

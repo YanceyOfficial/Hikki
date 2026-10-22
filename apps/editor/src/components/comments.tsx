@@ -1,14 +1,3 @@
-import {
-  ArrowUpIcon,
-  AtIcon,
-  ChatTeardropTextIcon,
-  CheckIcon,
-  DotsThreeIcon,
-  LinkSimpleIcon,
-  PencilSimpleIcon,
-  TrashIcon,
-  XIcon
-} from '@phosphor-icons/react'
 import type { Editor } from '@tiptap/core'
 import { cn } from 'cn'
 import i18n from 'i18next'
@@ -42,6 +31,17 @@ import {
   type ThreadItem
 } from '../extensions/comments'
 import { pageMentionItems } from '../extensions/page-mention'
+import {
+  ArrowUpIcon,
+  AtIcon,
+  ChatTeardropTextIcon,
+  CheckIcon,
+  DotsThreeIcon,
+  LinkSimpleIcon,
+  PencilSimpleIcon,
+  TrashIcon,
+  XIcon
+} from '../generated/icons'
 import { useKeyboardViewport } from '../hooks/use-keyboard-viewport'
 import {
   bodyFromDraft,

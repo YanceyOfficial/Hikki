@@ -1,3 +1,25 @@
+import { type Icon } from '@phosphor-icons/react'
+import type { ChainedCommands, Editor } from '@tiptap/core'
+import type { ComponentType } from 'react'
+
+import {
+  AirtableLogo,
+  CalendlyLogo,
+  CodeSandboxLogo,
+  DrawioLogo,
+  ExcalidrawLogo,
+  FigmaLogo,
+  GitHubLogo,
+  GoogleDriveLogo,
+  LoomLogo,
+  MiroLogo,
+  type LogoProps
+} from '../components/brand-logos'
+import { lastCodeLanguage } from '../extensions/code-languages'
+import { openEmbedPanel } from '../extensions/embed'
+import { openMathEditor } from '../extensions/math'
+import { pickFiles, type MediaHost } from '../extensions/media'
+import { openToggleAtSelection } from '../extensions/toggle'
 import {
   BrowserIcon,
   CaretCircleRightIcon,
@@ -24,30 +46,8 @@ import {
   TextHOneIcon,
   TextHThreeIcon,
   TextHTwoIcon,
-  TextTIcon,
-  type Icon
-} from '@phosphor-icons/react'
-import type { ChainedCommands, Editor } from '@tiptap/core'
-import type { ComponentType } from 'react'
-
-import {
-  AirtableLogo,
-  CalendlyLogo,
-  CodeSandboxLogo,
-  DrawioLogo,
-  ExcalidrawLogo,
-  FigmaLogo,
-  GitHubLogo,
-  GoogleDriveLogo,
-  LoomLogo,
-  MiroLogo,
-  type LogoProps
-} from '../components/brand-logos'
-import { lastCodeLanguage } from '../extensions/code-languages'
-import { openEmbedPanel } from '../extensions/embed'
-import { openMathEditor } from '../extensions/math'
-import { pickFiles, type MediaHost } from '../extensions/media'
-import { openToggleAtSelection } from '../extensions/toggle'
+  TextTIcon
+} from '../generated/icons'
 import { aiModels } from '../lib/ai-models'
 import { drawingsReadOnly } from '../lib/drawing-mode'
 import { t } from './i18n'

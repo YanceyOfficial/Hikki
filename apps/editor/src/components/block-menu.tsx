@@ -1,18 +1,3 @@
-import {
-  ArrowBendUpRightIcon,
-  ArrowSquareOutIcon,
-  ArrowsClockwiseIcon,
-  ArrowsLeftRightIcon,
-  CaretRightIcon,
-  ChatTeardropTextIcon,
-  CopyIcon,
-  LinkIcon,
-  LinkSimpleIcon,
-  PaintBrushIcon,
-  SparkleIcon,
-  SubtitlesIcon,
-  TrashIcon
-} from '@phosphor-icons/react'
 import type { Editor } from '@tiptap/core'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import { TextSelection } from '@tiptap/pm/state'
@@ -43,6 +28,21 @@ import { openEmbedPanel, type EmbedHost } from '../extensions/embed'
 import { openCaptionPanel } from '../extensions/embed-caption'
 import { moveBlockHost, moveUnitTo } from '../extensions/move-block'
 import { blockLabel, copyLink } from '../extensions/page-links'
+import {
+  ArrowBendUpRightIcon,
+  ArrowSquareOutIcon,
+  ArrowsClockwiseIcon,
+  ArrowsLeftRightIcon,
+  CaretRightIcon,
+  ChatTeardropTextIcon,
+  CopyIcon,
+  LinkIcon,
+  LinkSimpleIcon,
+  PaintBrushIcon,
+  SparkleIcon,
+  SubtitlesIcon,
+  TrashIcon
+} from '../generated/icons'
 import { mediaRef } from '../lib/ai-content'
 import { isWebURL } from '../lib/embeds'
 import { AIPanel } from './ai-panel'

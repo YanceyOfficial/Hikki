@@ -1,12 +1,4 @@
-import {
-  ArrowUpIcon,
-  CaretDownIcon,
-  CheckIcon,
-  ImagesIcon,
-  MagicWandIcon,
-  ScribbleIcon,
-  type Icon
-} from '@phosphor-icons/react'
+import { type Icon } from '@phosphor-icons/react'
 import { useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -20,6 +12,14 @@ import {
 import { t } from '../core/i18n'
 import type { AIModelMenu } from '../core/protocol'
 import type { AIAction } from '../extensions/ai-review'
+import {
+  ArrowUpIcon,
+  CaretDownIcon,
+  CheckIcon,
+  ImagesIcon,
+  MagicWandIcon,
+  ScribbleIcon
+} from '../generated/icons'
 import { aiModels, modelName } from '../lib/ai-models'
 import { MenuRow, MenuTitle } from './menu-row'
 
