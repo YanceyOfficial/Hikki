@@ -31,7 +31,7 @@
                             ForEach(EditorCommand.allCases.prefix(6)) { command in
                                 ToolbarIconButton(
                                     LocalizedStringKey(command.title), symbol: command.icon,
-                                    isActive: active.contains(command.rawValue)
+                                    isActive: active.contains(command.rawValue), style: .quiet
                                 ) {
                                     active.formSymmetricDifference([command.rawValue])
                                 }

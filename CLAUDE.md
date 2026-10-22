@@ -748,8 +748,10 @@ HikkiUITests/                 XCUITest flows
   selection menu stays away meanwhile (`window.hikki.setKeyboardBar`). +, Aa and turn into open a panel in the
   keyboard's place at its height (the same subclass's `inputView`, swapped with `reloadInputViews`, the caret staying
   put): HikkiUI's `KeyboardBlockPanel` (the "/" catalog as flat two-column rows; turn into marks the current kind) and
-  `KeyboardFormatPanel` (marks, Turn into, text colour and background); the bar's end button brings the keyboard
-  back, a swipe down closes both. The panel's height is the software keyboard's, read from where the bar sits as the
+  `KeyboardFormatPanel` (marks, Turn into, text colour and background — `Content`: the marks row only while the bar
+  doesn't show those marks itself, and the bar's colour tool opens the colours alone, `Panel.color`); the bar's end
+  button brings the keyboard back, a swipe down closes both. The bar's tools are `ToolbarIconButton`'s `quiet` style
+  (muted glyphs, the open tool's glyph in the tone, no box — Notion's). The panel's height is the software keyboard's, read from where the bar sits as the
   panel opens (room under it: `keyboardUnderBar`; the keyboard's frame notifications misled on a phone, and
   `GCKeyboard` says nothing about the software keyboard); with a hardware keyboard the system shows the panel all the
   same, at the last height. The content view is found by walking its class chain (`editingContent`): once it carries
@@ -758,7 +760,8 @@ HikkiUITests/                 XCUITest flows
   selection collapses (`keyboardWentAway`; WebKit would keep painting it greyed out), except under an AI edit just
   sent from the bar; ✕ on a native field gives the page its keyboard back, selection kept. AI, link and comment open a native glass
   field over the keyboard (HikkiUI's `KeyboardAIComposer` / `KeyboardLinkComposer` / `KeyboardCommentComposer`, drawn
-  by `PageScreen`) on what `touchPrepare` / `touchCommentQuote` pointed at; a comment is started and sent in one step
+  by `PageScreen`) on what `touchPrepare` / `touchCommentQuote` pointed at — the selection, or with none the caret's
+  whole block for AI and comments (`selectBlockAtCaret`) and the word at the caret for a link; a comment is started and sent in one step
   (`touchComment`), so the page's own comment sheet stays shut — focusing its field scrolled the page to its end. ⋯
   is HikkiUI's `BlockActionsSheet` (the caret's block: Turn into, Color, Insert below; Copy link, Duplicate, Move to, Delete;
   Comment; Ask AI; its words). Photo, file and the "+" panel's media blocks open our own sheet (HikkiUI's
@@ -771,7 +774,9 @@ HikkiUITests/                 XCUITest flows
   frontmost by depth through `ScreenTitleStack` in HikkiCore) and the root publishes it as the scene's
   `NSUserActivity` title (`app.yancey.hikki.viewing`), which iOS uses to name a screenshot — actovia's way.
 - **iOS input zoom**: fields under 16px make iOS zoom the page on focus (fixed panels then sit off screen); touch
-  devices get 16px fields via an unlayered rule in `apps/editor/src/style.css` (the page title is exempt).
+  devices get 16px fields via an unlayered rule in `apps/editor/src/style.css` (the page title is exempt). The
+  viewport (`apps/editor/index.html`) allows no pinch zoom either: `maximum-scale=1, user-scalable=no`, which WKWebView
+  honours (`testPinchDoesNotZoomThePage`).
 - **Editor content safety**: content that doesn't fit the schema (corrupt, or from a newer Hikki) opens read-only and
   is never saved (`enableContentCheck`); housekeeping transactions (`addToHistory: false` — UniqueID stamping
   block ids, remote reloads) never count as edits; continuous typing still saves every 2 s (`maxWaitMs`).

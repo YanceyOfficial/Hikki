@@ -90,7 +90,7 @@ window.hikki = {
   touchSetColor: (kind: 'text' | 'background', color: string | null) =>
     bridge.touchSetColor(kind, color),
   // Its AI and link fields (native, over the keyboard) and the ⋯ sheet of the caret's block.
-  touchPrepare: () => bridge.touchPrepare(),
+  touchPrepare: (scope?: 'word' | 'block') => bridge.touchPrepare(scope),
   touchAI: (action: AIAction) => bridge.touchAI(action),
   touchLink: (href: string | null) => bridge.touchLink(href),
   touchInsertMedia: (items: TouchMedia[]) => bridge.touchInsertMedia(items),

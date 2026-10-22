@@ -86,6 +86,14 @@ public struct KeyboardFormatPanel: View {
 
     public enum ColorKind: Sendable { case text, background }
 
+    /// What the panel holds: Aa's everything — the marks row only while the bar doesn't show those marks itself (it
+    /// does with a selection) — or the colours alone, for the bar's colour tool.
+    public enum Content: Equatable, Sendable {
+        case format(marks: Bool)
+        case colors
+    }
+
+    let content: Content
     let marks: Set<Mark>
     let turnInto: [KeyboardBlockItem]
     let block: String
@@ -97,10 +105,11 @@ public struct KeyboardFormatPanel: View {
     @Environment(\.colorTone) private var tone
 
     public init(
-        marks: Set<Mark>, turnInto: [KeyboardBlockItem], block: String, textColor: String?, backgroundColor: String?,
-        onMark: @escaping (Mark) -> Void, onTurnInto: @escaping (String) -> Void,
-        onColor: @escaping (ColorKind, String?) -> Void
+        content: Content = .format(marks: true), marks: Set<Mark>, turnInto: [KeyboardBlockItem], block: String,
+        textColor: String?, backgroundColor: String?, onMark: @escaping (Mark) -> Void,
+        onTurnInto: @escaping (String) -> Void, onColor: @escaping (ColorKind, String?) -> Void
     ) {
+        self.content = content
         self.marks = marks
         self.turnInto = turnInto
         self.block = block
@@ -114,30 +123,14 @@ public struct KeyboardFormatPanel: View {
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.s2) {
-                HStack(spacing: Spacing.s0_5) {
-                    ForEach(Mark.allCases, id: \.self) { mark in
-                        let on = marks.contains(mark)
-                        Button {
-                            onMark(mark)
-                        } label: {
-                            IconView(mark.icon, size: TextSize.lg.rawValue)
-                                .frame(maxWidth: .infinity, minHeight: Size.toolbarButtonHeight)
-                                .foregroundStyle(on ? tone.ink : Theme.foreground)
-                                .background(on ? tone.selectionFill : .clear, in: .rect(cornerRadius: Radius.md))
-                                .contentShape(.rect)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(Text(mark.label))
-                        .accessibilityAddTraits(on ? .isSelected : [])
-                    }
+                if content == .format(marks: true) {
+                    marksRow
                 }
-                .padding(Spacing.s1)
-                .background(Theme.muted, in: .rect(cornerRadius: Radius.lg))
-                .padding(.bottom, Spacing.s2)
-
-                PanelTitle("app:keyboard.turnInto")
-                BlockGrid(items: turnInto, current: block, onPick: onTurnInto)
-                    .padding(.bottom, Spacing.s2)
+                if case .format = content {
+                    PanelTitle("app:keyboard.turnInto")
+                    BlockGrid(items: turnInto, current: block, onPick: onTurnInto)
+                        .padding(.bottom, Spacing.s2)
+                }
 
                 PanelTitle("app:keyboard.textColor")
                 swatches(.text, current: textColor)
@@ -148,7 +141,30 @@ public struct KeyboardFormatPanel: View {
             .padding(Spacing.s3)
         }
         .background(Theme.background)
-        .accessibilityIdentifier("keyboard-format-panel")
+        .accessibilityIdentifier(content == .colors ? "keyboard-color-panel" : "keyboard-format-panel")
+    }
+
+    private var marksRow: some View {
+        HStack(spacing: Spacing.s0_5) {
+            ForEach(Mark.allCases, id: \.self) { mark in
+                let on = marks.contains(mark)
+                Button {
+                    onMark(mark)
+                } label: {
+                    // "On" is the glyph in the tone, as the bar marks its open tool: no box.
+                    IconView(mark.icon, size: TextSize.lg.rawValue)
+                        .frame(maxWidth: .infinity, minHeight: Size.toolbarButtonHeight)
+                        .foregroundStyle(on ? tone.ink : Theme.subtleForeground)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(mark.label))
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+        .padding(Spacing.s1)
+        .background(Theme.muted, in: .rect(cornerRadius: Radius.lg))
+        .padding(.bottom, Spacing.s2)
     }
 
     private func swatches(_ kind: ColorKind, current: String?) -> some View {
@@ -218,8 +234,11 @@ private struct BlockGrid: View {
                     }
                     .padding(.horizontal, Spacing.s2_5)
                     .frame(minHeight: Size.toolbarButtonHeight + Spacing.s2)
-                    .background(on ? tone.selectionFill : Theme.background, in: .rect(cornerRadius: Radius.lg))
-                    .overlay { RoundedRectangle(cornerRadius: Radius.lg).strokeBorder(Theme.border, lineWidth: Spacing.px) }
+                    // The current block: a quiet fill and the tone on its words, not a block of colour.
+                    .background(on ? Theme.accent : Theme.background, in: .rect(cornerRadius: Radius.lg))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Radius.lg).strokeBorder(on ? tone.fill : Theme.border, lineWidth: Spacing.px)
+                    }
                     .contentShape(.rect)
                 }
                 .buttonStyle(.plain)

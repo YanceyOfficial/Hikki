@@ -452,6 +452,14 @@ describe('EditorBridge', () => {
     expect(bridge.demoAI(['not in the page'], 'improve')).toBe(false)
   })
 
+  it("the phone's AI field takes the caret's block, its link field the word", () => {
+    bridge.loadDocument(page('a', { content: doc('Kyoto trip in spring') }))
+    editor().commands.setTextSelection(3)
+    expect(bridge.touchPrepare('block')?.quote).toBe('Kyoto trip in spring')
+    editor().commands.setTextSelection(3)
+    expect(bridge.touchPrepare()?.quote).toBe('Kyoto')
+  })
+
   it("the phone's AI field ends with Make: pictures go to the chat, a diagram into the page", () => {
     bridge.loadDocument(page('a', { content: doc('Kyoto trip') }))
     editor().commands.setTextSelection({ from: 1, to: 6 })

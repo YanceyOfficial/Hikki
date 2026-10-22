@@ -14,7 +14,7 @@
     /// the page screen), ⋯ the block's actions as a sheet (`blockActions`).
     @MainActor @Observable
     final class KeyboardBar {
-        enum Panel { case blocks, format, turnInto }
+        enum Panel { case blocks, format, turnInto, color }
 
         /// The native field over the keyboard for AI or a link, on the words `touchPrepare` selected — or a comment,
         /// on the selection or the caret's block (`commentScope`).
@@ -111,6 +111,8 @@
             case .format, .turnInto:
                 turnInto = await controller.touchTurnIntoMenu()
                 await refresh()
+            case .color:
+                await refresh()
             }
             let host = UIHostingController(rootView: KeyboardPanelView(bar: self))
             // Measured before the panel takes the keyboard's place (then the bar sits on the panel). The panel is the
@@ -151,13 +153,14 @@
             }
         }
 
-        /// AI or link: a native field over the keyboard, on the selection (or the word at the caret, which the page
-        /// selects). It takes the keyboard; the page keeps painting its selection meanwhile.
+        /// AI or link: a native field over the keyboard, on the selection — or, with none, on what the page selects
+        /// for it: the caret's whole block for AI (as a comment takes it), the word at the caret for a link. It takes
+        /// the keyboard; the page keeps painting its selection meanwhile.
         func openField(_ kind: Composer.Kind) {
             closePanel()
             keepSelectionOnHide = false
             Task {
-                guard let target = await controller?.touchPrepare() else { return }
+                guard let target = await controller?.touchPrepare(scope: kind == .ai ? .block : .word) else { return }
                 webView?.dismissEditMenu()
                 composer = Composer(kind: kind, quote: target.quote, href: target.href, presets: target.presets)
             }
@@ -313,7 +316,7 @@
                     tool("app:format.italic", .textItalic, isActive: marked("italic")) { bar.run("italic") }
                     tool("app:format.underline", .textUnderline, isActive: marked("underline")) { bar.run("underline") }
                     tool("app:format.strikethrough", .textStrikethrough, isActive: marked("strike")) { bar.run("strike") }
-                    tool("app:keyboard.color", .textAUnderline) { bar.toggle(.format) }
+                    tool("app:keyboard.color", .textAUnderline, isActive: bar.panel == .color) { bar.toggle(.color) }
                     tool("app:keyboard.askAI", .sparkle) { bar.openField(.ai) }
                     tool("app:format.link", .link) { bar.openField(.link) }
                     tool("app:keyboard.comment", .chatTeardropText) { bar.openComment() }
@@ -345,7 +348,7 @@
         private func tool(_ title: LocalizedStringKey, _ icon: Icon, isActive: Bool = false, action: @escaping () -> Void)
             -> some View
         {
-            ToolbarIconButton(title, symbol: icon, isActive: isActive, action: action)
+            ToolbarIconButton(title, symbol: icon, isActive: isActive, style: .quiet, action: action)
         }
     }
 
@@ -366,8 +369,10 @@
                             bar.turnInto(id)
                             bar.closePanel()
                         })
-                case .format:
+                case .format, .color:
+                    // With a selection the bar shows the marks itself: the panel leaves them out.
                     KeyboardFormatPanel(
+                        content: bar.panel == .color ? .colors : .format(marks: bar.controller?.selection == nil),
                         marks: Set(bar.state.marks.compactMap(KeyboardFormatPanel.Mark.init(rawValue:))), turnInto: bar.turnInto,
                         block: bar.state.block, textColor: bar.state.textColor, backgroundColor: bar.state.backgroundColor,
                         onMark: { mark in mark == .link ? bar.openField(.link) : bar.run(mark.rawValue) },

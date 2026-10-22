@@ -14,7 +14,7 @@ public struct KeyboardDismissButton: View {
 
     public var body: some View {
         ToolbarIconButton(
-            showsKeyboard ? "app:keyboard.show" : "app:keyboard.hide", symbol: showsKeyboard ? .x : .keyboard,
+            showsKeyboard ? "app:keyboard.show" : "app:keyboard.hide", symbol: showsKeyboard ? .x : .keyboard, style: .quiet,
             action: action
         )
         .accessibilityIdentifier(showsKeyboard ? "show-keyboard" : "hide-keyboard")

@@ -664,8 +664,12 @@ final class EditorController {
         var presets: [AIComposerPreset]
     }
 
-    func touchPrepare() async -> TouchTarget? {
-        guard let value = await call("return window.hikki.touchPrepare()", label: "touchPrepare") as? [String: Any] else {
+    /// What a native field takes with no selection: the word at the caret, or the caret's whole block.
+    enum TouchScope: String { case word, block }
+
+    func touchPrepare(scope: TouchScope = .word) async -> TouchTarget? {
+        guard let value = await call("return window.hikki.touchPrepare('\(scope.rawValue)')", label: "touchPrepare") as? [String: Any]
+        else {
             return nil
         }
         let presets = ((value["presets"] as? [[String: Any]]) ?? []).compactMap { preset -> AIComposerPreset? in

@@ -47,7 +47,7 @@ public struct KeyboardAccessoryBar<Tools: View>: View {
         KeyboardAccessoryBar(onDismiss: {}) {
             let icons: [Icon] = [.sparkle, .plus, .textAa, .paperclip, .image, .arrowsClockwise, .arrowUUpLeft, .smiley]
             ForEach(icons, id: \.self) { icon in
-                ToolbarIconButton(LocalizedStringKey(icon.rawValue), symbol: icon, isActive: icon == .plus) {}
+                ToolbarIconButton(LocalizedStringKey(icon.rawValue), symbol: icon, isActive: icon == .plus, style: .quiet) {}
             }
         }
     }

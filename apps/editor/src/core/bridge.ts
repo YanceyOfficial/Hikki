@@ -74,6 +74,7 @@ import {
 import { Store } from './store'
 import {
   selectAroundCaret,
+  selectBlockAtCaret,
   touchComment,
   touchCommentQuote,
   type TouchCommentScope,
@@ -591,12 +592,14 @@ export class EditorBridge {
   }
 
   /**
-   * The bar's AI or link (a native field over the keyboard): the selection — or the word at the caret, now selected —
-   * it will act on, the link there, and AI's presets as the selection menu offers them. Null: nothing to act on.
+   * The bar's AI or link (a native field over the keyboard): the selection — or, with none, what the page selects
+   * now: the caret's whole block (`block`, AI's) or the word at the caret (`word`, a link's) — it will act on, the
+   * link there, and AI's presets as the selection menu offers them. Null: nothing to act on.
    */
-  touchPrepare(): TouchTarget | null {
+  touchPrepare(scope: 'word' | 'block' = 'word'): TouchTarget | null {
     const editor = this.editor
-    if (!editor || this.frozen || !selectAroundCaret(editor)) return null
+    if (!editor || this.frozen) return null
+    if (!(scope === 'block' ? selectBlockAtCaret(editor) : selectAroundCaret(editor))) return null
     const { from, to } = editor.state.selection
     return {
       quote: editor.state.doc.textBetween(from, to, ' ').trim().slice(0, 200),

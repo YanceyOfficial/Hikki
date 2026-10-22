@@ -6,6 +6,7 @@ import { createEditor } from '../src/core/editor'
 import {
   phosphorName,
   selectAroundCaret,
+  selectBlockAtCaret,
   touchBlockAction,
   touchBlockColor,
   touchBlockInfo,
@@ -111,12 +112,29 @@ describe('the phone keyboard bar', () => {
     expect(editor.state.doc.textContent).toBe('see @')
   })
 
-  it('AI and link act on the word at the caret', () => {
+  it('link acts on the word at the caret', () => {
     open([para('make this bold')])
     editor.commands.setTextSelection(8)
     expect(selectAroundCaret(editor)).toBe(true)
     const { from, to } = editor.state.selection
     expect(editor.state.doc.textBetween(from, to)).toBe('this')
+  })
+
+  it("AI acts on the caret's whole block when nothing is selected, as a comment does", () => {
+    open([para('make this bold'), para('and this')])
+    editor.commands.setTextSelection(8)
+    expect(selectBlockAtCaret(editor)).toBe(true)
+    let { from, to } = editor.state.selection
+    expect(editor.state.doc.textBetween(from, to)).toBe('make this bold')
+    // A selection already made is left alone.
+    editor.commands.setTextSelection({ from: 6, to: 10 })
+    expect(selectBlockAtCaret(editor)).toBe(true)
+    ;({ from, to } = editor.state.selection)
+    expect(editor.state.doc.textBetween(from, to)).toBe('this')
+    // Nothing to act on in an empty block.
+    open([para('')])
+    editor.commands.setTextSelection(1)
+    expect(selectBlockAtCaret(editor)).toBe(false)
   })
 
   it('moves, duplicates and deletes the block at the caret', () => {

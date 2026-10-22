@@ -388,6 +388,21 @@ export function selectAroundCaret(editor: Editor): boolean {
   return true
 }
 
+/**
+ * The phone's AI field acts on the selection — or, with none, on the caret's whole block (its text, as a comment
+ * takes it), now selected. False with nothing to act on (an empty block, code).
+ */
+export function selectBlockAtCaret(editor: Editor): boolean {
+  const { state } = editor
+  if (!state.selection.empty) return true
+  const unit = unitAtPos(state, state.selection.from)
+  if (!unit || unit.node.type.spec.code) return false
+  const range = unitTextRange(unit)
+  if (!range || range.from === range.to) return false
+  editor.view.dispatch(state.tr.setSelection(TextSelection.create(state.doc, range.from, range.to)))
+  return true
+}
+
 /** Where the phone's native comment field puts its thread: the selection, or the caret's whole block. */
 export type TouchCommentScope = 'selection' | 'block'
 

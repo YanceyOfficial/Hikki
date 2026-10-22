@@ -584,6 +584,40 @@ final class EditorFlowTests: XCTestCase {
                 let noKeyboard = NSPredicate(format: "count == 0")
                 wait(for: [expectation(for: noKeyboard, evaluatedWith: app.keyboards)], timeout: 5)
             }
+            // The bar shows B · I · U · S itself with a selection: the panel doesn't repeat them.
+            XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == 'Bold'")).count, 1, "the marks row repeated the bar's")
+
+            // The colour tool has a panel of its own: the colours alone, Aa not marked.
+            app.buttons["Colour"].firstMatch.tap()
+            let colors = app.descendants(matching: .any)["keyboard-color-panel"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(colors, in: app), "the colour panel did not open")
+            XCTAssertFalse(format.exists, "Aa's panel stayed under the colour panel")
+            XCTAssertFalse(app.buttons["Format"].firstMatch.isSelected, "Aa marked while the colour panel is open")
+            XCTAssertTrue(app.buttons["Colour"].firstMatch.isSelected, "the colour tool isn't marked for its panel")
+            attach(app, "color-panel")
+        }
+
+        /// A pinch never magnifies the page (it is an editor, not a document): the words keep their size.
+        func testPinchDoesNotZoomThePage() throws {
+            continueAfterFailure = false
+            let app = launch()
+            let newPage = app.buttons["new-page"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+            newPage.tap()
+            let title = app.webViews.textViews["Page title"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+            title.tap()
+            title.typeText("Zoom\n")
+            app.typeText("The quick brown fox")
+            app.buttons["hide-keyboard"].firstMatch.tap()
+            let line = app.webViews.staticTexts["The quick brown fox"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(line, in: app))
+            let before = line.frame
+            app.webViews.firstMatch.pinch(withScale: 2.5, velocity: 1)
+            sleep(1)
+            let after = line.frame
+            XCTAssertEqual(after.width, before.width, accuracy: 1, "the page zoomed under a pinch")
+            XCTAssertEqual(after.height, before.height, accuracy: 1, "the page zoomed under a pinch")
         }
 
         /// Aa's panel takes the keyboard's place through the content view's input view (with a hardware keyboard too:
