@@ -40,10 +40,8 @@
         /// The photo / file sheet is open (`MediaPickerSheet`, presented by the page screen).
         var mediaSheet = false
         /// The keyboard's height (without the bar) when it was last up: a panel takes the same, so the page stays put.
+        /// With a hardware keyboard there is none under the bar, and a panel still shows — at this height.
         @ObservationIgnored var keyboardHeight: CGFloat = 291
-        /// With a hardware keyboard the system keeps the keyboard's area off screen, a panel in it too: the panel is a
-        /// sheet of that height instead.
-        @ObservationIgnored private weak var sheet: UIViewController?
         @ObservationIgnored private var observers: [NSObjectProtocol] = []
         /// The next time the keyboard goes away, the page's selection stays (an AI edit under review on it).
         @ObservationIgnored private var keepSelectionOnHide = false
@@ -70,10 +68,10 @@
 
         /// The keyboard went away altogether — the bar's button, a swipe, a tap elsewhere — or only seemed to:
         /// swapping it for a panel or a native field may post a hide of its own, so this acts only once the page has
-        /// let go of the caret. No panel stays behind (one shown as a sheet takes the focus by design), and no
-        /// selection: WebKit would keep painting it, greyed out, with nothing to act on it (Notion's).
+        /// let go of the caret. No panel stays behind, and no selection: WebKit would keep painting it, greyed out,
+        /// with nothing to act on it (Notion's).
         private func keyboardWentAway() {
-            guard webView?.editingContent?.isFirstResponder != true, sheet == nil else { return }
+            guard webView?.editingContent?.isFirstResponder != true else { return }
             if panel != nil {
                 panel = nil
                 webView?.keyboardPanel = nil
@@ -92,8 +90,8 @@
 
         /// The software keyboard's height under the bar, read from where the bar is now; nil when there is none (a
         /// hardware keyboard keeps only the bar up, at the screen's foot). The keyboard's frame notifications were
-        /// tried first and misled on a phone (the panel then opened as a sheet hidden behind the keyboard); neither
-        /// is `GCKeyboard` an answer — a keyboard attached doesn't mean the software one is hidden.
+        /// tried first and misled on a phone; neither is `GCKeyboard` an answer — a keyboard attached doesn't mean
+        /// the software one is hidden.
         private func keyboardUnderBar() -> CGFloat? {
             guard let bar = webView?.keyboardToolbar, let window = bar.window else { return nil }
             let screen = window.screen
@@ -115,36 +113,21 @@
                 await refresh()
             }
             let host = UIHostingController(rootView: KeyboardPanelView(bar: self))
-            // Measured before the panel takes the keyboard's place (then the bar sits on the panel).
-            let software = panel == nil ? keyboardUnderBar() : keyboardHeight
-            if let software { keyboardHeight = software }
+            // Measured before the panel takes the keyboard's place (then the bar sits on the panel). The panel is the
+            // content view's input view, which the system shows with a hardware keyboard too (the software keyboard
+            // alone stays off screen then).
+            if panel == nil, let software = keyboardUnderBar() { keyboardHeight = software }
             panel = kind
-            if software == nil, sheet == nil, let presenter = webView.window?.rootViewController?.topmostPresented {
-                host.sheetPresentationController?.detents = [.custom { [height = keyboardHeight] _ in height }]
-                host.sheetPresentationController?.prefersGrabberVisible = true
-                host.presentationController?.delegate = sheetDelegate
-                sheet = host
-                presenter.present(host, animated: true)
-                return
-            }
-            guard sheet == nil else { return }
             host.view.frame = CGRect(x: 0, y: 0, width: webView.bounds.width, height: keyboardHeight)
             host.view.autoresizingMask = [.flexibleWidth]
             webView.keyboardPanel = host.view
             webView.reloadKeyboardViews()
         }
 
-        @ObservationIgnored private lazy var sheetDelegate = SheetDelegate { [weak self] in self?.panel = nil }
-
         /// Back to typing, the caret where it was.
         func closePanel() {
             guard panel != nil else { return }
             panel = nil
-            if let sheet {
-                sheet.dismiss(animated: true)
-                self.sheet = nil
-                return
-            }
             webView?.keyboardPanel = nil
             webView?.reloadKeyboardViews()
         }
@@ -314,20 +297,6 @@
         }
     }
 
-    /// A panel's sheet swiped away: the bar's tool is no longer pressed.
-    private final class SheetDelegate: NSObject, UIAdaptivePresentationControllerDelegate {
-        let onDismiss: () -> Void
-        init(onDismiss: @escaping () -> Void) { self.onDismiss = onDismiss }
-        func presentationControllerDidDismiss(_ presentationController: UIPresentationController) { onDismiss() }
-    }
-
-    extension UIViewController {
-        /// The controller on top of everything this one presents.
-        fileprivate var topmostPresented: UIViewController {
-            presentedViewController?.topmostPresented ?? self
-        }
-    }
-
     /// The bar's row of tools (see `KeyboardBar`).
     struct KeyboardToolbar: View {
         let bar: KeyboardBar
@@ -458,7 +427,19 @@
 
         /// WebKit's content view: the first responder while the page is edited.
         var editingContent: UIView? {
-            scrollView.subviews.first { NSStringFromClass(type(of: $0)).hasPrefix("WKContent") }
+            scrollView.subviews.first(where: Self.isContentView)
+        }
+
+        /// By class, up the chain: once `installKeyboardToolbar` has given the view its runtime subclass, the view's own
+        /// class is ours (`Hikki_WKContentView`), and a check of its name alone found nothing — `reloadInputViews` then
+        /// never ran, and Aa left the keyboard where it was.
+        private static func isContentView(_ view: UIView) -> Bool {
+            var cls: AnyClass? = type(of: view)
+            while let current = cls {
+                if NSStringFromClass(current).hasPrefix("WKContent") { return true }
+                cls = class_getSuperclass(current)
+            }
+            return false
         }
 
         private static func accessorySubclass(of base: AnyClass) -> AnyClass? {

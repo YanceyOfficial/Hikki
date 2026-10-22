@@ -98,7 +98,7 @@ struct InspectorView: View {
             Group {
                 switch mode {
                 case .outline:
-                    OutlinePane(pageID: pageID, editor: editor) {
+                    OutlinePane(pageID: pageID, editor: editor, roomy: isSheet) {
                         if isSheet { navigator.setInspector(side, InspectorState(isShowing: false, mode: mode)) }
                     }
                 case .comments: CommentsPane(pageID: pageID, editor: editor)
@@ -138,6 +138,8 @@ private struct EmptyPane: View {
 private struct OutlinePane: View {
     let pageID: String?
     let editor: EditorController
+    /// As a sheet on a phone: more room around the rows than the side panel's, for fingers.
+    var roomy = false
     /// A heading was picked (a sheet closes then).
     let picked: () -> Void
     @Namespace private var highlight
@@ -153,7 +155,7 @@ private struct OutlinePane: View {
                             ForEach(Array(info.headings.enumerated()), id: \.offset) { index, heading in
                                 OutlineRow(
                                     text: heading.text, depth: heading.level - minLevel,
-                                    isActive: heading.id != nil && heading.id == active, highlight: highlight
+                                    isActive: heading.id != nil && heading.id == active, roomy: roomy, highlight: highlight
                                 ) {
                                     guard let id = heading.id else { return }
                                     editor.scrollToHeading(id)
@@ -163,8 +165,8 @@ private struct OutlinePane: View {
                                 .accessibilityIdentifier("outline-\(heading.text)")
                             }
                         }
-                        .padding(.horizontal, Spacing.s3)
-                        .padding(.vertical, Spacing.s2)
+                        .padding(.horizontal, roomy ? Spacing.s4 : Spacing.s3)
+                        .padding(.vertical, roomy ? Spacing.s4 : Spacing.s2)
                         .animation(Motion.easeOut(), value: active)
                     }
                     .onChange(of: active) { _, id in
@@ -188,6 +190,7 @@ private struct OutlineRow: View {
     let text: String
     let depth: Int
     let isActive: Bool
+    var roomy = false
     let highlight: Namespace.ID
     let action: () -> Void
 
@@ -201,9 +204,9 @@ private struct OutlineRow: View {
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, Spacing.s2 + CGFloat(depth) * Spacing.s3)
-                .padding(.trailing, Spacing.s2)
-                .padding(.vertical, Spacing.s1_5)
+                .padding(.leading, (roomy ? Spacing.s3 : Spacing.s2) + CGFloat(depth) * Spacing.s3)
+                .padding(.trailing, roomy ? Spacing.s3 : Spacing.s2)
+                .padding(.vertical, roomy ? Spacing.s2_5 : Spacing.s1_5)
                 .background {
                     if isActive {
                         RoundedRectangle(cornerRadius: Radius.md)

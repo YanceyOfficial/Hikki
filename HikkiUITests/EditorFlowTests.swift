@@ -438,7 +438,7 @@ final class EditorFlowTests: XCTestCase {
 
             // A software keyboard on screen (a phone): the panel takes its place — the keyboard goes, the bar stays above
             // the panel, and its keyboard button brings the keyboard back. A hardware keyboard (this simulator has one
-            // attached; the software keyboard stays off screen): a sheet of that height, closed by a swipe down.
+            // attached; the software keyboard stays off screen): the panel still shows, and a swipe down closes it.
             let keyboard = app.keyboards.firstMatch
             let softwareKeyboard = keyboard.exists && keyboard.frame.minY < app.frame.maxY - 1
             app.buttons["Format"].firstMatch.tap()
@@ -584,6 +584,60 @@ final class EditorFlowTests: XCTestCase {
                 let noKeyboard = NSPredicate(format: "count == 0")
                 wait(for: [expectation(for: noKeyboard, evaluatedWith: app.keyboards)], timeout: 5)
             }
+        }
+
+        /// Aa's panel takes the keyboard's place through the content view's input view (with a hardware keyboard too:
+        /// this simulator has one), and the bar's ✕ brings the keyboard back for typing. Once the content view carries
+        /// our runtime subclass it must still be found: before, the swap never ran and Aa left the keyboard where it was.
+        func testFormatPanelTakesTheKeyboardsPlace() throws {
+            continueAfterFailure = false
+            let app = launch()
+            let newPage = app.buttons["new-page"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+            newPage.tap()
+            let title = app.webViews.textViews["Page title"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+            title.tap()
+            title.typeText("Plan\n")
+            let body = app.webViews.textViews["Page content"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(body, in: app), "body missing")
+            body.typeText("Hello world")
+
+            app.buttons["Format"].firstMatch.tap()
+            let format = app.descendants(matching: .any)["keyboard-format-panel"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(format, in: app), "Aa panel did not take the keyboard's place")
+            attach(app, "format-in-keyboards-place")
+            let showKeyboard = app.buttons["show-keyboard"].firstMatch
+            XCTAssertTrue(showKeyboard.isHittable, "the bar should stay above the panel")
+            showKeyboard.tap()
+            wait(for: [expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: format)], timeout: 5)
+            body.typeText(" again")
+            XCTAssertTrue(
+                waitOrDumpTree(app.webViews.staticTexts["Hello world again"].firstMatch, in: app), "typing did not resume")
+        }
+
+        /// iPhone: the floating bar's Outline lists the page's headings in a sheet; one picked closes it.
+        func testOutlineSheetOnAPhone() throws {
+            guard UIDevice.current.userInterfaceIdiom == .phone else { throw XCTSkip("the iPhone layout") }
+            continueAfterFailure = false
+            let app = launch()
+            let newPage = app.buttons["new-page"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+            newPage.tap()
+            let title = app.webViews.textViews["Page title"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+            title.tap()
+            title.typeText("Outline page\n")
+            app.typeText("# First section\nSome words here.\n## Second section\nMore words.")
+            app.buttons["hide-keyboard"].firstMatch.tap()
+            let outline = app.buttons["open-inspector"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(outline, in: app), "the floating bar's Outline is missing")
+            outline.tap()
+            let row = app.buttons["outline-Second section"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(row, in: app), "the sheet did not list the headings")
+            attach(app, "outline-sheet")
+            row.tap()
+            wait(for: [expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: row)], timeout: 5)
         }
 
         /// The bar's AI and link fields are native, over the keyboard, on the word at the caret; ⋯ opens the block's
