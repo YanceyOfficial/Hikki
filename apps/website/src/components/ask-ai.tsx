@@ -14,25 +14,31 @@ const ACTIONS = [
   { title: 'Ask', items: ['Explain', 'Summarize'] }
 ]
 
-/** The three ways an edit can be reviewed (Settings → AI), shown on the same sentence. */
+/** The three ways an edit can be reviewed (Settings → AI), shown on the same sentence, each cropped to its panel. */
 const REVIEW_STYLES = [
   {
     id: 'inline',
     title: 'In the page.',
     text: 'Removed words struck through, new ones beside them; Accept, Discard or ask again.',
-    alt: 'An edit by AI in the page: the old words struck through and the new ones marked, with Accept and Discard.'
+    alt: 'An edit by AI in the page: the old words struck through and the new ones marked, with Accept and Discard.',
+    width: 1080,
+    height: 340
   },
   {
     id: 'diff',
     title: 'As a diff.',
     text: 'The old and the new line, one above the other, the page untouched until you accept.',
-    alt: 'An edit by AI as two lines, minus and plus, with the changed words marked.'
+    alt: 'An edit by AI as two lines, minus and plus, with the changed words marked.',
+    width: 1100,
+    height: 260
   },
   {
     id: 'bubble',
     title: 'With reasons.',
     text: 'Each change on its own line, and why the model made it.',
-    alt: 'An edit by AI as a list of changes, each with its reason, and a button to replace the selection.'
+    alt: 'An edit by AI as a list of changes, each with its reason, and a button to replace the selection.',
+    width: 1100,
+    height: 350
   }
 ]
 
@@ -41,7 +47,7 @@ export function AskAI() {
   return (
     <section id="ai" class={`${row} grid-cols-1 lg:grid-cols-12`}>
       <div class="cell bg-red p-8 md:p-12 lg:col-span-12">
-        <h2 class="expanded max-w-[48rem] text-[clamp(2.2rem,5vw,4.2rem)] leading-[1.02] font-[850] tracking-[-0.02em]">
+        <h2 class="expanded max-w-[48rem] text-[clamp(1.875rem,3.4vw,3rem)] leading-[1.05] font-[850] tracking-[-0.02em]">
           AI that works on your page, not around it.
         </h2>
         <p class="mt-6 max-w-[40rem] text-lg leading-relaxed">
@@ -79,7 +85,7 @@ export function AskAI() {
           <For each={ACTIONS}>
             {(group) => (
               <div>
-                <dt class="text-[13px] font-semibold opacity-75">{group.title}</dt>
+                <dt class="text-sm font-semibold opacity-75">{group.title}</dt>
                 <dd class="m-0 mt-2 flex flex-wrap gap-2">
                   <For each={group.items}>{(item) => <span class="ai-chip">{item}</span>}</For>
                 </dd>
@@ -102,11 +108,11 @@ export function AskAI() {
               <Shot
                 name={`review-${style.id}`}
                 alt={style.alt}
-                width={1800}
-                height={520}
+                width={style.width}
+                height={style.height}
                 class="w-full"
               />
-              <figcaption class="mt-2 text-[15px] leading-relaxed text-muted">
+              <figcaption class="text-caption mt-2 text-muted">
                 <strong class="text-ink">{style.title}</strong> {style.text}
               </figcaption>
             </figure>

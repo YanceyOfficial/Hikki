@@ -9,12 +9,14 @@ const MODES: { value: ThemeChoice; label: string; icon: () => JSX.Element }[] = 
   { value: 'dark', label: 'Dark', icon: MoonIcon }
 ]
 
+/** One choice for every switch on the page (the header draws one for phones and one for wider screens). */
+const [choice, setChoice] = createSignal<ThemeChoice>('system')
+
 /** Light, dark or the system's, as exodus's appearance switch: one row of three, the chosen one filled. */
-export function ThemeSwitch() {
-  const [choice, setChoice] = createSignal<ThemeChoice>('system')
+export function ThemeSwitch(props: { class?: string }) {
   onMount(() => setChoice(readTheme()))
   return (
-    <div class="theme-switch" role="radiogroup" aria-label="Appearance">
+    <div class={`theme-switch ${props.class ?? ''}`} role="radiogroup" aria-label="Appearance">
       <For each={MODES}>
         {(mode) => (
           <button

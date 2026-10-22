@@ -21,24 +21,24 @@
     "extract": {
       "left": 200,
       "top": 380,
-      "width": 1800,
-      "height": 520
+      "width": 1080,
+      "height": 340
     }
   },
   "review-diff": {
     "extract": {
-      "left": 200,
-      "top": 380,
-      "width": 1800,
-      "height": 520
+      "left": 900,
+      "top": 510,
+      "width": 1100,
+      "height": 260
     }
   },
   "review-bubble": {
     "extract": {
-      "left": 200,
-      "top": 380,
-      "width": 1800,
-      "height": 520
+      "left": 900,
+      "top": 510,
+      "width": 1100,
+      "height": 350
     }
   }
 }

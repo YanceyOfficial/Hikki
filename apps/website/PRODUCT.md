@@ -8,14 +8,16 @@ web
 
 ## Users
 
-People deciding whether to download Hikki for their Mac, iPhone or iPad — the same individual note-keepers and
-language learners the app serves (see the root `PRODUCT.md`). Inferred from the site's copy and structure; not yet
-confirmed with the user.
+People deciding whether to download Hikki for their Mac, iPhone or iPad — every individual note-keeper first, the
+language learners the app also serves among them (see the root `PRODUCT.md`). Confirmed with the user on 2026-10-23:
+the English headline leads the page; 筆記 is its mark, not its audience.
 
 ## Product Purpose
 
 The marketing site at hikki.yancey.app: shows the app, says what it is for, and links to the App Store once the
-listing exists (`APP_STORE_URL` in `src/site.ts`; "Coming to the App Store" meanwhile).
+listing exists (`APP_STORE_URL` in `src/site.ts`). Until then the status is a line, never a button, and the foot of the
+page offers what a visitor can do today: write to be told when it ships (`CONTACT_EMAIL`, a mailto for now — a
+notify-me form through the BFF may replace it) or watch the releases on GitHub (`GITHUB_URL`).
 
 ## Positioning
 

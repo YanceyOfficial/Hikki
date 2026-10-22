@@ -14,6 +14,14 @@
   --color-yellow: #f5c400;
   --color-blue: #1d4fa8;
   --color-muted: #4a4a4a;
+  /* The red as text on paper (readings, the sparkle): lighter in the dark, where the fill red is too dim to read. */
+  --color-red-ink: #d7003a;
+  /* A screenshot's frame: the line, except in the dark, where a black frame on charcoal vanished. */
+  --color-frame: #000000;
+
+  /* The small running size — captions, facts, the nav, the footer — between Tailwind's sm and base. */
+  --text-caption: 0.9375rem;
+  --text-caption--line-height: 1.5;
 
   --font-sans:
     'Archivo Variable', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', system-ui,
@@ -23,9 +31,16 @@
   --line: 10px;
 }
 
-/* Muted text on a yellow cell stays dark (unlayered, so it wins over the text-muted utility). */
+/*
+ * Secondary text on a coloured cell is tinted from that cell, never grey (unlayered, so these win over the
+ * text-muted utility): dark on yellow, plain white on red and blue — white at 80 % on the red fell to 3.7:1.
+ */
 .bg-yellow .text-muted {
   color: rgb(0 0 0 / 0.68);
+}
+.bg-red .text-muted,
+.bg-blue .text-muted {
+  color: #ffffff;
 }
 
 :root[data-theme='dark'] {
@@ -34,6 +49,8 @@
   --color-muted: #a7a5a0;
   --color-yellow: #e9b900;
   --color-blue: #2457b8;
+  --color-red-ink: #ff6b86;
+  --color-frame: #3a3a3a;
 }
 
 @layer base {
@@ -53,6 +70,22 @@
   :focus-visible {
     outline: 4px solid var(--color-blue);
     outline-offset: 3px;
+  }
+  /* Headings balance their lines; running text leaves no one-word last line. */
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p,
+  dd,
+  figcaption {
+    text-wrap: pretty;
+  }
+  /* Selected text is set in ink on paper, reversed — on every cell, whatever its colour. */
+  ::selection {
+    background: var(--color-ink);
+    color: var(--color-paper);
   }
 }
 
@@ -78,9 +111,8 @@
   .bg-yellow {
     color: #000000;
   }
-  /* The first screen's facts: a small grid ruled like the page. */
+  /* The first screen's facts: one cell of the canvas, ruled inside by thinner lines. */
   .hero-facts {
-    border: 4px solid var(--color-line);
     gap: 4px;
     background: var(--color-line);
   }
@@ -88,18 +120,13 @@
     background: var(--color-paper);
   }
 
-  /* An AI action on the blue cell. */
+  /* An AI action on the blue cell: a tinted tag, not a button. */
   .ai-chip {
     display: inline-block;
-    border: 2px solid rgb(255 255 255 / 0.55);
+    background: rgb(255 255 255 / 0.16);
     padding: 0.3rem 0.65rem;
-    font-size: 14px;
+    font-size: var(--text-sm);
     font-weight: 600;
-  }
-
-  /* The wordmark is drawn in black. */
-  :root[data-theme='dark'] .wordmark {
-    filter: invert(1);
   }
 
   /* Headings in Archivo's widest cut; body text at its normal width. */
@@ -121,9 +148,13 @@
   .furigana rt {
     font-family: var(--font-sans);
     font-weight: 600;
-    font-size: 0.24em;
+    font-size: 0.26em;
     letter-spacing: 0.08em;
-    color: var(--color-red);
+    color: var(--color-red-ink);
+  }
+  /* On a yellow cell the reading is set in the cell's own ink: the red on yellow is too faint. */
+  .bg-yellow .furigana rt {
+    color: currentColor;
   }
 
   /* The one moment of motion: the reading settles onto the word as the page opens. */
@@ -144,7 +175,7 @@
     display: block;
     max-width: 100%;
     height: auto;
-    border: 4px solid var(--color-line);
+    border: 4px solid var(--color-frame);
     background: var(--color-paper);
   }
   /* A screenshot comes in both appearances (Shot); the theme shows one. */
@@ -166,8 +197,8 @@
   .theme-switch button {
     display: grid;
     place-items: center;
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
     border: 0;
     background: var(--color-paper);
     color: var(--color-ink);
@@ -202,12 +233,17 @@
     background: var(--color-ink);
     color: var(--color-paper);
   }
-  .button[aria-disabled='true'] {
-    cursor: default;
+  /* On a coloured cell the button is set in the cell's text colour and reverses to it on hover. */
+  .bg-blue .button,
+  .bg-red .button {
+    border-color: #ffffff;
+    background: transparent;
+    color: #ffffff;
   }
-  .button[aria-disabled='true']:hover {
-    background: var(--color-paper);
-    color: var(--color-ink);
+  .bg-blue .button:hover,
+  .bg-red .button:hover {
+    background: #ffffff;
+    color: var(--color-line);
   }
 }
 

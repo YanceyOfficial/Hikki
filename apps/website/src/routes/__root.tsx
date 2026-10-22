@@ -25,7 +25,11 @@ export const Route = createRootRoute({
       { property: 'og:title', content: title },
       { property: 'og:description', content: description },
       { property: 'og:url', content: SITE_URL },
-      { property: 'og:image', content: `${SITE_URL}/shots/mac-hero.webp` },
+      // A JPEG: the scrapers that build link cards don't all read WebP.
+      { property: 'og:image', content: `${SITE_URL}/og.jpg` },
+      { property: 'og:image:type', content: 'image/jpeg' },
+      { property: 'og:image:width', content: '1200' },
+      { property: 'og:image:height', content: '760' },
       { name: 'twitter:card', content: 'summary_large_image' }
     ],
     links: [

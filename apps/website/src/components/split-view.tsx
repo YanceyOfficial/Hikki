@@ -6,7 +6,7 @@ export function SplitView() {
   return (
     <section id="split-view" class={`${row} grid-cols-1 lg:grid-cols-12`}>
       <div class="cell bg-yellow flex flex-col justify-between gap-10 p-8 md:p-12 lg:col-span-4">
-        <h2 class="expanded text-[clamp(2rem,4vw,3.2rem)] leading-[1.05] font-[850] tracking-[-0.02em]">
+        <h2 class="expanded text-[clamp(1.875rem,3.4vw,3rem)] leading-[1.05] font-[850] tracking-[-0.02em]">
           Two pages side by side.
         </h2>
         <div class="space-y-4 text-lg leading-relaxed">
@@ -28,7 +28,7 @@ export function SplitView() {
           height={1802}
           class="w-full rounded-[12px]"
         />
-        <figcaption class="text-[15px] leading-relaxed text-muted">
+        <figcaption class="text-caption text-muted">
           <strong class="text-ink">Split view on Mac.</strong> On iPad too.
         </figcaption>
       </figure>

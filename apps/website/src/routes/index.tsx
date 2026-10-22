@@ -2,8 +2,8 @@ import { createFileRoute } from '@tanstack/solid-router'
 import type { JSX } from 'solid-js'
 import { For } from 'solid-js'
 
-import { AppStoreButton } from '../components/app-store-button'
 import { AskAI } from '../components/ask-ai'
+import { Closing } from '../components/closing'
 import { Footer } from '../components/footer'
 import { Header } from '../components/header'
 import { row } from '../components/row'
@@ -22,7 +22,7 @@ function Home() {
       <SplitView />
       <AskAI />
       <Features />
-      <Together />
+      <Closing />
       <Footer />
     </main>
   )
@@ -32,35 +32,35 @@ function Home() {
 const HERO_FACTS = [
   { title: 'Local-first', text: 'Pages are files in a folder you choose.' },
   { title: 'No telemetry', text: 'Nothing about how you use it leaves the device.' },
-  { title: 'Native', text: 'SwiftUI on iPhone, iPad and Mac.' },
-  { title: 'AI on your key', text: 'OpenAI or Anthropic, only when you ask.' }
+  { title: 'Native', text: 'Made for iPhone, iPad and Mac, each in its own way.' },
+  { title: 'AI, your key', text: 'Your own OpenAI or Anthropic key, used only when you ask.' }
 ]
 
+/**
+ * The first screen: the headline leads, with the word Hikki comes from as its mark — large on a wide screen, small
+ * beside the headline on a phone, its meaning right under it either way — and the screenshot beside; the four
+ * facts under the screenshot, where they have room at every width.
+ */
 function Hero() {
   return (
     <section class={`${row} grid-cols-1 lg:grid-cols-12 lg:grid-rows-[1fr_auto]`}>
-      <div class="cell flex flex-col justify-between gap-10 p-8 md:p-10 lg:col-span-4 lg:row-span-2">
-        <ruby class="furigana self-start text-[clamp(6rem,13vw,10.5rem)]" aria-label="Hikki (筆記)">
-          筆記<rt>ひっき</rt>
-        </ruby>
-        <dl class="hero-facts m-0 grid grid-cols-2 lg:hidden 2xl:grid">
-          <For each={HERO_FACTS}>
-            {(fact) => (
-              <div class="p-4">
-                <dt class="expanded text-[15px] font-[800]">{fact.title}</dt>
-                <dd class="m-0 mt-1 text-[14px] leading-snug text-muted">{fact.text}</dd>
-              </div>
-            )}
-          </For>
-        </dl>
+      <div class="cell flex flex-col gap-8 p-8 md:p-10 lg:col-span-4 lg:row-span-2 lg:gap-10">
+        <div>
+          <ruby lang="ja" class="furigana text-[3rem] lg:text-[clamp(5rem,10vw,9rem)]">
+            筆記<rt>ひっき</rt>
+          </ruby>
+          <p class="text-caption m-0 mt-3 max-w-[30rem] text-muted">
+            <span lang="ja">筆記</span> (hikki) is Japanese for taking notes. Hikki sets readings
+            like that above the kanji in your own pages.
+          </p>
+        </div>
         <div class="max-w-[34rem]">
-          <h1 class="expanded text-[clamp(2.2rem,3.4vw,3.4rem)] leading-[1.04] font-[850] tracking-[-0.02em]">
+          <h1 class="expanded text-[clamp(2.5rem,4.2vw,4.25rem)] leading-[1.02] font-[850] tracking-[-0.02em]">
             Notes that stay on your devices.
           </h1>
           <p class="mt-6 text-lg leading-relaxed text-muted">
-            Hikki is a block editor for iPhone, iPad and Mac: native SwiftUI around a Tiptap editor.
-            Every page is a file in a folder you choose, so your writing never waits on an account
-            or a server. And there is no telemetry: nothing about how you use it leaves your device.
+            Hikki is a block editor for iPhone, iPad and Mac. Every page is a file in a folder you
+            choose, so your writing never waits on an account or a server.
           </p>
         </div>
       </div>
@@ -74,13 +74,16 @@ function Hero() {
           eager
         />
       </div>
-      <div class={`${row} grid-cols-[1fr_3fr] lg:col-span-8`}>
-        <div class="cell bg-yellow" />
-        <p class="cell bg-blue p-6 text-[15px] leading-relaxed">
-          <span lang="ja">筆記</span> (hikki) is Japanese for taking notes. Hikki shows readings
-          like that above the kanji in your own pages.
-        </p>
-      </div>
+      <dl class="hero-facts m-0 grid grid-cols-2 lg:col-span-8 lg:grid-cols-4">
+        <For each={HERO_FACTS}>
+          {(fact) => (
+            <div class="p-4 md:p-5">
+              <dt class="expanded text-caption font-[800]">{fact.title}</dt>
+              <dd class="m-0 mt-1 text-sm leading-snug text-muted">{fact.text}</dd>
+            </div>
+          )}
+        </For>
+      </dl>
     </section>
   )
 }
@@ -105,7 +108,7 @@ function LocalFirst() {
   return (
     <section id="local-first" class={`${row} grid-cols-1 lg:grid-cols-12`}>
       <div class="cell p-8 md:p-12 lg:col-span-5">
-        <h2 class="expanded text-[clamp(2rem,4vw,3.2rem)] leading-[1.05] font-[850] tracking-[-0.02em]">
+        <h2 class="expanded text-[clamp(1.875rem,3.4vw,3rem)] leading-[1.05] font-[850] tracking-[-0.02em]">
           Your notes are files.
         </h2>
         <p class="mt-6 max-w-[32rem] text-lg leading-relaxed text-muted">
@@ -113,7 +116,7 @@ function LocalFirst() {
           reach every device you own. Copy it, back it up, read it with any tool. Hikki keeps a
           search index beside it and can always rebuild it from the files.
         </p>
-        <pre class="border-ink bg-paper mt-8 overflow-x-auto border-4 p-5 font-mono text-[14px] leading-7">
+        <pre class="border-ink bg-paper mt-8 overflow-x-auto border-4 p-5 font-mono text-sm leading-7">
           {`Notes/
   pages/
     product-launch.json
@@ -129,11 +132,11 @@ function LocalFirst() {
               class={`cell p-6 md:p-8 ${index() === 0 ? 'bg-yellow' : ''} ${index() === 3 ? 'bg-blue' : ''}`}
             >
               <h3 class="expanded text-xl font-[800]">{fact.title}</h3>
-              <p class={`mt-3 leading-relaxed ${index() === 3 ? '' : 'text-muted'}`}>{fact.text}</p>
+              <p class="mt-3 leading-relaxed text-muted">{fact.text}</p>
             </li>
           )}
         </For>
-        <li class="cell bg-red" aria-hidden="true" />
+        <li class="cell bg-red hidden sm:block" aria-hidden="true" />
       </ul>
     </section>
   )
@@ -143,7 +146,7 @@ function Devices() {
   return (
     <section id="devices" class={`${row} grid-cols-1 lg:grid-cols-12`}>
       <div class="cell p-8 md:p-12 lg:col-span-12">
-        <h2 class="expanded text-[clamp(2rem,4vw,3.2rem)] leading-[1.05] font-[850] tracking-[-0.02em]">
+        <h2 class="expanded text-[clamp(1.875rem,3.4vw,3rem)] leading-[1.05] font-[850] tracking-[-0.02em]">
           One app for iPhone, iPad and Mac.
         </h2>
         <p class="mt-4 max-w-[40rem] text-lg leading-relaxed text-muted">
@@ -158,7 +161,7 @@ function Devices() {
           height={1802}
           class="w-full rounded-[12px]"
         />
-        <figcaption class="text-[15px] leading-relaxed text-muted">
+        <figcaption class="text-caption text-muted">
           <strong class="text-ink">Mac.</strong> Native windows, tabs, menus and keyboard shortcuts.
         </figcaption>
       </figure>
@@ -170,7 +173,7 @@ function Devices() {
           height={2622}
           class="w-[min(70%,260px)] rounded-[34px]"
         />
-        <figcaption class="self-start text-[15px] leading-relaxed">
+        <figcaption class="text-caption self-start">
           <strong>iPhone.</strong> One hand: the page tree in a drawer, actions in a floating bar.
         </figcaption>
       </figure>
@@ -182,7 +185,7 @@ function Devices() {
           height={2064}
           class="w-full rounded-[18px]"
         />
-        <figcaption class="text-[15px] leading-relaxed">
+        <figcaption class="text-caption">
           <strong>iPad.</strong> Sidebar, tabs and two pages side by side.
         </figcaption>
       </figure>
@@ -196,8 +199,7 @@ function Devices() {
           class="mx-auto w-[min(62%,230px)] rounded-[30px]"
         />
         <p class="leading-relaxed text-muted">
-          Put the folder in iCloud Drive and what you write on one shows up on the others. Two
-          devices editing the same page keep both versions.
+          Put the folder in iCloud Drive and what you write on one shows up on the others.
         </p>
       </div>
     </section>
@@ -208,7 +210,7 @@ function Features() {
   return (
     <section id="features" class={`${row} grid-cols-1 md:grid-cols-6 lg:grid-cols-12`}>
       <div class="cell p-8 md:col-span-6 md:p-12 lg:col-span-7 lg:row-span-2">
-        <h2 class="expanded text-[clamp(2rem,4vw,3.2rem)] leading-[1.05] font-[850] tracking-[-0.02em]">
+        <h2 class="expanded text-[clamp(1.875rem,3.4vw,3rem)] leading-[1.05] font-[850] tracking-[-0.02em]">
           Write in blocks.
         </h2>
         <p class="mt-6 max-w-[34rem] text-lg leading-relaxed text-muted">
@@ -227,7 +229,7 @@ function Features() {
         title="Readings for kanji"
         text="Select a word and Hikki suggests its furigana, then sets it above the text."
       >
-        <p lang="ja" class="furigana mt-5 text-4xl">
+        <p lang="ja" class="furigana mt-6 text-[clamp(3rem,4.5vw,3.75rem)]">
           <ruby>
             毎日<rt>まいにち</rt>
           </ruby>
@@ -257,7 +259,7 @@ function Features() {
         title="Markdown in, Markdown out"
         text="Import Markdown, HTML and text files or whole folders. Export a page or everything as Markdown, HTML, PDF or the original files."
       />
-      <div class="cell bg-blue md:col-span-2 lg:col-span-4" aria-hidden="true" />
+      <div class="cell bg-blue hidden md:col-span-2 md:block lg:col-span-4" aria-hidden="true" />
     </section>
   )
 }
@@ -266,28 +268,8 @@ function Feature(props: { class?: string; title: string; text: string; children?
   return (
     <article class={`cell p-6 md:p-8 ${props.class ?? ''}`}>
       <h3 class="expanded text-xl font-[800]">{props.title}</h3>
-      <p class="mt-3 max-w-[30rem] leading-relaxed opacity-80">{props.text}</p>
+      <p class="mt-3 max-w-[30rem] leading-relaxed text-muted">{props.text}</p>
       {props.children}
     </article>
-  )
-}
-
-function Together() {
-  return (
-    <section class={`${row} grid-cols-1 lg:grid-cols-12`}>
-      <div class="cell bg-yellow lg:col-span-1" aria-hidden="true" />
-      <div class="cell bg-blue p-8 md:p-12 lg:col-span-8">
-        <h2 class="expanded text-[clamp(2rem,4vw,3.2rem)] leading-[1.05] font-[850] tracking-[-0.02em]">
-          Editing together is on its way.
-        </h2>
-        <p class="mt-6 max-w-[36rem] text-lg leading-relaxed">
-          Share a page and write in it with someone else, at the same time. It is in development
-          now, built on the same files, so your notes stay yours.
-        </p>
-      </div>
-      <div class="cell flex items-end p-8 md:p-12 lg:col-span-3">
-        <AppStoreButton />
-      </div>
-    </section>
   )
 }
