@@ -137,6 +137,10 @@ function Privacy() {
                 </li>
               </ul>
               <p>
+                Buying Hikki happens through the App Store: Apple takes the payment and tells the
+                app only that it was bought. Hikki never learns who you are.
+              </p>
+              <p>
                 That is the whole list. No analytics, no advertising, no crash reports sent to
                 anyone.
               </p>

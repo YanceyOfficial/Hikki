@@ -23,6 +23,14 @@ notify-me form through the BFF may replace it) or watch the releases on GitHub (
 
 The root `PRODUCT.md`'s two claims, in the visitor's words: your notes stay files you own; AI with your own keys.
 
+## Price
+
+Decided 2026-10-23: one purchase for iPhone, iPad and Mac together, $19.99; free to download with everything open for
+14 days, then an in-app unlock (the App Store has no trials of its own); $14.99 in the first weeks after launch.
+No subscription: Hikki runs no server for notes (iCloud Drive syncs, AI runs on the user's keys), so there is no
+recurring cost to pass on; editing together, when it comes, may be its own add-on since it will need a server.
+`PRICE`, `LAUNCH_PRICE` and `TRIAL_DAYS` in `src/site.ts` are the one place the numbers live.
+
 ## Operating Context
 
 TanStack Start + Solid, SSR on Vercel; its own Mondrian palette (not the app's tokens); light / dark / system theme;

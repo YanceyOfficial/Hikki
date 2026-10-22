@@ -1,6 +1,6 @@
 import { For } from 'solid-js'
 
-import { PRIVACY_PATH, REQUIREMENTS } from '../site'
+import { LAUNCH_PRICE, PRICE, PRIVACY_PATH, REQUIREMENTS, TRIAL_DAYS } from '../site'
 import { row } from './row'
 import { StoreActions } from './store'
 
@@ -8,6 +8,11 @@ import { StoreActions } from './store'
 const DOWNLOAD_FACTS = [
   { id: 'requirements', title: 'Runs on', text: `iPhone, iPad and Mac: ${REQUIREMENTS}.` },
   { id: 'account', title: 'Account', text: 'None. Open the app and write.' },
+  {
+    id: 'price',
+    title: 'Price',
+    text: `Free to download, with everything open for ${TRIAL_DAYS} days. Then ${PRICE}, once, for iPhone, iPad and Mac together; ${LAUNCH_PRICE} in its first weeks.`
+  },
   {
     id: 'privacy',
     title: 'Privacy',

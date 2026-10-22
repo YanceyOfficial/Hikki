@@ -23,3 +23,11 @@ export const notifyLink = (subject: string) =>
 
 /** The privacy policy: what the app stores, what leaves the device and when. The App Store listing links it too. */
 export const PRIVACY_PATH = '/privacy'
+
+/**
+ * The price, decided 2026-10-23: one purchase for iPhone, iPad and Mac together; free to download with everything
+ * open for 14 days, then an in-app unlock; a lower price in the first weeks after launch.
+ */
+export const PRICE = '$19.99'
+export const LAUNCH_PRICE = '$14.99'
+export const TRIAL_DAYS = 14
