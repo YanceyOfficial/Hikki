@@ -1,0 +1,309 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-22T13:13:03Z",
+  "title": "Design System: Hikki",
+  "extensions": {
+    "colorMeta": {
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#262626",
+          "#434343",
+          "#616161",
+          "#7e7e7e",
+          "#9b9b9b",
+          "#b8b8b8",
+          "#d5d5d5",
+          "#f2f2f2"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#37352f",
+        "tonalRamp": [
+          "#292823",
+          "#49463e",
+          "#686459",
+          "#888374",
+          "#a39f93",
+          "#bebbb2",
+          "#d8d7d2",
+          "#f3f3f1"
+        ]
+      },
+      "sidebar-paper": {
+        "role": "neutral",
+        "displayName": "Sidebar Paper",
+        "canonical": "#f8f8f7",
+        "tonalRamp": [
+          "#292924",
+          "#48483f",
+          "#67675a",
+          "#868675",
+          "#a2a294",
+          "#bdbdb3",
+          "#d8d8d2",
+          "#f3f3f1"
+        ]
+      },
+      "card-dark": {
+        "role": "neutral",
+        "displayName": "Card (night)",
+        "canonical": "#252525",
+        "tonalRamp": [
+          "#262626",
+          "#434343",
+          "#616161",
+          "#7e7e7e",
+          "#9b9b9b",
+          "#b8b8b8",
+          "#d5d5d5",
+          "#f2f2f2"
+        ]
+      },
+      "kurenai-seal": {
+        "role": "primary",
+        "displayName": "Kurenai Seal",
+        "canonical": "#cb1b45",
+        "tonalRamp": [
+          "#440917",
+          "#771028",
+          "#aa173a",
+          "#de1e4b",
+          "#e74e73",
+          "#ee829c",
+          "#f5b5c4",
+          "#fce8ed"
+        ]
+      },
+      "kurenai-ink-dark": {
+        "role": "primary",
+        "displayName": "Kurenai Ink (night)",
+        "canonical": "#db617e",
+        "tonalRamp": [
+          "#3e0e1a",
+          "#6e192d",
+          "#9d2441",
+          "#cd2f54",
+          "#da5c7a",
+          "#e58ba1",
+          "#efbbc7",
+          "#faeaee"
+        ]
+      },
+      "favorite": {
+        "role": "tertiary",
+        "displayName": "Favorite",
+        "canonical": "#f2b705",
+        "tonalRamp": [
+          "#4b3902",
+          "#846403",
+          "#bd8f04",
+          "#f6ba05",
+          "#fbcb3b",
+          "#fcda74",
+          "#fde9ad",
+          "#fef8e6"
+        ]
+      },
+      "destructive": {
+        "role": "tertiary",
+        "displayName": "Destructive",
+        "canonical": "#e03e3e",
+        "tonalRamp": [
+          "#420b0b",
+          "#741313",
+          "#a61b1b",
+          "#d92323",
+          "#e35252",
+          "#eb8585",
+          "#f3b7b7",
+          "#fbe9e9"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "title": {
+        "displayName": "Title",
+        "purpose": "The page's title, once; 30 px on a phone."
+      },
+      "heading": {
+        "displayName": "Heading",
+        "purpose": "H1–H4 inside the page, in em so they scale with the body."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "The page's words — the largest text on any screen; follows Dynamic Type on iOS."
+      },
+      "ui": {
+        "displayName": "UI",
+        "purpose": "Menus, rows, sheets, settings (Notion's 13 px)."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Section titles, chips, timestamps, in Ink Muted."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Code, coloured by the syntax tokens."
+      }
+    },
+    "shadows": [
+      {
+        "name": "popover",
+        "value": "0 0 0 1px rgba(15,15,15,0.05), 0 3px 6px rgba(15,15,15,0.1), 0 9px 24px rgba(15,15,15,0.2)",
+        "purpose": "Anything that floats over the page; the only shadow."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.25, 1, 0.5, 1)",
+        "purpose": "Everything that appears or reacts (200 ms in, 150 ms out)."
+      },
+      {
+        "name": "ease-in-out",
+        "value": "cubic-bezier(0.77, 0, 0.175, 1)",
+        "purpose": "The few things that move from place to place."
+      },
+      {
+        "name": "loop",
+        "value": "1400ms",
+        "purpose": "The one loop: the AI-at-work shimmer; a spinner under Reduce Motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone-column",
+        "value": "640px",
+        "purpose": "Below it the title is 30 px and the page margins 24 px."
+      },
+      {
+        "name": "home-narrow",
+        "value": "600px",
+        "purpose": "Home becomes a list instead of a table."
+      },
+      {
+        "name": "comments-margin",
+        "value": "1240px",
+        "purpose": "Comment cards move into the right margin."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one seal on a screen: Send, Save, the phone's pencil.",
+      "html": "<button class=\"ds-btn-primary\">Save</button>",
+      "css": ".ds-btn-primary { background: #cb1b45; color: #fff; font: 500 13px/1.4 -apple-system, system-ui, sans-serif; padding: 6px 12px; border: 0; border-radius: 6px; transition: transform 150ms cubic-bezier(0.25,1,0.5,1), background 200ms cubic-bezier(0.25,1,0.5,1); } .ds-btn-primary:hover { background: #b8183e; } .ds-btn-primary:active { transform: scale(0.97); } .ds-btn-primary:focus-visible { outline: 2px solid rgba(28,28,28,0.3); outline-offset: 2px; }"
+    },
+    {
+      "name": "Ghost Button / Menu Row",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Rows in menus, lists and panels; hover is the wash, press 97 %.",
+      "html": "<button class=\"ds-row\"><span class=\"ds-row-icon\" aria-hidden=\"true\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M216 48H40a16 16 0 0 0-16 16v128a16 16 0 0 0 16 16h176a16 16 0 0 0 16-16V64a16 16 0 0 0-16-16Zm0 144H40V64h176v128Z\"/></svg></span>Turn into</button>",
+      "css": ".ds-row { display: flex; align-items: center; gap: 8px; width: 100%; height: 31px; padding: 0 8px; background: transparent; color: #37352f; font: 400 13px/1.4 -apple-system, system-ui, sans-serif; border: 0; border-radius: 6px; text-align: left; transition: background 200ms cubic-bezier(0.25,1,0.5,1), transform 150ms cubic-bezier(0.25,1,0.5,1); } .ds-row:hover { background: rgba(55,53,47,0.06); } .ds-row:active { transform: scale(0.97); } .ds-row-icon { display: inline-flex; color: rgba(55,53,47,0.65); }"
+    },
+    {
+      "name": "Quiet Toolbar Icon",
+      "kind": "button",
+      "refersTo": "toolbar-icon-quiet",
+      "description": "The phone keyboard bar's tool: a muted glyph; on = the glyph in the seal, no box.",
+      "html": "<button class=\"ds-tool\" aria-label=\"Format\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M208 56v32a8 8 0 0 1-16 0V64h-56v128h24a8 8 0 0 1 0 16H96a8 8 0 0 1 0-16h24V64H64v24a8 8 0 0 1-16 0V56a8 8 0 0 1 8-8h144a8 8 0 0 1 8 8Z\"/></svg></button><button class=\"ds-tool ds-tool-on\" aria-label=\"Add block\" aria-pressed=\"true\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 256 256\" fill=\"currentColor\"><path d=\"M224 128a8 8 0 0 1-8 8h-80v80a8 8 0 0 1-16 0v-80H40a8 8 0 0 1 0-16h80V40a8 8 0 0 1 16 0v80h80a8 8 0 0 1 8 8Z\"/></svg></button>",
+      "css": ".ds-tool { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 8px; color: rgba(55,53,47,0.65); transition: color 200ms cubic-bezier(0.25,1,0.5,1), transform 150ms cubic-bezier(0.25,1,0.5,1); } .ds-tool:hover { color: #37352f; } .ds-tool:active { transform: scale(0.97); } .ds-tool-on { color: #cb1b45; }"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "A text field: paper, a field line, an ink ring on focus.",
+      "html": "<input class=\"ds-field\" placeholder=\"Page title\" />",
+      "css": ".ds-field { width: 100%; box-sizing: border-box; padding: 6px 10px; background: #fff; color: #37352f; font: 400 13px/1.4 -apple-system, system-ui, sans-serif; border: 1px solid rgba(55,53,47,0.16); border-radius: 6px; outline: none; transition: box-shadow 200ms cubic-bezier(0.25,1,0.5,1); } .ds-field::placeholder { color: rgba(55,53,47,0.3); } .ds-field:focus-visible { box-shadow: 0 0 0 2px rgba(28,28,28,0.3); }"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "A filter or context chip; selected is the stronger wash.",
+      "html": "<span class=\"ds-chip\">All</span> <span class=\"ds-chip ds-chip-on\">Titles</span>",
+      "css": ".ds-chip { display: inline-block; padding: 4px 10px; background: rgba(55,53,47,0.06); color: #37352f; font: 500 12px/1.3 -apple-system, system-ui, sans-serif; border-radius: 9999px; transition: background 200ms cubic-bezier(0.25,1,0.5,1); } .ds-chip:hover { background: rgba(55,53,47,0.1); } .ds-chip-on { background: rgba(55,53,47,0.1); }"
+    },
+    {
+      "name": "Link Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "A link preview or embed in the page: hairline, 12 px corners, no shadow.",
+      "html": "<a class=\"ds-card\" href=\"#\"><span class=\"ds-card-title\">Preparing your app for iPhone</span><span class=\"ds-card-meta\">developer.apple.com</span></a>",
+      "css": ".ds-card { display: flex; flex-direction: column; gap: 4px; padding: 16px; background: #fff; color: #37352f; border: 1px solid rgba(55,53,47,0.09); border-radius: 12px; text-decoration: none; font: 400 13px/1.4 -apple-system, system-ui, sans-serif; transition: background 200ms cubic-bezier(0.25,1,0.5,1); } .ds-card:hover { background: rgba(55,53,47,0.06); } .ds-card-title { font-weight: 500; } .ds-card-meta { color: rgba(55,53,47,0.45); font-size: 12px; }"
+    },
+    {
+      "name": "Toast",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "A failure or a note over the page: card, popover shadow, a code reference, one ghost action.",
+      "html": "<div class=\"ds-toast\" role=\"status\"><span class=\"ds-toast-dot\" aria-hidden=\"true\"></span><span class=\"ds-toast-body\"><span>This page is in the Trash</span></span><button class=\"ds-toast-action\">Restore</button></div>",
+      "css": ".ds-toast { display: flex; align-items: center; gap: 10px; max-width: 420px; padding: 10px 12px; background: #fff; color: #37352f; border-radius: 8px; box-shadow: 0 0 0 1px rgba(15,15,15,0.05), 0 3px 6px rgba(15,15,15,0.1), 0 9px 24px rgba(15,15,15,0.2); font: 500 14px/1.4 -apple-system, system-ui, sans-serif; } .ds-toast-dot { width: 8px; height: 8px; border-radius: 50%; background: #f2b705; } .ds-toast-body { flex: 1; } .ds-toast-action { padding: 4px 8px; background: rgba(55,53,47,0.06); color: #37352f; border: 0; border-radius: 6px; font: 500 12px/1.3 -apple-system, system-ui, sans-serif; } .ds-toast-action:hover { background: rgba(55,53,47,0.1); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Study Desk",
+    "overview": "Hikki looks like a quiet desk someone studies at: white paper, one warm ink, and a single red seal. Everything a person wrote sits on the paper in a system face set generously; everything the app says around it is smaller, quieter and drawn from the same ink at a lower strength. The seal, Kurenai, is the only chromatic voice: it marks the one thing on a screen and nothing else. The density is Notion's; the materials are the platform's, so brand lives in the ink, the seal and the typography, not in chrome.",
+    "keyCharacteristics": [
+      "One ink at many strengths; one seal, used once per screen.",
+      "The platform's own chrome, our tokens inside it; the same tokens on both renderers.",
+      "Reading first: the page's words are the largest, most contrasted thing on any screen.",
+      "Quiet motion from one pair of curves; nothing loops but the AI-at-work shimmer.",
+      "CJK and Latin as equals."
+    ],
+    "rules": [
+      {
+        "name": "The One Seal Rule",
+        "body": "Kurenai marks at most one thing per screen, and that thing is an action or a state — never decoration, never a heading, never an illustration.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ink Wash Rule",
+        "body": "Every grey is the ink at an alpha. There is no second grey.",
+        "section": "colors"
+      },
+      {
+        "name": "The Reading Rule",
+        "body": "On any screen the page's words are the largest, highest-contrast text; the app's words never compete. Nothing in the UI goes above 20 px except a title.",
+        "section": "typography"
+      },
+      {
+        "name": "The Scaled Rule",
+        "body": "On iOS every native size scales with the system text size, and the page's words with it; a fixed point size is a bug.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Page Rule",
+        "body": "Surfaces are flat at rest; a shadow means \"this floats and will go away\".",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do take every colour, size, radius and duration from design/tokens.json; make lint-design refuses literals.",
+      "Do mark exactly one thing per screen with Kurenai, and make it an action or a state.",
+      "Do build greys as the ink at an alpha (6 / 8 / 9 / 10 / 16 / 30 / 45 / 65 %) — pick the strength, not a hue.",
+      "Do use the platform's component for anything the platform has and the shadcn component on the web; never a bare <button> or <input>.",
+      "Do move everything with the one pair of curves (ease-out 200 ms in, 150 ms out); loop only the AI shimmer, and honour Reduce Motion.",
+      "Do draw icons from one list: SF Symbols natively and inside the page on iOS, Phosphor on the Mac's page — one weight, baseline-aligned.",
+      "Do keep the page's words at 16 px / 1.5 on a 708 px column and let them scale with the reader's text size."
+    ],
+    "donts": [
+      "Don't add gradients, gradient text, coloured glows, glass as decoration, or a second accent.",
+      "Don't put a shadow on anything that doesn't float, or a coloured left border on cards, callouts or alerts.",
+      "Don't introduce a grey that isn't the ink, a radius that isn't on the scale, or a duration of its own.",
+      "Don't let UI text grow past 20 px, or use the title size anywhere but the page's title.",
+      "Don't decorate with emoji or Unicode glyphs where an icon belongs.",
+      "Don't reintroduce a custom title bar or custom navigation; the window chrome is the system's."
+    ]
+  }
+}
