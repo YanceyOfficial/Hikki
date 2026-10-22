@@ -1,3 +1,4 @@
+import HikkiAI
 import HikkiCore
 import HikkiUI
 import SwiftUI
@@ -168,6 +169,7 @@ struct PageScreen: View {
             }
             .animation(Motion.easeOut(), value: editor.webView.keyboardBar?.composer)
             .animation(Motion.easeOut(), value: keyboardShown)
+            .animation(Motion.easeOut(), value: editor.webView.keyboardBar?.shown)
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
                 keyboardShown = true
             }
@@ -201,8 +203,11 @@ struct PageScreen: View {
     }
 
     #if os(iOS)
-        /// iPhone with the keyboard down — and no vertical bar to hold its buttons.
-        private var showsFloatingBar: Bool { phoneToolbar && !keyboardShown && verticalBar == nil && !editor.fullScreen }
+        /// iPhone with the keyboard down — and no keyboard bar up (a hardware keyboard shows the bar alone, with no
+        /// keyboard notification), and no vertical bar to hold its buttons.
+        private var showsFloatingBar: Bool {
+            phoneToolbar && !keyboardShown && editor.webView.keyboardBar?.shown != true && verticalBar == nil && !editor.fullScreen
+        }
 
         /// The keyboard bar's photo / file sheet.
         private var mediaSheetShown: Binding<Bool> {
@@ -425,8 +430,9 @@ extension PageExport.Format {
     }
 }
 
-/// The page's facts as quiet lines at the end of its ⋯ menu: where it is, when it was made and edited, its size.
-private struct PageFacts: View {
+/// The page's facts as quiet lines at the end of its ⋯ menu: where it is, when it was made and edited, its size —
+/// and what only Hikki can say: the folder its file lives in, and whose AI key is in use.
+struct PageFacts: View {
     @Environment(AppModel.self) private var model
     let page: PageSummary
     let editor: EditorController?
@@ -442,7 +448,38 @@ private struct PageFacts: View {
         if let info = editor?.pageInfo, info.docId == page.id {
             Text("app:page.stats \(info.words.formatted()) \(info.characters.formatted())")
         }
+        Text("app:page.storedIn \(Self.storageText(model))")
+        Text("app:page.aiOn \(Self.aiText())")
     }
+
+    /// Where the page's file lives, and how the folder is doing: "On this device", or the folder's name with the last
+    /// sync — "iCloud Drive · synced 2 min ago", "… · not synced yet", "… · not syncing".
+    static func storageText(_ model: AppModel) -> String {
+        switch model.workspace?.location {
+        case .device?, nil:
+            return String(localized: "app:page.storage.device")
+        case .folder(_, let name)?:
+            let state: String =
+                if model.syncError != nil {
+                    String(localized: "app:page.sync.off")
+                } else if let last = model.lastSync {
+                    String(localized: "app:page.sync.at \(last.at.formatted(.relative(presentation: .named)))")
+                } else {
+                    String(localized: "app:page.sync.never")
+                }
+            return String(localized: "app:common.joined \(name) \(state)")
+        }
+    }
+
+    /// Whose key the AI runs on: the providers with a key ("your OpenAI key"), or none.
+    static func aiText() -> String {
+        let providers = AIProvider.allCases.filter { AIPreferences.key($0) != nil }.map(\.name)
+        guard !providers.isEmpty else { return String(localized: "app:page.ai.noKey") }
+        return String(localized: "app:page.ai.keys \(providers.joined(separator: " · "))")
+    }
+
+    static func storage(_ model: AppModel) -> some View { Text(verbatim: storageText(model)) }
+    static func ai() -> some View { Text(verbatim: aiText()) }
 }
 
 #if os(iOS)

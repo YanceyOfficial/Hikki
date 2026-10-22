@@ -40,10 +40,25 @@ public nonisolated enum Theme {
 }
 
 extension Font {
-    /// Token-sized system font: `.font(.hk(.xs, .medium))`.
+    /// Token-sized system font: `.font(.hk(.xs, .medium))`. On iOS the size follows the system text size (Dynamic
+    /// Type, as the Body style scales — 1× at the default size); the Mac has one size.
     public static func hk(_ size: TextSize, _ weight: Font.Weight = .regular, design: Font.Design = .default) -> Font {
-        .system(size: size.rawValue, weight: weight, design: design)  // design-lint: allow
+        .system(size: TextSize.scaled(size.rawValue), weight: weight, design: design)  // design-lint: allow
     }
+}
+
+extension TextSize {
+    /// A token size as the system text size scales it (iOS: Body's metrics; the Mac: as is).
+    public static func scaled(_ points: CGFloat) -> CGFloat {
+        #if os(iOS)
+            UIFontMetrics(forTextStyle: .body).scaledValue(for: points)
+        #else
+            points
+        #endif
+    }
+
+    /// The factor the system text size puts on text (1 at the default size): what the page takes for its own words.
+    public static var scale: CGFloat { scaled(TextSize.lg.rawValue) / TextSize.lg.rawValue }
 }
 
 #if os(iOS)

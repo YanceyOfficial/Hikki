@@ -22,6 +22,7 @@ extension ErrorCode {
         case .blockMoveFailed: String(localized: "app:error.blockMoveFailed")
         case .blockMoveLocked: String(localized: "app:error.blockMoveLocked")
         case .reminderUpdateFailed: String(localized: "app:error.reminderUpdateFailed")
+        case .pageLinkMissing: String(localized: "app:error.pageLinkMissing")
         case .workspaceUnavailable: String(localized: "app:error.workspaceUnavailable")
         case .workspaceSyncFailed: String(localized: "app:error.workspaceSyncFailed")
         case .workspaceOpenFailed: String(localized: "app:error.workspaceOpenFailed")

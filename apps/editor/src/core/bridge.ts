@@ -1196,6 +1196,16 @@ export class EditorBridge {
     window.getSelection()?.removeAllRanges()
   }
 
+  /**
+   * iOS's text size (Settings → Display → Text Size, Dynamic Type) as a factor on the page's words — the title and
+   * the body, not the UI around them (`--hk-text-scale`). Clamped: the accessibility sizes go past what a column of
+   * text can take.
+   */
+  setTextScale(scale: number): void {
+    const clamped = Number.isFinite(scale) ? Math.min(2, Math.max(0.85, scale)) : 1
+    document.documentElement.style.setProperty('--hk-text-scale', String(clamped))
+  }
+
   /** The page's hover rail: to the heading at this place in the outline (where it is now, looked up again). */
   scrollToHeading(index: number): void {
     const editor = this.editor

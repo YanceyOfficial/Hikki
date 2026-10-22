@@ -137,6 +137,12 @@
                     Fact(label: "app:page.createdLabel") { Text(page.createdAt, format: .dateTime.year().month().day()) }
                     Fact(label: "app:page.editedLabel") { Text(page.updatedAt, format: .relative(presentation: .named)) }
                 }
+                // What only Hikki can say about the page: it is a file in the user's own folder, and the AI runs on
+                // the user's own key.
+                GridRow {
+                    Fact(label: "app:page.storageLabel") { PageFacts.storage(model) }
+                    Fact(label: "app:page.aiLabel") { PageFacts.ai() }
+                }
             }
             .padding(.horizontal, Spacing.s1)
         }

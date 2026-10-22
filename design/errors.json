@@ -98,6 +98,12 @@
       "en": "Couldn't update the reminder.",
       "zh": "无法更新提醒。"
     },
+    "pageLinkMissing": {
+      "code": 2014,
+      "severity": "warning",
+      "en": "The page this link points to no longer exists.",
+      "zh": "这个链接指向的页面已不存在。"
+    },
     "workspaceUnavailable": {
       "code": 2101,
       "severity": "error",

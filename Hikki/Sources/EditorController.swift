@@ -121,6 +121,13 @@ final class EditorController {
                 }
             },
         ]
+        #if os(iOS)
+            // Settings → Display → Text Size: the page's words follow it (the chrome follows through `Font.hk`).
+            observers.tokens.append(
+                center.addObserver(forName: UIContentSizeCategory.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.sendTextScale() }
+                })
+        #endif
     }
 
     #if DEBUG
@@ -960,6 +967,15 @@ final class EditorController {
         ["top": Double(topInset), "bottom": Double(bottomInset), "bleed": bleedTop]
     }
 
+    #if os(iOS)
+        /// The system text size as a factor on the page's own text (Dynamic Type; 1 at the default size).
+        private var textScaleArguments: [String: Any] { ["scale": Double(TextSize.scale)] }
+
+        private func sendTextScale() {
+            send("window.hikki.setTextScale(scale)", textScaleArguments, label: "setTextScale")
+        }
+    #endif
+
     /// How drawings behave here: a Library on the Mac only (where diagrams get drawn), read-only on a phone-sized
     /// screen (`DeviceRules.drawingsReadOnly`). Sent on ready and again when the window changes size class (an
     /// iPhone Duo folded or unfolded moves it to the other screen).
@@ -983,6 +999,9 @@ final class EditorController {
         await call("window.hikki.setAutoFocus(on)", ["on": autoFocus], label: "setAutoFocus")
         await call("window.hikki.setSplitDrop(mode)", ["mode": splitDrop.rawValue], label: "setSplitDrop")
         await call("window.hikki.setInsets({ top, bottom, bleed })", insetArguments, label: "setInsets")
+        #if os(iOS)
+            await call("window.hikki.setTextScale(scale)", textScaleArguments, label: "setTextScale")
+        #endif
         if !outlineRailVisible {
             await call("window.hikki.setOutlineRail(visible)", ["visible": false], label: "setOutlineRail")
         }

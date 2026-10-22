@@ -33,7 +33,7 @@ public struct KeyboardAccessoryBar<Tools: View>: View {
             KeyboardDismissButton(showsKeyboard: panelOpen, action: onDismiss)
                 .padding(.horizontal, Spacing.s1)
         }
-        .frame(height: Size.toolbarButtonHeight + Spacing.s2)
+        .frame(height: Size.touchTarget)
         .glassEffect(.regular, in: .capsule)
         .padding(.horizontal, Spacing.s2)
         .padding(.bottom, Spacing.s1)

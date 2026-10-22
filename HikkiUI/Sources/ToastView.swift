@@ -53,6 +53,13 @@ public struct ToastView: View {
                     .padding(.vertical, Spacing.s1)
                     .background(Theme.accent, in: .rect(cornerRadius: Radius.md))
                     .accessibilityIdentifier("toast-action")
+                    // The toast floats over the web view, which owns the cursor under it (an I-beam over the page's
+                    // words); the button claims the arrow while the pointer is on it.
+                    .onHover { inside in
+                        #if os(macOS)
+                            if inside { NSCursor.arrow.push() } else { NSCursor.pop() }
+                        #endif
+                    }
             }
             Button(action: close) {
                 IconView(.x, size: TextSize.xs.rawValue)

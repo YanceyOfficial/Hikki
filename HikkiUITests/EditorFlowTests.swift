@@ -426,10 +426,30 @@ final class EditorFlowTests: XCTestCase {
             XCTAssertTrue(waitOrDumpTree(body, in: app), "body missing")
             body.tap()
 
-            app.buttons["Add block"].firstMatch.tap()
+            // Every tool is a finger's target.
+            let addBlock = app.buttons["Add block"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(addBlock, in: app))
+            XCTAssertGreaterThanOrEqual(addBlock.frame.width, 44, "a bar tool narrower than a finger")
+            XCTAssertGreaterThanOrEqual(addBlock.frame.height, 44, "a bar tool shorter than a finger")
+            addBlock.tap()
             let blocks = app.descendants(matching: .any)["keyboard-block-panel"].firstMatch
             XCTAssertTrue(waitOrDumpTree(blocks, in: app), "+ panel did not open")
             attach(app, "plus-panel")
+            // Scrolled into the catalog, a swipe down is the scroll back — not the close (that takes a swipe from the
+            // panel's top, as with a sheet).
+            blocks.swipeUp(velocity: .fast)
+            blocks.swipeDown(velocity: .slow)
+            XCTAssertTrue(blocks.exists, "a swipe down inside the scrolled panel closed it")
+            // Back at the top (a fast swipe lands there), a swipe down closes the panel and the keyboard.
+            blocks.swipeDown(velocity: .fast)
+            if blocks.exists { blocks.swipeDown(velocity: .fast) }
+            let closed = NSPredicate(format: "exists == false")
+            wait(for: [expectation(for: closed, evaluatedWith: blocks)], timeout: 5)
+            // The close took the keyboard with it: a tap on the page brings it (and the bar) back for the pick.
+            body.tap()
+            XCTAssertTrue(waitOrDumpTree(addBlock, in: app), "the keyboard bar did not come back")
+            addBlock.tap()
+            XCTAssertTrue(waitOrDumpTree(blocks, in: app), "+ panel did not open again")
             app.buttons["keyboard-block-heading2"].firstMatch.tap()
             XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5), "keyboard did not come back")
             XCTAssertFalse(blocks.exists)
@@ -636,6 +656,9 @@ final class EditorFlowTests: XCTestCase {
             let body = app.webViews.textViews["Page content"].firstMatch
             XCTAssertTrue(waitOrDumpTree(body, in: app), "body missing")
             body.typeText("Hello world")
+            // The keyboard bar is up (alone at the foot with this simulator's hardware keyboard): the page's floating
+            // bar has stepped aside for it.
+            XCTAssertFalse(app.buttons["ask-ai-page"].waitForExistence(timeout: 1), "the floating bar stayed under the keyboard bar")
 
             app.buttons["Format"].firstMatch.tap()
             let format = app.descendants(matching: .any)["keyboard-format-panel"].firstMatch
@@ -648,6 +671,57 @@ final class EditorFlowTests: XCTestCase {
             body.typeText(" again")
             XCTAssertTrue(
                 waitOrDumpTree(app.webViews.staticTexts["Hello world again"].firstMatch, in: app), "typing did not resume")
+        }
+
+        /// The system text size (Dynamic Type) reaches both halves of the screen: the page's words and the native bar.
+        func testPageFollowsTheSystemTextSize() throws {
+            continueAfterFailure = false
+            func measure(_ app: XCUIApplication) -> (line: CGFloat, prompt: CGFloat) {
+                let newPage = app.buttons["new-page"].firstMatch
+                XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+                newPage.tap()
+                let title = app.webViews.textViews["Page title"].firstMatch
+                XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+                title.tap()
+                title.typeText("Size\n")
+                app.typeText("The quick brown fox")
+                app.buttons["hide-keyboard"].firstMatch.tap()
+                let line = app.webViews.staticTexts["The quick brown fox"].firstMatch
+                XCTAssertTrue(waitOrDumpTree(line, in: app))
+                let prompt = app.buttons["ask-ai-page"].firstMatch
+                XCTAssertTrue(waitOrDumpTree(prompt, in: app), "the floating bar is missing")
+                return (line.frame.height, prompt.staticTexts.firstMatch.frame.height)
+            }
+            var app = launch()
+            let base = measure(app)
+            app.terminate()
+            app = launch(arguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryXXXL"])
+            let large = measure(app)
+            attach(app, "text-size-xxxl")
+            XCTAssertGreaterThan(large.line, base.line * 1.2, "the page's words didn't follow the text size")
+            XCTAssertGreaterThan(large.prompt, base.prompt * 1.15, "the native bar's words didn't follow the text size")
+        }
+
+        /// iPhone: the page's ⋯ sheet says what only Hikki can say — where the page's file lives and whose AI key is
+        /// in use (a device workspace here, no key).
+        func testPageSheetSaysWhereThePageLives() throws {
+            guard UIDevice.current.userInterfaceIdiom == .phone else { throw XCTSkip("the iPhone layout") }
+            continueAfterFailure = false
+            let app = launch()
+            let newPage = app.buttons["new-page"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+            newPage.tap()
+            let title = app.webViews.textViews["Page title"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+            title.tap()
+            title.typeText("Facts\n")
+            let hide = app.buttons["hide-keyboard"].firstMatch
+            if hide.waitForExistence(timeout: 3) { hide.tap() }
+            app.buttons["page-more"].firstMatch.tap()
+            XCTAssertTrue(
+                waitOrDumpTree(app.staticTexts["On this device"].firstMatch, in: app), "the sheet doesn't say where the page lives")
+            XCTAssertTrue(app.staticTexts["No key — Settings → AI"].firstMatch.exists, "the sheet doesn't say whose AI")
+            attach(app, "page-sheet-facts")
         }
 
         /// iPhone: the floating bar's Outline lists the page's headings in a sheet; one picked closes it.
@@ -1571,6 +1645,22 @@ final class EditorFlowTests: XCTestCase {
     }
 
     // MARK: - Helpers
+
+    /// A page link to a page that no longer exists says so (a toast) instead of doing nothing.
+    func testLinkToAMissingPageSaysSo() throws {
+        continueAfterFailure = false
+        let source = dataDir + "-links.md"
+        try "# Links\n\nSee [Gone](hikki://page/nope-0000) for more.\n".write(toFile: source, atomically: true, encoding: .utf8)
+        let app = launch(environment: ["HIKKI_IMPORT_FILE": source])
+        let body = app.webViews.textViews["Page content"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(body, in: app, timeout: 30), "the imported page did not open")
+        let link = app.webViews.links["Gone"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(link, in: app))
+        link.tap()
+        let toast = app.staticTexts["The page this link points to no longer exists."].firstMatch
+        XCTAssertTrue(waitOrDumpTree(toast, in: app, timeout: 5), "a link to a missing page did nothing")
+        attachScreenshot(app, "missing-link-toast")
+    }
 
     /// iPad / Mac (window toolbar): the inspector lists the page's headings, one jumps there, Info shows the counts.
     func testInspectorShowsOutlineAndCounts() throws {

@@ -31,6 +31,10 @@
         @ObservationIgnored weak var controller: EditorController?
         @ObservationIgnored weak var webView: HikkiWebView?
         private(set) var panel: Panel?
+        /// The bar is on screen (over the keyboard, or alone at the screen's foot with a hardware keyboard): the page's
+        /// floating bar steps aside for it. Read from the bar's own view, since an accessory-only keyboard doesn't
+        /// reliably post the keyboard notifications.
+        var shown = false
         private(set) var blocks: [KeyboardBlockSection] = []
         private(set) var turnInto: [KeyboardBlockItem] = []
         private(set) var state = EditorController.TouchState()
@@ -343,6 +347,8 @@
             }
             // A selection made or cleared: the marks the panel shows follow.
             .task(id: bar.controller?.selection) { await bar.refresh() }
+            .onAppear { bar.shown = true }
+            .onDisappear { bar.shown = false }
         }
 
         private func tool(_ title: LocalizedStringKey, _ icon: Icon, isActive: Bool = false, action: @escaping () -> Void)
@@ -352,39 +358,34 @@
         }
     }
 
-    /// The panel in the keyboard's place. A swipe down closes it, and the keyboard with it.
+    /// The panel in the keyboard's place. A swipe down from its top closes it, and the keyboard with it (each panel
+    /// owns the gesture: it knows where its content is scrolled to).
     struct KeyboardPanelView: View {
         let bar: KeyboardBar
 
         var body: some View {
-            Group {
-                switch bar.panel {
-                case .blocks:
-                    KeyboardBlockPanel(sections: bar.blocks, onPick: bar.insertBlock)
-                case .turnInto:
-                    KeyboardBlockPanel(
-                        sections: [.init(id: "turnInto", title: String(localized: "app:keyboard.turnInto"), items: bar.turnInto)],
-                        current: bar.state.block,
-                        onPick: { id in
-                            bar.turnInto(id)
-                            bar.closePanel()
-                        })
-                case .format, .color:
-                    // With a selection the bar shows the marks itself: the panel leaves them out.
-                    KeyboardFormatPanel(
-                        content: bar.panel == .color ? .colors : .format(marks: bar.controller?.selection == nil),
-                        marks: Set(bar.state.marks.compactMap(KeyboardFormatPanel.Mark.init(rawValue:))), turnInto: bar.turnInto,
-                        block: bar.state.block, textColor: bar.state.textColor, backgroundColor: bar.state.backgroundColor,
-                        onMark: { mark in mark == .link ? bar.openField(.link) : bar.run(mark.rawValue) },
-                        onTurnInto: bar.turnInto(_:), onColor: bar.setColor)
-                case nil:
-                    Color.clear
-                }
+            switch bar.panel {
+            case .blocks:
+                KeyboardBlockPanel(sections: bar.blocks, onPick: bar.insertBlock, onSwipeDown: bar.dismiss)
+            case .turnInto:
+                KeyboardBlockPanel(
+                    sections: [.init(id: "turnInto", title: String(localized: "app:keyboard.turnInto"), items: bar.turnInto)],
+                    current: bar.state.block,
+                    onPick: { id in
+                        bar.turnInto(id)
+                        bar.closePanel()
+                    }, onSwipeDown: bar.dismiss)
+            case .format, .color:
+                // With a selection the bar shows the marks itself: the panel leaves them out.
+                KeyboardFormatPanel(
+                    content: bar.panel == .color ? .colors : .format(marks: bar.controller?.selection == nil),
+                    marks: Set(bar.state.marks.compactMap(KeyboardFormatPanel.Mark.init(rawValue:))), turnInto: bar.turnInto,
+                    block: bar.state.block, textColor: bar.state.textColor, backgroundColor: bar.state.backgroundColor,
+                    onMark: { mark in mark == .link ? bar.openField(.link) : bar.run(mark.rawValue) },
+                    onTurnInto: bar.turnInto(_:), onColor: bar.setColor, onSwipeDown: bar.dismiss)
+            case nil:
+                Color.clear
             }
-            .simultaneousGesture(
-                DragGesture(minimumDistance: Spacing.s6).onEnded { drag in
-                    if drag.translation.height > Spacing.s16, abs(drag.translation.width) < drag.translation.height { bar.dismiss() }
-                })
         }
     }
 

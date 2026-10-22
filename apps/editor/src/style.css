@@ -35,6 +35,8 @@
   .tiptap {
     @apply outline-none;
     caret-color: var(--color-foreground);
+    /* The body's words follow iOS's text size (setTextScale); headings are in em, so they come along. */
+    font-size: calc(var(--text-base) * var(--hk-text-scale, 1));
   }
   .tiptap > * + * {
     @apply mt-0.5;
@@ -1140,4 +1142,14 @@ body:has(.hk-find [data-testid='find-panel']) #outline {
   --color-surface-primary-container: color-mix(in oklch, var(--primary) 14%, var(--background));
   --color-on-primary-container: var(--foreground);
   --focus-highlight-color: var(--ring);
+}
+
+/* The page title follows iOS's text size too (setTextScale). Unlayered: it replaces the utility sizes. */
+.hk-title {
+  font-size: calc(var(--text-4xl) * var(--hk-text-scale, 1));
+}
+@media (max-width: 639px) {
+  .hk-title {
+    font-size: calc(var(--text-3xl) * var(--hk-text-scale, 1));
+  }
 }

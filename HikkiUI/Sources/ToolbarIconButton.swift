@@ -5,7 +5,7 @@ import SwiftUI
 public struct ToolbarIconButton: View {
     /// How the button sits in its bar: `filled` marks "on" with a tinted box (the window toolbar's); `quiet` draws
     /// every glyph in a muted ink and "on" as the glyph alone taking the tone — a keyboard bar's (Notion's), where a
-    /// box would be the loudest thing on the glass.
+    /// box would be the loudest thing on the glass — and takes the full touch target (44 pt square) for a finger.
     public enum Style: Sendable { case filled, quiet }
 
     private let title: LocalizedStringKey
@@ -29,7 +29,10 @@ public struct ToolbarIconButton: View {
         Button(action: action) {
             IconLabel(title, icon: symbol, size: TextSize.lg.rawValue)
                 .labelStyle(.iconOnly)
-                .frame(width: Size.toolbarButtonWidth, height: Size.toolbarButtonHeight)
+                .frame(
+                    width: style == .quiet ? Size.touchTarget : Size.toolbarButtonWidth,
+                    height: style == .quiet ? Size.touchTarget : Size.toolbarButtonHeight
+                )
                 .foregroundStyle(isActive ? tone.ink : style == .quiet ? Theme.subtleForeground : .primary)
                 .background(isActive && style == .filled ? tone.selectionFill : .clear, in: .rect(cornerRadius: Radius.lg))
                 .contentShape(.rect)

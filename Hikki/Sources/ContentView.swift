@@ -494,15 +494,33 @@ struct ContentView: View {
         editor.deviceName = AppModel.deviceKind
         // A link in the leading page opens there (split or not).
         editor.onOpenPage = { [weak navigator, weak model, weak editor] id, block in
-            guard let navigator, model?.tree.page(id) != nil else { return }
-            navigator.focus(.leading)
-            navigator.open(id)
-            if let block { editor?.scrollToBlock(block, in: id) }
+            Self.followLink(to: id, model: model) {
+                guard let navigator else { return }
+                navigator.focus(.leading)
+                navigator.open(id)
+                if let block { editor?.scrollToBlock(block, in: id) }
+            }
         }
         editor.setPages(model.tree)
         editor.open(documentID: navigator.leadingPane.route.pageID)
         // A window restored split: the trailing side's editor too.
         if let pane = navigator.trailingPane { splitPaneEditor().open(documentID: pane.route.pageID) }
+    }
+
+    /// A page link (`hikki://page/<id>`) followed: `open` the page — or say why not. A page in the Trash offers
+    /// Restore (then opens); a page that is gone for good is `pageLinkMissing`. Never silence: a link that does
+    /// nothing reads as a dead button.
+    private static func followLink(to id: String, model: AppModel?, open: @escaping () -> Void) {
+        guard let model else { return }
+        if model.tree.page(id) != nil { return open() }
+        if model.trash.contains(where: { $0.id == id }) {
+            Toasts.shared.show(.warning, String(localized: "app:page.linkInTrash"), actionTitle: "app:trash.restore") { [weak model] in
+                model?.restore(id: id)
+                open()
+            }
+        } else {
+            Toasts.report(.pageLinkMissing, category: "navigation", context: ["id": id])
+        }
     }
 
     /// The window's editor for a side (the trailing one exists once a page has shown there).
@@ -735,9 +753,10 @@ struct ContentView: View {
         pane.deviceName = AppModel.deviceKind
         pane.attach(store: model.store, assets: model.assets) { [weak model] in model?.history }
         pane.onOpenPage = { [weak navigator, weak model, weak pane] id, block in
-            guard let navigator, model?.tree.page(id) != nil else { return }
-            navigator.show(.page(id), in: .trailing)
-            if let block { pane?.scrollToBlock(block, in: id) }
+            Self.followLink(to: id, model: model) {
+                navigator?.show(.page(id), in: .trailing)
+                if let block { pane?.scrollToBlock(block, in: id) }
+            }
         }
         pane.onOpenDocument = { [weak navigator] name, label in navigator?.showDocument(name: name, label: label) }
         // Dropped on the side's own right edge: it shows that page instead.

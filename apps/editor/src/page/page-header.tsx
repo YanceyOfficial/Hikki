@@ -333,7 +333,7 @@ function TitleField({
     <Textarea
       ref={ref}
       data-page-title
-      className="mb-2 block min-h-0 w-full resize-none overflow-hidden rounded-none border-0 bg-transparent px-0 py-[3px] text-4xl leading-tight font-bold tracking-[-0.01em] text-foreground shadow-none placeholder:text-placeholder focus-visible:ring-0 max-sm:text-3xl md:text-4xl dark:bg-transparent"
+      className="hk-title mb-2 block min-h-0 w-full resize-none overflow-hidden rounded-none border-0 bg-transparent px-0 py-[3px] leading-tight font-bold tracking-[-0.01em] text-foreground shadow-none placeholder:text-placeholder focus-visible:ring-0 dark:bg-transparent"
       rows={1}
       value={title}
       readOnly={readOnly}

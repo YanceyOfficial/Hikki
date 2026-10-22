@@ -159,6 +159,8 @@ window.hikki = {
     root.setProperty('--hk-bleed-top', insets.bleed ? `${Math.max(0, insets.top)}px` : '0px')
     root.setProperty('--hk-inset-bottom', `${Math.max(0, insets.bottom ?? 0)}px`)
   },
+  // iOS's text size (Dynamic Type): the page's own words follow it; the UI keeps its size.
+  setTextScale: (scale: number) => bridge.setTextScale(scale),
   setLocale: (tag: string) => setLocale(tag),
   // Settings → Shortcuts: the user's rebindings (only those; the rest keep the registry's keys).
   setShortcuts: (overrides: Record<string, ShortcutOverride>) => applyShortcutOverrides(overrides),

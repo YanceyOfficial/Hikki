@@ -452,6 +452,18 @@ describe('EditorBridge', () => {
     expect(bridge.demoAI(['not in the page'], 'improve')).toBe(false)
   })
 
+  it("iOS's text size reaches the page as a clamped factor", () => {
+    const root = document.documentElement.style
+    bridge.setTextScale(1.35)
+    expect(root.getPropertyValue('--hk-text-scale')).toBe('1.35')
+    bridge.setTextScale(3.1)
+    expect(root.getPropertyValue('--hk-text-scale')).toBe('2')
+    bridge.setTextScale(0.5)
+    expect(root.getPropertyValue('--hk-text-scale')).toBe('0.85')
+    bridge.setTextScale(Number.NaN)
+    expect(root.getPropertyValue('--hk-text-scale')).toBe('1')
+  })
+
   it("the phone's AI field takes the caret's block, its link field the word", () => {
     bridge.loadDocument(page('a', { content: doc('Kyoto trip in spring') }))
     editor().commands.setTextSelection(3)

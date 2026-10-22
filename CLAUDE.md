@@ -445,7 +445,9 @@ HikkiUITests/                 XCUITest flows
   sidebar row's drag carries the page's link (`PageLink.dragItem`), the editor's `handleDrop` inserts it where it
   lands, and the toolbar's `TabStrip` (`TabStripDrop`, `HikkiUI/Sources/TabStrip.swift`) opens it — between tabs
   as a new tab (or that page's tab is focused), onto a tab in that tab. Clicks go through the bridge
-  (`openPage` with the block, `openLink` for the web) and `window.hikki.scrollToBlock` lands on the block.
+  (`openPage` with the block, `openLink` for the web) and `window.hikki.scrollToBlock` lands on the block; a link to a
+  page in the Trash toasts that with Restore, one to a page that is gone `pageLinkMissing` (ContentView's
+  `followLink`) — a link never does nothing.
 - **Mentions, emoji, typography**: "@" mentions a page (`apps/editor/src/extensions/page-mention.ts`, Tiptap's Mention: a
   `mention` node with the page id and its title at the time as `label`; the chip is a `hikki://page/<id>` link drawn
   with the page's current icon and title from the index, the label only a fallback). ":" suggests emoji
@@ -618,7 +620,8 @@ HikkiUITests/                 XCUITest flows
   field, attach · web · model · send). The toolbar's trailing
   end, as Xcode's: [star · ⋯] [outline · comments] [AI in its own circle, `AIGlyph`], the open view marked; View →
   Show Outline (⌥⌘I); no tab bar. The page's facts (location, created, edited, words and
-  characters) are the last lines of its ⋯ menu. The editor reports the outline and size with `pageInfo` (headings with
+  characters — then where its file lives with the folder's sync state, and whose AI key is in use: `PageFacts`, the
+  same on the iPhone sheet) are the last lines of its ⋯ menu. The editor reports the outline and size with `pageInfo` (headings with
   block ids, words — CJK characters count one each — and characters from Tiptap's CharacterCount) and the heading the
   reader is in with `activeHeading` (a scroll-spy in `apps/editor/src/core/bridge.ts`: the last heading past a line under
   the toolbar, the last one at the end; a heading jumped to from an outline stays marked until the reader scrolls).
@@ -750,8 +753,12 @@ HikkiUITests/                 XCUITest flows
   put): HikkiUI's `KeyboardBlockPanel` (the "/" catalog as flat two-column rows; turn into marks the current kind) and
   `KeyboardFormatPanel` (marks, Turn into, text colour and background — `Content`: the marks row only while the bar
   doesn't show those marks itself, and the bar's colour tool opens the colours alone, `Panel.color`); the bar's end
-  button brings the keyboard back, a swipe down closes both. The bar's tools are `ToolbarIconButton`'s `quiet` style
-  (muted glyphs, the open tool's glyph in the tone, no box — Notion's). The panel's height is the software keyboard's, read from where the bar sits as the
+  button brings the keyboard back, a swipe down from the panel's top closes both (`swipeDownToClose`: scrolled into
+  the content, a swipe down is the scroll). The bar's tools are `ToolbarIconButton`'s `quiet` style
+  (muted glyphs, the open tool's glyph in the tone, no box — Notion's), each a full `Size.touchTarget` (44 pt) square,
+  as are the panels' rows. The page's floating bar steps aside while the keyboard bar is on screen (`KeyboardBar.shown`,
+  set by the bar's own view: a hardware keyboard shows the bar alone at the screen's foot without the keyboard
+  notifications). The panel's height is the software keyboard's, read from where the bar sits as the
   panel opens (room under it: `keyboardUnderBar`; the keyboard's frame notifications misled on a phone, and
   `GCKeyboard` says nothing about the software keyboard); with a hardware keyboard the system shows the panel all the
   same, at the last height. The content view is found by walking its class chain (`editingContent`): once it carries
@@ -777,6 +784,10 @@ HikkiUITests/                 XCUITest flows
   devices get 16px fields via an unlayered rule in `apps/editor/src/style.css` (the page title is exempt). The
   viewport (`apps/editor/index.html`) allows no pinch zoom either: `maximum-scale=1, user-scalable=no`, which WKWebView
   honours (`testPinchDoesNotZoomThePage`).
+- **Dynamic Type (iOS)**: `Font.hk` scales every token size by the Body style's metrics (`TextSize.scaled`; one size
+  on the Mac), and the page's own words follow the same factor — `window.hikki.setTextScale` (sent on ready and on
+  `UIContentSizeCategory.didChangeNotification`; `--hk-text-scale`, clamped 0.85–2, on `.tiptap` and the title
+  `.hk-title`; the UI around them keeps its size). `testPageFollowsTheSystemTextSize` launches at XXXL.
 - **Editor content safety**: content that doesn't fit the schema (corrupt, or from a newer Hikki) opens read-only and
   is never saved (`enableContentCheck`); housekeeping transactions (`addToHistory: false` — UniqueID stamping
   block ids, remote reloads) never count as edits; continuous typing still saves every 2 s (`maxWaitMs`).

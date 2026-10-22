@@ -76,6 +76,7 @@
   --size-icon-button-sm: 22px;
   --size-toolbar-button-width: 40px;
   --size-toolbar-button-height: 36px;
+  --size-touch-target: 44px;
   --size-keyboard-bar: 48px;
   --size-sidebar-icon: 18px;
   --size-onboarding-badge: 64px;
@@ -158,7 +159,7 @@
     --sidebar: #202020;
     --sidebar-foreground: rgba(255, 255, 255, 0.78);
     --sidebar-primary: #e6e4df;
-    --sidebar-accent: rgba(255, 255, 255, 0.08);
+    --sidebar-accent: rgba(255, 255, 255, 0.14);
     --sidebar-accent-foreground: rgba(255, 255, 255, 0.81);
     --sidebar-border: rgba(255, 255, 255, 0.094);
     --subtle-foreground: rgba(255, 255, 255, 0.6);
