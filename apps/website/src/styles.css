@@ -111,6 +111,24 @@
   .bg-yellow {
     color: #000000;
   }
+  /* A part of the privacy policy: running text at a reading measure, its lists marked. */
+  .policy-part > p,
+  .policy-part > ul {
+    margin-top: 0.75rem;
+    line-height: 1.65;
+    color: var(--color-muted);
+  }
+  .policy-part > ul {
+    padding-left: 1.25rem;
+    list-style: disc;
+  }
+  .policy-part > ul > li + li {
+    margin-top: 0.75rem;
+  }
+  .policy-part strong {
+    color: var(--color-ink);
+  }
+
   /* The first screen's facts: one cell of the canvas, ruled inside by thinner lines. */
   .hero-facts {
     gap: 4px;

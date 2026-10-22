@@ -156,7 +156,9 @@ apps/website/                      the site at hikki.yancey.app (TanStack Start 
                               `bun run shots <captures>` (sharp; crops in shots.json; public/og.jpg is the link-card JPEG);
                               the download moment is src/components/store.tsx — until APP_STORE_URL in src/site.ts is
                               set, "Coming to the App Store" is a status line in the header and the foot offers a
-                              mailto (CONTACT_EMAIL) and the GitHub releases; set, both become the download link
+                              mailto (CONTACT_EMAIL) and the GitHub releases; set, both become the download link;
+                              /privacy (src/routes/privacy.tsx) is the privacy policy, written from what the app
+                              does — change it when storage, AI, the BFF or embeds change what leaves the device
 packages/                     shared web packages (bun workspaces `apps/*`, `packages/*`): editor extensions and code
                               more than one app uses, each its own package.json, consumed from source
 packages/excalidraw/          @hikki/excalidraw: Excalidraw 0.18.1 (pinned) for drawings — src/scene.ts (stored data,

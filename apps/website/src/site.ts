@@ -9,7 +9,7 @@ export const SITE_URL = 'https://hikki.yancey.app'
 export const APP_STORE_URL: string | null = null
 
 /** Where a visitor writes to be told when Hikki ships, and for anything else. */
-export const CONTACT_EMAIL = 'yanceyofficial@gmail.com'
+export const CONTACT_EMAIL = 'developer@yanceyleo.com'
 
 /** The source, whose releases a visitor can watch. */
 export const GITHUB_URL = 'https://github.com/YanceyOfficial/Hikki'
@@ -20,3 +20,6 @@ export const REQUIREMENTS = 'iOS 26, iPadOS 26 and macOS 26 or later'
 /** The address to write to, with the subject filled in. */
 export const notifyLink = (subject: string) =>
   `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}`
+
+/** The privacy policy: what the app stores, what leaves the device and when. The App Store listing links it too. */
+export const PRIVACY_PATH = '/privacy'

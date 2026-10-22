@@ -1,4 +1,4 @@
-import { CONTACT_EMAIL, GITHUB_URL } from '../site'
+import { CONTACT_EMAIL, GITHUB_URL, PRIVACY_PATH } from '../site'
 import { row } from './row'
 import { Wordmark } from './wordmark'
 
@@ -9,7 +9,7 @@ export function Footer() {
       <div class="cell text-caption flex flex-col gap-3 p-5 md:col-span-7 md:p-6">
         <p class="m-0 text-muted">Hikki keeps your notes on your devices. © 2026 Hikki.</p>
         <nav class="flex flex-wrap gap-x-6 gap-y-1 font-semibold" aria-label="More">
-          <a href="#privacy" class="underline-offset-4 hover:underline">
+          <a href={PRIVACY_PATH} class="underline-offset-4 hover:underline">
             Privacy
           </a>
           <a href={GITHUB_URL} class="underline-offset-4 hover:underline">

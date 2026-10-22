@@ -21,16 +21,16 @@ export function Header() {
         class="cell text-caption hidden items-center gap-x-6 p-5 font-semibold md:flex"
         aria-label="Sections"
       >
-        <a href="#local-first" class="underline-offset-4 hover:underline">
+        <a href="/#local-first" class="underline-offset-4 hover:underline">
           Local-first
         </a>
-        <a href="#devices" class="underline-offset-4 hover:underline">
+        <a href="/#devices" class="underline-offset-4 hover:underline">
           Devices
         </a>
-        <a href="#ai" class="underline-offset-4 hover:underline">
+        <a href="/#ai" class="underline-offset-4 hover:underline">
           AI
         </a>
-        <a href="#features" class="underline-offset-4 hover:underline">
+        <a href="/#features" class="underline-offset-4 hover:underline">
           Features
         </a>
       </nav>

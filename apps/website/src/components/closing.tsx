@@ -1,6 +1,6 @@
 import { For } from 'solid-js'
 
-import { REQUIREMENTS } from '../site'
+import { PRIVACY_PATH, REQUIREMENTS } from '../site'
 import { row } from './row'
 import { StoreActions } from './store'
 
@@ -11,10 +11,11 @@ const DOWNLOAD_FACTS = [
   {
     id: 'privacy',
     title: 'Privacy',
-    text: 'No telemetry. Your pages are files in your folder, and AI runs on your own key, only when you ask.'
+    text: 'No telemetry. Your pages are files in your folder, and AI runs on your own key, only when you ask.',
+    link: { href: PRIVACY_PATH, label: 'The privacy policy' }
   },
   { id: 'roadmap', title: 'On the way', text: 'Editing a page together, on the same files.' }
-]
+] as { id: string; title: string; text: string; link?: { href: string; label: string } }[]
 
 /** The page closes on its first claim, as the reason to download, and on what a visitor can do about it today. */
 export function Closing() {
@@ -37,7 +38,21 @@ export function Closing() {
           {(fact) => (
             <div id={fact.id}>
               <dt class="expanded text-caption font-[800]">{fact.title}</dt>
-              <dd class="m-0 mt-1 max-w-[28rem] leading-relaxed text-muted">{fact.text}</dd>
+              <dd class="m-0 mt-1 max-w-[28rem] leading-relaxed text-muted">
+                {fact.text}
+                {fact.link && (
+                  <>
+                    {' '}
+                    <a
+                      href={fact.link.href}
+                      class="text-ink font-semibold underline underline-offset-4"
+                    >
+                      {fact.link.label}
+                    </a>
+                    .
+                  </>
+                )}
+              </dd>
             </div>
           )}
         </For>
