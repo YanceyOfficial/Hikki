@@ -11,8 +11,10 @@ final class EditorSchemeHandler: NSObject, WKURLSchemeHandler {
 
     private let root: URL? = Bundle.main.url(forResource: "Editor", withExtension: nil)
     var assets: AssetStore?
-    /// Symbols drawn so far, by name and size (`SymbolRequest.cacheKey`).
+    /// Symbols drawn so far, by name and size (`SymbolRequest.cacheKey`) — a page's worth; past that it starts over
+    /// (a few KB each, but a page could ask for any name at any whole size).
     private var symbols: [String: Data] = [:]
+    private static let symbolCacheLimit = 256
 
     func webView(_ webView: WKWebView, start urlSchemeTask: any WKURLSchemeTask) {
         guard let url = urlSchemeTask.request.url else { return }
@@ -124,6 +126,7 @@ final class EditorSchemeHandler: NSObject, WKURLSchemeHandler {
                         x: (side - image.size.width) / 2, y: (side - image.size.height) / 2, width: image.size.width,
                         height: image.size.height))
             }
+            if symbols.count >= Self.symbolCacheLimit { symbols.removeAll(keepingCapacity: true) }
             symbols[request.cacheKey] = png
             return png
         }

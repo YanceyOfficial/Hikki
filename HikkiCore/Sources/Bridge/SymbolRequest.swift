@@ -16,7 +16,8 @@ public struct SymbolRequest: Equatable, Sendable {
         self.points = points
     }
 
-    /// Nil for anything but `sf://<name>.png` with a well-formed name; `pt` is clamped to 8–96.
+    /// Nil for anything but `sf://<name>.png` with a well-formed name; `pt` is whole points, clamped to 8–96 (so the
+    /// sizes — and the renderings kept for them — are a bounded set; a non-number is the default).
     public static func parse(_ url: URL) -> SymbolRequest? {
         guard url.host == host, url.pathComponents.count == 2, url.pathExtension == "png" else { return nil }
         let name = url.deletingPathExtension().lastPathComponent
@@ -25,8 +26,8 @@ public struct SymbolRequest: Equatable, Sendable {
             name.last != "."
         else { return nil }
         let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
-        let points = query.first { $0.name == "pt" }?.value.flatMap(Double.init)
-            .map { min(max($0, pointRange.lowerBound), pointRange.upperBound) }
+        let points = query.first { $0.name == "pt" }?.value.flatMap(Double.init).flatMap { $0.isFinite ? $0 : nil }
+            .map { min(max($0.rounded(), pointRange.lowerBound), pointRange.upperBound) }
         return SymbolRequest(name: name, points: points ?? defaultPoints)
     }
 

@@ -10,6 +10,11 @@ struct SymbolRequestTests {
         #expect(SymbolRequest.parse(URL(string: "hikki-editor://sf/photo.png")!)?.points == 17)
         #expect(SymbolRequest.parse(URL(string: "hikki-editor://sf/photo.png?pt=400")!)?.points == 96)
         #expect(SymbolRequest.parse(URL(string: "hikki-editor://sf/photo.png?pt=1")!)?.points == 8)
+        // Whole points only, and nothing a number can't be: the sizes drawn stay a bounded set.
+        #expect(SymbolRequest.parse(URL(string: "hikki-editor://sf/photo.png?pt=20.6")!)?.points == 21)
+        for odd in ["nan", "inf", "-inf", "1e400", "x"] {
+            #expect(SymbolRequest.parse(URL(string: "hikki-editor://sf/photo.png?pt=\(odd)")!)?.points == 17, Comment(rawValue: odd))
+        }
     }
 
     @Test func onlySymbolNamesGetThrough() {
