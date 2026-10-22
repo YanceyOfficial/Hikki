@@ -98,6 +98,9 @@ import {
   type TouchTool
 } from './touch-tools'
 
+/** The native AI field's Make presets (after AI's own): the selection as a diagram, or pictures of it. */
+export const TOUCH_MAKE = { diagram: 'make:diagram', pictures: 'make:pictures' } as const
+
 /** What the phone's native AI / link field acts on (`touchPrepare`). */
 export type TouchTarget = {
   quote: string
@@ -598,9 +601,18 @@ export class EditorBridge {
     return {
       quote: editor.state.doc.textBetween(from, to, ' ').trim().slice(0, 200),
       href: (editor.getAttributes('link').href as string | undefined) ?? null,
-      presets: AI_GROUPS.flatMap((group) =>
-        group.actions.map((action) => ({ id: action.id, label: action.label() }))
-      )
+      presets: [
+        ...AI_GROUPS.flatMap((group) =>
+          group.actions.map((action) => ({ id: action.id, label: action.label() }))
+        ),
+        // The selection menu's Make, last: a diagram in the page, pictures in the chat.
+        ...(editor.can().insertDiagram('x')
+          ? [{ id: TOUCH_MAKE.diagram, label: t('ai.make.diagram') }]
+          : []),
+        ...(editor.can().aiPictures('selection')
+          ? [{ id: TOUCH_MAKE.pictures, label: t('ai.make.pictures') }]
+          : [])
+      ]
     }
   }
 
@@ -608,6 +620,11 @@ export class EditorBridge {
   touchAI(action: AIAction): boolean {
     const editor = this.editor
     if (!editor || this.frozen || editor.state.selection.empty) return false
+    if (action.id === TOUCH_MAKE.pictures) return editor.commands.aiPictures('selection')
+    if (action.id === TOUCH_MAKE.diagram) {
+      const { from, to } = editor.state.selection
+      return editor.commands.insertDiagram(editor.state.doc.textBetween(from, to, '\n'))
+    }
     return editor.commands.aiRun(action)
   }
 

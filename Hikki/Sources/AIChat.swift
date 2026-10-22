@@ -368,20 +368,16 @@ final class AIChat {
     var pictureSetup: PictureSetup?
     /// Pictures can be made: there is an OpenAI key (the image model is OpenAI's).
     var canMakePictures: Bool { AIPreferences.key(.openAI) != nil }
-    /// Pictures being made (queued or drawing), those drawing now, and the rough versions they have shown (not kept).
-    private(set) var makingPictures: Set<String> = []
-    private(set) var drawingPictures: Set<String> = []
+    /// Pictures being made — waiting, or drawing two at a time — and the rough versions they have shown (not kept).
+    private(set) var pictureQueue = PictureQueue(lanes: 2)
     private(set) var roughPictures: [String: Data] = [:]
+    @ObservationIgnored private var pictureRequests: [String: PictureRequest] = [:]
     @ObservationIgnored private var pictureRuns: [String: Task<Void, Never>] = [:]
-    @ObservationIgnored private var pictureQueue: [(id: String, request: PictureRequest)] = []
     /// Made pictures, read once from their files.
     @ObservationIgnored private var pictureImages: [String: Image] = [:]
     /// Pictures went into the page (the iPhone sheet closes on it).
     @ObservationIgnored var onPicturesAdded: (() -> Void)?
-    /// Two at a time: each takes up to a minute.
-    private static let pictureLanes = 2
-
-    var isMakingPictures: Bool { !makingPictures.isEmpty }
+    var isMakingPictures: Bool { !pictureQueue.isEmpty }
 
     /// The pictures a finished answer asks for: it may change an earlier one by id, or the picture attached to the
     /// question.
@@ -437,22 +433,16 @@ final class AIChat {
             let shape = PictureShape(rawValue: picture.shape) ?? .wide
             messages[index].pictures[p].status = .making
             messages[index].pictures[p].error = nil
-            makingPictures.insert(id)
-            pictureQueue.append(
-                (
-                    id,
-                    PictureRequest(
-                        prompt: picture.prompt, shape: shape, detailed: picture.detailed, source: source(of: picture, answer: index))
-                ))
+            pictureRequests[id] = PictureRequest(
+                prompt: picture.prompt, shape: shape, detailed: picture.detailed, source: source(of: picture, answer: index))
         }
         if !ids.isEmpty { Log.info("AI pictures", category: "ai", context: ["count": "\(ids.count)"]) }
-        startPictures()
+        start(pictureQueue.add(ids))
     }
 
-    private func startPictures() {
-        while pictureRuns.count < Self.pictureLanes, !pictureQueue.isEmpty {
-            let (id, request) = pictureQueue.removeFirst()
-            drawingPictures.insert(id)
+    private func start(_ ids: [String]) {
+        for id in ids {
+            guard let request = pictureRequests.removeValue(forKey: id) else { continue }
             pictureRuns[id] = Task { [weak self] in await self?.makePicture(id, request) }
         }
     }
@@ -491,7 +481,9 @@ final class AIChat {
         } catch {
             failure = error
         }
-        if Task.isCancelled || failure as? AIError == .cancelled {
+        // Stopped: `stopPictures` already marked and kept it (and a Try again since may be drawing it anew).
+        if Task.isCancelled { return }
+        if failure as? AIError == .cancelled {
             updatePicture(id) { $0.status = .stopped }
         } else if !made {
             let error = failure as? AIError ?? .invalidResponse
@@ -503,10 +495,8 @@ final class AIChat {
         }
         roughPictures[id] = nil
         pictureRuns[id] = nil
-        makingPictures.remove(id)
-        drawingPictures.remove(id)
         if let (m, _) = picturePosition(id) { keep([messages[m]]) }
-        startPictures()
+        start(pictureQueue.finished(id))
     }
 
     private func updatePicture(_ id: String, _ change: (inout ChatPicture) -> Void) {
@@ -516,14 +506,11 @@ final class AIChat {
 
     /// Pictures being made stop (Stop, New chat, another page): they say so, with Try again.
     private func stopPictures() {
-        for (id, _) in pictureQueue { updatePicture(id) { $0.status = .stopped } }
-        let stopped = pictureQueue.map(\.id) + Array(pictureRuns.keys)
-        pictureQueue = []
+        let stopped = pictureQueue.stopAll()
         pictureRuns.values.forEach { $0.cancel() }
         pictureRuns = [:]
+        pictureRequests = [:]
         roughPictures = [:]
-        makingPictures = []
-        drawingPictures = []
         for id in stopped { updatePicture(id) { if $0.status == .making { $0.status = .stopped } } }
         let touched = Set(stopped.compactMap { picturePosition($0)?.message })
         if !touched.isEmpty { keep(touched.sorted().map { messages[$0] }) }
@@ -531,7 +518,7 @@ final class AIChat {
 
     /// Try again: the picture is made once more (a made one is replaced on its tile).
     func retryPicture(_ id: String) {
-        guard let (m, _) = picturePosition(id), pictureRuns[id] == nil else { return }
+        guard let (m, _) = picturePosition(id), !pictureQueue.contains(id) else { return }
         makePictures([id], answer: messages[m].id)
     }
 
@@ -699,11 +686,7 @@ extension AIChat.Message {
             citations: turn.citations.filter { $0.webURL != nil }.map { AICitation(url: $0.url, title: $0.title) },
             images: (turn.images ?? []).filter { $0.webURL != nil }, changes: turn.changes ?? [],
             // One being made when the chat was left (or on another device) isn't being made here.
-            pictures: (turn.pictures ?? []).map { picture in
-                var picture = picture
-                if picture.status == .making { picture.status = .stopped }
-                return picture
-            },
+            pictures: (turn.pictures ?? []).map(\.restored),
             picturePlace: turn.picturePlace, thinking: turn.thinking)
     }
 
@@ -1495,7 +1478,7 @@ private struct ChatBubble: View {
             let shape = PictureShape(rawValue: picture.shape) ?? .wide
             let state: PictureTileItem.State =
                 switch picture.status {
-                case .making: chat.drawingPictures.contains(picture.id) ? .forming : .waiting
+                case .making: chat.pictureQueue.drawing.contains(picture.id) ? .forming : .waiting
                 case .done: .done
                 case .stopped, .failed: .failed(AIChat.pictureFailure(picture))
                 }

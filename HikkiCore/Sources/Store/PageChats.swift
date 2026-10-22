@@ -94,6 +94,64 @@ public struct ChatPicture: Codable, Equatable, Sendable, Identifiable {
     }
 }
 
+extension ChatPicture {
+    /// As a kept turn shows it again: one still being made when it was kept (the chat left, the app quit, another
+    /// device) isn't being made here — it reads as stopped, with Try again.
+    public var restored: ChatPicture {
+        var picture = self
+        if picture.status == .making { picture.status = .stopped }
+        return picture
+    }
+}
+
+/// The chat's pictures being made: queued in order, drawn `lanes` at a time (each takes up to a minute). It only
+/// says which to start; the chat runs them.
+public struct PictureQueue: Sendable {
+    public let lanes: Int
+    public private(set) var waiting: [String] = []
+    public private(set) var drawing: Set<String> = []
+
+    public init(lanes: Int = 2) {
+        self.lanes = max(1, lanes)
+    }
+
+    /// Nothing waiting or being drawn.
+    public var isEmpty: Bool { waiting.isEmpty && drawing.isEmpty }
+
+    public func contains(_ id: String) -> Bool { drawing.contains(id) || waiting.contains(id) }
+
+    /// Queues pictures (one already queued or drawing stays where it is); returns those to start now.
+    public mutating func add(_ ids: [String]) -> [String] {
+        for id in ids where !contains(id) { waiting.append(id) }
+        return next()
+    }
+
+    /// One is done with (made, failed or stopped); returns the next to start.
+    public mutating func finished(_ id: String) -> [String] {
+        waiting.removeAll { $0 == id }
+        drawing.remove(id)
+        return next()
+    }
+
+    /// Everything stops: returns what was waiting or drawing.
+    public mutating func stopAll() -> [String] {
+        let stopped = waiting + drawing.sorted()
+        waiting = []
+        drawing = []
+        return stopped
+    }
+
+    private mutating func next() -> [String] {
+        var started: [String] = []
+        while drawing.count < lanes, !waiting.isEmpty {
+            let id = waiting.removeFirst()
+            drawing.insert(id)
+            started.append(id)
+        }
+        return started
+    }
+}
+
 /// Where an answer's pictures go in its page: after `blockId` (in place of it while it is an empty line), or in place
 /// of it (`replace`: the picture being changed). No block: at the caret.
 public struct PicturePlace: Codable, Equatable, Sendable {

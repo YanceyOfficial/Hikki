@@ -452,6 +452,21 @@ describe('EditorBridge', () => {
     expect(bridge.demoAI(['not in the page'], 'improve')).toBe(false)
   })
 
+  it("the phone's AI field ends with Make: pictures go to the chat, a diagram into the page", () => {
+    bridge.loadDocument(page('a', { content: doc('Kyoto trip') }))
+    editor().commands.setTextSelection({ from: 1, to: 6 })
+    const presets = bridge.touchPrepare()?.presets.map((p) => p.id) ?? []
+    expect(presets.slice(-2)).toEqual(['make:diagram', 'make:pictures'])
+    expect(bridge.touchAI({ id: 'make:pictures' })).toBe(true)
+    expect(sent.find((m) => m.type === 'aiPictures')).toMatchObject({
+      docId: 'a',
+      mode: 'after',
+      selection: 'Kyoto'
+    })
+    expect(bridge.touchAI({ id: 'make:diagram' })).toBe(true)
+    expect(editor().state.doc.child(1).type.name).toBe('drawing')
+  })
+
   it('rejects unknown commands', () => {
     bridge.loadDocument(page('a'))
     expect(bridge.exec('rm -rf')).toBe(false)

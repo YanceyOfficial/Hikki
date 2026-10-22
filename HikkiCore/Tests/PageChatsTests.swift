@@ -175,4 +175,24 @@ struct PageChatsTests {
         defer { try? FileManager.default.removeItem(at: root) }
         #expect(throws: (any Error).self) { try chats.save([turn("q", at: 0)], pageId: "../pages/x") }
     }
+
+    @Test func picturesAreDrawnTwoAtATimeInTheOrderAsked() {
+        var queue = PictureQueue(lanes: 2)
+        #expect(queue.add(["a", "b", "c"]) == ["a", "b"])
+        #expect(queue.waiting == ["c"])
+        // Asked again while queued or drawing: it keeps its place.
+        #expect(queue.add(["a", "c", "d"]).isEmpty)
+        #expect(queue.finished("b") == ["c"])
+        #expect(queue.finished("zzz").isEmpty)
+        #expect(queue.stopAll() == ["d", "a", "c"])
+        #expect(queue.isEmpty)
+        #expect(queue.add(["e"]) == ["e"])
+    }
+
+    @Test func aPictureStillBeingMadeWhenKeptReadsAsStopped() {
+        let making = ChatPicture(id: "m-0", prompt: "Torii", shape: "wide")
+        #expect(making.restored.status == .stopped)
+        let done = ChatPicture(id: "m-1", prompt: "Pagoda", shape: "wide", status: .done, asset: "hikki-editor://assets/p.jpg")
+        #expect(done.restored == done)
+    }
 }
