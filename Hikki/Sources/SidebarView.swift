@@ -223,7 +223,9 @@ private struct PageSidebar: View {
 
         if !model.tree.favorites.isEmpty {
             Section {
-                ForEach(model.tree.favorites) { page in
+                // Ids of their own: the tree below lists the same pages in this lazy stack, and a lazy stack with an
+                // id twice drew the tree's row blank.
+                ForEach(model.tree.favorites, id: \.favoriteRowID) { page in
                     // A shortcut: the selection shows on the page's own row in the tree, once (like a native list).
                     SidebarDestination(route: .page(page.id), navigator: navigator, selected: false, pill: pill) {
                         NativePageLabel(page: page)
@@ -795,4 +797,9 @@ private struct SidebarPlace: View {
         .accessibilityLabel(title)
         .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
     }
+}
+
+extension PageSummary {
+    /// A favorite's row id in the sidebar, apart from the page's own row in the tree.
+    fileprivate var favoriteRowID: String { "favorite:" + id }
 }

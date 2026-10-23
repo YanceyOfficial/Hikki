@@ -1594,6 +1594,21 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(waitOrDumpTree(app.buttons["favorite-toggle"].firstMatch, in: app), "page did not open from search")
     }
 
+    /// Mac/iPad: a favorite keeps its own row in the tree too. The two lists share one lazy stack, and with the same
+    /// ids the tree's row came out blank.
+    func testFavoriteStaysInTheTree() throws {
+        continueAfterFailure = false
+        // The demo pages start with a favorite (日本語を勉強する, at the top level), so both lists hold it from launch.
+        let app = launch(environment: ["HIKKI_DEMO_PAGES": "1"])
+        guard app.buttons["nav-home"].waitForExistence(timeout: 10) else {
+            throw XCTSkip("needs the custom (regular-width) sidebar — run on iPad or Mac")
+        }
+        let row = app.descendants(matching: .any)["page-row-日本語を勉強する"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(row, in: app), "the favorite's row left the tree")
+        XCTAssertTrue(row.isHittable, "the favorite's row in the tree is drawn empty")
+        attachScreenshot(app, "favorite-in-tree")
+    }
+
     /// iPad (custom sidebar): drag a page onto another to nest it, then onto the top edge to move it back
     /// out in front. Nesting is read from each row's accessibility value ("level N").
     func testSidebarDragNestsAndReorders() throws {
