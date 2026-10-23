@@ -105,6 +105,11 @@ struct ContentView: View {
         return NavigationSplitView(columnVisibility: $columns, preferredCompactColumn: $navigator.compactColumn) {
             SidebarView(navigator: navigator, wide: wide)
                 .navigationSplitViewColumnWidth(min: Size.sidebarMin, ideal: Size.sidebarIdeal, max: Size.sidebarMax)
+                #if os(iOS)
+                    // The sidebar's own surface, a step off the page (actovia's docked sidebar): the system's glass
+                    // column took the white page's colour and the two read as one sheet. The Mac keeps its vibrancy.
+                    .background(Theme.sidebar.ignoresSafeArea())
+                #endif
         } detail: {
             // The inspector takes its room from the page, never from the screen: a panel inside the detail column
             // (SwiftUI's `.inspector` widened the window instead). A sheet on iPhone.
