@@ -173,6 +173,24 @@ struct CloudMirrorTests {
         #expect(FileManager.default.fileExists(atPath: root.appending(path: "pages/a.json").path))
     }
 
+    @Test func theWorkspaceSyncsOnlyWithTheAccountItFirstMet() throws {
+        let root = try makeTempDirectory()
+        let state = try makeTempDirectory().appending(path: "cloud.json")
+        let mirror = CloudMirror(root: root, stateURL: state)
+        #expect(mirror.accountAllows("_alice"))
+        #expect(mirror.accountAllows("_alice"))
+        // Another account — switched to, or signed in after a sign-out — gets nothing, also after a relaunch.
+        #expect(!mirror.accountAllows("_bob"))
+        #expect(!CloudMirror(root: root, stateURL: state).accountAllows("_bob"))
+        // A deleted zone sends everything again, still to the owner.
+        mirror.forgetCloud()
+        #expect(!mirror.accountAllows("_bob"))
+        // Turning iCloud on again hands the workspace to the account in use.
+        mirror.releaseAccount()
+        #expect(mirror.accountAllows("_bob"))
+        #expect(!mirror.accountAllows("_alice"))
+    }
+
     // MARK: -
 
     private func pageFile(_ text: String, at date: Date) throws -> PageFile {

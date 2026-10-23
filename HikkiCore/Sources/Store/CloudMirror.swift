@@ -23,6 +23,8 @@ public final class CloudMirror: @unchecked Sendable {
         var entries: [String: Entry] = [:]
         /// `CKSyncEngine`'s own state, kept for it.
         var engine: Data?
+        /// The iCloud account the workspace syncs with (its user record's name): the first one it met.
+        var account: String?
     }
 
     public enum Change: Equatable, Hashable, Sendable {
@@ -112,10 +114,29 @@ public final class CloudMirror: @unchecked Sendable {
         lock.withLock { state.entries[path]?.systemFields }
     }
 
-    /// The account changed (or signed out): nothing this device agreed with the old one holds for the new one. The
-    /// files stay; every one goes up again.
+    /// The cloud lost what it had (its zone was deleted): nothing agreed with it holds any more. The files stay;
+    /// every one goes up again — to the same account.
     public func forgetCloud() {
-        lock.withLock { state = State() }
+        lock.withLock { state = State(account: state.account) }
+        persist()
+    }
+
+    // MARK: - Account
+
+    /// Whether this iCloud account may sync the workspace: the first account it meets owns it, and no other one
+    /// sends or receives a file of it — the pages here stay the owner's.
+    public func accountAllows(_ user: String) -> Bool {
+        let allowed = lock.withLock {
+            if state.account == nil { state.account = user }
+            return state.account == user
+        }
+        persist()
+        return allowed
+    }
+
+    /// The user turned iCloud on: the account the device uses now may take the workspace.
+    public func releaseAccount() {
+        lock.withLock { state.account = nil }
         persist()
     }
 

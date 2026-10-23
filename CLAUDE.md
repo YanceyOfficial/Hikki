@@ -249,9 +249,12 @@ HikkiUITests/                 XCUITest flows
   else the cloud's. Changes go up after a quiet second (`noteLocalChanges`: `WorkspaceSync.Options.didWrite`, a scan
   every 10 s, activation), are sent before the app goes to the background (`flushWorkspace`), and come down with
   iCloud's pushes (`registerForRemoteNotifications`, iOS background mode `remote-notification`) and on activation;
-  what arrives is a change on disk like any other (the folder reconciles, editors reload). Another iCloud account on
-  the device pauses it (`Status.accountChanged`: the pages here are the previous account's); a deleted zone sends
-  everything again. A workspace still in an iCloud Drive folder (before CloudKit) is copied into the app once its
+  what arrives is a change on disk like any other (the folder reconciles, editors reload). The workspace belongs to the
+  first iCloud account it syncs with (`CloudMirror.accountAllows`, kept in the cloud state): the engine starts only
+  once `userRecordID` is that account and stops on any change (`.CKAccountChanged`, the engine's account events) —
+  another account, or a sign-out and sign-in as someone else, sends and fetches nothing (`Status.accountChanged`)
+  until the user turns iCloud off and on, which hands the workspace to the account in use (`releaseAccount`); a
+  deleted zone sends everything again. A workspace still in an iCloud Drive folder (before CloudKit) is copied into the app once its
   files are all downloaded (`WorkspaceFolder.copyContents`, the folder left as it was; on the Mac a sandbox that
   won't open the old bookmark asks for the folder first) and becomes `.cloud`; folders can no longer be picked.
   Entitlements: `Hikki/Hikki-iOS.entitlements` and the Mac's two (see Mac sandbox); the CloudKit schema is created

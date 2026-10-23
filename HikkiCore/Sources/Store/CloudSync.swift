@@ -7,8 +7,10 @@ import Foundation
 /// when they are large or an attachment. The engine fetches on its own when another device saves (a push) and sends
 /// what this device adds to its pending changes; `noteLocalChanges()` adds them after a quiet moment.
 ///
-/// One account per workspace: when the device's iCloud account changes, nothing goes up to the new one
-/// (`Status.accountChanged`) — the previous account's pages stay on the device.
+/// One account per workspace (`CloudMirror.accountAllows`): the engine runs only once the device's account is
+/// known to be the workspace's, and stops when it changes — signed out, switched, or signed out and in as someone
+/// else (`Status.accountChanged`). Nothing goes up to another account and nothing of its comes down; the pages stay
+/// on the device until the user turns iCloud on again for the new account.
 public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
     public static let containerID = "iCloud.app.yancey.hikki"
     public static let zoneID = CKRecordZone.ID(zoneName: "Workspace")
@@ -37,13 +39,15 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
     }
 
     private let mirror: CloudMirror
-    private let database: CKDatabase
+    private let container: CKContainer
     private let lock = NSLock()
     private var engine: CKSyncEngine?
     /// Contents being sent, by record name: what the cloud took is what `saved` records.
     private var inflight: [String: CloudMirror.Outgoing] = [:]
     private var scheduled: DispatchWorkItem?
-    private var paused = false
+    /// Between `start` and `stop`; the engine exists only while the account is the workspace's.
+    private var running = false
+    private var accountObserver: NSObjectProtocol?
     private let queue = DispatchQueue(label: "app.yancey.hikki.cloud", qos: .utility)
     private let staging: URL
     /// Files changed in the folder from the cloud (the workspace reconciles; editors reload).
@@ -55,27 +59,80 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
         onStatus: @escaping @Sendable (Status) -> Void
     ) {
         self.mirror = mirror
-        database = CKContainer(identifier: containerID).privateCloudDatabase
+        container = CKContainer(identifier: containerID)
         staging = FileManager.default.temporaryDirectory.appending(path: "hikki-cloud", directoryHint: .isDirectory)
         self.onReceived = onReceived
         self.onStatus = onStatus
     }
 
-    /// Starts the engine (it fetches right away) and queues the zone and whatever changed here meanwhile.
+    /// Checks the account, then starts the engine (it fetches right away) and queues the zone and whatever changed
+    /// here meanwhile.
     public func start() {
-        let serialization = mirror.engineState.flatMap { try? JSONDecoder().decode(CKSyncEngine.State.Serialization.self, from: $0) }
-        let engine = CKSyncEngine(.init(database: database, stateSerialization: serialization, delegate: self))
-        lock.withLock { self.engine = engine }
-        engine.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: Self.zoneID))])
+        let observer = NotificationCenter.default.addObserver(forName: .CKAccountChanged, object: nil, queue: nil) {
+            [weak self] _ in
+            Task { await self?.confirmAccount() }
+        }
+        lock.withLock {
+            running = true
+            accountObserver = observer
+        }
         onStatus(.starting)
-        noteLocalChanges(after: 0)
+        Task { await confirmAccount() }
     }
 
     public func stop() {
-        lock.withLock {
+        let observer = lock.withLock {
+            running = false
             scheduled?.cancel()
             engine = nil
+            defer { accountObserver = nil }
+            return accountObserver
         }
+        if let observer { NotificationCenter.default.removeObserver(observer) }
+    }
+
+    /// Runs the engine when the device's account is the workspace's, stops it when not.
+    private func confirmAccount() async {
+        let user: CKRecord.ID
+        do {
+            user = try await container.userRecordID()
+        } catch let error as CKError where error.code == .notAuthenticated {
+            pause(.noAccount)
+            return
+        } catch {
+            // Offline, most likely: tried again at the next activation (`fetchNow`) or account change.
+            Log.warn("cloud account unknown: \(error)", category: "cloud")
+            return
+        }
+        guard mirror.accountAllows(user.recordName) else {
+            Log.warn("cloud paused: another account", category: "cloud")
+            pause(.accountChanged)
+            return
+        }
+        let started: CKSyncEngine? = lock.withLock {
+            guard running, engine == nil else { return nil }
+            let serialization = mirror.engineState.flatMap {
+                try? JSONDecoder().decode(CKSyncEngine.State.Serialization.self, from: $0)
+            }
+            let engine = CKSyncEngine(
+                .init(database: container.privateCloudDatabase, stateSerialization: serialization, delegate: self))
+            self.engine = engine
+            return engine
+        }
+        guard let started else { return }
+        started.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: Self.zoneID))])
+        noteLocalChanges(after: 0)
+    }
+
+    /// No engine, so nothing is sent or fetched until the account is the workspace's again.
+    private func pause(_ status: Status) {
+        lock.withLock { engine = nil }
+        onStatus(status)
+    }
+
+    /// Whether events from this engine still count (one dropped at an account change may still report).
+    private func isCurrent(_ syncEngine: CKSyncEngine) -> Bool {
+        lock.withLock { engine === syncEngine }
     }
 
     /// Something in the folder may have changed: after `delay` quiet seconds, the changes go up.
@@ -90,7 +147,7 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
 
     /// Sends what is pending now (the app going to the background).
     public func sendNow() async {
-        guard let engine = lock.withLock({ paused ? nil : engine }) else { return }
+        guard let engine = lock.withLock({ engine }) else { return }
         queueLocalChanges()
         do {
             try await engine.sendChanges()
@@ -101,6 +158,7 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
 
     /// Fetches now (app activation; pushes usually get there first).
     public func fetchNow() async {
+        if lock.withLock({ running && engine == nil }) { await confirmAccount() }
         guard let engine = lock.withLock({ engine }) else { return }
         do {
             try await engine.fetchChanges()
@@ -110,7 +168,7 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
     }
 
     private func queueLocalChanges() {
-        guard let engine = lock.withLock({ paused ? nil : engine }) else { return }
+        guard let engine = lock.withLock({ engine }) else { return }
         let changes = mirror.localChanges()
         guard !changes.isEmpty else { return }
         engine.state.add(
@@ -130,6 +188,7 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
     // MARK: - CKSyncEngineDelegate
 
     public func handleEvent(_ event: CKSyncEngine.Event, syncEngine: CKSyncEngine) async {
+        guard isCurrent(syncEngine) else { return }
         switch event {
         case .stateUpdate(let update):
             mirror.setEngineState(try? JSONEncoder().encode(update.stateSerialization))
@@ -151,7 +210,7 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
         case .willFetchChanges, .willSendChanges:
             onStatus(.syncing)
         case .didFetchChanges, .didSendChanges:
-            if lock.withLock({ !paused }) { onStatus(.synced(.now)) }
+            onStatus(.synced(.now))
         case .sentDatabaseChanges(let sent):
             for failed in sent.failedZoneSaves {
                 Log.error("cloud zone save failed: \(failed.error.code.rawValue)", category: "cloud")
@@ -165,7 +224,7 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
     public func nextRecordZoneChangeBatch(
         _ context: CKSyncEngine.SendChangesContext, syncEngine: CKSyncEngine
     ) async -> CKSyncEngine.RecordZoneChangeBatch? {
-        guard lock.withLock({ !paused }) else { return nil }
+        guard isCurrent(syncEngine) else { return nil }
         let pending = syncEngine.state.pendingRecordZoneChanges.filter { context.options.scope.contains($0) }
         guard !pending.isEmpty else { return nil }
         return await CKSyncEngine.RecordZoneChangeBatch(pendingChanges: pending) { [weak self] recordID in
@@ -292,18 +351,16 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
 
     private func handleAccountChange(_ change: CKSyncEngine.Event.AccountChange) {
         switch change.changeType {
-        case .signIn:
-            lock.withLock { paused = false }
-            noteLocalChanges(after: 0)
         case .signOut:
-            lock.withLock { paused = true }
-            onStatus(.noAccount)
+            pause(.noAccount)
         case .switchAccounts:
-            // The pages here belong to the previous account: none go up to this one.
-            lock.withLock { paused = true }
-            onStatus(.accountChanged)
+            // Stopped at once; it starts again only if the new account is the workspace's (switched back).
+            pause(.accountChanged)
+            Task { await confirmAccount() }
+        case .signIn:
+            Task { await confirmAccount() }
         @unknown default:
-            break
+            Task { await confirmAccount() }
         }
     }
 

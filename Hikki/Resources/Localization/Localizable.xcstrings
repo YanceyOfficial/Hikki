@@ -2642,13 +2642,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Paused: this device uses another iCloud account"
+            "value": "Paused: this device uses another iCloud account. Turn iCloud off and on to sync with it."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已暂停：这台设备登录了另一个 iCloud 账户"
+            "value": "已暂停：这台设备登录了另一个 iCloud 账户。关掉再打开 iCloud 即可改为与它同步。"
           }
         }
       }

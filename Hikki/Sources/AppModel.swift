@@ -79,6 +79,8 @@ final class AppModel {
     @ObservationIgnored private var sync: WorkspaceSync?
     /// The workspace in iCloud (CloudKit): the folder's files carried to the user's other devices.
     @ObservationIgnored private var cloud: CloudSync?
+    /// iCloud was just turned on: the account the device uses now may take the workspace (`CloudMirror.releaseAccount`).
+    @ObservationIgnored private var adoptsCloudAccount = false
     /// Looks over the folder now and then for what `WorkspaceSync` doesn't write (history, comments, chats, assets).
     @ObservationIgnored private var cloudScan: Task<Void, Never>?
     /// Versions of pages (Page ⋯ → Page History…), in the workspace folder; nil until the folder is known.
@@ -237,6 +239,10 @@ final class AppModel {
         let mirror = CloudMirror(
             root: folder, stateURL: appRoot.appending(path: "cloud-state.json"),
             options: .init(device: Self.deviceName, conflictTitle: Self.conflictTitle))
+        if adoptsCloudAccount {
+            mirror.releaseAccount()
+            adoptsCloudAccount = false
+        }
         let cloud = CloudSync(
             mirror: mirror,
             onReceived: { [weak self] in Task { @MainActor in self?.cloudReceived() } },
@@ -287,6 +293,7 @@ final class AppModel {
         guard workspace.location != location else { return }
         workspace.location = location
         stopWorkspaceSync()
+        adoptsCloudAccount = on
         do {
             try workspaceStore.save(workspace)
             self.workspace = workspace
