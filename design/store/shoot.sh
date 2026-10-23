@@ -38,6 +38,8 @@ if [ -n "$landscape" ]; then
     TEST_RUNNER_HIKKI_SHOT_WAIT="${WAIT:-14}" xcodebuild test -workspace Hikki.xcworkspace -scheme Hikki \
     -destination "id=$sim" -derivedDataPath "${DERIVED:-Derived/StoreShots}" \
     -only-testing:HikkiUITests/StoreScreenshot >"${TMPDIR:-/tmp}/hikki-shot.log" 2>&1
+  # XCUIScreen hands back the screen as the panel is (upright portrait): turn it to how it was shown.
+  sips -r 270 "$out" >/dev/null
   echo "$out"
   exit 0
 fi
