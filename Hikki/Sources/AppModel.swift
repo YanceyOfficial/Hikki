@@ -151,7 +151,8 @@ final class AppModel {
             // editors which pages came from disk, so one showing such a page reloads it.
             // The losing side of a conflict becomes a page of its own, titled in the app's language; a page
             // another device replaces is kept in its history first; a page deleted here takes its history along.
-            let cloud: CloudSync? = if case .cloud = workspace.location { makeCloudSync(folder: folder, appRoot: appRoot) } else { nil }
+            let cloud: CloudSync? =
+                if case .cloud = workspace.location, Self.cloudAllowed { makeCloudSync(folder: folder, appRoot: appRoot) } else { nil }
             self.cloud = cloud
             let options = WorkspaceSync.Options(
                 device: Self.deviceName,
@@ -375,6 +376,13 @@ final class AppModel {
     }
 
     /// Picks up what other devices changed (app activation). Cheap when nothing did.
+    /// A run on its own data folder (UI tests, demos: `HIKKI_DATA_DIR`) never syncs with the device's iCloud account —
+    /// its pages would land in the user's own workspace there — unless `HIKKI_CLOUD=1`.
+    static var cloudAllowed: Bool {
+        let environment = ProcessInfo.processInfo.environment
+        return environment["HIKKI_DATA_DIR"] == nil || environment["HIKKI_CLOUD"] == "1"
+    }
+
     /// Whether the workspace syncs through iCloud (and so has something to pull).
     var syncsWithCloud: Bool {
         if case .cloud? = workspace?.location { true } else { false }
@@ -383,8 +391,8 @@ final class AppModel {
     /// Pull to refresh: what waits here goes up, what other devices saved comes down (arrivals reconcile the
     /// folder as they land), then the folder is compared once more.
     func refreshFromCloud() async {
-        guard let cloud else { return }
         Log.info("cloud refresh pulled", category: "cloud")
+        guard let cloud else { return }
         await cloud.sendNow()
         await cloud.fetchNow()
         reconcileWorkspace(fetch: false)

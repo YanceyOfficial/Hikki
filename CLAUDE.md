@@ -259,6 +259,8 @@ HikkiUITests/                 XCUITest flows
   deleted zone sends everything again. A workspace still in an iCloud Drive folder (before CloudKit) is copied into the app once its
   files are all downloaded (`WorkspaceFolder.copyContents`, the folder left as it was; on the Mac a sandbox that
   won't open the old bookmark asks for the folder first) and becomes `.cloud`; folders can no longer be picked.
+  A run on its own data folder (`HIKKI_DATA_DIR`: UI tests, demos) never syncs (`AppModel.cloudAllowed`) — its
+  pages would land in the account's one workspace zone — unless `HIKKI_CLOUD=1`.
   Entitlements: `Hikki/Hikki-iOS.entitlements` and the Mac's two (see Mac sandbox); the CloudKit schema is created
   in the development environment on first save and must be deployed to production in the CloudKit console before
   a release.
