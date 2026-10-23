@@ -32,8 +32,8 @@ const chapters: Chapter[] = [
   {
     label: 'Local-first',
     title: 'Notes that stay on your devices.',
-    text: 'Every page is a small file in a folder you choose. No account, and nothing waits on a server.',
-    details: ['Works offline', 'Syncs through iCloud Drive', 'Nothing two devices write is lost'],
+    text: 'Every page is kept on your device first. No account, and nothing waits on a server.',
+    details: ['Works offline', 'Syncs through your iCloud', 'Nothing two devices write is lost'],
     big: photos.notebook,
     side: photos.leaves,
     corner: photos.pen,

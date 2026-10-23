@@ -56,6 +56,8 @@ let project = Project(
                 // Pages picked in Spotlight arrive as this activity (SpotlightIndex.swift).
                 "NSUserActivityTypes": ["com.apple.corespotlightitem", "app.yancey.hikki.viewing"],
                 // The keyboard bar's photo sheet: Camera and Scan document (InfoPlist.xcstrings has the translations).
+                // iCloud's silent pushes wake the app to fetch what another device saved (CloudSync).
+                "UIBackgroundModes": ["remote-notification"],
                 "NSCameraUsageDescription": "Hikki uses the camera to add photos and scanned documents to your pages.",
             ]),
             sources: ["Hikki/Sources/**"],
@@ -87,12 +89,16 @@ let project = Project(
                 ],
                 debug: [
                     // The Mac app is sandboxed (the Mac App Store takes nothing else): network out, folders the user picks,
-                    // bookmarks to them. Debug may also reach the temporary folders, where UI tests and demo runs keep their
-                    // data (`HIKKI_DATA_DIR`).
-                    "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": "Hikki/Hikki-Debug.entitlements"
+                    // bookmarks to them; on both platforms iCloud (CloudKit, `CloudSync`) and its pushes. Debug may also
+                    // reach the temporary folders, where UI tests and demo runs keep their data (`HIKKI_DATA_DIR`).
+                    "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": "Hikki/Hikki-Debug.entitlements",
+                    "CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]": "Hikki/Hikki-iOS.entitlements",
+                    "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]": "Hikki/Hikki-iOS.entitlements",
                 ],
                 release: [
-                    "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": "Hikki/Hikki.entitlements"
+                    "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": "Hikki/Hikki.entitlements",
+                    "CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]": "Hikki/Hikki-iOS.entitlements",
+                    "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]": "Hikki/Hikki-iOS.entitlements",
                 ])
         ),
         .target(

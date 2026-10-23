@@ -16,7 +16,7 @@ const DOWNLOAD_FACTS = [
   {
     id: 'privacy',
     title: 'Privacy',
-    text: 'No telemetry. Your pages are files in your folder, and AI runs on your own key, only when you ask.',
+    text: 'No telemetry. Your pages stay on your devices and in your own iCloud, and AI runs on your own key, only when you ask.',
     link: { href: PRIVACY_PATH, label: 'The privacy policy' }
   },
   { id: 'roadmap', title: 'On the way', text: 'Editing a page together, on the same files.' }

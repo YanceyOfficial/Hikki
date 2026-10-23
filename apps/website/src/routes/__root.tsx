@@ -11,7 +11,7 @@ import styles from '../styles.css?url'
 
 const title = 'Hikki: local-first notes for iPhone, iPad and Mac'
 const description =
-  'A block editor whose pages are files in a folder you choose. No account, works offline, syncs through iCloud Drive.'
+  'A block editor that keeps your pages on your devices. No account, works offline, syncs through your own iCloud.'
 
 export const Route = createRootRoute({
   head: () => ({

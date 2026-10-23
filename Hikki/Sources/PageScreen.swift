@@ -461,6 +461,8 @@ struct PageFacts: View {
         switch model.workspace?.location {
         case .device?, nil:
             return String(localized: "app:page.storage.device")
+        case .cloud?:
+            return String(localized: "app:common.joined \(model.locationName) \(model.cloudStatusText)")
         case .folder(_, let name)?:
             let state: String =
                 if model.syncError != nil {

@@ -518,6 +518,23 @@ public final class PageChats: @unchecked Sendable {
         try encoder.encode(file).write(to: try url(for: file.pageId), options: .atomic)
     }
 
+    /// Two copies of a page's conversation file as one — both sides of a CloudKit conflict; nil when either can't be
+    /// read (or is a newer format's), which leaves the conflict to the later write.
+    public static func mergeFiles(_ a: Data, _ b: Data) -> Data? {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let one = try? decoder.decode(File.self, from: a), let other = try? decoder.decode(File.self, from: b),
+            one.format <= currentFormat, other.format <= currentFormat
+        else { return nil }
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        var merged = merge(one, other)
+        merged.format = currentFormat
+        merged.turns = visible(merged)
+        return try? encoder.encode(merged)
+    }
+
     /// Two devices' versions as one: every turn of either by id (the longer words for one on both — an answer kept
     /// while still arriving), the later clearing, the newer summary.
     static func merge(_ a: File, _ b: File) -> File {

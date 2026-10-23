@@ -254,10 +254,7 @@ struct SettingsView: View {
             .padding(.vertical, Spacing.s1_5)
         }
 
-        private var location: String {
-            if case .folder(_, let displayName) = model.workspace?.location { return displayName }
-            return String(localized: "app:onboarding.location.device")
-        }
+        private var location: String { model.locationName }
     }
 #endif
 
@@ -294,8 +291,6 @@ private struct SettingsPageContent: View {
 private struct WorkspaceSection: View {
     @Environment(AppModel.self) private var model
     @State private var name = ""
-    @State private var choosingFolder = false
-    @State private var storageFailed = false
     @AppStorage(TrashPreferences.keepDaysKey) private var keepDays = TrashPreferences.defaultDays
 
     var body: some View {
@@ -312,14 +307,22 @@ private struct WorkspaceSection: View {
             Text("app:settings.icon.detail")
         }
         Section {
-            LabeledContent("app:settings.storage.location") {
-                HStack(spacing: Spacing.s2) {
-                    storage
-                    Button("app:settings.change") { choosingFolder = true }
-                        .accessibilityIdentifier("settings-change-folder")
+            Toggle(
+                "app:settings.storage.icloud",
+                isOn: Binding(get: { model.workspace?.location == .cloud }, set: { model.setICloud($0) })
+            )
+            .accessibilityIdentifier("settings-icloud")
+            if model.workspace?.location == .cloud {
+                LabeledContent("app:settings.storage.sync") {
+                    Text(model.cloudStatusText)
+                        .foregroundStyle(model.cloudStatus?.isTrouble == true ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+                        .accessibilityIdentifier("settings-sync-status")
                 }
-            }
-            if case .folder = model.workspace?.location {
+            } else if case .folder(_, let displayName) = model.workspace?.location {
+                // A workspace still in its iCloud Drive folder: it moves into iCloud once the folder is all here.
+                LabeledContent("app:settings.storage.location") {
+                    Text(verbatim: displayName)  // the folder path, as-is
+                }
                 LabeledContent("app:settings.storage.sync") {
                     syncStatus
                         .foregroundStyle(model.syncError == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
@@ -329,8 +332,7 @@ private struct WorkspaceSection: View {
         } header: {
             Text("app:settings.storage")
         } footer: {
-            Text(storageFailed ? "app:settings.storage.error" : "app:settings.storage.detail")
-                .foregroundStyle(storageFailed ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+            Text("app:settings.storage.detail")
         }
         Section {
             Picker("app:settings.trash.keep", selection: $keepDays) {
@@ -348,16 +350,6 @@ private struct WorkspaceSection: View {
             Text("app:settings.trash")
         } footer: {
             Text("app:settings.trash.detail")
-        }
-        // Moving to (or joining) a folder — put it in iCloud Drive to use the workspace on other devices.
-        .fileImporter(isPresented: $choosingFolder, allowedContentTypes: [.folder]) { result in
-            do {
-                try model.changeLocation(to: try result.get())
-                storageFailed = false
-            } catch {
-                Log.error("settings: change folder failed: \(error)", category: "workspace")
-                storageFailed = true
-            }
         }
         .onAppear { name = model.workspace?.name ?? "" }
         // Saved when Settings closes too, not only on Return.
@@ -382,12 +374,6 @@ private struct WorkspaceSection: View {
             text = Text("app:common.joined \(text) \(skipped)")
         }
         return text
-    }
-    @ViewBuilder private var storage: some View {
-        switch model.workspace?.location {
-        case .folder(_, let displayName): Text(verbatim: displayName)  // the folder path, as-is
-        default: Text("app:onboarding.location.device")
-        }
     }
 }
 

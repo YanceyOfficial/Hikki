@@ -29,6 +29,7 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
     case pageLinkMissing
     case workspaceUnavailable
     case workspaceFolderAccess
+    case workspaceMoveFailed
     case workspaceSyncFailed
     case workspaceOpenFailed
     case databaseOpenFailed
@@ -93,6 +94,7 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .pageLinkMissing: 2014
         case .workspaceUnavailable: 2101
         case .workspaceFolderAccess: 2106
+        case .workspaceMoveFailed: 2107
         case .workspaceSyncFailed: 2102
         case .workspaceOpenFailed: 2103
         case .databaseOpenFailed: 2104
@@ -177,6 +179,7 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .pageLinkMissing: .warning
         case .workspaceUnavailable: .error
         case .workspaceFolderAccess: .warning
+        case .workspaceMoveFailed: .error
         case .workspaceSyncFailed: .warning
         case .workspaceOpenFailed: .error
         case .databaseOpenFailed: .error

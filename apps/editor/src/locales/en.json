@@ -552,6 +552,7 @@
     "pageLinkMissing": "The page this link points to no longer exists.",
     "workspaceUnavailable": "The workspace folder can't be reached.",
     "workspaceFolderAccess": "Hikki needs your permission to open the workspace folder again.",
+    "workspaceMoveFailed": "Couldn't move the workspace from its folder into iCloud. The folder is unchanged.",
     "workspaceSyncFailed": "Couldn't sync with the workspace folder.",
     "workspaceOpenFailed": "Couldn't open the workspace.",
     "databaseOpenFailed": "Couldn't open the local database.",

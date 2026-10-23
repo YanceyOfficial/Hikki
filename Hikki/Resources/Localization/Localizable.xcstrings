@@ -2636,6 +2636,108 @@
         }
       }
     },
+    "app:cloud.accountChanged": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paused: this device uses another iCloud account"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已暂停：这台设备登录了另一个 iCloud 账户"
+          }
+        }
+      }
+    },
+    "app:cloud.failed %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not syncing (error %@)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未在同步（错误 %@）"
+          }
+        }
+      }
+    },
+    "app:cloud.noAccount": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in to iCloud to sync"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录 iCloud 后即可同步"
+          }
+        }
+      }
+    },
+    "app:cloud.quotaFull": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud storage is full"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud 储存空间已满"
+          }
+        }
+      }
+    },
+    "app:cloud.synced %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synced %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@已同步"
+          }
+        }
+      }
+    },
+    "app:cloud.syncing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Syncing…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在同步…"
+          }
+        }
+      }
+    },
     "app:color.blue": {
       "extractionState": "manual",
       "localizations": {
@@ -5067,6 +5169,23 @@
         }
       }
     },
+    "app:error.workspaceMoveFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't move the workspace from its folder into iCloud. The folder is unchanged."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法把工作区从文件夹移到 iCloud，文件夹未作改动。"
+          }
+        }
+      }
+    },
     "app:error.workspaceOpenFailed": {
       "extractionState": "manual",
       "localizations": {
@@ -7022,6 +7141,23 @@
         }
       }
     },
+    "app:location.icloud": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud"
+          }
+        }
+      }
+    },
     "app:logs.empty": {
       "extractionState": "manual",
       "localizations": {
@@ -7481,40 +7617,6 @@
         }
       }
     },
-    "app:onboarding.location.changeFolder": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Change…"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "更改…"
-          }
-        }
-      }
-    },
-    "app:onboarding.location.chooseFolder": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose folder…"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "选择文件夹…"
-          }
-        }
-      }
-    },
     "app:onboarding.location.device": {
       "extractionState": "manual",
       "localizations": {
@@ -7549,40 +7651,6 @@
         }
       }
     },
-    "app:onboarding.location.existing %@ %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This folder already holds “%@” (%@ pages). You’ll open it on this device."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "此文件夹已有工作区“%@”（%@ 个页面），将在此设备上打开它。"
-          }
-        }
-      }
-    },
-    "app:onboarding.location.folderError": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Couldn’t use that folder. Try another one."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "无法使用该文件夹，请换一个试试。"
-          }
-        }
-      }
-    },
     "app:onboarding.location.icloud": {
       "extractionState": "manual",
       "localizations": {
@@ -7606,30 +7674,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Keep the workspace in a folder in iCloud Drive."
+            "value": "Synced through your iCloud account, end-to-end encrypted. Already using Hikki on another device? Its pages arrive here."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "把工作区放在 iCloud 云盘的一个文件夹里。"
-          }
-        }
-      }
-    },
-    "app:onboarding.location.noFolder": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No folder chosen"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "尚未选择文件夹"
+            "value": "通过你的 iCloud 账户同步，端到端加密。已在其他设备上使用 Hikki？那里的页面会同步过来。"
           }
         }
       }
@@ -7766,23 +7817,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "为工作区命名"
-          }
-        }
-      }
-    },
-    "app:onboarding.open": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Open workspace"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "打开工作区"
           }
         }
       }
@@ -9646,30 +9680,30 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pages, files and the workspace name live in this folder. Put it in iCloud Drive to use the workspace on your other devices."
+            "value": "With iCloud, pages, files and the workspace name reach your other devices signed in to the same account. Turned off, everything stays on this device."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "页面、文件和工作区名称都保存在此文件夹中。放在 iCloud 云盘里即可在其他设备上使用。"
+            "value": "开启 iCloud 后，页面、文件和工作区名称会同步到登录同一账户的其他设备。关闭后，一切都只保存在这台设备上。"
           }
         }
       }
     },
-    "app:settings.storage.error": {
+    "app:settings.storage.icloud": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn’t use that folder. Try another one."
+            "value": "Sync with iCloud"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法使用该文件夹，请换一个。"
+            "value": "通过 iCloud 同步"
           }
         }
       }

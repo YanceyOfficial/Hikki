@@ -105,6 +105,14 @@ struct HikkiApp: App {
     /// Upright on a phone-sized screen (every iPhone, an iPhone Duo folded), on its side on a tablet-sized one (iPads,
     /// the Duo unfolded) — `DeviceRules.orientation`; asked again when the window moves to the other screen (`RootView`).
     final class OrientationDelegate: NSObject, UIApplicationDelegate {
+        /// iCloud's pushes (another device saved): `CKSyncEngine` takes them once the app is registered.
+        func application(
+            _ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+        ) -> Bool {
+            application.registerForRemoteNotifications()
+            return true
+        }
+
         func application(
             _ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?
         ) -> UIInterfaceOrientationMask {

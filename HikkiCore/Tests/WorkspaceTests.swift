@@ -145,4 +145,33 @@ struct FolderBookmarkTests {
         #expect(WorkspaceFolder.accessDenied(at: root))
         #expect(!WorkspaceFolder.accessDenied(at: root.deletingLastPathComponent().appending(path: "hikki-gone-\(UUID().uuidString)")))
     }
+
+    /// A folder workspace moving into the app: every file keeps its place, hidden files stay behind, a newer file
+    /// already there isn't replaced — and nothing moves while iCloud Drive still has files of it to download.
+    @Test func aFolderWorkspaceCopiesInWhole() throws {
+        let source = try makeTempDirectory()
+        let destination = try makeTempDirectory()
+        func put(_ text: String, _ path: String, in root: URL, at date: Date? = nil) throws {
+            let url = root.appending(path: path)
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data(text.utf8).write(to: url)
+            if let date { try FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: url.path) }
+        }
+        let old = Date(timeIntervalSince1970: 1_800_000_000)
+        try put("p", "pages/p.json", in: source)
+        try put("v", "history/p/1.json", in: source)
+        try put("x", ".DS_Store", in: source)
+        try put("folder's", "workspace.json", in: source, at: old)
+        try put("newer here", "workspace.json", in: destination, at: old.addingTimeInterval(60))
+
+        #expect(try WorkspaceFolder.copyContents(of: source, into: destination) == 2)
+        #expect(try String(contentsOf: destination.appending(path: "history/p/1.json"), encoding: .utf8) == "v")
+        #expect(try String(contentsOf: destination.appending(path: "workspace.json"), encoding: .utf8) == "newer here")
+        #expect(!FileManager.default.fileExists(atPath: destination.appending(path: ".DS_Store").path))
+
+        try put("", "pages/.q.json.icloud", in: source)
+        #expect(throws: WorkspaceFolder.CopyError.stillDownloading(1)) {
+            try WorkspaceFolder.copyContents(of: source, into: try makeTempDirectory())
+        }
+    }
 }

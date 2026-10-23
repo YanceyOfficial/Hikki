@@ -7,6 +7,9 @@ public struct Workspace: Codable, Equatable, Sendable {
     public enum Location: Codable, Equatable, Sendable {
         /// Kept on this device only.
         case device
+        /// Kept on this device and in the user's iCloud (CloudKit, `CloudSync`): the same folder as `device`, carried
+        /// to their other devices.
+        case cloud
         /// A user-chosen folder (typically in iCloud Drive), remembered as a security-scoped bookmark.
         case folder(bookmark: Data, displayName: String)
     }
@@ -126,7 +129,7 @@ public struct WorkspaceIdentity: Codable, Equatable, Sendable {
 public enum WorkspaceFolder {
     public static func url(for workspace: Workspace, appRoot: URL) throws -> URL {
         switch workspace.location {
-        case .device: appRoot.appending(path: "Workspace", directoryHint: .isDirectory)
+        case .device, .cloud: appRoot.appending(path: "Workspace", directoryHint: .isDirectory)
         case .folder(let bookmark, _): try FolderBookmark.resolve(bookmark)
         }
     }
@@ -167,6 +170,55 @@ public enum WorkspaceFolder {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         return try body(url)
+    }
+
+    public enum CopyError: Error, Equatable {
+        /// iCloud Drive still has this many of the folder's files to download (asked for now).
+        case stillDownloading(Int)
+    }
+
+    /// Copies every file of a workspace folder (pages, history, comments, chats, assets, workspace.json) into
+    /// `destination`, keeping their places; a file already there is replaced only by a newer one. Hidden files are
+    /// left out. Throws `stillDownloading` — copying nothing — while any file is an iCloud placeholder. Returns how
+    /// many files it copied.
+    @discardableResult
+    public static func copyContents(of source: URL, into destination: URL) throws -> Int {
+        let manager = FileManager.default
+        let keys: [URLResourceKey] = [.isRegularFileKey, .contentModificationDateKey]
+        guard let enumerator = manager.enumerator(at: source, includingPropertiesForKeys: keys, options: []) else { return 0 }
+        let base = source.standardizedFileURL.path
+        var files: [(URL, String)] = []
+        var placeholders: [URL] = []
+        for case let url as URL in enumerator {
+            let name = url.lastPathComponent
+            if name.hasPrefix("."), name.hasSuffix(".icloud") {
+                placeholders.append(url.deletingLastPathComponent().appending(path: String(name.dropFirst().dropLast(7))))
+                continue
+            }
+            guard !name.hasPrefix("."), (try? url.resourceValues(forKeys: Set(keys)))?.isRegularFile == true else { continue }
+            let full = url.standardizedFileURL.path
+            guard full.hasPrefix(base + "/") else { continue }
+            files.append((url, String(full.dropFirst(base.count + 1))))
+        }
+        if !placeholders.isEmpty {
+            for file in placeholders { try? manager.startDownloadingUbiquitousItem(at: file) }
+            throw CopyError.stillDownloading(placeholders.count)
+        }
+        var copied = 0
+        for (url, path) in files {
+            let target = destination.appending(path: path)
+            if let existing = try? target.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate,
+                let incoming = try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate,
+                existing >= incoming
+            {
+                continue
+            }
+            try manager.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+            if manager.fileExists(atPath: target.path) { try manager.removeItem(at: target) }
+            try manager.copyItem(at: url, to: target)
+            copied += 1
+        }
+        return copied
     }
 
     /// The folder is there but this process may not read it: a Mac app in its sandbox holding a bookmark it can't

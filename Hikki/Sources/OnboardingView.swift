@@ -1,10 +1,10 @@
 import HikkiCore
 import HikkiUI
 import SwiftUI
-import UniformTypeIdentifiers
 
-/// First launch: welcome → name the workspace → choose where it lives (an iCloud Drive folder or
-/// this device). Creates the workspace; the root view then switches to the app.
+/// First launch: welcome → name the workspace → choose where it lives (iCloud, or this device only). Creates the
+/// workspace; the root view then switches to the app. In iCloud, a workspace another device keeps there arrives
+/// with its name and icon.
 struct OnboardingView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.colorTone) private var tone
@@ -14,11 +14,6 @@ struct OnboardingView: View {
     @FocusState private var nameFocused: Bool
     @State private var selectedSuggestion = false
     @State private var choice: Choice = .iCloud
-    @State private var folder: (bookmark: Data, displayName: String)?
-    /// A workspace the picked folder already holds: joined instead of created.
-    @State private var existing: (name: String, pages: Int)?
-    @State private var importing = false
-    @State private var errorMessage: String?
 
     private enum Step: Int, CaseIterable { case welcome, name, location }
     private enum Choice { case iCloud, device }
@@ -40,7 +35,6 @@ struct OnboardingView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.background)
         .animation(.snappy(duration: 0.25), value: step)
-        .fileImporter(isPresented: $importing, allowedContentTypes: [.folder]) { result in pickFolder(result) }
         #if os(macOS)
             .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
             .ignoresSafeArea()
@@ -115,43 +109,12 @@ struct OnboardingView: View {
                 isSelected: choice == .iCloud
             ) { choice = .iCloud }
             .accessibilityIdentifier("onboarding-icloud")
-            if choice == .iCloud {
-                HStack(spacing: Spacing.s2) {
-                    IconView(.folderSimple, size: TextSize.base.rawValue).foregroundStyle(Theme.mutedForeground)
-                    // The folder path is shown as-is, never looked up as a localization key.
-                    (folder.map { Text(verbatim: $0.displayName) } ?? Text("app:onboarding.location.noFolder"))
-                        .font(.hk(.md))
-                        .foregroundStyle(folder == nil ? Theme.mutedForeground : Theme.foreground)
-                        .lineLimit(1)
-                    Spacer()
-                    Button(folder == nil ? "app:onboarding.location.chooseFolder" : "app:onboarding.location.changeFolder") {
-                        importing = true
-                    }
-                    .buttonStyle(.hikki(.outline))
-                    .accessibilityIdentifier("onboarding-choose-folder")
-                }
-                .padding(.horizontal, Spacing.s1)
-                if let existing {
-                    // The folder's workspace name and page count, as they are.
-                    Text("app:onboarding.location.existing \(existing.name) \(existing.pages.formatted())")
-                        .font(.hk(.md))
-                        .foregroundStyle(Theme.mutedForeground)
-                        .padding(.horizontal, Spacing.s1)
-                        .accessibilityIdentifier("onboarding-existing")
-                }
-            }
             SelectableCard(
                 "app:onboarding.location.device", detail: "app:onboarding.location.deviceDetail", icon: .laptop,
                 isSelected: choice == .device
             ) { choice = .device }
             .accessibilityIdentifier("onboarding-device")
-            if let errorMessage {
-                Text(LocalizedStringKey(errorMessage)).font(.hk(.md)).foregroundStyle(Theme.destructive)
-            }
-            navigation(
-                next: choice == .iCloud && existing != nil ? "app:onboarding.open" : "app:onboarding.create", id: "onboarding-create",
-                enabled: choice == .device || folder != nil, action: create
-            ) {
+            navigation(next: "app:onboarding.create", id: "onboarding-create", enabled: true, action: create) {
                 step = .name
             }
         }
@@ -189,23 +152,9 @@ struct OnboardingView: View {
         step = .location
     }
 
-    private func pickFolder(_ result: Result<URL, Error>) {
-        do {
-            let url = try result.get()
-            folder = (try FolderBookmark.make(for: url), FolderBookmark.displayName(for: url))
-            existing = WorkspaceFolder.existingWorkspace(at: url)
-            errorMessage = nil
-        } catch {
-            Log.error("onboarding: folder pick failed: \(error)", category: "workspace")
-            errorMessage = "app:onboarding.location.folderError"
-        }
-    }
-
     private func create() {
         guard let cleanName = Workspace.normalizedName(name) else { return }
-        let location: Workspace.Location =
-            if choice == .iCloud, let folder { .folder(bookmark: folder.bookmark, displayName: folder.displayName) } else { .device }
-        model.createWorkspace(name: cleanName, location: location)
+        model.createWorkspace(name: cleanName, location: choice == .iCloud ? .cloud : .device)
     }
 
     /// "Yancey’s Space" from the Mac's account name; a generic name elsewhere.

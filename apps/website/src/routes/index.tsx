@@ -30,7 +30,7 @@ function Home() {
 
 /** The first screen's short list: what Hikki is, one line each. */
 const HERO_FACTS = [
-  { title: 'Local-first', text: 'Pages are files in a folder you choose.' },
+  { title: 'Local-first', text: 'Pages live on your device first and work offline.' },
   { title: 'No telemetry', text: 'Nothing about how you use it leaves the device.' },
   { title: 'Native', text: 'Made for iPhone, iPad and Mac, each in its own way.' },
   { title: 'AI, your key', text: 'Your own OpenAI or Anthropic key, used only when you ask.' }
@@ -59,8 +59,8 @@ function Hero() {
             Notes that stay on your devices.
           </h1>
           <p class="mt-6 text-lg leading-relaxed text-muted">
-            Hikki is a block editor for iPhone, iPad and Mac. Every page is a file in a folder you
-            choose, so your writing never waits on an account or a server.
+            Hikki is a block editor for iPhone, iPad and Mac. Every page is kept on your device and
+            syncs through your own iCloud, so your writing never waits on an account or a server.
           </p>
         </div>
       </div>
@@ -93,8 +93,8 @@ function LocalFirst() {
     { title: 'No account', text: 'Open the app and write. There is nothing to sign up for.' },
     { title: 'Works offline', text: 'Everything is on the device first; the network is optional.' },
     {
-      title: 'Syncs through iCloud Drive',
-      text: 'Put the folder there and your other devices pick up changes.'
+      title: 'Syncs through your iCloud',
+      text: 'Changes reach your other devices in moments. Or keep it on this device only.'
     },
     {
       title: 'Nothing is overwritten',
@@ -112,12 +112,12 @@ function LocalFirst() {
           Your notes are files.
         </h2>
         <p class="mt-6 max-w-[32rem] text-lg leading-relaxed text-muted">
-          Each page is one small file in a folder you pick: on the device, or in iCloud Drive to
-          reach every device you own. Copy it, back it up, read it with any tool. Hikki keeps a
-          search index beside it and can always rebuild it from the files.
+          Each page is one small file, kept in the app’s storage on the device. With iCloud on, it
+          also goes to your own iCloud account and reaches every device you own. Export writes
+          everything out as Markdown, HTML, PDF or the original page files.
         </p>
         <pre class="border-ink bg-paper mt-8 overflow-x-auto border-4 p-5 font-mono text-sm leading-7">
-          {`Notes/
+          {`Workspace/
   pages/
     product-launch.json
     kyoto-in-spring.json
@@ -199,7 +199,7 @@ function Devices() {
           class="mx-auto w-[min(62%,230px)] rounded-[30px]"
         />
         <p class="leading-relaxed text-muted">
-          Put the folder in iCloud Drive and what you write on one shows up on the others.
+          With iCloud on, what you write on one shows up on the others.
         </p>
       </div>
     </section>

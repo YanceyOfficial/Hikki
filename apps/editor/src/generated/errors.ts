@@ -27,6 +27,7 @@ export const ERRORS = {
   pageLinkMissing: { code: 2014, severity: 'warning' },
   workspaceUnavailable: { code: 2101, severity: 'error' },
   workspaceFolderAccess: { code: 2106, severity: 'warning' },
+  workspaceMoveFailed: { code: 2107, severity: 'error' },
   workspaceSyncFailed: { code: 2102, severity: 'warning' },
   workspaceOpenFailed: { code: 2103, severity: 'error' },
   databaseOpenFailed: { code: 2104, severity: 'error' },
@@ -125,6 +126,8 @@ export function errorMessage(id: ErrorId): string {
       return t('error.workspaceUnavailable')
     case 'workspaceFolderAccess':
       return t('error.workspaceFolderAccess')
+    case 'workspaceMoveFailed':
+      return t('error.workspaceMoveFailed')
     case 'workspaceSyncFailed':
       return t('error.workspaceSyncFailed')
     case 'workspaceOpenFailed':

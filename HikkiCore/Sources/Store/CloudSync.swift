@@ -1,0 +1,335 @@
+import CloudKit
+import Foundation
+
+/// The workspace in iCloud: `CKSyncEngine` over the user's private database (one zone, `Workspace`), carrying the
+/// workspace folder file by file as `CloudMirror` describes it. A `File` record holds its path and its contents —
+/// both in encrypted fields (end-to-end encrypted: only the user's devices read them), or the contents as an asset
+/// when they are large or an attachment. The engine fetches on its own when another device saves (a push) and sends
+/// what this device adds to its pending changes; `noteLocalChanges()` adds them after a quiet moment.
+///
+/// One account per workspace: when the device's iCloud account changes, nothing goes up to the new one
+/// (`Status.accountChanged`) — the previous account's pages stay on the device.
+public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
+    public static let containerID = "iCloud.app.yancey.hikki"
+    public static let zoneID = CKRecordZone.ID(zoneName: "Workspace")
+    static let recordType = "File"
+    /// Contents up to this size travel inside the record; larger ones (and every attachment) as an asset.
+    static let inlineLimit = 512 * 1024
+
+    public enum Status: Equatable, Sendable {
+        case starting
+        /// Up to date at that moment.
+        case synced(Date)
+        case syncing
+        case noAccount
+        /// The device signed in to another iCloud account than the one this workspace syncs with.
+        case accountChanged
+        case quotaFull
+        case failed(String)
+
+        /// Something the user should do something about (sign in, free up iCloud storage…).
+        public var isTrouble: Bool {
+            switch self {
+            case .starting, .synced, .syncing: false
+            case .noAccount, .accountChanged, .quotaFull, .failed: true
+            }
+        }
+    }
+
+    private let mirror: CloudMirror
+    private let database: CKDatabase
+    private let lock = NSLock()
+    private var engine: CKSyncEngine?
+    /// Contents being sent, by record name: what the cloud took is what `saved` records.
+    private var inflight: [String: CloudMirror.Outgoing] = [:]
+    private var scheduled: DispatchWorkItem?
+    private var paused = false
+    private let queue = DispatchQueue(label: "app.yancey.hikki.cloud", qos: .utility)
+    private let staging: URL
+    /// Files changed in the folder from the cloud (the workspace reconciles; editors reload).
+    private let onReceived: @Sendable () -> Void
+    private let onStatus: @Sendable (Status) -> Void
+
+    public init(
+        mirror: CloudMirror, containerID: String = CloudSync.containerID, onReceived: @escaping @Sendable () -> Void,
+        onStatus: @escaping @Sendable (Status) -> Void
+    ) {
+        self.mirror = mirror
+        database = CKContainer(identifier: containerID).privateCloudDatabase
+        staging = FileManager.default.temporaryDirectory.appending(path: "hikki-cloud", directoryHint: .isDirectory)
+        self.onReceived = onReceived
+        self.onStatus = onStatus
+    }
+
+    /// Starts the engine (it fetches right away) and queues the zone and whatever changed here meanwhile.
+    public func start() {
+        let serialization = mirror.engineState.flatMap { try? JSONDecoder().decode(CKSyncEngine.State.Serialization.self, from: $0) }
+        let engine = CKSyncEngine(.init(database: database, stateSerialization: serialization, delegate: self))
+        lock.withLock { self.engine = engine }
+        engine.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: Self.zoneID))])
+        onStatus(.starting)
+        noteLocalChanges(after: 0)
+    }
+
+    public func stop() {
+        lock.withLock {
+            scheduled?.cancel()
+            engine = nil
+        }
+    }
+
+    /// Something in the folder may have changed: after `delay` quiet seconds, the changes go up.
+    public func noteLocalChanges(after delay: TimeInterval = 1) {
+        let work = DispatchWorkItem { [weak self] in self?.queueLocalChanges() }
+        lock.withLock {
+            scheduled?.cancel()
+            scheduled = work
+        }
+        queue.asyncAfter(deadline: .now() + delay, execute: work)
+    }
+
+    /// Sends what is pending now (the app going to the background).
+    public func sendNow() async {
+        guard let engine = lock.withLock({ paused ? nil : engine }) else { return }
+        queueLocalChanges()
+        do {
+            try await engine.sendChanges()
+        } catch {
+            Log.warn("cloud send failed: \(error)", category: "cloud")
+        }
+    }
+
+    /// Fetches now (app activation; pushes usually get there first).
+    public func fetchNow() async {
+        guard let engine = lock.withLock({ engine }) else { return }
+        do {
+            try await engine.fetchChanges()
+        } catch {
+            Log.warn("cloud fetch failed: \(error)", category: "cloud")
+        }
+    }
+
+    private func queueLocalChanges() {
+        guard let engine = lock.withLock({ paused ? nil : engine }) else { return }
+        let changes = mirror.localChanges()
+        guard !changes.isEmpty else { return }
+        engine.state.add(
+            pendingRecordZoneChanges: changes.map { change in
+                switch change {
+                case .save(let path): .saveRecord(Self.recordID(for: path))
+                case .delete(let path): .deleteRecord(Self.recordID(for: path))
+                }
+            })
+        Log.info("cloud changes queued", category: "cloud", context: ["count": "\(changes.count)"])
+    }
+
+    static func recordID(for path: String) -> CKRecord.ID {
+        CKRecord.ID(recordName: CloudMirror.recordName(for: path), zoneID: zoneID)
+    }
+
+    // MARK: - CKSyncEngineDelegate
+
+    public func handleEvent(_ event: CKSyncEngine.Event, syncEngine: CKSyncEngine) async {
+        switch event {
+        case .stateUpdate(let update):
+            mirror.setEngineState(try? JSONEncoder().encode(update.stateSerialization))
+        case .accountChange(let change):
+            handleAccountChange(change)
+        case .fetchedDatabaseChanges(let changes):
+            for deletion in changes.deletions where deletion.zoneID == Self.zoneID {
+                // The zone is gone (the user deleted the app's iCloud data, or end-to-end keys were reset): the
+                // pages are still here, so they go up again whole.
+                Log.warn("cloud zone deleted", category: "cloud", context: ["reason": "\(deletion.reason)"])
+                mirror.forgetCloud()
+                syncEngine.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: Self.zoneID))])
+                queueLocalChanges()
+            }
+        case .fetchedRecordZoneChanges(let changes):
+            receive(changes.modifications.map(\.record), deletions: changes.deletions.map(\.recordID), syncEngine: syncEngine)
+        case .sentRecordZoneChanges(let sent):
+            handleSent(sent, syncEngine: syncEngine)
+        case .willFetchChanges, .willSendChanges:
+            onStatus(.syncing)
+        case .didFetchChanges, .didSendChanges:
+            if lock.withLock({ !paused }) { onStatus(.synced(.now)) }
+        case .sentDatabaseChanges(let sent):
+            for failed in sent.failedZoneSaves {
+                Log.error("cloud zone save failed: \(failed.error.code.rawValue)", category: "cloud")
+                report(failed.error)
+            }
+        default:
+            break
+        }
+    }
+
+    public func nextRecordZoneChangeBatch(
+        _ context: CKSyncEngine.SendChangesContext, syncEngine: CKSyncEngine
+    ) async -> CKSyncEngine.RecordZoneChangeBatch? {
+        guard lock.withLock({ !paused }) else { return nil }
+        let pending = syncEngine.state.pendingRecordZoneChanges.filter { context.options.scope.contains($0) }
+        guard !pending.isEmpty else { return nil }
+        return await CKSyncEngine.RecordZoneChangeBatch(pendingChanges: pending) { [weak self] recordID in
+            guard let self else { return nil }
+            guard let record = self.record(for: recordID) else {
+                // The file went away before it could go up: its deletion is (or will be) queued instead.
+                syncEngine.state.remove(pendingRecordZoneChanges: [.saveRecord(recordID)])
+                return nil
+            }
+            return record
+        }
+    }
+
+    // MARK: - Records
+
+    /// The record for a file as it is now, on its last known system fields (so the server can tell a stale save).
+    private func record(for id: CKRecord.ID) -> CKRecord? {
+        guard let path = mirror.path(forRecordName: id.recordName) ?? pendingPath(for: id), let file = mirror.outgoing(path)
+        else { return nil }
+        let record = mirror.systemFields(path).flatMap(Self.decodeSystemFields) ?? CKRecord(recordType: Self.recordType, recordID: id)
+        record.encryptedValues["path"] = path
+        if file.contents.count <= Self.inlineLimit && !path.hasPrefix("assets/") {
+            record.encryptedValues["data"] = file.contents
+            record["file"] = nil
+        } else {
+            do {
+                try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
+                let copy = staging.appending(path: id.recordName)
+                try file.contents.write(to: copy, options: .atomic)
+                record["file"] = CKAsset(fileURL: copy)
+                record.encryptedValues["data"] = nil
+            } catch {
+                Log.error("cloud asset staging failed: \(error)", category: "cloud")
+                return nil
+            }
+        }
+        record["modified"] = file.modified
+        lock.withLock { inflight[id.recordName] = file }
+        return record
+    }
+
+    /// A file new here has no entry yet: its path is found by scanning for the name.
+    private func pendingPath(for id: CKRecord.ID) -> String? {
+        mirror.listFiles().keys.first { CloudMirror.recordName(for: $0) == id.recordName }
+    }
+
+    private func receive(_ records: [CKRecord], deletions: [CKRecord.ID], syncEngine: CKSyncEngine) {
+        var touched = false
+        var push: [CKRecord.ID] = []
+        mirror.batch {
+            for record in records {
+                guard let path = record.encryptedValues["path"] as? String, let contents = Self.contents(of: record) else {
+                    Log.warn("cloud record unreadable", category: "cloud")
+                    continue
+                }
+                do {
+                    let received = try mirror.receive(path, contents: contents, systemFields: Self.encodeSystemFields(record))
+                    touched = touched || received.touched
+                    if received.needsPush { push.append(record.recordID) }
+                } catch {
+                    Log.error("cloud file not written: \(error)", category: "cloud", context: ["kind": CloudMirror.kind(of: path)])
+                }
+            }
+            for id in deletions {
+                guard let path = mirror.path(forRecordName: id.recordName) else { continue }
+                do {
+                    let received = try mirror.receiveDeletion(path)
+                    touched = touched || received.touched
+                    if received.needsPush { push.append(id) }
+                } catch {
+                    Log.error("cloud file not removed: \(error)", category: "cloud", context: ["kind": CloudMirror.kind(of: path)])
+                }
+            }
+        }
+        if !push.isEmpty { syncEngine.state.add(pendingRecordZoneChanges: push.map { .saveRecord($0) }) }
+        // Files merged or copied here (a conflicted page copy) are new files: they go up with the next scan.
+        if push.count > 0 { noteLocalChanges() }
+        if touched {
+            Log.info("cloud changes received", category: "cloud", context: ["records": "\(records.count + deletions.count)"])
+            onReceived()
+        }
+    }
+
+    private func handleSent(_ sent: CKSyncEngine.Event.SentRecordZoneChanges, syncEngine: CKSyncEngine) {
+        mirror.batch {
+            for record in sent.savedRecords {
+                guard let file = lock.withLock({ inflight.removeValue(forKey: record.recordID.recordName) }) else { continue }
+                mirror.saved(file, systemFields: Self.encodeSystemFields(record))
+            }
+            for id in sent.deletedRecordIDs {
+                if let path = mirror.path(forRecordName: id.recordName) { mirror.deleted(path) }
+            }
+        }
+        for failed in sent.failedRecordSaves {
+            let id = failed.record.recordID
+            lock.withLock { _ = inflight.removeValue(forKey: id.recordName) }
+            let path = failed.record.encryptedValues["path"] as? String
+            switch failed.error.code {
+            case .serverRecordChanged:
+                // Another device saved it first: settle with theirs, then send the result over it.
+                if let server = failed.error.serverRecord {
+                    receive([server], deletions: [], syncEngine: syncEngine)
+                }
+                syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(id)])
+            case .zoneNotFound:
+                syncEngine.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: Self.zoneID))])
+                if let path { mirror.lostRecord(path) }
+                syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(id)])
+            case .unknownItem:
+                if let path { mirror.lostRecord(path) }
+                syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(id)])
+            case .networkFailure, .networkUnavailable, .zoneBusy, .serviceUnavailable, .requestRateLimited, .notAuthenticated:
+                break  // the engine tries again on its own
+            default:
+                Log.error("cloud save failed: \(failed.error.code.rawValue)", category: "cloud")
+                report(failed.error)
+            }
+        }
+        for (_, error) in sent.failedRecordDeletes where error.code != .unknownItem {
+            Log.error("cloud delete failed: \(error.code.rawValue)", category: "cloud")
+        }
+        try? FileManager.default.removeItem(at: staging)
+    }
+
+    private func handleAccountChange(_ change: CKSyncEngine.Event.AccountChange) {
+        switch change.changeType {
+        case .signIn:
+            lock.withLock { paused = false }
+            noteLocalChanges(after: 0)
+        case .signOut:
+            lock.withLock { paused = true }
+            onStatus(.noAccount)
+        case .switchAccounts:
+            // The pages here belong to the previous account: none go up to this one.
+            lock.withLock { paused = true }
+            onStatus(.accountChanged)
+        @unknown default:
+            break
+        }
+    }
+
+    private func report(_ error: CKError) {
+        onStatus(error.code == .quotaExceeded ? .quotaFull : .failed("\(error.code.rawValue)"))
+    }
+
+    // MARK: - Coding
+
+    static func contents(of record: CKRecord) -> Data? {
+        if let data = record.encryptedValues["data"] as? Data { return data }
+        if let url = (record["file"] as? CKAsset)?.fileURL { return try? Data(contentsOf: url) }
+        return nil
+    }
+
+    static func encodeSystemFields(_ record: CKRecord) -> Data {
+        let coder = NSKeyedArchiver(requiringSecureCoding: true)
+        record.encodeSystemFields(with: coder)
+        coder.finishEncoding()
+        return coder.encodedData
+    }
+
+    static func decodeSystemFields(_ data: Data) -> CKRecord? {
+        guard let coder = try? NSKeyedUnarchiver(forReadingFrom: data) else { return nil }
+        coder.requiresSecureCoding = true
+        defer { coder.finishDecoding() }
+        return CKRecord(coder: coder)
+    }
+}

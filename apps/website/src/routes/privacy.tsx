@@ -9,7 +9,7 @@ import { CONTACT_EMAIL, PRIVACY_PATH, SITE_URL } from '../site'
 
 const title = 'Privacy policy · Hikki'
 const description =
-  'Hikki has no account and no telemetry. Your notes stay in a folder you choose; this page says what leaves the device, and when.'
+  'Hikki has no account and no telemetry. Your notes stay on your devices and in your own iCloud; this page says what leaves the device, and when.'
 
 export const Route = createFileRoute('/privacy')({
   head: () => ({
@@ -32,8 +32,8 @@ const EFFECTIVE = '23 October 2026'
 const IN_SHORT = [
   'No account. Nothing to sign up for, so there is no profile of you anywhere.',
   'No telemetry. Hikki sends nothing about how you use it, and runs no analytics.',
-  'Your notes are files in a folder you choose, on your device or in your iCloud Drive. Hikki runs no server for them.',
-  'Something leaves the device only when you ask for it: syncing through iCloud Drive, asking AI, searching Unsplash, opening something from the web.'
+  'Your notes are kept on your device and, with iCloud on, in your own iCloud account. Hikki runs no server for them and cannot read them.',
+  'Something leaves the device only when you ask for it: syncing through iCloud, asking AI, searching Unsplash, opening something from the web.'
 ]
 
 /**
@@ -67,16 +67,17 @@ function Privacy() {
 
             <Part title="What Hikki stores, and where">
               <p>
-                Everything you write stays on your devices unless you choose otherwise. Hikki has no
-                account and runs no server that holds your notes.
+                Everything you write stays on your devices, and in your own iCloud account if you
+                sync with it. Hikki has no account and runs no server that holds your notes.
               </p>
               <ul>
                 <li>
-                  <strong>Your pages</strong> are files in the folder you pick when you set Hikki
-                  up: one file per page, with its history, comments, attachments and AI
-                  conversations beside it. The folder is yours: copy it, back it up, read it with
-                  any tool, delete it and the notes are gone. Export writes everything out as
-                  Markdown, HTML, PDF or the original files.
+                  <strong>Your pages</strong> are files in the app’s own storage on the device: one
+                  file per page, with its history, comments, attachments and AI conversations beside
+                  it. With iCloud on (the default when you set Hikki up), they are also kept in your
+                  iCloud account’s private database, as described below. Export writes everything
+                  out as Markdown, HTML, PDF or the original page files (JSON) whenever you want a
+                  copy.
                 </li>
                 <li>
                   <strong>A search index and a cache</strong> of the same pages live in the app’s
@@ -105,8 +106,15 @@ function Privacy() {
               </p>
               <ul>
                 <li>
-                  <strong>iCloud Drive.</strong> If you put the folder in iCloud Drive, Apple syncs
-                  the files between your devices under Apple’s terms. Nothing syncs otherwise.
+                  <strong>iCloud.</strong> With iCloud on, your workspace syncs between your devices
+                  through CloudKit, in the private database of your own iCloud account, on Apple’s
+                  servers and in your iCloud storage. Each file’s path, and the contents of a page
+                  up to 512 KB, are stored in encrypted fields, which are end-to-end encrypted: only
+                  your devices can read them, not Hikki’s maker and not Apple. Attachments, and a
+                  page larger than that, go as CloudKit assets, encrypted by Apple, and end-to-end
+                  encrypted when you turn on Advanced Data Protection. Apple’s terms govern iCloud.
+                  If you set Hikki up for this device only, or turn iCloud off in Settings →
+                  Storage, nothing syncs.
                 </li>
                 <li>
                   <strong>AI</strong>, only when you ask: Ask AI on a selection, the chat beside a
@@ -118,10 +126,10 @@ function Privacy() {
                   search the web for an answer; in the chat a switch turns that off. The provider’s
                   privacy policy governs what it does with the request. A key is sent only to the
                   address it was entered for. If you turn on file use in Settings → AI, the chat may
-                  also list, read and search the files in your workspace folder when your question
-                  calls for it; what it reads goes to the provider with the question. It writes or
-                  changes a file only after you allow that change. File use is off until you turn it
-                  on.
+                  also list, read and search the files in your workspace folder (kept in the app’s
+                  storage on the device) when your question calls for it; what it reads goes to the
+                  provider with the question. It writes or changes a file only after you allow that
+                  change. File use is off until you turn it on.
                 </li>
                 <li>
                   <strong>Unsplash</strong>, when you search it for a cover: your search words go to

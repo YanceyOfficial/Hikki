@@ -552,6 +552,7 @@
     "pageLinkMissing": "这个链接指向的页面已不存在。",
     "workspaceUnavailable": "无法访问工作区文件夹。",
     "workspaceFolderAccess": "Hikki 需要你再次授权打开工作区文件夹。",
+    "workspaceMoveFailed": "无法把工作区从文件夹移到 iCloud，文件夹未作改动。",
     "workspaceSyncFailed": "无法与工作区文件夹同步。",
     "workspaceOpenFailed": "无法打开工作区。",
     "databaseOpenFailed": "无法打开本地数据库。",

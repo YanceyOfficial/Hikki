@@ -1,0 +1,367 @@
+import CryptoKit
+import Foundation
+
+/// The workspace folder as CloudKit carries it: every file in it (pages, history, comments, chats, assets, the
+/// drawing library, workspace.json) is one record, named by its path. This side knows nothing of CloudKit — it says
+/// which files changed here since the folder last agreed with the cloud, and writes what arrives from it, settling a
+/// file both sides changed so nothing either wrote is lost (`resolve`). `CloudSync` moves the records.
+///
+/// Every file's last agreed state is kept (`Entry`: size, modification date, content hash and the record's system
+/// fields), persisted next to the database — never in the folder, which it describes.
+public final class CloudMirror: @unchecked Sendable {
+    public struct Entry: Codable, Equatable, Sendable {
+        public var size: Int64
+        public var modified: Date
+        /// SHA-256 of the contents the cloud has.
+        public var hash: String
+        /// The record's system fields (its change tag) as last saved or fetched; nil before the first save.
+        public var systemFields: Data?
+    }
+
+    struct State: Codable {
+        var format = 1
+        var entries: [String: Entry] = [:]
+        /// `CKSyncEngine`'s own state, kept for it.
+        var engine: Data?
+    }
+
+    public enum Change: Equatable, Hashable, Sendable {
+        case save(String)
+        case delete(String)
+
+        public var path: String {
+            switch self {
+            case .save(let path), .delete(let path): path
+            }
+        }
+    }
+
+    /// A file as it goes up: its contents read once, so what the cloud gets is what `saved` records.
+    public struct Outgoing: Sendable {
+        public var path: String
+        public var contents: Data
+        public var size: Int64
+        public var modified: Date
+        public var hash: String
+    }
+
+    public struct Options: Sendable {
+        /// This device's name, for a conflicted copy's title.
+        public var device: String?
+        public var conflictTitle: ConflictCopy.Title
+
+        public init(device: String? = nil, conflictTitle: @escaping ConflictCopy.Title = ConflictCopy.defaultTitle) {
+            self.device = device
+            self.conflictTitle = conflictTitle
+        }
+    }
+
+    public let root: URL
+    private let stateURL: URL
+    private let options: Options
+    private let lock = NSLock()
+    private var state: State
+    private var holding = 0
+    private var dirty = false
+
+    public init(root: URL, stateURL: URL, options: Options = Options()) {
+        self.root = root
+        self.stateURL = stateURL
+        self.options = options
+        // Dates as plain numbers: a file's modification date has to come back exactly as it was read.
+        if let data = try? Data(contentsOf: stateURL), let state = try? JSONDecoder().decode(State.self, from: data),
+            state.format == 1
+        {
+            self.state = state
+        } else {
+            state = State()
+        }
+    }
+
+    // MARK: - The record's name
+
+    /// The record's name for a path: its hash, so names never show what the files are called (the path itself
+    /// travels encrypted inside the record).
+    public static func recordName(for path: String) -> String {
+        SHA256.hash(data: Data(path.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// The path a record name stands for, among the files this device knows.
+    public func path(forRecordName name: String) -> String? {
+        lock.withLock { state.entries.keys.first { Self.recordName(for: $0) == name } }
+    }
+
+    /// Only plain relative paths inside the folder sync: no `..`, no hidden files or iCloud placeholders.
+    public static func isSyncable(_ path: String) -> Bool {
+        let parts = path.split(separator: "/", omittingEmptySubsequences: false)
+        guard !path.isEmpty, !path.hasPrefix("/"), !parts.isEmpty else { return false }
+        return parts.allSatisfy { part in !part.isEmpty && part != ".." && !part.hasPrefix(".") }
+            && !path.hasSuffix(".icloud")
+    }
+
+    // MARK: - Engine state
+
+    public var engineState: Data? { lock.withLock { state.engine } }
+
+    public func setEngineState(_ data: Data?) {
+        lock.withLock { state.engine = data }
+        persist()
+    }
+
+    public func systemFields(_ path: String) -> Data? {
+        lock.withLock { state.entries[path]?.systemFields }
+    }
+
+    /// The account changed (or signed out): nothing this device agreed with the old one holds for the new one. The
+    /// files stay; every one goes up again.
+    public func forgetCloud() {
+        lock.withLock { state = State() }
+        persist()
+    }
+
+    // MARK: - Going up
+
+    /// What changed in the folder since it last agreed with the cloud: files new or different (by size and date,
+    /// then by contents), and files gone.
+    public func localChanges() -> [Change] {
+        let files = listFiles()
+        return lock.withLock {
+            var changes: [Change] = []
+            for (path, file) in files.sorted(by: { $0.key < $1.key }) {
+                guard let entry = state.entries[path] else {
+                    changes.append(.save(path))
+                    continue
+                }
+                if entry.size == file.size, entry.modified == file.modified { continue }
+                guard let data = try? Data(contentsOf: file.url) else { continue }
+                if Self.hash(data) == entry.hash {
+                    // Touched, not changed (an atomic rewrite of the same words): only the stamp moves.
+                    state.entries[path]?.size = file.size
+                    state.entries[path]?.modified = file.modified
+                } else {
+                    changes.append(.save(path))
+                }
+            }
+            for path in state.entries.keys.sorted() where files[path] == nil {
+                changes.append(.delete(path))
+            }
+            return changes
+        }
+    }
+
+    /// The file as it is now, to go up; nil when it is gone (its deletion goes up instead).
+    public func outgoing(_ path: String) -> Outgoing? {
+        guard Self.isSyncable(path) else { return nil }
+        let url = root.appending(path: path)
+        guard let data = try? Data(contentsOf: url), let attributes = Self.attributes(of: url) else { return nil }
+        return Outgoing(path: path, contents: data, size: attributes.size, modified: attributes.modified, hash: Self.hash(data))
+    }
+
+    /// The cloud took `file` as the record whose system fields are `systemFields`.
+    public func saved(_ file: Outgoing, systemFields: Data?) {
+        lock.withLock {
+            state.entries[file.path] = Entry(size: file.size, modified: file.modified, hash: file.hash, systemFields: systemFields)
+        }
+        persist()
+    }
+
+    /// The cloud dropped the file's record.
+    public func deleted(_ path: String) {
+        lock.withLock { _ = state.entries.removeValue(forKey: path) }
+        persist()
+    }
+
+    /// The record is gone from the cloud (deleted, or its zone reset): the file goes up as a new one.
+    public func lostRecord(_ path: String) {
+        lock.withLock { state.entries[path]?.systemFields = nil }
+        persist()
+    }
+
+    // MARK: - Coming down
+
+    /// What arriving from the cloud did here.
+    public struct Received: Equatable, Sendable {
+        /// Files written or removed in the folder (the workspace reconciles with them).
+        public var touched: Bool
+        /// The folder now holds something the cloud doesn't (a merge, or the local side won): it goes up again.
+        public var needsPush: Bool
+    }
+
+    /// A record arrived (fetched, or the server's side of a save it refused): written over the file when this device
+    /// hasn't changed it since they last agreed, otherwise settled with it (`resolve`).
+    public func receive(_ path: String, contents: Data, systemFields: Data?) throws -> Received {
+        guard Self.isSyncable(path) else { return Received(touched: false, needsPush: false) }
+        let url = root.appending(path: path)
+        let incomingHash = Self.hash(contents)
+        let local = try? Data(contentsOf: url)
+        let entry = lock.withLock { state.entries[path] }
+        let localHash = local.map(Self.hash)
+        // Unchanged here since the last agreement (or never here): the cloud's version is the file.
+        guard let local, let localHash, localHash != incomingHash, localHash != entry?.hash else {
+            if localHash != incomingHash { try write(contents, to: url) }
+            record(path, url: url, hash: incomingHash, systemFields: systemFields)
+            return Received(touched: localHash != incomingHash, needsPush: false)
+        }
+        // Both sides changed it.
+        let settled = resolve(path, local: local, cloud: contents)
+        for (extraPath, data) in settled.extra {
+            try write(data, to: root.appending(path: extraPath))
+        }
+        if settled.file != local { try write(settled.file, to: url) }
+        // Agreed with the cloud's version (its change tag); a file that differs from it keeps no stamp, so the next
+        // scan reads it, sees it isn't the cloud's and sends it up over it.
+        record(path, url: url, hash: incomingHash, systemFields: systemFields, stamped: settled.file == contents)
+        Log.info(
+            "cloud file changed on both sides; settled", category: "cloud",
+            context: ["kind": Self.kind(of: path), "copies": "\(settled.extra.count)"])
+        return Received(touched: true, needsPush: settled.file != contents || !settled.extra.isEmpty)
+    }
+
+    /// A record was deleted in the cloud: the file goes too, unless this device changed it since — then it stays
+    /// and goes up again as a new record.
+    public func receiveDeletion(_ path: String) throws -> Received {
+        guard Self.isSyncable(path) else { return Received(touched: false, needsPush: false) }
+        let url = root.appending(path: path)
+        let entry = lock.withLock { state.entries[path] }
+        guard let local = try? Data(contentsOf: url) else {
+            deleted(path)
+            return Received(touched: false, needsPush: false)
+        }
+        if let entry, Self.hash(local) == entry.hash {
+            try FileManager.default.removeItem(at: url)
+            deleted(path)
+            return Received(touched: true, needsPush: false)
+        }
+        lostRecord(path)
+        return Received(touched: false, needsPush: true)
+    }
+
+    // MARK: - Settling a file both sides changed
+
+    struct Settled {
+        /// What the file holds now.
+        var file: Data
+        /// Files added beside it (a page's conflicted copy), by path.
+        var extra: [(String, Data)] = []
+    }
+
+    /// Pages: the later change is the page, and the other — when it says something different — becomes a conflicted
+    /// copy beside it, as for iCloud Drive's versions. Comments and chats: merged by id. Anything else (history
+    /// versions and assets are written once; the drawing library and workspace.json): the cloud's version, the
+    /// later write of two devices being as good a guess as any.
+    func resolve(_ path: String, local: Data, cloud: Data) -> Settled {
+        switch Self.kind(of: path) {
+        case "page":
+            guard let mine = try? PageFiles.decode(local), let theirs = try? PageFiles.decode(cloud) else {
+                return Settled(file: cloud)
+            }
+            let localWins = mine.lastChange > theirs.lastChange
+            let (winner, loser, winnerData) = localWins ? (mine, theirs, local) : (theirs, mine, cloud)
+            guard ConflictCopy.differ(winner, loser) else { return Settled(file: winnerData) }
+            // The cloud's side says nothing of where it was written.
+            let source = ConflictCopy.source(device: localWins ? nil : options.device, date: loser.lastChange)
+            let copy = ConflictCopy.make(from: loser, source: source, title: options.conflictTitle)
+            guard let copyData = try? PageFiles.encoder.encode(copy) else { return Settled(file: winnerData) }
+            return Settled(file: winnerData, extra: [("pages/\(copy.id).json", copyData)])
+        case "comments":
+            return Settled(file: PageComments.mergeFiles(local, cloud) ?? cloud)
+        case "chat":
+            return Settled(file: PageChats.mergeFiles(local, cloud) ?? cloud)
+        default:
+            return Settled(file: cloud)
+        }
+    }
+
+    static func kind(of path: String) -> String {
+        if path.hasPrefix("pages/") { return "page" }
+        if path.hasPrefix("comments/") { return "comments" }
+        if path.hasPrefix("ai/") { return "chat" }
+        if path.hasPrefix("history/") { return "history" }
+        if path.hasPrefix("assets/") { return "asset" }
+        return "other"
+    }
+
+    // MARK: - Files
+
+    struct FileInfo {
+        var url: URL
+        var size: Int64
+        var modified: Date
+    }
+
+    /// Every syncable file in the folder, by path.
+    func listFiles() -> [String: FileInfo] {
+        let keys: [URLResourceKey] = [.isRegularFileKey, .fileSizeKey, .contentModificationDateKey]
+        guard
+            let enumerator = FileManager.default.enumerator(
+                at: root, includingPropertiesForKeys: keys, options: [.skipsHiddenFiles, .skipsPackageDescendants])
+        else { return [:] }
+        let base = root.standardizedFileURL.path
+        var files: [String: FileInfo] = [:]
+        for case let url as URL in enumerator {
+            guard let values = try? url.resourceValues(forKeys: Set(keys)), values.isRegularFile == true else { continue }
+            let full = url.standardizedFileURL.path
+            guard full.hasPrefix(base + "/") else { continue }
+            let path = String(full.dropFirst(base.count + 1))
+            guard Self.isSyncable(path) else { continue }
+            files[path] = FileInfo(
+                url: url, size: Int64(values.fileSize ?? 0), modified: values.contentModificationDate ?? .distantPast)
+        }
+        return files
+    }
+
+    private func record(_ path: String, url: URL, hash: String, systemFields: Data?, stamped: Bool = true) {
+        let attributes = stamped ? Self.attributes(of: url) : nil
+        lock.withLock {
+            state.entries[path] = Entry(
+                size: attributes?.size ?? 0, modified: attributes?.modified ?? .distantPast, hash: hash,
+                systemFields: systemFields)
+        }
+        persist()
+    }
+
+    private func write(_ data: Data, to url: URL) throws {
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try data.write(to: url, options: .atomic)
+    }
+
+    private static func attributes(of url: URL) -> (size: Int64, modified: Date)? {
+        guard let values = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey]) else { return nil }
+        return (Int64(values.fileSize ?? 0), values.contentModificationDate ?? .distantPast)
+    }
+
+    static func hash(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// Runs `body` saving the state once at its end, not after every file (a fetch brings thousands).
+    public func batch<T>(_ body: () throws -> T) rethrows -> T {
+        lock.withLock { holding += 1 }
+        defer {
+            let save = lock.withLock {
+                holding -= 1
+                return holding == 0 && dirty
+            }
+            if save { persist() }
+        }
+        return try body()
+    }
+
+    private func persist() {
+        let data: Data? = lock.withLock {
+            guard holding == 0 else {
+                dirty = true
+                return nil
+            }
+            dirty = false
+            return try? JSONEncoder().encode(state)
+        }
+        guard let data else { return }
+        do {
+            try FileManager.default.createDirectory(at: stateURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try data.write(to: stateURL, options: .atomic)
+        } catch {
+            Log.warn("cloud state not saved: \(error)", category: "cloud")
+        }
+    }
+}

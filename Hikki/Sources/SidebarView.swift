@@ -148,10 +148,7 @@ private struct WorkspaceSwitcher: View {
     }
 
     /// Where the workspace lives: the chosen folder, or "This device only".
-    private var location: String {
-        if case .folder(_, let displayName) = model.workspace?.location { return displayName }
-        return String(localized: "app:onboarding.location.device")
-    }
+    private var location: String { model.locationName }
 }
 
 // MARK: - The sidebar

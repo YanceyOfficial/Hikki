@@ -20,7 +20,7 @@ enum SaveOnExit {
         #endif
         Task {
             for editor in editors { await editor.flush(reason: reason) }
-            model.flushWorkspace()
+            await model.flushWorkspace()
             #if os(iOS)
                 assertion.end()
             #endif
@@ -33,7 +33,7 @@ enum SaveOnExit {
         let once = Once(done)
         Task {
             await EditorController.flushAll(reason: reason)
-            model?.flushWorkspace()
+            await model?.flushWorkspace()
             once.run()
         }
         Task {

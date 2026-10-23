@@ -35,6 +35,8 @@ final class AppModel {
     private(set) var lastSync: SyncStatus?
     /// Why the folder isn't being synced at all (unresolvable bookmark, a failed first pass); nil while it works.
     private(set) var syncError: String?
+    /// How iCloud is doing, for a workspace kept there (`Workspace.Location.cloud`); nil otherwise.
+    private(set) var cloudStatus: CloudSync.Status?
 
     struct SyncStatus: Equatable, Sendable {
         var at: Date
@@ -75,6 +77,10 @@ final class AppModel {
     // MARK: Workspace folder (storage option C)
 
     @ObservationIgnored private var sync: WorkspaceSync?
+    /// The workspace in iCloud (CloudKit): the folder's files carried to the user's other devices.
+    @ObservationIgnored private var cloud: CloudSync?
+    /// Looks over the folder now and then for what `WorkspaceSync` doesn't write (history, comments, chats, assets).
+    @ObservationIgnored private var cloudScan: Task<Void, Never>?
     /// Versions of pages (Page ⋯ → Page History…), in the workspace folder; nil until the folder is known.
     @ObservationIgnored private(set) var history: PageHistory?
     /// Comment threads (`comments/<page id>.json`), in the folder too so they sync with the pages.
@@ -119,6 +125,10 @@ final class AppModel {
                     return
                 }
             #endif
+            if case .folder = workspace.location {
+                // iCloud Drive folders are retired: the folder's files move into the app, then sync through iCloud.
+                if moveFolderWorkspace(from: folder, appRoot: appRoot) { return }
+            }
             workspaceFolder = folder
             syncIdentity()
             assets.useWorkspaceFolder(folder)
@@ -139,6 +149,8 @@ final class AppModel {
             // editors which pages came from disk, so one showing such a page reloads it.
             // The losing side of a conflict becomes a page of its own, titled in the app's language; a page
             // another device replaces is kept in its history first; a page deleted here takes its history along.
+            let cloud: CloudSync? = if case .cloud = workspace.location { makeCloudSync(folder: folder, appRoot: appRoot) } else { nil }
+            self.cloud = cloud
             let options = WorkspaceSync.Options(
                 device: Self.deviceName,
                 conflictTitle: Self.conflictTitle,
@@ -156,7 +168,8 @@ final class AppModel {
                         comments.removeAll(pageId: id)
                         chats.removeAll(pageId: id)
                     }
-                })
+                },
+                didWrite: { cloud?.noteLocalChanges() })
             let sync = WorkspaceSync(store: store, files: PageFiles(root: folder), options: options) { [weak self] report in
                 let ids = report.importedIDs
                 Task { @MainActor in
@@ -170,6 +183,7 @@ final class AppModel {
                 do {
                     let report = try sync.start()
                     Self.log("workspace sync started", report)
+                    cloud?.start()
                     Task { @MainActor in
                         self?.lastSync = SyncStatus(at: .now, report: report)
                         self?.syncError = nil
@@ -187,8 +201,8 @@ final class AppModel {
 
     #if os(macOS)
         /// The workspace's folder is there but the sandbox keeps it shut (a bookmark from before the Mac app was
-        /// sandboxed, or a revoked grant): only the user picking it again opens it. Until then nothing syncs; Settings →
-        /// Storage → Change folder does the same later.
+        /// sandboxed, or a revoked grant): only the user picking it again opens it, and only then can it move into the
+        /// app. Until then nothing syncs.
         private func askForFolderAccess(_ folder: URL) {
             folder.stopAccessingSecurityScopedResource()
             Toasts.report(.workspaceFolderAccess, category: "workspace", actionTitle: "app:workspace.chooseFolderAgain") {
@@ -204,14 +218,10 @@ final class AppModel {
             syncError = ErrorCode.workspaceFolderAccess.message
         }
 
-        /// The folder picked again: the same folder keeps everything as it was (only its bookmark is new); another
-        /// folder is a change of location.
+        /// The folder picked again (or another one with the workspace in it): its new bookmark opens it, and it
+        /// moves into the app as any folder workspace does.
         func grantFolderAccess(_ url: URL, was folder: URL) throws {
             guard var workspace else { return }
-            guard url.standardizedFileURL.path == folder.standardizedFileURL.path else {
-                try changeLocation(to: url)
-                return
-            }
             let bookmark = try FolderBookmark.make(for: url)
             workspace.location = .folder(bookmark: bookmark, displayName: FolderBookmark.displayName(for: url))
             try workspaceStore.save(workspace)
@@ -221,24 +231,110 @@ final class AppModel {
         }
     #endif
 
-    /// Settings → Storage → Change folder: the workspace moves to (or joins) another folder. Local pages are
-    /// written there and the folder's pages imported; nothing is deleted on either side. A folder that already
-    /// holds a workspace lends its name and icon.
-    func changeLocation(to url: URL) throws {
+    /// The CloudKit side of the workspace: what arrives is written into the folder, then the folder reconciles (and
+    /// open editors reload) as for any change on disk.
+    private func makeCloudSync(folder: URL, appRoot: URL) -> CloudSync {
+        let mirror = CloudMirror(
+            root: folder, stateURL: appRoot.appending(path: "cloud-state.json"),
+            options: .init(device: Self.deviceName, conflictTitle: Self.conflictTitle))
+        let cloud = CloudSync(
+            mirror: mirror,
+            onReceived: { [weak self] in Task { @MainActor in self?.cloudReceived() } },
+            onStatus: { [weak self] status in Task { @MainActor in self?.cloudStatus = status } })
+        cloudStatus = .starting
+        cloudScan?.cancel()
+        cloudScan = Task { [weak cloud] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(10))
+                cloud?.noteLocalChanges(after: 0)
+            }
+        }
+        return cloud
+    }
+
+    private func cloudReceived() {
+        // workspace.json may be another device's (a second device joining takes the workspace's name and icon).
+        identityUpdatedAt = nil
+        reconcileWorkspace(fetch: false)
+    }
+
+    /// Where the workspace lives, as the sidebar, Settings and a page's facts name it.
+    var locationName: String {
+        switch workspace?.location {
+        case .cloud?: String(localized: "app:location.icloud")
+        case .folder(_, let name)?: name
+        case .device?, nil: String(localized: "app:onboarding.location.device")
+        }
+    }
+
+    /// iCloud's state in words: "Synced 2 min ago", "Syncing…", "Not signed in to iCloud"…
+    var cloudStatusText: String {
+        switch cloudStatus {
+        case .synced(let at)?: String(localized: "app:cloud.synced \(at.formatted(.relative(presentation: .named)))")
+        case .syncing?, .starting?, nil: String(localized: "app:cloud.syncing")
+        case .noAccount?: String(localized: "app:cloud.noAccount")
+        case .accountChanged?: String(localized: "app:cloud.accountChanged")
+        case .quotaFull?: String(localized: "app:cloud.quotaFull")
+        case .failed(let code)?: String(localized: "app:cloud.failed \(code)")
+        }
+    }
+
+    /// Settings → Storage: keep the workspace in iCloud, or on this device only. Nothing is deleted either way —
+    /// turned off, the pages stay here (and in iCloud as they were).
+    func setICloud(_ on: Bool) {
         guard var workspace else { return }
-        let bookmark = try FolderBookmark.make(for: url)
-        workspace.location = .folder(bookmark: bookmark, displayName: FolderBookmark.displayName(for: url))
+        let location: Workspace.Location = on ? .cloud : .device
+        guard workspace.location != location else { return }
+        workspace.location = location
+        stopWorkspaceSync()
+        do {
+            try workspaceStore.save(workspace)
+            self.workspace = workspace
+            Log.info("workspace iCloud \(on ? "on" : "off")", category: "workspace")
+        } catch {
+            Toasts.report(.workspaceSaveFailed, error, category: "workspace")
+        }
+        startWorkspaceSync()
+    }
+
+    private func stopWorkspaceSync() {
         sync?.stop()
         sync = nil
+        cloud?.stop()
+        cloud = nil
+        cloudScan?.cancel()
+        cloudScan = nil
+        cloudStatus = nil
         workspaceFolder?.stopAccessingSecurityScopedResource()
         workspaceFolder = nil
         identityUpdatedAt = nil
-        // Pages synced with the old folder aren't synced with this one: write them all out, import its own.
-        try store.unmarkAllSynced()
-        try workspaceStore.save(workspace)
-        self.workspace = workspace
-        Log.info("workspace location changed", category: "workspace")
-        startWorkspaceSync()
+    }
+
+    /// A workspace in an iCloud Drive folder (before CloudKit) moves into the app: every file of the folder is
+    /// copied in — the folder itself is left as it was — and the workspace syncs through iCloud from then on.
+    /// Not while iCloud Drive still has files of it to download (it asks for them, and the move waits for a later
+    /// launch or activation; the folder keeps syncing meanwhile). Returns whether it moved.
+    private func moveFolderWorkspace(from folder: URL, appRoot: URL) -> Bool {
+        guard var workspace else { return false }
+        let local = appRoot.appending(path: "Workspace", directoryHint: .isDirectory)
+        do {
+            let copied = try WorkspaceFolder.copyContents(of: folder, into: local)
+            folder.stopAccessingSecurityScopedResource()
+            workspace.location = .cloud
+            // The pages were synced with the old folder, not this one: a first pass compares them all again.
+            try store.unmarkAllSynced()
+            try workspaceStore.save(workspace)
+            self.workspace = workspace
+            Log.info("workspace moved from its folder into iCloud", category: "workspace", context: ["files": "\(copied)"])
+            startWorkspaceSync()
+            return true
+        } catch WorkspaceFolder.CopyError.stillDownloading(let count) {
+            Log.info("workspace folder still downloading; move later", category: "workspace", context: ["files": "\(count)"])
+            return false
+        } catch {
+            Toasts.report(.workspaceMoveFailed, error, category: "workspace")
+            return false
+        }
     }
 
     /// Keeps the identity in the folder (`workspace.json`) and this device's record in step: a folder without
@@ -272,8 +368,12 @@ final class AppModel {
     }
 
     /// Picks up what other devices changed (app activation). Cheap when nothing did.
-    func reconcileWorkspace() {
+    func reconcileWorkspace(fetch: Bool = true) {
         guard let sync else { return }
+        if fetch, let cloud {
+            cloud.noteLocalChanges(after: 0)
+            Task { await cloud.fetchNow() }
+        }
         syncIdentity()
         Task.detached(priority: .utility) {
             do {
@@ -284,9 +384,10 @@ final class AppModel {
         }
     }
 
-    /// Waits for queued file writes (before the app goes to the background).
-    func flushWorkspace() {
+    /// Waits for queued file writes, then sends what iCloud hasn't got yet (before the app goes to the background).
+    func flushWorkspace() async {
         sync?.flush()
+        await cloud?.sendNow()
     }
 
     nonisolated private static func log(_ message: String, _ report: WorkspaceSync.Report) {
@@ -331,7 +432,7 @@ final class AppModel {
         do {
             try workspaceStore.save(workspace)
             self.workspace = workspace
-            let kind = if case .folder = location { "folder" } else { "device" }
+            let kind = if case .cloud = location { "cloud" } else { "device" }
             Log.info("workspace created", category: "workspace", context: ["location": kind])
             startWorkspaceSync()
         } catch {

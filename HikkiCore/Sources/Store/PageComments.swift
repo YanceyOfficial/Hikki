@@ -241,6 +241,21 @@ public final class PageComments: @unchecked Sendable {
         try data.write(to: try url(for: pageId), options: .atomic)
     }
 
+    /// Two copies of a page's comments file as one — both sides of a CloudKit conflict; nil when either can't be read
+    /// (or is a newer format's), which leaves the conflict to the later write.
+    public static func mergeFiles(_ a: Data, _ b: Data) -> Data? {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let one = try? decoder.decode(File.self, from: a), let other = try? decoder.decode(File.self, from: b),
+            one.format <= currentFormat, other.format <= currentFormat
+        else { return nil }
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let merged = File(format: currentFormat, pageId: one.pageId, threads: merge(one.threads, other.threads))
+        return try? encoder.encode(merged)
+    }
+
     /// Two devices' versions as one: every thread and comment of either, by id; for a thread on both, the newer
     /// state (resolved, deleted, quote) and the union of their comments, a comment deleted on either deleted.
     static func merge(_ a: [CommentThread], _ b: [CommentThread]) -> [CommentThread] {

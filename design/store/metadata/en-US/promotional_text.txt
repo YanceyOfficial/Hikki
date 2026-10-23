@@ -1,1 +1,1 @@
-A notebook for iPhone, iPad and Mac where every page is a file in your own folder. Write offline, sync through iCloud Drive, and bring AI in with your own key.
+A notebook for iPhone, iPad and Mac that keeps your pages on your devices. Write offline, sync through your own iCloud, and bring AI in with your own key.

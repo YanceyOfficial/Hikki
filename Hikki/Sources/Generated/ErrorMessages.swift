@@ -27,6 +27,7 @@ extension ErrorCode {
         case .pageLinkMissing: String(localized: "app:error.pageLinkMissing")
         case .workspaceUnavailable: String(localized: "app:error.workspaceUnavailable")
         case .workspaceFolderAccess: String(localized: "app:error.workspaceFolderAccess")
+        case .workspaceMoveFailed: String(localized: "app:error.workspaceMoveFailed")
         case .workspaceSyncFailed: String(localized: "app:error.workspaceSyncFailed")
         case .workspaceOpenFailed: String(localized: "app:error.workspaceOpenFailed")
         case .databaseOpenFailed: String(localized: "app:error.databaseOpenFailed")

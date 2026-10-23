@@ -128,6 +128,12 @@
       "en": "Hikki needs your permission to open the workspace folder again.",
       "zh": "Hikki 需要你再次授权打开工作区文件夹。"
     },
+    "workspaceMoveFailed": {
+      "code": 2107,
+      "severity": "error",
+      "en": "Couldn't move the workspace from its folder into iCloud. The folder is unchanged.",
+      "zh": "无法把工作区从文件夹移到 iCloud，文件夹未作改动。"
+    },
     "workspaceSyncFailed": {
       "code": 2102,
       "severity": "warning",

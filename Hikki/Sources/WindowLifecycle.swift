@@ -53,6 +53,11 @@
     }
 
     final class AppDelegate: NSObject, NSApplicationDelegate {
+        /// iCloud's pushes (another device saved): `CKSyncEngine` takes them once the app is registered.
+        func applicationDidFinishLaunching(_ notification: Notification) {
+            NSApplication.shared.registerForRemoteNotifications()
+        }
+
         func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
         /// ⌘Q: every editor's last typing and the workspace folder's queued writes reach the disk first.

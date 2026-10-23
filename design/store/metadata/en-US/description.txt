@@ -1,9 +1,9 @@
-Hikki is a notebook for iPhone, iPad and Mac that keeps your pages where you can see them: as files in a folder you choose.
+Hikki is a notebook for iPhone, iPad and Mac that keeps your pages on your own devices and syncs them through your own iCloud.
 
-YOUR NOTES ARE FILES
-• Each page is one small file in your folder, on the device or in iCloud Drive.
+YOUR NOTES STAY YOURS
+• Each page is kept on the device first. With iCloud on, it syncs through your own iCloud account. Or keep it on this device only.
 • No account. Open the app and write; everything works offline.
-• Put the folder in iCloud Drive and your other devices pick up the changes.
+• Changes reach your other devices in moments. Hikki runs no server for your notes and can't read them.
 • Two devices editing one page keep both versions, side by side. Nothing is overwritten.
 • Thirty days of history: go back to how any page read, compare word by word, restore.
 

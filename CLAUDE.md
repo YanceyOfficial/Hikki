@@ -235,6 +235,28 @@ HikkiUITests/                 XCUITest flows
 - **Data directory**: `HIKKI_DATA_DIR` overrides it (UI tests, demos). DEBUG hooks: `HIKKI_OPEN_TABS=a,b`,
   `HIKKI_OPEN_SEARCH`, `HIKKI_OPEN_FIND`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SPOTLIGHT_QUERY=<text>` (logs the page ids Spotlight ranks), `HIKKI_OPEN_FILE=<asset>` (the PDF viewer), `HIKKI_OPEN_SPLIT=<page id>|file:<asset>|picker` (split view), `HIKKI_DEBUG_SIDEBAR` (hide + show the split view sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_GALLERY_SECTION=<section>` (with `-HikkiGallery`: opens the gallery at that section), `HIKKI_DEBUG_TOAST` (a sample failure toast), `HIKKI_ACCESS=<state>` (the trial, see Trial and unlock), `HIKKI_OPEN_AI`, `HIKKI_OPEN_PAGE_ACTIONS`, `HIKKI_DEBUG_COVER_SHEET` (opens the page's cover sheet), `HIKKI_DEBUG_AI_ASK=<question>` (asks the AI panel about the open page) and `HIKKI_DEBUG_AI_EDIT=<words>` (selects them and runs Improve writing through `window.hikki.demoAI`) — screenshots of AI at work, which need a provider key, `HIKKI_DEMO_PAGES` (an empty workspace gets sample pages, ids fixed per title — `Hikki/Sources/DemoPages.swift`; `=<n>` above 1: n pages "Page 001"…, every tenth with three subpages), `HIKKI_ACTIVATE`, `HIKKI_FRESH_TABS` (skips the window's saved tabs; UI tests set it), `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
   UI tests set it by default — pass `workspace: nil` to `launch()` to test onboarding).
+- **iCloud (CloudKit)** — how a workspace syncs (`Workspace.Location.cloud`, the default; `.device` keeps it on this
+  device only; Settings → Storage → Sync with iCloud switches): the workspace folder lives in the app's own data
+  (`<app data>/Workspace`, never iCloud Drive) and `HikkiCore/Sources/Store/CloudSync.swift` carries it through
+  `CKSyncEngine` in the user's private database (container `iCloud.app.yancey.hikki`, zone `Workspace`): one `File`
+  record per file of the folder — pages, history, comments, chats, assets, the drawing library, workspace.json —
+  named by its path's SHA-256, the path and contents in encrypted fields (end-to-end encrypted), contents over 512 KB
+  and every attachment as a `CKAsset`. `HikkiCore/Sources/Store/CloudMirror.swift` is the CloudKit-free half (tested
+  in `CloudMirrorTests`): what changed in the folder since it last agreed with the cloud (size and date, then a
+  content hash, kept with each record's system fields in a cloud-state file beside the database, not in the folder),
+  and what to do with what arrives — written over a file unchanged here, otherwise settled: a page by the later
+  change with the other as a conflicted copy (`ConflictCopy`), comments and chats merged (`mergeFiles`), anything
+  else the cloud's. Changes go up after a quiet second (`noteLocalChanges`: `WorkspaceSync.Options.didWrite`, a scan
+  every 10 s, activation), are sent before the app goes to the background (`flushWorkspace`), and come down with
+  iCloud's pushes (`registerForRemoteNotifications`, iOS background mode `remote-notification`) and on activation;
+  what arrives is a change on disk like any other (the folder reconciles, editors reload). Another iCloud account on
+  the device pauses it (`Status.accountChanged`: the pages here are the previous account's); a deleted zone sends
+  everything again. A workspace still in an iCloud Drive folder (before CloudKit) is copied into the app once its
+  files are all downloaded (`WorkspaceFolder.copyContents`, the folder left as it was; on the Mac a sandbox that
+  won't open the old bookmark asks for the folder first) and becomes `.cloud`; folders can no longer be picked.
+  Entitlements: `Hikki/Hikki-iOS.entitlements` and the Mac's two (see Mac sandbox); the CloudKit schema is created
+  in the development environment on first save and must be deployed to production in the CloudKit console before
+  a release.
 - **Storage (option C)**: the workspace folder is the source of truth — one JSON file per page
   (`HikkiCore/Sources/Store/PageFile.swift`: `pages/<id>.json`, format-versioned, content as JSON); SQLite is a
   rebuildable cache/index. `HikkiCore/Sources/Store/WorkspaceSync.swift` reconciles on launch and app activation
@@ -307,10 +329,9 @@ HikkiUITests/                 XCUITest flows
   had when free here) and renames links and mentions between the imported pages to match (`PageLink.rewrite`), and
   stamped documents come back in their sibling order. DEBUG: `HIKKI_BULK_IMPORT=<path>|<path>`, `HIKKI_BULK_EXPORT=<format>|<folder>`.
 - **Workspace identity** lives in the folder (a workspace.json next to `pages/`: id, name, icon — `WorkspaceIdentity`); the per-device
-  record (`AppPaths.workspace`) only adds the location. A device picking a folder that has one _opens_ that workspace
-  (onboarding says so), and a newer identity from another device replaces the local name/icon on activation. Settings →
-  Storage → Change folder re-points a workspace (`AppModel.changeLocation`: synced marks cleared, local pages written
-  out, the folder's imported — nothing deleted).
+  record (`AppPaths.workspace`) only adds the location. A newer identity from another device replaces the local
+  name/icon on activation, and one arriving from iCloud is adopted as it comes (a second device joining takes the
+  workspace's name and icon).
 - **Popups close one way**: every `FloatingLayer` opened with `onDismiss` (`apps/editor/src/components/floating.tsx`) joins
   one dismiss bus — a single pair of document listeners: Escape and a press outside every open layer dismiss the newest
   one, and the opener says what that means (the slash and block menus exit, the math and ruby panels cancel; it gets
@@ -840,9 +861,10 @@ HikkiUITests/                 XCUITest flows
   carries `locked`, `window.hikki.setLocked` flips it while open (each editor, split pane included, for the page it
   shows — `EditorController.setPages`); title, body, icon and cover refuse changes meanwhile
   (`EditorBridge.frozen`; words typed just before the lock are saved at the lock, not by a later debounce) and a toolbar lock (`LockIndicator`) unlocks.
-- **Workspace**: first launch shows `Hikki/Sources/OnboardingView.swift` until the workspace file (`AppPaths.workspace`) exists
-  (`HikkiCore/Sources/Store/Workspace.swift`). A folder location stores a security-scoped bookmark
-  (`HikkiCore/Sources/Store/FolderBookmark.swift`); page data does not live in that folder yet.
+- **Workspace**: first launch shows `Hikki/Sources/OnboardingView.swift` (iCloud or this device only) until the
+  workspace file (`AppPaths.workspace`) exists (`HikkiCore/Sources/Store/Workspace.swift`). A workspace from before
+  CloudKit may still name a folder by a security-scoped bookmark (`HikkiCore/Sources/Store/FolderBookmark.swift`)
+  until it has moved into the app (see iCloud).
 - **Diagnostics** (local only, nothing leaves the device by itself): every log line carries the run's `Log.session`;
   the launch line has `AppInfo` (version, build, OS, device, language, protocol). `CrashReporter` keeps MetricKit
   reports and drops a marker on a fatal signal or uncaught exception (`crash.marker.running`, written with `write(2)`

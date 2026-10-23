@@ -43,7 +43,8 @@ same hooks, capture its window by id (`screencapture -x -l <window id> window.pn
 - **Category**: Productivity, then Education (language study).
 - **Age rating**: no objectionable content of our own. Answer yes where it asks about unrestricted web access (embeds
   and links open web pages) and about AI that generates content (Ask AI, pictures); the rating follows from those.
-- **App privacy**: Data Not Collected. Pages, history, comments and chats stay in the user's folder; diagnostics stay
+- **App privacy**: Data Not Collected. Pages, history, comments and chats stay on the user's devices and, with iCloud on,
+  in their own iCloud private database (CloudKit; page contents in encrypted fields), which we can't read; diagnostics stay
   on the device until the user exports them. What leaves the device goes where the user sends it — AI requests to
   OpenAI / Anthropic on the user's own key, link previews to the linked site, Unsplash searches through the BFF,
   which keeps nothing — none of it is collected by us. Keep this in step with `apps/website/src/routes/privacy.tsx`.
@@ -55,8 +56,9 @@ same hooks, capture its window by id (`screencapture -x -l <window id> window.pn
   reported).
 - **Review notes** (draft):
   > No account is needed: the app opens on a new workspace. AI features need an OpenAI or Anthropic API key, which the
-  > user enters in Settings → AI; a key for review is below. Pages are files in a folder the user picks (on the
-  > device or in iCloud Drive). Drawing is read-only on iPhone by design.
+  > user enters in Settings → AI; a key for review is below. Pages are kept on the device and, with iCloud
+  > on (the default at setup), sync through the user's own iCloud account (CloudKit private database); "This device
+  > only" keeps them local. Drawing is read-only on iPhone by design.
 
 ## Before the first submission
 

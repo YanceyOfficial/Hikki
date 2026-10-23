@@ -33,6 +33,7 @@ public final class WorkspaceSync: @unchecked Sendable {
     private let conflictTitle: ConflictCopy.Title
     private let willReplace: (@Sendable (DocumentRecord) -> Void)?
     private let onDeleted: (@Sendable ([String]) -> Void)?
+    private let didWrite: (@Sendable () -> Void)?
 
     /// How conflicts are resolved and who hears about replaced and deleted pages.
     public struct Options: Sendable {
@@ -45,17 +46,21 @@ public final class WorkspaceSync: @unchecked Sendable {
         public var willReplace: (@Sendable (DocumentRecord) -> Void)?
         /// Called (on the sync queue) with the pages deleted here whose files were removed (their history goes too).
         public var onDeleted: (@Sendable ([String]) -> Void)?
+        /// Called (on the sync queue) after this device's changes were written into the folder (iCloud sends them on).
+        public var didWrite: (@Sendable () -> Void)?
 
         public init(
             fileVersions: any FileVersionStore = UbiquitousFileVersions(), device: String? = nil,
             conflictTitle: @escaping ConflictCopy.Title = ConflictCopy.defaultTitle,
-            willReplace: (@Sendable (DocumentRecord) -> Void)? = nil, onDeleted: (@Sendable ([String]) -> Void)? = nil
+            willReplace: (@Sendable (DocumentRecord) -> Void)? = nil, onDeleted: (@Sendable ([String]) -> Void)? = nil,
+            didWrite: (@Sendable () -> Void)? = nil
         ) {
             self.fileVersions = fileVersions
             self.device = device
             self.conflictTitle = conflictTitle
             self.willReplace = willReplace
             self.onDeleted = onDeleted
+            self.didWrite = didWrite
         }
     }
 
@@ -90,6 +95,7 @@ public final class WorkspaceSync: @unchecked Sendable {
         conflictTitle = options.conflictTitle
         willReplace = options.willReplace
         onDeleted = options.onDeleted
+        didWrite = options.didWrite
         self.onReconcile = onReconcile
     }
 
@@ -481,6 +487,7 @@ public final class WorkspaceSync: @unchecked Sendable {
         } catch {
             Incident.report(.workspaceSyncFailed, error, category: "workspace")
         }
+        didWrite?()
     }
 
     /// Writes the page's file unless it already holds exactly these bytes (no churn for iCloud), and records it
