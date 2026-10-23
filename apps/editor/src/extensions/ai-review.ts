@@ -69,16 +69,6 @@ export type AIHost = {
    * user's words and the passage (its text). Without it, a request never hands off.
    */
   handoff?: (request: { instruction: string; selection: string }) => void
-  /** Pictures are asked for: the app opens the chat set up for them (`aiPictures`). Without it, nothing happens. */
-  pictures?: (request: PicturesRequest) => void
-}
-
-/** Where asked-for pictures go and what they are of (the `aiPictures` message without the page). */
-export type PicturesRequest = {
-  blockId: string | null
-  mode: 'after' | 'replace'
-  selection?: string
-  url?: string
 }
 
 /** One AI request over the selection, from asking to accepting or closing. */
@@ -173,14 +163,6 @@ export function AIReview(host: AIHost) {
           ({ editor }) => {
             close(editor, host)
             return true
-          },
-        aiPictures:
-          (target: 'here' | 'selection' | number) =>
-          ({ editor, dispatch }) => {
-            const request = picturesRequest(editor, target)
-            if (!host.pictures || !request || !editor.isEditable) return false
-            if (dispatch) host.pictures(request)
-            return true
           }
       }
     },
@@ -252,7 +234,6 @@ declare module '@tiptap/core' {
       /** Close the review without changing anything. */
       aiDiscard: () => ReturnType
       /** Ask the chat for pictures: for this line (`here`), of the selection, or changing the picture at a position. */
-      aiPictures: (target: 'here' | 'selection' | number) => ReturnType
     }
   }
 }
@@ -723,26 +704,4 @@ export function revealBelow(element: HTMLElement, anchorBottom: number): void {
   if (overflow <= 0) return
   const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
   window.scrollBy({ top: overflow, behavior: reduce ? 'auto' : 'smooth' })
-}
-
-/**
- * What a request for pictures says: on a line, they go after its block (in place of it while it stays empty); for a
- * selection, after the block it ends in, with its text; for a picture, in place of it. Null where none can go.
- */
-export function picturesRequest(
-  editor: Editor,
-  target: 'here' | 'selection' | number
-): PicturesRequest | null {
-  const { state } = editor
-  if (typeof target === 'number') {
-    const node = state.doc.nodeAt(target)
-    const url = node?.type.name === 'image' ? (node.attrs.src as string | null) : null
-    if (!node || !url) return null
-    return { blockId: (node.attrs.id as string | null) ?? null, mode: 'replace', url }
-  }
-  const { from, to, $to } = state.selection
-  const blockId = ($to.parent.attrs.id as string | null | undefined) ?? null
-  if (target === 'here') return { blockId, mode: 'after' }
-  const selection = state.doc.textBetween(from, to, '\n').trim()
-  return selection ? { blockId, mode: 'after', selection } : null
 }

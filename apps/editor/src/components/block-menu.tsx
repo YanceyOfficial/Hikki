@@ -520,16 +520,6 @@ function BlockMenu({
                 media={media !== null}
                 onRun={runAI}
                 onCancel={() => setSubmenu(null)}
-                makes={
-                  unit.node.type.name === 'image' && editor.can().aiPictures(unit.pos)
-                    ? ['changePicture']
-                    : []
-                }
-                onMake={() => {
-                  const now = follow.current
-                  onClose()
-                  if (now) editor.commands.aiPictures(now.pos)
-                }}
               />
             </div>
           )}

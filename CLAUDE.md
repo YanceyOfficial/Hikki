@@ -410,7 +410,8 @@ HikkiUITests/                 XCUITest flows
 - **Embeds** (`apps/editor/src/extensions/embed.ts`, transforms in `apps/editor/src/lib/embeds.ts`): one `embed` block — an
   `<iframe>` on a third-party page (sandboxed, keeps its origin) or on a snippet of HTML (`srcdoc`, no origin) — behind
   the "/" menu's Embeds group — a short list of work services: Embed, HTML, Google Drive, Figma, Miro, Loom, Airtable,
-  Calendly, GitHub Gist, CodeSandbox, draw.io, Excalidraw, each by its Simple Icons mark (`simple-icons`, one named
+  Calendly, GitHub Gist, CodeSandbox, draw.io, Excalidraw (that row inserts a drawing block — a pasted
+  excalidraw.com link still embeds), each by its Simple Icons mark (`simple-icons`, one named
   import per logo, `apps/editor/src/components/brand-logos.tsx`), in its brand colour (near-black ones in the row's text colour) at the icons' size.
   `embedFromURL` turns a pasted link into the provider's embeddable URL (YouTube, Vimeo, Figma's embed.figma.com, Maps,
   Drive/Docs, gists as a script snippet, tweets via platform.twitter.com, CodePen, draw.io's viewer, Loom, Excalidraw,
@@ -723,12 +724,8 @@ HikkiUITests/                 XCUITest flows
   failed, merged like turns) drawn by HikkiUI's `PictureTiles` (forming blurred, then Add to page — Replace in page
   when changing one — Use as cover, Try again; Add all), going in where the page asked (`ChatTurn.picturePlace`,
   `insertPictures` in `apps/editor/src/core/pictures.ts`: after the block, in place of an empty line or the picture
-  changed, else at the caret, one undo step). The page asks with `aiPictures` ("/" AI pictures — the "/" menu's AI
-  group —, the selection's and an image's Ask AI → Make): the chat opens where a handoff's does, set up for pictures
-  (`AIChat.PictureSetup`: shape and Detailed chips, the picture being changed attached), and waits for the user's
-  words; with no OpenAI key, Settings → AI instead. Make → Diagram stays in the page: a drawing block below the
-  selection, "Making a diagram…", then Excalidraw opened on the Mermaid (`insertDiagram` in `apps/editor/src/extensions/drawing.ts`,
-  mermaid-to-excalidraw in the package).
+  changed, else at the caret, one undo step). The page has no entry of its own for pictures (no "/" row, no Make in Ask AI): the chat makes them when the
+  user asks for them in their words. Ask AI in the page has no Translate either.
   With web search on, the chat also asks OpenAI's search for pictures (`AIRequest.imageResults`: `search_content_types` + `include: web_search_call.results`, read from the search call's `image_result`s as `.image`) and shows them under the answer (HikkiUI's `ImageResultStrip`, kept as `ChatTurn.images`): Add to page fetches one into the assets (`WebImage`, `HikkiCore/Sources/Text/WebImage.swift`: LinkPreview's public-host rules) and puts it at the caret (`EditorController.insertWebImage`). While the model works the chat's "Thinking…" / "Searching the web…" line is HikkiUI's `ShimmerText` (a foreground
   band sweeping the muted text once per `Motion.loop`; still under Reduce Motion, which gets a spinner instead). Model output is untrusted: the reply is parsed tolerantly (`apps/editor/src/lib/ai-content.ts`;
   sanitized inline HTML through the schema, unknown keys dropped, an unreadable reply is an error), citations must be

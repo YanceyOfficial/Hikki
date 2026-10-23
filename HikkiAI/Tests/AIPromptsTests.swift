@@ -59,7 +59,6 @@ struct AIPromptsTests {
         // Presets, an empty instruction and a picture's question never hand off.
         for task in [
             AITask(action: "fix", answer: false, units: [unit]),
-            AITask(action: "translate:zh", answer: false, units: [unit]),
             AITask(action: "explain", answer: true, units: [unit]),
             AITask(action: "custom", instruction: "  ", answer: false, units: [unit]),
             AITask(
@@ -120,7 +119,6 @@ struct AIPromptsTests {
     }
 
     @Test func presetsAndCustomInstructionsBecomeTheTask() {
-        #expect(AIPrompts.describe(AITask(action: "translate:ja", answer: false, units: [])).contains("Japanese"))
         #expect(AIPrompts.describe(AITask(action: "tone:casual", answer: false, units: [])).contains("casual"))
         let custom = AITask(action: "custom", instruction: String(repeating: "x", count: 5000), answer: false, units: [])
         #expect(AIPrompts.describe(custom).count == AIPrompts.maxInstruction)

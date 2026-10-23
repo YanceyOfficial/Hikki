@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { blockKindLabel } from '../src/core/block-kinds'
 import { BLOCK_TYPES } from '../src/core/blocks'
-import { DiagramError, DiagramRequests } from '../src/core/diagram'
+import { DiagramRequests } from '../src/core/diagram'
 import { createEditor } from '../src/core/editor'
 import { blockTexts } from '../src/core/extract'
 import type { ToNativeMessage } from '../src/core/protocol'
@@ -200,6 +200,21 @@ describe('a drawing block', () => {
     expect(type?.group).toBe('media')
     expect(type?.aliases).toContain('huitu')
     expect(blockKindLabel(editor.state.doc.nodeAt(drawingPos())!)).toBe('Drawing')
+  })
+
+  it('the "/" menu\'s Excalidraw puts a drawing in the page, never a link to fill in', () => {
+    const excalidraw = BLOCK_TYPES.find((b) => b.id === 'excalidraw')!
+    editor.commands.setTextSelection(3)
+    excalidraw.apply(editor.chain().focus()).run()
+    excalidraw.after?.(editor)
+    const drawings: string[] = []
+    editor.state.doc.descendants((node) => {
+      if (node.type.name === 'drawing') drawings.push(node.attrs.id as string)
+    })
+    expect(drawings).toHaveLength(2)
+    expect(document.querySelector('[data-testid=embed-panel]')).toBeNull()
+    setDrawingsReadOnly(true)
+    expect(excalidraw.available?.()).toBe(false)
   })
 
   it('counts its words as one block of the page', () => {
@@ -416,53 +431,5 @@ describe('text to diagram', () => {
     const empty = requests.request('y', '')
     requests.handle({ id: (sent[1] as { id: string }).id, type: 'done' })
     await expect(empty).rejects.toThrow()
-  })
-})
-
-function selectBefore() {
-  editor.commands.setTextSelection({ from: 1, to: 7 })
-}
-
-describe('a diagram of the selection', () => {
-  it('goes below the passage as a drawing that says it is coming, then opens with the shapes', async () => {
-    let answer: ((mermaid: string) => void) | undefined
-    host.diagram = vi.fn(() => new Promise<string>((resolve) => (answer = resolve)))
-    selectBefore()
-    expect(editor.can().insertDiagram('before')).toBe(true)
-    expect(editor.commands.insertDiagram('before')).toBe(true)
-    await settle()
-    expect(host.diagram).toHaveBeenCalledWith('before')
-    const drawings = element.querySelectorAll('.hk-drawing')
-    expect(drawings).toHaveLength(2)
-    expect(drawings[0].getAttribute('aria-label')).toBe('Making a diagram…')
-    expect(editor.state.doc.child(1).type.name).toBe('drawing')
-    answer?.('flowchart LR\n  A --> B')
-    await settle()
-    expect(overlays).toHaveLength(1)
-    expect(overlays[0].props.mermaid).toBe('flowchart LR\n  A --> B')
-    expect(element.querySelectorAll('.hk-drawing')[0].getAttribute('aria-label')).not.toBe(
-      'Making a diagram…'
-    )
-  })
-
-  it('takes its empty drawing away again when no diagram comes', async () => {
-    host.diagram = vi.fn(async () => {
-      throw new DiagramError('No key', 'aiMissingKey')
-    })
-    selectBefore()
-    editor.commands.insertDiagram('before')
-    await settle()
-    expect(overlays).toHaveLength(0)
-    expect(element.querySelectorAll('.hk-drawing')).toHaveLength(1)
-  })
-
-  it('needs AI, words, and a screen drawings can be added on', () => {
-    selectBefore()
-    expect(editor.can().insertDiagram('before')).toBe(false)
-    host.diagram = vi.fn(async () => 'flowchart LR')
-    expect(editor.can().insertDiagram('  ')).toBe(false)
-    setDrawingsReadOnly(true)
-    expect(editor.can().insertDiagram('before')).toBe(false)
-    expect(host.diagram).not.toHaveBeenCalled()
   })
 })

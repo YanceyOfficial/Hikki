@@ -27,8 +27,7 @@ const GROUP_LABEL: Record<BlockGroup, () => string> = {
   media: () => t('slash.group.media'),
   embeds: () => t('slash.group.embeds'),
   other: () => t('slash.group.other'),
-  advanced: () => t('slash.group.advanced'),
-  ai: () => t('slash.group.ai')
+  advanced: () => t('slash.group.advanced')
 }
 
 /** The preview waits this long the first time, then follows the selection instantly. */

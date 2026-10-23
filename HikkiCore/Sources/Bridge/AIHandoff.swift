@@ -28,25 +28,3 @@ public struct AIHandoff: Equatable, Sendable {
         wide ? .inspector : .sheet
     }
 }
-
-/// The page asking for pictures ("/" AI pictures, a selection's Pictures…, an image's Edit with AI): the chat opens
-/// where a handoff's does, set up for pictures — they go into the page at `blockId`, after it (in place of it when it
-/// is still an empty line) or, for a picture being changed, in place of it (`replace`), and the composer waits for
-/// the user's words.
-public struct PicturesHandoff: Equatable, Sendable {
-    public var docId: String
-    public var blockId: String?
-    public var replace: Bool
-    /// The selected passage the pictures are of ("" for none).
-    public var selection: String
-    /// The picture being changed: its address in the page (a workspace asset).
-    public var source: String?
-
-    public init(docId: String, blockId: String?, replace: Bool = false, selection: String = "", source: String? = nil) {
-        self.docId = docId
-        self.blockId = blockId
-        self.replace = replace
-        self.selection = selection
-        self.source = source
-    }
-}

@@ -1157,57 +1157,6 @@
         }
       }
     },
-    "app:ai.pictures.asking": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pictures"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "图片"
-          }
-        }
-      }
-    },
-    "app:ai.pictures.cancel": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Not pictures"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "不生成图片"
-          }
-        }
-      }
-    },
-    "app:ai.pictures.changing": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Change picture"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "修改图片"
-          }
-        }
-      }
-    },
     "app:ai.pictures.cover": {
       "extractionState": "manual",
       "localizations": {
@@ -1225,40 +1174,6 @@
         }
       }
     },
-    "app:ai.pictures.detailed": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Detailed"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "精细"
-          }
-        }
-      }
-    },
-    "app:ai.pictures.detailedHint": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A slower, more detailed model — better with text in the picture"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "更慢但更精细的模型，适合图中带文字"
-          }
-        }
-      }
-    },
     "app:ai.pictures.making": {
       "extractionState": "manual",
       "localizations": {
@@ -1272,23 +1187,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在生成图片…"
-          }
-        }
-      }
-    },
-    "app:ai.pictures.placeholder": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Describe the pictures…"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "描述想要的图片…"
           }
         }
       }
@@ -1361,40 +1259,6 @@
         }
       }
     },
-    "app:ai.pictures.shape": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shape"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "形状"
-          }
-        }
-      }
-    },
-    "app:ai.pictures.square": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Square"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "方形"
-          }
-        }
-      }
-    },
     "app:ai.pictures.stopped": {
       "extractionState": "manual",
       "localizations": {
@@ -1408,40 +1272,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "已停止"
-          }
-        }
-      }
-    },
-    "app:ai.pictures.tall": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tall"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "纵向"
-          }
-        }
-      }
-    },
-    "app:ai.pictures.wide": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wide"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "横向"
           }
         }
       }

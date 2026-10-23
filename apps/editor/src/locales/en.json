@@ -171,11 +171,6 @@
     "drawing": {
       "title": "Drawing",
       "hint": "Sketch or diagram by hand"
-    },
-    "aiPictures": {
-      "title": "AI pictures",
-      "hint": "Describe them in the AI panel",
-      "needsKey": "Needs an OpenAI key (Settings → AI)"
     }
   },
   "cover": {
@@ -230,8 +225,7 @@
       "other": "Other",
       "advanced": "Advanced",
       "media": "Media",
-      "embeds": "Embeds",
-      "ai": "AI"
+      "embeds": "Embeds"
     },
     "close": "Close menu"
   },
@@ -433,7 +427,6 @@
     "group": {
       "edit": "Edit",
       "tone": "Change tone",
-      "translate": "Translate",
       "ask": "Ask"
     },
     "action": {
@@ -447,11 +440,6 @@
         "casual": "Casual",
         "friendly": "Friendly",
         "confident": "Confident"
-      },
-      "translate": {
-        "zh": "Chinese (Simplified)",
-        "en": "English",
-        "ja": "Japanese"
       },
       "explain": "Explain",
       "summarize": "Summarize",
@@ -511,14 +499,6 @@
       "favorites": "Favorites",
       "recommended": "Recommended",
       "other": "Other models"
-    },
-    "make": {
-      "title": "Make",
-      "diagram": "Diagram",
-      "diagramHint": "An editable drawing, here in the page",
-      "pictures": "Pictures…",
-      "changePicture": "Change with AI…",
-      "inChat": "In the AI panel"
     }
   },
   "comments": {
@@ -615,8 +595,7 @@
     "noPreview": "Drawing — click to open",
     "loading": "Opening the drawing…",
     "done": "Done",
-    "close": "Close",
-    "making": "Making a diagram…"
+    "close": "Close"
   },
   "date": {
     "today": "Today",

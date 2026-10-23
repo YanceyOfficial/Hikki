@@ -175,10 +175,6 @@ struct ContentView: View {
                     sendAIHandoff(handoff)
                     return
                 }
-                if asking, let pictures = navigator.aiPictures {
-                    setUpPictures(pictures)
-                    return
-                }
                 if asking { chat.show(page: navigator.compactColumn == .detail ? navigator.route.pageID : nil) }
                 // A suggestion from Home: its pages as context, the question sent.
                 if asking, let question = navigator.pendingAIQuestion {
@@ -204,10 +200,6 @@ struct ContentView: View {
         // AI on the selection handed a request to the chat: it comes up where it belongs and the request is sent.
         .onChange(of: navigator.aiHandoff) { _, handoff in
             if let handoff { routeAIHandoff(handoff) }
-        }
-        // The page asked for pictures: the chat comes up where a handoff's does, set up for them.
-        .onChange(of: navigator.aiPictures) { _, pictures in
-            if let pictures { routeAIPictures(pictures) }
         }
         #if os(iOS)
             // iPhone: search takes the whole screen (a sheet's large corner and its keyboard avoidance hid the field);
@@ -462,7 +454,6 @@ struct ContentView: View {
         editor.setSplitDrop(mainSplitDrop)
         ai.attach(editor)
         editor.onAIHandoff = { [weak navigator] handoff in navigator?.aiHandoff = PaneHandoff(handoff: handoff, side: .leading) }
-        editor.onAIPictures = { [weak navigator] request in navigator?.aiPictures = PanePictures(request: request, side: .leading) }
         // Ask AI's changes to the page are reviewed in the main editor; its verdicts go back to the chat's cards.
         chat.editor = editor
         editor.onAIChange = { [weak chat] docId, id, status, before, after in
@@ -702,44 +693,6 @@ struct ContentView: View {
         chat.send(handoff.instruction, store: model.store)
     }
 
-    /// Opens the chat for pictures where a handoff's opens; with no OpenAI key, Settings → AI instead (the image model
-    /// is OpenAI's).
-    private func routeAIPictures(_ pictures: PanePictures) {
-        guard chat(for: pictures.side).canMakePictures else {
-            navigator.aiPictures = nil
-            UserDefaults.standard.set(SettingsPage.ai.rawValue, forKey: SettingsPage.storageKey)
-            navigator.isShowingSettings = true
-            return
-        }
-        switch AIHandoff.placement(wide: wide) {
-        case .inspector:
-            navigator.setInspector(pictures.side, InspectorState(isShowing: true, mode: .ai))
-            setUpPictures(pictures)
-        case .sheet:
-            if navigator.isAskingAI { setUpPictures(pictures) } else { navigator.isAskingAI = true }
-        }
-    }
-
-    /// The chat about the asking page, set up for pictures: the passage as context, the picture being changed attached,
-    /// the composer waiting for the user's words. On iPhone the sheet closes once pictures go into the page.
-    private func setUpPictures(_ pictures: PanePictures) {
-        navigator.aiPictures = nil
-        let request = pictures.request
-        let chat = chat(for: pictures.side)
-        chat.show(page: request.docId)
-        chat.mention(request.docId)
-        if chat.isStreaming { chat.stop() }
-        chat.selection = request.selection.isEmpty ? nil : EditorSelection(docId: request.docId, text: request.selection)
-        chat.attachments = []
-        if let source = request.source, source.hasPrefix(AssetStore.urlPrefix),
-            let file = model.assets.file(named: String(source.dropFirst(AssetStore.urlPrefix.count)))
-        {
-            chat.attach(fileAt: file)
-        }
-        chat.pictureSetup = AIChat.PictureSetup(place: PicturePlace(blockId: request.blockId, replace: request.replace))
-        chat.onPicturesAdded = wide ? nil : { [weak navigator] in navigator?.isAskingAI = false }
-    }
-
     /// The trailing side's editor, made and wired on first use: same store, assets, pages and settings as the leading
     /// one; a link clicked in it opens in its side, a PDF attachment over the window, as on the leading side.
     private func splitPaneEditor() -> EditorController {
@@ -768,7 +721,6 @@ struct ContentView: View {
         pane.setSplitDrop(.here)
         ai.attach(pane)
         pane.onAIHandoff = { [weak navigator] handoff in navigator?.aiHandoff = PaneHandoff(handoff: handoff, side: .trailing) }
-        pane.onAIPictures = { [weak navigator] request in navigator?.aiPictures = PanePictures(request: request, side: .trailing) }
         // Its own chat: Ask AI's changes to its page are reviewed in it.
         trailingChat.editor = pane
         pane.onAIChange = { [weak trailingChat] docId, id, status, before, after in

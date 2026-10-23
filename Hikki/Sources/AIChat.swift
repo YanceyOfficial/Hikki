@@ -195,10 +195,8 @@ final class AIChat {
         if text == nil { draft = "" }
         attachError = nil
         let asked = Message(role: .user, text: question, attachments: attachments)
-        // Set up for pictures, the answer's go where the page asked for them; else where the last ones went.
-        let place = pictureSetup?.place ?? messages.last(where: { $0.picturePlace != nil })?.picturePlace
-        let pictureRequest = pictureSetup.map { (shape: $0.shape, detailed: $0.detailed) }
-        pictureSetup = nil
+        // The answer's pictures go where the last ones went (else at the caret).
+        let place = messages.last(where: { $0.picturePlace != nil })?.picturePlace
         messages.append(asked)
         keep([asked])
         attachments = []
@@ -214,7 +212,7 @@ final class AIChat {
             Task { [weak self] in
                 let blocks = await self?.openPageBlocks()
                 await self?.compactIfNeeded(model: model, client: client)
-                self?.ask(pages: pages, blocks: blocks, model: model, client: client, pictureRequest: pictureRequest)
+                self?.ask(pages: pages, blocks: blocks, model: model, client: client)
             }
         }
     }
@@ -264,8 +262,7 @@ final class AIChat {
     }
 
     private func ask(
-        pages: [(title: String, text: String)], blocks: [[String: String]]?, model: AIModel, client: any AIClient,
-        pictureRequest: (shape: PictureShape, detailed: Bool)?
+        pages: [(title: String, text: String)], blocks: [[String: String]]?, model: AIModel, client: any AIClient
     ) {
         // Stopped (or moved to another page) while compacting.
         guard isStreaming else { return }
@@ -285,7 +282,7 @@ final class AIChat {
         var request = AIPrompts.chat(
             turns, summary: summary?.text, pages: pages, openPageBlocks: blocks.map { AIPageEdits.pageJSON($0) },
             selection: contextSelection, model: model, webSearch: webSearch, language: AIService.appLanguage,
-            pictures: canMakePictures, pictureRequest: pictureRequest)
+            pictures: canMakePictures)
         // The model thinks first; its thinking streams into the answer's timeline.
         request.reasoning = true
         // A search may bring pictures too, shown under the answer (OpenAI's search; Anthropic's has none).
@@ -355,17 +352,6 @@ final class AIChat {
 
     // MARK: - Pictures
 
-    /// The composer set up for pictures (the page asked for them: "/" AI pictures, a selection's or a picture's Make):
-    /// where they go, and the shape and model the user picked for them. Sent with the next question, then cleared.
-    struct PictureSetup: Equatable {
-        var place: PicturePlace
-        var shape: PictureShape = .wide
-        var detailed = false
-        /// It changes a picture in the page (attached to the question): adding replaces it.
-        var changing: Bool { place.replace }
-    }
-
-    var pictureSetup: PictureSetup?
     /// Pictures can be made: there is an OpenAI key (the image model is OpenAI's).
     var canMakePictures: Bool { AIPreferences.key(.openAI) != nil }
     /// Pictures being made — waiting, or drawing two at a time — and the rough versions they have shown (not kept).
@@ -375,8 +361,6 @@ final class AIChat {
     @ObservationIgnored private var pictureRuns: [String: Task<Void, Never>] = [:]
     /// Made pictures, read once from their files.
     @ObservationIgnored private var pictureImages: [String: Image] = [:]
-    /// Pictures went into the page (the iPhone sheet closes on it).
-    @ObservationIgnored var onPicturesAdded: (() -> Void)?
     var isMakingPictures: Bool { !pictureQueue.isEmpty }
 
     /// The pictures a finished answer asks for: it may change an earlier one by id, or the picture attached to the
@@ -546,7 +530,6 @@ final class AIChat {
             Log.info("AI pictures added", category: "ai", context: ["count": "\(items.count)"])
             for picture in pictures { self.updatePicture(picture.id) { $0.added = true } }
             if let m = self.messages.firstIndex(where: { $0.id == answer }) { self.keep([self.messages[m]]) }
-            self.onPicturesAdded?()
         }
     }
 
@@ -858,7 +841,6 @@ struct AIChatView: View {
                     }
                     .scrollIndicators(.hidden)
                 }
-                if let setup = chat.pictureSetup { pictureChips(setup) }
                 if !contextPages.isEmpty || chat.contextSelection != nil {
                     ScrollView(.horizontal) {
                         HStack(spacing: Spacing.s1_5) {
@@ -956,8 +938,7 @@ struct AIChatView: View {
     /// is open (arrows move in it).
     private var field: some View {
         TextField(
-            chat.pictureSetup == nil ? "app:ai.chat.placeholder" : "app:ai.pictures.placeholder", text: $chat.draft,
-            axis: .vertical
+            "app:ai.chat.placeholder", text: $chat.draft, axis: .vertical
         )
         .textFieldStyle(.plain)
         .font(.hk(.sm))
@@ -983,47 +964,6 @@ struct AIChatView: View {
             .onPasteCommand(of: [.fileURL, .image, .pdf]) { receive($0) }
         #endif
         .accessibilityIdentifier("ai-chat-field")
-    }
-
-    /// Set up for pictures (opened from the page for them): what is asked for, its shape and the detailed model.
-    private func pictureChips(_ setup: AIChat.PictureSetup) -> some View {
-        HStack(spacing: Spacing.s1_5) {
-            ContextChip(label: "app:ai.pictures.cancel", remove: { chat.pictureSetup = nil }) {
-                IconView(.images, size: TextSize.sm.rawValue).foregroundStyle(ColorTone.standard.ink)
-                Text(setup.changing ? "app:ai.pictures.changing" : "app:ai.pictures.asking")
-            }
-            .accessibilityIdentifier("ai-pictures-setup")
-            Menu {
-                Picker("app:ai.pictures.shape", selection: Binding(get: { setup.shape }, set: { chat.pictureSetup?.shape = $0 })) {
-                    ForEach(PictureShape.allCases, id: \.self) { shape in Text(Self.shapeName(shape)).tag(shape) }
-                }
-                .pickerStyle(.inline)
-            } label: {
-                Text(Self.shapeName(setup.shape)).modifier(ChipStyle())
-            }
-            .menuStyle(.button)
-            .buttonStyle(.plain)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .accessibilityIdentifier("ai-pictures-shape")
-            Toggle(isOn: Binding(get: { setup.detailed }, set: { chat.pictureSetup?.detailed = $0 })) {
-                Text("app:ai.pictures.detailed")
-            }
-            .toggleStyle(.button)
-            .buttonStyle(.plain)
-            .modifier(ChipStyle())
-            .background(setup.detailed ? ColorTone.standard.selectionFill : .clear, in: .capsule)
-            .help("app:ai.pictures.detailedHint")
-            .accessibilityIdentifier("ai-pictures-detailed")
-        }
-    }
-
-    private static func shapeName(_ shape: PictureShape) -> LocalizedStringKey {
-        switch shape {
-        case .wide: "app:ai.pictures.wide"
-        case .square: "app:ai.pictures.square"
-        case .tall: "app:ai.pictures.tall"
-        }
     }
 
     private var attachButton: some View {

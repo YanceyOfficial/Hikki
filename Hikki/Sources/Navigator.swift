@@ -69,12 +69,6 @@ struct PaneHandoff: Equatable {
     let side: PaneSide
 }
 
-/// The page asking for pictures (`aiPictures`), and the side whose editor asked.
-struct PanePictures: Equatable {
-    let request: PicturesHandoff
-    let side: PaneSide
-}
-
 struct TitleFocusRequest: Equatable {
     let pageID: String
     let serial: Int
@@ -240,8 +234,6 @@ final class Navigator {
     /// A request AI on the selection handed to the chat (either side's editor), waiting for ContentView to open the chat —
     /// that side's panel, or the Ask AI sheet (`AIHandoff.placement`) — and send it there.
     var aiHandoff: PaneHandoff?
-    /// The page asked for pictures, waiting for ContentView to open the chat set up for them (where a handoff opens).
-    var aiPictures: PanePictures?
 
     func newPage(parentId: String? = nil) {
         guard let id = model?.createPage(parentId: parentId) else { return }

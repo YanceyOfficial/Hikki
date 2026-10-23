@@ -472,19 +472,14 @@ describe('EditorBridge', () => {
     expect(bridge.touchPrepare()?.quote).toBe('Kyoto')
   })
 
-  it("the phone's AI field ends with Make: pictures go to the chat, a diagram into the page", () => {
+  it("the phone's AI field offers the panel's presets only: no Translate, no Make", () => {
     bridge.loadDocument(page('a', { content: doc('Kyoto trip') }))
     editor().commands.setTextSelection({ from: 1, to: 6 })
     const presets = bridge.touchPrepare()?.presets.map((p) => p.id) ?? []
-    expect(presets.slice(-2)).toEqual(['make:diagram', 'make:pictures'])
-    expect(bridge.touchAI({ id: 'make:pictures' })).toBe(true)
-    expect(sent.find((m) => m.type === 'aiPictures')).toMatchObject({
-      docId: 'a',
-      mode: 'after',
-      selection: 'Kyoto'
-    })
-    expect(bridge.touchAI({ id: 'make:diagram' })).toBe(true)
-    expect(editor().state.doc.child(1).type.name).toBe('drawing')
+    expect(presets).toContain('improve')
+    expect(presets.filter((id) => id.startsWith('translate:') || id.startsWith('make:'))).toEqual(
+      []
+    )
   })
 
   it('rejects unknown commands', () => {

@@ -87,11 +87,6 @@ public enum AIPictures {
         "[picture \(id)] \(prompt)"
     }
 
-    /// What the user asked for when the composer was set up for pictures (a shape and the detailed model chosen).
-    static func request(shape: PictureShape, detailed: Bool) -> String {
-        "I'm asking for pictures: make them \(shape.rawValue)\(detailed ? ", detailed" : "")."
-    }
-
     static let instructions = """
 
 

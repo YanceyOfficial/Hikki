@@ -117,9 +117,7 @@ struct AIPicturesTests {
         let model = AIModelCatalog.gptSol
         let plain = AIPrompts.chat([.user("Hi")], model: model, webSearch: false)
         #expect(!plain.instructions.contains("hikki-pictures"))
-        let pictures = AIPrompts.chat(
-            [.user("Draw it")], model: model, webSearch: false, pictures: true, pictureRequest: (.square, true))
+        let pictures = AIPrompts.chat([.user("Draw it")], model: model, webSearch: false, pictures: true)
         #expect(pictures.instructions.contains("hikki-pictures"))
-        #expect(pictures.messages.last?.text.contains("make them square, detailed") == true)
     }
 }

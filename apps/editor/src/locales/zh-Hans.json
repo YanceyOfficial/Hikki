@@ -171,11 +171,6 @@
     "drawing": {
       "title": "绘图",
       "hint": "手绘草图或图示"
-    },
-    "aiPictures": {
-      "title": "AI 图片",
-      "hint": "在 AI 面板中描述",
-      "needsKey": "需要 OpenAI 密钥（设置 → AI）"
     }
   },
   "cover": {
@@ -230,8 +225,7 @@
       "other": "其他",
       "advanced": "高级",
       "media": "媒体",
-      "embeds": "嵌入",
-      "ai": "AI"
+      "embeds": "嵌入"
     },
     "close": "关闭菜单"
   },
@@ -433,7 +427,6 @@
     "group": {
       "edit": "编辑",
       "tone": "更换语气",
-      "translate": "翻译",
       "ask": "提问"
     },
     "action": {
@@ -447,11 +440,6 @@
         "casual": "随意",
         "friendly": "友好",
         "confident": "自信"
-      },
-      "translate": {
-        "zh": "简体中文",
-        "en": "英语",
-        "ja": "日语"
       },
       "explain": "解释",
       "summarize": "总结",
@@ -511,14 +499,6 @@
       "favorites": "收藏",
       "recommended": "推荐",
       "other": "其他模型"
-    },
-    "make": {
-      "title": "生成",
-      "diagram": "图表",
-      "diagramHint": "可编辑的绘图，就在页面里",
-      "pictures": "图片…",
-      "changePicture": "用 AI 修改…",
-      "inChat": "在 AI 面板中"
     }
   },
   "comments": {
@@ -615,8 +595,7 @@
     "noPreview": "绘图——点按打开",
     "loading": "正在打开绘图…",
     "done": "完成",
-    "close": "关闭",
-    "making": "正在生成图表…"
+    "close": "关闭"
   },
   "date": {
     "today": "今天",

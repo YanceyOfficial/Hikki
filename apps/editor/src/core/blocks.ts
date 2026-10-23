@@ -30,7 +30,6 @@ import {
   FilmStripIcon,
   FunctionIcon,
   ImageSquareIcon,
-  ImagesIcon,
   InfoIcon,
   ListBulletsIcon,
   ListMagnifyingGlassIcon,
@@ -48,20 +47,11 @@ import {
   TextHTwoIcon,
   TextTIcon
 } from '../generated/icons'
-import { aiModels } from '../lib/ai-models'
 import { drawingsReadOnly } from '../lib/drawing-mode'
 import { t } from './i18n'
 
 /** Sections of the "/" menu, in display order. */
-export const BLOCK_GROUPS = [
-  'basic',
-  'lists',
-  'media',
-  'embeds',
-  'other',
-  'advanced',
-  'ai'
-] as const
+export const BLOCK_GROUPS = ['basic', 'lists', 'media', 'embeds', 'other', 'advanced'] as const
 export type BlockGroup = (typeof BLOCK_GROUPS)[number]
 
 /**
@@ -528,8 +518,10 @@ export const BLOCK_TYPES: BlockType[] = [
     icon: ExcalidrawLogo,
     group: 'embeds',
     aliases: ['excalidraw', 'whiteboard', 'sketch', 'drawing', '手绘', '白板', 'shouhui', 'sh'],
-    apply: (c) => c,
-    after: (editor) => openEmbedPanel(editor, 'excalidraw')
+    // A drawing block of our own (Excalidraw in the page, its AI inside its editor), not a link to excalidraw.com;
+    // a pasted excalidraw.com link still embeds through Embed.
+    apply: (c) => c.insertDrawing(),
+    available: () => !drawingsReadOnly()
   },
   {
     id: 'blockquote',
@@ -679,36 +671,6 @@ export const BLOCK_TYPES: BlockType[] = [
     after: (editor) => {
       const pos = findNear(editor, 'inlineMath')
       if (pos !== null) openMathEditor(editor, pos, 'inline')
-    }
-  },
-  // AI pictures (OpenAI's image model) are made in the AI panel: this opens it, set up to put them on this line.
-  {
-    id: 'aiPictures',
-    title: 'AI pictures',
-    hint: 'Describe them in the AI panel',
-    label: () => t('blocks.aiPictures.title'),
-    description: () =>
-      aiModels()?.pictures ? t('blocks.aiPictures.hint') : t('blocks.aiPictures.needsKey'),
-    icon: ImagesIcon,
-    group: 'ai',
-    aliases: [
-      'ai pictures',
-      'picture',
-      'image',
-      'generate',
-      'illustration',
-      'draw',
-      '图片',
-      '生成图片',
-      '配图',
-      '插图',
-      'tupian',
-      'peitu',
-      'tp'
-    ],
-    apply: (c) => c,
-    after: (editor) => {
-      editor.commands.aiPictures('here')
     }
   }
 ]

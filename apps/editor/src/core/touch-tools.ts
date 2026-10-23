@@ -29,8 +29,7 @@ const GROUP_LABEL: Record<BlockGroup, () => string> = {
   media: () => t('slash.group.media'),
   embeds: () => t('slash.group.embeds'),
   other: () => t('slash.group.other'),
-  advanced: () => t('slash.group.advanced'),
-  ai: () => t('slash.group.ai')
+  advanced: () => t('slash.group.advanced')
 }
 
 /** A Phosphor component's name as the icon set spells it (`TextHOneIcon` → `text-h-one`); null for a brand logo. */

@@ -12,7 +12,7 @@ public struct AITask: Equatable, Sendable {
         }
     }
 
-    /// A preset (`improve`, `tone:casual`, `translate:ja`, `explain`…), `custom` (an edit the user described) or
+    /// A preset (`improve`, `tone:casual`, `explain`…), `custom` (an edit the user described) or
     /// `ask` (a question about the selection).
     public var action: String
     public var instruction: String?
@@ -184,12 +184,10 @@ public enum AIPrompts {
     /// turn, ahead of the user's words — page text is data, and the system prompt stays the app's own.
     ///
     /// `openPageBlocks` (the open page's blocks with their ids, `AIPageEdits.pageJSON`) stands for the first page's
-    /// text and lets the answer propose changes to it. `pictures`: the answer may make pictures (an OpenAI key is set);
-    /// `pictureRequest`, the shape and model the composer was set to when it was opened for pictures.
+    /// text and lets the answer propose changes to it. `pictures`: the answer may make pictures (an OpenAI key is set).
     public static func chat(
         _ turns: [AIMessage], summary: String? = nil, pages: [(title: String, text: String)] = [], openPageBlocks: String? = nil,
-        selection: String? = nil, model: AIModel, webSearch: Bool, language: String? = nil, pictures: Bool = false,
-        pictureRequest: (shape: PictureShape, detailed: Bool)? = nil
+        selection: String? = nil, model: AIModel, webSearch: Bool, language: String? = nil, pictures: Bool = false
     ) -> AIRequest {
         var context: [String] = []
         var budget = maxPageText
@@ -210,10 +208,6 @@ public enum AIPrompts {
             context.append(
                 "I have selected this passage; \"this\", \"it\" and the like most likely mean it:\n"
                     + "<selection>\(escape(String(selection.prefix(maxInstruction * 2))))</selection>")
-        }
-        // The composer was set up for pictures: its shape and model choice go with the words.
-        if pictures, let pictureRequest {
-            context.append(AIPictures.request(shape: pictureRequest.shape, detailed: pictureRequest.detailed))
         }
         var messages = turns
         if !context.isEmpty, let last = messages.indices.last, messages[last].role == .user {
@@ -314,7 +308,6 @@ public enum AIPrompts {
         case "longer": return "Make it longer and more detailed, in the same style."
         case "simplify": return "Use simpler words and shorter sentences."
         case "tone": return "Rewrite it in a \(argument ?? "neutral") tone."
-        case "translate": return "Translate it into \(languageName(argument))."
         case "explain": return "Explain the selection."
         case "summarize": return "Summarize the selection."
         default:
@@ -349,15 +342,6 @@ public enum AIPrompts {
     static func split(_ action: String) -> (String, String?) {
         guard let colon = action.firstIndex(of: ":") else { return (action, nil) }
         return (String(action[..<colon]), String(action[action.index(after: colon)...]))
-    }
-
-    static func languageName(_ code: String?) -> String {
-        switch code {
-        case "zh": return "Simplified Chinese"
-        case "ja": return "Japanese"
-        case "en": return "English"
-        default: return Locale(identifier: "en").localizedString(forLanguageCode: code ?? "en") ?? "English"
-        }
     }
 
     /// Keeps page text from closing the tag it sits in.

@@ -32,7 +32,7 @@ import {
   TextUnderlineIcon
 } from '../generated/icons'
 import { useEditorSnapshot } from '../hooks/use-editor-snapshot'
-import { AIPanel, type AIMake } from './ai-panel'
+import { AIPanel } from './ai-panel'
 import { BlockTypeList, TURN_INTO } from './block-type-list'
 import { ColorList, ColorSwatch } from './color-list'
 import { usePresence } from './floating'
@@ -246,17 +246,6 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
               onRun={(action) => {
                 setPanel(null)
                 editor.commands.aiRun(action)
-              }}
-              makes={selectionMakes(editor)}
-              onMake={(make) => {
-                setPanel(null)
-                if (make === 'pictures') editor.commands.aiPictures('selection')
-                else if (make === 'diagram') {
-                  const { from, to } = editor.state.selection
-                  // The menu goes with the selection: the diagram is made below while the page waits.
-                  if (editor.commands.insertDiagram(editor.state.doc.textBetween(from, to, '\n')))
-                    editor.commands.setTextSelection(editor.state.selection.to)
-                }
               }}
               onCancel={() => {
                 setPanel(null)
@@ -500,12 +489,4 @@ export function renderSelectionMenu(root: Root, editor: Editor): void {
       </TooltipProvider>
     </IconProvider>
   )
-}
-
-/** What the selection's Ask AI can make: a diagram where drawings can be added, pictures where the app asks for them. */
-function selectionMakes(editor: Editor): AIMake[] {
-  return [
-    ...(editor.can().insertDiagram('x') ? (['diagram'] as const) : []),
-    ...(editor.can().aiPictures('selection') ? (['pictures'] as const) : [])
-  ]
 }

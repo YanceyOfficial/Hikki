@@ -1,13 +1,12 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import type { Editor } from '@tiptap/core'
 import { undoDepth } from '@tiptap/pm/history'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { AIPanel } from '../src/components/ai-panel'
 import { BLOCK_TYPES } from '../src/core/blocks'
 import { createEditor } from '../src/core/editor'
 import { insertPictures } from '../src/core/pictures'
-import type { PicturesRequest } from '../src/extensions/ai-review'
 import { setAIModels } from '../src/lib/ai-models'
 import { stripIds } from './helpers'
 
@@ -21,7 +20,6 @@ const image = (id: string, src: string) => ({ type: 'image', attrs: { id, src, a
 
 let host: HTMLElement
 let editor: Editor
-let asked: PicturesRequest[]
 
 function open(content: object[]) {
   editor = createEditor(
@@ -31,8 +29,7 @@ function open(content: object[]) {
       ai: {
         request: () => {},
         cancel: () => {},
-        title: () => 'Trip to Kyoto',
-        pictures: (request) => asked.push(request)
+        title: () => 'Trip to Kyoto'
       }
     }
   )
@@ -43,7 +40,6 @@ const blocks = () =>
   )
 
 beforeEach(() => {
-  asked = []
   host = document.createElement('div')
   document.body.append(host)
 })
@@ -118,56 +114,10 @@ describe('pictures from the chat', () => {
 })
 
 describe('asking for pictures', () => {
-  it('"/" AI pictures asks for this line', () => {
-    open([para('a', 'Day 1'), para('b')])
-    editor.commands.setTextSelection(editor.state.doc.content.size - 1)
-    const type = BLOCK_TYPES.find((b) => b.id === 'aiPictures')
-    expect(type?.group).toBe('ai')
-    type?.after?.(editor)
-    expect(asked).toEqual([{ blockId: 'b', mode: 'after' }])
-  })
-
-  it('a selection asks with its words, going after the block it ends in; an image asks to be changed', () => {
-    open([para('a', 'Day 1'), para('c', 'Day 2'), image('i', asset('old'))])
-    editor.commands.setTextSelection({ from: 1, to: 13 })
-    expect(editor.commands.aiPictures('selection')).toBe(true)
-    expect(editor.commands.aiPictures(14)).toBe(true)
-    expect(asked).toEqual([
-      { blockId: 'c', mode: 'after', selection: 'Day 1\nDay 2' },
-      { blockId: 'i', mode: 'replace', url: asset('old') }
-    ])
-    // Nothing selected, or no picture there: nothing to ask.
-    editor.commands.setTextSelection(3)
-    expect(editor.can().aiPictures('selection')).toBe(false)
-    expect(editor.can().aiPictures(1)).toBe(false)
-    // `can()` never asks.
-    expect(asked).toHaveLength(2)
-  })
-
-  it('"/" says when pictures need an OpenAI key', () => {
-    const type = BLOCK_TYPES.find((b) => b.id === 'aiPictures')
-    expect(type?.description()).toBe('Needs an OpenAI key (Settings → AI)')
-    setAIModels({ choice: 'auto', auto: 'GPT-6.1 Sol', groups: [], pictures: true })
-    expect(type?.description()).toBe('Describe them in the AI panel')
-  })
-
-  it('the AI panel offers what it can make, after its actions', () => {
-    const onMake = vi.fn()
-    render(
-      <AIPanel
-        onRun={() => {}}
-        onCancel={() => {}}
-        autoFocus={false}
-        makes={['diagram', 'pictures']}
-        onMake={onMake}
-      />
-    )
-    expect(screen.getByText('Make')).toBeTruthy()
-    fireEvent.click(screen.getByTestId('ai-make-pictures'))
-    expect(onMake).toHaveBeenCalledWith('pictures')
-    expect(screen.queryByTestId('ai-make-changePicture')).toBeNull()
-    cleanup()
+  it('only the chat makes them: no "/" row and no Make in Ask AI', () => {
+    expect(BLOCK_TYPES.some((b) => b.id === 'aiPictures')).toBe(false)
     render(<AIPanel onRun={() => {}} onCancel={() => {}} autoFocus={false} />)
     expect(screen.queryByText('Make')).toBeNull()
+    expect(screen.queryByTestId('ai-make-pictures')).toBeNull()
   })
 })
