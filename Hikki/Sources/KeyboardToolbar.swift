@@ -64,6 +64,7 @@
                     forName: UIResponder.keyboardDidShowNotification, object: nil, queue: .main
                 ) { [weak self] _ in
                     MainActor.assumeIsolated {
+                        self?.webView?.hideSystemSelectionHighlight()
                         guard let self, self.composer == nil else { return }
                         self.keepSelectionOnHide = false
                     }
@@ -358,15 +359,15 @@
         }
     }
 
-    /// The panel in the keyboard's place. A swipe down from its top closes it, and the keyboard with it (each panel
-    /// owns the gesture: it knows where its content is scrolled to).
+    /// The panel in the keyboard's place. A swipe down is only ever its scroll (Notion's): the bar's keyboard button
+    /// brings the keyboard back, and putting the keyboard away (✕) takes the panel along.
     struct KeyboardPanelView: View {
         let bar: KeyboardBar
 
         var body: some View {
             switch bar.panel {
             case .blocks:
-                KeyboardBlockPanel(sections: bar.blocks, onPick: bar.insertBlock, onSwipeDown: bar.dismiss)
+                KeyboardBlockPanel(sections: bar.blocks, onPick: bar.insertBlock)
             case .turnInto:
                 KeyboardBlockPanel(
                     sections: [.init(id: "turnInto", title: String(localized: "app:keyboard.turnInto"), items: bar.turnInto)],
@@ -374,7 +375,7 @@
                     onPick: { id in
                         bar.turnInto(id)
                         bar.closePanel()
-                    }, onSwipeDown: bar.dismiss)
+                    })
             case .format, .color:
                 // With a selection the bar shows the marks itself: the panel leaves them out.
                 KeyboardFormatPanel(
@@ -382,7 +383,7 @@
                     marks: Set(bar.state.marks.compactMap(KeyboardFormatPanel.Mark.init(rawValue:))), turnInto: bar.turnInto,
                     block: bar.state.block, textColor: bar.state.textColor, backgroundColor: bar.state.backgroundColor,
                     onMark: { mark in mark == .link ? bar.openField(.link) : bar.run(mark.rawValue) },
-                    onTurnInto: bar.turnInto(_:), onColor: bar.setColor, onSwipeDown: bar.dismiss)
+                    onTurnInto: bar.turnInto(_:), onColor: bar.setColor)
             case nil:
                 Color.clear
             }
@@ -414,6 +415,26 @@
                 return
             }
             object_setClass(content, subclass)
+            hideSystemSelectionHighlight()
+        }
+
+        /// The page paints a selection itself, on the text only (`selection-paint.ts`); UIKit's highlight behind it
+        /// fills whole line boxes in the tint, so a band of it showed above the page's paint (the line height is taller
+        /// than the text). Its highlight view gives way to an empty one — public API (`UITextSelectionDisplayInteraction`,
+        /// iOS 17); the caret and the handles stay the system's. WebKit hangs the interaction on a view of its own,
+        /// and may add it only once editing starts, so this runs at install and again whenever the keyboard comes up.
+        func hideSystemSelectionHighlight() {
+            func replace(in view: UIView) -> Int {
+                var replaced = 0
+                for case let display as UITextSelectionDisplayInteraction in view.interactions
+                where !(display.highlightView is NoSelectionHighlight) {
+                    display.highlightView = NoSelectionHighlight()
+                    replaced += 1
+                }
+                return view.subviews.reduce(replaced) { $0 + replace(in: $1) }
+            }
+            let replaced = replace(in: self)
+            if replaced > 0 { Log.info("selection highlight: replaced \(replaced)", category: "ui") }
         }
 
         /// The keyboard swaps for the panel (or back), the caret staying put.
@@ -467,5 +488,18 @@
             objc_registerClassPair(subclass)
             return subclass
         }
+    }
+    /// The selection highlight UIKit draws, drawn as nothing: the page paints its own (see
+    /// `hideSystemSelectionHighlight`).
+    final class NoSelectionHighlight: UIView, UITextSelectionHighlightView {
+        var selectionRects: [UITextSelectionRect] = []
+
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            isHidden = true
+            isUserInteractionEnabled = false
+        }
+
+        required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
     }
 #endif

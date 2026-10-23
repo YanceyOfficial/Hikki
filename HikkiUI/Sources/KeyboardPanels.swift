@@ -31,16 +31,13 @@ public struct KeyboardBlockPanel: View {
     let sections: [KeyboardBlockSection]
     let current: String?
     let onPick: (String) -> Void
-    let onSwipeDown: (() -> Void)?
 
     public init(
-        sections: [KeyboardBlockSection], current: String? = nil, onPick: @escaping (String) -> Void,
-        onSwipeDown: (() -> Void)? = nil
+        sections: [KeyboardBlockSection], current: String? = nil, onPick: @escaping (String) -> Void
     ) {
         self.sections = sections
         self.current = current
         self.onPick = onPick
-        self.onSwipeDown = onSwipeDown
     }
 
     public var body: some View {
@@ -55,47 +52,8 @@ public struct KeyboardBlockPanel: View {
             .padding(.horizontal, Spacing.s3)
             .padding(.vertical, Spacing.s3)
         }
-        .swipeDownToClose(onSwipeDown)
         .background(Theme.background)
         .accessibilityIdentifier("keyboard-block-panel")
-    }
-}
-
-/// A panel in the keyboard's place closes on a swipe down — as a sheet does: only from its top. Scrolled into its
-/// content, a downward drag is the scroll back up, never a close; the drag counts from where it began, so a scroll
-/// that reaches the top on the way doesn't turn into one either.
-private struct SwipeDownToClose: ViewModifier {
-    let onClose: (() -> Void)?
-    @State private var atTop = true
-    @State private var startedAtTop: Bool?
-
-    func body(content: Content) -> some View {
-        content
-            .onScrollGeometryChange(for: Bool.self) {
-                $0.contentOffset.y <= 0
-            } action: { _, top in
-                atTop = top
-            }
-            .simultaneousGesture(
-                DragGesture(minimumDistance: Spacing.s6)
-                    .onChanged { _ in
-                        if startedAtTop == nil { startedAtTop = atTop }
-                    }
-                    .onEnded { drag in
-                        let fromTop = startedAtTop ?? atTop
-                        startedAtTop = nil
-                        guard fromTop, drag.translation.height > Spacing.s16, abs(drag.translation.width) < drag.translation.height
-                        else { return }
-                        onClose?()
-                    }
-            )
-    }
-}
-
-extension View {
-    /// See `SwipeDownToClose`; nil does nothing.
-    func swipeDownToClose(_ onClose: (() -> Void)?) -> some View {
-        modifier(SwipeDownToClose(onClose: onClose))
     }
 }
 
@@ -146,14 +104,12 @@ public struct KeyboardFormatPanel: View {
     let onMark: (Mark) -> Void
     let onTurnInto: (String) -> Void
     let onColor: (ColorKind, String?) -> Void
-    let onSwipeDown: (() -> Void)?
     @Environment(\.colorTone) private var tone
 
     public init(
         content: Content = .format(marks: true), marks: Set<Mark>, turnInto: [KeyboardBlockItem], block: String,
         textColor: String?, backgroundColor: String?, onMark: @escaping (Mark) -> Void,
-        onTurnInto: @escaping (String) -> Void, onColor: @escaping (ColorKind, String?) -> Void,
-        onSwipeDown: (() -> Void)? = nil
+        onTurnInto: @escaping (String) -> Void, onColor: @escaping (ColorKind, String?) -> Void
     ) {
         self.content = content
         self.marks = marks
@@ -164,7 +120,6 @@ public struct KeyboardFormatPanel: View {
         self.onMark = onMark
         self.onTurnInto = onTurnInto
         self.onColor = onColor
-        self.onSwipeDown = onSwipeDown
     }
 
     public var body: some View {
@@ -187,7 +142,6 @@ public struct KeyboardFormatPanel: View {
             }
             .padding(Spacing.s3)
         }
-        .swipeDownToClose(onSwipeDown)
         .background(Theme.background)
         .accessibilityIdentifier(content == .colors ? "keyboard-color-panel" : "keyboard-format-panel")
     }

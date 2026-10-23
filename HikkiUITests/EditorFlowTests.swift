@@ -435,17 +435,18 @@ final class EditorFlowTests: XCTestCase {
             let blocks = app.descendants(matching: .any)["keyboard-block-panel"].firstMatch
             XCTAssertTrue(waitOrDumpTree(blocks, in: app), "+ panel did not open")
             attach(app, "plus-panel")
-            // Scrolled into the catalog, a swipe down is the scroll back — not the close (that takes a swipe from the
-            // panel's top, as with a sheet).
+            // A swipe down is only ever the panel's scroll, scrolled into the catalog or back at its top (Notion's):
+            // it never closes the panel.
             blocks.swipeUp(velocity: .fast)
             blocks.swipeDown(velocity: .slow)
             XCTAssertTrue(blocks.exists, "a swipe down inside the scrolled panel closed it")
-            // Back at the top (a fast swipe lands there), a swipe down closes the panel and the keyboard.
             blocks.swipeDown(velocity: .fast)
-            if blocks.exists { blocks.swipeDown(velocity: .fast) }
+            blocks.swipeDown(velocity: .fast)
+            XCTAssertTrue(blocks.exists, "a swipe down at the panel's top closed it")
+            // The keyboard button closes it (the keyboard back, or with a hardware keyboard nothing in its place).
+            app.buttons["show-keyboard"].firstMatch.tap()
             let closed = NSPredicate(format: "exists == false")
             wait(for: [expectation(for: closed, evaluatedWith: blocks)], timeout: 5)
-            // The close took the keyboard with it: a tap on the page brings it (and the bar) back for the pick.
             body.tap()
             XCTAssertTrue(waitOrDumpTree(addBlock, in: app), "the keyboard bar did not come back")
             addBlock.tap()
@@ -458,7 +459,7 @@ final class EditorFlowTests: XCTestCase {
 
             // A software keyboard on screen (a phone): the panel takes its place — the keyboard goes, the bar stays above
             // the panel, and its keyboard button brings the keyboard back. A hardware keyboard (this simulator has one
-            // attached; the software keyboard stays off screen): the panel still shows, and a swipe down closes it.
+            // attached; the software keyboard stays off screen): the panel still shows, and the keyboard button closes it.
             let keyboard = app.keyboards.firstMatch
             let softwareKeyboard = keyboard.exists && keyboard.frame.minY < app.frame.maxY - 1
             app.buttons["Format"].firstMatch.tap()
@@ -476,6 +477,8 @@ final class EditorFlowTests: XCTestCase {
                 XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5), "keyboard did not come back after Aa")
             } else {
                 format.swipeDown(velocity: .fast)
+                XCTAssertTrue(format.exists, "a swipe down closed the Aa panel")
+                app.buttons["show-keyboard"].firstMatch.tap()
                 wait(for: [expectation(for: gone, evaluatedWith: format)], timeout: 5)
             }
         }
@@ -615,6 +618,42 @@ final class EditorFlowTests: XCTestCase {
             XCTAssertFalse(app.buttons["Format"].firstMatch.isSelected, "Aa marked while the colour panel is open")
             XCTAssertTrue(app.buttons["Colour"].firstMatch.isSelected, "the colour tool isn't marked for its panel")
             attach(app, "color-panel")
+        }
+
+        /// Only the page paints a selection: UIKit's highlight, which fills the whole line box in the tint, never shows
+        /// around the page's own paint (it showed as a grey band above the selected word).
+        func testOnlyThePagePaintsASelection() throws {
+            continueAfterFailure = false
+            let app = launch()
+            let newPage = app.buttons["new-page"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+            newPage.tap()
+            let title = app.webViews.textViews["Page title"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+            title.tap()
+            title.typeText("Plan\n")
+            let body = app.webViews.textViews["Page content"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(body, in: app), "body missing")
+            body.typeText("Supercalifragilistic")
+            let line = app.webViews.staticTexts.containing(NSPredicate(format: "label CONTAINS 'Supercali'")).firstMatch
+            XCTAssertTrue(waitOrDumpTree(line, in: app))
+            line.doubleTap()
+            // The selection's paint fades in (the block tint's motion).
+            Thread.sleep(forTimeInterval: 1)
+            let shot = app.screenshot()
+            let attachment = XCTAttachment(screenshot: shot)
+            attachment.name = "selection"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+            // Looked for around the selected line only (the star and the edit menu are tinted too).
+            let scale = shot.image.size.width * shot.image.scale / app.frame.width
+            let around = line.frame.insetBy(dx: 0, dy: -20)
+            let region = CGRect(
+                x: around.minX * scale, y: around.minY * scale, width: around.width * scale, height: around.height * scale)
+            // UIKit's highlight drawn over it greys the page's paint: then none of its own colour shows at all.
+            let band = try XCTUnwrap(
+                SelectionPixels(shot.image, in: region), "the page's selection paint is covered by another highlight")
+            XCTAssertEqual(band.foreign, 0, "something other than the page paints the selection: \(band)")
         }
 
         /// A pinch never magnifies the page (it is an editor, not a document): the words keep their size.
@@ -2226,3 +2265,71 @@ final class EditorFlowTests: XCTestCase {
         return false
     }
 }
+
+#if os(iOS)
+    import UIKit
+
+    /// What a screenshot shows around the page's selection paint (the tone's light wash) inside `region` (pixels):
+    /// `foreign` counts the pixels in the rows just above it, inside its width, that are neither the page's white nor
+    /// its paint — another highlight drawn over a taller box than the text's (UIKit's showed as a band above it).
+    struct SelectionPixels: CustomStringConvertible {
+        let painted: CGRect
+        let foreign: Int
+        let sample: String
+
+        init?(_ image: UIImage, in region: CGRect) {
+            guard let cg = image.cgImage else { return nil }
+            let width = cg.width
+            let height = cg.height
+            var pixels = [UInt8](repeating: 0, count: width * height * 4)
+            guard
+                let context = CGContext(
+                    data: &pixels, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                    space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            else { return nil }
+            context.draw(cg, in: CGRect(x: 0, y: 0, width: width, height: height))
+            func rgb(_ x: Int, _ y: Int) -> (Int, Int, Int) {
+                let i = (y * width + x) * 4
+                return (Int(pixels[i]), Int(pixels[i + 1]), Int(pixels[i + 2]))
+            }
+            // The paint: a light pink (red well above green and blue, all of them light).
+            func isPaint(_ c: (Int, Int, Int)) -> Bool { c.0 > 225 && c.1 > 185 && c.0 - c.1 > 10 && c.2 > c.1 - 4 }
+            var minX = width
+            var minY = height
+            var maxX = -1
+            var maxY = -1
+            let xs = max(0, Int(region.minX))..<min(width, Int(region.maxX))
+            let ys = max(0, Int(region.minY))..<min(height, Int(region.maxY))
+            for y in ys {
+                for x in xs where isPaint(rgb(x, y)) {
+                    minX = min(minX, x)
+                    maxX = max(maxX, x)
+                    minY = min(minY, y)
+                    maxY = max(maxY, y)
+                }
+            }
+            guard maxX - minX > 200, maxY - minY > 10 else { return nil }
+            painted = CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+            // Inside the paint's width, clear of the handles (bar, ball and shadow) at its ends.
+            let inset = 70
+            let columns = (minX + inset)...(maxX - inset)
+            let rows = max(0, minY - 14)..<minY
+            var foreign = 0
+            var first = ""
+            for y in rows {
+                for x in columns {
+                    let c = rgb(x, y)
+                    let white = c.0 > 248 && c.1 > 248 && c.2 > 248
+                    if !white && !isPaint(c) {
+                        foreign += 1
+                        if first.isEmpty { first = "rgb\(c) at \(x),\(y)" }
+                    }
+                }
+            }
+            self.foreign = foreign
+            sample = first
+        }
+
+        var description: String { "\(foreign) pixels around \(painted), first \(sample)" }
+    }
+#endif

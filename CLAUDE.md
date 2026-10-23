@@ -763,8 +763,7 @@ HikkiUITests/                 XCUITest flows
   put): HikkiUI's `KeyboardBlockPanel` (the "/" catalog as flat two-column rows; turn into marks the current kind) and
   `KeyboardFormatPanel` (marks, Turn into, text colour and background — `Content`: the marks row only while the bar
   doesn't show those marks itself, and the bar's colour tool opens the colours alone, `Panel.color`); the bar's end
-  button brings the keyboard back, a swipe down from the panel's top closes both (`swipeDownToClose`: scrolled into
-  the content, a swipe down is the scroll). The bar's tools are `ToolbarIconButton`'s `quiet` style
+  button brings the keyboard back; a swipe down on a panel is only ever its scroll, never a close. The bar's tools are `ToolbarIconButton`'s `quiet` style
   (muted glyphs, the open tool's glyph in the tone, no box — Notion's), each a full `Size.touchTarget` (44 pt) square,
   as are the panels' rows. The page's floating bar steps aside while the keyboard bar is on screen (`KeyboardBar.shown`,
   set by the bar's own view: a hardware keyboard shows the bar alone at the screen's foot without the keyboard
@@ -787,6 +786,9 @@ HikkiUITests/                 XCUITest flows
   go in at the caret (`touchInsertMedia`). Contents and tools come from the page (`apps/editor/src/core/touch-tools.ts`:
   the catalog with Phosphor icon names the native `Icon` set shares, `touchState`, `touchRun`…). The page's web view
   ignores the keyboard's safe area (`PageScreen`), so the keyboard coming and going never resizes it (it juddered).
+  The page paints its own selection (`apps/editor/src/extensions/selection-paint.ts`), so UIKit's highlight under it — whole line boxes in the
+  tint, a grey band above the words — is swapped for an empty view (`hideSystemSelectionHighlight`: the public
+  `UITextSelectionDisplayInteraction.highlightView`; caret and handles stay the system's; `testOnlyThePagePaintsASelection`).
 - **Screen titles (iOS)**: each screen names itself (`.screenTitle(_:)`, `Hikki/Sources/ScreenTitle.swift`, the
   frontmost by depth through `ScreenTitleStack` in HikkiCore) and the root publishes it as the scene's
   `NSUserActivity` title (`app.yancey.hikki.viewing`), which iOS uses to name a screenshot — actovia's way.
