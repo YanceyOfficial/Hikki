@@ -4,40 +4,27 @@ import Testing
 @testable import HikkiAI
 
 struct AIPicturesTests {
-    private let answer = """
-        Three watercolors, one per day.
-
-        ```hikki-pictures
-        {"pictures":[
-          {"prompt":"Torii gates at Fushimi Inari, early morning, watercolor","shape":"wide"},
-          {"prompt":"  Arashiyama bamboo grove  ","shape":"tall","detailed":true},
-          {"prompt":"Yasaka Pagoda at dusk","shape":"hexagon","from":"m1-0"},
-          {"prompt":"","shape":"square"},
-          {"prompt":"The same pagoda at night","from":"nope"},
-          {"prompt":"A fifth one past the limit"},
-          {"prompt":"A sixth"}
-        ]}
-        ```
-        """
-
-    @Test func theChatShowsTheAnswerWithoutItsPictures() {
-        #expect(AIPageEdits.prose(answer) == "Three watercolors, one per day.")
-        #expect(AIPictures.hasPictures(answer))
+    @Test func olderAnswersShowWithoutTheirPicturesBlock() {
+        let answer = "Three watercolors.\n\n```hikki-pictures\n{\"pictures\":[]}\n```"
+        #expect(AIPageEdits.prose(answer) == "Three watercolors.")
         #expect(AIPageEdits.prose("Here they come.\n\n```hikki-pic") == "Here they come.")
-        #expect(!AIPictures.hasPictures("No pictures."))
     }
 
-    @Test func onlyPicturesThatFitAreKeptUpToTheLimit() {
-        let pictures = AIPictures.pictures(in: answer, known: ["m1-0"])
-        #expect(pictures.count == AIPictures.maxPerAnswer)
-        #expect(pictures[0] == PictureSpec(prompt: "Torii gates at Fushimi Inari, early morning, watercolor", shape: .wide))
-        #expect(pictures[1] == PictureSpec(prompt: "Arashiyama bamboo grove", shape: .tall, detailed: true))
+    @Test func aPictureCallIsCheckedBeforeItIsMade() {
+        #expect(
+            AIPictures.spec(["prompt": "Torii gates at dawn, watercolor", "shape": "wide"])
+                == PictureSpec(prompt: "Torii gates at dawn, watercolor", shape: .wide))
+        #expect(
+            AIPictures.spec(["prompt": "  Bamboo grove  ", "shape": "tall", "detailed": true])
+                == PictureSpec(prompt: "Bamboo grove", shape: .tall, detailed: true))
         // An unknown shape is wide; a known earlier picture may be changed, an unknown one is a new picture.
-        #expect(pictures[2] == PictureSpec(prompt: "Yasaka Pagoda at dusk", shape: .wide, from: "m1-0"))
-        #expect(pictures[3] == PictureSpec(prompt: "The same pagoda at night"))
+        #expect(
+            AIPictures.spec(["prompt": "Pagoda", "shape": "hexagon", "from": "m1-0"], known: ["m1-0"])
+                == PictureSpec(prompt: "Pagoda", shape: .wide, from: "m1-0"))
+        #expect(AIPictures.spec(["prompt": "Pagoda", "from": "nope"], known: ["m1-0"]) == PictureSpec(prompt: "Pagoda"))
+        #expect(AIPictures.spec(["prompt": " "]) == nil)
+        #expect(AIPictures.spec(["shape": "wide"]) == nil)
         #expect(PictureShape.tall.aspect < 1 && PictureShape.wide.aspect > 1)
-        #expect(AIPictures.pictures(in: "```hikki-pictures\nnot json\n```").isEmpty)
-        #expect(AIPictures.pictures(in: "Just words.").isEmpty)
     }
 
     @Test func aChangeRunsOnTheDetailedModel() {
@@ -116,8 +103,10 @@ struct AIPicturesTests {
     @Test func theChatOffersPicturesOnlyWhenItCanMakeThem() {
         let model = AIModelCatalog.gptSol
         let plain = AIPrompts.chat([.user("Hi")], model: model, webSearch: false)
-        #expect(!plain.instructions.contains("hikki-pictures"))
+        #expect(!plain.instructions.contains("make_picture"))
+        #expect(plain.tools.isEmpty)
         let pictures = AIPrompts.chat([.user("Draw it")], model: model, webSearch: false, pictures: true)
-        #expect(pictures.instructions.contains("hikki-pictures"))
+        #expect(pictures.instructions.contains("make_picture"))
+        #expect(pictures.tools.map(\.name) == [AIPictures.toolName])
     }
 }

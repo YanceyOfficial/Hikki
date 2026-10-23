@@ -184,10 +184,12 @@ public enum AIPrompts {
     /// turn, ahead of the user's words — page text is data, and the system prompt stays the app's own.
     ///
     /// `openPageBlocks` (the open page's blocks with their ids, `AIPageEdits.pageJSON`) stands for the first page's
-    /// text and lets the answer propose changes to it. `pictures`: the answer may make pictures (an OpenAI key is set).
+    /// text and lets the answer propose changes to it. `pictures`: the answer may make pictures (an OpenAI key is set:
+    /// the `make_picture` tool); `files`: it may work with the workspace folder's files (`WorkspaceFiles`' tools).
     public static func chat(
         _ turns: [AIMessage], summary: String? = nil, pages: [(title: String, text: String)] = [], openPageBlocks: String? = nil,
-        selection: String? = nil, model: AIModel, webSearch: Bool, language: String? = nil, pictures: Bool = false
+        selection: String? = nil, model: AIModel, webSearch: Bool, language: String? = nil, pictures: Bool = false,
+        files: Bool = false
     ) -> AIRequest {
         var context: [String] = []
         var budget = maxPageText
@@ -218,11 +220,14 @@ public enum AIPrompts {
             summary.map {
                 "\n\nEarlier in this conversation (a summary; those turns aren't repeated):\n<summary>\(escape($0))</summary>"
             } ?? ""
-        return AIRequest(
+        var request = AIRequest(
             model: model,
             instructions: chatInstructions + (editable ? AIPageEdits.instructions : "")
-                + (pictures ? AIPictures.instructions : "") + languageLine(language) + earlier,
+                + (pictures ? AIPictures.instructions : "") + (files ? WorkspaceFiles.instructions : "")
+                + languageLine(language) + earlier,
             messages: messages, webSearch: webSearch, maxOutputTokens: editable ? 8192 : 4096)
+        request.tools = (pictures ? [AIPictures.tool] : []) + (files ? WorkspaceFiles.tools : [])
+        return request
     }
 
     static let chatInstructions = """

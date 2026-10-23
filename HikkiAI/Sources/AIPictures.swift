@@ -39,11 +39,11 @@ public struct PictureSpec: Equatable, Sendable {
     }
 }
 
-/// Ask AI making pictures: an answer that makes some ends with a fenced `hikki-pictures` block of JSON — what to draw,
-/// one entry per picture — which the app makes with OpenAI's image model, whichever model wrote the answer. The block
-/// never shows in the chat; what's in it is untrusted and checked here (at most `maxPerAnswer`, known shapes, known
-/// pictures to change).
+/// Ask AI making pictures: the chat model calls the `make_picture` tool, once per picture, and the app makes it with
+/// OpenAI's image model, whichever model is answering. A call's arguments are untrusted and checked here (a
+/// description, a known shape, a known picture to change); the chat holds an answer to `maxPerAnswer`.
 public enum AIPictures {
+    /// The fenced block older answers listed their pictures in (before the tool); still left out where they show.
     static let fence = "```hikki-pictures"
     /// Pictures one answer may make: each costs money and takes up to a minute.
     public static let maxPerAnswer = 4
@@ -55,31 +55,37 @@ public enum AIPictures {
     /// Slower and more detailed; also every change to an existing picture (it keeps the rest of it better).
     public static let detailedModel = "gpt-image-2.5-sunburst"
 
-    /// Whether the answer has started its pictures block.
-    public static func hasPictures(_ answer: String) -> Bool { answer.contains(fence) }
+    public static let toolName = "make_picture"
 
-    /// The pictures the answer asks for; `known`: the pictures it may change (ids the chat gave the model, plus
-    /// `attached` when the user attached one). None when there is no block or it can't be read.
-    public static func pictures(in answer: String, known: Set<String> = []) -> [PictureSpec] {
-        guard let start = answer.range(of: fence) else { return [] }
-        var body = answer[start.upperBound...]
-        if let end = body.range(of: "```") { body = body[..<end.lowerBound] }
-        guard let open = body.firstIndex(of: "{"), let close = body.lastIndex(of: "}"), open < close,
-            let data = String(body[open...close]).data(using: .utf8),
-            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let list = object["pictures"] as? [Any]
-        else { return [] }
-        return list.compactMap { item -> PictureSpec? in
-            guard let fields = item as? [String: Any], let prompt = fields["prompt"] as? String else { return nil }
-            let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty else { return nil }
-            let from = (fields["from"] as? String).flatMap { known.contains($0) ? $0 : nil }
-            return PictureSpec(
-                prompt: String(trimmed.prefix(maxPrompt)),
-                shape: (fields["shape"] as? String).flatMap(PictureShape.init(rawValue:)) ?? .wide,
-                detailed: fields["detailed"] as? Bool ?? false, from: from)
-        }
-        .prefix(maxPerAnswer).map { $0 }
+    public static let tool = AITool(
+        name: toolName,
+        description: """
+            Make a picture with an image model: an illustration, photo, poster, icon, cover, diagram-like infographic, \
+            or a change to an earlier picture. Call it when the user asks for a picture or for something as a picture \
+            ("draw…", "make an image of…", "sum this page up in one picture"). One call per picture.
+            """,
+        parameters: """
+            {"type":"object","properties":{\
+            "prompt":{"type":"string","description":"A full, self-contained description: subject, style, composition, \
+            light, any text to show. The image model sees nothing else."},\
+            "shape":{"type":"string","enum":["wide","square","tall"],"description":"wide (3:2, the default), square, tall (2:3)."},\
+            "detailed":{"type":"boolean","description":"The slower, more detailed model: when asked for detail, or for text in the picture."},\
+            "from":{"type":"string","description":"To change an earlier picture instead of making a new one: its id \
+            (earlier pictures are listed as [picture <id>]), or \\"attached\\" for the picture the user attached."}},\
+            "required":["prompt"]}
+            """)
+
+    /// A `make_picture` call's arguments, checked; `known`: the pictures it may change (ids the chat gave the model,
+    /// plus `attached` when the user attached one). Nil without a description.
+    public static func spec(_ fields: [String: Any], known: Set<String> = []) -> PictureSpec? {
+        guard let prompt = fields["prompt"] as? String else { return nil }
+        let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let from = (fields["from"] as? String).flatMap { known.contains($0) ? $0 : nil }
+        return PictureSpec(
+            prompt: String(trimmed.prefix(maxPrompt)),
+            shape: (fields["shape"] as? String).flatMap(PictureShape.init(rawValue:)) ?? .wide,
+            detailed: fields["detailed"] as? Bool ?? false, from: from)
     }
 
     /// The line an earlier answer's picture is named by in the conversation the model gets.
@@ -90,18 +96,10 @@ public enum AIPictures {
     static let instructions = """
 
 
-        You can make pictures. When the user asks for pictures — illustrations, photos, posters, icons, covers, \
-        variations of an earlier picture — and only then, say in a sentence what you will make, then end your reply \
-        with one fenced block listing them, with nothing after it:
-        ```hikki-pictures
-        {"pictures":[{"prompt":"<a full, self-contained description of the picture>","shape":"wide"}]}
-        ```
-        Fields: "prompt" describes subject, style, composition and light so it stands alone (the image model sees \
-        nothing else); "shape" is wide (3:2), square or tall (2:3) — wide unless asked or the subject suits another; \
-        "detailed": true for the slower, more detailed model, when the user asks for detail or for text in the picture; \
-        "from": to change an earlier picture instead of making a new one, its id (earlier pictures are listed as \
-        [picture <id>]) or "attached" for a picture the user attached. At most 4 pictures in a reply; asked for more, \
-        make 4 and say so. Never put a hikki-pictures block in a reply that doesn't make pictures.
+        You can make pictures with the make_picture tool, and only when the user asks for one or for something as a \
+        picture. Call it once per picture, at most 4 times in a reply; asked for more, make 4 and say so. Then say in a \
+        sentence what you made: the pictures appear under your reply as they form, and the user adds them to the page \
+        from there. To change an earlier picture, pass its id as "from".
         """
 }
 

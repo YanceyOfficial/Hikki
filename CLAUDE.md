@@ -229,7 +229,7 @@ HikkiUITests/                 XCUITest flows
   top inset and the editor makes that room itself (`setInsets` with `bleed`, `--hk-bleed-top`), so a cover fills it
   behind the status bar and the glass buttons (`.hk-cover`) and a page without one starts below them.
 - **Data directory**: `HIKKI_DATA_DIR` overrides it (UI tests, demos). DEBUG hooks: `HIKKI_OPEN_TABS=a,b`,
-  `HIKKI_OPEN_SEARCH`, `HIKKI_OPEN_FIND`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SPOTLIGHT_QUERY=<text>` (logs the page ids Spotlight ranks), `HIKKI_OPEN_FILE=<asset>` (the PDF viewer), `HIKKI_OPEN_SPLIT=<page id>|file:<asset>|picker` (split view), `HIKKI_DEBUG_SIDEBAR` (hide + show the split view sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_DEBUG_TOAST` (a sample failure toast), `HIKKI_OPEN_AI`, `HIKKI_OPEN_PAGE_ACTIONS`, `HIKKI_DEBUG_COVER_SHEET` (opens the page's cover sheet), `HIKKI_DEBUG_AI_ASK=<question>` (asks the AI panel about the open page) and `HIKKI_DEBUG_AI_EDIT=<words>` (selects them and runs Improve writing through `window.hikki.demoAI`) — screenshots of AI at work, which need a provider key, `HIKKI_DEMO_PAGES` (an empty workspace gets sample pages, ids fixed per title — `Hikki/Sources/DemoPages.swift`; `=<n>` above 1: n pages "Page 001"…, every tenth with three subpages), `HIKKI_ACTIVATE`, `HIKKI_FRESH_TABS` (skips the window's saved tabs; UI tests set it), `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
+  `HIKKI_OPEN_SEARCH`, `HIKKI_OPEN_FIND`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SPOTLIGHT_QUERY=<text>` (logs the page ids Spotlight ranks), `HIKKI_OPEN_FILE=<asset>` (the PDF viewer), `HIKKI_OPEN_SPLIT=<page id>|file:<asset>|picker` (split view), `HIKKI_DEBUG_SIDEBAR` (hide + show the split view sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_GALLERY_SECTION=<section>` (with `-HikkiGallery`: opens the gallery at that section), `HIKKI_DEBUG_TOAST` (a sample failure toast), `HIKKI_OPEN_AI`, `HIKKI_OPEN_PAGE_ACTIONS`, `HIKKI_DEBUG_COVER_SHEET` (opens the page's cover sheet), `HIKKI_DEBUG_AI_ASK=<question>` (asks the AI panel about the open page) and `HIKKI_DEBUG_AI_EDIT=<words>` (selects them and runs Improve writing through `window.hikki.demoAI`) — screenshots of AI at work, which need a provider key, `HIKKI_DEMO_PAGES` (an empty workspace gets sample pages, ids fixed per title — `Hikki/Sources/DemoPages.swift`; `=<n>` above 1: n pages "Page 001"…, every tenth with three subpages), `HIKKI_ACTIVATE`, `HIKKI_FRESH_TABS` (skips the window's saved tabs; UI tests set it), `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
   UI tests set it by default — pass `workspace: nil` to `launch()` to test onboarding).
 - **Storage (option C)**: the workspace folder is the source of truth — one JSON file per page
   (`HikkiCore/Sources/Store/PageFile.swift`: `pages/<id>.json`, format-versioned, content as JSON); SQLite is a
@@ -725,7 +725,20 @@ HikkiUITests/                 XCUITest flows
   when changing one — Use as cover, Try again; Add all), going in where the page asked (`ChatTurn.picturePlace`,
   `insertPictures` in `apps/editor/src/core/pictures.ts`: after the block, in place of an empty line or the picture
   changed, else at the caret, one undo step). The page has no entry of its own for pictures (no "/" row, no Make in Ask AI): the chat makes them when the
-  user asks for them in their words. Ask AI in the page has no Translate either.
+  user asks for them in their words — the `make_picture` tool (`AIPictures.tool`; `hikki-pictures` fences in older
+  answers are only hidden now). Ask AI in the page has no Translate either.
+  **Tools** (the chat only): `AIRequest.tools`; `AIToolLoop` (`HikkiAI/Sources/AIToolLoop.swift`) streams a round,
+  runs the calls, sends their results back with the answer as the provider sent it (`AIMessage.Part.carried`: OpenAI's
+  output items with encrypted reasoning, Anthropic's blocks with thinking signatures) and goes on, at most
+  `maxRounds` (the last must answer in words). Besides `make_picture` there are actovia's file tools,
+  `WorkspaceFiles` (`HikkiAI/Sources/WorkspaceFiles.swift`): list_directory, read_file, find_files, grep, write_file,
+  edit_file, by paths relative to the workspace folder (`AppModel.filesFolder`) — no `..`, hidden files or links,
+  coordinated reads and writes, a file still in iCloud starts downloading; Hikki's own data (`pages/`, `history/`,
+  `comments/`, `ai/`, `drawings/`, `assets/`, workspace.json) is never written and left out of searches from the
+  top. A write or edit waits on its card for Allow (`AIChat.runTool`); each call is a `ChatToolCall` on the turn
+  (`ChatTurn.tools`), drawn by HikkiUI's `ToolCallCards` (diffs: `LineDiff` in HikkiCore; mapping in
+  `Hikki/Sources/AIChatTools.swift`). Settings → AI → Use files in the workspace folder (`AIPreferences.usesFiles`,
+  default on) turns the file tools off.
   With web search on, the chat also asks OpenAI's search for pictures (`AIRequest.imageResults`: `search_content_types` + `include: web_search_call.results`, read from the search call's `image_result`s as `.image`) and shows them under the answer (HikkiUI's `ImageResultStrip`, kept as `ChatTurn.images`): Add to page fetches one into the assets (`WebImage`, `HikkiCore/Sources/Text/WebImage.swift`: LinkPreview's public-host rules) and puts it at the caret (`EditorController.insertWebImage`). While the model works the chat's "Thinking…" / "Searching the web…" line is HikkiUI's `ShimmerText` (a foreground
   band sweeping the muted text once per `Motion.loop`; still under Reduce Motion, which gets a spinner instead). Model output is untrusted: the reply is parsed tolerantly (`apps/editor/src/lib/ai-content.ts`;
   sanitized inline HTML through the schema, unknown keys dropped, an unreadable reply is an error), citations must be

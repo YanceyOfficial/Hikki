@@ -41,6 +41,14 @@ public struct AIMessage: Equatable, Sendable {
         case image(Data, mimeType: String)
         /// A document the user attached (PDF), with its file name.
         case document(Data, mimeType: String, name: String)
+        /// A tool the model called (an assistant turn of a tool loop).
+        case toolCall(AIToolCall)
+        /// What a tool the model called gave back (the user turn after it).
+        case toolResult(callID: String, output: String, isError: Bool)
+        /// One item of the provider's own answer, as it sent it (JSON): its thinking with its signature, its web
+        /// searches, its words, its tool calls. An assistant turn that has any is sent back as exactly these, which is
+        /// what both APIs ask for when a tool's result follows (`AIToolLoop`).
+        case carried(AIProvider, String)
     }
 
     public var role: Role
@@ -73,6 +81,10 @@ public struct AIRequest: Sendable {
     public var reasoning: Bool
     /// With `webSearch`, how many pictures the search may also return (as `.image`s; OpenAI only — 0: none).
     public var imageResults: Int
+    /// Tools the model may call (`AIToolLoop` runs them and sends the results back).
+    public var tools: [AITool] = []
+    /// False: the model must answer in words this time, though `tools` are listed (a tool loop's last round).
+    public var toolsAllowed = true
 
     public init(
         model: AIModel, instructions: String, messages: [AIMessage], webSearch: Bool = false, maxOutputTokens: Int = 4096,
@@ -127,6 +139,13 @@ public enum AIEvent: Equatable, Sendable {
     case citation(AICitation)
     /// A picture the web search found (only when the request asks for `imageResults`).
     case image(AIImageResult)
+    /// The model called one of the request's tools (its arguments complete).
+    case toolCall(AIToolCall)
+    /// What a tool gave back (`AIToolLoop`, after running it).
+    case toolResult(AIToolCall, AIToolOutput)
+    /// An item of the provider's answer to send back with a tool's result (`AIMessage.Part.carried`); a tool loop
+    /// keeps it, nobody shows it.
+    case carried(AIProvider, String)
     case finished
 }
 
@@ -156,4 +175,60 @@ public enum AIError: Error, Equatable, Sendable {
 /// Something that streams a model's answer. `HikkiAI.client(for:keys:)` picks the provider's.
 public protocol AIClient: Sendable {
     func stream(_ request: AIRequest) -> AsyncThrowingStream<AIEvent, Error>
+}
+
+/// A tool the model may call: its name, what it does (for the model), its parameters as a JSON schema (JSON text).
+public struct AITool: Equatable, Sendable {
+    public var name: String
+    public var description: String
+    public var parameters: String
+
+    public init(name: String, description: String, parameters: String) {
+        self.name = name
+        self.description = description
+        self.parameters = parameters
+    }
+
+    /// The parameters' schema as an object (an empty object schema if it doesn't read).
+    var schema: [String: Any] {
+        (try? JSONSerialization.jsonObject(with: Data(parameters.utf8))) as? [String: Any]
+            ?? ["type": "object", "properties": [String: Any]()]
+    }
+}
+
+/// A call the model made: the provider's id for it, the tool, its arguments (JSON text, as the model wrote them).
+public struct AIToolCall: Codable, Equatable, Sendable {
+    public var id: String
+    public var name: String
+    public var arguments: String
+
+    public init(id: String, name: String, arguments: String) {
+        self.id = id
+        self.name = name
+        self.arguments = arguments
+    }
+
+    /// The arguments as an object (empty when they don't read).
+    public var fields: [String: Any] {
+        (try? JSONSerialization.jsonObject(with: Data(arguments.utf8))) as? [String: Any] ?? [:]
+    }
+}
+
+/// What a tool gives back to the model: text (usually JSON), and whether it failed.
+public struct AIToolOutput: Equatable, Sendable {
+    public var text: String
+    public var isError: Bool
+
+    public init(_ text: String, isError: Bool = false) {
+        self.text = text
+        self.isError = isError
+    }
+
+    public static func failure(_ message: String) -> AIToolOutput { AIToolOutput(message, isError: true) }
+
+    /// A JSON object as the output (keys sorted, so it reads the same every time).
+    public static func json(_ object: [String: Any]) -> AIToolOutput {
+        let data = (try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])) ?? Data("{}".utf8)
+        return AIToolOutput(String(decoding: data, as: UTF8.self))
+    }
 }

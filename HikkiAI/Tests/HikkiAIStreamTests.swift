@@ -3,13 +3,19 @@ import Testing
 
 @testable import HikkiAI
 
-/// Runs `data:` lines through a decoder (skipping what `sseJSON` skips), collecting events or the error thrown.
-private func decode<D: StreamDecoder>(_ decoder: D, _ lines: [String]) -> (events: [AIEvent], error: Error?) {
+/// Runs `data:` lines through a decoder (skipping what `sseJSON` skips), collecting events or the error thrown. The
+/// items carried for a tool loop are left out unless `carried` (AIToolsTests looks at them).
+func decode<D: StreamDecoder>(_ decoder: D, _ lines: [String], carried: Bool = false) -> (events: [AIEvent], error: Error?) {
     var decoder = decoder
     var events: [AIEvent] = []
     for line in lines {
         guard let json = sseJSON(line) else { continue }
-        do { events += try decoder.consume(json) } catch { return (events, error) }
+        do {
+            events += try decoder.consume(json).filter { event in
+                if case .carried = event { return carried }
+                return true
+            }
+        } catch { return (events, error) }
     }
     return (events, nil)
 }

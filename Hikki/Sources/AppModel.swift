@@ -98,6 +98,8 @@ final class AppModel {
 
     /// The folder the workspace lives in (access held for the session).
     @ObservationIgnored private var workspaceFolder: URL?
+    /// The workspace folder as Ask AI's file tools reach it (nil until it is known).
+    var filesFolder: URL? { workspaceFolder }
     /// `updatedAt` of the identity last read from or written to the folder: a newer one (another device
     /// renamed the workspace) replaces ours.
     @ObservationIgnored private var identityUpdatedAt: Date?

@@ -16,8 +16,9 @@ func sseJSON(_ line: some StringProtocol) -> [String: Any]? {
 }
 
 /// OpenAI's Responses API stream: `response.output_text.delta` (text), `response.reasoning_summary_*` (thinking), `response.web_search_call.*` and the finished
-/// `web_search_call` item (the query, and its `image_result`s), `response.output_text.annotation.added` (`url_citation`), `response.completed`,
-/// and `response.failed` / `error`.
+/// `web_search_call` item (the query, and its `image_result`s), `response.output_text.annotation.added` (`url_citation`), a finished
+/// `function_call` item (a tool call), `response.completed`, and `response.failed` / `error`. Every finished output item is also
+/// `carried`, to go back with a tool's result.
 struct OpenAIStreamDecoder: StreamDecoder {
     private var cited = Set<String>()
     private var pictures = Set<String>()
@@ -35,8 +36,12 @@ struct OpenAIStreamDecoder: StreamDecoder {
         case "response.web_search_call.in_progress":
             return [.searching(nil)]
         case "response.output_item.done":
-            guard let item = json["item"] as? [String: Any], item["type"] as? String == "web_search_call" else { return [] }
-            var events: [AIEvent] = []
+            guard let item = json["item"] as? [String: Any] else { return [] }
+            var events = Self.carried(item).map { [AIEvent.carried(.openAI, $0)] } ?? []
+            if item["type"] as? String == "function_call", let id = item["call_id"] as? String, let name = item["name"] as? String {
+                events.append(.toolCall(AIToolCall(id: id, name: name, arguments: item["arguments"] as? String ?? "{}")))
+            }
+            guard item["type"] as? String == "web_search_call" else { return events }
             if let action = item["action"] as? [String: Any], let query = action["query"] as? String, !query.isEmpty {
                 events.append(.searching(query))
             }
@@ -73,6 +78,25 @@ struct OpenAIStreamDecoder: StreamDecoder {
         }
     }
 
+    /// A finished item as it goes back: reasoning only with its encrypted content (nothing is stored on OpenAI's side,
+    /// so an id alone would point nowhere), a search without its results (they are only for showing).
+    static func carried(_ item: [String: Any]) -> String? {
+        var kept = item
+        switch item["type"] as? String {
+        case "reasoning":
+            guard item["encrypted_content"] is String else { return nil }
+            kept = item.filter { ["type", "id", "summary", "encrypted_content"].contains($0.key) }
+        case "web_search_call":
+            kept["results"] = nil
+        case "message", "function_call":
+            break
+        default:
+            return nil
+        }
+        guard let data = try? JSONSerialization.data(withJSONObject: kept, options: [.sortedKeys]) else { return nil }
+        return String(decoding: data, as: UTF8.self)
+    }
+
     static func error(code: String?, message: String) -> AIError {
         switch code {
         case "rate_limit_exceeded", "insufficient_quota": .rateLimited
@@ -83,12 +107,13 @@ struct OpenAIStreamDecoder: StreamDecoder {
 }
 
 /// Anthropic's Messages API stream: `content_block_delta` with `text_delta` (text), `thinking_delta` (thinking) or
-/// `citations_delta`
-/// (`web_search_result_location`), a `server_tool_use` block whose input JSON streams in (the search query, read when
-/// the block stops), `message_stop`, and `error` events.
-struct AnthropicStreamDecoder: StreamDecoder {
-    /// Content blocks by index: their type, and the tool input received so far.
-    private var blocks: [Int: (type: String, input: String)] = [:]
+/// `citations_delta` (`web_search_result_location`), a `server_tool_use` block whose input JSON streams in (the search
+/// query, read when the block stops), a `tool_use` block (a tool call, once its input is complete), `message_stop`, and
+/// `error` events. Every block is put back together as it came (`carried`), to go back with a tool's result.
+/// Unchecked: the blocks are JSON values, and a decoder lives in the one task reading its stream.
+struct AnthropicStreamDecoder: StreamDecoder, @unchecked Sendable {
+    /// Content blocks by index, as they come in; tool input stays text until the block stops.
+    private var blocks: [Int: (block: [String: Any], input: String)] = [:]
     private var cited = Set<String>()
 
     mutating func consume(_ json: [String: Any]) throws -> [AIEvent] {
@@ -97,29 +122,36 @@ struct AnthropicStreamDecoder: StreamDecoder {
             guard let index = json["index"] as? Int, let block = json["content_block"] as? [String: Any],
                 let type = block["type"] as? String
             else { return [] }
-            blocks[index] = (type, "")
+            blocks[index] = (block, "")
             switch type {
             case "server_tool_use": return [.searching(nil)]
             case "thinking": return [.reasoningStep]
             default: return []
             }
         case "content_block_delta":
-            guard let delta = json["delta"] as? [String: Any] else { return [] }
+            guard let delta = json["delta"] as? [String: Any], let index = json["index"] as? Int else { return [] }
             switch delta["type"] as? String {
             case "text_delta":
                 guard let text = delta["text"] as? String, !text.isEmpty else { return [] }
+                append(text, to: "text", in: index)
                 return [.text(text)]
             case "thinking_delta":
                 guard let thinking = delta["thinking"] as? String, !thinking.isEmpty else { return [] }
+                append(thinking, to: "thinking", in: index)
                 return [.reasoning(thinking)]
+            case "signature_delta":
+                if let signature = delta["signature"] as? String { append(signature, to: "signature", in: index) }
+                return []
             case "input_json_delta":
-                if let index = json["index"] as? Int, let partial = delta["partial_json"] as? String {
-                    blocks[index]?.input += partial
-                }
+                if let partial = delta["partial_json"] as? String { blocks[index]?.input += partial }
                 return []
             case "citations_delta":
-                guard let citation = delta["citation"] as? [String: Any],
-                    citation["type"] as? String == "web_search_result_location", let url = citation["url"] as? String,
+                guard let citation = delta["citation"] as? [String: Any] else { return [] }
+                if var entry = blocks[index] {
+                    entry.block["citations"] = (entry.block["citations"] as? [Any] ?? []) + [citation]
+                    blocks[index] = entry
+                }
+                guard citation["type"] as? String == "web_search_result_location", let url = citation["url"] as? String,
                     cited.insert(url).inserted
                 else { return [] }
                 return [.citation(AICitation(url: url, title: citation["title"] as? String))]
@@ -127,12 +159,24 @@ struct AnthropicStreamDecoder: StreamDecoder {
                 return []
             }
         case "content_block_stop":
-            guard let index = json["index"] as? Int, let block = blocks.removeValue(forKey: index),
-                block.type == "server_tool_use", let data = block.input.data(using: .utf8),
-                let input = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-                let query = input["query"] as? String, !query.isEmpty
-            else { return [] }
-            return [.searching(query)]
+            guard let index = json["index"] as? Int, let (kept, input) = blocks.removeValue(forKey: index) else { return [] }
+            var block = kept
+            let type = block["type"] as? String
+            var events: [AIEvent] = []
+            if type == "server_tool_use" || type == "tool_use" {
+                let object = input.isEmpty ? [:] : (RequestBuilders.jsonObject(input) ?? [:])
+                block["input"] = object
+                if type == "server_tool_use", let query = object["query"] as? String, !query.isEmpty {
+                    events.append(.searching(query))
+                }
+            }
+            if let data = try? JSONSerialization.data(withJSONObject: block, options: [.sortedKeys]) {
+                events.insert(.carried(.anthropic, String(decoding: data, as: UTF8.self)), at: 0)
+            }
+            if type == "tool_use", let id = block["id"] as? String, let name = block["name"] as? String {
+                events.append(.toolCall(AIToolCall(id: id, name: name, arguments: input.isEmpty ? "{}" : input)))
+            }
+            return events
         case "message_stop":
             return [.finished]
         case "error":
@@ -141,6 +185,12 @@ struct AnthropicStreamDecoder: StreamDecoder {
         default:
             return []
         }
+    }
+
+    private mutating func append(_ text: String, to key: String, in index: Int) {
+        guard var entry = blocks[index] else { return }
+        entry.block[key] = (entry.block[key] as? String ?? "") + text
+        blocks[index] = entry
     }
 
     static func error(type: String?, message: String) -> AIError {

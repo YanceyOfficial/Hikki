@@ -61,6 +61,8 @@ final class AIChat {
         var pictures: [ChatPicture] = []
         /// Where in the page the answer's pictures go (the chat was opened for pictures from there).
         var picturePlace: PicturePlace?
+        /// The workspace file tools the answer used, as they went.
+        var tools: [ChatToolCall] = []
         /// A web search under way (its query, when the provider says it).
         var searching: String?
         /// The model's thinking and searches so far (the timeline above the answer).
@@ -279,10 +281,12 @@ final class AIChat {
             }
             return AIMessage(role: .user, parts: parts)
         }
+        // The workspace folder's files, when Settings → AI allows it (and the folder is known).
+        let files = AIPreferences.usesFiles ? AppModel.current?.filesFolder.map { WorkspaceFiles(root: $0) } : nil
         var request = AIPrompts.chat(
             turns, summary: summary?.text, pages: pages, openPageBlocks: blocks.map { AIPageEdits.pageJSON($0) },
             selection: contextSelection, model: model, webSearch: webSearch, language: AIService.appLanguage,
-            pictures: canMakePictures)
+            pictures: canMakePictures, files: files != nil)
         // The model thinks first; its thinking streams into the answer's timeline.
         request.reasoning = true
         // A search may bring pictures too, shown under the answer (OpenAI's search; Anthropic's has none).
@@ -292,10 +296,18 @@ final class AIChat {
             context: [
                 "model": model.id, "turns": "\(turns.count)", "pages": "\(pages.count)",
                 "files": "\(messages[messages.count - 2].attachments.count)", "summary": summary == nil ? "no" : "yes",
-                "blocks": "\(blocks?.count ?? 0)",
+                "blocks": "\(blocks?.count ?? 0)", "tools": "\(request.tools.count)",
             ])
+        let answer = messages[messages.count - 1].id
+        // With tools, the answer runs in rounds: each call the model makes runs here (`runTool`) and goes back to it.
+        let stream =
+            request.tools.isEmpty
+            ? client.stream(request)
+            : AIToolLoop.run(request, client: client) { [weak self] call in
+                await self?.runTool(call, answer: answer, files: files) ?? .failure("The chat was closed.")
+            }
         run.start(
-            client.stream(request), onEvent: { [weak self] event in self?.apply(event) },
+            stream, onEvent: { [weak self] event in self?.apply(event) },
             onEnd: { [weak self] error in self?.finish(error: error) })
     }
 
@@ -310,12 +322,13 @@ final class AIChat {
 
     func stop() {
         stopPictures()
+        stopTools()
         run.stop()
         isStreaming = false
         guard let last = messages.indices.last else { return }
         messages[last].searching = nil
         // What arrived of a stopped answer stays.
-        if messages[last].role == .assistant, !messages[last].text.isEmpty { keep([messages[last]]) }
+        if messages[last].role == .assistant, messages[last].hasContent { keep([messages[last]]) }
     }
 
     /// New chat (same page and model): the conversation empties; the toast's Undo brings it back.
@@ -362,17 +375,6 @@ final class AIChat {
     /// Made pictures, read once from their files.
     @ObservationIgnored private var pictureImages: [String: Image] = [:]
     var isMakingPictures: Bool { !pictureQueue.isEmpty }
-
-    /// The pictures a finished answer asks for: it may change an earlier one by id, or the picture attached to the
-    /// question.
-    private func proposedPictures(answer index: Int) -> [ChatPicture] {
-        var known = Set(messages.flatMap(\.pictures).filter { $0.status == .done }.map(\.id))
-        if attachedPicture(before: index) != nil { known.insert(AIPictures.attached) }
-        let id = messages[index].id
-        return AIPictures.pictures(in: messages[index].text, known: known).enumerated().map { n, spec in
-            ChatPicture(id: "\(id)-\(n)", prompt: spec.prompt, shape: spec.shape.rawValue, detailed: spec.detailed, from: spec.from)
-        }
-    }
 
     /// The picture attached to the question an answer replies to.
     private func attachedPicture(before index: Int) -> (data: Data, mimeType: String)? {
@@ -562,6 +564,110 @@ final class AIChat {
         return error.map(AIService.message(for:)) ?? String(localized: "app:ai.pictures.saveFailed")
     }
 
+    // MARK: - Tools
+
+    /// Writes and edits waiting for the user (Allow / Don't Allow on their cards).
+    @ObservationIgnored private var approvals: [String: CheckedContinuation<Bool, Never>] = [:]
+
+    /// Runs a tool the model called in `answer`: a picture to make, or one of the workspace folder's file tools — a
+    /// write or edit only once the user allows it. Each file call gets a card (`Message.tools`) that follows it.
+    private func runTool(_ call: AIToolCall, answer: String, files: WorkspaceFiles?) async -> AIToolOutput {
+        if call.name == AIPictures.toolName { return pictureTool(call, answer: answer) }
+        guard let files, let tool = WorkspaceFiles.Tool(rawValue: call.name) else {
+            return .failure("There is no tool \(call.name).")
+        }
+        let fields = call.fields
+        var record = ChatToolCall(
+            id: call.id, name: call.name, path: fields["path"] as? String ?? "", pattern: fields["pattern"] as? String)
+        Log.info("AI tool", category: "ai", context: ["tool": call.name])
+        if tool.changesFiles {
+            switch await Task.detached(operation: { files.change(for: call) }).value {
+            case .failure(let failure):
+                record.status = .failed
+                record.message = failure.message
+                addTool(record, to: answer)
+                return .failure(failure.message)
+            case .success(let change):
+                record.path = change.path
+                if tool == .editFile {
+                    record.before = ChatToolCall.capped(fields["old_string"] as? String)
+                    record.after = ChatToolCall.capped(fields["new_string"] as? String)
+                    record.replacements = change.replacements
+                } else {
+                    let content = fields["content"] as? String ?? ""
+                    record.text = ChatToolCall.capped(content)
+                    record.bytes = content.utf8.count
+                    record.created = change.before == nil
+                    record.appended = change.appended
+                    // Replacing a file: what it said, so the card shows what changes.
+                    if !change.appended { record.before = ChatToolCall.capped(change.before) }
+                }
+                record.status = .waiting
+                addTool(record, to: answer)
+                let allowed = await withCheckedContinuation { approvals[call.id] = $0 }
+                guard allowed else {
+                    updateTool(call.id, in: answer) { if $0.status == .waiting { $0.status = .declined } }
+                    Log.info("AI tool declined", category: "ai", context: ["tool": call.name])
+                    return .failure("The user didn't allow this change. Don't make it another way.")
+                }
+                updateTool(call.id, in: answer) { $0.status = .running }
+            }
+        } else {
+            addTool(record, to: answer)
+        }
+        let output = await Task.detached(operation: { files.perform(call) }).value
+        updateTool(call.id, in: answer) { $0.record(output) }
+        if let m = messages.firstIndex(where: { $0.id == answer }) { keep([messages[m]]) }
+        return output
+    }
+
+    /// `make_picture`: the picture is queued at once and forms under the answer while the model goes on.
+    private func pictureTool(_ call: AIToolCall, answer: String) -> AIToolOutput {
+        guard canMakePictures, let m = messages.firstIndex(where: { $0.id == answer }) else {
+            return .failure("Pictures can't be made now.")
+        }
+        guard messages[m].pictures.count < AIPictures.maxPerAnswer else {
+            return .failure("This reply has made \(AIPictures.maxPerAnswer) pictures, the most one reply may.")
+        }
+        var known = Set(messages.flatMap(\.pictures).filter { $0.status == .done }.map(\.id))
+        if attachedPicture(before: m) != nil { known.insert(AIPictures.attached) }
+        guard let spec = AIPictures.spec(call.fields, known: known) else {
+            return .failure("Give the picture's description as prompt.")
+        }
+        let id = "\(answer)-\(messages[m].pictures.count)"
+        messages[m].pictures.append(
+            ChatPicture(id: id, prompt: spec.prompt, shape: spec.shape.rawValue, detailed: spec.detailed, from: spec.from))
+        makePictures([id], answer: answer)
+        return .json(["id": id, "status": "being made; it appears under your reply as it forms"])
+    }
+
+    private func addTool(_ record: ChatToolCall, to answer: String) {
+        guard let m = messages.firstIndex(where: { $0.id == answer }) else { return }
+        messages[m].tools.append(record)
+    }
+
+    private func updateTool(_ id: String, in answer: String, _ change: (inout ChatToolCall) -> Void) {
+        guard let m = messages.firstIndex(where: { $0.id == answer }),
+            let t = messages[m].tools.firstIndex(where: { $0.id == id })
+        else { return }
+        change(&messages[m].tools[t])
+    }
+
+    func allowTool(_ id: String) { approvals.removeValue(forKey: id)?.resume(returning: true) }
+    func declineTool(_ id: String) { approvals.removeValue(forKey: id)?.resume(returning: false) }
+
+    /// The answer stopped or ended: what was waiting or running reads as stopped, and nothing waits any more.
+    private func stopTools() {
+        for m in messages.indices {
+            for t in messages[m].tools.indices where [.waiting, .running].contains(messages[m].tools[t].status) {
+                messages[m].tools[t].status = .stopped
+            }
+        }
+        let waiting = approvals
+        approvals = [:]
+        for continuation in waiting.values { continuation.resume(returning: false) }
+    }
+
     // MARK: - Changes to the page
 
     /// The changes a finished answer proposes, checked against the blocks it was given.
@@ -634,7 +740,8 @@ final class AIChat {
             let picture = ChatImage(url: image.url, thumbnail: image.thumbnail, source: image.source, caption: image.caption)
             guard picture.webURL != nil, !messages[last].images.contains(where: { $0.url == picture.url }) else { return }
             messages[last].images.append(picture)
-        case .finished:
+        // The calls and their results are drawn from what `runTool` records; carried items only go back to the model.
+        case .toolCall, .toolResult, .carried, .finished:
             break
         }
     }
@@ -643,19 +750,18 @@ final class AIChat {
         isStreaming = false
         guard let last = messages.indices.last else { return }
         messages[last].searching = nil
-        if messages[last].role == .assistant, !messages[last].text.isEmpty {
+        stopTools()
+        if messages[last].role == .assistant, messages[last].hasContent {
             messages[last].sentAt = .now
             if error == nil, let blocks = askedBlocks { messages[last].changes = proposedChanges(in: messages[last], blocks: blocks) }
-            if error == nil { messages[last].pictures = proposedPictures(answer: last) }
             keep([messages[last]])
             if !messages[last].changes.isEmpty { offerChanges() }
-            makePictures(messages[last].pictures.map(\.id), answer: messages[last].id)
         }
         askedBlocks = nil
         if let error {
             messages[last].error = AIService.message(for: error)
             if let code = error.errorCode { Incident.report(code, error, category: "ai") }
-        } else if messages[last].text.isEmpty {
+        } else if !messages[last].hasContent {
             messages[last].error = AIService.message(for: .invalidResponse)
         }
     }
@@ -670,7 +776,7 @@ extension AIChat.Message {
             images: (turn.images ?? []).filter { $0.webURL != nil }, changes: turn.changes ?? [],
             // One being made when the chat was left (or on another device) isn't being made here.
             pictures: (turn.pictures ?? []).map(\.restored),
-            picturePlace: turn.picturePlace, thinking: turn.thinking)
+            picturePlace: turn.picturePlace, tools: (turn.tools ?? []).map(\.restored), thinking: turn.thinking)
     }
 
     /// The turn as it is kept.
@@ -679,8 +785,11 @@ extension AIChat.Message {
             id: id, role: role, text: text, sentAt: sentAt, attachments: attachmentNames + attachments.map(\.name),
             citations: citations.map { ChatCitation(url: $0.url, title: $0.title) }, changes: changes.isEmpty ? nil : changes,
             thinking: thinking.flatMap(ChatTimeline.kept), images: images.isEmpty ? nil : images,
-            pictures: pictures.isEmpty ? nil : pictures, picturePlace: picturePlace)
+            pictures: pictures.isEmpty ? nil : pictures, picturePlace: picturePlace, tools: tools.isEmpty ? nil : tools)
     }
+
+    /// The answer said or made something: words, pictures, or tools it used.
+    var hasContent: Bool { !text.isEmpty || !pictures.isEmpty || !tools.isEmpty }
 }
 
 /// Ask AI on iPhone: the conversation (`AIChatView`) in a sheet, with close, a new chat and the model menu on top.
@@ -1342,10 +1451,14 @@ private struct ChatBubble: View {
             VStack(alignment: .leading, spacing: Spacing.s2_5) {
                 // How the answer was worked out, over it: live while the model thinks, folded once it answers.
                 if let timeline { timeline }
+                // The files it worked with, a card each (a change waits there for Allow).
+                if let chat, !message.tools.isEmpty {
+                    ToolCallCards(items: message.tools.map(\.card), onAllow: chat.allowTool, onDecline: chat.declineTool)
+                }
                 // The changes block never shows as text: the cards below stand for it.
                 if !prose.isEmpty { AnswerText(text: prose, isStreaming: isStreaming) }
                 if isStreaming,
-                    isCompacting || AIPageEdits.hasChanges(message.text) || AIPictures.hasPictures(message.text)
+                    isCompacting || AIPageEdits.hasChanges(message.text) || message.tools.contains(where: { $0.status == .running })
                         || !message.text.isEmpty && message.searching != nil
                 {
                     working
@@ -1506,8 +1619,8 @@ private struct ChatBubble: View {
                 ShimmerText(query.isEmpty ? "app:ai.searching" : "app:ai.searchingFor \(query)")
             } else if AIPageEdits.hasChanges(message.text) {
                 ShimmerText("app:ai.changes.preparing")
-            } else if AIPictures.hasPictures(message.text) {
-                ShimmerText("app:ai.pictures.preparing")
+            } else if message.tools.contains(where: { $0.status == .running }) {
+                ShimmerText("app:ai.tools.working")
             } else {
                 ShimmerText(isCompacting ? "app:ai.compacting" : "app:ai.thinking")
             }

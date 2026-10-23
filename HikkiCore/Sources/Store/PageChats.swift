@@ -23,11 +23,13 @@ public struct ChatTurn: Codable, Equatable, Sendable, Identifiable {
     public var pictures: [ChatPicture]?
     /// Where in the page the answer's pictures go (the chat was opened for pictures from there).
     public var picturePlace: PicturePlace?
+    /// The workspace file tools the answer used, in order (absent in older files and answers without any).
+    public var tools: [ChatToolCall]?
 
     public init(
         id: String, role: Role, text: String, sentAt: Date, attachments: [String] = [], citations: [ChatCitation] = [],
         changes: [AIPageChange]? = nil, thinking: ChatThinking? = nil, images: [ChatImage]? = nil,
-        pictures: [ChatPicture]? = nil, picturePlace: PicturePlace? = nil
+        pictures: [ChatPicture]? = nil, picturePlace: PicturePlace? = nil, tools: [ChatToolCall]? = nil
     ) {
         self.id = id
         self.role = role
@@ -40,6 +42,72 @@ public struct ChatTurn: Codable, Equatable, Sendable, Identifiable {
         self.images = images
         self.pictures = pictures
         self.picturePlace = picturePlace
+        self.tools = tools
+    }
+}
+
+/// A workspace file tool an answer used (`WorkspaceFiles`): which, on what, how it went, and what its card shows —
+/// texts capped at `maxText`, so a conversation's file stays small.
+public struct ChatToolCall: Codable, Equatable, Sendable, Identifiable {
+    public enum Status: String, Codable, Sendable {
+        case running
+        /// A write or edit waiting for the user to allow it.
+        case waiting
+        case done
+        case failed
+        /// The user didn't allow it.
+        case declined
+        /// Stopped before it ran or was decided.
+        case stopped
+    }
+
+    public static let maxText = 4000
+    public static let maxResults = 50
+
+    public var id: String
+    /// The tool's name (`list_directory`, `read_file`, `find_files`, `grep`, `write_file`, `edit_file`).
+    public var name: String
+    /// The file or folder, relative to the workspace folder.
+    public var path: String
+    /// What a find or search looked for.
+    public var pattern: String?
+    public var status: Status
+    /// Why it failed (the tool's words).
+    public var message: String?
+    /// Lines read, entries listed, files found, matches.
+    public var count: Int?
+    public var bytes: Int?
+    /// What was read or written (cut at `maxText`).
+    public var text: String?
+    /// An edit's replaced text and its replacement (each cut at `maxText`).
+    public var before: String?
+    public var after: String?
+    /// A write made the file (else it replaced or appended to one).
+    public var created: Bool?
+    public var appended: Bool?
+    public var replacements: Int?
+    /// What a find or search turned up (paths, at most `maxResults`).
+    public var results: [String]?
+
+    public init(id: String, name: String, path: String, pattern: String? = nil, status: Status = .running) {
+        self.id = id
+        self.name = name
+        self.path = path
+        self.pattern = pattern
+        self.status = status
+    }
+
+    /// A text as it is kept.
+    public static func capped(_ text: String?) -> String? {
+        guard let text else { return nil }
+        return text.count > maxText ? String(text.prefix(maxText)) : text
+    }
+
+    /// As a kept turn shows it again: one still running or waiting when it was kept isn't any more.
+    public var restored: ChatToolCall {
+        var call = self
+        if call.status == .running || call.status == .waiting { call.status = .stopped }
+        return call
     }
 }
 

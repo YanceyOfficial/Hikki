@@ -143,8 +143,8 @@ final class AIService {
         case .searching(let query): ["id": id, "type": "searching", "query": query ?? NSNull()]
         case .citation(let citation): ["id": id, "type": "citation", "url": citation.url, "title": citation.title ?? NSNull()]
         case .finished: ["id": id, "type": "done"]
-        // The page's requests don't ask for thinking or pictures (only the chat shows them).
-        case .reasoning, .reasoningStep, .image: nil
+        // The page's requests don't ask for thinking, pictures or tools (only the chat has them).
+        case .reasoning, .reasoningStep, .image, .toolCall, .toolResult, .carried: nil
         }
     }
 

@@ -21,6 +21,12 @@ enum AIPreferences {
         UserDefaults.standard.string(forKey: chatRetentionKey).flatMap(ChatRetention.init) ?? .default
     }
 
+    /// The chat may use the workspace folder's files (`WorkspaceFiles`: list, read, search; write and edit once the
+    /// user allows each). On unless turned off.
+    static let filesKey = "ai.workspaceFiles"
+
+    static var usesFiles: Bool { UserDefaults.standard.object(forKey: filesKey) as? Bool ?? true }
+
     /// The base URL typed for a provider (blank: its own API) — `AIEndpoint` reads it.
     static func baseURLKey(_ provider: AIProvider) -> String { "ai.baseURL.\(provider.rawValue)" }
 
@@ -59,6 +65,7 @@ struct AISettingsSection: View {
     @AppStorage(AIPreferences.modelKey) private var model = AIModelCatalog.autoID
     @AppStorage(AIPreferences.reviewStyleKey) private var reviewStyle = ReviewStyleThumbnail.Sketch.inline.rawValue
     @AppStorage(AIPreferences.chatRetentionKey) private var retention = ChatRetention.default.rawValue
+    @AppStorage(AIPreferences.filesKey) private var usesFiles = true
     @State private var confirmingDelete = false
 
     var body: some View {
@@ -92,6 +99,12 @@ struct AISettingsSection: View {
             Text("app:ai.settings.models")
         } footer: {
             Text("app:ai.settings.models.detail")
+        }
+        Section {
+            Toggle("app:ai.settings.files", isOn: $usesFiles)
+                .accessibilityIdentifier("settings-ai-files")
+        } footer: {
+            Text("app:ai.settings.files.detail")
         }
         Section {
             Picker("app:ai.settings.history.keep", selection: $retention) {
