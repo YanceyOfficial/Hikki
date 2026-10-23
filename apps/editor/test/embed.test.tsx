@@ -325,3 +325,29 @@ describe('a gist embed', () => {
     expect(frame().style.height).toBe('400px')
   })
 })
+
+describe('a draw.io embed', () => {
+  it('loads in the page’s appearance and loads again when it changes', () => {
+    let matches = false
+    const listeners = new Set<() => void>()
+    vi.stubGlobal('matchMedia', () => ({
+      get matches() {
+        return matches
+      },
+      addEventListener: (_: string, listener: () => void) => listeners.add(listener),
+      removeEventListener: (_: string, listener: () => void) => listeners.delete(listener)
+    }))
+    try {
+      editor.commands.insertEmbed(
+        embedFromURL('https://app.diagrams.net/#Uhttps%3A%2F%2Fexample.com%2Fa.drawio')!
+      )
+      expect(frame().src).toContain('dark=0')
+      matches = true
+      for (const listener of listeners) listener()
+      expect(frame().src).toContain('dark=1')
+      expect(frame().src).toContain('#Uhttps%3A%2F%2Fexample.com%2Fa.drawio')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+})

@@ -253,7 +253,9 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
                 if (make === 'pictures') editor.commands.aiPictures('selection')
                 else if (make === 'diagram') {
                   const { from, to } = editor.state.selection
-                  editor.commands.insertDiagram(editor.state.doc.textBetween(from, to, '\n'))
+                  // The menu goes with the selection: the diagram is made below while the page waits.
+                  if (editor.commands.insertDiagram(editor.state.doc.textBetween(from, to, '\n')))
+                    editor.commands.setTextSelection(editor.state.selection.to)
                 }
               }}
               onCancel={() => {

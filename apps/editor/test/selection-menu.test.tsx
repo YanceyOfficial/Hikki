@@ -105,6 +105,27 @@ describe('SelectionMenu', () => {
     )
   })
 
+  it('Make → Diagram closes the menu (the selection goes) while the diagram is made below', () => {
+    editor.destroy()
+    editor = createEditor(host, doc('hello world'), {
+      drawing: {
+        upload: async () => 'hikki-editor://assets/x.png',
+        read: async () => new Blob(),
+        diagram: () => new Promise<string>(() => {}),
+        openLink: () => {}
+      }
+    })
+    show()
+    selectHello()
+    fireEvent.mouseEnter(screen.getByTestId('selection-menu-ask-ai'))
+    const make = screen.getByTestId('ai-make-diagram')
+    // The icon has its row's size, not the menu's width.
+    expect(make.querySelector('svg')?.getAttribute('width')).toBe('18')
+    fireEvent.click(make)
+    expect(editor.state.selection.empty).toBe(true)
+    expect(editor.state.doc.child(1).type.name).toBe('drawing')
+  })
+
   it('turns a list item back into plain text (lifted out of the list)', () => {
     editor.commands.toggleBulletList()
     show()

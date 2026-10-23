@@ -11,6 +11,7 @@ import {
   htmlEmbedDocument,
   isWebURL,
   safeFrameSrc,
+  reloadsOnSchemeChange,
   themedEmbedSrc,
   type LinkCard,
   type EmbedProvider,
@@ -225,10 +226,18 @@ class EmbedView implements NodeView {
     if (this.dom.dataset.resizing === undefined) this.applyHeight(this.node.attrs.height as number)
   }
 
-  /** Light ↔ dark: a gist's frame takes the new colours in place (no reload, no flash). */
+  /**
+   * Light ↔ dark: a gist's frame takes the new colours in place (no reload, no flash); a frame that is told
+   * its appearance in its address (a tweet, draw.io) loads again with the new one.
+   */
   private onSchemeChange = () => {
     if (this.isGist)
       this.frame.contentWindow?.postMessage(embedThemeMessage(readEmbedTheme(dark())), '*')
+    else if (
+      this.node.attrs.html === null &&
+      reloadsOnSchemeChange(this.node.attrs.provider as EmbedProvider)
+    )
+      this.load()
   }
 
   private load() {

@@ -9,6 +9,7 @@ import {
   isWebURL,
   linkCardFrom,
   safeFrameSrc,
+  reloadsOnSchemeChange,
   themedEmbedSrc
 } from '../src/lib/embeds'
 
@@ -89,6 +90,18 @@ describe('embedFromURL', () => {
       themedEmbedSrc('tweet', 'https://platform.twitter.com/embed/Tweet.html?id=20', true)
     ).toBe('https://platform.twitter.com/embed/Tweet.html?id=20&theme=dark')
     expect(themedEmbedSrc('generic', 'https://example.com/', true)).toBe('https://example.com/')
+  })
+
+  it('a draw.io diagram is told the appearance in its query, the file named after # untouched', () => {
+    const viewer = src('https://app.diagrams.net/#Uhttps%3A%2F%2Fexample.com%2Fa.drawio')!
+    expect(themedEmbedSrc('drawio', viewer, true)).toBe(
+      'https://viewer.diagrams.net/?nav=1&dark=1#Uhttps%3A%2F%2Fexample.com%2Fa.drawio'
+    )
+    expect(themedEmbedSrc('drawio', `${viewer.replace('?nav=1', '?nav=1&dark=1')}`, false)).toBe(
+      'https://viewer.diagrams.net/?nav=1&dark=0#Uhttps%3A%2F%2Fexample.com%2Fa.drawio'
+    )
+    expect(reloadsOnSchemeChange('drawio')).toBe(true)
+    expect(reloadsOnSchemeChange('youtube')).toBe(false)
   })
 
   it('any other https link is framed as it is; bare domains become https; the rest is refused', () => {

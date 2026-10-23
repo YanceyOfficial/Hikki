@@ -219,7 +219,11 @@ export function AIPanel({
                     data-testid={`ai-make-${make}`}
                     onClick={() => onMake(make)}
                   >
-                    <MakeIcon className="self-start text-muted-foreground" aria-hidden />
+                    <MakeIcon
+                      size={18}
+                      className="mt-0.5 flex-none self-start text-muted-foreground"
+                      aria-hidden
+                    />
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="truncate">{label()}</span>
                       <span className="truncate text-xs text-muted-foreground">{hint()}</span>

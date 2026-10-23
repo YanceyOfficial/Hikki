@@ -258,9 +258,28 @@ export function htmlEmbedDocument(html: string, dark: boolean): string {
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="color-scheme" content="${scheme}"><style>html,body{margin:0;padding:0;color-scheme:${scheme}}img,video,iframe{max-width:100%}</style></head><body>${html}</body></html>`
 }
 
-/** The tweet frame follows the page's appearance (the other providers pick it up themselves). */
+/**
+ * Frames that follow the page's appearance through their address: a tweet (`theme`) and a draw.io diagram
+ * (`dark`, as Actovia embeds it — the diagram's own query, ahead of the `#` that names the file). The other
+ * providers pick it up themselves.
+ */
 export function themedEmbedSrc(provider: EmbedProvider, src: string, dark: boolean): string {
-  return provider === 'tweet' ? `${src}&theme=${dark ? 'dark' : 'light'}` : src
+  if (provider === 'tweet') return `${src}&theme=${dark ? 'dark' : 'light'}`
+  if (provider === 'drawio') {
+    try {
+      const url = new URL(src)
+      url.searchParams.set('dark', dark ? '1' : '0')
+      return url.href
+    } catch {
+      return src
+    }
+  }
+  return src
+}
+
+/** Providers whose frame has to load again to change appearance. */
+export function reloadsOnSchemeChange(provider: EmbedProvider): boolean {
+  return provider === 'tweet' || provider === 'drawio'
 }
 
 /**
