@@ -215,8 +215,8 @@ function Features() {
         </h2>
         <p class="mt-6 max-w-[34rem] text-lg leading-relaxed text-muted">
           Type <kbd class="border-ink border-2 px-1.5 font-sans font-bold">/</kbd> for headings,
-          to-dos, tables, toggles, callouts, code and math. Drag any block by its handle, or drop it
-          beside another to make columns.
+          to-dos, tables, toggles, callouts, code, math, drawings and embeds. Drag any block by its
+          handle, or drop it beside another to make columns.
         </p>
       </div>
       <Feature
@@ -259,7 +259,11 @@ function Features() {
         title="Markdown in, Markdown out"
         text="Import Markdown, HTML and text files or whole folders. Export a page or everything as Markdown, HTML, PDF or the original files."
       />
-      <div class="cell bg-blue hidden md:col-span-2 md:block lg:col-span-4" aria-hidden="true" />
+      <Feature
+        class="bg-blue md:col-span-2 lg:col-span-4"
+        title="Dates that remind you"
+        text="Type @ and a date, like “next Friday 3pm”, and have it ring on every device."
+      />
     </section>
   )
 }

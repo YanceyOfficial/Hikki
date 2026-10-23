@@ -3,18 +3,24 @@ import { For } from 'solid-js'
 import { row } from './row'
 import { Shot } from './shot'
 
-/** What "Ask AI" on a selection offers, as the editor's menu lists it. */
+/** What "Ask AI" offers, as the editor's menus list it: on a selection, then on a picture or a PDF. */
 const ACTIONS = [
   {
     title: 'Edit',
-    items: ['Improve writing', 'Fix spelling & grammar', 'Make shorter', 'Make longer', 'Simplify']
+    items: [
+      'Improve writing',
+      'Fix spelling & grammar',
+      'Make shorter',
+      'Make longer',
+      'Simplify language'
+    ]
   },
   { title: 'Change tone', items: ['Professional', 'Casual', 'Friendly', 'Confident'] },
-  { title: 'Translate', items: ['English', '中文', '日本語'] },
-  { title: 'Ask', items: ['Explain', 'Summarize'] }
+  { title: 'Ask', items: ['Explain', 'Summarize'] },
+  { title: 'On a picture or a PDF', items: ['Describe', 'Extract text', 'Explain', 'Summarize'] }
 ]
 
-/** The three ways an edit can be reviewed (Settings → AI), shown on the same sentence, each cropped to its panel. */
+/** The two ways an edit can be reviewed (Settings → AI), shown on the same sentence, each cropped to its panel. */
 const REVIEW_STYLES = [
   {
     id: 'inline',
@@ -31,14 +37,6 @@ const REVIEW_STYLES = [
     alt: 'An edit by AI as two lines, minus and plus, with the changed words marked.',
     width: 1100,
     height: 260
-  },
-  {
-    id: 'bubble',
-    title: 'With reasons.',
-    text: 'Each change on its own line, and why the model made it.',
-    alt: 'An edit by AI as a list of changes, each with its reason, and a button to replace the selection.',
-    width: 1100,
-    height: 350
   }
 ]
 
@@ -51,8 +49,9 @@ export function AskAI() {
           AI that works on your page, not around it.
         </h2>
         <p class="mt-6 max-w-[40rem] text-lg leading-relaxed">
-          Ask about what you are reading, or select a passage and have it rewritten. It runs on your
-          own OpenAI or Anthropic key, and nothing is sent until you ask.
+          Ask about what you are reading, select a passage and have it rewritten, or have the chat
+          change the page and approve each change. It runs on your own OpenAI or Anthropic key, and
+          nothing is sent until you ask.
         </p>
       </div>
       <figure class="cell m-0 flex flex-col gap-5 p-6 md:p-10 lg:col-span-8">
@@ -77,6 +76,8 @@ export function AskAI() {
           <p class="mt-4 leading-relaxed">
             The AI panel reads the page you have open and the passage you selected. Add other pages
             with @, attach a picture or a PDF, and let it search the web, with its sources linked.
+            Ask it to change the page and each change waits for your approval; ask for a picture and
+            it draws one (with an OpenAI key).
           </p>
         </div>
       </div>
