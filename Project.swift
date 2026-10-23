@@ -67,20 +67,33 @@ let project = Project(
                 "Hikki/Resources/AppIcon.icon",
                 // MenuBarIcon (template image for the menu bar extra).
                 "Hikki/Resources/Assets.xcassets",
+                // container-migration.plist: the first sandboxed launch moves a Mac's data from before the sandbox
+                // (~/Library/Application Support/Hikki, the preferences) into the app's container.
+                .glob(pattern: "Hikki/Resources/Mac/**", inclusionCondition: .when([.macos])),
             ],
             dependencies: [
                 .target(name: "HikkiCore"), .target(name: "HikkiUI"), .target(name: "HikkiSearch"), .target(name: "HikkiAI"),
             ],
-            settings: .settings(base: [
-                "SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor",
-                // Release links our four frameworks into the app binary (fewer images for dyld to load at launch; GRDB stays
-                // separate, see Tuist/Package.swift); Debug keeps them apart for fast incremental builds. Apple's
-                // "Reducing your app's launch time".
-                "MERGED_BINARY_TYPE": "automatic",
-                "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
-                // The tone (design/tokens.json → make tokens → AccentColor.colorset): menus and selection follow it.
-                "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor",
-            ])
+            settings: .settings(
+                base: [
+                    "SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor",
+                    // Release links our four frameworks into the app binary (fewer images for dyld to load at launch; GRDB stays
+                    // separate, see Tuist/Package.swift); Debug keeps them apart for fast incremental builds. Apple's
+                    // "Reducing your app's launch time".
+                    "MERGED_BINARY_TYPE": "automatic",
+                    "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+                    // The tone (design/tokens.json → make tokens → AccentColor.colorset): menus and selection follow it.
+                    "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME": "AccentColor",
+                ],
+                debug: [
+                    // The Mac app is sandboxed (the Mac App Store takes nothing else): network out, folders the user picks,
+                    // bookmarks to them. Debug may also reach the temporary folders, where UI tests and demo runs keep their
+                    // data (`HIKKI_DATA_DIR`).
+                    "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": "Hikki/Hikki-Debug.entitlements"
+                ],
+                release: [
+                    "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": "Hikki/Hikki.entitlements"
+                ])
         ),
         .target(
             name: "HikkiCore",
@@ -159,5 +172,17 @@ let project = Project(
             sources: ["HikkiUITests/**"],
             dependencies: [.target(name: "Hikki")]
         ),
+    ],
+    schemes: [
+        // The app against a local StoreKit configuration (Hikki/Hikki.storekit: the unlock): buy, refund and restore
+        // without the App Store. Debug runs ignore the trial unless HIKKI_ACCESS=store says to read it.
+        .scheme(
+            name: "Hikki-StoreKit",
+            buildAction: .buildAction(targets: ["Hikki"]),
+            runAction: .runAction(
+                configuration: .debug, executable: "Hikki",
+                arguments: .arguments(environmentVariables: ["HIKKI_ACCESS": .environmentVariable(value: "store", isEnabled: true)]),
+                options: .options(storeKitConfigurationPath: "Hikki/Hikki.storekit"))
+        )
     ]
 )

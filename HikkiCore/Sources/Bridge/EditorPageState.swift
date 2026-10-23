@@ -43,11 +43,13 @@ public struct EditorPageState: Sendable {
     }
 
     /// The lock state to send for the page shown, or nil when the editor already has it — or shows another page than
-    /// `docId` (still loading it: that load carries the page's own state).
-    public mutating func lockChange(showing docId: String?, in tree: PageTree) -> Bool? {
-        guard let shown, let docId, shown.docId == docId, let page = tree.page(docId), page.isLocked != shown.locked
-        else { return nil }
-        self.shown = (docId, page.isLocked)
-        return page.isLocked
+    /// `docId` (still loading it: that load carries the page's own state). `readOnly`: every page is locked (the
+    /// trial is over, `Access.expired`).
+    public mutating func lockChange(showing docId: String?, in tree: PageTree, readOnly: Bool = false) -> Bool? {
+        guard let shown, let docId, shown.docId == docId, let page = tree.page(docId) else { return nil }
+        let locked = page.isLocked || readOnly
+        guard locked != shown.locked else { return nil }
+        self.shown = (docId, locked)
+        return locked
     }
 }

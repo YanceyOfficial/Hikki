@@ -114,6 +114,7 @@ final class Navigator {
 
     /// Shows the file picker; what is picked becomes pages under `parentID` (subpages), or top-level pages for nil.
     func importFiles(into parentID: String?) {
+        guard Purchases.shared.allowsWriting() else { return }
         #if DEBUG
             // HIKKI_PICK_FILES=<path>|<path>: the picker's stand-in (it runs out of process) — UI tests.
             if let paths = ProcessInfo.processInfo.environment["HIKKI_PICK_FILES"] {
@@ -225,7 +226,7 @@ final class Navigator {
 
     /// A page made from a quick note (Home), opened.
     func newPage(_ note: QuickNote) {
-        guard let id = model?.createPage(note) else { return }
+        guard Purchases.shared.allowsWriting(), let id = model?.createPage(note) else { return }
         go(.page(id))
     }
 
@@ -236,7 +237,7 @@ final class Navigator {
     var aiHandoff: PaneHandoff?
 
     func newPage(parentId: String? = nil) {
-        guard let id = model?.createPage(parentId: parentId) else { return }
+        guard Purchases.shared.allowsWriting(), let id = model?.createPage(parentId: parentId) else { return }
         if let parentId { expanded.insert(parentId) }
         go(.page(id))
     }

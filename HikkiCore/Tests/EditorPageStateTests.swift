@@ -41,4 +41,14 @@ struct EditorPageStateTests {
         #expect(state.lockChange(showing: "b", in: PageTree([page("a"), page("b", locked: true)])) == nil)
         #expect(state.lockChange(showing: nil, in: PageTree([page("a")])) == nil)
     }
+
+    /// The trial ended: the page shown locks whatever its own lock says, and unlocks again with the purchase.
+    @Test func readOnlyLocksEveryPage() {
+        var state = EditorPageState()
+        state.loaded("a", locked: false)
+        #expect(state.lockChange(showing: "a", in: PageTree([page("a")]), readOnly: true) == true)
+        #expect(state.lockChange(showing: "a", in: PageTree([page("a")]), readOnly: true) == nil)
+        #expect(state.lockChange(showing: "a", in: PageTree([page("a")]), readOnly: false) == false)
+        #expect(state.lockChange(showing: "a", in: PageTree([page("a", locked: true)]), readOnly: false) == true)
+    }
 }

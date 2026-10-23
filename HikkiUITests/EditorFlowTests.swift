@@ -29,6 +29,38 @@ final class EditorFlowTests: XCTestCase {
         return app
     }
 
+    /// The trial is over (HIKKI_ACCESS=expired): pages still open but don't take typing, the read-only bar says so,
+    /// and New Page asks for the unlock instead of making one.
+    func testAfterTheTrialPagesAreReadOnly() throws {
+        continueAfterFailure = false
+        let app = launch(environment: ["HIKKI_DEMO_PAGES": "1", "HIKKI_ACCESS": "expired", "HIKKI_DEBUG_NAV": "demo-46ffce8"])
+        XCTAssertTrue(waitOrDumpTree(app.descendants(matching: .any)["read-only-bar"].firstMatch, in: app, timeout: 30))
+        // The page shows, as a locked page does: its words are there, but nothing in it is editable.
+        XCTAssertTrue(waitOrDumpTree(app.webViews.staticTexts.firstMatch, in: app, timeout: 30))
+        sleep(2)
+        XCTAssertFalse(app.webViews.textViews["Page content"].firstMatch.exists, "a read-only page is editable")
+        // The title stays a (read-only) text field: typing into it changes nothing.
+        let title = app.webViews.textViews["Page title"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(title, in: app))
+        let before = title.value as? String
+        title.tap()
+        app.typeText("zz")
+        sleep(1)
+        XCTAssertEqual(title.value as? String, before, "a read-only title took typing")
+        #if os(iOS)
+            if !app.buttons["new-page"].firstMatch.exists {
+                // iPhone: New Page is on Home.
+                app.navigationBars.buttons["BackButton"].firstMatch.tap()
+            }
+        #endif
+        let newPage = app.buttons["new-page"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+        newPage.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["unlock-sheet"].firstMatch.waitForExistence(timeout: 5))
+        attachScreenshot(app, "unlock-sheet")
+        XCTAssertFalse(app.buttons["unlock-buy"].firstMatch.isEnabled, "a Debug run has no store product to sell")
+    }
+
     /// Ask AI's model menu (iPhone sheet): starring a model lists it first under Favorites, the star stays when the
     /// menu opens again, and picking a model names it in the composer.
     func testStarringAModelPutsItFirst() throws {

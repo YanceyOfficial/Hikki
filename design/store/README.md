@@ -60,11 +60,11 @@ same hooks, capture its window by id (`screencapture -x -l <window id> window.pn
 
 ## Before the first submission
 
-- **In-app purchase**: the price (free download, everything open for 14 days, then one unlock: $19.99, $14.99 in
-  the first weeks — `apps/website/src/site.ts`) needs StoreKit in the app — a non-consumable "Hikki" unlock with
-  the trial worked out from the original download date. Not built yet; until it is, the listing can only be free or
-  paid up front.
-- **Mac sandbox**: the Mac App Store takes only sandboxed apps. The Mac build has no entitlements yet: it needs App
-  Sandbox with user-selected files (read-write) and app-scoped bookmarks (the workspace folder), outgoing network
-  (AI, link previews, Unsplash), camera off on the Mac — and a move of an existing Mac workspace's database from
-  `~/Library/Application Support` into the container on first sandboxed launch.
+- **In-app purchase**: built (`Hikki/Sources/Purchases.swift`; CLAUDE.md, "Trial and unlock"). In App Store
+  Connect, create a non-consumable with the product id `app.yancey.hikki.unlock`, priced $19.99 ($14.99 in the
+  first weeks — `apps/website/src/site.ts`), Family Sharing on, attached to the first version for review. The trial
+  (14 days, then read only) needs nothing in the store. For our own accounts: an offer code on that purchase,
+  redeemed once per Apple Account — it is then a purchase like any other, on every device.
+- **Mac sandbox**: built (CLAUDE.md, "Mac sandbox"): `Hikki/Hikki.entitlements` — App Sandbox, outgoing network,
+  user-selected folders read-write, app-scoped bookmarks; no camera on the Mac. App Review's notes need nothing
+  about it.

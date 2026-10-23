@@ -19,6 +19,18 @@
       "en": "Couldn't put the diagnostics together.",
       "zh": "无法生成诊断包。"
     },
+    "purchaseFailed": {
+      "code": 1003,
+      "severity": "error",
+      "en": "Couldn't complete the purchase.",
+      "zh": "无法完成购买。"
+    },
+    "restoreFailed": {
+      "code": 1004,
+      "severity": "error",
+      "en": "Couldn't restore purchases.",
+      "zh": "无法恢复购买。"
+    },
 
     "pageSaveFailed": {
       "code": 2001,
@@ -109,6 +121,12 @@
       "severity": "error",
       "en": "The workspace folder can't be reached.",
       "zh": "无法访问工作区文件夹。"
+    },
+    "workspaceFolderAccess": {
+      "code": 2106,
+      "severity": "warning",
+      "en": "Hikki needs your permission to open the workspace folder again.",
+      "zh": "Hikki 需要你再次授权打开工作区文件夹。"
     },
     "workspaceSyncFailed": {
       "code": 2102,

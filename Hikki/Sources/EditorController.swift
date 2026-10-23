@@ -95,6 +95,8 @@ final class EditorController {
 
     init() {
         webView = makeWebView()
+        // An editor made after the trial ended (the split pane's) starts read only as well.
+        readOnly = !Purchases.shared.access.canWrite
         Self.live.removeAll { $0.editor == nil }
         Self.live.append(WeakEditor(editor: self))
         let center = NotificationCenter.default
@@ -354,9 +356,9 @@ final class EditorController {
             do {
                 guard let record = try store?.document(id: id), currentDocumentID == id else { return }
                 let applied = try await webView.callAsyncJavaScript(
-                    "return window.hikki.reload(page)", arguments: ["page": try PagePayload.make(from: record)], contentWorld: .page)
+                    "return window.hikki.reload(page)", arguments: ["page": try payload(record)], contentWorld: .page)
                 if applied as? Bool == true {
-                    pageState.loaded(id, locked: record.isLocked)
+                    pageState.loaded(id, locked: record.isLocked || readOnly)
                     loaded = (id, try LoadedContent(record))
                 }
                 Log.info(
@@ -457,10 +459,23 @@ final class EditorController {
         return ["pages": entries.map { ["id": $0.id, "title": $0.title, "icon": $0.icon ?? NSNull()] as [String: Any] }]
     }
 
+    /// Every page read-only — the trial is over (`Access.expired`): the page shown locks (or unlocks, once bought) at
+    /// once, and each page loads locked meanwhile.
+    var readOnly = false {
+        didSet { if readOnly != oldValue { sendLockIfChanged() } }
+    }
+
+    /// A page as the editor loads it, locked while the app is read-only.
+    private func payload(_ record: DocumentRecord) throws -> [String: Any] {
+        var page = try PagePayload.make(from: record)
+        page["locked"] = record.isLocked || readOnly
+        return page
+    }
+
     /// The open page was locked or unlocked while shown (`window.hikki.setLocked`; a page load carries its own).
     private func sendLockIfChanged() {
         guard isReady, pendingDocumentID == nil, let tree,
-            let locked = pageState.lockChange(showing: currentDocumentID, in: tree)
+            let locked = pageState.lockChange(showing: currentDocumentID, in: tree, readOnly: readOnly)
         else { return }
         send("window.hikki.setLocked(locked)", ["locked": locked], label: "setLocked")
     }
@@ -1039,12 +1054,12 @@ final class EditorController {
             }
             _ = try await webView.callAsyncJavaScript(
                 "window.hikki.loadDocument(page)",
-                arguments: ["page": try PagePayload.make(from: record)],
+                arguments: ["page": try payload(record)],
                 contentWorld: .page
             )
             loaded = (id, try LoadedContent(record))
             // The payload carried the page's lock; one set while it loaded goes now.
-            pageState.loaded(id, locked: record.isLocked)
+            pageState.loaded(id, locked: record.isLocked || readOnly)
             sendLockIfChanged()
             pushComments()
             await pushAIChanges()

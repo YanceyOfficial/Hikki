@@ -135,6 +135,10 @@ struct SettingsView: View {
         }
         .environment(\.colorTone, ColorTone.standard)
         .tint(ColorTone.standard.fill)
+        // Settings is itself a sheet: the unlock comes up over it from here (ContentView's waits meanwhile).
+        .sheet(isPresented: Binding(get: { Purchases.shared.isShowingUnlock }, set: { Purchases.shared.isShowingUnlock = $0 })) {
+            UnlockHost()
+        }
     }
 
     private var dialog: some View {
@@ -445,7 +449,7 @@ private struct TransferSection: View {
         ) { result in
             guard case .success(let urls) = result, !urls.isEmpty else { return }
             switch picking {
-            case .importFiles: transfer.startImport(urls, model: model)
+            case .importFiles: if Purchases.shared.allowsWriting() { transfer.startImport(urls, model: model) }
             case .exportFolder: transfer.startExport(format, to: urls[0], model: model)
             }
         }
@@ -820,6 +824,20 @@ private struct AboutSection: View {
     @State private var showingLogs = false
 
     var body: some View {
+        // The trial and the unlock: where it stands, Unlock / Restore Purchases.
+        Section {
+            LabeledContent("app:unlock.statusLabel") {
+                Text(purchaseStatus).accessibilityIdentifier("settings-unlock-status")
+            }
+            if Purchases.shared.access != .unlocked {
+                Button("app:unlock.show") { Purchases.shared.isShowingUnlock = true }
+                    .accessibilityIdentifier("settings-unlock")
+            }
+            Button("app:unlock.restore") { Task { await Purchases.shared.restore() } }
+                .accessibilityIdentifier("settings-restore")
+        } header: {
+            Text("app:unlock.header")
+        }
         Section {
             LabeledContent("app:settings.version") {
                 Text(verbatim: Self.version).textSelection(.enabled)
@@ -859,6 +877,14 @@ private struct AboutSection: View {
             Text("app:diagnostics.header")
         } footer: {
             Text("app:diagnostics.detail")
+        }
+    }
+
+    private var purchaseStatus: LocalizedStringKey {
+        switch Purchases.shared.access {
+        case .trial(let days): "app:unlock.statusTrial \(days.formatted())"
+        case .expired: "app:unlock.statusExpired"
+        case .unlocked: "app:unlock.statusUnlocked"
         }
     }
 

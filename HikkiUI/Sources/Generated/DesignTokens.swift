@@ -229,6 +229,7 @@ public nonisolated enum Size {
     public static let historyHeight: CGFloat = 600
     public static let thumbnail: CGFloat = 84
     public static let mediaSheet: CGFloat = 300
+    public static let unlockSheet: CGFloat = 420
     public static let coverSwatch: CGFloat = 96
     public static let coverSwatchHeight: CGFloat = 56
     public static let coverPhoto: CGFloat = 150

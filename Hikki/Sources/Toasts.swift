@@ -45,14 +45,23 @@ final class Toasts {
         return incident
     }
 
-    func show(_ incident: Incident) {
+    /// A failure the user can mend from the toast ("Choose Folder…") instead of copying its details.
+    static func report(
+        _ code: ErrorCode, _ error: (any Error)? = nil, category: String, actionTitle: LocalizedStringKey,
+        action: @escaping () -> Void
+    ) {
+        let incident = Incident.report(code, error, category: category)
+        shared.show(incident, actionTitle: actionTitle, action: action)
+    }
+
+    func show(_ incident: Incident, actionTitle: LocalizedStringKey? = nil, action: (() -> Void)? = nil) {
         let message = incident.code.message
         let details = AppInfo.current().details(for: incident, message: message)
         show(
             Item(
                 kind: incident.code.severity == .warning ? .warning : .error, message: message,
-                reference: incident.reference, actionTitle: "app:toast.copyDetails",
-                action: { Clipboard.copy(details) }, key: incident.code.rawValue))
+                reference: incident.reference, actionTitle: actionTitle ?? "app:toast.copyDetails",
+                action: action ?? { Clipboard.copy(details) }, key: incident.code.rawValue))
     }
 
     /// A confirmation or note ("Link copied").

@@ -9,6 +9,8 @@ export const ERRORS = {
   unknown: { code: 1000, severity: 'error' },
   crashedLastTime: { code: 1001, severity: 'warning' },
   diagnosticsExportFailed: { code: 1002, severity: 'error' },
+  purchaseFailed: { code: 1003, severity: 'error' },
+  restoreFailed: { code: 1004, severity: 'error' },
   pageSaveFailed: { code: 2001, severity: 'error' },
   pageLoadFailed: { code: 2002, severity: 'error' },
   pageCreateFailed: { code: 2003, severity: 'error' },
@@ -24,6 +26,7 @@ export const ERRORS = {
   reminderUpdateFailed: { code: 2013, severity: 'error' },
   pageLinkMissing: { code: 2014, severity: 'warning' },
   workspaceUnavailable: { code: 2101, severity: 'error' },
+  workspaceFolderAccess: { code: 2106, severity: 'warning' },
   workspaceSyncFailed: { code: 2102, severity: 'warning' },
   workspaceOpenFailed: { code: 2103, severity: 'error' },
   databaseOpenFailed: { code: 2104, severity: 'error' },
@@ -86,6 +89,10 @@ export function errorMessage(id: ErrorId): string {
       return t('error.crashedLastTime')
     case 'diagnosticsExportFailed':
       return t('error.diagnosticsExportFailed')
+    case 'purchaseFailed':
+      return t('error.purchaseFailed')
+    case 'restoreFailed':
+      return t('error.restoreFailed')
     case 'pageSaveFailed':
       return t('error.pageSaveFailed')
     case 'pageLoadFailed':
@@ -116,6 +123,8 @@ export function errorMessage(id: ErrorId): string {
       return t('error.pageLinkMissing')
     case 'workspaceUnavailable':
       return t('error.workspaceUnavailable')
+    case 'workspaceFolderAccess':
+      return t('error.workspaceFolderAccess')
     case 'workspaceSyncFailed':
       return t('error.workspaceSyncFailed')
     case 'workspaceOpenFailed':

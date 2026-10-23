@@ -26,6 +26,8 @@ struct HikkiApp: App {
         // Version, build, OS, device, language and the bridge protocol: what every report needs (the session id is on
         // every line).
         Log.info("launch", context: AppInfo.current().context)
+        // The trial and the unlock: read now, followed from here on.
+        Purchases.shared.start()
         do {
             let store = try DocumentStore.onDisk(at: paths.database)
             #if DEBUG

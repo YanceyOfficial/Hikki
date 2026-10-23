@@ -28,6 +28,12 @@ final class AIService {
         _ payload: AIRequestPayload, mediaFile: URL?, send: @escaping @MainActor ([String: Any]) -> Void
     ) {
         let id = payload.id
+        // The trial is over: AI waits for the unlock (the page says why).
+        guard Purchases.shared.access.canWrite else {
+            Purchases.shared.isShowingUnlock = true
+            send(["id": id, "type": "error", "code": "locked"])
+            return
+        }
         let client: any AIClient
         let model: AIModel
         // A model picked in the panel for this request, else the default (Settings → AI, the chat's last pick).

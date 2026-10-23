@@ -12,6 +12,7 @@ extension AppModel {
     /// Puts a version back as the page (title, body, icon, cover). Editors showing the page hand over their unsaved
     /// edits first, and the page as it is now is kept as a version — restoring can itself be undone from the history.
     func restore(_ version: PageVersion, editors: [EditorController]) async {
+        guard Purchases.shared.allowsWriting() else { return }
         let id = version.pageId
         for editor in editors { await editor.flush(reason: "restore") }
         do {

@@ -131,4 +131,18 @@ struct FolderBookmarkTests {
         .write(to: WorkspaceFolder.identityURL(in: root))
         #expect(try WorkspaceFolder.readIdentity(in: root) == nil)
     }
+
+    /// A folder this process may not read asks for the folder again; one that reads, or is gone, doesn't.
+    @Test func aFolderItMayNotReadIsDenied() throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "hikki-access-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: root.path)
+            try? FileManager.default.removeItem(at: root)
+        }
+        #expect(!WorkspaceFolder.accessDenied(at: root))
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: root.path)
+        #expect(WorkspaceFolder.accessDenied(at: root))
+        #expect(!WorkspaceFolder.accessDenied(at: root.deletingLastPathComponent().appending(path: "hikki-gone-\(UUID().uuidString)")))
+    }
 }

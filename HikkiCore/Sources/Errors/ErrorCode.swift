@@ -11,6 +11,8 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
     case unknown
     case crashedLastTime
     case diagnosticsExportFailed
+    case purchaseFailed
+    case restoreFailed
     case pageSaveFailed
     case pageLoadFailed
     case pageCreateFailed
@@ -26,6 +28,7 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
     case reminderUpdateFailed
     case pageLinkMissing
     case workspaceUnavailable
+    case workspaceFolderAccess
     case workspaceSyncFailed
     case workspaceOpenFailed
     case databaseOpenFailed
@@ -72,6 +75,8 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .unknown: 1000
         case .crashedLastTime: 1001
         case .diagnosticsExportFailed: 1002
+        case .purchaseFailed: 1003
+        case .restoreFailed: 1004
         case .pageSaveFailed: 2001
         case .pageLoadFailed: 2002
         case .pageCreateFailed: 2003
@@ -87,6 +92,7 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .reminderUpdateFailed: 2013
         case .pageLinkMissing: 2014
         case .workspaceUnavailable: 2101
+        case .workspaceFolderAccess: 2106
         case .workspaceSyncFailed: 2102
         case .workspaceOpenFailed: 2103
         case .databaseOpenFailed: 2104
@@ -153,6 +159,8 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .unknown: .error
         case .crashedLastTime: .warning
         case .diagnosticsExportFailed: .error
+        case .purchaseFailed: .error
+        case .restoreFailed: .error
         case .pageSaveFailed: .error
         case .pageLoadFailed: .error
         case .pageCreateFailed: .error
@@ -168,6 +176,7 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .reminderUpdateFailed: .error
         case .pageLinkMissing: .warning
         case .workspaceUnavailable: .error
+        case .workspaceFolderAccess: .warning
         case .workspaceSyncFailed: .warning
         case .workspaceOpenFailed: .error
         case .databaseOpenFailed: .error

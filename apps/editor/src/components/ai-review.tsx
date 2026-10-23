@@ -217,6 +217,8 @@ export function aiErrorText(error: NonNullable<AIReviewProps['session']['error']
         : t('ai.error.rejected')
     case 'mediaUnreadable':
       return t('ai.error.mediaUnreadable')
+    case 'locked':
+      return t('ai.error.locked')
     default:
       return t('ai.error.invalidResponse')
   }

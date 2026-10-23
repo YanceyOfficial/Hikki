@@ -476,7 +476,8 @@
       "rejectedWith": "The request was refused: {{message}}",
       "invalidResponse": "The answer couldn’t be read. Try again.",
       "badBaseURL": "The {{provider}} address in Settings → AI isn’t usable: use https (http only to this device).",
-      "mediaUnreadable": "This file couldn’t be read for AI. Pictures and PDFs stored in the workspace work."
+      "mediaUnreadable": "This file couldn’t be read for AI. Pictures and PDFs stored in the workspace work.",
+      "locked": "The free trial has ended: unlock Hikki to use AI."
     },
     "change": {
       "approve": "Approve",
@@ -533,6 +534,8 @@
     "unknown": "Something went wrong.",
     "crashedLastTime": "Hikki quit unexpectedly last time.",
     "diagnosticsExportFailed": "Couldn't put the diagnostics together.",
+    "purchaseFailed": "Couldn't complete the purchase.",
+    "restoreFailed": "Couldn't restore purchases.",
     "pageSaveFailed": "Couldn't save the page.",
     "pageLoadFailed": "Couldn't open the page.",
     "pageCreateFailed": "Couldn't create the page.",
@@ -548,6 +551,7 @@
     "reminderUpdateFailed": "Couldn't update the reminder.",
     "pageLinkMissing": "The page this link points to no longer exists.",
     "workspaceUnavailable": "The workspace folder can't be reached.",
+    "workspaceFolderAccess": "Hikki needs your permission to open the workspace folder again.",
     "workspaceSyncFailed": "Couldn't sync with the workspace folder.",
     "workspaceOpenFailed": "Couldn't open the workspace.",
     "databaseOpenFailed": "Couldn't open the local database.",

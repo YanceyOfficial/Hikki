@@ -1,0 +1,39 @@
+{
+  "identifier" : "6E4B8A1C-0D2F-4C57-9B1E-48F2A3C5D901",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "19.99",
+      "familyShareable" : false,
+      "internalID" : "6824055992",
+      "localizations" : [
+        {
+          "description" : "Everything in Hikki on iPhone, iPad and Mac, for good.",
+          "displayName" : "Hikki",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "在 iPhone、iPad 和 Mac 上永久使用 Hikki 的全部功能。",
+          "displayName" : "Hikki",
+          "locale" : "zh_Hans"
+        }
+      ],
+      "productID" : "app.yancey.hikki.unlock",
+      "referenceName" : "Hikki Unlock",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6824055991",
+    "_developerTeamID" : "YLF27G9ZMT"
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

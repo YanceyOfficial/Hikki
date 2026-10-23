@@ -113,6 +113,12 @@ final class AppModel {
         do {
             let folder = try WorkspaceFolder.url(for: workspace, appRoot: appRoot)
             _ = folder.startAccessingSecurityScopedResource()  // released when the app quits or the folder changes
+            #if os(macOS)
+                if case .folder = workspace.location, WorkspaceFolder.accessDenied(at: folder) {
+                    askForFolderAccess(folder)
+                    return
+                }
+            #endif
             workspaceFolder = folder
             syncIdentity()
             assets.useWorkspaceFolder(folder)
@@ -178,6 +184,42 @@ final class AppModel {
             syncError = error.localizedDescription
         }
     }
+
+    #if os(macOS)
+        /// The workspace's folder is there but the sandbox keeps it shut (a bookmark from before the Mac app was
+        /// sandboxed, or a revoked grant): only the user picking it again opens it. Until then nothing syncs; Settings →
+        /// Storage → Change folder does the same later.
+        private func askForFolderAccess(_ folder: URL) {
+            folder.stopAccessingSecurityScopedResource()
+            Toasts.report(.workspaceFolderAccess, category: "workspace", actionTitle: "app:workspace.chooseFolderAgain") {
+                [weak self] in
+                FolderAccessPanel.choose(startingAt: folder) { url in
+                    do {
+                        try self?.grantFolderAccess(url, was: folder)
+                    } catch {
+                        Toasts.report(.workspaceUnavailable, error, category: "workspace")
+                    }
+                }
+            }
+            syncError = ErrorCode.workspaceFolderAccess.message
+        }
+
+        /// The folder picked again: the same folder keeps everything as it was (only its bookmark is new); another
+        /// folder is a change of location.
+        func grantFolderAccess(_ url: URL, was folder: URL) throws {
+            guard var workspace else { return }
+            guard url.standardizedFileURL.path == folder.standardizedFileURL.path else {
+                try changeLocation(to: url)
+                return
+            }
+            let bookmark = try FolderBookmark.make(for: url)
+            workspace.location = .folder(bookmark: bookmark, displayName: FolderBookmark.displayName(for: url))
+            try workspaceStore.save(workspace)
+            self.workspace = workspace
+            Log.info("workspace folder access granted again", category: "workspace")
+            startWorkspaceSync()
+        }
+    #endif
 
     /// Settings → Storage → Change folder: the workspace moves to (or joins) another folder. Local pages are
     /// written there and the folder's pages imported; nothing is deleted on either side. A folder that already

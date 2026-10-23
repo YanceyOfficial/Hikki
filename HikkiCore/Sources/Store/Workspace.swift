@@ -169,6 +169,22 @@ public enum WorkspaceFolder {
         return try body(url)
     }
 
+    /// The folder is there but this process may not read it: a Mac app in its sandbox holding a bookmark it can't
+    /// open (one made before the sandbox, or whose grant was revoked). The user then has to pick the folder again —
+    /// nothing else gives the access back. A folder that is simply gone is not this. Call with access to the folder.
+    public static func accessDenied(at url: URL) -> Bool {
+        do {
+            _ = try FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)
+            return false
+        } catch let error as CocoaError where error.code == .fileReadNoPermission {
+            return true
+        } catch let error as NSError where error.domain == NSPOSIXErrorDomain {
+            return error.code == Int(EPERM) || error.code == Int(EACCES)
+        } catch {
+            return false
+        }
+    }
+
     /// What a picked folder already holds, for onboarding's "Opens ‘Yancey’s Space’ (12 pages)"; nil for an
     /// unused folder (or one whose identity is still downloading — then it reads as new; joining still
     /// adopts the identity once it arrives).

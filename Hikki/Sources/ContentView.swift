@@ -137,6 +137,14 @@ struct ContentView: View {
             }
             .animation(Motion.easeOut(), value: navigator.isSplit)
             .background(Theme.background)
+            // After the trial: the pages are read only, a bar over their foot says so (the unlock sheet: below).
+            .overlay(alignment: .bottom) {
+                if !Purchases.shared.access.canWrite {
+                    ReadOnlyBar { Purchases.shared.isShowingUnlock = true }
+                        .padding(.bottom, wide ? Spacing.s4 : Size.floatingBar + Spacing.s6)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
             #if os(macOS)
                 // Photos' way: with the inspector open the page title and subtitle leave the toolbar, so the tabs keep
                 // their width. Split, each side's bar names its page.
@@ -208,6 +216,19 @@ struct ContentView: View {
         // AI on the selection handed a request to the chat: it comes up where it belongs and the request is sent.
         .onChange(of: navigator.aiHandoff) { _, handoff in
             if let handoff { routeAIHandoff(handoff) }
+        }
+        // The trial and the unlock (Purchases.swift): the sheet when something asks for it; after the trial every page
+        // is read only, with a bar saying so over the page's foot.
+        .sheet(
+            isPresented: Binding(
+                get: { Purchases.shared.isShowingUnlock && !navigator.isShowingSettings },
+                set: { Purchases.shared.isShowingUnlock = $0 })
+        ) {
+            UnlockHost()
+        }
+        .onChange(of: Purchases.shared.access.canWrite, initial: true) { _, canWrite in
+            editors.main.readOnly = !canWrite
+            editors.split?.readOnly = !canWrite
         }
         #if os(iOS)
             // iPhone: search takes the whole screen (a sheet's large corner and its keyboard avoidance hid the field);
@@ -319,6 +340,7 @@ struct ContentView: View {
             .onChange(of: navigator.importDrop) { _, drop in
                 guard let drop else { return }
                 navigator.importDrop = nil
+                guard Purchases.shared.allowsWriting() else { return }
                 Task { await importFiles(drop.urls, parentID: drop.parentID) }
             }
     }

@@ -4829,6 +4829,23 @@
         }
       }
     },
+    "app:error.purchaseFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't complete the purchase."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法完成购买。"
+          }
+        }
+      }
+    },
     "app:error.rateLimited": {
       "extractionState": "manual",
       "localizations": {
@@ -4859,6 +4876,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法更新提醒。"
+          }
+        }
+      }
+    },
+    "app:error.restoreFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't restore purchases."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法恢复购买。"
           }
         }
       }
@@ -5012,6 +5046,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法下载这张图片。"
+          }
+        }
+      }
+    },
+    "app:error.workspaceFolderAccess": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hikki needs your permission to open the workspace folder again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hikki 需要你再次授权打开工作区文件夹。"
           }
         }
       }
@@ -12173,6 +12224,363 @@
         }
       }
     },
+    "app:unlock.buy %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlock Hikki — %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "解锁 Hikki — %@"
+          }
+        }
+      }
+    },
+    "app:unlock.expired": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your free trial has ended. Your pages still open, search and export — unlock to write again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "免费试用已结束。页面仍可打开、搜索和导出，解锁后即可继续编辑。"
+          }
+        }
+      }
+    },
+    "app:unlock.header": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Purchase"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "购买"
+          }
+        }
+      }
+    },
+    "app:unlock.nothingToRestore": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There’s no purchase to restore on this Apple Account."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此 Apple 账户没有可恢复的购买。"
+          }
+        }
+      }
+    },
+    "app:unlock.point.devices": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One purchase for iPhone, iPad and Mac."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一次购买，iPhone、iPad 和 Mac 通用。"
+          }
+        }
+      }
+    },
+    "app:unlock.point.once": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pay once. No subscription."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一次付费，没有订阅。"
+          }
+        }
+      }
+    },
+    "app:unlock.point.yours": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your notes stay yours: without it they still open, search and export."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "笔记始终属于你：即使不购买，也能打开、搜索和导出。"
+          }
+        }
+      }
+    },
+    "app:unlock.readOnly": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trial ended — pages are read only"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "试用已结束，页面为只读"
+          }
+        }
+      }
+    },
+    "app:unlock.restore": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore Purchases"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复购买"
+          }
+        }
+      }
+    },
+    "app:unlock.short": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlock"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "解锁"
+          }
+        }
+      }
+    },
+    "app:unlock.show": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlock Hikki…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "解锁 Hikki…"
+          }
+        }
+      }
+    },
+    "app:unlock.statusExpired": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trial ended (read only)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "试用已结束（只读）"
+          }
+        }
+      }
+    },
+    "app:unlock.statusLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Status"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "状态"
+          }
+        }
+      }
+    },
+    "app:unlock.statusTrial %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Free trial, %@ days left"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "免费试用，剩余 %@ 天"
+          }
+        }
+      }
+    },
+    "app:unlock.statusUnlocked": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unlocked"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已解锁"
+          }
+        }
+      }
+    },
+    "app:unlock.thanks": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hikki is unlocked. Thank you!"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hikki 已解锁，谢谢！"
+          }
+        }
+      }
+    },
+    "app:unlock.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep writing with Hikki"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "继续用 Hikki 书写"
+          }
+        }
+      }
+    },
+    "app:unlock.titleUnlocked": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hikki is yours"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hikki 已解锁"
+          }
+        }
+      }
+    },
+    "app:unlock.trialLeft %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Days left in your free trial: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "免费试用剩余天数：%@"
+          }
+        }
+      }
+    },
+    "app:unlock.unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The App Store can’t be reached"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法连接 App Store"
+          }
+        }
+      }
+    },
+    "app:unlock.unlocked": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thank you — everything is open, on every device."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "感谢支持，所有设备上的全部功能都已开放。"
+          }
+        }
+      }
+    },
     "app:upcoming.showAll %@": {
       "extractionState": "manual",
       "localizations": {
@@ -12203,6 +12611,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "收起"
+          }
+        }
+      }
+    },
+    "app:workspace.chooseFolderAgain": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose Folder…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择文件夹…"
+          }
+        }
+      }
+    },
+    "app:workspace.grantAccess": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grant Access"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "授权访问"
+          }
+        }
+      }
+    },
+    "app:workspace.grantAccessMessage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose the workspace folder again so Hikki may open it."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请再次选择工作区文件夹，以便 Hikki 打开它。"
           }
         }
       }

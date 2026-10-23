@@ -187,6 +187,11 @@
                                 },
                                 footnote: "32 pages · 41,203 words in all")
                         }
+                        Section("UnlockSheet · ReadOnlyBar") {
+                            UnlockSheet(status: .trial(daysLeft: 9), price: "$19.99", onUnlock: {}, onRestore: {}, onClose: {})
+                            UnlockSheet(status: .expired, price: "$19.99", onUnlock: {}, onRestore: {}, onClose: {})
+                            ReadOnlyBar {}
+                        }
                         Section("ToastView") {
                             ToastView(kind: .success, message: "Link copied", close: {})
                             ToastView(

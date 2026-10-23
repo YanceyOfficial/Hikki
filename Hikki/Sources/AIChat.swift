@@ -193,6 +193,7 @@ final class AIChat {
     func send(_ text: String? = nil, store: DocumentStore?) {
         let question = (text ?? draft).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !question.isEmpty || !attachments.isEmpty, !isStreaming else { return }
+        guard Purchases.shared.allowsWriting() else { return }
         // A question sent for the user (a suggestion, a handoff from the page) leaves what they were typing alone.
         if text == nil { draft = "" }
         attachError = nil

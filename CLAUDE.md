@@ -233,7 +233,7 @@ HikkiUITests/                 XCUITest flows
   top inset and the editor makes that room itself (`setInsets` with `bleed`, `--hk-bleed-top`), so a cover fills it
   behind the status bar and the glass buttons (`.hk-cover`) and a page without one starts below them.
 - **Data directory**: `HIKKI_DATA_DIR` overrides it (UI tests, demos). DEBUG hooks: `HIKKI_OPEN_TABS=a,b`,
-  `HIKKI_OPEN_SEARCH`, `HIKKI_OPEN_FIND`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SPOTLIGHT_QUERY=<text>` (logs the page ids Spotlight ranks), `HIKKI_OPEN_FILE=<asset>` (the PDF viewer), `HIKKI_OPEN_SPLIT=<page id>|file:<asset>|picker` (split view), `HIKKI_DEBUG_SIDEBAR` (hide + show the split view sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_GALLERY_SECTION=<section>` (with `-HikkiGallery`: opens the gallery at that section), `HIKKI_DEBUG_TOAST` (a sample failure toast), `HIKKI_OPEN_AI`, `HIKKI_OPEN_PAGE_ACTIONS`, `HIKKI_DEBUG_COVER_SHEET` (opens the page's cover sheet), `HIKKI_DEBUG_AI_ASK=<question>` (asks the AI panel about the open page) and `HIKKI_DEBUG_AI_EDIT=<words>` (selects them and runs Improve writing through `window.hikki.demoAI`) — screenshots of AI at work, which need a provider key, `HIKKI_DEMO_PAGES` (an empty workspace gets sample pages, ids fixed per title — `Hikki/Sources/DemoPages.swift`; `=<n>` above 1: n pages "Page 001"…, every tenth with three subpages), `HIKKI_ACTIVATE`, `HIKKI_FRESH_TABS` (skips the window's saved tabs; UI tests set it), `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
+  `HIKKI_OPEN_SEARCH`, `HIKKI_OPEN_FIND`, `HIKKI_DEBUG_NAV=a,b,c`, `HIKKI_DEBUG_SPOTLIGHT_QUERY=<text>` (logs the page ids Spotlight ranks), `HIKKI_OPEN_FILE=<asset>` (the PDF viewer), `HIKKI_OPEN_SPLIT=<page id>|file:<asset>|picker` (split view), `HIKKI_DEBUG_SIDEBAR` (hide + show the split view sidebar), `HIKKI_OPEN_SETTINGS`, `HIKKI_GALLERY_SECTION=<section>` (with `-HikkiGallery`: opens the gallery at that section), `HIKKI_DEBUG_TOAST` (a sample failure toast), `HIKKI_ACCESS=<state>` (the trial, see Trial and unlock), `HIKKI_OPEN_AI`, `HIKKI_OPEN_PAGE_ACTIONS`, `HIKKI_DEBUG_COVER_SHEET` (opens the page's cover sheet), `HIKKI_DEBUG_AI_ASK=<question>` (asks the AI panel about the open page) and `HIKKI_DEBUG_AI_EDIT=<words>` (selects them and runs Improve writing through `window.hikki.demoAI`) — screenshots of AI at work, which need a provider key, `HIKKI_DEMO_PAGES` (an empty workspace gets sample pages, ids fixed per title — `Hikki/Sources/DemoPages.swift`; `=<n>` above 1: n pages "Page 001"…, every tenth with three subpages), `HIKKI_ACTIVATE`, `HIKKI_FRESH_TABS` (skips the window's saved tabs; UI tests set it), `HIKKI_WORKSPACE=<name>` (seeds a device workspace, skips onboarding;
   UI tests set it by default — pass `workspace: nil` to `launch()` to test onboarding).
 - **Storage (option C)**: the workspace folder is the source of truth — one JSON file per page
   (`HikkiCore/Sources/Store/PageFile.swift`: `pages/<id>.json`, format-versioned, content as JSON); SQLite is a
@@ -825,6 +825,15 @@ HikkiUITests/                 XCUITest flows
 - **Editor content safety**: content that doesn't fit the schema (corrupt, or from a newer Hikki) opens read-only and
   is never saved (`enableContentCheck`); housekeeping transactions (`addToHistory: false` — UniqueID stamping
   block ids, remote reloads) never count as edits; continuous typing still saves every 2 s (`maxWaitMs`).
+- **Trial and unlock** (StoreKit 2, `Hikki/Sources/Purchases.swift`): free for `Access.trialDays` (14) days from the
+  first download (`AppTransaction.originalPurchaseDate`; this install's first launch where the store can't say), then
+  one non-consumable, `app.yancey.hikki.unlock` (universal purchase: iPhone, iPad and Mac). Past the trial without it
+  the app is read only (`Access`, `HikkiCore/Sources/Store/Access.swift`): every editor is locked the way a locked page
+  is (`EditorController.readOnly`, `EditorPageState.lockChange(…readOnly:)`), a `ReadOnlyBar` sits over the detail
+  column, and every way to write — new pages, imports, restores, AI — goes through `Purchases.allowsWriting()`, which
+  brings up HikkiUI's `UnlockSheet` instead (also Settings → About → Purchase, with Restore Purchases). Reading,
+  search, copy and export stay open. Debug runs are unlocked unless `HIKKI_ACCESS=trial|expired|unlocked|store`;
+  `store` asks StoreKit itself — the `Hikki-StoreKit` scheme runs with `Hikki/Hikki.storekit`.
 - **Lock page** (Page menu ⇧⌘L, the page ⋯ menu, the sidebar context menu): `lockedAt` on the page
   (`DocumentStore.setLocked`; it bumps `updatedAt` like icon/cover so other devices pick it up). The load payload
   carries `locked`, `window.hikki.setLocked` flips it while open (each editor, split pane included, for the page it
@@ -865,6 +874,15 @@ HikkiUITests/                 XCUITest flows
   detected/not-detected status, exodus's way.
 - **Appearance** (Settings → General → Theme) is applied app-wide (`NSApp.appearance` / window `overrideUserInterfaceStyle`),
   not with `preferredColorScheme`, which left parts of windows in the old scheme after switching back.
+- **Mac sandbox** (the Mac App Store takes nothing else): `Hikki/Hikki.entitlements` (Release) — App Sandbox, network
+  out, folders the user picks (read-write) with app-scoped bookmarks — and `Hikki/Hikki-Debug.entitlements`, the same
+  plus the temporary folders (`/private/tmp`, `/private/var/folders`) where UI tests and demo runs keep their data
+  (`HIKKI_DATA_DIR`); set per configuration with `CODE_SIGN_ENTITLEMENTS[sdk=macosx*]`, iOS has none. The app's data
+  lives in its container; `Hikki/Resources/Mac/container-migration.plist` moves a Mac's data from before the sandbox
+  (`~/Library/Application Support/Hikki`, the preferences) in on the first sandboxed launch. A workspace folder whose
+  bookmark the sandbox won't open (made before it, or a revoked grant — `WorkspaceFolder.accessDenied`) syncs nothing
+  and asks for the folder again (`workspaceFolderAccess`, its toast's Choose Folder… → `FolderAccessPanel`); the same
+  folder picked again keeps everything (`AppModel.grantFolderAccess`), another one is a change of location.
 - **macOS windows**: closing the last main window only hides it (Dock click restores it), its Settings sheet with it —
   `Hikki/Sources/WindowLifecycle.swift`.
 - **Menu bar extra** (`Hikki/Sources/MenuBarExtra.swift`, macOS, Settings → General → Menu bar): its menu has no

@@ -476,7 +476,8 @@
       "rejectedWith": "请求被拒绝：{{message}}",
       "invalidResponse": "无法读取回答。请重试。",
       "badBaseURL": "“设置 → AI”中的 {{provider}} 地址无法使用：请使用 https（http 只限本机）。",
-      "mediaUnreadable": "无法为 AI 读取此文件。仅支持存放在工作区中的图片和 PDF。"
+      "mediaUnreadable": "无法为 AI 读取此文件。仅支持存放在工作区中的图片和 PDF。",
+      "locked": "免费试用已结束，解锁 Hikki 后即可使用 AI。"
     },
     "change": {
       "approve": "采纳",
@@ -533,6 +534,8 @@
     "unknown": "出了点问题。",
     "crashedLastTime": "Hikki 上次意外退出。",
     "diagnosticsExportFailed": "无法生成诊断包。",
+    "purchaseFailed": "无法完成购买。",
+    "restoreFailed": "无法恢复购买。",
     "pageSaveFailed": "无法保存页面。",
     "pageLoadFailed": "无法打开页面。",
     "pageCreateFailed": "无法新建页面。",
@@ -548,6 +551,7 @@
     "reminderUpdateFailed": "无法更新提醒。",
     "pageLinkMissing": "这个链接指向的页面已不存在。",
     "workspaceUnavailable": "无法访问工作区文件夹。",
+    "workspaceFolderAccess": "Hikki 需要你再次授权打开工作区文件夹。",
     "workspaceSyncFailed": "无法与工作区文件夹同步。",
     "workspaceOpenFailed": "无法打开工作区。",
     "databaseOpenFailed": "无法打开本地数据库。",
