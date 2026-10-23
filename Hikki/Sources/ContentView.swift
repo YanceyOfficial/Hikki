@@ -166,6 +166,9 @@ struct ContentView: View {
             }
         }
         #if os(iOS)
+            // The sidebar beside the page from the start, as on the Mac: the automatic style let a regular width short
+            // of an iPad's landscape (an unfolded iPhone Duo) open on the page alone, the sidebar overlaid on demand.
+            .navigationSplitViewStyle(.balanced)
             // Settings: the dialog in a page-sized sheet where the window is wide (iPad), the hub list on iPhone.
             .sheet(isPresented: $navigator.isShowingSettings) {
                 SettingsView(hub: !wide)
