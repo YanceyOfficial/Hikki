@@ -632,7 +632,8 @@ HikkiUITests/                 XCUITest flows
   (`PageComment.plainBody`). The page column is
   `.hk-column` alone in `apps/editor/index.html` (fixed 96 px side margins).
 - **Inspector** (Mac/iPad: a full-height trailing panel inside the detail column — SwiftUI's `.inspector` widened the
-  window — with the window title hidden while it is open, as in Photos; iPhone: a sheet from the page ⋯ menu):
+  window — with the window title hidden while it is open, as in Photos; on iPad and an unfolded Duo the sidebar hides
+  while it is open and comes back as it was, `sidebarBeforeInspector` in ContentView; iPhone: a sheet from the page ⋯ menu):
   `Hikki/Sources/InspectorView.swift`, one mode at a time (`InspectorMode`): the outline, the page's comments (open /
   resolved threads, Reopen) or the AI chat (`AIChatView`, the same conversation as the iPhone sheet, about the page beside it — and the passage selected
   in it, reported by the `selection` bridge message; Notion's composer: attached pictures / PDFs (+, drop, paste; sent as

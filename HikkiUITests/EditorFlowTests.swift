@@ -1794,6 +1794,28 @@ final class EditorFlowTests: XCTestCase {
     }
 
     /// iPad / Mac (window toolbar): the inspector lists the page's headings, one jumps there, Info shows the counts.
+    /// iPad (and an unfolded iPhone Duo): opening the page's panel hides the sidebar, closing it brings it back.
+    func testPadPanelHidesTheSidebar() throws {
+        #if os(macOS)
+            throw XCTSkip("the Mac's window grows instead")
+        #else
+            continueAfterFailure = false
+            let app = launch(environment: ["HIKKI_DEMO_PAGES": "1", "HIKKI_DEBUG_NAV": "demo-46ffce8"])
+            guard app.buttons["nav-home"].waitForExistence(timeout: 10) else { throw XCTSkip("the iPad layout") }
+            let search = app.descendants(matching: .any)["sidebar-search"].firstMatch
+            let shown = NSPredicate(format: "isHittable == true")
+            let hidden = NSPredicate(format: "exists == false OR isHittable == false")
+            wait(for: [expectation(for: shown, evaluatedWith: search)], timeout: 10)
+            let toggle = app.buttons["inspector-toggle"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(toggle, in: app))
+            toggle.tap()
+            wait(for: [expectation(for: hidden, evaluatedWith: search)], timeout: 5)
+            attachScreenshot(app, "panel-without-sidebar")
+            toggle.tap()
+            wait(for: [expectation(for: shown, evaluatedWith: search)], timeout: 5)
+        #endif
+    }
+
     func testInspectorShowsOutlineAndCounts() throws {
         continueAfterFailure = false
         let app = launch()

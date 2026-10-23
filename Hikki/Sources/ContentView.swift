@@ -35,6 +35,8 @@ struct ContentView: View {
     @State private var trailingChat = AIChat()
     @State private var navigator = Navigator()
     @State private var columns: NavigationSplitViewVisibility = .all
+    /// The sidebar as it was before the page's panel hid it (iOS), to put back when the panel closes.
+    @State private var sidebarBeforeInspector: NavigationSplitViewVisibility?
     @SceneStorage("tabs") private var storedTabs: Data?
     /// A finished export waiting for the save panel / exporter.
     @State private var exportFile: ExportFile?
@@ -230,6 +232,21 @@ struct ContentView: View {
             editors.main.readOnly = !canWrite
             editors.split?.readOnly = !canWrite
         }
+        #if os(iOS)
+            // iPad and an unfolded iPhone Duo: the page's panel (outline, comments, AI) takes the sidebar's room — it
+            // hides while the panel is open and comes back as it was when it closes, unless the reader brought it back
+            // meanwhile. The Mac's window can grow instead.
+            .onChange(of: wide && navigator.isShowingInspector && navigator.route.pageID != nil) { _, open in
+                if open {
+                    guard columns != .detailOnly else { return }
+                    sidebarBeforeInspector = columns
+                    withAnimation(Motion.easeOut()) { columns = .detailOnly }
+                } else if let previous = sidebarBeforeInspector {
+                    sidebarBeforeInspector = nil
+                    if columns == .detailOnly { withAnimation(Motion.easeOut()) { columns = previous } }
+                }
+            }
+        #endif
         #if os(iOS)
             // iPhone: search takes the whole screen (a sheet's large corner and its keyboard avoidance hid the field);
             // a page-sized sheet on iPad.
