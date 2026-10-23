@@ -498,4 +498,17 @@ struct NavigationTabsTests {
         let old = try JSONDecoder().decode(Tabs.self, from: JSONSerialization.data(withJSONObject: object))
         #expect(old.splits.isEmpty)
     }
+
+    @Test func keepActiveOnlyLeavesTheFocusedTabAndItsSplit() throws {
+        var tabs = Tabs(initial: "a")
+        tabs.openTab("b")
+        tabs.openTab("c")
+        tabs.keepActiveOnly()
+        #expect(tabs.tabs.map(\.route) == ["c"])
+        let left = tabs.activeID
+        _ = tabs.openSplit("d", beside: left)
+        tabs.keepActiveOnly()
+        #expect(Set(tabs.tabs.map(\.route)) == ["c", "d"])
+        #expect(tabs.activeSplit != nil)
+    }
 }

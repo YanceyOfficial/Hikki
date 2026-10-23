@@ -816,6 +816,7 @@ private struct NativeDetailToolbar: ToolbarContent {
     @ViewBuilder private var backForward: some View {
         Button(action: navigator.goBack) { IconLabel("app:chrome.back", icon: .caretLeft) }
             .disabled(!navigator.tabs.canGoBack)
+            .accessibilityIdentifier("chrome-back")
         Button(action: navigator.goForward) { IconLabel("app:chrome.forward", icon: .caretRight) }
             .disabled(!navigator.tabs.canGoForward)
     }
@@ -837,6 +838,15 @@ private struct NativeDetailToolbar: ToolbarContent {
             // an empty circle on a crowded iPad toolbar.
             ToolbarItemGroup(placement: .navigation) { backForward }
         #endif
+        #if os(macOS)
+            tabStrip
+        #endif
+        pageItems
+    }
+
+    /// The tabs, Chrome's way — the Mac's alone: iPad and an unfolded iPhone Duo have no bar over the page
+    /// (`Navigator.usesTabs`), their sidebar picks open in place.
+    @ToolbarContentBuilder private var tabStrip: some ToolbarContent {
         ToolbarItem(placement: .principal) {
             TabStrip(
                 // The two tabs of a split are one joined item; its focused half is the active one.
@@ -878,6 +888,11 @@ private struct NativeDetailToolbar: ToolbarContent {
             #endif
         }
         .sharedBackgroundVisibility(.hidden)
+    }
+
+    /// The page's tools: on iPad the only glass left at the top, over the page (an iPhone Duo's go into its
+    /// vertical bar).
+    @ToolbarContentBuilder private var pageItems: some ToolbarContent {
         // Split, each side's bar has its page's tools (`PaneBar`); the toolbar keeps navigation and the tabs.
         if !navigator.isSplit, let id = navigator.route.pageID, let page = model.tree.page(id) {
             if page.isLocked {

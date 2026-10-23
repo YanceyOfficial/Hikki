@@ -1664,8 +1664,34 @@ final class EditorFlowTests: XCTestCase {
         attachScreenshot(app, "drag-link")
     }
 
+    #if os(iOS)
+        /// iPad / an unfolded iPhone Duo: no bar over the page — no tabs; a sidebar pick opens in place and back returns.
+        func testPadShowsOnePageWithoutTabs() throws {
+            continueAfterFailure = false
+            let app = launch()
+            guard app.buttons["nav-home"].waitForExistence(timeout: 10) else {
+                throw XCTSkip("needs the sidebar beside the page — run on iPad")
+            }
+            createPage(app, title: "Alpha")
+            createPage(app, title: "Beta")
+            app.descendants(matching: .any)["page-row-Alpha"].firstMatch.tap()
+            let title = app.webViews.textViews["Page title"].firstMatch
+            let shows = { (text: String) in
+                XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", text), object: title)
+            }
+            XCTAssertEqual(XCTWaiter.wait(for: [shows("Alpha")], timeout: 5), .completed)
+            XCTAssertFalse(app.descendants(matching: .any)["tab-Alpha"].exists, "a tab strip over the page")
+            XCTAssertFalse(app.descendants(matching: .any)["tab-Beta"].exists, "Beta kept a tab of its own")
+            app.buttons["chrome-back"].firstMatch.tap()
+            XCTAssertEqual(XCTWaiter.wait(for: [shows("Beta")], timeout: 5), .completed, "back did not return to the page before")
+        }
+    #endif
+
     /// iPad: a sidebar page dropped onto a tab shows there; dropped on a tab's edge it opens in a new tab.
     func testDragPageOntoTabStripOpensIt() throws {
+        #if os(iOS)
+            throw XCTSkip("tabs are the Mac's: iPad shows one page at a time")
+        #endif
         continueAfterFailure = false
         let app = launch()
         guard app.buttons["nav-home"].waitForExistence(timeout: 10) else {
@@ -2018,13 +2044,17 @@ final class EditorFlowTests: XCTestCase {
         while outlines.count < 2 && Date() < deadline { usleep(200_000) }
         XCTAssertEqual(outlines.count, 2, "each side shows its own panel")
         attachScreenshot(app, "split-view")
-        // The two tabs of the split are joined in the strip; swapping trades their places.
-        XCTAssertTrue(app.descendants(matching: .any)["tab-split"].firstMatch.exists)
-        let tabX = { (title: String) in app.descendants(matching: .any)["tab-\(title)"].firstMatch.frame.minX }
-        XCTAssertLessThan(tabX("Textbook"), tabX("Notes"))
+        // The two tabs of the split are joined in the strip (the Mac's); swapping trades their places.
+        #if os(macOS)
+            XCTAssertTrue(app.descendants(matching: .any)["tab-split"].firstMatch.exists)
+            let tabX = { (title: String) in app.descendants(matching: .any)["tab-\(title)"].firstMatch.frame.minX }
+            XCTAssertLessThan(tabX("Textbook"), tabX("Notes"))
+        #endif
         app.descendants(matching: .any)["split-swap-trailing"].firstMatch.tap()
         sleep(1)
-        XCTAssertLessThan(tabX("Notes"), tabX("Textbook"), "the sides did not swap")
+        #if os(macOS)
+            XCTAssertLessThan(tabX("Notes"), tabX("Textbook"), "the sides did not swap")
+        #endif
         attachScreenshot(app, "split-swapped")
         app.descendants(matching: .any)["split-close-trailing"].firstMatch.tap()
         XCTAssertFalse(app.descendants(matching: .any)["split-pane"].waitForExistence(timeout: 2))
@@ -2098,6 +2128,9 @@ final class EditorFlowTests: XCTestCase {
 
     /// Each tab keeps its place: a long page scrolled down, another tab shown, then back — still scrolled.
     func testATabKeepsItsScrollPosition() throws {
+        #if os(iOS)
+            throw XCTSkip("tabs are the Mac's: iPad shows one page at a time")
+        #endif
         continueAfterFailure = false
         let app = launch()
         guard app.buttons["nav-home"].waitForExistence(timeout: 10) else {
@@ -2169,6 +2202,9 @@ final class EditorFlowTests: XCTestCase {
     /// A tab's context menu (Chrome's): Duplicate copies it beside itself, Close Tabs to the Right and Close Other
     /// Tabs leave the one it was opened on, New Tab to the Right opens Home after it.
     func testTabContextMenu() throws {
+        #if os(iOS)
+            throw XCTSkip("tabs are the Mac's: iPad shows one page at a time")
+        #endif
         continueAfterFailure = false
         let app = launch()
         guard app.buttons["nav-home"].waitForExistence(timeout: 10) else {

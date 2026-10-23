@@ -30,7 +30,31 @@ struct WorkspaceSyncTests {
         #expect(report.imported == 1)
         #expect(try store.document(id: "remote")?.title == "Remote")
         #expect(try store.document(id: "remote")?.plainText.contains("afar") == true)  // stored like any page
-        #expect(try store.activity(since: t0.addingTimeInterval(-86_400)).allSatisfy { $0.edits == 0 })  // imports aren't edits
+        // Writing done on another device counts on the day it was done (Home's "This week").
+        let days = try store.activity(since: t0.addingTimeInterval(-86_400))
+        #expect(days.map(\.edits).reduce(0, +) == 1)
+        #expect(days.map(\.wordsAdded).reduce(0, +) == 2)
+    }
+
+    @Test func aPageFromTheFolderCountsOnlyItsNewWriting() throws {
+        let store = try DocumentStore.inMemory()
+        try store.create(id: "p", now: t0)
+        _ = try store.saveContent(Snapshot(docId: "p", content: try body("a b c"), title: "P", text: "a b c", wordCount: 3), now: t0)
+        let before = try store.activity(since: .distantPast)
+        var record = try #require(try store.document(id: "p"))
+        // The same page again (a pass reading this device's own file): nothing new.
+        #expect(try store.importPage(record, expecting: record.lastChange))
+        #expect(try store.activity(since: .distantPast) == before)
+        // Another device added two words a day later.
+        let later = t0.addingTimeInterval(86_400)
+        let expected = record.lastChange
+        record.updatedAt = later
+        record.changedAt = later
+        record.wordCount = 5
+        #expect(try store.importPage(record, expecting: expected))
+        let next = try #require(try store.activity(since: .distantPast).first { ActivityDay.key($0.day) == ActivityDay.key(later) })
+        #expect(next.edits == 1)
+        #expect(next.wordsAdded == 2)
     }
 
     @Test func importsChildrenAfterTheirParentsWhateverTheFileOrder() throws {

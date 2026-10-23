@@ -157,7 +157,8 @@ struct HomeView: View {
         }
         // One surface with the table under the title (Music's): the table's own background, not the page's darker one.
         .background(Theme.listSurface)
-        .navigationTitle("app:nav.home")
+        // The Mac's toolbar names it; iOS has no bar over it (its heading is in the view).
+        .navigationTitle(Navigator.usesTabs ? String(localized: "app:nav.home") : "")
         #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
         #endif

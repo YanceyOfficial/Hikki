@@ -47,7 +47,7 @@ struct TrashView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         // One surface with the table under the title (Music's): the table's own background, not the page's darker one.
         .background(Theme.listSurface)
-        .navigationTitle("app:nav.trash")
+        .navigationTitle(Navigator.usesTabs ? String(localized: "app:nav.trash") : "")
         #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
         #endif

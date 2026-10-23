@@ -463,12 +463,20 @@ public final class DocumentStore: Sendable {
     @discardableResult
     public func importPage(_ record: DocumentRecord, expecting expected: Date?, stamp: PageFiles.Stamp? = nil) throws -> Bool {
         try writer.write { db in
-            let current = try Row.fetchOne(db, sql: "SELECT updatedAt, changedAt FROM document WHERE id = ?", arguments: [record.id])
-                .map { Self.lastChange(updatedAt: $0["updatedAt"], changedAt: $0["changedAt"]) }
+            let row = try Row.fetchOne(
+                db, sql: "SELECT updatedAt, changedAt, wordCount FROM document WHERE id = ?", arguments: [record.id])
+            let current = row.map { Self.lastChange(updatedAt: $0["updatedAt"], changedAt: $0["changedAt"]) }
             switch (current, expected) {
             case (nil, nil): break
             case (let now?, let then?) where abs(now.timeIntervalSince(then)) < 0.0005: break
             default: return false
+            }
+            // Writing done on another device counts on the day it was done: Home's "This week" is the workspace's
+            // writing, not only this device's (a page from the folder is an edit when its edited time moved on).
+            let previous: Date? = row?["updatedAt"]
+            if previous.map({ record.updatedAt > $0 }) ?? true {
+                let words: Int = row?["wordCount"] ?? 0
+                try Self.bumpActivity(db, day: record.updatedAt, edits: 1, words: max(0, record.wordCount - words))
             }
             try record.save(db)
             try Self.setSyncBase(db, record.id, record.lastChange, stamp: stamp)

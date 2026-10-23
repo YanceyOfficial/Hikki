@@ -634,10 +634,12 @@ struct PageActions: View {
             }
         }
         Section {
-            Button {
-                navigator.openInNewTab(.page(page.id))
-            } label: {
-                IconLabel("app:page.openInNewTab", icon: .browsers)
+            if Navigator.usesTabs {
+                Button {
+                    navigator.openInNewTab(.page(page.id))
+                } label: {
+                    IconLabel("app:page.openInNewTab", icon: .browsers)
+                }
             }
             if splitAvailable {
                 Button {

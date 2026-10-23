@@ -26,15 +26,18 @@ struct PageScreen: View {
         // The page runs under the window toolbar (Photos-style glass); the toolbar's height becomes the
         // editor's top inset so the first line still starts below it.
         GeometryReader { proxy in
-            EditorView(controller: editor, topInset: proxy.safeAreaInsets.top, bottomInset: bottomBarInset)
-                .ignoresSafeArea(.container, edges: underBars)
-                // WebKit makes room for the keyboard itself (the scroll view's inset, the caret kept in view). SwiftUI
-                // shrinking the web view as well resized the page on every frame of the keyboard's animation — it
-                // stuttered as the keyboard came and went.
-                .ignoresSafeArea(.keyboard)
+            EditorView(
+                controller: editor, topInset: proxy.safeAreaInsets.top, bottomInset: bottomBarInset,
+                hidesTopEdgeEffect: !phoneToolbar
+            )
+            .ignoresSafeArea(.container, edges: underBars)
+            // WebKit makes room for the keyboard itself (the scroll view's inset, the caret kept in view). SwiftUI
+            // shrinking the web view as well resized the page on every frame of the keyboard's animation — it
+            // stuttered as the keyboard came and went.
+            .ignoresSafeArea(.keyboard)
         }
-        // iPhone: the page shows its own title; the bar keeps only its glass buttons.
-        .navigationTitle(phoneToolbar ? "" : page.map { Self.title($0) } ?? "")
+        // The Mac's toolbar names the page; on iOS the page shows its own title and the bar keeps only its glass buttons.
+        .navigationTitle(phoneToolbar || !Navigator.usesTabs ? "" : page.map { Self.title($0) } ?? "")
         #if os(macOS)
             // Breadcrumbs, natively: the path in the subtitle ("Parent › Child · Edited …")…
             .navigationSubtitle(page.map(subtitle) ?? Text(verbatim: ""))

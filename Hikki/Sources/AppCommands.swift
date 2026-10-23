@@ -28,8 +28,11 @@ struct AppCommands: Commands {
         CommandGroup(replacing: .newItem) {
             Button("app:page.new") { navigator?.newPage() }
                 .keyboardShortcut(Shortcut.newPage.keyboardShortcut)
-            Button("app:tabs.new") { navigator?.openInNewTab(.home) }
-                .keyboardShortcut(Shortcut.newTab.keyboardShortcut)
+            // Tabs are the Mac's (`Navigator.usesTabs`).
+            if Navigator.usesTabs {
+                Button("app:tabs.new") { navigator?.openInNewTab(.home) }
+                    .keyboardShortcut(Shortcut.newTab.keyboardShortcut)
+            }
             Button("app:tabs.close") {
                 // ⌘W with Settings open closes Settings, not the tab under it.
                 if navigator?.isShowingSettings == true {
@@ -46,6 +49,7 @@ struct AppCommands: Commands {
                 if !navigator.closeTab(navigator.tabs.activeID) { closeWindow() }
             }
             .keyboardShortcut(Shortcut.closeTab.keyboardShortcut)
+            .disabled(!Navigator.usesTabs && navigator?.isShowingSettings != true)
             // A new chat with AI about the page: while the side panel shows the conversation, with one to clear.
             Button("app:shortcut.newChat") { aiChat?.clear() }
                 .keyboardShortcut(Shortcut.newChat.keyboardShortcut)

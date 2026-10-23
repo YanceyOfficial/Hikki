@@ -236,6 +236,14 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
         recordVisit()
     }
 
+    /// Keeps the focused tab alone (with the tab beside it in a split): a window without a tab strip (iPad, an
+    /// unfolded iPhone Duo) never holds tabs it can't show. Nothing changes when there is nothing else.
+    public mutating func keepActiveOnly() {
+        let kept = split(of: activeID).map { [$0.leading, $0.trailing] } ?? [activeID]
+        guard tabs.count > kept.count else { return }
+        closeOthers(activeID)
+    }
+
     /// Closes the tabs after `id` ("Close Tabs to the Right"); when the focused tab was one of them, `id` gets focus.
     public mutating func closeTabs(after id: UUID) {
         guard let index = tabs.firstIndex(where: { $0.id == id }), index < tabs.count - 1 else { return }

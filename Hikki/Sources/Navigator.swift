@@ -245,7 +245,7 @@ final class Navigator {
 
     func openInNewTab(_ route: Route) {
         if let id = route.pageID { reveal(id) }
-        tabs.openTab(route)
+        if Self.usesTabs { tabs.openTab(route) } else { tabs.navigate(to: route) }
         syncSelection()
     }
 
@@ -259,6 +259,15 @@ final class Navigator {
         }
         syncSelection()
     }
+
+    /// Whether windows keep tabs: the Mac's tab strip. iPad and an unfolded iPhone Duo show one page at a time with no
+    /// bar over it, as the iPhone does — a sidebar pick or "new tab" opens in the window's one tab, and a split's two
+    /// sides are the only tabs it ever holds (`syncSelection` drops any other).
+    #if os(macOS)
+        static let usesTabs = true
+    #else
+        static let usesTabs = false
+    #endif
 
     /// How many tabs sidebar picks keep in the strip (the least recently used one closes past this).
     static let recentTabLimit = 6
@@ -377,7 +386,7 @@ final class Navigator {
     /// A sidebar row: its tab gets focus, or it joins the strip as a new tab (the oldest leaves past the limit).
     func openFromSidebar(_ route: Route) {
         if let id = route.pageID { reveal(id) }
-        tabs.openRecent(route, limit: Self.recentTabLimit)
+        if Self.usesTabs { tabs.openRecent(route, limit: Self.recentTabLimit) } else { tabs.navigate(to: route) }
         syncSelection()
     }
 
@@ -389,7 +398,11 @@ final class Navigator {
 
     /// The PDF in a pane of its own in a tab (`Route.file`, or its tab gets focus) — `HIKKI_OPEN_FILE` screenshots.
     func openDocument(name: String, label: String) {
-        tabs.openRecent(.file(name: name, label: label), limit: Self.recentTabLimit)
+        if Self.usesTabs {
+            tabs.openRecent(.file(name: name, label: label), limit: Self.recentTabLimit)
+        } else {
+            tabs.navigate(to: .file(name: name, label: label))
+        }
         syncSelection()
     }
 
@@ -501,6 +514,8 @@ final class Navigator {
         // doesn't come back (the window opens on the page beside it, unsplit).
         tabs.prune(fallback: .home) { $0 == .splitPicker }
         tidyTabs()
+        // Tabs saved before windows on iOS lost their strip: the focused one stays.
+        if !Self.usesTabs { tabs.keepActiveOnly() }
     }
 
     /// Page → Copy Link (⌥⌘C): the open page's hikki://page/<id>.
@@ -532,6 +547,7 @@ final class Navigator {
     }
 
     private func syncSelection() {
+        if !Self.usesTabs { tabs.keepActiveOnly() }
         if sidebarSelection != tabs.route { sidebarSelection = tabs.route }
     }
 }

@@ -326,6 +326,20 @@
   /* Columns (extensions/columns.ts): flex row; gutters are drag handles between columns. */
   .tiptap .hk-cols-wrapper {
     @apply relative my-1;
+    container-type: inline-size;
+  }
+  /* A row with no room for its columns side by side (an iPhone's page) stacks them, as Notion does; the stored
+     widths stay for a wider screen, and the gutters have nothing to resize. */
+  @container (max-width: 480px) {
+    .tiptap .hk-cols {
+      @apply flex-col gap-0;
+    }
+    .tiptap .hk-col {
+      flex: 1 1 auto !important;
+    }
+    .tiptap .hk-col-gutters {
+      @apply hidden;
+    }
   }
   .tiptap .hk-cols {
     @apply flex gap-6;

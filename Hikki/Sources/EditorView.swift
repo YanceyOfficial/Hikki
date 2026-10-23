@@ -15,6 +15,9 @@ struct EditorView: PlatformViewRepresentable {
     var topInset: CGFloat = 0
     /// Height of a native bar floating over the page's foot (iPhone): bottom sheets in the page stay clear of it.
     var bottomInset: CGFloat = 0
+    /// No blurred band under the bar's glass buttons (iPad, an unfolded iPhone Duo): nothing reads as a bar over the
+    /// page, its cover runs clear to the top.
+    var hidesTopEdgeEffect = false
 
     #if os(iOS)
         /// A container of its own, the web view put back into it on every update: SwiftUI may build this wrapper
@@ -32,6 +35,7 @@ struct EditorView: PlatformViewRepresentable {
             // it behind the status bar and the glass buttons (immersive), a page without one starts below them.
             controller.setInsets(top: topInset, bottom: bottomInset, bleed: true)
             let scroll = view.scrollView
+            scroll.topEdgeEffect.isHidden = hidesTopEdgeEffect
             scroll.contentInsetAdjustmentBehavior = .never
             guard scroll.contentInset.top != 0 else { return }
             scroll.contentInset.top = 0

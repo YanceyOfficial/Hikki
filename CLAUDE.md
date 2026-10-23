@@ -216,7 +216,8 @@ HikkiUITests/                 XCUITest flows
   split view's sidebar column is `Hikki/Sources/PhoneHome.swift` (a ☰ · Home top bar, All pages / Trash tiles,
   "Jump back in" cards, Quick create — a blank page, today's note titled with the date, a page from the clipboard
   (`QuickNote`, HikkiCore) — Ask AI suggestions sent with this week's pages (`Navigator.pendingAIQuestion`), This
-  week — HikkiUI's `WeekActivityCard` over the store's daily activity — recently edited, and favorites; the lists come
+  week — HikkiUI's `WeekActivityCard` over the store's daily activity, every device's writing (a newer page from the
+  folder counts its added words on the day it was edited, `importPage(_:expecting:)`) — recently edited, and favorites; the lists come
   from a `HomeDigest` (HikkiCore) worked out per tree change, the activity read in a task) and opening anything shows the detail through `Navigator.compactColumn`
   (`preferredCompactColumn`). The page tree is Notion's side drawer: `Hikki/Sources/PhoneDrawer.swift` (workspace +
   search, favorites, the tree — its actions on a long press, Add a page, then All pages · Trash · Settings fixed at the bottom)
@@ -386,7 +387,8 @@ HikkiUITests/                 XCUITest flows
   callouts, KaTeX formulas (`apps/editor/src/extensions/math.ts`; our panel replaces Tiptap's `prompt()`), tables
   (`apps/editor/src/extensions/table.ts` + `apps/editor/src/extensions/table-ops.ts`, controls drawn by
   `apps/editor/src/components/table-overlay.tsx`) and columns (`apps/editor/src/extensions/columns.ts`: schema needs 2–5 columns, so
-  removing one of two replaces the row; dragging a block onto another's side edge makes a row).
+  removing one of two replaces the row; dragging a block onto another's side edge makes a row; a row narrower than
+  480 px — an iPhone's page — stacks its columns, a container query in style.css).
 - **Network images** load like exodus's (`apps/editor/src/components/lazy-load-image.tsx`: skeleton, fade in, an icon on
   failure) — covers and the Unsplash grid use the component; body images get the same through
   `apps/editor/src/extensions/image-loading.ts` (`data-load` states styled in `apps/editor/src/style.css`; Tiptap's resizable view hides its
@@ -444,7 +446,11 @@ HikkiUITests/                 XCUITest flows
   Trash has the same layout (table: deleted, deleted for good, Restore/Delete). Settings → Workspace → Keep deleted pages
   (7/30/90 days or until emptied, default 30; `TrashPreferences`) purges older trash at launch and activation
   (`DocumentStore.purgeTrash`); the deletion reaches other devices through the workspace folder.
-- **Tabs from the sidebar** (Mac/iPad): a sidebar row focuses the tab already showing its page, or opens it as a new tab
+- **Tabs** are the Mac's (`Navigator.usesTabs`): iPad and an unfolded iPhone Duo have no bar over the page — no tab
+  strip and no title, the page's glass buttons float over its cover (no scroll-edge band, `EditorView.hidesTopEdgeEffect`;
+  the Duo's go into its vertical bar) — and show one page at a time, as the iPhone does: a sidebar pick opens in place,
+  back / forward walk that one tab, and a window keeps no tab but its split's two (`NavigationTabs.keepActiveOnly`).
+  On the Mac a sidebar row focuses the tab already showing its page, or opens it as a new tab
   at the end; past `Navigator.recentTabLimit` the least recently focused tab closes (`NavigationTabs.openRecent`,
   recency kept in the saved tabs). Links navigate inside the active tab. Back / forward (the toolbar's arrows, ⌘[ ⌘]) walk the
   window's history of pages shown, across tabs (`NavigationTabs.visits`): back returns to the page shown before, focusing
