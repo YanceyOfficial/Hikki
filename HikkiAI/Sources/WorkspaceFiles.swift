@@ -201,7 +201,7 @@ public struct WorkspaceFiles: Sendable {
         }
         if writing {
             guard let first = components.first else { throw Failure("Name a file to write.") }
-            if Self.protected.contains(first.lowercased()) {
+            if Self.isProtected(first, in: root) {
                 throw Failure("\(first) is Hikki's own data and is never written by a tool; write elsewhere in the folder.")
             }
         }
@@ -214,6 +214,23 @@ public struct WorkspaceFiles: Sendable {
             }
         }
         return (url, components.joined(separator: "/"))
+    }
+
+    /// Whether a first path component names Hikki's data, as the file system would read it: the folder is usually
+    /// case- and normalization-insensitive (APFS), so "Pages", "ｐａｇｅｓ" or a decomposed accent name the same folder —
+    /// names are folded before comparing, and an existing item is also checked by its name on disk.
+    static func isProtected(_ name: String, in root: URL) -> Bool {
+        func fold(_ text: String) -> String {
+            text.precomposedStringWithCanonicalMapping
+                .folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: nil)
+        }
+        let folded = protected.map(fold)
+        if folded.contains(fold(name)) { return true }
+        let onDisk = root.appending(path: name).resolvingSymlinksInPath()
+        if let canonical = try? onDisk.resourceValues(forKeys: [.canonicalPathKey]).canonicalPath {
+            return folded.contains(fold((canonical as NSString).lastPathComponent))
+        }
+        return false
     }
 
     private func relative(_ url: URL) -> String {

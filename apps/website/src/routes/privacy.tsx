@@ -117,10 +117,11 @@ function Privacy() {
                   you add with @, any picture or PDF you attach, and your question. The provider may
                   search the web for an answer; in the chat a switch turns that off. The provider’s
                   privacy policy governs what it does with the request. A key is sent only to the
-                  address it was entered for. In the chat, AI may also list, read and search the
-                  files in your workspace folder when your question calls for it; what it reads goes
-                  to the provider with the question. It writes or changes a file only after you
-                  allow that change, and Settings → AI turns file use off.
+                  address it was entered for. If you turn on file use in Settings → AI, the chat may
+                  also list, read and search the files in your workspace folder when your question
+                  calls for it; what it reads goes to the provider with the question. It writes or
+                  changes a file only after you allow that change. File use is off until you turn it
+                  on.
                 </li>
                 <li>
                   <strong>Unsplash</strong>, when you search it for a cover: your search words go to

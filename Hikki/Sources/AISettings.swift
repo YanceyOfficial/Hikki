@@ -22,10 +22,11 @@ enum AIPreferences {
     }
 
     /// The chat may use the workspace folder's files (`WorkspaceFiles`: list, read, search; write and edit once the
-    /// user allows each). On unless turned off.
+    /// user allows each). Off until turned on: what a file says reaches the model, and a file can carry instructions
+    /// meant to send it on (through web search, say), so the user opts in.
     static let filesKey = "ai.workspaceFiles"
 
-    static var usesFiles: Bool { UserDefaults.standard.object(forKey: filesKey) as? Bool ?? true }
+    static var usesFiles: Bool { UserDefaults.standard.bool(forKey: filesKey) }
 
     /// The base URL typed for a provider (blank: its own API) — `AIEndpoint` reads it.
     static func baseURLKey(_ provider: AIProvider) -> String { "ai.baseURL.\(provider.rawValue)" }
@@ -65,7 +66,7 @@ struct AISettingsSection: View {
     @AppStorage(AIPreferences.modelKey) private var model = AIModelCatalog.autoID
     @AppStorage(AIPreferences.reviewStyleKey) private var reviewStyle = ReviewStyleThumbnail.Sketch.inline.rawValue
     @AppStorage(AIPreferences.chatRetentionKey) private var retention = ChatRetention.default.rawValue
-    @AppStorage(AIPreferences.filesKey) private var usesFiles = true
+    @AppStorage(AIPreferences.filesKey) private var usesFiles = false
     @State private var confirmingDelete = false
 
     var body: some View {

@@ -52,6 +52,15 @@ extension ChatToolCall {
         }
     }
 
+    /// As the turn keeps it: its texts capped (`maxText`), so a conversation's file stays small.
+    var kept: ChatToolCall {
+        var call = self
+        call.text = Self.capped(text)
+        call.before = Self.capped(before)
+        call.after = Self.capped(after)
+        return call
+    }
+
     /// The call as its card shows it.
     var card: ToolCallCardItem {
         let tool = WorkspaceFiles.Tool(rawValue: name)

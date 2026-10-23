@@ -589,18 +589,27 @@ final class AIChat {
                 return .failure(failure.message)
             case .success(let change):
                 record.path = change.path
+                // The card asks with the whole change — nothing cut — so what is allowed is what is shown; the texts are
+                // capped only when the turn is kept (`Message.turn`).
                 if tool == .editFile {
-                    record.before = ChatToolCall.capped(fields["old_string"] as? String)
-                    record.after = ChatToolCall.capped(fields["new_string"] as? String)
+                    record.before = fields["old_string"] as? String
+                    record.after = fields["new_string"] as? String
                     record.replacements = change.replacements
                 } else {
                     let content = fields["content"] as? String ?? ""
-                    record.text = ChatToolCall.capped(content)
+                    record.text = content
                     record.bytes = content.utf8.count
                     record.created = change.before == nil
                     record.appended = change.appended
                     // Replacing a file: what it said, so the card shows what changes.
-                    if !change.appended { record.before = ChatToolCall.capped(change.before) }
+                    if !change.appended { record.before = change.before }
+                }
+                // A change too large to show as a diff can't be looked over, so it isn't asked about.
+                if let before = record.before, case .tooLarge = LineDiff.diff(old: before, new: record.after ?? record.text ?? "") {
+                    record.status = .failed
+                    record.message = "Too large to show for approval; make smaller edits."
+                    addTool(record, to: answer)
+                    return .failure("The change is too large to show the user for approval. Make smaller edits.")
                 }
                 record.status = .waiting
                 addTool(record, to: answer)
@@ -785,7 +794,8 @@ extension AIChat.Message {
             id: id, role: role, text: text, sentAt: sentAt, attachments: attachmentNames + attachments.map(\.name),
             citations: citations.map { ChatCitation(url: $0.url, title: $0.title) }, changes: changes.isEmpty ? nil : changes,
             thinking: thinking.flatMap(ChatTimeline.kept), images: images.isEmpty ? nil : images,
-            pictures: pictures.isEmpty ? nil : pictures, picturePlace: picturePlace, tools: tools.isEmpty ? nil : tools)
+            pictures: pictures.isEmpty ? nil : pictures, picturePlace: picturePlace,
+            tools: tools.isEmpty ? nil : tools.map(\.kept))
     }
 
     /// The answer said or made something: words, pictures, or tools it used.

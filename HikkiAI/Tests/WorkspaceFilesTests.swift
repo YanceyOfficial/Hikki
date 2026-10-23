@@ -109,7 +109,10 @@ struct WorkspaceFilesTests {
     }
 
     @Test func neverWritesHikkisOwnData() throws {
-        for path in ["pages/p1.json", "Pages/new.json", "workspace.json", "assets/a.png", "history/p1/x.json", ""] {
+        for path in [
+            "pages/p1.json", "Pages/new.json", "PAGES/new.json", "ｐａｇｅｓ/new.json", "Workspace.JSON", "workspace.json",
+            "assets/a.png", "history/p1/x.json", "",
+        ] {
             #expect(try run("write_file", ["path": path, "content": "x"]).output.isError, "\(path)")
         }
         #expect(try text("pages/p1.json") == #"{"title":"Book club"}"#)

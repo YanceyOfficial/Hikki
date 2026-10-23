@@ -738,7 +738,10 @@ HikkiUITests/                 XCUITest flows
   top. A write or edit waits on its card for Allow (`AIChat.runTool`); each call is a `ChatToolCall` on the turn
   (`ChatTurn.tools`), drawn by HikkiUI's `ToolCallCards` (diffs: `LineDiff` in HikkiCore; mapping in
   `Hikki/Sources/AIChatTools.swift`). Settings → AI → Use files in the workspace folder (`AIPreferences.usesFiles`,
-  default on) turns the file tools off.
+  off by default: a file read goes to the model and may carry instructions meant to send it on) turns them on. The
+  card asks with the whole change (texts are capped only when the turn is kept, `ChatToolCall.kept`), and a change
+  too large to diff is refused, not asked about; protected names are compared folded (case, width, accents) and by
+  their name on disk (`WorkspaceFiles.isProtected`).
   With web search on, the chat also asks OpenAI's search for pictures (`AIRequest.imageResults`: `search_content_types` + `include: web_search_call.results`, read from the search call's `image_result`s as `.image`) and shows them under the answer (HikkiUI's `ImageResultStrip`, kept as `ChatTurn.images`): Add to page fetches one into the assets (`WebImage`, `HikkiCore/Sources/Text/WebImage.swift`: LinkPreview's public-host rules) and puts it at the caret (`EditorController.insertWebImage`). While the model works the chat's "Thinking…" / "Searching the web…" line is HikkiUI's `ShimmerText` (a foreground
   band sweeping the muted text once per `Motion.loop`; still under Reduce Motion, which gets a spinner instead). Model output is untrusted: the reply is parsed tolerantly (`apps/editor/src/lib/ai-content.ts`;
   sanitized inline HTML through the schema, unknown keys dropped, an unreadable reply is an error), citations must be
