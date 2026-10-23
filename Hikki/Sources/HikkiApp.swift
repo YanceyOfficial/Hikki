@@ -59,12 +59,22 @@ struct HikkiApp: App {
         }
     }
 
-    /// DEBUG/test hook: HIKKI_WORKSPACE=<name> creates a device workspace up front (skips onboarding).
+    /// DEBUG/test hook: HIKKI_WORKSPACE=<name> creates a device workspace up front (skips onboarding);
+    /// HIKKI_WORKSPACE_ICLOUD=1 makes it (or the one there) an iCloud one, its absence a device one.
     private static func workspaceStore(_ paths: AppPaths) -> WorkspaceStore {
         let store = WorkspaceStore(url: paths.workspace)
         #if DEBUG
-            if let name = ProcessInfo.processInfo.environment["HIKKI_WORKSPACE"], (try? store.load()) == nil {
-                try? store.save(Workspace(name: name, location: .device))
+            let environment = ProcessInfo.processInfo.environment
+            if let name = environment["HIKKI_WORKSPACE"] {
+                let location: Workspace.Location = environment["HIKKI_WORKSPACE_ICLOUD"] == "1" ? .cloud : .device
+                if var workspace = try? store.load() {
+                    if workspace.location != location {
+                        workspace.location = location
+                        try? store.save(workspace)
+                    }
+                } else {
+                    try? store.save(Workspace(name: name, location: location))
+                }
             }
         #endif
         return store

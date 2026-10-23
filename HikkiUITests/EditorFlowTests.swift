@@ -1794,6 +1794,30 @@ final class EditorFlowTests: XCTestCase {
     }
 
     /// iPad / Mac (window toolbar): the inspector lists the page's headings, one jumps there, Info shows the counts.
+    /// iPhone, a workspace in iCloud: Home pulls to refresh.
+    func testHomePullsToRefreshFromICloud() throws {
+        #if os(macOS)
+            throw XCTSkip("pull to refresh is iOS's")
+        #else
+            continueAfterFailure = false
+            let app = launch(environment: ["HIKKI_WORKSPACE_ICLOUD": "1", "HIKKI_DEMO_PAGES": "1"])
+            let blank = app.buttons["home-new-blank"].firstMatch
+            guard blank.waitForExistence(timeout: 10) else { throw XCTSkip("the iPhone layout") }
+            let home = app.scrollViews.containing(.button, identifier: "home-new-blank").firstMatch
+            let start = home.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15))
+            start.press(
+                forDuration: 0.05, thenDragTo: home.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.8)),
+                withVelocity: .slow, thenHoldForDuration: 1)
+            // Without an account the pull settles before its spinner can be seen: the app's log says it ran.
+            let log = URL(fileURLWithPath: dataDir).appending(path: "logs/hikki.log")
+            let pulled = NSPredicate { _, _ in
+                ((try? String(contentsOf: log, encoding: .utf8)) ?? "").contains("cloud refresh pulled")
+            }
+            wait(for: [expectation(for: pulled, evaluatedWith: nil)], timeout: 5)
+            XCTAssertTrue(blank.waitForExistence(timeout: 10))
+        #endif
+    }
+
     /// iPad (and an unfolded iPhone Duo): opening the page's panel hides the sidebar, closing it brings it back.
     func testPadPanelHidesTheSidebar() throws {
         #if os(macOS)

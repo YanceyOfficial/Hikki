@@ -375,6 +375,21 @@ final class AppModel {
     }
 
     /// Picks up what other devices changed (app activation). Cheap when nothing did.
+    /// Whether the workspace syncs through iCloud (and so has something to pull).
+    var syncsWithCloud: Bool {
+        if case .cloud? = workspace?.location { true } else { false }
+    }
+
+    /// Pull to refresh: what waits here goes up, what other devices saved comes down (arrivals reconcile the
+    /// folder as they land), then the folder is compared once more.
+    func refreshFromCloud() async {
+        guard let cloud else { return }
+        Log.info("cloud refresh pulled", category: "cloud")
+        await cloud.sendNow()
+        await cloud.fetchNow()
+        reconcileWorkspace(fetch: false)
+    }
+
     func reconcileWorkspace(fetch: Bool = true) {
         guard let sync else { return }
         if fetch, let cloud {

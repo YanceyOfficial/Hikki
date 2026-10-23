@@ -21,7 +21,7 @@
         @Environment(\.verticalBarEdge) private var verticalBar
 
         var body: some View {
-            screen.screenTitle(String(localized: "app:nav.home"))
+            screen.syncRefreshable().screenTitle(String(localized: "app:nav.home"))
         }
 
         @ViewBuilder private var screen: some View {

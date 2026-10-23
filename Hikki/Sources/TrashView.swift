@@ -22,7 +22,7 @@ struct TrashView: View {
     }
 
     var body: some View {
-        screen.screenTitle(String(localized: "app:nav.trash"))
+        screen.syncRefreshable().screenTitle(String(localized: "app:nav.trash"))
     }
 
     @ViewBuilder private var screen: some View {

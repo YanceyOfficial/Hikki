@@ -177,6 +177,7 @@ private struct PageSidebar: View {
                 .padding(.vertical, Spacing.s1)
         }
         .scrollIndicators(.never)
+        .syncRefreshable()
         .overlay {
             if filesTargeted {
                 RoundedRectangle(cornerRadius: Radius.lg)
