@@ -35,6 +35,10 @@ let project = Project(
                 "CFBundleShortVersionString": "$(MARKETING_VERSION)",
                 "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
                 "UILaunchScreen": [:],
+                // The Mac App Store files the app by it (it refuses an upload without one); the same on iOS.
+                "LSApplicationCategoryType": "public.app-category.productivity",
+                // HTTPS only, no encryption of our own: App Store Connect then asks nothing about export compliance.
+                "ITSAppUsesNonExemptEncryption": false,
                 // What the window may ever take; `OrientationDelegate` narrows it per screen at run time (phones and a
                 // folded iPhone Duo upright, iPads and an unfolded Duo on their side). iPad lists all four, as multitasking
                 // requires for App Store validation.

@@ -126,6 +126,9 @@ scripts/gen-tokens.mjs        tokens → Swift + Tailwind theme
 scripts/lint-design.sh        no literal colors/fonts/spacing/radii in view code
 design/errors.json            error codes for app, editor and BFF (single source; scripts/gen-errors.mjs)
 design/fixtures/              fixtures both sides are tested against (content-text.json: block texts, Swift + editor)
+design/store/                 App Store material: listing text per locale (fastlane deliver layout), the demo workspace
+                              screenshots are taken over, shoot.sh (simulators; iPad landscape through
+                              HikkiUITests/StoreScreenshot.swift), mac-frame.mjs; README.md is the field-by-field guide
 Configs/Version.xcconfig      MARKETING_VERSION / CURRENT_PROJECT_VERSION
 Project.swift                 Tuist manifest (targets: Hikki, HikkiCore, HikkiSearch, HikkiAI, HikkiUI + their tests, HikkiUITests)
 Hikki/Sources/                app: SwiftUI shell, navigation (tabs), sidebar, page bar, search, editor host

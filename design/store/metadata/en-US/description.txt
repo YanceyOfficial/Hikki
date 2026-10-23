@@ -1,0 +1,34 @@
+Hikki is a notebook for iPhone, iPad and Mac that keeps your pages where you can see them: as files in a folder you choose.
+
+YOUR NOTES ARE FILES
+• Each page is one small file in your folder, on the device or in iCloud Drive.
+• No account. Open the app and write; everything works offline.
+• Put the folder in iCloud Drive and your other devices pick up the changes.
+• Two devices editing one page keep both versions, side by side. Nothing is overwritten.
+• Thirty days of history: go back to how any page read, compare word by word, restore.
+
+WRITE IN BLOCKS
+• Type / for headings, to-dos, tables, toggles, callouts, code, math, drawings and embeds.
+• Drag a block by its handle, or drop it beside another to make columns.
+• Mention pages with @, link to a single block, comment on a passage.
+• Type @ and a date, like “next Friday 3pm”, and have it ring on every device.
+• Lock a finished page so nothing changes by accident.
+
+AI ON YOUR OWN KEY
+• Bring your own OpenAI or Anthropic key. Requests go straight to the provider; nothing passes through our servers.
+• Select a passage and improve it, fix it, shorten it or change its tone. The change shows in the page, struck through and added, and nothing is replaced until you accept it.
+• Ask about the page beside it, with other pages added by @, pictures and PDFs attached, and web search with its sources linked.
+• Ask the chat to change the page and approve each change, or ask for a picture and it draws one.
+
+FOR LANGUAGE STUDY
+• Select a word and Hikki suggests its furigana, then sets it above the kanji.
+• Search reads titles, text, PDFs and the words in photos, in English, Chinese and Japanese, even by pinyin.
+
+ONE APP FOR EVERY DEVICE
+• Mac: native windows, tabs, split view, menus and keyboard shortcuts you can rebind.
+• iPad: sidebar, tabs and two pages side by side.
+• iPhone: the page tree in a drawer, a keyboard bar for every block, actions a thumb away.
+
+Import Markdown, HTML and text files or whole folders, and export a page or everything as Markdown, HTML, PDF or the original files.
+
+Free to download with everything open for 14 days, then one purchase for iPhone, iPad and Mac together.
