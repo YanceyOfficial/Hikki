@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { openBlockMenu } from '../src/components/block-menu'
 import { createEditor } from '../src/core/editor'
+import { columnFloor, handleLeft } from '../src/extensions/block-controls'
 import { BlockHighlightKey, setBlockHighlight } from '../src/extensions/block-highlight'
 import {
   deleteUnit,
@@ -11,7 +12,8 @@ import {
   handleUnitAtPos,
   moveUnit,
   unitAtPos,
-  unitTextRange
+  unitTextRange,
+  type BlockUnit
 } from '../src/extensions/block-units'
 import { doc, settle, stripIds } from './helpers'
 
@@ -287,6 +289,103 @@ describe('block handle', () => {
     editor.commands.insertContentAt(posOf('first'), 'x')
     expect(handle.dataset.hidden).toBe('true')
     window.dispatchEvent(new Event('scroll'))
+    expect(handle.dataset.hidden).toBe('true')
+  })
+})
+
+/** Stands in for layout (jsdom has none): `el`'s box from `left` to `right`. */
+const placeBox = (el: Element, left: number, right: number, top = 0, height = 24) => {
+  el.getBoundingClientRect = () => new DOMRect(left, top, right - left, height)
+}
+
+const twoColumns = (right: object = para('right')) => ({
+  type: 'doc',
+  content: [
+    {
+      type: 'columns',
+      content: [
+        { type: 'column', content: [para('left')] },
+        { type: 'column', content: [right] }
+      ]
+    }
+  ]
+})
+
+const tableWith = (text: string) => ({
+  type: 'table',
+  content: [{ type: 'tableRow', content: [{ type: 'tableCell', content: [para(text)] }] }]
+})
+
+describe('block handle in columns', () => {
+  // A 708 px row of two columns with the 64 px gap between them; the handle (+ and ⋮⋮) is 46 px wide.
+  const colOne = { left: 0, right: 322 }
+  const colTwo = { left: 386, right: 708 }
+
+  const layOut = () => {
+    const cols = editor.view.dom.querySelectorAll('.hk-col')
+    placeBox(cols[0], colOne.left, colOne.right)
+    placeBox(cols[1], colTwo.left, colTwo.right)
+    return cols
+  }
+
+  it('goes left of its block, and in a later column never past the column before', () => {
+    // Top level (and a row's first column): beside the block, in the page's gutter.
+    expect(handleLeft(100, 46)).toBe(50)
+    // The second column: in the gap, 4 px clear of the first column's text.
+    expect(handleLeft(colTwo.left, 46, 0, colOne.right)).toBe(336)
+    // A table's row grips push the handle further left; the column before stops it.
+    expect(handleLeft(colTwo.left, 46, 22, colOne.right)).toBe(colOne.right + 4)
+  })
+
+  it('finds the column before a block, not for the first column, nor once the row stacks', () => {
+    editor = createEditor(host, twoColumns())
+    const cols = layOut()
+    expect(columnFloor(editor.view, posOf('right'))).toBe(colOne.right)
+    expect(columnFloor(editor.view, posOf('left'))).toBeNull()
+    // Stacked (a narrow row): the first column above the second, both the row's width.
+    placeBox(cols[0], 0, 400, 0)
+    placeBox(cols[1], 0, 400, 40)
+    expect(columnFloor(editor.view, posOf('right'))).toBeNull()
+  })
+
+  for (const [name, block, text, expected] of [
+    ['a paragraph', para('right'), 'right', colTwo.left - 46 - 4],
+    ['a table', tableWith('cell'), 'cell', colOne.right + 4]
+  ] as const) {
+    it(`${name} in the second column gets its handle in that column's gutter, off the first column's text`, () => {
+      editor = createEditor(host, twoColumns(block))
+      layOut()
+      const handle = [...document.querySelectorAll<HTMLElement>('.hk-block-handle')].at(-1)!
+      Object.defineProperty(handle, 'offsetWidth', { configurable: true, value: 46 })
+      const controls = (
+        editor.view as unknown as {
+          pluginViews: { unit?: BlockUnit | null; reposition?: () => void }[]
+        }
+      ).pluginViews.find((view) => 'unit' in view)!
+      const unit = handleUnitAtPos(editor.state, posOf(text))!
+      controls.unit = unit
+      placeBox(editor.view.nodeDOM(unit.pos) as Element, colTwo.left, colTwo.right)
+      controls.reposition!()
+      expect(handle.dataset.hidden).toBe('false')
+      expect(Number.parseFloat(handle.style.left)).toBe(expected)
+      expect(Number.parseFloat(handle.style.left)).toBeGreaterThan(colOne.right)
+    })
+  }
+
+  it('steps aside while the pointer is on the divider between two columns', async () => {
+    editor = createEditor(host, twoColumns())
+    await settle()
+    const gutter = editor.view.dom.parentElement!.querySelector('.hk-col-gutter')!
+    expect(gutter).not.toBeNull()
+    const handle = [...document.querySelectorAll<HTMLElement>('.hk-block-handle')].at(-1)!
+    // Shown by a hover on a block (not reproducible in this DOM): stand in for it.
+    handle.dataset.hidden = 'false'
+    // Over a block of the second column, the handle shows (jsdom has no layout: the hit test stands in)…
+    editor.view.posAtCoords = () => ({ pos: posOf('right'), inside: -1 })
+    fireEvent.mouseMove(editor.view.dom.querySelector('p')!)
+    expect(handle.dataset.hidden).toBe('false')
+    // …and on the divider it goes, so the resize line is never under it.
+    fireEvent.mouseMove(gutter)
     expect(handle.dataset.hidden).toBe('true')
   })
 })

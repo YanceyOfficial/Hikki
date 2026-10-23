@@ -323,26 +323,15 @@
     cursor: col-resize;
   }
 
-  /* Columns (extensions/columns.ts): flex row; gutters are drag handles between columns. */
+  /* Columns (extensions/columns.ts): flex row; gutters are drag handles between columns. Notion's gap: wide enough
+     for a column's own + / ⋮⋮ (block-controls.ts puts it in the gap, clear of the text before), the resize line in
+     its middle, shown only while the pointer is on it (the handle steps aside meanwhile). */
   .tiptap .hk-cols-wrapper {
     @apply relative my-1;
     container-type: inline-size;
   }
-  /* A row with no room for its columns side by side (an iPhone's page) stacks them, as Notion does; the stored
-     widths stay for a wider screen, and the gutters have nothing to resize. */
-  @container (max-width: 480px) {
-    .tiptap .hk-cols {
-      @apply flex-col gap-0;
-    }
-    .tiptap .hk-col {
-      flex: 1 1 auto !important;
-    }
-    .tiptap .hk-col-gutters {
-      @apply hidden;
-    }
-  }
   .tiptap .hk-cols {
-    @apply flex gap-6;
+    @apply flex gap-16;
   }
   .tiptap .hk-col {
     @apply min-w-0;
@@ -357,9 +346,26 @@
     @apply absolute top-0 bottom-0 left-1/2 w-0.5 -translate-x-1/2 rounded-full bg-transparent transition-colors duration-(--motion-pop-in);
     content: '';
   }
-  .tiptap .hk-col-gutter:hover::after,
+  .tiptap .hk-col-gutter:hover::after {
+    @apply bg-border;
+  }
   .tiptap .hk-col-gutter.is-dragging::after {
     @apply bg-primary/50;
+  }
+  /* A row with no room for its columns side by side (an iPhone's page) stacks them, as Notion does — after the rules
+     above, which it overrides (the row's gap would otherwise stay between the stacked columns). The stored widths
+     stay for a wider screen, each block's handle goes back to the page's gutter, and the gutters have nothing to
+     resize. */
+  @container (max-width: 480px) {
+    .tiptap .hk-cols {
+      @apply flex-col gap-0;
+    }
+    .tiptap .hk-col {
+      flex: 1 1 auto !important;
+    }
+    .tiptap .hk-col-gutters {
+      @apply hidden;
+    }
   }
 
   /* Find (extensions/find.ts): every match, the current one stronger. */

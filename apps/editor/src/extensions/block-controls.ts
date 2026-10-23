@@ -46,6 +46,45 @@ const DRAG_THRESHOLD = 4
 /** How close to a block's side edge a drop makes columns. */
 const SIDE_EDGE = 48
 
+/** Room between the handle and its block (and, in a column, between the handle and the column before). */
+export const HANDLE_GAP = 4
+
+/**
+ * Where the handle's left edge goes for a block whose box starts at `blockLeft` (Notion's): left of the block, a
+ * list marker or a table's row grips (`indent`), never past `floor` — in a column after the first, the right edge
+ * of the column before, so the handle stays in its own column's gutter and off the text beside it.
+ */
+export function handleLeft(
+  blockLeft: number,
+  handleWidth: number,
+  indent = 0,
+  floor: number | null = null
+): number {
+  const left = blockLeft - indent - handleWidth - HANDLE_GAP
+  return floor === null ? left : Math.max(left, floor + HANDLE_GAP)
+}
+
+/**
+ * The right edge of the column before the one holding `pos`, when the two sit side by side; null for a block in a
+ * row's first column, outside any row, or in a narrow row that stacks its columns (the one before is above it).
+ */
+export function columnFloor(view: EditorView, pos: number): number | null {
+  const $pos = view.state.doc.resolve(Math.min(pos, view.state.doc.content.size))
+  for (let depth = $pos.depth; depth >= 1; depth--) {
+    if ($pos.node(depth).type.name !== 'column') continue
+    const index = $pos.index(depth - 1)
+    if (index === 0) return null
+    const columnPos = $pos.before(depth)
+    const previousPos = columnPos - $pos.node(depth - 1).child(index - 1).nodeSize
+    const column = view.nodeDOM(columnPos)
+    const previous = view.nodeDOM(previousPos)
+    if (!(column instanceof HTMLElement) || !(previous instanceof HTMLElement)) return null
+    const right = previous.getBoundingClientRect().right
+    return right <= column.getBoundingClientRect().left + 1 ? right : null
+  }
+  return null
+}
+
 const icon = (svg: string) =>
   svg.replace('<svg ', '<svg width="18" height="18" aria-hidden="true" ')
 
@@ -205,6 +244,9 @@ class BlockControlsView {
       return
     }
     if (this.handle.contains(event.target as Node)) return
+    // On the divider between two columns: that is the resize line's moment, and the handle would cover it.
+    if (event.target instanceof Element && event.target.closest('.hk-col-gutter'))
+      return this.hide()
     const unit = this.unitAtPoint(event.clientX, event.clientY, true)
     if (!unit) return this.hide()
     this.unit = unit
@@ -242,7 +284,13 @@ class BlockControlsView {
     const listItem = unit.node.type.name === 'listItem' || unit.node.type.name === 'taskItem'
     // A table draws its own row grips at its left edge (components/table-overlay.tsx); the handle keeps clear.
     const table = unit.node.type.name === 'table'
-    const left = rect.left - (listItem ? 22 : 0) - (table ? 22 : 0) - this.handle.offsetWidth - 4
+    const indent = (listItem ? 22 : 0) + (table ? 22 : 0)
+    const left = handleLeft(
+      rect.left,
+      this.handle.offsetWidth,
+      indent,
+      columnFloor(this.view, unit.pos)
+    )
     Object.assign(this.handle.style, {
       left: `${left}px`,
       top: `${centre - this.handle.offsetHeight / 2}px`
