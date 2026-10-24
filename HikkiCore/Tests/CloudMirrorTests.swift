@@ -176,6 +176,60 @@ struct CloudMirrorTests {
         #expect(Set(try mine.threads(of: "p").map(\.id)) == ["t1", "t2", "t3"])
     }
 
+    /// The page's comments here (t1, agreed with the cloud) and another device's version of them with t2 added.
+    private func commentsAgreedThenChangedThere(_ mirror: CloudMirror, here: URL) throws -> (PageComments, Data) {
+        let mine = PageComments(root: here, author: "A", device: "Mac")
+        try mine.create(pageId: "p", threadId: "t1", quote: "q", body: "first", now: t0)
+        pushAll(mirror)
+        let there = try makeTempDirectory()
+        try FileManager.default.createDirectory(at: there.appending(path: "comments"), withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: here.appending(path: "comments/p.json"), to: there.appending(path: "comments/p.json"))
+        try PageComments(root: there, author: "B", device: "iPhone")
+            .create(pageId: "p", threadId: "t2", quote: "r", body: "theirs", now: t0.addingTimeInterval(5))
+        return (mine, try Data(contentsOf: there.appending(path: "comments/p.json")))
+    }
+
+    /// A comment written between the cloud's version being read and written (by a writer the lock can't hold back)
+    /// is settled with it, not written over.
+    @Test func aCommentWrittenWhileTheCloudsVersionArrivesIsKept() throws {
+        let root = try makeTempDirectory()
+        let mirror = try mirror(root)
+        let (mine, cloud) = try commentsAgreedThenChangedThere(mirror, here: root)
+        var wrote = false
+        mirror.beforeWrite = { _ in
+            guard !wrote else { return }
+            wrote = true
+            try? mine.create(pageId: "p", threadId: "t3", quote: "s", body: "mine", now: self.t0.addingTimeInterval(6))
+        }
+        let received = try mirror.receive("comments/p.json", contents: cloud, systemFields: nil)
+        #expect(wrote)
+        #expect(received.needsPush)
+        #expect(Set(try mine.threads(of: "p").map(\.id)) == ["t1", "t2", "t3"])
+    }
+
+    /// A comment saved on another thread while the cloud's version is written waits for it, then adds to it.
+    @Test func aCommentWriterWaitsForAnArrivingFile() throws {
+        let root = try makeTempDirectory()
+        let mirror = try mirror(root)
+        let (mine, cloud) = try commentsAgreedThenChangedThere(mirror, here: root)
+        let written = DispatchSemaphore(value: 0)
+        var started = false
+        let later = t0.addingTimeInterval(6)
+        mirror.beforeWrite = { _ in
+            guard !started else { return }
+            started = true
+            Thread.detachNewThread {
+                try? mine.create(pageId: "p", threadId: "t3", quote: "s", body: "mine", now: later)
+                written.signal()
+            }
+            // Held back by the file's lock while the cloud's version goes in.
+            #expect(written.wait(timeout: .now() + 0.3) == .timedOut)
+        }
+        _ = try mirror.receive("comments/p.json", contents: cloud, systemFields: nil)
+        #expect(written.wait(timeout: .now() + 5) == .success)
+        #expect(Set(try mine.threads(of: "p").map(\.id)) == ["t1", "t2", "t3"])
+    }
+
     @Test func aDeletionTakesTheFileUnlessItChangedHere() throws {
         let root = try makeTempDirectory()
         let mirror = try mirror(root)

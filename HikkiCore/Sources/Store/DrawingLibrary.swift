@@ -38,8 +38,13 @@ public struct DrawingLibrary: Sendable {
         return object["items"] ?? .array([])
     }
 
-    /// Replaces the stored items (written atomically).
+    /// Replaces the stored items (written atomically), under the file's lock (`FileLocks`), which what arrives from
+    /// iCloud takes too: the two writes never interleave.
     public func save(_ items: JSONValue) throws {
+        try FileLocks.shared.withLock(file) { try saveLocked(items) }
+    }
+
+    private func saveLocked(_ items: JSONValue) throws {
         guard case .array = items else { throw LibraryError.notItems }
         // A newer Hikki's Library is never overwritten by this one's.
         if case .failure(LibraryError.newerFormat(let format)) = Result(catching: { try self.items() }) {

@@ -232,13 +232,37 @@ public final class CloudMirror: @unchecked Sendable {
     public func receive(_ path: String, contents: Data, systemFields: Data?) throws -> Received {
         guard Self.isSyncable(path) else { return Received(touched: false, needsPush: false) }
         let url = root.appending(path: path)
+        // Held from reading the file to writing it: comments, chats and the drawing library write under the same lock
+        // (`FileLocks`), so nothing of theirs lands between the two and is written over.
+        return try FileLocks.shared.withLock(url) {
+            try receive(path, url: url, contents: contents, systemFields: systemFields, attempts: 3)
+        }
+    }
+
+    /// Runs just before an arriving file is written over the one read (tests: another writer getting in there).
+    var beforeWrite: ((String) -> Void)?
+
+    private func receive(_ path: String, url: URL, contents: Data, systemFields: Data?, attempts: Int) throws -> Received {
         let incomingHash = Self.hash(contents)
         let local = try? Data(contentsOf: url)
         let entry = lock.withLock { state.entries[path] }
         let localHash = local.map(Self.hash)
+        // Still the file this was decided on? A writer outside the lock (another process, a file coordinator) may
+        // have changed it since: then it is decided again with what it holds now — settled, not written over.
+        let asRead = local
+        func stillAsRead() -> Bool {
+            beforeWrite?(path)
+            guard attempts > 1 else { return true }
+            return (try? Data(contentsOf: url)) == asRead
+        }
         // Unchanged here since the last agreement (or never here): the cloud's version is the file.
         guard let local, let localHash, localHash != incomingHash, localHash != entry?.hash else {
-            if localHash != incomingHash { try write(contents, to: url) }
+            if localHash != incomingHash {
+                guard stillAsRead() else {
+                    return try receive(path, url: url, contents: contents, systemFields: systemFields, attempts: attempts - 1)
+                }
+                try write(contents, to: url)
+            }
             record(path, url: url, hash: incomingHash, systemFields: systemFields)
             return Received(touched: localHash != incomingHash, needsPush: false)
         }
@@ -253,6 +277,9 @@ public final class CloudMirror: @unchecked Sendable {
         }
         // Both sides changed it.
         let settled = resolve(path, local: local, cloud: contents)
+        if settled.file != local, !stillAsRead() {
+            return try receive(path, url: url, contents: contents, systemFields: systemFields, attempts: attempts - 1)
+        }
         for (extraPath, data) in settled.extra {
             try write(data, to: root.appending(path: extraPath))
         }
@@ -271,6 +298,10 @@ public final class CloudMirror: @unchecked Sendable {
     public func receiveDeletion(_ path: String) throws -> Received {
         guard Self.isSyncable(path) else { return Received(touched: false, needsPush: false) }
         let url = root.appending(path: path)
+        return try FileLocks.shared.withLock(url) { try receiveDeletion(path, url: url) }
+    }
+
+    private func receiveDeletion(_ path: String, url: URL) throws -> Received {
         let entry = lock.withLock { state.entries[path] }
         guard let local = try? Data(contentsOf: url) else {
             deleted(path)
