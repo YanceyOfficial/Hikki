@@ -1,4 +1,5 @@
 import { ERRORS, type ErrorId } from '../generated/errors'
+import { safeErrorMessage, safeMessageText, safeStack } from '../lib/safe-error'
 import type { Transport } from './bridge'
 import type { LogLevel } from './protocol'
 
@@ -15,8 +16,7 @@ export function notify(kind: 'success' | 'info' | 'warning' | 'error', message: 
  * shows its message with "Copy details". `error`'s own message goes along as technical detail — never page content.
  */
 export function reportError(id: ErrorId, error?: unknown, context?: Record<string, string>): void {
-  const detail =
-    error === undefined ? undefined : error instanceof Error ? error.message : String(error)
+  const detail = error === undefined ? undefined : safeErrorMessage(error)
   if (!sink) console.warn(`[hikki] ${id}`, detail ?? '')
   sink?.post({ type: 'reportError', code: ERRORS[id].code, detail, context }).catch(() => {})
 }
@@ -31,14 +31,16 @@ export function installErrorForwarding(
     transport.post({ type: 'log', level, message, context }).catch(() => {})
   }
   target.addEventListener('error', (e) => {
-    log('error', `uncaught: ${e.message}`, {
+    log('error', `uncaught: ${safeMessageText(String(e.message ?? ''))}`, {
       source: `${e.filename}:${e.lineno}:${e.colno}`,
-      stack: String(e.error?.stack ?? '')
+      stack: safeStack(e.error?.stack)
     })
   })
   target.addEventListener('unhandledrejection', (e) => {
     const reason = e.reason instanceof Error ? e.reason : new Error(String(e.reason))
-    log('error', `unhandled rejection: ${reason.message}`, { stack: String(reason.stack ?? '') })
+    log('error', `unhandled rejection: ${safeErrorMessage(reason)}`, {
+      stack: safeStack(reason.stack)
+    })
   })
   for (const level of ['warn', 'error'] as const) {
     const original = target.console[level].bind(target.console)
@@ -53,7 +55,7 @@ export function installErrorForwarding(
 
 /**
  * What of a console.warn/error call may reach the native log, which never holds page content: string arguments
- * and Errors' messages only — objects (a document, a node, a selection) are left out. Tiptap's own warnings put
+ * and Errors' messages (`safeErrorMessage`) only — objects (a document, a node, a selection) are left out. Tiptap's own warnings put
  * the content they choked on after their first argument (`'[tiptap warn]: Invalid content.', 'Passed value:',
  * content, 'Error:', error`), sometimes as a string of HTML, so a `[tiptap` line keeps its first argument alone.
  */
@@ -61,6 +63,6 @@ export function consoleLine(args: unknown[]): string {
   const first = args[0]
   if (typeof first === 'string' && first.startsWith('[tiptap')) return first
   return args
-    .flatMap((a) => (a instanceof Error ? [a.message] : typeof a === 'string' ? [a] : []))
+    .flatMap((a) => (a instanceof Error ? [safeErrorMessage(a)] : typeof a === 'string' ? [a] : []))
     .join(' ')
 }

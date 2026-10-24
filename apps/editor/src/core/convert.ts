@@ -9,6 +9,7 @@ import {
 import { MarkdownManager } from '@tiptap/markdown'
 import { DOMSerializer, type Mark, Node as PMNode, type Schema } from '@tiptap/pm/model'
 
+import { safeErrorMessage } from '../lib/safe-error'
 import { editorExtensions } from './editor'
 import { plainText, textOf, wordCount } from './extract'
 import { normalizeBody } from './normalize'
@@ -146,9 +147,7 @@ export function importDocument(
     PMNode.fromJSON(schema, content).check()
   } catch (error) {
     // Into the native log (the reason only — never the file's text).
-    console.warn(
-      `import fell back to text: ${error instanceof Error ? error.message : String(error)}`
-    )
+    console.warn(`import fell back to text: ${safeErrorMessage(error)}`)
     content = textDocument(text)
   }
   const blocks = [...(content.content ?? [])]

@@ -92,7 +92,9 @@ These rules are mandatory. Automated ones are noted.
   thread (dynamic color providers, KVO callbacks) must be `nonisolated` / `@Sendable`.
 - **Logs never contain page content.** Use `Log.info` / `Log.warn` / `Log.error` with a category; IDs and counts only.
   The editor forwards console.warn/error to the native log as strings and Errors' messages only (`consoleLine` in
-  `apps/editor/src/core/errors.ts`: objects dropped, a Tiptap warning cut to its first argument).
+  `apps/editor/src/core/errors.ts`: objects dropped, a Tiptap warning cut to its first argument), and every error's text — those, `reportError` details,
+  uncaught errors, the import fallback — goes through `safeErrorMessage` (`apps/editor/src/lib/safe-error.ts`), which
+  cuts the content ProseMirror quotes (`Invalid content for node doc: <…>`); stacks keep their frames only.
 - **Failures have codes and reach the user as toasts.** Every user-visible failure has a code in `design/errors.json`
   (`make errors` generates `ErrorCode` in `HikkiCore/Sources/Errors/ErrorCode.swift`, its messages in
   `Hikki/Sources/Generated/ErrorMessages.swift`, `apps/editor/src/generated/errors.ts`, `apps/bff/src/generated/errors.ts` and both
