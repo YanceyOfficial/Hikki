@@ -281,8 +281,7 @@
   "math": {
     "placeholder": "E = mc^2",
     "label": "公式（LaTeX）",
-    "hintInline": "Enter 完成 · Esc 取消",
-    "hintBlock": "⌘Enter 完成 · Esc 取消",
+    "hint": "⌘Enter 完成 · Esc 取消",
     "done": "完成"
   },
   "toggle": {

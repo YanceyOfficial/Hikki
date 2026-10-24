@@ -311,7 +311,10 @@ describe('formulas', () => {
     act(() => (host.querySelector('[data-type="inline-math"]') as HTMLElement).click())
     const input = await screen.findByLabelText('Formula (LaTeX)')
     fireEvent.change(input, { target: { value: 'y_1' } })
+    // Enter is a new line in the source (formulas run over several); ⌘/Ctrl+Enter finishes.
     fireEvent.keyDown(input, { key: 'Enter' })
+    expect(document.querySelector('.hk-math-editor')).not.toBeNull()
+    fireEvent.keyDown(input, { key: 'Enter', metaKey: true })
     const math = editor.getJSON().content?.[0].content?.[1]
     expect(math).toMatchObject({ type: 'inlineMath', attrs: { latex: 'y_1' } })
     expect(document.querySelector('.hk-math-editor')).toBeNull()
@@ -342,7 +345,7 @@ describe('formulas', () => {
       editor.view.dispatch(tr.setMeta('addToHistory', false))
     })
     fireEvent.change(input, { target: { value: 'y_1' } })
-    fireEvent.keyDown(input, { key: 'Enter' })
+    fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true })
     expect(editor.getJSON().content?.[1].content?.[1]).toMatchObject({
       type: 'inlineMath',
       attrs: { latex: 'y_1' }
