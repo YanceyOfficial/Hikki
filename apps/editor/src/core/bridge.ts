@@ -72,6 +72,7 @@ import {
   type Snapshot,
   type ToNativeMessage
 } from './protocol'
+import { readableContent } from './readable'
 import { Store } from './store'
 import {
   selectAroundCaret,
@@ -388,9 +389,13 @@ export class EditorBridge {
     })
     const locked = payload.locked === true
     if (contentError || locked) editor.setEditable(false)
-    // IDs and the reason only — never page content.
-    if (contentError)
+    if (contentError) {
+      // Tiptap's fallback is an empty page: show what fits instead — unknown blocks as their text. Display only:
+      // the page is read-only and never saved, so the stored content stays as it is.
+      editor.commands.setContent(readableContent(body, editor.schema), { emitUpdate: false })
+      // IDs and the reason only — never page content.
       console.warn(`page opened read-only: content doesn't fit the schema (${payload.id})`)
+    }
     editor.on('update', ({ transaction }) => {
       this.refreshOutline(editor)
       this.reportPageInfo()

@@ -991,7 +991,8 @@ HikkiUITests/                 XCUITest flows
   `UIContentSizeCategory.didChangeNotification`; `--hk-text-scale`, clamped 0.85–2, on `.tiptap` and the title
   `.hk-title`; the UI around them keeps its size). `testPageFollowsTheSystemTextSize` launches at XXXL.
 - **Editor content safety**: content that doesn't fit the schema (corrupt, or from a newer Hikki) opens read-only and
-  is never saved (`enableContentCheck`); housekeeping transactions (`addToHistory: false` — UniqueID stamping
+  is never saved (`enableContentCheck`), showing what fits (`readableContent` in `apps/editor/src/core/readable.ts`:
+  unknown blocks as their text, misnested ones as their blocks, unknown marks dropped) rather than Tiptap's empty page; housekeeping transactions (`addToHistory: false` — UniqueID stamping
   block ids, remote reloads) never count as edits; continuous typing still saves every 2 s (`maxWaitMs`).
 - **Trial and unlock** (StoreKit 2, `Hikki/Sources/Purchases.swift`): free for `Access.trialDays` (14) days from the
   first download (`AppTransaction.originalPurchaseDate`; this install's first launch where the store can't say), then

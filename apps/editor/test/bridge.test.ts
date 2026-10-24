@@ -678,6 +678,46 @@ describe('EditorBridge', () => {
       expect(bridge.page.get().title).toBe('Future')
     })
 
+    it('shows what it can — an unknown block as its text, a misnested one as its blocks — never a blank page', () => {
+      const newer = {
+        type: 'doc',
+        content: [
+          { type: 'paragraph', content: [{ type: 'text', text: 'before' }] },
+          {
+            type: 'futureBlock',
+            attrs: { flavour: 'x' },
+            content: [{ type: 'text', text: 'kept words', marks: [{ type: 'futureMark' }] }]
+          },
+          {
+            type: 'columns',
+            content: [
+              {
+                type: 'column',
+                content: [{ type: 'paragraph', content: [{ type: 'text', text: 'in a column' }] }]
+              }
+            ]
+          },
+          {
+            type: 'paragraph',
+            content: [
+              { type: 'text', text: 'after', marks: [{ type: 'bold' }, { type: 'futureMark' }] }
+            ]
+          }
+        ]
+      }
+      bridge.loadDocument(page('a', { content: newer }))
+      expect(bridge.page.get().readOnly).toBe(true)
+      expect(stripIds(editor().getJSON()).content).toEqual([
+        { type: 'paragraph', content: [{ type: 'text', text: 'before' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'kept words' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'in a column' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'after', marks: [{ type: 'bold' }] }] }
+      ])
+      vi.advanceTimersByTime(5000)
+      expect(changed()).toHaveLength(0)
+      expect(bridge.flush()).toBeNull()
+    })
+
     it('a valid page loaded afterwards is editable again', () => {
       bridge.loadDocument(page('a', { content: future }))
       bridge.loadDocument(page('b'))
