@@ -422,7 +422,9 @@ HikkiUITests/                 XCUITest flows
 - **Network images** load like exodus's (`apps/editor/src/components/lazy-load-image.tsx`: skeleton, fade in, an icon on
   failure) — covers and the Unsplash grid use the component; body images get the same through
   `apps/editor/src/extensions/image-loading.ts` (`data-load` states styled in `apps/editor/src/style.css`; Tiptap's resizable view hides its
-  container until an image loads, so the CSS shows it meanwhile).
+  container until an image loads, so the CSS shows it meanwhile). A picture already loaded in this run
+  (`apps/editor/src/lib/loaded-images.ts`) skips both — a tab switch rebuilds the page, and its cover and pictures
+  went through skeleton and fade again: a flash on every switch.
 - **Covers**: the stored value is `gradient:<id>` or an image URL, and an image's vertical position rides along
   as a `#y=<0-100>` fragment (`apps/editor/src/lib/covers.ts`: `coverPosition`, `withCoverPosition`), so the store and
   the protocol keep a plain string. "Reposition" on the cover (`apps/editor/src/page/page-header.tsx`) drags the picture
@@ -694,7 +696,8 @@ HikkiUITests/                 XCUITest flows
   page's hover rail hides (`window.hikki.setOutlineRail`).
 - **Tabs keep their place**: the editor reports where the page is scrolled (`scroll` message, throttled); ContentView
   remembers it per tab when another tab takes over and, when a tab is shown again, loads its page and scrolls back
-  (`window.hikki.restoreScroll`). Another page opened inside a tab starts at its top (`loadDocument`).
+  (`window.hikki.restoreScroll`, in the same JavaScript call as `loadDocument` and at once, so no frame of the page at
+  its top is painted before the jump). Another page opened inside a tab starts at its top (`loadDocument`).
 - **A window's editors** (`WindowEditors` in `Hikki/Sources/ContentView.swift`): the main one made once per window, the
   split pane's on first use. Each holds the window's `EditorSettings` (tone, spelling, AI review style, shortcuts —
   ContentView sets both at once) and replays them on ready; bridge calls go through its `call` helper. The tree

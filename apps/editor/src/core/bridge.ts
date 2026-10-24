@@ -251,12 +251,20 @@ export class EditorBridge {
     void this.send({ type: 'scroll', docId, top })
   }
 
-  /** A tab shown again: back to where it was (after the page has laid out). */
+  /**
+   * A tab shown again: back to where it was. At once — the native side calls it in the same turn as `loadDocument`, so
+   * no frame of the page at its top is painted first (that jump was a flash on every tab switch) — and once more after
+   * two frames, when what laid out late (node views, pictures) left it short of the place.
+   */
   restoreScroll(top: number): void {
+    const target = Math.max(0, top)
+    const scroll = () => window.scrollTo({ top: target, left: 0, behavior: 'instant' })
+    scroll()
     requestAnimationFrame(() =>
-      requestAnimationFrame(() =>
-        window.scrollTo({ top: Math.max(0, top), left: 0, behavior: 'instant' })
-      )
+      requestAnimationFrame(() => {
+        const scroller = document.scrollingElement ?? document.documentElement
+        if (Math.abs(scroller.scrollTop - target) > 1) scroll()
+      })
     )
   }
 

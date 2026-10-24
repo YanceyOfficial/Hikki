@@ -537,13 +537,9 @@ final class EditorController {
         send("window.hikki.setOutlineRail(visible)", ["visible": visible], label: "setOutlineRail")
     }
 
+    /// Shows a page; `scrollTop`: where its tab left it (restored in the same call as the load, see `load`).
     func open(documentID: String?, scrollTop: Double? = nil) {
-        Task {
-            await load(documentID)
-            if let scrollTop, scrollTop > 0, let id = documentID, currentDocumentID == id {
-                await call("window.hikki.restoreScroll(top)", ["top": scrollTop], label: "restoreScroll")
-            }
-        }
+        Task { await load(documentID, scrollTop: scrollTop) }
     }
 
     /// Where the open page was last scrolled (the editor reports it), for a tab to come back to.
@@ -1034,7 +1030,7 @@ final class EditorController {
 
     // MARK: - Loading
 
-    private func load(_ id: String?) async {
+    private func load(_ id: String?, scrollTop: Double? = nil) async {
         guard isReady else {
             pendingDocumentID = .some(id)
             return
@@ -1052,9 +1048,11 @@ final class EditorController {
                 Log.warn("open: document missing", category: "store", context: ["docId": id])
                 return
             }
+            // A tab shown again goes back to its place in the same turn as its page loads: a separate call let WebKit
+            // paint the page at its top first, then jump — a flash on every tab switch.
             _ = try await webView.callAsyncJavaScript(
-                "window.hikki.loadDocument(page)",
-                arguments: ["page": try payload(record)],
+                "window.hikki.loadDocument(page); if (top > 0) window.hikki.restoreScroll(top)",
+                arguments: ["page": try payload(record), "top": scrollTop ?? 0],
                 contentWorld: .page
             )
             loaded = (id, try LoadedContent(record))
