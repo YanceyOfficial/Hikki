@@ -66,3 +66,37 @@ struct AIAttachmentsTests {
         #expect(input[1]["type"] as? String == "input_file" && input[1]["filename"] as? String == "a.pdf")
     }
 }
+
+/// ISSUE-197: ⌘V in the AI composer with a picture copied typed the file's name; what the pasteboard holds now decides.
+struct AIPasteTests {
+    @Test func aCopiedPictureFileIsAttachedNotItsName() {
+        // Finder: the file's URL, its name as text, its icon as a picture.
+        let shot = URL(fileURLWithPath: "/Users/me/Desktop/Screenshot 2026-10-24 at 15.00.17.png")
+        #expect(AIPaste.decide(fileURLs: [shot], hasText: true, types: [.fileURL, .icns, .utf8PlainText]) == .files([shot]))
+        let pdf = URL(fileURLWithPath: "/tmp/notes.pdf")
+        #expect(AIPaste.decide(fileURLs: [pdf], hasText: true, types: [.fileURL]) == .files([pdf]))
+    }
+
+    @Test func onlyThePicturesAndPDFsAmongCopiedFilesAreAttached() {
+        let photo = URL(fileURLWithPath: "/tmp/photo.heic")
+        let text = URL(fileURLWithPath: "/tmp/readme.txt")
+        #expect(AIPaste.decide(fileURLs: [text, photo], hasText: true, types: [.fileURL]) == .files([photo]))
+        // Nothing attachable (a text file, a folder): the names paste as text, not Finder's icon as a picture.
+        #expect(AIPaste.decide(fileURLs: [text], hasText: true, types: [.fileURL, .tiff, .utf8PlainText]) == .text)
+        #expect(AIPaste.decide(fileURLs: [URL(fileURLWithPath: "/tmp/folder")], hasText: true, types: [.fileURL]) == .text)
+    }
+
+    @Test func pictureDataIsAttachedWhenThereIsNoText() {
+        // A screenshot copied to the clipboard, a picture copied in Preview.
+        #expect(AIPaste.decide(fileURLs: [], hasText: false, types: [.png, .tiff]) == .data(.png))
+        #expect(AIPaste.decide(fileURLs: [], hasText: false, types: [.tiff]) == .data(.tiff))
+        #expect(AIPaste.decide(fileURLs: [], hasText: false, types: [.pdf]) == .data(.pdf))
+    }
+
+    @Test func textPastesAsText() {
+        #expect(AIPaste.decide(fileURLs: [], hasText: true, types: [.utf8PlainText]) == .text)
+        // Copied text often comes with a picture of itself (Pages, Word, browsers): still text.
+        #expect(AIPaste.decide(fileURLs: [], hasText: true, types: [.rtf, .pdf, .tiff, .utf8PlainText]) == .text)
+        #expect(AIPaste.decide(fileURLs: [], hasText: false, types: []) == .text)
+    }
+}

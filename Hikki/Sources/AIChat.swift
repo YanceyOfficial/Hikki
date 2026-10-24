@@ -1081,7 +1081,8 @@ struct AIChatView: View {
         }
         .onChange(of: mentionQuery) { mentionIndex = 0 }
         #if os(macOS)
-            .onPasteCommand(of: [.fileURL, .image, .pdf]) { receive($0) }
+            // Not `.onPasteCommand`: the field's text view takes every paste itself, as text, before it is asked.
+            .background(PasteAttachments(active: composing) { receive($0, from: $1) })
         #endif
         .accessibilityIdentifier("ai-chat-field")
     }
@@ -1160,7 +1161,25 @@ struct AIChatView: View {
         return .handled
     }
 
-    /// Dropped or pasted files: file URLs read from disk, pictures and PDFs as data.
+    #if os(macOS)
+        /// A paste the field was kept from (`PasteAttachments`): the copied files, or the pasteboard's picture or PDF.
+        private func receive(_ paste: AIPaste, from pasteboard: NSPasteboard) {
+            switch paste {
+            case .files(let urls):
+                urls.forEach(chat.attach(fileAt:))
+            case .data(let type):
+                guard let data = pasteboard.data(forType: NSPasteboard.PasteboardType(type.identifier)) else {
+                    chat.attachError = String(localized: "app:ai.attach.unreadable")
+                    return
+                }
+                chat.attach(data, type: type, name: String(localized: "app:ai.attach.photo"))
+            case .text:
+                break
+            }
+        }
+    #endif
+
+    /// Dropped files: file URLs read from disk, pictures and PDFs as data.
     private func receive(_ providers: [NSItemProvider]) {
         for provider in providers {
             if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
@@ -1196,6 +1215,87 @@ struct AIChatView: View {
         .accessibilityIdentifier("ai-chat-send")
     }
 }
+
+#if os(macOS)
+    /// ⌘V in the composer's field with a picture or a PDF on the pasteboard attaches it (ISSUE-197). The field is a
+    /// native text view that takes every paste itself — as text: a copied file's name — before `.onPasteCommand` is
+    /// asked, so a local key monitor sees the Paste key first (whatever the Edit menu's Paste is bound to) and keeps
+    /// it from the field when `AIPaste` says there is something to attach; text still pastes as the field does.
+    private struct PasteAttachments: NSViewRepresentable {
+        /// The field has the focus.
+        let active: Bool
+        let onPaste: (AIPaste, NSPasteboard) -> Void
+
+        func makeNSView(context: Context) -> MonitorView {
+            let view = MonitorView()
+            updateNSView(view, context: context)
+            return view
+        }
+
+        func updateNSView(_ view: MonitorView, context: Context) {
+            view.active = active
+            view.onPaste = onPaste
+        }
+
+        static func dismantleNSView(_ view: MonitorView, coordinator: ()) { view.stop() }
+
+        final class MonitorView: NSView {
+            var active = false
+            var onPaste: ((AIPaste, NSPasteboard) -> Void)?
+            private var monitor: Any?
+
+            override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+            override func viewDidMoveToWindow() {
+                super.viewDidMoveToWindow()
+                stop()
+                guard window != nil else { return }
+                // A local monitor sees the key before the menu's Paste sends `paste:` to the field.
+                monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                    let taken = MainActor.assumeIsolated { self?.handle(event) ?? false }
+                    return taken ? nil : event
+                }
+            }
+
+            /// Whether the event was a paste into this window's field that attached something (and so is used up).
+            private func handle(_ event: NSEvent) -> Bool {
+                guard active, let window, event.window === window, window.firstResponder is NSTextView,
+                    Self.isPaste(event)
+                else { return false }
+                let pasteboard = NSPasteboard.general
+                let urls =
+                    pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
+                let paste = AIPaste.decide(
+                    fileURLs: urls, hasText: pasteboard.string(forType: .string) != nil,
+                    types: (pasteboard.types ?? []).compactMap { UTType($0.rawValue) })
+                guard paste != .text else { return false }
+                onPaste?(paste, pasteboard)
+                return true
+            }
+
+            /// The event is the Edit menu's Paste key (read from the menu, so a rebinding in System Settings holds).
+            private static func isPaste(_ event: NSEvent) -> Bool {
+                guard let item = pasteItem(in: NSApp.mainMenu), !item.keyEquivalent.isEmpty else { return false }
+                let modifiers: NSEvent.ModifierFlags = [.command, .option, .control, .shift]
+                return event.modifierFlags.intersection(modifiers) == item.keyEquivalentModifierMask.intersection(modifiers)
+                    && event.charactersIgnoringModifiers?.lowercased() == item.keyEquivalent.lowercased()
+            }
+
+            private static func pasteItem(in menu: NSMenu?) -> NSMenuItem? {
+                for item in menu?.items ?? [] {
+                    if item.action == #selector(NSText.paste(_:)) { return item }
+                    if let found = pasteItem(in: item.submenu) { return found }
+                }
+                return nil
+            }
+
+            func stop() {
+                if let monitor { NSEvent.removeMonitor(monitor) }
+                monitor = nil
+            }
+        }
+    }
+#endif
 
 /// The composer's round send button: a solid tone fill with a white arrow when it can send, muted grey when it
 /// can't — never the label dimmed over the fill, which read as pale pink in light mode. The colours are resolved
