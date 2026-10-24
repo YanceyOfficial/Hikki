@@ -103,6 +103,9 @@
   --size-home-narrow: 600px;
   --size-ai-picture: 96px;
   --size-home-card: 240px;
+  --size-home-card-cover: 96px;
+  --size-home-calendar-cell: 96px;
+  --size-home-calendar-panel: 300px;
   --size-split-min: 320px;
   --size-history-list: 240px;
   --size-history-width: 880px;

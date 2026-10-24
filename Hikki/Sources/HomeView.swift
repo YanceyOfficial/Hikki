@@ -4,7 +4,7 @@ import SwiftUI
 
 /// How Home shows the workspace's pages.
 enum HomeLayout: String, CaseIterable, Identifiable {
-    case table, gallery
+    case table, gallery, calendar
 
     static let storageKey = "home.layout"
 
@@ -14,6 +14,7 @@ enum HomeLayout: String, CaseIterable, Identifiable {
         switch self {
         case .table: "app:home.layout.table"
         case .gallery: "app:home.layout.gallery"
+        case .calendar: "app:home.layout.calendar"
         }
     }
 
@@ -21,6 +22,7 @@ enum HomeLayout: String, CaseIterable, Identifiable {
         switch self {
         case .table: .listBullets
         case .gallery: .browsers
+        case .calendar: .calendarDots
         }
     }
 }
@@ -35,6 +37,8 @@ nonisolated struct HomeRow: Identifiable, Hashable, Sendable {
     let updatedAt: Date
     let words: Int
     let isFavorite: Bool
+    /// The stored cover (`PageCover`), for the gallery's cards.
+    let cover: String?
 }
 
 /// The order of Home's rows: a column and a direction (the table's headers set it; a menu does elsewhere).
@@ -75,7 +79,8 @@ extension ComparisonResult {
 }
 
 /// Home: every page of the workspace as a database (Notion's) — a sortable table of names, places, dates and sizes,
-/// or a gallery of cards — with a filter and New Page on top. iPhone gets the same as a list.
+/// a gallery of cards (with their covers) or a month calendar of what was edited each day — with a filter and New
+/// Page on top. iPhone gets the same as a list.
 struct HomeView: View {
     @Environment(AppModel.self) private var model
     let navigator: Navigator
@@ -88,6 +93,11 @@ struct HomeView: View {
     @State private var rows: [HomeRow] = []
     /// Too narrow for the table's columns (a side of a split view): pages as the phone's list instead.
     @State private var narrow = false
+    /// The calendar's month, and the day picked in it (nil: `HomeCalendar.defaultDay`).
+    @State private var month = CalendarMonth(containing: .now, calendar: HomeCalendar.calendar())
+    @State private var pickedDay: Date?
+    /// The shown rows under the day they were edited, for the calendar (built with the rows, only while it shows).
+    @State private var rowsByDay: [Date: [HomeRow]] = [:]
     #if os(iOS)
         @Environment(\.horizontalSizeClass) private var sizeClass
     #endif
@@ -115,6 +125,8 @@ struct HomeView: View {
         .onChange(of: model.tree, initial: true) { rebuildRows() }
         .onChange(of: filter) { rebuildRows() }
         .onChange(of: sortOrder) { rebuildRows() }
+        .onChange(of: layout) { rebuildRows() }
+        .onChange(of: compact) { rebuildRows() }
     }
 
     private func wide(_ rows: [HomeRow]) -> some View {
@@ -146,6 +158,7 @@ struct HomeView: View {
                     }
                 case .table: table(rows)
                 case .gallery: gallery(rows)
+                case .calendar: calendarView()
                 }
             }
         }
@@ -177,10 +190,12 @@ struct HomeView: View {
                         .map { $0.title.isEmpty ? untitled : $0.title }
                         .joined(separator: " › "),
                     createdAt: page.createdAt, updatedAt: page.updatedAt, words: page.wordCount,
-                    isFavorite: page.isFavorite)
+                    isFavorite: page.isFavorite, cover: page.cover)
             }
             .filter { query.isEmpty || $0.title.localizedStandardContains(query) || $0.location.localizedStandardContains(query) }
             .sorted(using: sortOrder)
+        rowsByDay =
+            layout == .calendar && !compact ? HomeCalendar.byDay(rows, date: \.updatedAt, calendar: HomeCalendar.calendar()) : [:]
     }
 
     // MARK: Header
@@ -206,7 +221,8 @@ struct HomeView: View {
                 }
                 Spacer()
                 if !narrow { filterField.frame(width: Size.homeFilter) }
-                if compact || narrow || layout == .gallery {
+                // The calendar orders by day itself.
+                if compact || (layout != .calendar && (narrow || layout == .gallery)) {
                     sortMenu
                 }
                 Button {
@@ -324,7 +340,7 @@ struct HomeView: View {
                     Button {
                         navigator.openFromSidebar(.page(row.id))
                     } label: {
-                        HomeCard(row: row)
+                        HomeCard(row: row, cover: coverArt(row.cover))
                     }
                     .buttonStyle(.plain)
                     .contextMenu {
@@ -335,6 +351,100 @@ struct HomeView: View {
             }
             .padding(.horizontal, Spacing.s6)
             .padding(.bottom, Spacing.s6)
+        }
+    }
+
+    /// A card's cover as HikkiUI draws it: a built-in gradient, a picture in the workspace's assets (as a file) or a
+    /// web address; nil for none, or one this device can't show (a missing asset, an unknown gradient).
+    private func coverArt(_ raw: String?) -> PageCoverView.Art? {
+        guard let cover = PageCover(raw) else { return nil }
+        switch cover {
+        case .gradient(let id):
+            return CoverGradient(rawValue: id).map { PageCoverView.Art.gradient($0) }
+        case .image(_, let position):
+            if let name = cover.assetName {
+                return model.assets.file(named: name).map { PageCoverView.Art.image($0, position: position) }
+            }
+            return cover.webURL.map { PageCoverView.Art.image($0, position: position) }
+        }
+    }
+
+    // MARK: Calendar
+
+    /// A month of what was edited each day (Mac and iPad), the picked day's pages beside it — under it on a narrow
+    /// side. A click on a day picks it; a click on a page opens it, as the gallery's cards do.
+    @ViewBuilder private func calendarView() -> some View {
+        let calendar = HomeCalendar.calendar()
+        let today = calendar.startOfDay(for: .now)
+        let selected = selectedDay(calendar: calendar, today: today)
+        let grid = MonthCalendar(
+            title: month.firstDay(in: calendar).formatted(.dateTime.year().month(.wide)),
+            summary: String(
+                localized: "app:calendar.edited \(HomeCalendar.count(in: month, of: rowsByDay, calendar: calendar).formatted())"),
+            weekdays: HomeCalendar.weekdaySymbols(calendar.shortStandaloneWeekdaySymbols, firstWeekday: calendar.firstWeekday),
+            weeks: HomeCalendar.weeks(of: month, calendar: calendar).map { week in
+                week.map { calendarDay($0, calendar: calendar, today: today) }
+            },
+            selection: selected,
+            onSelect: { day in pickedDay = day },
+            onMove: { step in
+                month = month.adding(step)
+                pickedDay = nil
+            },
+            onToday: {
+                month = CalendarMonth(containing: today, calendar: calendar)
+                pickedDay = today
+            })
+        let list = CalendarDayList(
+            title: selected.formatted(.dateTime.weekday(.wide).month(.wide).day()), rows: dayPages(selected),
+            onOpen: { id in navigator.openFromSidebar(.page(id)) }
+        ) { id in
+            if let page = model.tree.page(id) { PageActions(page: page, navigator: navigator) }
+        }
+        if narrow {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Spacing.s4) {
+                    grid
+                    list
+                }
+                .padding(.horizontal, Spacing.s6)
+                .padding(.bottom, Spacing.s6)
+            }
+        } else {
+            HStack(alignment: .top, spacing: Spacing.s0) {
+                ScrollView {
+                    grid.padding(.leading, Spacing.s6).padding(.trailing, Spacing.s4).padding(.bottom, Spacing.s6)
+                }
+                Divider()
+                ScrollView {
+                    list.padding(Spacing.s3)
+                }
+                .frame(width: Size.homeCalendarPanel)
+            }
+        }
+    }
+
+    /// The picked day while it is in the shown month, else the month's default (today, or its last day with pages).
+    private func selectedDay(calendar: Calendar, today: Date) -> Date {
+        if let pickedDay, month.contains(pickedDay, in: calendar) { return pickedDay }
+        return HomeCalendar.defaultDay(in: month, days: rowsByDay, today: today, calendar: calendar)
+    }
+
+    private func calendarDay(_ day: Date, calendar: Calendar, today: Date) -> MonthCalendar.Day {
+        let pages = rowsByDay[day] ?? []
+        return MonthCalendar.Day(
+            id: day, number: calendar.component(.day, from: day), inMonth: month.contains(day, in: calendar),
+            isToday: day == today,
+            pages: pages.prefix(MonthCalendar.pagesPerDay).map { MonthCalendar.Page(id: $0.id, title: $0.title, icon: $0.icon) },
+            total: pages.count, label: day.formatted(date: .complete, time: .omitted))
+    }
+
+    private func dayPages(_ day: Date) -> [CalendarDayPage] {
+        (rowsByDay[day] ?? []).map { row in
+            CalendarDayPage(
+                id: row.id, title: row.title, icon: row.icon, location: row.location,
+                words: String(localized: "app:home.words \(row.words.formatted())"),
+                time: row.updatedAt.formatted(date: .omitted, time: .shortened))
         }
     }
 
@@ -470,12 +580,30 @@ struct HomeView: View {
     }
 }
 
-/// A page in Home's gallery: its icon large, the title, where it sits, when it was edited and how long it is.
+/// A page in Home's gallery: its cover as a band when it has one, its icon large, the title, where it sits, when it
+/// was edited and how long it is.
 private struct HomeCard: View {
     let row: HomeRow
+    let cover: PageCoverView.Art?
     @State private var hovering = false
 
     var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.s0) {
+            if let cover {
+                PageCoverView(cover).frame(height: Size.homeCardCover)
+            }
+            details
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(hovering ? Theme.accent : Theme.card)
+        .clipShape(.rect(cornerRadius: Radius.xl))
+        .overlay { RoundedRectangle(cornerRadius: Radius.xl).stroke(Theme.border, lineWidth: 1) }
+        .contentShape(.rect(cornerRadius: Radius.xl))
+        .onHover { hovering = $0 }
+        .animation(Motion.easeOut(Motion.popOut), value: hovering)
+    }
+
+    private var details: some View {
         VStack(alignment: .leading, spacing: Spacing.s2) {
             PageIcon(row.icon, size: 28)
             Text(row.title).font(.hk(.base, .medium)).foregroundStyle(Theme.foreground).lineLimit(2)
@@ -495,11 +623,6 @@ private struct HomeCard: View {
         }
         .padding(Spacing.s4)
         .frame(maxWidth: .infinity, minHeight: Size.homeCard * 0.55, alignment: .topLeading)
-        .background(hovering ? Theme.accent : Theme.card, in: .rect(cornerRadius: Radius.xl))
-        .overlay { RoundedRectangle(cornerRadius: Radius.xl).stroke(Theme.border, lineWidth: 1) }
-        .contentShape(.rect(cornerRadius: Radius.xl))
-        .onHover { hovering = $0 }
-        .animation(Motion.easeOut(Motion.popOut), value: hovering)
     }
 }
 

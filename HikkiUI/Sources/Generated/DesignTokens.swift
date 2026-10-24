@@ -225,6 +225,9 @@ public nonisolated enum Size {
     public static let homeNarrow: CGFloat = 600
     public static let aiPicture: CGFloat = 96
     public static let homeCard: CGFloat = 240
+    public static let homeCardCover: CGFloat = 96
+    public static let homeCalendarCell: CGFloat = 96
+    public static let homeCalendarPanel: CGFloat = 300
     public static let splitMin: CGFloat = 320
     public static let historyList: CGFloat = 240
     public static let historyWidth: CGFloat = 880

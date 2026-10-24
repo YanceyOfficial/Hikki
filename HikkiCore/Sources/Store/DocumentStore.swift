@@ -16,7 +16,7 @@ public struct DocumentRecord: Codable, Sendable, Equatable, Identifiable, Fetcha
     public var parentId: String?
     /// An emoji, or nil.
     public var icon: String?
-    /// A `PageCover` raw value, or nil.
+    /// A `PageCover` raw value (`gradient:<id>` or an image URL), or nil.
     public var cover: String?
     public var favoritedAt: Date?
     public var deletedAt: Date?
@@ -53,16 +53,19 @@ public struct PageSummary: Codable, Sendable, Equatable, Identifiable, Fetchable
     /// For Home's table (created column, word count column).
     public var createdAt: Date
     public var wordCount: Int
+    /// For Home's gallery cards: the stored cover (`gradient:<id>` or an image URL, see `PageCover`), or nil.
+    public var cover: String?
 
     public var isFavorite: Bool { favoritedAt != nil }
     public var isLocked: Bool { lockedAt != nil }
 
     public init(
         id: String, parentId: String?, title: String, icon: String?, updatedAt: Date, favoritedAt: Date?, deletedAt: Date?,
-        sortKey: Double, lockedAt: Date? = nil, createdAt: Date? = nil, wordCount: Int = 0
+        sortKey: Double, lockedAt: Date? = nil, createdAt: Date? = nil, wordCount: Int = 0, cover: String? = nil
     ) {
         self.createdAt = createdAt ?? updatedAt
         self.wordCount = wordCount
+        self.cover = cover
         self.id = id
         self.parentId = parentId
         self.title = title
@@ -715,7 +718,7 @@ public final class DocumentStore: Sendable {
     }
 
     private static let summaryColumns =
-        "document.id, document.parentId, document.title, document.icon, document.updatedAt, document.favoritedAt, document.deletedAt, document.sortKey, document.lockedAt, document.createdAt, document.wordCount"
+        "document.id, document.parentId, document.title, document.icon, document.updatedAt, document.favoritedAt, document.deletedAt, document.sortKey, document.lockedAt, document.createdAt, document.wordCount, document.cover"
 
     private static let pagesRequest = SQLRequest<PageSummary>(
         sql: "SELECT \(summaryColumns) FROM document WHERE deletedAt IS NULL ORDER BY sortKey, createdAt, id"

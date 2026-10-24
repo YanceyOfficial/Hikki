@@ -505,8 +505,16 @@ HikkiUITests/                 XCUITest flows
   the app's own scheme never sends, so with `VITE_HIKKI_BFF_URL` set the frame loads the BFF's shim page
   (`/embed/youtube/<id>`, `apps/bff/src/index.ts`) and the player sees that as its referrer.
 - **Home** (`Hikki/Sources/HomeView.swift`) is a database of every page (Notion's): a native `Table` (Name, Location,
-  Created, Edited, Words, Favorite — click a header to sort, double-click or Return opens) or a gallery of cards, with
-  a filter and New Page on top; iPhone gets a list, and so does a Home narrower than the table's columns
+  Created, Edited, Words, Favorite — click a header to sort, double-click or Return opens), a gallery of cards (a
+  card shows the page's cover as a band: `PageCover` in HikkiCore reads the stored value as the editor does —
+  `gradient:<id>` or a picture with its `#y=` position —, an asset resolved to its file through `AssetStore.file(named:)`,
+  drawn by HikkiUI's `PageCoverView`, which decodes pictures off the main thread as thumbnails and keeps them in a
+  memory cache) or a calendar (Mac and iPad only — the layout picker's third choice, `home.layout`): HikkiUI's
+  `MonthCalendar` — Monday-first weeks, each day its number (today in the tone's circle), two of the pages edited
+  that day (by `updatedAt`, local calendar) and "+N more", plain cells with no shading by amount — beside
+  `CalendarDayList`, the picked day's pages (below it on a narrow side); the dates, grouping, month count and the
+  default day (today, else the month's last day with pages) are `HomeCalendar` / `CalendarMonth` in HikkiCore. All
+  three take the filter, with New Page on top; iPhone gets a list, and so does a Home narrower than the table's columns
   (`Size.homeNarrow`: a side of a split view), its filter on a line of its own. Sorting is `HomeSort` (Sendable, for Swift 6's table). The sidebar
   shows Home and Trash as Notion's row of icons (the open one widens into a pill with its name) and no section title.
   Trash has the same layout (table: deleted, deleted for good, Restore/Delete). Move to Trash asks first wherever it

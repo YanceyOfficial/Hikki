@@ -37,6 +37,25 @@
             return items
         }
 
+        /// MonthCalendar's sample: October 2026, a few pages on some days.
+        private var galleryWeeks: [[MonthCalendar.Day]] {
+            let calendar = HomeCalendar.calendar()
+            let month = CalendarMonth(year: 2026, month: 10)
+            let pages = [
+                MonthCalendar.Page(id: "a", title: "Trip to Kyoto", icon: "🗺️"),
+                MonthCalendar.Page(id: "b", title: "Reading notes", icon: nil),
+            ]
+            return HomeCalendar.weeks(of: month, calendar: calendar).map { week in
+                week.map { day in
+                    let number = calendar.component(.day, from: day)
+                    let count = [0, 1, 0, 2, 4][number % 5]
+                    return MonthCalendar.Day(
+                        id: day, number: number, inMonth: month.contains(day, in: calendar), isToday: number == 24,
+                        pages: Array(pages.prefix(count)), total: count, label: day.formatted(date: .complete, time: .omitted))
+                }
+            }
+        }
+
         var body: some View {
             NavigationStack {
                 ScrollViewReader { proxy in
@@ -200,6 +219,27 @@
                                         id: $0, label: "MTWTFSS".map(String.init)[$0], value: [1, 0, 8, 3, 0, 12, 0][$0], isToday: $0 == 5)
                                 },
                                 footnote: "32 pages · 41,203 words in all")
+                        }
+                        Section("MonthCalendar · CalendarDayList") {
+                            MonthCalendar(
+                                title: "October 2026", summary: "23 pages edited",
+                                weekdays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], weeks: galleryWeeks,
+                                selection: galleryWeeks[3][5].id, onSelect: { _ in }, onMove: { _ in }, onToday: {})
+                            CalendarDayList(
+                                title: "Saturday, October 24",
+                                rows: [
+                                    .init(
+                                        id: "a", title: "Trip to Kyoto", icon: "🗺️", location: "Travel", words: "1,204 words",
+                                        time: "3:41 PM"),
+                                    .init(id: "b", title: "Reading notes", icon: nil, location: "", words: "312 words", time: "9:02 AM"),
+                                ], onOpen: { _ in })
+                        }
+                        .id("MonthCalendar")
+                        Section("PageCoverView") {
+                            HStack(spacing: Spacing.s3) {
+                                PageCoverView(.gradient(.ocean)).frame(height: Size.homeCardCover)
+                                PageCoverView(.gradient(.ember)).frame(height: Size.homeCardCover)
+                            }
                         }
                         Section("UnlockSheet · ReadOnlyBar") {
                             UnlockSheet(status: .trial(daysLeft: 9), price: "$19.99", onUnlock: {}, onRestore: {}, onClose: {})
