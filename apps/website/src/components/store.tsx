@@ -1,9 +1,9 @@
-import { APP_STORE_URL, GITHUB_URL, notifyLink } from '../site'
+import { APP_STORE_URL, LAUNCH_PRICE, notifyLink, PRICE, TRIAL_DAYS } from '../site'
 
 /**
  * The download moment. Before the listing exists the status is a line, never a button: `StoreStatus` says so in the
- * header, and `StoreActions` at the foot gives the visitor something to do today — write to be told, or watch the
- * releases. Once `APP_STORE_URL` is set, both become the download link.
+ * header, and `StoreActions` gives the visitor something to do today — write to be told when it ships. Once
+ * `APP_STORE_URL` is set, both become the download link. `Price` stands beside the action wherever it appears.
  */
 export function StoreStatus(props: { class?: string }) {
   if (APP_STORE_URL) {
@@ -35,9 +35,31 @@ export function StoreActions() {
           Tell me when it ships
         </a>
       )}
-      <a href={GITHUB_URL} class="text-caption font-semibold underline underline-offset-4">
-        Releases on GitHub
-      </a>
+    </div>
+  )
+}
+
+/**
+ * The price as a tag: a yellow block ruled in the canvas's line, the launch price large with the regular one struck
+ * beside it, and what the one purchase covers. The numbers come from `site.ts`.
+ */
+export function Price(props: { id?: string; class?: string }) {
+  return (
+    <div id={props.id} class={`bg-yellow border-line border-4 p-5 md:p-6 ${props.class ?? ''}`}>
+      <p class="expanded text-caption m-0 font-[800]">Launch price</p>
+      <p class="m-0 mt-2 flex flex-wrap items-baseline gap-x-3">
+        <span class="expanded text-[clamp(2.5rem,4vw,3.5rem)] leading-none font-[850] tracking-[-0.02em]">
+          {LAUNCH_PRICE}
+        </span>
+        <s class="text-xl font-bold text-muted">
+          <span class="sr-only">regular price </span>
+          {PRICE}
+        </s>
+      </p>
+      <p class="m-0 mt-3 max-w-[26rem] text-sm leading-snug text-muted">
+        One purchase for iPhone, iPad and Mac together, no subscription. {LAUNCH_PRICE} in the first
+        weeks after launch, then {PRICE}. Free to try, everything open, for {TRIAL_DAYS} days.
+      </p>
     </div>
   )
 }

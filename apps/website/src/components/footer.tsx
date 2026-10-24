@@ -1,4 +1,4 @@
-import { CONTACT_EMAIL, GITHUB_URL, PRIVACY_PATH } from '../site'
+import { CONTACT_EMAIL, PRIVACY_PATH } from '../site'
 import { row } from './row'
 import { Wordmark } from './wordmark'
 
@@ -11,9 +11,6 @@ export function Footer() {
         <nav class="flex flex-wrap gap-x-6 gap-y-1 font-semibold" aria-label="More">
           <a href={PRIVACY_PATH} class="underline-offset-4 hover:underline">
             Privacy
-          </a>
-          <a href={GITHUB_URL} class="underline-offset-4 hover:underline">
-            Source on GitHub
           </a>
           <a href={`mailto:${CONTACT_EMAIL}`} class="underline-offset-4 hover:underline">
             Contact

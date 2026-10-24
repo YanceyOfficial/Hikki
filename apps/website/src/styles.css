@@ -34,13 +34,14 @@
 /*
  * Secondary text on a coloured cell is tinted from that cell, never grey (unlayered, so these win over the
  * text-muted utility): dark on yellow, plain white on red and blue — white at 80 % on the red fell to 3.7:1.
+ * Yellow comes last, so a yellow block inside a blue or red cell (the price tag) keeps its dark text.
  */
-.bg-yellow .text-muted {
-  color: rgb(0 0 0 / 0.68);
-}
 .bg-red .text-muted,
 .bg-blue .text-muted {
   color: #ffffff;
+}
+.bg-yellow .text-muted {
+  color: rgb(0 0 0 / 0.68);
 }
 
 :root[data-theme='dark'] {

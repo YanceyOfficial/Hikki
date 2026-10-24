@@ -33,6 +33,9 @@ export function Header() {
         <a href="/#features" class="underline-offset-4 hover:underline">
           Features
         </a>
+        <a href="/#price" class="underline-offset-4 hover:underline">
+          Price
+        </a>
       </nav>
       <div class="cell hidden items-center gap-4 p-5 md:flex">
         <ThemeSwitch />

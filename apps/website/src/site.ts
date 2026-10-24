@@ -11,9 +11,6 @@ export const APP_STORE_URL: string | null = null
 /** Where a visitor writes to be told when Hikki ships, and for anything else. */
 export const CONTACT_EMAIL = 'developer@yanceyleo.com'
 
-/** The source, whose releases a visitor can watch. */
-export const GITHUB_URL = 'https://github.com/YanceyOfficial/Hikki'
-
 /** What the app needs: the deployment targets in Project.swift. */
 export const REQUIREMENTS = 'iOS 26, iPadOS 26 and macOS 26 or later'
 
