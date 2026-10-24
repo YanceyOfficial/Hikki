@@ -253,7 +253,10 @@ final class AppModel {
     private func makeCloudSync(folder: URL, appRoot: URL) -> CloudSync {
         let mirror = CloudMirror(
             root: folder, stateURL: appRoot.appending(path: "cloud-state.json"),
-            options: .init(device: Self.deviceName, conflictTitle: Self.conflictTitle))
+            options: .init(
+                device: Self.deviceName, conflictTitle: Self.conflictTitle,
+                // A page typed on since its file was written is settled by the folder's pass (one conflicted copy).
+                pageChange: { [store] id in (try? store.document(id: id))?.lastChange }))
         if adoptsCloudAccount {
             mirror.releaseAccount()
             adoptsCloudAccount = false
@@ -262,7 +265,7 @@ final class AppModel {
         let generation = pageSync.resetUploads()
         let cloud = CloudSync(
             mirror: mirror,
-            onReceived: { [weak self] in Task { @MainActor in self?.cloudReceived() } },
+            onReceived: { [weak self] arrivals in Task { @MainActor in self?.cloudReceived(arrivals) } },
             onStatus: { [weak self] status in
                 Task { @MainActor in
                     self?.cloudStatus = status
@@ -284,10 +287,15 @@ final class AppModel {
         return cloud
     }
 
-    private func cloudReceived() {
+    private func cloudReceived(_ arrivals: CloudArrivals) {
         // workspace.json may be another device's (a second device joining takes the workspace's name and icon).
         identityUpdatedAt = nil
         reconcileWorkspace(fetch: false)
+        // Open threads, chats and history lists show what another device just wrote, not only after an activation.
+        let center = NotificationCenter.default
+        for id in arrivals.comments { center.post(name: .pageCommentsChanged, object: nil, userInfo: ["id": id]) }
+        for id in arrivals.chats { center.post(name: .pageChatChanged, object: nil, userInfo: ["id": id]) }
+        for id in arrivals.history { center.post(name: .pageHistoryChanged, object: nil, userInfo: ["id": id]) }
     }
 
     /// Where the workspace lives, as the sidebar, Settings and a page's facts name it.
@@ -308,6 +316,8 @@ final class AppModel {
         case .accountChanged?: String(localized: "app:cloud.accountChanged")
         case .quotaFull?: String(localized: "app:cloud.quotaFull")
         case .failed(let code)?: String(localized: "app:cloud.failed \(code)")
+        case .cloudDataDeleted?: String(localized: "app:cloud.dataDeleted")
+        case .unavailable?: String(localized: "app:cloud.unavailable")
         }
     }
 
@@ -707,6 +717,10 @@ final class AppModel {
 extension Notification.Name {
     /// Pages the workspace sync imported from the folder; `userInfo["ids"]` is `[String]`.
     static let pagesChangedOnDisk = Notification.Name("app.yancey.hikki.pagesChangedOnDisk")
+    /// A page's AI conversation arrived from another device; `userInfo["id"]` is the page id.
+    static let pageChatChanged = Notification.Name("app.yancey.hikki.pageChatChanged")
+    /// A page's history arrived from another device; `userInfo["id"]` is the page id.
+    static let pageHistoryChanged = Notification.Name("app.yancey.hikki.pageHistoryChanged")
 }
 
 /// Settings → Workspace → Keep deleted pages: how many days a page stays in the trash (0 = until emptied).

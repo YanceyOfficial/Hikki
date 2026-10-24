@@ -153,6 +153,7 @@ struct SyncIndicator: View {
                 case .accountChanged: String(localized: "app:cloud.accountChanged")
                 case .quotaFull: String(localized: "app:cloud.quotaFull")
                 case .failed: String(localized: "app:saveStatus.refused")
+                case .cloudDataDeleted: String(localized: "app:cloud.dataDeleted")
                 }
             return (.trouble, String(localized: "app:saveStatus.notSyncing"), detail)
         }

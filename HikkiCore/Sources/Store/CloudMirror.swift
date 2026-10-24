@@ -16,6 +16,9 @@ public final class CloudMirror: @unchecked Sendable {
         public var hash: String
         /// The record's system fields (its change tag) as last saved or fetched; nil before the first save.
         public var systemFields: Data?
+        /// When the server last changed the record, as last saved or fetched: a fetched version older than this is
+        /// stale (fetched before this device's own newer save) and changes nothing. An optional key: format stays 1.
+        public var cloudModified: Date? = nil
     }
 
     struct State: Codable {
@@ -28,6 +31,9 @@ public final class CloudMirror: @unchecked Sendable {
         /// The account the workspace synced with until the user turned iCloud on again (`releaseAccount`): the next
         /// account met takes it, and if that is another one, nothing agreed with the old one's zone holds there.
         var releasedFrom: String?
+        /// The user deleted the workspace's iCloud data (the zone was purged): nothing goes up again until they turn
+        /// iCloud off and on (`releaseAccount`) — sending everything back would undo what they did.
+        var cloudDeleted: Bool?
     }
 
     public enum Change: Equatable, Hashable, Sendable {
@@ -65,10 +71,18 @@ public final class CloudMirror: @unchecked Sendable {
         /// This device's name, for a conflicted copy's title.
         public var device: String?
         public var conflictTitle: ConflictCopy.Title
+        /// The page's last change in the database (`DocumentRecord.lastChange`), nil when it has no row: a row ahead
+        /// of its file has edits the file doesn't hold yet, and the workspace's own pass settles the page against the
+        /// row — a copy made here from the file would be a second, older conflicted copy of the same clash.
+        public var pageChange: @Sendable (String) -> Date?
 
-        public init(device: String? = nil, conflictTitle: @escaping ConflictCopy.Title = ConflictCopy.defaultTitle) {
+        public init(
+            device: String? = nil, conflictTitle: @escaping ConflictCopy.Title = ConflictCopy.defaultTitle,
+            pageChange: @escaping @Sendable (String) -> Date? = { _ in nil }
+        ) {
             self.device = device
             self.conflictTitle = conflictTitle
+            self.pageChange = pageChange
         }
     }
 
@@ -195,6 +209,22 @@ public final class CloudMirror: @unchecked Sendable {
         lock.withLock {
             if let account = state.account { state.releasedFrom = account }
             state.account = nil
+            state.cloudDeleted = nil
+        }
+        persist()
+    }
+
+    // MARK: - Deleted by the user
+
+    /// The user deleted the workspace's data from iCloud: paused until they turn iCloud off and on.
+    public var cloudDeleted: Bool { lock.withLock { state.cloudDeleted == true } }
+
+    /// The zone was purged by the user: nothing agreed with it holds (when sync resumes, every file goes up), and
+    /// sync stays paused across launches until `releaseAccount`.
+    public func markCloudDeleted() {
+        lock.withLock {
+            state = State(account: state.account, cloudDeleted: true)
+            holds = [:]
         }
         persist()
     }
@@ -295,9 +325,10 @@ public final class CloudMirror: @unchecked Sendable {
     }
 
     /// The cloud took `file` as the record whose system fields are `systemFields`.
-    public func saved(_ file: Outgoing, systemFields: Data?) {
+    public func saved(_ file: Outgoing, systemFields: Data?, cloudModified: Date? = nil) {
         lock.withLock {
-            state.entries[file.path] = Entry(size: file.size, modified: file.modified, hash: file.hash, systemFields: systemFields)
+            state.entries[file.path] = Entry(
+                size: file.size, modified: file.modified, hash: file.hash, systemFields: systemFields, cloudModified: cloudModified)
             index(file.path)
         }
         persist()
@@ -323,25 +354,42 @@ public final class CloudMirror: @unchecked Sendable {
         public var touched: Bool
         /// The folder now holds something the cloud doesn't (a merge, or the local side won): it goes up again.
         public var needsPush: Bool
+        /// An older version of the record than the one this device last agreed with: nothing was done.
+        public var stale = false
     }
 
     /// A record arrived (fetched, or the server's side of a save it refused): written over the file when this device
-    /// hasn't changed it since they last agreed, otherwise settled with it (`resolve`).
-    public func receive(_ path: String, contents: Data, systemFields: Data?) throws -> Received {
+    /// hasn't changed it since they last agreed, otherwise settled with it (`resolve`). `cloudModified` is when the
+    /// server last changed it: a version older than the one agreed (a fetch that started before this device's own
+    /// newer save went through) is passed over — it would take a file back, or settle against old words.
+    public func receive(_ path: String, contents: Data, systemFields: Data?, cloudModified: Date? = nil) throws -> Received {
         guard Self.isSyncable(path) else { return Received(touched: false, needsPush: false) }
+        if let cloudModified, let agreed = lock.withLock({ state.entries[path]?.cloudModified }), cloudModified < agreed {
+            Log.info("cloud record older than agreed; passed over", category: "cloud", context: ["kind": Self.kind(of: path)])
+            return Received(touched: false, needsPush: false, stale: true)
+        }
         let url = root.appending(path: path)
+        let arrival = Arrival(contents: contents, hash: Self.hash(contents), systemFields: systemFields, cloudModified: cloudModified)
         // Held from reading the file to writing it: comments, chats and the drawing library write under the same lock
         // (`FileLocks`), so nothing of theirs lands between the two and is written over.
-        return try FileLocks.shared.withLock(url) {
-            try receive(path, url: url, contents: contents, systemFields: systemFields, attempts: 3)
-        }
+        return try FileLocks.shared.withLock(url) { try receive(path, url: url, arrival, attempts: 3) }
     }
 
     /// Runs just before an arriving file is written over the one read (tests: another writer getting in there).
     var beforeWrite: ((String) -> Void)?
 
-    private func receive(_ path: String, url: URL, contents: Data, systemFields: Data?, attempts: Int) throws -> Received {
-        let incomingHash = Self.hash(contents)
+    /// A record's version as it arrived.
+    private struct Arrival {
+        var contents: Data
+        var hash: String
+        var systemFields: Data?
+        var cloudModified: Date?
+    }
+
+    private func receive(_ path: String, url: URL, _ arrival: Arrival, attempts: Int) throws -> Received {
+        let contents = arrival.contents
+        let incomingHash = arrival.hash
+        let systemFields = arrival.systemFields
         let local = try? Data(contentsOf: url)
         let entry = lock.withLock { state.entries[path] }
         let localHash = local.map(Self.hash)
@@ -357,11 +405,11 @@ public final class CloudMirror: @unchecked Sendable {
         guard let local, let localHash, localHash != incomingHash, localHash != entry?.hash else {
             if localHash != incomingHash {
                 guard stillAsRead() else {
-                    return try receive(path, url: url, contents: contents, systemFields: systemFields, attempts: attempts - 1)
+                    return try receive(path, url: url, arrival, attempts: attempts - 1)
                 }
                 try write(contents, to: url)
             }
-            record(path, url: url, hash: incomingHash, systemFields: systemFields)
+            record(path, url: url, hash: incomingHash, systemFields: systemFields, cloudModified: arrival.cloudModified)
             return Received(touched: localHash != incomingHash, needsPush: false)
         }
         // The cloud still holds what this device last agreed with it — an echo of this device's own save fetched
@@ -369,14 +417,17 @@ public final class CloudMirror: @unchecked Sendable {
         // Nothing to settle (settling made a conflicted copy of the page's own earlier words, or took the older
         // version back for files the cloud wins); the file stays and goes up on the record's current change tag.
         if let entry, incomingHash == entry.hash {
-            lock.withLock { state.entries[path]?.systemFields = systemFields ?? entry.systemFields }
+            lock.withLock {
+                state.entries[path]?.systemFields = systemFields ?? entry.systemFields
+                state.entries[path]?.cloudModified = arrival.cloudModified ?? entry.cloudModified
+            }
             persist()
             return Received(touched: false, needsPush: true)
         }
         // Both sides changed it.
         let settled = resolve(path, local: local, cloud: contents)
         if settled.file != local, !stillAsRead() {
-            return try receive(path, url: url, contents: contents, systemFields: systemFields, attempts: attempts - 1)
+            return try receive(path, url: url, arrival, attempts: attempts - 1)
         }
         for (extraPath, data) in settled.extra {
             try write(data, to: root.appending(path: extraPath))
@@ -384,7 +435,9 @@ public final class CloudMirror: @unchecked Sendable {
         if settled.file != local { try write(settled.file, to: url) }
         // Agreed with the cloud's version (its change tag); a file that differs from it keeps no stamp, so the next
         // scan reads it, sees it isn't the cloud's and sends it up over it.
-        record(path, url: url, hash: incomingHash, systemFields: systemFields, stamped: settled.file == contents)
+        record(
+            path, url: url, hash: incomingHash, systemFields: systemFields, cloudModified: arrival.cloudModified,
+            stamped: settled.file == contents)
         Log.info(
             "cloud file changed on both sides; settled", category: "cloud",
             context: ["kind": Self.kind(of: path), "copies": "\(settled.extra.count)"])
@@ -433,6 +486,9 @@ public final class CloudMirror: @unchecked Sendable {
             guard let mine = try? PageFiles.decode(local), let theirs = try? PageFiles.decode(cloud) else {
                 return Settled(file: cloud)
             }
+            // Typed here since the file was written (the row is ahead of it): the cloud's version is written as the
+            // file, and the workspace's pass settles it against the row — the newer words — making the one copy.
+            if let row = options.pageChange(mine.id), row > mine.lastChange { return Settled(file: cloud) }
             let localWins = mine.lastChange > theirs.lastChange
             let (winner, loser, winnerData) = localWins ? (mine, theirs, local) : (theirs, mine, cloud)
             guard ConflictCopy.differ(winner, loser) else { return Settled(file: winnerData) }
@@ -489,12 +545,14 @@ public final class CloudMirror: @unchecked Sendable {
         return files
     }
 
-    private func record(_ path: String, url: URL, hash: String, systemFields: Data?, stamped: Bool = true) {
+    private func record(
+        _ path: String, url: URL, hash: String, systemFields: Data?, cloudModified: Date?, stamped: Bool = true
+    ) {
         let attributes = stamped ? Self.attributes(of: url) : nil
         lock.withLock {
             state.entries[path] = Entry(
                 size: attributes?.size ?? 0, modified: attributes?.modified ?? .distantPast, hash: hash,
-                systemFields: systemFields)
+                systemFields: systemFields, cloudModified: cloudModified)
             index(path)
         }
         persist()
@@ -557,6 +615,31 @@ public final class CloudMirror: @unchecked Sendable {
             try data.write(to: stateURL, options: .atomic)
         } catch {
             Log.warn("cloud state not saved: \(error)", category: "cloud")
+        }
+    }
+}
+
+/// What arrived from iCloud, as the views showing it see it: the pages whose comments, AI conversation or history
+/// changed (their open threads, chat and history reload; pages themselves reach editors through the folder's pass).
+public struct CloudArrivals: Equatable, Sendable {
+    public var comments: Set<String> = []
+    public var chats: Set<String> = []
+    public var history: Set<String> = []
+
+    public init() {}
+
+    /// From the paths written or removed in the workspace folder.
+    public init(paths: [String]) {
+        for path in paths {
+            let parts = path.split(separator: "/").map(String.init)
+            guard parts.count >= 2 else { continue }
+            let name = parts[1].hasSuffix(".json") ? String(parts[1].dropLast(".json".count)) : parts[1]
+            switch parts[0] {
+            case "comments" where parts.count == 2: comments.insert(name)
+            case "ai" where parts.count == 2: chats.insert(name)
+            case "history" where parts.count == 3: history.insert(parts[1])
+            default: break
+            }
         }
     }
 }

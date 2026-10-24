@@ -106,6 +106,19 @@ final class AIChat {
         load()
     }
 
+    /// Another device's turns arrived for page `id` (nil: any page): the open conversation is read again — unless
+    /// something is under way in it here (an answer, a summary, pictures or tools), which keeps it as it is until next
+    /// time.
+    func reloadIfShowing(_ id: String?) {
+        guard let open = openPageID, id == nil || id == open, !isStreaming, !isCompacting else { return }
+        let busy = messages.contains { message in
+            message.pictures.contains { $0.status == .making }
+                || message.tools.contains { $0.status == .running || $0.status == .waiting }
+        }
+        guard !busy else { return }
+        load()
+    }
+
     /// The open page's kept conversation (none for no page).
     private func load() {
         guard let id = openPageID, let chats = chatStore() else {

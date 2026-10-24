@@ -23,6 +23,8 @@ public enum PageSyncState: Equatable, Sendable {
         case accountChanged
         case quotaFull
         case failed
+        /// The user deleted the workspace's iCloud data: paused until they turn iCloud off and on.
+        case cloudDataDeleted
     }
 
     /// iCloud as a whole, for one workspace.

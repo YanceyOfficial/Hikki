@@ -66,6 +66,15 @@ final class StatusLog: @unchecked Sendable {
     var last: CloudSync.Status? { lock.withLock { statuses.last } }
 }
 
+/// What a `CloudSync` said arrived, in order.
+final class ArrivalLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var arrivals: [CloudArrivals] = []
+
+    func append(_ arrival: CloudArrivals) { lock.withLock { arrivals.append(arrival) } }
+    var all: [CloudArrivals] { lock.withLock { arrivals } }
+}
+
 struct CloudSyncTests {
     private let t0 = Date(timeIntervalSince1970: 1_800_000_000)
 
@@ -73,7 +82,7 @@ struct CloudSyncTests {
     private func cloudSync(_ root: URL) throws -> (CloudSync, CloudMirror, StatusLog) {
         let mirror = CloudMirror(root: root, stateURL: try makeTempDirectory().appending(path: "cloud.json"))
         let log = StatusLog()
-        let sync = CloudSync(mirror: mirror, onReceived: {}, onStatus: { log.append($0) })
+        let sync = CloudSync(mirror: mirror, onReceived: { _ in }, onStatus: { log.append($0) })
         return (sync, mirror, log)
     }
 
@@ -298,6 +307,62 @@ struct CloudSyncTests {
         sync.handleSent(
             .init(failedSaves: [(a, CKError(.operationCancelled)), (b, CKError(.batchRequestFailed))]), state: state)
         #expect(state.saves == [name("pages/a.json"), name("pages/b.json")])
+    }
+
+    /// The user deleted the workspace's data from iCloud: sync pauses with a status instead of sending it all back.
+    /// A zone deleted otherwise (or emptied by an encryption reset) gets everything again.
+    @Test func aZoneDeletedByTheUserPausesAnyOtherSendsEverything() throws {
+        let root = try makeTempDirectory()
+        let (sync, mirror, log) = try cloudSync(root)
+        try write("a", "pages/a.json", in: root)
+        pushAll(mirror)
+
+        let deleted = FakeEngineState()
+        sync.zoneDeleted(purged: false, state: deleted)
+        #expect(deleted.savesZone)
+        #expect(deleted.saves == [name("pages/a.json")])
+
+        pushAll(mirror)
+        let purged = FakeEngineState()
+        sync.zoneDeleted(purged: true, state: purged)
+        #expect(log.last == .cloudDataDeleted)
+        #expect(mirror.cloudDeleted)
+        #expect(purged.saves.isEmpty && !purged.savesZone)
+        #expect(CloudSync.handling(of: .userDeletedZone) == .zoneDeletedByUser)
+    }
+
+    /// A record arriving while this device's deletion of it waits to go up puts the file back: the deletion is
+    /// dropped, or it would take the file from every device.
+    @Test func anArrivalCancelsAWaitingDeletion() throws {
+        let root = try makeTempDirectory()
+        let (sync, mirror, _) = try cloudSync(root)
+        try write("a", "pages/a.json", in: root)
+        pushAll(mirror)
+        try FileManager.default.removeItem(at: root.appending(path: "pages/a.json"))
+        let state = FakeEngineState()
+        sync.queueLocalChanges(into: state)
+        #expect(state.deletes == [name("pages/a.json")])
+        sync.receive([serverRecord("pages/a.json", "a, edited there")], deletions: [], state: state)
+        #expect(state.deletes.isEmpty)
+        #expect(FileManager.default.fileExists(atPath: root.appending(path: "pages/a.json").path))
+    }
+
+    /// A record whose asset didn't come is remembered and fetched again by itself, not passed over for good; what did
+    /// arrive names the comments, chats and history that changed.
+    @Test func incompleteRecordsAreFetchedAgainAndArrivalsAreNamed() throws {
+        let root = try makeTempDirectory()
+        let mirror = CloudMirror(root: root, stateURL: try makeTempDirectory().appending(path: "cloud.json"))
+        let arrived = ArrivalLog()
+        let sync = CloudSync(mirror: mirror, onReceived: { arrived.append($0) }, onStatus: { _ in })
+        let noAsset = CKRecord(recordType: CloudSync.recordType, recordID: CloudSync.recordID(for: "assets/a.png"))
+        noAsset.encryptedValues["path"] = "assets/a.png"
+        noAsset["file"] = CKAsset(fileURL: try makeTempDirectory().appending(path: "not-downloaded"))
+        sync.receive([noAsset, serverRecord("comments/p.json", "{}")], deletions: [], state: FakeEngineState())
+        #expect(sync.incompleteRecords == [noAsset.recordID])
+        #expect(arrived.all.last?.comments == ["p"])
+
+        sync.receive([serverRecord("assets/a.png", "png")], deletions: [], state: FakeEngineState())
+        #expect(sync.incompleteRecords.isEmpty)
     }
 
     /// A saved record is agreed as it was sent: the file goes no further until it changes; one that changed since it

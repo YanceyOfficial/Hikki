@@ -498,6 +498,12 @@ struct ContentView: View {
                     SaveOnExit.flush(editors, model: model, reason: "scenePhase-\(phase)")
                 }
             }
+            // Another device's AI turns for the page a chat is about came in through iCloud.
+            .onReceive(NotificationCenter.default.publisher(for: .pageChatChanged)) { note in
+                let id = note.userInfo?["id"] as? String
+                chat.reloadIfShowing(id)
+                trailingChat.reloadIfShowing(id)
+            }
     }
 
     /// First appearance: tabs, the editor's store and callbacks, the last run's crash, DEBUG hooks, the first page.

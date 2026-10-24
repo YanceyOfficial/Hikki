@@ -43,26 +43,36 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
         case accountChanged
         case quotaFull
         case failed(String)
+        /// The user deleted the workspace's data from iCloud (Settings → iCloud): paused, so nothing is sent back,
+        /// until they turn iCloud off and on.
+        case cloudDataDeleted
+        /// iCloud couldn't be asked who is signed in (offline, iCloud busy): asked again in a while.
+        case unavailable
 
         /// Something the user should do something about (sign in, free up iCloud storage…).
         public var isTrouble: Bool {
             switch self {
-            case .starting, .synced, .syncing: false
-            case .noAccount, .accountChanged, .quotaFull, .failed: true
+            case .starting, .synced, .syncing, .unavailable: false
+            case .noAccount, .accountChanged, .quotaFull, .failed, .cloudDataDeleted: true
             }
         }
 
         /// iCloud as the editor's save indicator sees it (`PageSyncState`).
         public var cloud: PageSyncState.Cloud {
             switch self {
-            case .starting, .synced, .syncing: .on
+            case .starting, .synced, .syncing, .unavailable: .on
             case .noAccount: .trouble(.noAccount)
             case .accountChanged: .trouble(.accountChanged)
             case .quotaFull: .trouble(.quotaFull)
             case .failed: .trouble(.failed)
+            case .cloudDataDeleted: .trouble(.cloudDataDeleted)
             }
         }
     }
+
+    /// How long a failed account check waits before asking again, at first; doubled up to `accountRetryLimit`.
+    static let accountRetry: TimeInterval = 30
+    static let accountRetryLimit: TimeInterval = 15 * 60
 
     /// What a send did, as `handleSent` reads it: built from the engine's event (tests build their own).
     struct SentChanges {
@@ -78,6 +88,8 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
         case clash
         /// The zone isn't there: made again, and every file goes up.
         case zoneGone
+        /// The user deleted the workspace's iCloud data: paused (`Status.cloudDataDeleted`).
+        case zoneDeletedByUser
         /// The record isn't there (deleted elsewhere): the file goes up as a new one.
         case recordGone
         /// Not the record's fault (cancelled, or it went down with its batch): sent again.
@@ -105,9 +117,15 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
     private let queue = DispatchQueue(label: "app.yancey.hikki.cloud", qos: .utility)
     /// This instance's folder for the copies that go up as assets (one per record built, removed once it is sent).
     private let staging: URL
-    /// Files changed in the folder from the cloud (the workspace reconciles; editors reload).
-    private let onReceived: @Sendable () -> Void
+    /// Files changed in the folder from the cloud (the workspace reconciles; editors, threads, chats reload).
+    private let onReceived: @Sendable (CloudArrivals) -> Void
     private let onStatus: @Sendable (Status) -> Void
+    /// The next wait after a failed account check, and whether one is scheduled. Under `lock`.
+    private var accountRetry = CloudSync.accountRetry
+    private var accountRetryScheduled = false
+    /// Records that arrived without their contents (an asset that didn't download): fetched again by themselves,
+    /// now and at each fetch until they come whole — the engine's change token has moved past them. Under `lock`.
+    private var incomplete: Set<CKRecord.ID> = []
     /// A failure the user should see — storage full, a refusal — stays shown until a send goes through without one
     /// (the "Synced" after every send no longer hides it at once). Under `lock`.
     private var trouble: Status?
@@ -123,7 +141,8 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
     private var pathMonitor: NWPathMonitor?
 
     public init(
-        mirror: CloudMirror, containerID: String = CloudSync.containerID, onReceived: @escaping @Sendable () -> Void,
+        mirror: CloudMirror, containerID: String = CloudSync.containerID,
+        onReceived: @escaping @Sendable (CloudArrivals) -> Void,
         onStatus: @escaping @Sendable (Status) -> Void, onUploads: @escaping @Sendable (CloudUploads) -> Void = { _ in }
     ) {
         self.mirror = mirror
@@ -223,13 +242,22 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
             pause(.noAccount)
             return
         } catch {
-            // Offline, most likely: tried again at the next activation (`fetchNow`) or account change.
-            Log.warn("cloud account unknown: \(error)", category: "cloud")
+            // Offline, or iCloud busy: said so (not "Syncing…" for ever), and asked again in a while — as well as at
+            // the next activation (`fetchNow`), network change or account change.
+            let code = (error as? CKError).map { "\($0.code.rawValue)" } ?? "other"
+            Log.warn("cloud account unknown", category: "cloud", context: ["code": code])
+            if lock.withLock({ running && engine == nil }) { onStatus(.unavailable) }
+            scheduleAccountRetry()
             return
         }
+        lock.withLock { accountRetry = Self.accountRetry }
         guard mirror.accountAllows(user.recordName) else {
             Log.warn("cloud paused: another account", category: "cloud")
             pause(.accountChanged)
+            return
+        }
+        guard !mirror.cloudDeleted else {
+            pause(.cloudDataDeleted)
             return
         }
         let started: CKSyncEngine? = lock.withLock {
@@ -245,6 +273,25 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
         guard let started else { return }
         started.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: Self.zoneID))])
         noteLocalChanges(after: 0)
+    }
+
+    /// One account check later, the wait doubling each time it fails.
+    private func scheduleAccountRetry() {
+        let delay: TimeInterval? = lock.withLock {
+            guard running, !accountRetryScheduled else { return nil }
+            accountRetryScheduled = true
+            defer { accountRetry = min(accountRetry * 2, Self.accountRetryLimit) }
+            return accountRetry
+        }
+        guard let delay else { return }
+        queue.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self else { return }
+            let again = self.lock.withLock {
+                self.accountRetryScheduled = false
+                return self.running && self.engine == nil
+            }
+            if again { Task { await self.confirmAccount() } }
+        }
     }
 
     /// No engine, so nothing is sent or fetched until the account is the workspace's again.
@@ -298,6 +345,37 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
         } catch {
             Log.warn("cloud fetch failed: \(error)", category: "cloud")
         }
+        await fetchIncomplete()
+    }
+
+    /// The records waiting to be fetched again (tests).
+    var incompleteRecords: Set<CKRecord.ID> { lock.withLock { incomplete } }
+
+    /// Fetches again, one by one, the records that arrived without their contents.
+    private func fetchIncomplete() async {
+        let ids = lock.withLock { Array(incomplete) }
+        guard !ids.isEmpty, let engine = lock.withLock({ engine }) else { return }
+        let results: [CKRecord.ID: Result<CKRecord, any Error>]
+        do {
+            results = try await container.privateCloudDatabase.records(for: ids)
+        } catch {
+            Log.warn("cloud records not fetched again", category: "cloud", context: ["records": "\(ids.count)"])
+            return
+        }
+        var whole: [CKRecord] = []
+        for (id, result) in results {
+            switch result {
+            case .success(let record) where Self.isReadable(record):
+                whole.append(record)
+            case .failure(let error) where (error as? CKError)?.code == .unknownItem:
+                // Deleted since: its deletion comes with a fetch.
+                _ = lock.withLock { incomplete.remove(id) }
+            default:
+                break  // still not whole: tried again at the next fetch
+            }
+        }
+        guard !whole.isEmpty, isCurrent(engine) else { return }
+        receive(whole, deletions: [], state: engine.state)
     }
 
     private func queueLocalChanges() {
@@ -376,10 +454,7 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
             handleAccountChange(change)
         case .fetchedDatabaseChanges(let changes):
             for deletion in changes.deletions where deletion.zoneID == Self.zoneID {
-                // The zone is gone (the user deleted the app's iCloud data, or end-to-end keys were reset): the
-                // pages are still here, so they go up again whole.
-                Log.warn("cloud zone deleted", category: "cloud", context: ["reason": "\(deletion.reason)"])
-                resendEverything(syncEngine.state)
+                zoneDeleted(purged: deletion.reason == .purged, state: syncEngine.state)
             }
         case .fetchedRecordZoneChanges(let changes):
             receive(changes.modifications.map(\.record), deletions: changes.deletions.map(\.recordID), state: syncEngine.state)
@@ -456,42 +531,60 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
     /// cloud doesn't (queued to go up again).
     @discardableResult
     func receive(_ records: [CKRecord], deletions: [CKRecord.ID], state: some CloudEngineState) -> Set<String> {
-        var touched = false
+        var touched: [String] = []
         var push: [CKRecord.ID] = []
+        // Files here again, so a deletion still waiting to go up would take them from every device.
+        var restored: [CKRecord.ID] = []
+        var missing: [CKRecord.ID] = []
         mirror.batch {
             for record in records {
-                guard let path = record.encryptedValues["path"] as? String, let contents = Self.contents(of: record) else {
-                    let reason = record.encryptedValues["path"] == nil ? "path" : record["file"] == nil ? "data" : "asset"
-                    Log.warn("cloud record unreadable", category: "cloud", context: ["missing": reason])
+                guard let path = record.encryptedValues["path"] as? String else {
+                    Log.warn("cloud record unreadable", category: "cloud", context: ["missing": "path"])
                     continue
                 }
+                guard let contents = Self.contents(of: record) else {
+                    // Its asset didn't come (or its file is gone): fetched again by itself, not passed over for good.
+                    Log.warn("cloud record unreadable", category: "cloud", context: ["missing": record["file"] == nil ? "data" : "asset"])
+                    missing.append(record.recordID)
+                    continue
+                }
+                lock.withLock { _ = incomplete.remove(record.recordID) }
                 do {
-                    let received = try mirror.receive(path, contents: contents, systemFields: Self.encodeSystemFields(record))
-                    touched = touched || received.touched
+                    let received = try mirror.receive(
+                        path, contents: contents, systemFields: Self.encodeSystemFields(record),
+                        cloudModified: record.modificationDate)
+                    if received.touched { touched.append(path) }
                     if received.needsPush { push.append(record.recordID) }
+                    if !received.stale { restored.append(record.recordID) }
                 } catch {
                     Log.error("cloud file not written: \(error)", category: "cloud", context: ["kind": CloudMirror.kind(of: path)])
                 }
             }
             for id in deletions {
+                lock.withLock { _ = incomplete.remove(id) }
                 guard let path = mirror.path(forRecordName: id.recordName) else { continue }
                 do {
                     let received = try mirror.receiveDeletion(path)
-                    touched = touched || received.touched
+                    if received.touched { touched.append(path) }
                     if received.needsPush { push.append(id) }
                 } catch {
                     Log.error("cloud file not removed: \(error)", category: "cloud", context: ["kind": CloudMirror.kind(of: path)])
                 }
             }
         }
+        if !restored.isEmpty { state.remove(pendingRecordZoneChanges: restored.map { .deleteRecord($0) }) }
         if !push.isEmpty {
             state.add(pendingRecordZoneChanges: push.map { .saveRecord($0) })
             // Files merged or copied here (a conflicted page copy) are new files: they go up with the next scan.
             noteLocalChanges()
         }
-        if touched {
+        if !missing.isEmpty {
+            lock.withLock { incomplete.formUnion(missing) }
+            Task { await self.fetchIncomplete() }
+        }
+        if !touched.isEmpty {
             Log.info("cloud changes received", category: "cloud", context: ["records": "\(records.count + deletions.count)"])
-            onReceived()
+            onReceived(CloudArrivals(paths: touched))
         }
         return Set(push.map(\.recordName))
     }
@@ -502,6 +595,7 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
     func handleSent(_ sent: SentChanges, state: some CloudEngineState) -> Bool {
         var refetch = false
         var zoneGone = false
+        var deletedByUser = false
         var storageWait: TimeInterval?
         let acknowledged = Date.now
         // Their staged copies go once the send is settled (another batch may still be sending its own).
@@ -511,7 +605,7 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
                 let flight = lock.withLock { inflight.removeValue(forKey: record.recordID.recordName) }
                 if let flight { settled.append(flight) }
                 guard let file = Self.sentFile(record, flight: flight) else { continue }
-                mirror.saved(file, systemFields: Self.encodeSystemFields(record))
+                mirror.saved(file, systemFields: Self.encodeSystemFields(record), cloudModified: record.modificationDate)
                 updateUploads { $0.uploaded(file.path, asOf: file.modified, at: acknowledged) }
             }
             for id in sent.deleted {
@@ -554,6 +648,9 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
             case .zoneGone:
                 zoneGone = true
                 if let path { updateUploads { $0.refused(path, retry: .queued) } }
+            case .zoneDeletedByUser:
+                deletedByUser = true
+                if let path { updateUploads { $0.refused(path, retry: .failed) } }
             case .recordGone:
                 if let path { mirror.lostRecord(path) }
                 state.add(pendingRecordZoneChanges: [.saveRecord(id)])
@@ -581,8 +678,11 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
         if let storageWait {
             Log.warn("cloud storage full; files wait", category: "cloud", context: ["minutes": "\(Int(storageWait / 60))"])
         }
-        // A save found the zone gone (deleted elsewhere): every file goes up again, as for a fetched zone deletion.
-        if zoneGone {
+        // A save found the zone gone: as for a fetched zone deletion — paused when the user deleted it, else every
+        // file goes up again.
+        if deletedByUser {
+            zoneDeleted(purged: true, state: state)
+        } else if zoneGone {
             Log.warn("cloud zone not found on save", category: "cloud")
             resendEverything(state)
         }
@@ -600,6 +700,20 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
         }
     }
 
+    /// The zone is gone. Deleted by the user (Settings → iCloud → Manage Storage: `purged`): sync pauses — sending
+    /// everything back would undo what they did — until they turn iCloud off and on, which sends it all. Deleted
+    /// otherwise, or emptied by an end-to-end encryption reset: the pages are still here, so they go up again whole.
+    func zoneDeleted(purged: Bool, state: some CloudEngineState) {
+        if purged {
+            Log.warn("cloud zone deleted by the user; paused", category: "cloud")
+            mirror.markCloudDeleted()
+            pause(.cloudDataDeleted)
+        } else {
+            Log.warn("cloud zone deleted; everything goes up again", category: "cloud")
+            resendEverything(state)
+        }
+    }
+
     /// The zone is gone with everything in it: made again, and every file goes up.
     private func resendEverything(_ state: some CloudEngineState) {
         mirror.forgetCloud()
@@ -610,7 +724,8 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
     static func handling(of code: CKError.Code) -> SaveFailure {
         switch code {
         case .serverRecordChanged: .clash
-        case .zoneNotFound, .userDeletedZone: .zoneGone
+        case .zoneNotFound: .zoneGone
+        case .userDeletedZone: .zoneDeletedByUser
         case .unknownItem: .recordGone
         case .operationCancelled, .batchRequestFailed, .assetFileModified, .assetFileNotFound: .sendAgain
         case .networkFailure, .networkUnavailable, .zoneBusy, .serviceUnavailable, .requestRateLimited, .notAuthenticated,

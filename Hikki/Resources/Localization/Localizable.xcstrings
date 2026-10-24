@@ -2772,6 +2772,23 @@
         }
       }
     },
+    "app:cloud.dataDeleted": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paused: this workspace's iCloud data was deleted. Turn iCloud off and on to upload it again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已暂停：此工作区的 iCloud 数据已被删除。关掉再打开 iCloud 即可重新上传。"
+          }
+        }
+      }
+    },
     "app:cloud.failed %@": {
       "extractionState": "manual",
       "localizations": {
@@ -2853,6 +2870,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在同步…"
+          }
+        }
+      }
+    },
+    "app:cloud.unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can't reach iCloud right now; trying again"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂时无法连接 iCloud，稍后会再试"
           }
         }
       }

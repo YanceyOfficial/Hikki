@@ -164,6 +164,77 @@ struct CloudMirrorTests {
         #expect(Set(mirror.localChanges()) == [.save("pages/p.json"), .save("drawings/library.json")])
     }
 
+    /// A fetch that started before this device's own newer save went through brings the older version afterwards:
+    /// it is passed over, not written over the newer file (the cloud wins for the library, so it took it back).
+    @Test func anOlderVersionThanTheAgreedOneIsPassedOver() throws {
+        let root = try makeTempDirectory()
+        let mirror = try mirror(root)
+        try write("library v2", "drawings/library.json", in: root)
+        let file = try #require(mirror.outgoing("drawings/library.json"))
+        mirror.saved(file, systemFields: Data([2]), cloudModified: t0.addingTimeInterval(60))
+
+        let stale = try mirror.receive(
+            "drawings/library.json", contents: Data("library v1".utf8), systemFields: Data([1]), cloudModified: t0)
+        #expect(stale == .init(touched: false, needsPush: false, stale: true))
+        #expect(try String(contentsOf: root.appending(path: "drawings/library.json"), encoding: .utf8) == "library v2")
+        #expect(mirror.systemFields("drawings/library.json") == Data([2]))
+
+        // A newer one still comes in.
+        let newer = try mirror.receive(
+            "drawings/library.json", contents: Data("library v3".utf8), systemFields: Data([3]),
+            cloudModified: t0.addingTimeInterval(120))
+        #expect(newer.touched && !newer.stale)
+        #expect(try String(contentsOf: root.appending(path: "drawings/library.json"), encoding: .utf8) == "library v3")
+    }
+
+    /// The page's row is ahead of its file (typed since the last write-through): the cloud's version becomes the file
+    /// without a copy here — the workspace's pass settles it against the row and makes the one conflicted copy.
+    @Test func aPageTypedOnSinceItsFileLeavesTheCopyToTheWorkspace() throws {
+        let root = try makeTempDirectory()
+        let typedAt = t0.addingTimeInterval(300)
+        let mirror = CloudMirror(
+            root: root, stateURL: try makeTempDirectory().appending(path: "cloud.json"),
+            options: .init(device: "Mac", pageChange: { $0 == "p" ? typedAt : nil }))
+        try PageFiles(root: root).write(try pageFile("base", at: t0))
+        pushAll(mirror)
+        try PageFiles(root: root).write(try pageFile("mine", at: t0.addingTimeInterval(60)))
+        let theirs = try PageFiles.encoder.encode(try pageFile("theirs", at: t0.addingTimeInterval(120)))
+        let received = try mirror.receive("pages/p.json", contents: theirs, systemFields: nil)
+        #expect(received == .init(touched: true, needsPush: false))
+        let pages = try PageFiles(root: root).readAll().pages
+        #expect(pages.count == 1)
+        #expect(pages.first?.plainText == "theirs")
+    }
+
+    @Test func arrivalsNameThePagesWhoseThreadsChatsAndHistoryChanged() {
+        let arrivals = CloudArrivals(paths: [
+            "comments/p1.json", "ai/p2.json", "history/p3/20261024T101010.000Z.json", "pages/p4.json", "assets/x.png",
+            "workspace.json",
+        ])
+        #expect(arrivals.comments == ["p1"])
+        #expect(arrivals.chats == ["p2"])
+        #expect(arrivals.history == ["p3"])
+    }
+
+    /// The user deleted the workspace's iCloud data: paused across launches, nothing agreed holds; turning iCloud off
+    /// and on (`releaseAccount`) resumes, and every file goes up.
+    @Test func dataDeletedByTheUserStaysPausedUntilTurnedOnAgain() throws {
+        let root = try makeTempDirectory()
+        let state = try makeTempDirectory().appending(path: "cloud.json")
+        let mirror = CloudMirror(root: root, stateURL: state)
+        #expect(mirror.accountAllows("_alice"))
+        try write("a", "pages/a.json", in: root)
+        pushAll(mirror)
+        mirror.markCloudDeleted()
+        let relaunched = CloudMirror(root: root, stateURL: state)
+        #expect(relaunched.cloudDeleted)
+        #expect(relaunched.accountAllows("_alice"))
+        relaunched.releaseAccount()
+        #expect(relaunched.accountAllows("_alice"))
+        #expect(!relaunched.cloudDeleted)
+        #expect(relaunched.localChanges() == [.save("pages/a.json")])
+    }
+
     @Test func aPageChangedOnlyInItsDetailsMakesNoCopy() throws {
         let root = try makeTempDirectory()
         let mirror = try mirror(root)
