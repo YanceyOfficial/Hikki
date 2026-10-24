@@ -393,6 +393,28 @@ final class Navigator {
         syncSelection()
     }
 
+    /// A page link (`hikki://page/<id>`) clicked in a side's page. A link to the page itself (a block in it) stays
+    /// there — the caller scrolls. Another page opens in a tab of its own on the Mac (`NavigationTabs.openLink`: the
+    /// tab already showing it gets focus, else a new tab right after the link's — after the split, from a side of one,
+    /// so the split stays as it was in the strip), never over the page the link was in. Without tabs (iPhone, iPad) it
+    /// opens in place, in the side it was clicked in.
+    func openLink(_ id: String, from side: PaneSide) {
+        guard let pane = pane(side) else { return }
+        let route = Route.page(id)
+        reveal(id)
+        if pane.route == route {
+            focus(side)
+        } else if Self.usesTabs {
+            tabs.openLink(route, from: pane.tab, limit: Self.recentTabLimit)
+            syncSelection()
+        } else if side == .trailing {
+            show(route, in: .trailing)
+        } else {
+            focus(.leading)
+            go(route)
+        }
+    }
+
     /// An attached PDF clicked in a page: it opens in a viewer over the page (a sheet on the Mac, a full-screen cover on
     /// iOS), so the page stays in its tab and the PDF can still go beside it (the sheet's Open in Split View).
     func showDocument(name: String, label: String) {

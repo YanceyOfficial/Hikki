@@ -305,10 +305,35 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
         let tab = Tab(route: route)
         tabs.append(tab)
         activeID = tab.id
-        while tabs.count > max(limit, 1), let oldest = recency.last(where: { $0 != tab.id && split(of: $0) == nil }) {
-            tabs.removeAll { $0.id == oldest }
-            recency.removeAll { $0 == oldest }
+        evict(beyond: limit, sparing: [tab.id])
+        tidySplits()
+        recordVisit()
+        return tab.id
+    }
+
+    /// The tab showing `route`: the focused one when it does, else the first in the strip that does.
+    public func tab(showing route: Route) -> UUID? {
+        if self.route == route { return activeID }
+        return tabs.first { $0.route == route }?.id
+    }
+
+    /// A link in the page of the tab `id` followed to another page (Chrome's ⌘-click, made the default): the tab already
+    /// showing it gets focus; otherwise it opens in a new tab right after `id` (after its split, when `id` is a side of
+    /// one), focused, so the page the link was in stays where it was. Past `limit` tabs the least recently focused one
+    /// closes, as for sidebar picks — never the new tab, nor `id`, nor a tab of a split.
+    @discardableResult
+    public mutating func openLink(_ route: Route, from id: UUID, limit: Int) -> UUID {
+        if let existing = tab(showing: route) {
+            select(existing)
+            return existing
         }
+        let source = tabs.contains { $0.id == id } ? id : activeID
+        let after = split(of: source)?.trailing ?? source
+        let tab = Tab(route: route)
+        let index = (tabs.firstIndex { $0.id == after } ?? tabs.count - 1) + 1
+        tabs.insert(tab, at: insertionIndex(index))
+        activeID = tab.id
+        evict(beyond: limit, sparing: [tab.id, source])
         tidySplits()
         recordVisit()
         return tab.id
@@ -434,6 +459,14 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
             else { return false }
             seen.formUnion([split.leading, split.trailing])
             return true
+        }
+    }
+
+    /// Closes the least recently focused tabs until at most `limit` are left — never one of `kept`, nor one of a split.
+    private mutating func evict(beyond limit: Int, sparing kept: Set<UUID>) {
+        while tabs.count > max(limit, 1), let oldest = recency.last(where: { !kept.contains($0) && split(of: $0) == nil }) {
+            tabs.removeAll { $0.id == oldest }
+            recency.removeAll { $0 == oldest }
         }
     }
 

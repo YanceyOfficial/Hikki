@@ -532,13 +532,13 @@ struct ContentView: View {
         // Settings' bulk import / export converts Markdown and HTML with a window's editor.
         model.bulkTransfer.register(editor, model: model)
         editor.deviceName = AppModel.deviceKind
-        // A link in the leading page opens there (split or not).
-        editor.onOpenPage = { [weak navigator, weak model, weak editor] id, block in
+        // A link in the leading page: a block of its own scrolls there; another page opens in its own tab on the Mac
+        // (`Navigator.openLink`), in place elsewhere.
+        editor.onOpenPage = { [weak navigator, weak model, weak editors] id, block in
             Self.followLink(to: id, model: model) {
                 guard let navigator else { return }
-                navigator.focus(.leading)
-                navigator.open(id)
-                if let block { editor?.scrollToBlock(block, in: id) }
+                navigator.openLink(id, from: .leading)
+                if let block { editors?.editor(for: navigator.focusedSide)?.scrollToBlock(block, in: id) }
             }
         }
         editor.setPages(model.tree)
@@ -754,10 +754,11 @@ struct ContentView: View {
         pane.moveBlocks = { [weak model, weak navigator] in await Self.moveBlocks($0, model: model, navigator: navigator) }
         pane.deviceName = AppModel.deviceKind
         pane.attach(store: model.store, assets: model.assets) { [weak model] in model?.history }
-        pane.onOpenPage = { [weak navigator, weak model, weak pane] id, block in
+        pane.onOpenPage = { [weak navigator, weak model, weak editors] id, block in
             Self.followLink(to: id, model: model) {
-                navigator?.show(.page(id), in: .trailing)
-                if let block { pane?.scrollToBlock(block, in: id) }
+                guard let navigator else { return }
+                navigator.openLink(id, from: .trailing)
+                if let block { editors?.editor(for: navigator.focusedSide)?.scrollToBlock(block, in: id) }
             }
         }
         pane.onOpenDocument = { [weak navigator] name, label in navigator?.showDocument(name: name, label: label) }
@@ -1118,4 +1119,9 @@ private struct PaneRoutes: Equatable {
 final class WindowEditors {
     @ObservationIgnored private(set) lazy var main = EditorController()
     var split: EditorController?
+
+    /// The editor drawing a side (the trailing one exists once a page has shown there).
+    func editor(for side: PaneSide) -> EditorController? {
+        side == .leading ? main : split
+    }
 }

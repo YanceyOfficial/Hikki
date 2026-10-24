@@ -511,4 +511,50 @@ struct NavigationTabsTests {
         #expect(Set(tabs.tabs.map(\.route)) == ["c", "d"])
         #expect(tabs.activeSplit != nil)
     }
+
+    @Test func aLinkOpensItsPageInANewTabRightAfterTheLinksTab() {
+        var tabs = Tabs(initial: "a")
+        let a = tabs.activeID
+        tabs.openTab("z")
+        tabs.select(a)
+        let opened = tabs.openLink("b", from: a, limit: 6)
+        #expect(tabs.tabs.map(\.route) == ["a", "b", "z"])
+        #expect(tabs.activeID == opened)
+        #expect(tabs.tabs[0].history == ["a"], "the page the link was in stays in its tab")
+        tabs.goBack()
+        #expect(tabs.activeID == a, "back returns to the page with the link")
+    }
+
+    @Test func aLinkToAPageAlreadyInATabFocusesThatTab() {
+        var tabs = Tabs(initial: "a")
+        let a = tabs.activeID
+        let b = tabs.openTab("b")
+        tabs.select(a)
+        #expect(tabs.openLink("b", from: a, limit: 6) == b)
+        #expect(tabs.tabs.count == 2)
+        #expect(tabs.activeID == b)
+    }
+
+    @Test func aLinkFromASideOpensAfterTheSplitAndLeavesItWhole() throws {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        let opened = tabs.openSplit("b", beside: left)
+        let right = try #require(opened)
+        tabs.openTab("z")
+        tabs.select(right)
+        tabs.openLink("c", from: right, limit: 6)
+        #expect(tabs.tabs.map(\.route) == ["a", "b", "c", "z"])
+        #expect(tabs.split(of: left) == .init(leading: left, trailing: right))
+        #expect(tabs.activeSplit == nil)
+    }
+
+    @Test func linkTabsKeepTheStripToTheLimitAndSpareTheLinksTab() {
+        var tabs = Tabs(initial: "a")
+        let a = tabs.activeID
+        tabs.openTab("b")
+        tabs.openTab("c")
+        tabs.select(a)
+        tabs.openLink("d", from: a, limit: 3)
+        #expect(tabs.tabs.map(\.route) == ["a", "d", "c"])
+    }
 }

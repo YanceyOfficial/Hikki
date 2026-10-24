@@ -485,7 +485,10 @@ HikkiUITests/                 XCUITest flows
   back / forward walk that one tab, and a window keeps no tab but its split's two (`NavigationTabs.keepActiveOnly`).
   On the Mac a sidebar row focuses the tab already showing its page, or opens it as a new tab
   at the end; past `Navigator.recentTabLimit` the least recently focused tab closes (`NavigationTabs.openRecent`,
-  recency kept in the saved tabs). Links navigate inside the active tab. Back / forward (the toolbar's arrows, ⌘[ ⌘]) walk the
+  recency kept in the saved tabs). A link in a page to another page opens it in a tab of its own
+  (`Navigator.openLink` → `NavigationTabs.openLink`: that page's tab is focused, else a new tab right after the link's —
+  from a side of a split, after the split, which stays whole — under the same limit); a link to a block of the page
+  itself scrolls there; without tabs (iPhone, iPad) a link opens in place, in its side. Back / forward (the toolbar's arrows, ⌘[ ⌘]) walk the
   window's history of pages shown, across tabs (`NavigationTabs.visits`): back returns to the page shown before, focusing
   its tab — a page opened from the sidebar goes back to where the reader was; closed tabs and gone pages are passed over. A tab's context menu is
   Chrome's (`TabStripMenu` / `TabStripCommand` in `HikkiUI/Sources/TabStrip.swift`, the commands chosen by
@@ -498,7 +501,7 @@ HikkiUITests/                 XCUITest flows
   sidebar row's drag carries the page's link (`PageLink.dragItem`), the editor's `handleDrop` inserts it where it
   lands, and the toolbar's `TabStrip` (`TabStripDrop`, `HikkiUI/Sources/TabStrip.swift`) opens it — between tabs
   as a new tab (or that page's tab is focused), onto a tab in that tab. Clicks go through the bridge
-  (`openPage` with the block, `openLink` for the web) and `window.hikki.scrollToBlock` lands on the block; a link to a
+  (`openPage` with the block — another page in its own tab on the Mac, see Tabs —, `openLink` for the web) and `window.hikki.scrollToBlock` lands on the block; a link to a
   page in the Trash toasts that with Restore, one to a page that is gone `pageLinkMissing` (ContentView's
   `followLink`) — a link never does nothing.
 - **Mentions, emoji, typography**: "@" mentions a page (`apps/editor/src/extensions/page-mention.ts`, Tiptap's Mention: a
