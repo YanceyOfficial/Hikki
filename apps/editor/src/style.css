@@ -568,8 +568,10 @@
   .tiptap [data-type='block-math'] {
     @apply my-1 cursor-pointer overflow-x-auto rounded-md px-2 py-3 text-center hover:bg-accent;
   }
+  /* An inline box, so its hover tint covers a formula taller than the line (a brace over several rows) — inline,
+     it painted one line through the middle. */
   .tiptap [data-type='inline-math'] {
-    @apply cursor-pointer rounded-sm px-0.5 hover:bg-accent;
+    @apply inline-block cursor-pointer rounded-sm px-0.5 hover:bg-accent;
   }
   .tiptap [data-type='block-math']:empty::before,
   .tiptap .block-math-inner:empty::before {
@@ -1191,4 +1193,10 @@ body:has(.hk-find [data-testid='find-panel']) #outline {
   background-color: currentColor;
   -webkit-mask: var(--sf) center / contain no-repeat;
   mask: var(--sf) center / contain no-repeat;
+}
+
+/* KaTeX sets formulas 1.21× the text around them, which reads right in body text; in a heading that made a formula's
+   words visibly larger than the heading's own. Unlayered: KaTeX's own stylesheet is, and would win over a layer. */
+.tiptap :is(h1, h2, h3, h4) .katex {
+  font-size: 1em;
 }
