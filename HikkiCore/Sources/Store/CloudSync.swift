@@ -305,8 +305,8 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
 
     /// The record for a file as it is now, on its last known system fields (so the server can tell a stale save).
     private func record(for id: CKRecord.ID) -> CKRecord? {
-        guard let path = mirror.path(forRecordName: id.recordName) ?? pendingPath(for: id), let file = mirror.outgoing(path)
-        else { return nil }
+        // A file new here has no entry yet: the scan that queued it put its name in the mirror's index.
+        guard let path = mirror.path(forRecordName: id.recordName), let file = mirror.outgoing(path) else { return nil }
         let record = mirror.systemFields(path).flatMap(Self.decodeSystemFields) ?? CKRecord(recordType: Self.recordType, recordID: id)
         record.encryptedValues["path"] = path
         if file.contents.count <= Self.inlineLimit && !path.hasPrefix("assets/") {
@@ -328,11 +328,6 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
         lock.withLock { inflight[id.recordName] = file }
         updateUploads { $0.sending(path, asOf: file.modified) }
         return record
-    }
-
-    /// A file new here has no entry yet: its path is found by scanning for the name.
-    private func pendingPath(for id: CKRecord.ID) -> String? {
-        mirror.listFiles().keys.first { CloudMirror.recordName(for: $0) == id.recordName }
     }
 
     private func receive(_ records: [CKRecord], deletions: [CKRecord.ID], syncEngine: CKSyncEngine) {

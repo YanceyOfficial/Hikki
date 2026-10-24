@@ -68,6 +68,13 @@ public final class CloudMirror: @unchecked Sendable {
     private var state: State
     private var holding = 0
     private var dirty = false
+    /// Every path met — agreed entries, files a scan listed, files that arrived — by its record's name, and back: a
+    /// record's path is one lookup, never a hash of every known path or a walk of the folder (a first sync builds
+    /// thousands of records). Under `lock`; never shrinks (a gone path's name still leads to it, harmlessly).
+    private var pathsByName: [String: String] = [:]
+    private var namesByPath: [String: String] = [:]
+    /// How many record names were worked out (tests: once per path).
+    private var namesComputed = 0
 
     public init(root: URL, stateURL: URL, options: Options = Options()) {
         self.root = root
@@ -81,6 +88,7 @@ public final class CloudMirror: @unchecked Sendable {
         } else {
             state = State()
         }
+        for path in state.entries.keys { index(path) }
     }
 
     // MARK: - The record's name
@@ -91,9 +99,22 @@ public final class CloudMirror: @unchecked Sendable {
         SHA256.hash(data: Data(path.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 
-    /// The path a record name stands for, among the files this device knows.
+    /// The path a record name stands for, among the files this device knows (agreed with the cloud, or seen by the
+    /// last scan of the folder).
     public func path(forRecordName name: String) -> String? {
-        lock.withLock { state.entries.keys.first { Self.recordName(for: $0) == name } }
+        lock.withLock { pathsByName[name] }
+    }
+
+    /// How many record names were worked out so far (each path's once).
+    var recordNamesComputed: Int { lock.withLock { namesComputed } }
+
+    /// Adds a path to the record-name index; call under `lock` (or from `init`).
+    private func index(_ path: String) {
+        guard namesByPath[path] == nil else { return }
+        let name = Self.recordName(for: path)
+        namesComputed += 1
+        namesByPath[path] = name
+        pathsByName[name] = path
     }
 
     /// Only plain relative paths inside the folder sync: no `..`, no hidden files or iCloud placeholders.
@@ -201,6 +222,7 @@ public final class CloudMirror: @unchecked Sendable {
     public func saved(_ file: Outgoing, systemFields: Data?) {
         lock.withLock {
             state.entries[file.path] = Entry(size: file.size, modified: file.modified, hash: file.hash, systemFields: systemFields)
+            index(file.path)
         }
         persist()
     }
@@ -387,6 +409,7 @@ public final class CloudMirror: @unchecked Sendable {
             files[path] = FileInfo(
                 url: url, size: Int64(values.fileSize ?? 0), modified: values.contentModificationDate ?? .distantPast)
         }
+        lock.withLock { for path in files.keys { index(path) } }
         return files
     }
 
@@ -396,6 +419,7 @@ public final class CloudMirror: @unchecked Sendable {
             state.entries[path] = Entry(
                 size: attributes?.size ?? 0, modified: attributes?.modified ?? .distantPast, hash: hash,
                 systemFields: systemFields)
+            index(path)
         }
         persist()
     }

@@ -73,6 +73,27 @@ struct CloudMirrorTests {
         #expect(mirror.path(forRecordName: name) == "pages/secret-title.json")
     }
 
+    /// A first sync builds a record for every file: each one's path is a lookup in the index the scan filled — a
+    /// record name worked out once per path, never per lookup (that was a hash of every path, or a walk of the folder,
+    /// per record).
+    @Test func recordPathsAreLookedUpNotSearched() throws {
+        let root = try makeTempDirectory()
+        let count = 5_000
+        let paths = (0..<count).map { "history/p\($0 % 50)/\($0).json" }
+        for path in paths { try write("v", path, in: root) }
+        let mirror = try mirror(root)
+        #expect(mirror.localChanges().count == count)
+        #expect(mirror.recordNamesComputed == count)
+        for path in paths {
+            #expect(mirror.path(forRecordName: CloudMirror.recordName(for: path)) == path)
+        }
+        // Agreed, scanned again: still one name per path.
+        pushAll(mirror)
+        #expect(mirror.localChanges().isEmpty)
+        #expect(mirror.recordNamesComputed == count)
+        #expect(mirror.path(forRecordName: CloudMirror.recordName(for: "pages/never-here.json")) == nil)
+    }
+
     @Test func aFileUnchangedHereTakesTheCloudsVersion() throws {
         let root = try makeTempDirectory()
         let mirror = try mirror(root)
