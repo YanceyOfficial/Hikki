@@ -776,7 +776,9 @@ final class AppModel {
     @concurrent private static func figures(_ store: DocumentStore, since start: Date) async throws -> (
         activity: [DailyActivity], stats: WorkspaceStats
     ) {
-        (try store.activity(since: start), try store.stats())
+        let activity = try store.activity(since: start)
+        let stats = try store.stats()
+        return (activity, stats)
     }
 
     /// A bulk import or export ended (Settings → Workspace): a toast says how it went, wherever the user is now.

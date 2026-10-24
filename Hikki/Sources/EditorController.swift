@@ -312,7 +312,7 @@ final class EditorController {
             await Task.detached(priority: .userInitiated) {
                 urls.map { url in
                     let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-                    return (url, size, Result { try assets.importFile(at: url, fileExtension: url.pathExtension) })
+                    return (url: url, size: size, result: Result { try assets.importFile(at: url, fileExtension: url.pathExtension) })
                 }
             }.value
         }

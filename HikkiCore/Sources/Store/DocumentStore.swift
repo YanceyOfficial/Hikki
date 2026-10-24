@@ -870,7 +870,7 @@ private final class PageCommitObserver: TransactionObserver, @unchecked Sendable
         }
         do {
             let records = try DocumentRecord.filter(Array(rowIDs).contains(Column.rowID)).fetchAll(db)
-            let live = anyDeletions ? try Set(String.fetchAll(db, sql: "SELECT id FROM document")) : nil
+            let live: Set<String>? = try anyDeletions ? Set(String.fetchAll(db, sql: "SELECT id FROM document")) : nil
             pending = []
             pendingDeletions = false
             for handler in current { handler.onCommit(records, anyDeletions, live) }
