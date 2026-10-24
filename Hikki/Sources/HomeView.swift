@@ -292,7 +292,7 @@ struct HomeView: View {
         Table(rows, selection: $selection, sortOrder: $sortOrder) {
             TableColumn("app:home.column.name", sortUsing: HomeSort(field: .name)) { row in
                 HStack(spacing: Spacing.s2) {
-                    PageIcon(row.icon, size: 16)
+                    PageIcon(row.icon, size: Size.pageIcon)
                     Text(row.title).lineLimit(1)
                 }
                 .accessibilityIdentifier("home-row-\(row.title)")
@@ -605,7 +605,7 @@ private struct HomeCard: View {
 
     private var details: some View {
         VStack(alignment: .leading, spacing: Spacing.s2) {
-            PageIcon(row.icon, size: 28)
+            PageIcon(row.icon, size: Size.pageIconLg)
             Text(row.title).font(.hk(.base, .medium)).foregroundStyle(Theme.foreground).lineLimit(2)
             if !row.location.isEmpty {
                 Text(row.location).font(.hk(.xs)).foregroundStyle(Theme.mutedForeground).lineLimit(1)

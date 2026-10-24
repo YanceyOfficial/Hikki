@@ -305,7 +305,7 @@ private struct VersionRow: View {
                 .font(.hk(.sm, .medium))
             Text(version.savedAt, format: .relative(presentation: .named))
                 .font(.hk(.xs))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.mutedForeground)
             VersionCaption(version: version)
         }
         .padding(.vertical, Spacing.s1)
@@ -328,7 +328,7 @@ private struct VersionCaption: View {
             }
         }
         .font(.hk(.xs))
-        .foregroundStyle(.secondary)
+        .foregroundStyle(Theme.mutedForeground)
         .lineLimit(1)
     }
 }

@@ -16,7 +16,10 @@ These rules are mandatory. Automated ones are noted.
   (shadcn/ui semantic color names, Tailwind scale names). Regenerate with `make tokens`; never edit
   `HikkiUI/Sources/Generated/DesignTokens.swift` or `apps/editor/src/theme.css` by hand. Swift uses `Theme.*`, `Spacing.*`,
   `Radius.*`, `Size.*`, `.font(.hk(.sm))`; the web uses Tailwind classes (`bg-background`, `text-muted-foreground`,
-  `rounded-md`, `p-2.5`). _Enforced by `make lint-design` (`scripts/lint-design.sh`)._ A justified exception carries
+  `rounded-md`, `p-2.5`). _Enforced by `make lint-design` (`scripts/lint-design.sh`: literal sizes, colours, spacing
+  and radii, the system colours `.red` / `.yellow` / `.secondary` — `Theme.destructive`, `Theme.favorite`,
+  `Theme.mutedForeground` instead —, system fonts (`.title2`, `.caption`, `Font.system(`) and one-off animations
+  (`.snappy`, `.spring`, `.easeInOut(…)`)._ A justified exception carries
   a `design-lint: allow` comment on the same line.
 - **Motion.** Everything that appears, leaves or reacts moves the same way, from the `motion` tokens. Web surfaces
   (menus, popovers, tooltips, panels, the outline list) take `hk-pop` — mounted when shown: `FloatingLayer` adds it,

@@ -265,7 +265,7 @@ private struct AIKeySection: View {
                 key = account.flatMap(Keychain.read) ?? ""
             }
             LabeledContent("app:ai.settings.status") {
-                Text(status).foregroundStyle(problem ? AnyShapeStyle(.red) : AnyShapeStyle(Theme.subtleForeground))
+                Text(status).foregroundStyle(problem ? AnyShapeStyle(Theme.destructive) : AnyShapeStyle(Theme.subtleForeground))
             }
         } header: {
             Text(verbatim: provider.name)

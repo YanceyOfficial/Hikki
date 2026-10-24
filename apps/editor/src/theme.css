@@ -125,6 +125,14 @@
   --size-week-bar: 40px;
   --size-drawer: 360px;
   --size-table-cell-max: 260px;
+  --size-page-icon: 16px;
+  --size-page-icon-lg: 28px;
+  --size-tab-min: 60px;
+  --size-tab-ideal: 200px;
+  --size-tab-max: 220px;
+  --size-tab-height: 30px;
+  --size-search-header: 52px;
+  --size-onboarding-width: 440px;
   --motion-pop-in: 200ms;
   --motion-pop-out: 150ms;
   --motion-loop: 1400ms;

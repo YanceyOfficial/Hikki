@@ -342,7 +342,7 @@ struct SplitPicker: View {
                     Text("app:split.empty").font(.hk(.md)).foregroundStyle(Theme.mutedForeground).padding(Spacing.s2)
                 }
                 ForEach(recent) { page in
-                    row(title: PaneBar.title(page), icon: AnyView(PageIcon(page.icon, size: 16))) {
+                    row(title: PaneBar.title(page), icon: AnyView(PageIcon(page.icon, size: Size.pageIcon))) {
                         navigator.show(.page(page.id), in: side)
                     }
                     .accessibilityIdentifier("split-pick-\(PaneBar.title(page))")

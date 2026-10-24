@@ -29,7 +29,7 @@ public struct SearchResultRow: View {
 
     public var body: some View {
         HStack(alignment: .top, spacing: Spacing.s2_5) {
-            PageIcon(icon, size: 16)
+            PageIcon(icon, size: Size.pageIcon)
                 .padding(.top, Spacing.px)
             VStack(alignment: .leading, spacing: Spacing.s0_5) {
                 HStack(alignment: .firstTextBaseline, spacing: Spacing.s2) {

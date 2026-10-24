@@ -204,7 +204,7 @@ public struct TabStrip<Leading: View>: View {
             // The line sits on the strip's own middle (the toolbar bar is taller than the tabs).
             GeometryReader { strip in
                 if case .between(let index) = dropTarget, let x = gapX(before: index) {
-                    colorTone.fill.frame(width: 2, height: 22).clipShape(.capsule)
+                    colorTone.fill.frame(width: Spacing.s0_5, height: Size.iconButtonSm).clipShape(.capsule)
                         .position(x: x, y: strip.size.height / 2)
                 }
             }
@@ -423,7 +423,7 @@ private struct TabButton: View {
             if let symbol = item.symbol {
                 IconView(symbol, size: TextSize.sm.rawValue).foregroundStyle(Theme.subtleForeground)
             } else {
-                PageIcon(item.icon, size: 15)
+                PageIcon(item.icon, size: Size.pageIcon)
             }
             Text(item.title.isEmpty ? String(localized: "app:page.untitled") : item.title)
                 .font(.hk(.md, isActive ? .medium : .regular))
@@ -434,7 +434,7 @@ private struct TabButton: View {
                 Button(action: onClose) {
                     IconView(.x, size: TextSize.xs.rawValue)
                         .foregroundStyle(Theme.mutedForeground)
-                        .frame(width: 18, height: 18)
+                        .frame(width: Size.sidebarIcon, height: Size.sidebarIcon)
                         .contentShape(.circle)
                 }
                 .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.full))
@@ -442,7 +442,7 @@ private struct TabButton: View {
             }
         }
         .padding(.horizontal, Spacing.s3)
-        .frame(minWidth: 60, idealWidth: 200, maxWidth: 220, minHeight: 30, maxHeight: 30)
+        .frame(minWidth: Size.tabMin, idealWidth: Size.tabIdeal, maxWidth: Size.tabMax, minHeight: Size.tabHeight, maxHeight: Size.tabHeight)
         // Capsules inside the toolbar's glass capsule, like a segmented control (App Store's sidebar).
         .background(
             Capsule()

@@ -264,7 +264,7 @@ struct ContentView: View {
                 SearchPalette(navigator: navigator) { navigator.isSearching = false }
             }
         #endif
-        .animation(.snappy(duration: 0.18), value: navigator.isSearching)
+        .animation(Motion.easeOut(), value: navigator.isSearching)
         // Attachments opened from the editor.
         .quickLookPreview($editor.previewURL)
         // An attached PDF clicked in the page: the viewer over it, the page staying in its tab.

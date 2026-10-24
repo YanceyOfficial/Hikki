@@ -117,7 +117,7 @@ struct TrashView: View {
         Table(model.trash, selection: $selection) {
             TableColumn("app:trash.column.name") { page in
                 HStack(spacing: Spacing.s2) {
-                    PageIcon(page.icon, size: 16)
+                    PageIcon(page.icon, size: Size.pageIcon)
                     Text(title(page)).lineLimit(1)
                 }
             }

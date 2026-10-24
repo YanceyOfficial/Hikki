@@ -176,7 +176,7 @@ public struct MovePagePicker<Badge: View>: View {
         let entry = Entry.page(item.id)
         return HStack(spacing: Spacing.s1_5) {
             if !searching { disclosure(item) }
-            PageIcon(item.icon, size: 16)
+            PageIcon(item.icon, size: Size.pageIcon)
             VStack(alignment: .leading, spacing: Spacing.s0) {
                 Text(verbatim: Self.title(item.title))
                     .font(.hk(.sm))

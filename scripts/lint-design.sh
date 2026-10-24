@@ -12,6 +12,9 @@ check "literal color — add a token to design/tokens.json" 'Color\((red|white|h
 check "literal spacing — use Spacing.*" '(spacing: *-?[0-9])|(\.padding\((\.[a-zA-Z]+|\[[^]]*\]), *-?[0-9])|(\.padding\(-?[0-9])|(\.padding\([^)]*\? *[0-9])'
 check "literal corner radius — use Radius.*" 'cornerRadius: *[0-9]'
 check "raw SF Symbol — go through the Icon enum (design/icons.json \"sf\", make icons)" '(systemImage|systemName): '
+check "system colour — use Theme.* (Theme.destructive, Theme.favorite, Theme.mutedForeground)" '(^|[^A-Za-z0-9_])\.(red|yellow|secondary)\b'
+check "system font — use .font(.hk(.sm))" '\.font\(\.(largeTitle|title[23]?|headline|subheadline|body|callout|footnote|caption2?)\b|Font\.system\(|\.font\(\.system\('
+check "one-off animation — use Motion.easeOut() / Motion.easeInOut() (CLAUDE.md: Motion)" '\.(snappy|bouncy|smooth|spring|interactiveSpring)\b|Animation\.(easeIn|easeOut|easeInOut|linear)\b|\.animation\(\.(easeIn|easeOut|easeInOut|linear|default)\b|withAnimation\(\.(easeIn|easeOut|easeInOut|linear|default)\b'
 # Web code: the editor and the shared packages it bundles (packages/*/src). Excalidraw's own stylesheet and motion stay
 # in node_modules, out of reach of these checks — the package only restyles it with tokens (apps/editor/src/style.css).
 web_dirs="apps/editor/src $(ls -d packages/*/src 2>/dev/null | tr '\n' ' ')"

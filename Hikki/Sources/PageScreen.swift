@@ -303,7 +303,7 @@ struct FavoriteButton: View {
             } label: {
                 IconLabel(page.isFavorite ? "app:page.unfavorite" : "app:page.favorite", icon: page.isFavorite ? .starFill : .star)
             }
-            .foregroundStyle(page.isFavorite ? AnyShapeStyle(.yellow) : AnyShapeStyle(.primary))
+            .foregroundStyle(page.isFavorite ? AnyShapeStyle(Theme.favorite) : AnyShapeStyle(.primary))
             .help(page.isFavorite ? "app:page.unfavorite" : "app:page.favorite")
             .accessibilityIdentifier("favorite-toggle")
         } else {
@@ -315,7 +315,7 @@ struct FavoriteButton: View {
         BarIconButton(
             page.isFavorite ? "app:page.unfavorite" : "app:page.favorite",
             symbol: page.isFavorite ? .starFill : .star,
-            tint: page.isFavorite ? .yellow : nil
+            tint: page.isFavorite ? Theme.favorite : nil
         ) {
             model.setFavorite(!page.isFavorite, id: page.id)
         }
@@ -409,7 +409,7 @@ struct PageMoreMenu: View {
         } label: {
             IconView(.dotsThree, size: TextSize.base.rawValue)
                 .foregroundStyle(Theme.subtleForeground)
-                .frame(width: 28, height: 28)
+                .frame(width: Size.iconButton, height: Size.iconButton)
                 .contentShape(.rect)
         }
         .menuStyle(.button)

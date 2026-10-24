@@ -316,7 +316,7 @@ private struct WorkspaceSection: View {
             if model.workspace?.location == .cloud {
                 LabeledContent("app:settings.storage.sync") {
                     Text(model.cloudStatusText)
-                        .foregroundStyle(model.cloudStatus?.isTrouble == true ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+                        .foregroundStyle(model.cloudStatus?.isTrouble == true ? AnyShapeStyle(Theme.destructive) : AnyShapeStyle(Theme.mutedForeground))
                         .accessibilityIdentifier("settings-sync-status")
                 }
             } else if case .folder(_, let displayName) = model.workspace?.location {
@@ -326,7 +326,7 @@ private struct WorkspaceSection: View {
                 }
                 LabeledContent("app:settings.storage.sync") {
                     syncStatus
-                        .foregroundStyle(model.syncError == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
+                        .foregroundStyle(model.syncError == nil ? AnyShapeStyle(Theme.mutedForeground) : AnyShapeStyle(Theme.destructive))
                         .accessibilityIdentifier("settings-sync-status")
                 }
             }
@@ -567,7 +567,7 @@ private struct WorkspaceIconRow: View {
         } label: {
             Text("app:settings.icon")
             if failed {
-                Text("app:settings.icon.error").font(.caption).foregroundStyle(.red)
+                Text("app:settings.icon.error").font(.hk(.xs)).foregroundStyle(Theme.destructive)
             }
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.image]) { result in
@@ -598,7 +598,7 @@ private struct WorkspaceIconRow: View {
                     pickingEmoji = false
                 } label: {
                     Text(verbatim: emoji)
-                        .font(.title2)
+                        .font(.hk(.xl))
                         .frame(width: Size.iconButton + Spacing.s2, height: Size.iconButton + Spacing.s2)
                         .contentShape(.rect)
                 }
@@ -793,7 +793,7 @@ private struct SettingsSyncSection: View {
         Section {
             LabeledContent("app:settings.sync.label") {
                 Text(statusText)
-                    .foregroundStyle(status == .noAccount ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+                    .foregroundStyle(status == .noAccount ? AnyShapeStyle(Theme.destructive) : AnyShapeStyle(Theme.mutedForeground))
                     .accessibilityIdentifier("settings-settings-sync")
             }
         } header: {

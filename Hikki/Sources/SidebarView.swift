@@ -393,7 +393,7 @@ private struct PageRowDragDrop: ViewModifier {
             }
             .overlay(alignment: indicator == .before ? .top : .bottom) {
                 if indicator == .before || indicator == .after {
-                    colorTone.fill.frame(height: 2).clipShape(.capsule)
+                    colorTone.fill.frame(height: Spacing.s0_5).clipShape(.capsule)
                         .padding(.leading, CGFloat(depth) * Spacing.s3_5 + Spacing.s3_5)
                 }
             }
@@ -405,7 +405,7 @@ private struct PageRowDragDrop: ViewModifier {
             } preview: {
                 // The row as a rounded chip (the default preview was the bare row, square-cornered).
                 HStack(spacing: Spacing.s2) {
-                    PageIcon(row.icon, size: 16)
+                    PageIcon(row.icon, size: Size.pageIcon)
                     Text(row.title.isEmpty ? String(localized: "app:page.untitled") : row.title)
                         .font(.hk(.md))
                         .foregroundStyle(Theme.foreground)
@@ -434,8 +434,8 @@ private struct SidebarHeader: View {
 
     var body: some View {
         Text(title)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(.secondary)
+            .font(.hk(.sm, .semibold))
+            .foregroundStyle(Theme.mutedForeground)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, Spacing.s2)
             .padding(.top, Spacing.s4)
@@ -454,11 +454,11 @@ private struct DisclosureChevron: View {
         Group {
             if let isExpanded {
                 Button {
-                    withAnimation(.snappy(duration: 0.2)) { toggle() }
+                    withAnimation(Motion.easeOut()) { toggle() }
                 } label: {
                     IconView(.caretRight, size: TextSize.xs.rawValue)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.mutedForeground)
                         .frame(width: Size.sidebarIcon + Spacing.s1, height: Size.iconButtonSm)
                         .contentShape(.rect)
                 }
@@ -505,7 +505,7 @@ private struct NativePageLabel: View {
     var body: some View {
         Label {
             if page.title.isEmpty {
-                Text("app:page.untitled").foregroundStyle(.secondary)
+                Text("app:page.untitled").foregroundStyle(Theme.mutedForeground)
             } else {
                 Text(verbatim: page.title)  // the page's own title
             }
@@ -537,7 +537,7 @@ private struct HoverPageRow: View {
                 .frame(width: Size.sidebarIcon + Spacing.s1, height: Size.iconButtonSm)
             Group {
                 if row.title.isEmpty {
-                    Text("app:page.untitled").foregroundStyle(.secondary)
+                    Text("app:page.untitled").foregroundStyle(Theme.mutedForeground)
                 } else {
                     Text(verbatim: row.title)  // the page's own title
                 }
@@ -569,7 +569,7 @@ private struct HoverPageRow: View {
                     .help("app:page.addInside")
                     .accessibilityLabel("app:page.addInside")
                 }
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.mutedForeground)
             }
         }
         .onHover { hovering = $0 }

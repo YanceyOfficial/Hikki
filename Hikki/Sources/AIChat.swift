@@ -1084,7 +1084,7 @@ struct AIChatView: View {
                 }
             }
             if let error = chat.attachError {
-                Text(verbatim: error).font(.hk(.xs)).foregroundStyle(.red).padding(.horizontal, Spacing.s1)
+                Text(verbatim: error).font(.hk(.xs)).foregroundStyle(Theme.destructive).padding(.horizontal, Spacing.s1)
             }
         }
         .padding(.horizontal, Spacing.s3)
@@ -1632,7 +1632,7 @@ private struct ChatBubble: View {
                 if let chat, !message.changes.isEmpty { changeReview(chat) }
                 if let chat, !message.pictures.isEmpty { pictureTiles(chat) }
                 if let error = message.error {
-                    Text(verbatim: error).font(.hk(.sm)).foregroundStyle(.red)
+                    Text(verbatim: error).font(.hk(.sm)).foregroundStyle(Theme.destructive)
                 }
                 if !message.citations.isEmpty {
                     FlowLayout(spacing: Spacing.s1_5) {

@@ -47,7 +47,7 @@
                     }
                 }
                 .padding(.vertical, Spacing.s2)
-                .overlay(alignment: .top) { Theme.sidebarBorder.frame(height: 1) }
+                .overlay(alignment: .top) { Theme.sidebarBorder.frame(height: Spacing.px) }
             }
             .background(Theme.sidebar)
         }

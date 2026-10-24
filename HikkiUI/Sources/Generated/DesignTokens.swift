@@ -247,6 +247,14 @@ public nonisolated enum Size {
     public static let weekBar: CGFloat = 40
     public static let drawer: CGFloat = 360
     public static let tableCellMax: CGFloat = 260
+    public static let pageIcon: CGFloat = 16
+    public static let pageIconLg: CGFloat = 28
+    public static let tabMin: CGFloat = 60
+    public static let tabIdeal: CGFloat = 200
+    public static let tabMax: CGFloat = 220
+    public static let tabHeight: CGFloat = 30
+    public static let searchHeader: CGFloat = 52
+    public static let onboardingWidth: CGFloat = 440
 }
 
 /// Motion: one timing for everything that appears, leaves or reacts (popovers, hover states, scrims).

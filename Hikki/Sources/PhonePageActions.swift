@@ -196,7 +196,7 @@
                     IconView(.caretUpDown, size: TextSize.xs.rawValue).foregroundStyle(Theme.placeholder)
                 }
             }
-            .foregroundStyle(destructive ? AnyShapeStyle(.red) : AnyShapeStyle(Theme.foreground))
+            .foregroundStyle(destructive ? AnyShapeStyle(Theme.destructive) : AnyShapeStyle(Theme.foreground))
             .padding(.horizontal, Spacing.s4)
             .frame(height: Size.row + Spacing.s4)
             .contentShape(.rect)
