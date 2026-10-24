@@ -43,6 +43,7 @@ import {
   XIcon
 } from '../generated/icons'
 import { useKeyboardViewport } from '../hooks/use-keyboard-viewport'
+import { useMediaQuery } from '../hooks/use-media-query'
 import {
   bodyFromDraft,
   commentParts,
@@ -50,7 +51,7 @@ import {
   mentionQuery,
   type DraftMention
 } from '../lib/comment-text'
-import { PHONE } from '../lib/device'
+import { PHONE, UPRIGHT_PHONE } from '../lib/device'
 import { sheetOpened } from '../lib/sheet-presence'
 import { CommandList, handleListKey } from './command-list'
 
@@ -396,26 +397,30 @@ function Narrow({
     blocks.set(anchor.block, [...(blocks.get(anchor.block) ?? []), anchor])
   const open = layout.anchors.find((a) => a.thread.id === layout.active)
   const card = open ?? null
+  // An upright phone's slim margin has no room: the badge sat over the words' ends. The passage's underline and wash
+  // say there is a thread, and a tap on it opens it.
+  const badges = !useMediaQuery(UPRIGHT_PHONE)
   return (
     <>
-      {[...blocks.values()].map((anchors) => {
-        const count = anchors.reduce((sum, a) => sum + a.thread.comments.length, 0)
-        return (
-          <Button
-            key={anchors[0].block}
-            variant="ghost"
-            size="xs"
-            className="absolute gap-1 bg-muted text-muted-foreground"
-            style={{ left: layout.marginLeft, top: anchors[0].blockTop }}
-            aria-label={t('comments.count', { count })}
-            data-testid="comment-badge"
-            onClick={() => editor.commands.commentOpen(anchors[0].thread.id)}
-          >
-            <ChatTeardropTextIcon className="size-3.5" aria-hidden />
-            {count}
-          </Button>
-        )
-      })}
+      {badges &&
+        [...blocks.values()].map((anchors) => {
+          const count = anchors.reduce((sum, a) => sum + a.thread.comments.length, 0)
+          return (
+            <Button
+              key={anchors[0].block}
+              variant="ghost"
+              size="xs"
+              className="absolute gap-1 bg-muted text-muted-foreground"
+              style={{ left: layout.marginLeft, top: anchors[0].blockTop }}
+              aria-label={t('comments.count', { count })}
+              data-testid="comment-badge"
+              onClick={() => editor.commands.commentOpen(anchors[0].thread.id)}
+            >
+              <ChatTeardropTextIcon className="size-3.5" aria-hidden />
+              {count}
+            </Button>
+          )
+        })}
       {phone ? (
         <CommentSheet
           editor={editor}

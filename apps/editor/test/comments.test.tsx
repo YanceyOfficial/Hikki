@@ -14,6 +14,7 @@ import {
   setThreads,
   type ThreadItem
 } from '../src/extensions/comments'
+import { UPRIGHT_PHONE } from '../src/lib/device'
 
 let host: HTMLElement
 let editor: Editor
@@ -71,7 +72,7 @@ afterEach(() => {
 /** An iPhone: a touch screen in a narrow window (jsdom has no matchMedia of its own). */
 function stubPhone() {
   vi.stubGlobal('matchMedia', (query: string) => ({
-    matches: query === PHONE_QUERY || query === '(pointer: coarse)',
+    matches: query === PHONE_QUERY || query === UPRIGHT_PHONE || query === '(pointer: coarse)',
     media: query,
     addEventListener: () => {},
     removeEventListener: () => {}
@@ -351,6 +352,24 @@ describe('comments', () => {
     fireEvent.click(scrim)
     await vi.waitFor(() => expect(commentsState(editor.state)?.active).toBeNull())
     expect(document.activeElement).not.toBe(editor.view.dom)
+  })
+
+  it('a narrow window shows a count badge beside the passage', async () => {
+    // Too narrow for margin cards (jsdom has no layout: the text's right edge is 0).
+    vi.stubGlobal('innerWidth', 380)
+    commentOnQuick()
+    await act(async () => window.dispatchEvent(new Event('resize')))
+    expect(screen.queryAllByTestId('comment-badge')).toHaveLength(1)
+  })
+
+  it('an upright phone shows no badge (the wash is enough); the thread still opens', async () => {
+    vi.stubGlobal('innerWidth', 380)
+    stubPhone()
+    const id = commentOnQuick()
+    await act(async () => window.dispatchEvent(new Event('resize')))
+    expect(screen.queryAllByTestId('comment-badge')).toHaveLength(0)
+    act(() => editor.commands.commentOpen(id))
+    expect(commentsState(editor.state)?.active).toBe(id)
   })
 
   it('a tap on a commented passage opens its thread without placing the caret (no keyboard)', () => {
