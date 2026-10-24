@@ -25,6 +25,9 @@ public final class CloudMirror: @unchecked Sendable {
         var engine: Data?
         /// The iCloud account the workspace syncs with (its user record's name): the first one it met.
         var account: String?
+        /// The account the workspace synced with until the user turned iCloud on again (`releaseAccount`): the next
+        /// account met takes it, and if that is another one, nothing agreed with the old one's zone holds there.
+        var releasedFrom: String?
     }
 
     public enum Change: Equatable, Hashable, Sendable {
@@ -124,19 +127,35 @@ public final class CloudMirror: @unchecked Sendable {
     // MARK: - Account
 
     /// Whether this iCloud account may sync the workspace: the first account it meets owns it, and no other one
-    /// sends or receives a file of it — the pages here stay the owner's.
+    /// sends or receives a file of it — the pages here stay the owner's. An account taking over a workspace released
+    /// by another one (`releaseAccount`) starts from nothing: its zone has none of the files, so every file goes up,
+    /// and the engine's state — the old account's — is dropped before an engine is made from it.
     public func accountAllows(_ user: String) -> Bool {
-        let allowed = lock.withLock {
-            if state.account == nil { state.account = user }
-            return state.account == user
+        let (allowed, handedOver) = lock.withLock {
+            var handedOver = false
+            if state.account == nil {
+                if let previous = state.releasedFrom, previous != user {
+                    state.entries = [:]
+                    state.engine = nil
+                    handedOver = true
+                }
+                state.account = user
+                state.releasedFrom = nil
+            }
+            return (state.account == user, handedOver)
         }
+        if handedOver { Log.info("cloud workspace handed to another account; everything goes up", category: "cloud") }
         persist()
         return allowed
     }
 
-    /// The user turned iCloud on: the account the device uses now may take the workspace.
+    /// The user turned iCloud on: the account the device uses now may take the workspace. The same account carries
+    /// on where it was; another one gets everything (`accountAllows`).
     public func releaseAccount() {
-        lock.withLock { state.account = nil }
+        lock.withLock {
+            if let account = state.account { state.releasedFrom = account }
+            state.account = nil
+        }
         persist()
     }
 

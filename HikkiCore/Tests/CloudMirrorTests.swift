@@ -193,7 +193,8 @@ struct CloudMirrorTests {
         #expect(mirror.systemFields("pages/b.json") == nil)
     }
 
-    @Test func aNewAccountSendsEverythingAgain() throws {
+    /// A deleted zone: the files stay and every one goes up again.
+    @Test func aForgottenCloudSendsEverythingAgain() throws {
         let root = try makeTempDirectory()
         let mirror = try mirror(root)
         try write("a", "pages/a.json", in: root)
@@ -201,6 +202,42 @@ struct CloudMirrorTests {
         mirror.forgetCloud()
         #expect(mirror.localChanges() == [.save("pages/a.json")])
         #expect(FileManager.default.fileExists(atPath: root.appending(path: "pages/a.json").path))
+    }
+
+    /// iCloud turned off and on (`AppModel.setICloud` → `releaseAccount`) with the device signed in to another
+    /// account: that account's zone has nothing, so every file goes up, and the old account's engine state goes.
+    @Test func aNewAccountSendsEverythingAgain() throws {
+        let root = try makeTempDirectory()
+        let state = try makeTempDirectory().appending(path: "cloud.json")
+        let mirror = CloudMirror(root: root, stateURL: state)
+        #expect(mirror.accountAllows("_alice"))
+        mirror.setEngineState(Data([7]))
+        try write("a", "pages/a.json", in: root)
+        try write("b", "assets/b.png", in: root)
+        pushAll(mirror)
+        #expect(mirror.localChanges().isEmpty)
+
+        mirror.releaseAccount()
+        // Released, a relaunch before the account is checked keeps it so.
+        let relaunched = CloudMirror(root: root, stateURL: state)
+        #expect(relaunched.accountAllows("_bob"))
+        #expect(Set(relaunched.localChanges()) == [.save("pages/a.json"), .save("assets/b.png")])
+        #expect(relaunched.engineState == nil)
+        #expect(relaunched.systemFields("pages/a.json") == nil)
+    }
+
+    /// The same account turned off and on carries on: nothing goes up again.
+    @Test func theSameAccountTurnedOnAgainSendsNothing() throws {
+        let root = try makeTempDirectory()
+        let mirror = try mirror(root)
+        #expect(mirror.accountAllows("_alice"))
+        mirror.setEngineState(Data([7]))
+        try write("a", "pages/a.json", in: root)
+        pushAll(mirror)
+        mirror.releaseAccount()
+        #expect(mirror.accountAllows("_alice"))
+        #expect(mirror.localChanges().isEmpty)
+        #expect(mirror.engineState == Data([7]))
     }
 
     @Test func theWorkspaceSyncsOnlyWithTheAccountItFirstMet() throws {

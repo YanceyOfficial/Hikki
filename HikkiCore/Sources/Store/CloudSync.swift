@@ -432,7 +432,11 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
         case .signOut:
             pause(.noAccount)
         case .switchAccounts:
-            // Stopped at once; it starts again only if the new account is the workspace's (switched back).
+            // Stopped at once; it starts again only if the new account is the workspace's (switched back). The
+            // engine's kept state is the other account's: an engine made from it again would report this same switch
+            // at once (its own state update is dropped once it is paused) — a loop — so it goes, and the next engine
+            // starts afresh (a full fetch, which changes nothing that is already here).
+            mirror.setEngineState(nil)
             pause(.accountChanged)
             Task { await confirmAccount() }
         case .signIn:
