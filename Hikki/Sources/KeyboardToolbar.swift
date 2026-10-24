@@ -7,7 +7,7 @@
     import WebKit
 
     /// The bar over the software keyboard (Notion's): one glass capsule of tools — with a caret, AI · + · Aa · file ·
-    /// photo · turn into · undo · emoji · comment, then (scrolled) @ · delete · indent · outdent · move up · move down ·
+    /// photo · turn into · undo · comment, then (scrolled) @ · delete · indent · outdent · move up · move down ·
     /// ⋯; with a selection, Aa · B · I · U · S · colour · AI · link · comment · ⋯. Tools that need no typing (+, Aa,
     /// turn into, colour) put their panel where the keyboard was, at its height (the web view's input view), and the
     /// end button brings the keyboard back; AI and link open a native field over the keyboard (`composer`, drawn by
@@ -335,7 +335,6 @@
                     tool("app:keyboard.photo", .image) { bar.openMedia() }
                     tool("app:keyboard.turnInto", .arrowsClockwise, isActive: bar.panel == .turnInto) { bar.toggle(.turnInto) }
                     tool("app:format.undo", .arrowUUpLeft) { bar.run("undo") }
-                    tool("app:keyboard.emoji", .smiley) { bar.run("emoji") }
                     tool("app:keyboard.comment", .chatTeardropText) { bar.openComment() }
                     tool("app:keyboard.mention", .at) { bar.run("mention") }
                     tool("app:keyboard.deleteBlock", .trash) { bar.run("delete") }

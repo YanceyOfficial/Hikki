@@ -6903,23 +6903,6 @@
         }
       }
     },
-    "app:keyboard.emoji": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Emoji"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "表情"
-          }
-        }
-      }
-    },
     "app:keyboard.file": {
       "extractionState": "manual",
       "localizations": {

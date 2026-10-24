@@ -187,7 +187,6 @@ export type TouchTool =
   | 'undo'
   | 'redo'
   | 'mention'
-  | 'emoji'
   | 'todo'
   | 'comment'
   | 'delete'
@@ -220,8 +219,6 @@ export function touchRun(editor: Editor, tool: TouchTool): boolean {
       return chain.redo().run()
     case 'mention':
       return chain.insertContent(trigger(editor, '@')).run()
-    case 'emoji':
-      return chain.insertContent(trigger(editor, ':')).run()
     case 'todo':
       return chain.toggleTaskList().run()
     case 'comment':

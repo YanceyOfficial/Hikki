@@ -151,13 +151,6 @@ describe('the phone keyboard bar', () => {
     expect(texts()).toEqual(['one', 'three', 'two'])
   })
 
-  it('the emoji tool types ":" — spaced from the word before it — and the suggestion takes over', () => {
-    open([para('hi')])
-    editor.commands.setTextSelection(3)
-    expect(touchRun(editor, 'emoji')).toBe(true)
-    expect(texts()).toEqual(['hi :'])
-  })
-
   it("the ⋯ sheet describes the caret's block and acts on it", () => {
     open([
       { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Plan it' }] },

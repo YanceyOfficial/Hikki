@@ -827,7 +827,7 @@ HikkiUITests/                 XCUITest flows
 - **Keyboard bar (iOS)**, Notion's (`Hikki/Sources/KeyboardToolbar.swift`): native SwiftUI over the software keyboard
   as the web view's input accessory (a runtime subclass of WebKit's content view, no private API) — one Liquid Glass
   capsule (HikkiUI's `KeyboardAccessoryBar`: tools scroll inside it, the keyboard button pinned at its end). With a
-  caret: AI · + · Aa · file · photo · turn into · undo · emoji · comment · @ · delete · indent · outdent · move up ·
+  caret: AI · + · Aa · file · photo · turn into · undo · comment · @ · delete · indent · outdent · move up ·
   move down · ⋯; with a selection: Aa · B · I · U · S · colour · AI · link · comment · ⋯ — the page's floating
   selection menu stays away meanwhile (`window.hikki.setKeyboardBar`). +, Aa and turn into open a panel in the
   keyboard's place at its height (the same subclass's `inputView`, swapped with `reloadInputViews`, the caret staying
