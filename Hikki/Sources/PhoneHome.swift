@@ -17,6 +17,8 @@
         /// This week's writing and the workspace's totals (two queries), read when the tree changes.
         @State private var activity: [DailyActivity] = []
         @State private var stats = WorkspaceStats(pages: 0, words: 0)
+        /// The figures have been read once (later reads wait for the tree to rest).
+        @State private var figuresLoaded = false
         /// An iPhone Duo's vertical bar: ☰ and the floating bar's buttons go there instead.
         @Environment(\.verticalBarEdge) private var verticalBar
 
@@ -72,8 +74,17 @@
             }
             .onChange(of: model.tree, initial: true) { _, tree in digest = HomeDigest(pages: tree.all) }
             .task(id: model.tree) {
-                activity = model.activity(days: 7)
-                stats = model.stats()
+                // Two store reads, off the main thread; after the first, debounced — typing in a page over Home
+                // changes the tree every 2 s, and a newer change cancels the wait.
+                if figuresLoaded {
+                    try? await Task.sleep(for: .milliseconds(500))
+                    guard !Task.isCancelled else { return }
+                }
+                let figures = await model.homeFigures(days: 7)
+                guard !Task.isCancelled else { return }
+                activity = figures.activity
+                stats = figures.stats
+                figuresLoaded = true
             }
         }
 

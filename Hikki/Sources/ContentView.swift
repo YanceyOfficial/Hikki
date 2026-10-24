@@ -475,18 +475,9 @@ struct ContentView: View {
             // Full screen (macOS): menu bar, traffic lights and toolbar stay, as in a window (FullScreenChrome.swift).
             .fullScreenChrome()
             .onChange(of: navigator.tabs) { _, _ in storedTabs = navigator.encodedTabs() }
-            // Tabs restored from the last run may name pages this workspace doesn't have (an empty one never changes
-            // its tree, so the prune below doesn't run for it).
-            .onChange(of: model.treeLoaded) { _, loaded in if loaded { navigator.prune { model.tree.page($0) != nil } } }
-            .onChange(of: model.tree) { _, tree in
-                // Pages trashed here or in another window disappear from every tab's history. Each step changes
-                // nothing (and so re-renders nothing) when nothing it shows changed — this runs on every save.
-                navigator.prune { tree.page($0) != nil }
-                navigator.revealCurrent()
-                // Each editor: its link index when a title or icon changed, its page's lock when that changed.
-                editor.setPages(tree)
-                splitEditor?.setPages(tree)
-            }
+            // What the window does when the tree changes — on every save — lives in a view of its own, so this
+            // body and its modifier chain aren't evaluated again for each (`TreeFollower`).
+            .background(TreeFollower(navigator: navigator, editor: editor, splitEditor: splitEditor))
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {
                     model.reconcileWorkspace()  // pick up other devices' changes
@@ -836,6 +827,34 @@ struct ContentView: View {
         #else
             sizeClass == .regular
         #endif
+    }
+}
+
+/// What the window does when the page tree changes (every save, every 2 s while typing): tabs pruned of pages gone,
+/// the sidebar path to the open page, each editor's page index and lock. The only view of the window that reads
+/// `model.tree` in its body — so a save redraws this (nothing) and not the window's root with its whole modifier
+/// chain. Each step changes nothing (and so re-renders nothing) when nothing it shows changed.
+private struct TreeFollower: View {
+    @Environment(AppModel.self) private var model
+    let navigator: Navigator
+    let editor: EditorController
+    let splitEditor: EditorController?
+
+    var body: some View {
+        Color.clear
+            .frame(width: 0, height: 0)
+            .allowsHitTesting(false)
+            // Tabs restored from the last run may name pages this workspace doesn't have (an empty one never changes
+            // its tree, so the prune below doesn't run for it).
+            .onChange(of: model.treeLoaded) { _, loaded in if loaded { navigator.prune { model.tree.page($0) != nil } } }
+            .onChange(of: model.tree) { _, tree in
+                // Pages trashed here or in another window disappear from every tab's history.
+                navigator.prune { tree.page($0) != nil }
+                navigator.revealCurrent()
+                // Each editor: its link index when a title or icon changed, its page's lock when that changed.
+                editor.setPages(tree)
+                splitEditor?.setPages(tree)
+            }
     }
 }
 

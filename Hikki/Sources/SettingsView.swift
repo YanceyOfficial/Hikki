@@ -572,13 +572,20 @@ private struct WorkspaceIconRow: View {
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.image]) { result in
             guard case .success(let url) = result else { return }
-            let scoped = url.startAccessingSecurityScopedResource()
-            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-            if let data = try? Data(contentsOf: url), let thumbnail = WorkspaceIcon.thumbnail(of: data) {
-                failed = false
-                model.setWorkspaceIcon(.image(thumbnail))
-            } else {
-                failed = true
+            Task {
+                // Read and scaled off the main actor (a photo can be large).
+                let thumbnail = await Task.detached(priority: .userInitiated) { () -> Data? in
+                    let scoped = url.startAccessingSecurityScopedResource()
+                    defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+                    guard let data = try? Data(contentsOf: url) else { return nil }
+                    return WorkspaceIcon.thumbnail(of: data)
+                }.value
+                if let thumbnail {
+                    failed = false
+                    model.setWorkspaceIcon(.image(thumbnail))
+                } else {
+                    failed = true
+                }
             }
         }
     }

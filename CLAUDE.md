@@ -322,7 +322,10 @@ HikkiUITests/                 XCUITest flows
   said in a toast (`databaseRebuilt`) — never a crash at every launch; should not even a fresh file open, the run
   keeps its pages in memory (`databaseOpenFailed`). `HikkiCore/Sources/Store/WorkspaceSync.swift` reconciles on launch and app activation
   (newer side wins; a missing file deletes the page only if it was synced before — `pageFileState`) and writes every
-  committed page change through (a GRDB transaction observer). "Newer" is `changedAt` (`lastChange`): every write
+  committed page change through (`DocumentStore.observePageCommits`: one GRDB transaction observer shared by the
+  write-through, the search indexer and the reminders, which reads the changed rows once per commit — inside the
+  save, on the typing thread — and hands them to each; a commit it couldn't read is logged, told to each observer's
+  `onError`, and goes out with the next commit). "Newer" is `changedAt` (`lastChange`): every write
   method sets it — moves, reorders, trash, restore and favorites too, which leave `updatedAt` (the "Edited" date)
   alone — and page files carry it as an optional key (format stays 1; absent = `updatedAt`). A pass compares ids,
   parents and change times only (`syncHeads`), reading a full row just for pages it writes or replaces; an import
@@ -611,7 +614,8 @@ HikkiUITests/                 XCUITest flows
   `<time datetime>`. Natively `HikkiCore/Sources/Store/DateMentions.swift` reads chips out of content (`DateEntry`:
   the line's words and block id), works out when each rings (`fireComponents`, the editor's `fireMoment`) and what
   Home lists (`Upcoming.items`: rung and not done first, then the next 7 days). `Hikki/Sources/Reminders.swift` keeps
-  every live page's dates (`pagesWithDates` at launch, then the store's commit feed) and schedules the reminders
+  every live page's dates (`pagesWithDates` at launch, then the store's commit feed — each page's content parsed on
+  a queue of its own, never on the commit's thread, commits applied in order) and schedules the reminders
   still to ring as local notifications (`ReminderCenter`, at most 64, calendar triggers, the line as the title and
   the page under it; permission asked at the first one), so every device with the workspace rings. Mark done and
   Snooze (15 minutes) on a notification change the chip in its page (`AppModel.updateDate`, the move-blocks way:
@@ -776,9 +780,12 @@ HikkiUITests/                 XCUITest flows
 - **A window's editors** (`WindowEditors` in `Hikki/Sources/ContentView.swift`): the main one made once per window, the
   split pane's on first use. Each holds the window's `EditorSettings` (tone, spelling, AI review style, shortcuts —
   ContentView sets both at once) and replays them on ready; bridge calls go through its `call` helper. The tree
-  changes on every save, so nothing on that path may re-render or re-send for nothing: the navigator assigns tabs /
+  changes on every save, so nothing on that path may re-render or re-send for nothing: the window's root never reads
+  `model.tree` in its body — `TreeFollower` (a zero-size view in ContentView) alone does, pruning tabs, revealing the
+  page and feeding the editors — the navigator assigns tabs /
   expanded rows only when they changed (`NavigationTabs.pruned`), and each editor sends the page index and its own
-  page's lock only when they changed (`EditorPageState`, `HikkiCore/Sources/Bridge/EditorPageState.swift`). Editor
+  page's lock only when they changed (`EditorPageState`, `HikkiCore/Sources/Bridge/EditorPageState.swift`); the
+  iPhone's Home reads its figures (`AppModel.homeFigures`) off the main thread, debounced. Editor
   callbacks capture weakly (a strong capture kept closed windows' web processes alive; DEBUG logs "editor released").
   Unsaved typing is flushed when a window goes to the background or closes and on ⌘Q (`Hikki/Sources/SaveOnExit.swift`:
   every editor, then the workspace folder, 3 s cap; iOS under a background-task assertion). The page / trash

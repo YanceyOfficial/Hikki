@@ -122,7 +122,11 @@ public final class WorkspaceSync: @unchecked Sendable {
     /// made while reconciling aren't missed; the reconcile's own imports write back identical bytes — skipped),
     /// then watches the folder.
     public func start() throws -> Report {
-        commits = try store.observePageCommits { [weak self] changed, deletions, live in
+        commits = try store.observePageCommits(
+            // A commit whose rows couldn't be read: they come with the next one, and the next pass writes what is
+            // missing from the folder meanwhile.
+            onError: { error in Incident.report(.workspaceSyncFailed, error, category: "workspace", context: ["step": "commit"]) }
+        ) { [weak self] changed, deletions, live in
             self?.queue.async { [weak self] in self?.writeThrough(changed: changed, deletions: deletions, live: live) }
         }
         return try queue.sync {

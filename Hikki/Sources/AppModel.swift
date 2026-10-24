@@ -753,14 +753,23 @@ final class AppModel {
         }
     }
 
-    /// Home: this device's writing activity over the last `days` days, and the workspace's totals.
-    func activity(days: Int) -> [DailyActivity] {
+    /// Home: this device's writing activity over the last `days` days and the workspace's totals, read off the main
+    /// thread (the iPhone's Home reads them on every tree change, with a page open over it). A failure is logged;
+    /// the figures are then empty.
+    func homeFigures(days: Int) async -> (activity: [DailyActivity], stats: WorkspaceStats) {
         let start = Calendar.current.date(byAdding: .day, value: -days, to: .now) ?? .now
-        return perform("load activity") { try store.activity(since: start) } ?? []
+        do {
+            return try await Self.figures(store, since: start)
+        } catch {
+            Log.error("home figures failed: \(Incident.describe(error))", category: "store")
+            return ([], WorkspaceStats(pages: 0, words: 0))
+        }
     }
 
-    func stats() -> WorkspaceStats {
-        perform("load stats") { try store.stats() } ?? WorkspaceStats(pages: 0, words: 0)
+    @concurrent private static func figures(_ store: DocumentStore, since start: Date) async throws -> (
+        activity: [DailyActivity], stats: WorkspaceStats
+    ) {
+        (try store.activity(since: start), try store.stats())
     }
 
     /// A bulk import or export ended (Settings → Workspace): a toast says how it went, wherever the user is now.

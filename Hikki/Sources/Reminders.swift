@@ -23,6 +23,12 @@ final class Reminders {
     @ObservationIgnored private var reported: Set<String> = []
     @ObservationIgnored private let store: DocumentStore
     @ObservationIgnored private var scheduling: Task<Void, Never>?
+    /// Reads a page's dates out of its content off the commit's thread (the commit observer runs inside the save, on
+    /// the typing thread; parsing a long page's JSON there held every save). One queue, so commits apply in order.
+    @ObservationIgnored private let parsing = DispatchQueue(label: "app.yancey.hikki.reminders", qos: .utility)
+    /// The commit each page's entries came from, so a slower parse of an older commit never overwrites a newer one.
+    @ObservationIgnored private var appliedCommit: [String: Int] = [:]
+    @ObservationIgnored private let commitCount = OSAllocatedUnfairLock(initialState: 0)
 
     init(store: DocumentStore) {
         self.store = store
@@ -31,8 +37,17 @@ final class Reminders {
     func start() {
         do {
             try store.observePageCommits { [weak self] changed, deletions, live in
-                let updates = changed.map { ($0.id, Self.entries(of: $0)) }
-                Task { @MainActor in self?.apply(updates, live: deletions ? live : nil, reload: deletions && live == nil) }
+                guard let self else { return }
+                let commit = commitCount.withLock { count in
+                    count += 1
+                    return count
+                }
+                parsing.async {
+                    let updates = changed.map { ($0.id, Self.entries(of: $0)) }
+                    Task { @MainActor in
+                        self.apply(updates, commit: commit, live: deletions ? live : nil, reload: deletions && live == nil)
+                    }
+                }
             }
         } catch {
             Log.error("reminders observation failed: \(error)", category: "reminders")
@@ -62,8 +77,9 @@ final class Reminders {
         changed()
     }
 
-    private func apply(_ updates: [(String, [DateEntry])], live: Set<String>?, reload: Bool) {
-        for (id, entries) in updates {
+    private func apply(_ updates: [(String, [DateEntry])], commit: Int, live: Set<String>?, reload: Bool) {
+        for (id, entries) in updates where (appliedCommit[id] ?? 0) < commit {
+            appliedCommit[id] = commit
             reported.insert(id)
             byPage[id] = entries.isEmpty ? nil : entries
         }

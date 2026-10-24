@@ -292,18 +292,36 @@ final class EditorController {
         func uploadCover(_ media: PickedMedia, docId: String) async {
             defer { try? FileManager.default.removeItem(at: media.url.deletingLastPathComponent()) }
             guard let assets else { return }
-            do {
-                let src = try assets.importFile(at: media.url, fileExtension: media.url.pathExtension)
+            switch await Self.importMedia([media.url], into: assets).first?.result {
+            case .success(let src)?:
                 Log.info("cover uploaded", category: "covers", context: ["ext": media.url.pathExtension.lowercased()])
                 await applyCover(src, docId: docId)
-            } catch {
-                let code: ErrorCode =
-                    switch error as? AssetStore.AssetError {
-                    case .tooLarge?: .fileTooLarge
-                    case .unsupportedType?: .fileTypeNotAllowed
-                    default: .uploadFailed
-                    }
-                Toasts.report(code, error, category: "covers", context: ["ext": media.url.pathExtension.lowercased()])
+            case .failure(let error)?:
+                Toasts.report(
+                    Self.assetErrorCode(error), error, category: "covers", context: ["ext": media.url.pathExtension.lowercased()])
+            case nil:
+                break
+            }
+        }
+
+        /// Picked files moved into the assets off the main actor (a video is a copy of its size), each with its size in
+        /// bytes (read before the move) and how it went.
+        nonisolated private static func importMedia(_ urls: [URL], into assets: AssetStore) async -> [(
+            url: URL, size: Int, result: Result<String, any Error>
+        )] {
+            await Task.detached(priority: .userInitiated) {
+                urls.map { url in
+                    let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                    return (url, size, Result { try assets.importFile(at: url, fileExtension: url.pathExtension) })
+                }
+            }.value
+        }
+
+        nonisolated private static func assetErrorCode(_ error: any Error) -> ErrorCode {
+            switch error as? AssetStore.AssetError {
+            case .tooLarge?: .fileTooLarge
+            case .unsupportedType?: .fileTypeNotAllowed
+            default: .uploadFailed
             }
         }
     #endif
@@ -713,22 +731,15 @@ final class EditorController {
         func insertMedia(_ picked: [PickedMedia]) async {
             guard let assets else { return }
             var items: [[String: Any]] = []
-            for media in picked {
-                let name = media.url.lastPathComponent
-                let size = (try? media.url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-                do {
-                    let src = try assets.importFile(at: media.url, fileExtension: media.url.pathExtension)
-                    items.append(["src": src, "name": name, "size": size])
-                } catch {
-                    let code: ErrorCode =
-                        switch error as? AssetStore.AssetError {
-                        case .tooLarge?: .fileTooLarge
-                        case .unsupportedType?: .fileTypeNotAllowed
-                        default: .uploadFailed
-                        }
-                    Toasts.report(code, error, category: "media", context: ["ext": media.url.pathExtension.lowercased()])
+            for (url, size, result) in await Self.importMedia(picked.map(\.url), into: assets) {
+                switch result {
+                case .success(let src):
+                    items.append(["src": src, "name": url.lastPathComponent, "size": size])
+                case .failure(let error):
+                    Toasts.report(
+                        Self.assetErrorCode(error), error, category: "media", context: ["ext": url.pathExtension.lowercased()])
                 }
-                try? FileManager.default.removeItem(at: media.url.deletingLastPathComponent())
+                try? FileManager.default.removeItem(at: url.deletingLastPathComponent())
             }
             guard !items.isEmpty else { return }
             Log.info("media picked", category: "media", context: ["count": "\(items.count)"])
@@ -1081,6 +1092,37 @@ final class EditorController {
     // MARK: - Bridge
 
     /// Returns the reply for messages that expect one (WKScriptMessageHandlerWithReply).
+    /// The file writes among the bridge messages — a picture saved from the page, a chunk of an upload, its end — as
+    /// work for a thread of its own: the proxy awaits it off the main actor, so a video dropped on the page never
+    /// holds the window. nil for every other message (and for these with no asset store attached, which `handle`
+    /// then refuses).
+    fileprivate func assetWork(for message: BridgeMessage) -> (@Sendable () throws -> String?)? {
+        switch message {
+        case .saveAsset(let fileExtension, let data):
+            guard let assets else { return nil }
+            return {
+                let url = try assets.save(data, fileExtension: fileExtension)
+                Log.info("asset saved", category: "store", context: ["bytes": "\(data.count)", "ext": fileExtension])
+                return url
+            }
+        case .uploadChunk(let id, let data):
+            guard let uploads else { return nil }
+            return {
+                try uploads.append(id, data)
+                return nil
+            }
+        case .finishUpload(let id):
+            guard let uploads else { return nil }
+            return {
+                let url = try uploads.finish(id)
+                Log.info("upload saved", category: "store", context: ["ext": (url as NSString).pathExtension])
+                return url
+            }
+        default:
+            return nil
+        }
+    }
+
     func handle(_ message: BridgeMessage) throws -> Any? {
         switch message {
         case .ready(let version):
@@ -1184,21 +1226,12 @@ final class EditorController {
                 Toasts.report(.pageUpdateFailed, error, category: "store", context: ["docId": docId, "field": "cover"])
                 throw error
             }
-        case .saveAsset(let fileExtension, let data):
-            guard let assets else { throw BridgeError.invalidPayload("asset store not attached") }
-            let url = try assets.save(data, fileExtension: fileExtension)
-            Log.info("asset saved", category: "store", context: ["bytes": "\(data.count)", "ext": fileExtension])
-            return url
+        case .saveAsset, .uploadChunk, .finishUpload:
+            // Answered by `assetWork` off the main actor; here only when no asset store is attached.
+            throw BridgeError.invalidPayload("asset store not attached")
         case .beginUpload(let fileExtension, let size):
             guard let uploads else { throw BridgeError.invalidPayload("asset store not attached") }
             return try uploads.begin(fileExtension: fileExtension, size: size)
-        case .uploadChunk(let id, let data):
-            try uploads?.append(id, data)
-        case .finishUpload(let id):
-            guard let uploads else { throw BridgeError.invalidPayload("asset store not attached") }
-            let url = try uploads.finish(id)
-            Log.info("upload saved", category: "store", context: ["ext": (url as NSString).pathExtension])
-            return url
         case .cancelUpload(let id):
             uploads?.cancel(id)
         case .openAsset(let url, let label):
@@ -1390,6 +1423,10 @@ private final class ScriptMessageProxy: NSObject, WKScriptMessageHandlerWithRepl
                     "icon": preview.icon ?? NSNull(),
                 ]
                 return (reply, nil)
+            }
+            // Asset writes (a picture dropped on the page, a chunked upload) run off the main actor.
+            if let work = await owner?.assetWork(for: decoded) {
+                return (try await Task.detached(priority: .userInitiated, operation: work).value, nil)
             }
             let reply = try owner?.handle(decoded)
             return (reply, nil)

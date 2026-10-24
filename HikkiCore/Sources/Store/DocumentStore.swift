@@ -463,18 +463,33 @@ public final class DocumentStore: Sendable {
 
     // MARK: - Workspace folder sync (storage option C)
 
-    /// Calls `onCommit` after every committed transaction that changed pages: the rows inserted or updated, and
-    /// whether any row was deleted (the caller then reconciles by id — foreign-key cascades aren't reported row
-    /// by row). Runs on the database's queue; keep it short and hand real work elsewhere.
-    /// The returned observation lasts as long as the database unless cancelled.
+    /// What a committed page change reports: the rows inserted or updated, and whether any row was deleted (the
+    /// caller then reconciles by id — foreign-key cascades aren't reported row by row — against `liveIDs`).
+    public typealias PageCommitHandler = @Sendable (_ changed: [DocumentRecord], _ deletions: Bool, _ liveIDs: Set<String>?) -> Void
+
+    /// Calls `onCommit` after every committed transaction that changed pages. Every observation shares one
+    /// transaction observer, which reads the changed rows once per commit (inside the write, on the writer's thread —
+    /// three observers each read the full records, body included, on every autosave) and hands the same records to
+    /// each handler. Runs on the database's queue; keep it short and hand real work elsewhere. A commit whose rows
+    /// couldn't be read is logged, told to `onError`, and its rows go out with the next commit — the write-through
+    /// and the search index never miss a change for good. The observation lasts as long as the database unless cancelled.
     @discardableResult
     public func observePageCommits(
-        _ onCommit: @escaping @Sendable (_ changed: [DocumentRecord], _ deletions: Bool, _ liveIDs: Set<String>?) -> Void
+        onError: (@Sendable (any Error) -> Void)? = nil, _ onCommit: @escaping PageCommitHandler
     ) throws -> PageCommitObservation {
-        let observer = PageCommitObserver(onCommit: onCommit)
-        writer.add(transactionObserver: observer, extent: .databaseLifetime)
-        return PageCommitObservation(writer: writer, observer: observer)
+        let observer = commitObserver.withLock { slot -> PageCommitObserver in
+            if let observer = slot { return observer }
+            let observer = PageCommitObserver()
+            writer.add(transactionObserver: observer, extent: .databaseLifetime)
+            slot = observer
+            return observer
+        }
+        let id = observer.add(onCommit, onError: onError)
+        return PageCommitObservation { observer.remove(id) }
     }
+
+    /// The one transaction observer every `observePageCommits` shares (made on the first).
+    private let commitObserver = Mutex<PageCommitObserver?>(nil)
 
     /// Writes a page as it came from its file: no activity bump, no edited-time change.
     public func importPage(_ record: DocumentRecord) throws {
@@ -797,31 +812,40 @@ public struct LoadedContent: Equatable, Sendable {
 
 /// A commit observation (`DocumentStore.observePageCommits`); `cancel()` ends it.
 public final class PageCommitObservation: Sendable {
-    private let writer: any DatabaseWriter
-    private let observer: PageCommitObserver
+    private let onCancel: @Sendable () -> Void
 
-    fileprivate init(writer: any DatabaseWriter, observer: PageCommitObserver) {
-        self.writer = writer
-        self.observer = observer
+    fileprivate init(onCancel: @escaping @Sendable () -> Void) {
+        self.onCancel = onCancel
     }
 
-    public func cancel() {
-        observer.cancel()
-        writer.remove(transactionObserver: observer)
-    }
+    public func cancel() { onCancel() }
 }
 
-/// Collects page row changes in a transaction and reports them once it commits (see `observePageCommits`).
+/// Collects page row changes in a transaction and, once it commits, reads the rows once and reports them to every
+/// handler (see `observePageCommits`). Rows a commit couldn't read stay noted for the next one.
 private final class PageCommitObserver: TransactionObserver, @unchecked Sendable {
-    private let onCommit: @Sendable ([DocumentRecord], Bool, Set<String>?) -> Void
+    private struct Handler: Sendable {
+        let id: UUID
+        let onCommit: DocumentStore.PageCommitHandler
+        let onError: (@Sendable (any Error) -> Void)?
+    }
+
+    private let handlers = Mutex<[Handler]>([])
+    // The transaction in progress (the writer's thread only).
     private var changed = Set<Int64>()
     private var deletions = false
-    private let cancelled = Mutex(false)
+    // What an earlier commit couldn't read, reported with the next.
+    private var pending = Set<Int64>()
+    private var pendingDeletions = false
 
-    func cancel() { cancelled.withLock { $0 = true } }
+    func add(_ onCommit: @escaping DocumentStore.PageCommitHandler, onError: (@Sendable (any Error) -> Void)?) -> UUID {
+        let id = UUID()
+        handlers.withLock { $0.append(Handler(id: id, onCommit: onCommit, onError: onError)) }
+        return id
+    }
 
-    init(onCommit: @escaping @Sendable ([DocumentRecord], Bool, Set<String>?) -> Void) {
-        self.onCommit = onCommit
+    func remove(_ id: UUID) {
+        handlers.withLock { $0.removeAll { $0.id == id } }
     }
 
     func observes(eventsOfKind eventKind: DatabaseEventKind) -> Bool {
@@ -833,15 +857,31 @@ private final class PageCommitObserver: TransactionObserver, @unchecked Sendable
     }
 
     func databaseDidCommit(_ db: Database) {
-        defer {
-            changed = []
-            deletions = false
+        let rowIDs = changed.union(pending)
+        let anyDeletions = deletions || pendingDeletions
+        changed = []
+        deletions = false
+        guard !rowIDs.isEmpty || anyDeletions else { return }
+        let current = handlers.withLock { $0 }
+        guard !current.isEmpty else {
+            pending = []
+            pendingDeletions = false
+            return
         }
-        guard !changed.isEmpty || deletions, !cancelled.withLock({ $0 }) else { return }
-        let rowIDs = Array(changed)
-        let records = (try? DocumentRecord.filter(rowIDs.contains(Column.rowID)).fetchAll(db)) ?? []
-        let live = deletions ? (try? Set(String.fetchAll(db, sql: "SELECT id FROM document"))) : nil
-        onCommit(records, deletions, live)
+        do {
+            let records = try DocumentRecord.filter(Array(rowIDs).contains(Column.rowID)).fetchAll(db)
+            let live = anyDeletions ? try Set(String.fetchAll(db, sql: "SELECT id FROM document")) : nil
+            pending = []
+            pendingDeletions = false
+            for handler in current { handler.onCommit(records, anyDeletions, live) }
+        } catch {
+            pending = rowIDs
+            pendingDeletions = anyDeletions
+            Log.error(
+                "page commit unread: \(error)", category: "store",
+                context: ["rows": "\(rowIDs.count)", "deletions": "\(anyDeletions)"])
+            for handler in current { handler.onError?(error) }
+        }
     }
 
     func databaseDidRollback(_ db: Database) {

@@ -119,33 +119,54 @@ final class AIChat {
         load()
     }
 
-    /// The open page's kept conversation (none for no page).
+    /// The conversation files are read and written on one queue off the main actor — a page switch with the panel
+    /// open read the whole file on the main thread, and every turn wrote it there — in order, so a read after a
+    /// write sees it.
+    private static let files = DispatchQueue(label: "app.yancey.hikki.ai-chat", qos: .utility)
+    /// The read under way (a newer page's read makes an older one moot).
+    @ObservationIgnored private var loading: Task<Void, Never>?
+
+    private static func onFiles<T: Sendable>(_ body: @escaping @Sendable () -> T) async -> T {
+        await withCheckedContinuation { continuation in files.async { continuation.resume(returning: body()) } }
+    }
+
+    /// The open page's kept conversation (none for no page), read off the main actor; shown once it is read — unless
+    /// the chat moved on meanwhile (another page, an answer under way).
     private func load() {
+        loading?.cancel()
         guard let id = openPageID, let chats = chatStore() else {
             messages = []
             summary = nil
             return
         }
-        do {
-            let conversation = try chats.conversation(of: id, retention: AIPreferences.chatRetention)
-            messages = conversation.turns.map(Message.init)
-            summary = conversation.summary
-            offerChanges()
-        } catch {
-            messages = []
-            summary = nil
-            Log.warn("AI chat not read: \(error)", category: "ai", context: ["docId": id])
+        let retention = AIPreferences.chatRetention
+        loading = Task { [weak self] in
+            let result = await Self.onFiles { Result { try chats.conversation(of: id, retention: retention) } }
+            guard let self, !Task.isCancelled, openPageID == id, !isStreaming else { return }
+            switch result {
+            case .success(let conversation):
+                messages = conversation.turns.map(Message.init)
+                summary = conversation.summary
+                offerChanges()
+            case .failure(let error):
+                messages = []
+                summary = nil
+                Log.warn("AI chat not read: \(error)", category: "ai", context: ["docId": id])
+            }
         }
     }
 
-    /// Keeps turns of the open page's conversation.
+    /// Keeps turns of the open page's conversation (written off the main actor, in order).
     private func keep(_ kept: [Message]) {
         guard let id = openPageID, let chats = chatStore(), !kept.isEmpty else { return }
-        do {
-            try chats.save(kept.map(\.turn), pageId: id)
-        } catch {
-            // The turns stay on screen; what isn't kept is gone with the page switch, so the user hears of it.
-            Toasts.report(.aiChatSaveFailed, error, category: "ai", context: ["docId": id, "turns": "\(kept.count)"])
+        let turns = kept.map(\.turn)
+        Self.files.async {
+            do {
+                try chats.save(turns, pageId: id)
+            } catch {
+                // The turns stay on screen; what isn't kept is gone with the page switch, so the user hears of it.
+                Toasts.report(.aiChatSaveFailed, error, category: "ai", context: ["docId": id, "turns": "\(turns.count)"])
+            }
         }
     }
 
@@ -400,8 +421,10 @@ final class AIChat {
     private(set) var roughPictures: [String: Data] = [:]
     @ObservationIgnored private var pictureRequests: [String: PictureRequest] = [:]
     @ObservationIgnored private var pictureRuns: [String: Task<Void, Never>] = [:]
-    /// Made pictures, read once from their files.
-    @ObservationIgnored private var pictureImages: [String: Image] = [:]
+    /// Made pictures, read once from their files (observed: a tile redraws when its picture is in).
+    private var pictureImages: [String: Image] = [:]
+    /// Pictures being read, or that couldn't be (`pictureImage`).
+    @ObservationIgnored private var pictureLoads: Set<String> = []
     var isMakingPictures: Bool { !pictureQueue.isEmpty }
 
     /// The picture attached to the question an answer replies to.
@@ -536,16 +559,21 @@ final class AIChat {
         makePictures([id], answer: messages[m].id)
     }
 
-    /// What a tile shows: the made picture, or the rough version so far.
+    /// What a tile shows: the made picture, or the rough version so far. A made picture not read yet is nil for now:
+    /// its file is read off the main actor (a view body asked for it), and the tile redraws once it is in.
     func pictureImage(_ picture: ChatPicture) -> Image? {
         if let rough = roughPictures[picture.id] { return PlatformImage.image(rough) }
         guard picture.status == .done, let asset = picture.asset else { return nil }
         if let image = pictureImages[asset] { return image }
-        guard let file = pictureFile(asset), let data = try? Data(contentsOf: file), let image = PlatformImage.image(data) else {
-            return nil
+        guard !pictureLoads.contains(asset), let file = pictureFile(asset) else { return nil }
+        pictureLoads.insert(asset)
+        Task { [weak self] in
+            let data = await Task.detached(priority: .userInitiated) { try? Data(contentsOf: file) }.value
+            // One that can't be read stays nil (not read again on every redraw).
+            guard let self, let data, let image = PlatformImage.image(data) else { return }
+            pictureImages[asset] = image
         }
-        pictureImages[asset] = image
-        return image
+        return nil
     }
 
     /// Made pictures put into the page the chat sits beside, where the answer's pictures go; marked added there.
