@@ -650,4 +650,66 @@ struct NavigationTabsTests {
         #expect(tabs.recency == [tabs.activeID])
         #expect(!tabs.canGoBack, "the closed tabs' pages are passed over")
     }
+
+    // MARK: Reopen Closed Tab
+
+    @Test func aClosedTabComesBackWithItsHistoryAtItsPlace() {
+        var tabs = Tabs(initial: "home")
+        let first = tabs.activeID
+        tabs.openTab("a")
+        let middle = tabs.activeID
+        tabs.navigate(to: "b")
+        tabs.openTab("c")
+        #expect(tabs.reopenClosed() == nil, "nothing closed yet")
+        tabs.close(middle)
+        #expect(tabs.tabs.map(\.route) == ["home", "c"])
+        let reopened = tabs.reopenClosed()
+        #expect(reopened != nil && reopened != middle, "a new id, the old one is gone")
+        #expect(tabs.activeID == reopened)
+        #expect(tabs.tabs.map(\.route) == ["home", "b", "c"], "back at its place")
+        #expect(tabs.active.history == ["a", "b"] && tabs.active.canGoBack, "with its history")
+        #expect(tabs.reopenClosed() == nil, "reopened once")
+        tabs.select(first)
+        #expect(tabs.tabs.count == 3)
+    }
+
+    @Test func closeOthersRightAndAllAreRememberedLastClosedFirstOut() {
+        var tabs = Tabs(initial: "home")
+        tabs.openTab("a")
+        tabs.openTab("b")
+        tabs.openTab("c")
+        tabs.closeTabs(after: tabs.tabs[1].id)  // b, c
+        tabs.closeOthers(tabs.tabs[0].id)  // a
+        #expect(tabs.closed.map(\.tab.route) == ["b", "c", "a"])
+        tabs.reopenClosed()
+        #expect(tabs.route == "a")
+        tabs.closeAll(fallback: "home")
+        #expect(tabs.closed.map(\.tab.route) == ["b", "c", "home", "a"])
+        #expect(tabs.tabs.map(\.route) == ["home"])
+    }
+
+    @Test func theWindowsOwnRemovalsAreNotRememberedAndTheListIsCapped() {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        tabs.openSplit("a", beside: left)
+        tabs.separate(left)  // both sides showed "a": one tab goes, the window's doing
+        #expect(tabs.closed.isEmpty)
+        for i in 0..<(Tabs.maxClosed + 3) {
+            tabs.openTab("p\(i)")
+            tabs.close(tabs.activeID)
+        }
+        #expect(tabs.closed.count == Tabs.maxClosed)
+        #expect(tabs.closed.last?.tab.route == "p\(Tabs.maxClosed + 2)")
+    }
+
+    @Test func closedTabsSurviveSaving() throws {
+        var tabs = Tabs(initial: "home")
+        tabs.openTab("a")
+        tabs.close(tabs.activeID)
+        let data = try JSONEncoder().encode(tabs)
+        var restored = try JSONDecoder().decode(Tabs.self, from: data)
+        #expect(restored.closed.map(\.tab.route) == ["a"])
+        restored.reopenClosed()
+        #expect(restored.route == "a")
+    }
 }

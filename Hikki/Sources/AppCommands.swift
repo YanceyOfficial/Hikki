@@ -1,3 +1,4 @@
+import HikkiCore
 import SwiftUI
 
 /// Menu bar (macOS, iPadOS). Keys come from the registry (design/shortcuts.json → `Shortcut`), as the user rebound
@@ -8,6 +9,7 @@ struct AppCommands: Commands {
     @FocusedValue(\.editor) private var editor
     @FocusedValue(\.navigator) private var navigator
     @FocusedValue(\.lockedPage) private var lockedPage
+    @FocusedValue(\.favoritePage) private var favoritePage
     @FocusedValue(\.aiChat) private var aiChat
 
     var body: some Commands {
@@ -50,6 +52,11 @@ struct AppCommands: Commands {
             }
             .keyboardShortcut(Shortcut.closeTab.keyboardShortcut)
             .disabled(!Navigator.usesTabs && navigator?.isShowingSettings != true)
+            if Navigator.usesTabs {
+                Button("app:tabs.reopenClosed") { navigator?.reopenClosedTab() }
+                    .keyboardShortcut(Shortcut.reopenClosedTab.keyboardShortcut)
+                    .disabled(navigator?.canReopenClosedTab != true)
+            }
             // A new chat with AI about the page: while the side panel shows the conversation, with one to clear.
             Button("app:shortcut.newChat") { aiChat?.clear() }
                 .keyboardShortcut(Shortcut.newChat.keyboardShortcut)
@@ -88,15 +95,50 @@ struct AppCommands: Commands {
             .keyboardShortcut(Shortcut.toggleSplit.keyboardShortcut)
             .disabled(navigator == nil || navigator?.splitAllowed == false)
         }
+        // The page menu, as the page's ⋯ has it (`PageActions`): every item acts on the open page (the focused side
+        // of a split) and is off on Home / Trash.
         CommandMenu("app:menu.page") {
-            Button("app:page.copyLink") { navigator?.copyCurrentPageLink() }
-                .keyboardShortcut(Shortcut.copyPageLink.keyboardShortcut)
-                .disabled(navigator?.route.pageID == nil)
+            let onPage = navigator?.route.pageID != nil
+            Button(favoritePage == true ? "app:page.unfavorite" : "app:page.favorite") {
+                navigator?.toggleFavoriteCurrentPage()
+            }
+            .keyboardShortcut(Shortcut.favoritePage.keyboardShortcut)
+            .disabled(favoritePage == nil)
             Button(lockedPage == true ? "app:page.unlock" : "app:page.lock") {
                 navigator?.toggleLockCurrentPage()
             }
             .keyboardShortcut(Shortcut.lockPage.keyboardShortcut)
             .disabled(lockedPage == nil)
+            Divider()
+            Button("app:page.copyLink") { navigator?.copyCurrentPageLink() }
+                .keyboardShortcut(Shortcut.copyPageLink.keyboardShortcut)
+                .disabled(!onPage)
+            Button("app:page.duplicate") { navigator?.duplicateCurrentPage() }
+                .keyboardShortcut(Shortcut.duplicatePage.keyboardShortcut)
+                .disabled(!onPage)
+            Button("app:page.moveTo") { navigator?.moveCurrentPage() }
+                .keyboardShortcut(Shortcut.movePage.keyboardShortcut)
+                .disabled(!onPage)
+            Divider()
+            Button("app:history.open") { navigator?.showHistoryOfCurrentPage() }
+                .keyboardShortcut(Shortcut.pageHistory.keyboardShortcut)
+                .disabled(!onPage)
+            Menu("app:export.menu") {
+                ForEach(PageExport.Format.allCases) { format in
+                    if format == .markdown {
+                        Button(format.title) { navigator?.exportCurrentPage(as: format) }
+                            .keyboardShortcut(Shortcut.exportMarkdown.keyboardShortcut)
+                    } else {
+                        Button(format.title) { navigator?.exportCurrentPage(as: format) }
+                    }
+                }
+            }
+            .disabled(!onPage)
+            Divider()
+            // Asks first (`TrashConfirmation`), as every other way in.
+            Button("app:page.moveToTrash", role: .destructive) { navigator?.trashCurrentPage() }
+                .keyboardShortcut(Shortcut.moveToTrash.keyboardShortcut)
+                .disabled(!onPage)
         }
         CommandMenu("app:menu.go") {
             Button("app:chrome.back") { navigator?.goBack() }
@@ -110,6 +152,15 @@ struct AppCommands: Commands {
                 .keyboardShortcut(Shortcut.nextTab.keyboardShortcut)
             Button("app:tabs.previous") { navigator?.selectNeighborTab(-1) }
                 .keyboardShortcut(Shortcut.previousTab.keyboardShortcut)
+            if Navigator.usesTabs {
+                Divider()
+                // ⌘1…⌘9: the nth tab, ⌘9 the last (browsers').
+                ForEach(Array(Self.tabShortcuts.enumerated()), id: \.offset) { offset, shortcut in
+                    Button("app:tabs.number \(String(offset + 1))") { navigator?.selectTab(number: offset + 1) }
+                        .keyboardShortcut(shortcut.keyboardShortcut)
+                        .disabled(navigator == nil)
+                }
+            }
             Divider()
             Button("app:nav.home") { navigator?.go(.home) }
             Button("app:nav.trash") { navigator?.go(.trash) }
@@ -123,6 +174,9 @@ struct AppCommands: Commands {
             }
         }
     }
+
+    /// ⌘1…⌘9, in order.
+    private static let tabShortcuts: [Shortcut] = [.tab1, .tab2, .tab3, .tab4, .tab5, .tab6, .tab7, .tab8, .tab9]
 
     private func closeWindow() {
         #if os(macOS)

@@ -581,7 +581,13 @@ HikkiUITests/                 XCUITest flows
   Duplicate (the whole history), Move to New Window (Mac, a page: the "page" window group, then the tab closes — iPad
   has no such scene yet); for a page VS Code's Copy Link (`PageLink`) and Reveal in Sidebar (`Navigator.sidebarReveal`:
   parents expanded, the sidebar shown and scrolled to the row); then Close, Close Other Tabs, Close Tabs to the Right,
-  Close All Tabs (one new tab on Home) — the rules in `NavigationTabs`.
+  Close All Tabs (one new tab on Home) — the rules in `NavigationTabs`. Tabs closed by the user — Close, the three
+  closes above — are remembered (`NavigationTabs.closed`, the last ten, saved with the tabs; the window's own removals
+  — an emptied split side, a picker, a split's twin — are not) and File → Reopen Closed Tab (⇧⌘T) brings the last
+  one back with its history at its old place; Go → Tab 1…9 (⌘1…⌘9, ⌘9 the last) focus by place. The Mac's Page menu
+  is the page ⋯'s (`AppCommands`: Favorite ⇧⌘P, Lock ⇧⌘L, Copy Link ⌥⌘C, Duplicate ⇧⌘D, Move to… ⌥⌘V, Page
+  History… ⇧⌘H, Export — Markdown ⇧⌘E —, Move to Trash ⌘⌫, which asks first), acting on the focused side's page
+  through the navigator; its titles come from `FocusedValues.lockedPage` / `favoritePage`, set by `TreeFollower`.
 - **Page links** (`apps/editor/src/extensions/page-links.ts`): `hikki://page/<id>#<block>`. The native side feeds the editor
   the page index (`window.hikki.setPages`) so pasted links get titles; "Copy link to block" puts a ready `<a>` plus the
   URL on the clipboard; a plain-text paste of a link becomes a labelled hyperlink, and so does a dropped one: a

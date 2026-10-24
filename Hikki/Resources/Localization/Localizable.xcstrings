@@ -11391,6 +11391,57 @@
         }
       }
     },
+    "app:shortcut.duplicatePage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duplicate page"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "创建页面副本"
+          }
+        }
+      }
+    },
+    "app:shortcut.exportMarkdown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export page as Markdown"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将页面导出为 Markdown"
+          }
+        }
+      }
+    },
+    "app:shortcut.favoritePage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add to or remove from Favorites"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加到或移出收藏"
+          }
+        }
+      }
+    },
     "app:shortcut.find": {
       "extractionState": "manual",
       "localizations": {
@@ -11612,6 +11663,40 @@
         }
       }
     },
+    "app:shortcut.movePage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move page to"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移动页面到"
+          }
+        }
+      }
+    },
+    "app:shortcut.moveToTrash": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move page to Trash"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将页面移到回收站"
+          }
+        }
+      }
+    },
     "app:shortcut.newChat": {
       "extractionState": "manual",
       "localizations": {
@@ -11697,6 +11782,23 @@
         }
       }
     },
+    "app:shortcut.pageHistory": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Page history"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "页面历史"
+          }
+        }
+      }
+    },
     "app:shortcut.previousTab": {
       "extractionState": "manual",
       "localizations": {
@@ -11727,6 +11829,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "引用"
+          }
+        }
+      }
+    },
+    "app:shortcut.reopenClosedTab": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reopen closed tab"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新打开关闭的标签页"
           }
         }
       }
@@ -11829,6 +11948,159 @@
           "stringUnit": {
             "state": "translated",
             "value": "上标"
+          }
+        }
+      }
+    },
+    "app:shortcut.tab1": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab 1"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页 1"
+          }
+        }
+      }
+    },
+    "app:shortcut.tab2": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab 2"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页 2"
+          }
+        }
+      }
+    },
+    "app:shortcut.tab3": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab 3"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页 3"
+          }
+        }
+      }
+    },
+    "app:shortcut.tab4": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab 4"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页 4"
+          }
+        }
+      }
+    },
+    "app:shortcut.tab5": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab 5"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页 5"
+          }
+        }
+      }
+    },
+    "app:shortcut.tab6": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab 6"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页 6"
+          }
+        }
+      }
+    },
+    "app:shortcut.tab7": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab 7"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页 7"
+          }
+        }
+      }
+    },
+    "app:shortcut.tab8": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab 8"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页 8"
+          }
+        }
+      }
+    },
+    "app:shortcut.tab9": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab 9"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页 9"
           }
         }
       }
@@ -12683,6 +12955,23 @@
         }
       }
     },
+    "app:tabs.number %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页 %@"
+          }
+        }
+      }
+    },
     "app:tabs.previous": {
       "extractionState": "manual",
       "localizations": {
@@ -12696,6 +12985,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "上一个标签页"
+          }
+        }
+      }
+    },
+    "app:tabs.reopenClosed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reopen Closed Tab"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新打开关闭的标签页"
           }
         }
       }

@@ -623,6 +623,56 @@ final class Navigator {
         model?.setLocked(!page.isLocked, id: page.id)
     }
 
+    /// Page → Add to / Remove from Favorites (⇧⌘P).
+    func toggleFavoriteCurrentPage() {
+        guard let page = currentPage else { return }
+        model?.setFavorite(!page.isFavorite, id: page.id)
+    }
+
+    /// Page → Duplicate (⇧⌘D).
+    func duplicateCurrentPage() {
+        if let id = route.pageID { model?.duplicate(id: id) }
+    }
+
+    /// Page → Move to… (⌥⌘V): the move picker (`MovePageSheet`).
+    func moveCurrentPage() {
+        if let id = route.pageID { movePageID = id }
+    }
+
+    /// Page → Move to Trash (⌘⌫): asks first (`TrashConfirmation`), as every other way in.
+    func trashCurrentPage() {
+        if let id = route.pageID { trashRequestID = id }
+    }
+
+    /// Page → Page History… (⇧⌘H).
+    func showHistoryOfCurrentPage() {
+        if let id = route.pageID { historyPageID = id }
+    }
+
+    /// Page → Export → a format (⇧⌘E for Markdown).
+    func exportCurrentPage(as format: PageExport.Format) {
+        if let id = route.pageID { exportRequest = ExportRequest(pageID: id, format: format) }
+    }
+
+    /// Go → Reopen Closed Tab (⇧⌘T): the tab closed last comes back (`NavigationTabs.reopenClosed`), less any page
+    /// trashed meanwhile.
+    var canReopenClosedTab: Bool { !tabs.closed.isEmpty }
+
+    func reopenClosedTab() {
+        guard tabs.reopenClosed() != nil else { return }
+        if let model { tabs.prune(fallback: .home) { route in route.pageID.map { model.tree.page($0) == nil } ?? false } }
+        tidyTabs()
+        syncSelection()
+    }
+
+    /// Go → Tab 1…9 (⌘1…⌘9): the nth tab of the strip; ⌘9 the last one, as browsers have it.
+    func selectTab(number: Int) {
+        let list = tabs.tabs
+        let index = number >= 9 ? list.count - 1 : number - 1
+        guard list.indices.contains(index) else { return }
+        selectTab(list[index].id)
+    }
+
     /// Expands the sidebar path to the open page (switching tabs, back/forward, the tree loading after launch).
     func revealCurrent() {
         if let id = route.pageID { reveal(id) }
@@ -650,4 +700,6 @@ extension FocusedValues {
     /// model's tree from `Commands` through the navigator made the main menu and the scene rebuild each
     /// other without end.
     @Entry var lockedPage: Bool?
+    /// Whether the open page is a favorite (nil on Home / Trash) — the same plain value, for the Page menu's title.
+    @Entry var favoritePage: Bool?
 }

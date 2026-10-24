@@ -66,7 +66,8 @@ struct ContentView: View {
             .focusedSceneValue(\.editor, editor(for: navigator.focusedSide))
             .focusedSceneValue(\.navigator, navigator)
             .focusedSceneValue(\.aiChat, chat(for: navigator.focusedSide))
-            .focusedSceneValue(\.lockedPage, navigator.currentPage?.isLocked)
+        // The open page's lock and favorite (plain values for the menu bar) are set by `TreeFollower`: they read the
+        // tree, which changes on every save.
     }
 
     /// Block menu → Move to, from either side's editor: the app writes the blocks into the target, and the
@@ -841,9 +842,14 @@ private struct TreeFollower: View {
     let splitEditor: EditorController?
 
     var body: some View {
+        let page = navigator.route.pageID.flatMap { model.tree.page($0) }
         Color.clear
             .frame(width: 0, height: 0)
             .allowsHitTesting(false)
+            // The open page's lock and favorite for the menu bar (nil on Home / Trash): plain values — reading the
+            // model's tree from `Commands` made the main menu and the scene rebuild each other without end.
+            .focusedSceneValue(\.lockedPage, page?.isLocked)
+            .focusedSceneValue(\.favoritePage, page?.isFavorite)
             // Tabs restored from the last run may name pages this workspace doesn't have (an empty one never changes
             // its tree, so the prune below doesn't run for it).
             .onChange(of: model.treeLoaded) { _, loaded in if loaded { navigator.prune { model.tree.page($0) != nil } } }
