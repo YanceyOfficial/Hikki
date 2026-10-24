@@ -566,6 +566,7 @@
     "pageReadOnly": "页面以只读方式打开：此版本无法编辑其内容。",
     "copyFailed": "无法复制到剪贴板。",
     "drawingPreviewFailed": "无法更新绘图的预览。",
+    "editsNotDelivered": "无法将最新的编辑交给 Hikki 保存。编辑已保留，会随下一次修改一起保存。",
     "drawingLibrarySaveFailed": "无法保存绘图素材库。",
     "drawingLoadFailed": "无法打开绘图编辑器。",
     "importFailed": "无法导入文件。",

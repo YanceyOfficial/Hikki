@@ -4863,6 +4863,23 @@
         }
       }
     },
+    "app:error.editsNotDelivered": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't hand your latest edits to Hikki to save. They're kept and will be saved with your next change."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法将最新的编辑交给 Hikki 保存。编辑已保留，会随下一次修改一起保存。"
+          }
+        }
+      }
+    },
     "app:error.exportFailed": {
       "extractionState": "manual",
       "localizations": {

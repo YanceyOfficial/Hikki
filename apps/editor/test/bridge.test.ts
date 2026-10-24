@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { openBlockMenu } from '../src/components/block-menu'
 import { openFloatingLayers } from '../src/components/floating'
 import { EditorBridge, type Transport } from '../src/core/bridge'
+import { installErrorForwarding } from '../src/core/errors'
 import type { ToNativeMessage } from '../src/core/protocol'
 import { unitAtPos } from '../src/extensions/block-units'
 import { openEmbedPanel } from '../src/extensions/embed'
@@ -19,6 +20,23 @@ const heading = (level: number, text: string) => ({
 })
 const pageInfo = (sent: ToNativeMessage[]) =>
   sent.filter((m) => m.type === 'pageInfo') as Extract<ToNativeMessage, { type: 'pageInfo' }>[]
+
+const ofType = (sent: ToNativeMessage[], type: ToNativeMessage['type']) =>
+  sent.filter((m) => m.type === type)
+
+/** A transport whose `changed` posts fail while `failing` is set. */
+function flakyTransport(sent: ToNativeMessage[]) {
+  const state = { failing: true, posts: 0 }
+  const transport: Transport = {
+    post: (m) => {
+      sent.push(m)
+      if (m.type !== 'changed') return Promise.resolve(null)
+      state.posts += 1
+      return state.failing ? Promise.reject(new Error('handler gone')) : Promise.resolve(null)
+    }
+  }
+  return { state, transport }
+}
 
 describe('EditorBridge', () => {
   let sent: ToNativeMessage[]
@@ -44,6 +62,14 @@ describe('EditorBridge', () => {
   })
 
   const changed = () => sent.filter((m) => m.type === 'changed')
+  const editing = () => ofType(sent, 'editing')
+  const reported = () => ofType(sent, 'reportError')
+  /** The bridge over a transport whose saves fail until told otherwise. */
+  const flaky = () => {
+    const { state, transport } = flakyTransport(sent)
+    bridge = new EditorBridge(host, transport, { debounceMs: 400 })
+    return state
+  }
   const selections = () => sent.filter((m) => m.type === 'selection')
   const editor = () => (bridge as any).editor
 
@@ -87,7 +113,6 @@ describe('EditorBridge', () => {
   })
 
   it('says "editing" once per save, never for a page only viewed', () => {
-    const editing = () => sent.filter((m) => m.type === 'editing')
     bridge.loadDocument(page('a'))
     vi.advanceTimersByTime(1000)
     expect(editing()).toEqual([])
@@ -548,6 +573,70 @@ describe('EditorBridge', () => {
       const snapshot = bridge.flush()
       expect(snapshot?.content.content?.[0].attrs?.id).toBe('keep-me')
       expect(snapshot?.content.content?.[1].attrs?.id).toEqual(expect.any(String))
+    })
+  })
+
+  describe('a save that does not reach the app', () => {
+    beforeEach(() => {
+      // reportError posts through the forwarding sink: this test's list.
+      const quiet = Object.assign(new EventTarget(), {
+        console: { ...console, warn: () => {}, error: () => {} }
+      }) as any
+      installErrorForwarding({ post: (m) => Promise.resolve(void sent.push(m)) }, quiet)
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+    })
+    afterEach(() => vi.restoreAllMocks())
+
+    it('keeps the edit pending, retries, and reports once the retries are spent', async () => {
+      const state = flaky()
+      bridge.loadDocument(page('a'))
+      editor().commands.insertContent('!')
+      await vi.advanceTimersByTimeAsync(400)
+      expect(state.posts).toBe(1)
+      await vi.advanceTimersByTimeAsync(500)
+      expect(state.posts).toBe(2)
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(state.posts).toBe(3)
+      expect(reported()).toEqual([expect.objectContaining({ code: 3008 })])
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(state.posts).toBe(3)
+      // Never taken: still pending, so a flush (a page switch, backgrounding) hands it over — nothing is lost.
+      expect(bridge.flush()?.text).toBe('!hi')
+    })
+
+    it('a retry that gets through settles it: nothing more is sent or reported', async () => {
+      const state = flaky()
+      bridge.loadDocument(page('a'))
+      editor().commands.insertContent('!')
+      await vi.advanceTimersByTimeAsync(400)
+      state.failing = false
+      await vi.advanceTimersByTimeAsync(500)
+      expect(state.posts).toBe(2)
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(state.posts).toBe(2)
+      expect(reported()).toEqual([])
+      expect(bridge.flush()).toBeNull()
+    })
+
+    it("a page left keeps its words: retried, and shown again if it's opened before they got through", async () => {
+      const state = flaky()
+      bridge.loadDocument(page('a'))
+      editor().commands.insertContent('!')
+      bridge.loadDocument(page('b'))
+      await vi.advanceTimersByTimeAsync(5000)
+      expect(changed().map((m) => (m.type === 'changed' ? m.snapshot.docId : ''))).toEqual([
+        'a',
+        'a',
+        'a'
+      ])
+      expect(reported()).toHaveLength(1)
+      // The app still has the old words; the page opens with the ones that never reached it, as an edit.
+      bridge.loadDocument(page('a'))
+      expect(editor().getText()).toBe('!hi')
+      state.failing = false
+      await vi.advanceTimersByTimeAsync(400)
+      const last = changed().at(-1)
+      expect(last?.type === 'changed' && last.snapshot.text).toBe('!hi')
     })
   })
 

@@ -207,6 +207,12 @@
       "en": "Couldn't update the drawing's preview.",
       "zh": "无法更新绘图的预览。"
     },
+    "editsNotDelivered": {
+      "code": 3008,
+      "severity": "error",
+      "en": "Couldn't hand your latest edits to Hikki to save. They're kept and will be saved with your next change.",
+      "zh": "无法将最新的编辑交给 Hikki 保存。编辑已保留，会随下一次修改一起保存。"
+    },
     "drawingLibrarySaveFailed": {
       "code": 3007,
       "severity": "error",

@@ -566,6 +566,7 @@
     "pageReadOnly": "This page opened read-only: its content isn't something this version can edit.",
     "copyFailed": "Couldn't copy to the clipboard.",
     "drawingPreviewFailed": "Couldn't update the drawing's preview.",
+    "editsNotDelivered": "Couldn't hand your latest edits to Hikki to save. They're kept and will be saved with your next change.",
     "drawingLibrarySaveFailed": "Couldn't save the drawing library.",
     "drawingLoadFailed": "Couldn't open the drawing editor.",
     "importFailed": "Couldn't import the file.",

@@ -87,7 +87,10 @@ These rules are mandatory. Automated ones are noted.
   Change both together and bump both.
 - **Split write paths.** `DocumentStore.saveContent` writes only editor-owned columns; metadata (icon, cover,
   favorite, lock, trash) has its own methods, so a late debounced autosave can never revert it. The editor's `flush()`
-  returns nothing when the page wasn't edited — viewing a page must never bump its edited time.
+  returns nothing when the page wasn't edited — viewing a page must never bump its edited time. An edit
+  counts as saved once the app has taken it (the `changed` post's reply, or `flush()`'s return): a post that fails
+  leaves it pending, retries (three tries in all), then reports `editsNotDelivered`; a page left before its words got
+  through keeps them and shows them again, as an edit, if it is opened first.
 - **Concurrency.** The app and `HikkiUI` default to MainActor isolation. Anything AppKit/UIKit may call off the main
   thread (dynamic color providers, KVO callbacks) must be `nonisolated` / `@Sendable`.
 - **Logs never contain page content.** Use `Log.info` / `Log.warn` / `Log.error` with a category; IDs and counts only.
