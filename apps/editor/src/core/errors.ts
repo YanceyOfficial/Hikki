@@ -44,21 +44,23 @@ export function installErrorForwarding(
     const original = target.console[level].bind(target.console)
     target.console[level] = (...args: unknown[]) => {
       original(...args)
-      log(
-        level,
-        args
-          .map((a) => (a instanceof Error ? a.message : typeof a === 'string' ? a : safeJSON(a)))
-          .join(' ')
-      )
+      const message = consoleLine(args)
+      if (message) log(level, message)
     }
   }
   return log
 }
 
-function safeJSON(value: unknown): string {
-  try {
-    return JSON.stringify(value)
-  } catch {
-    return String(value)
-  }
+/**
+ * What of a console.warn/error call may reach the native log, which never holds page content: string arguments
+ * and Errors' messages only — objects (a document, a node, a selection) are left out. Tiptap's own warnings put
+ * the content they choked on after their first argument (`'[tiptap warn]: Invalid content.', 'Passed value:',
+ * content, 'Error:', error`), sometimes as a string of HTML, so a `[tiptap` line keeps its first argument alone.
+ */
+export function consoleLine(args: unknown[]): string {
+  const first = args[0]
+  if (typeof first === 'string' && first.startsWith('[tiptap')) return first
+  return args
+    .flatMap((a) => (a instanceof Error ? [a.message] : typeof a === 'string' ? [a] : []))
+    .join(' ')
 }
