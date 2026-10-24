@@ -675,14 +675,17 @@ final class AppModel {
     }
 
     func duplicate(id: String) {
+        guard Purchases.shared.allowsWriting() else { return }
         perform("duplicate", id, code: .pageCreateFailed) { try store.duplicate(id: id) }
     }
 
     func moveToTrash(id: String) {
+        guard Purchases.shared.allowsWriting() else { return }
         perform("move to trash", id, code: .pageDeleteFailed) { try store.moveToTrash(id: id) }
     }
 
     func restore(id: String) {
+        guard Purchases.shared.allowsWriting() else { return }
         perform("restore", id, code: .pageRestoreFailed) { try store.restore(id: id) }
     }
 
@@ -690,6 +693,7 @@ final class AppModel {
     @discardableResult
     func movePage(_ dragged: String, onto target: String, zone: DropZone) -> Bool {
         guard let destination = tree.destination(dropping: dragged, onto: target, zone: zone) else { return false }
+        guard Purchases.shared.allowsWriting() else { return false }
         return perform("move page", dragged, code: .pageMoveFailed) {
             try store.move(id: dragged, toParent: destination.parentId, at: destination.index)
         } != nil
@@ -698,12 +702,15 @@ final class AppModel {
     /// Drop onto a section header: to the end of the top level.
     @discardableResult
     func movePageToTopLevel(_ dragged: String) -> Bool {
-        perform("move page", dragged, code: .pageMoveFailed) { try store.move(id: dragged, toParent: nil, at: .max) } != nil
+        guard Purchases.shared.allowsWriting() else { return false }
+        return perform("move page", dragged, code: .pageMoveFailed) { try store.move(id: dragged, toParent: nil, at: .max) } != nil
     }
 
+    /// The page's history, comments and chat go with it (`WorkspaceSync.Options.onDeleted`, which hears every page
+    /// deleted for good).
     func deletePermanently(id: String) {
+        guard Purchases.shared.allowsWriting() else { return }
         perform("delete permanently", id, code: .pageDeleteFailed) { try store.deletePermanently(id: id) }
-        comments?.removeAll(pageId: id)
     }
 
     /// Deletes what has been in the trash longer than Settings → Keep deleted pages allows (at launch and when the
@@ -736,6 +743,7 @@ final class AppModel {
     }
 
     func emptyTrash() {
+        guard Purchases.shared.allowsWriting() else { return }
         perform("empty trash", code: .trashEmptyFailed) { try store.emptyTrash() }
     }
 

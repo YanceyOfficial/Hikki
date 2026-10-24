@@ -964,7 +964,7 @@ HikkiUITests/                 XCUITest flows
   one non-consumable, `app.yancey.hikki.unlock` (universal purchase: iPhone, iPad and Mac). Past the trial without it
   the app is read only (`Access`, `HikkiCore/Sources/Store/Access.swift`): every editor is locked the way a locked page
   is (`EditorController.readOnly`, `EditorPageState.lockChange(…readOnly:)`), a `ReadOnlyBar` sits over the detail
-  column, and every way to write — new pages, imports, restores, AI — goes through `Purchases.allowsWriting()`, which
+  column, and every way to write — new pages, duplicates, moves, the trash (in, out, for good, emptied), imports, restored versions, AI — goes through `Purchases.allowsWriting()`, which
   brings up HikkiUI's `UnlockSheet` instead (also Settings → About → Purchase, with Restore Purchases). Reading,
   search, copy and export stay open. Debug runs are unlocked unless `HIKKI_ACCESS=trial|expired|unlocked|store`;
   `store` asks StoreKit itself — the `Hikki-StoreKit` scheme runs with `Hikki/Hikki.storekit`.
