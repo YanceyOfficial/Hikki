@@ -49,6 +49,9 @@
         @ObservationIgnored private var observers: [NSObjectProtocol] = []
         /// The next time the keyboard goes away, the page's selection stays (an AI edit under review on it).
         @ObservationIgnored private var keepSelectionOnHide = false
+        /// Until when a caret move is the bar's own doing (a block turned into a list moves the caret by its wrapper)
+        /// rather than a tap elsewhere in the text, which closes the panel.
+        @ObservationIgnored private var ownChangeUntil = Date.distantPast
 
         init(controller: EditorController) {
             self.controller = controller
@@ -145,6 +148,18 @@
             closePanel()
         }
 
+        /// The caret moved while a panel was open on it — with no keyboard to type on, a tap elsewhere in the text
+        /// (or a hardware keyboard's typing): the keyboard comes back. Moves the bar's own actions cause are not taps.
+        func caretMoved() {
+            guard panel != nil, Date() > ownChangeUntil else { return }
+            closePanel()
+        }
+
+        /// A panel action is about to change the page (and may move the caret with it).
+        private func noteOwnChange() {
+            ownChangeUntil = Date().addingTimeInterval(0.5)
+        }
+
         /// The keyboard (or panel) goes away altogether.
         func dismiss() {
             closePanel()
@@ -158,6 +173,7 @@
         // MARK: Tools
 
         func run(_ tool: String) {
+            noteOwnChange()
             Task {
                 await controller?.touchRun(tool)
                 await refresh()
@@ -272,6 +288,7 @@
         /// A block from "+"; pictures, video, audio and files come through the photo / file sheet instead of the
         /// page's file input.
         func insertBlock(_ id: String) {
+            noteOwnChange()
             if Self.mediaBlocks.contains(id) { return openMedia() }
             closePanel()
             Task { await controller?.touchInsertBlock(id) }
@@ -297,6 +314,7 @@
         }
 
         func turnInto(_ id: String) {
+            noteOwnChange()
             Task {
                 await controller?.touchTurnInto(id)
                 await refresh()
@@ -304,6 +322,7 @@
         }
 
         func setColor(_ kind: KeyboardFormatPanel.ColorKind, _ color: String?) {
+            noteOwnChange()
             Task {
                 await controller?.touchSetColor(kind, color)
                 await refresh()
@@ -321,41 +340,50 @@
 
         var body: some View {
             KeyboardAccessoryBar(panelOpen: bar.panel != nil, onDismiss: { bar.panel == nil ? bar.dismiss() : bar.closePanel() }) {
-                if selecting {
-                    tool("app:keyboard.format", .textAa, isActive: bar.panel == .format) { bar.toggle(.format) }
-                    tool("app:format.bold", .textB, isActive: marked("bold")) { bar.run("bold") }
-                    tool("app:format.italic", .textItalic, isActive: marked("italic")) { bar.run("italic") }
-                    tool("app:format.underline", .textUnderline, isActive: marked("underline")) { bar.run("underline") }
-                    tool("app:format.strikethrough", .textStrikethrough, isActive: marked("strike")) { bar.run("strike") }
-                    tool("app:keyboard.color", .textAUnderline, isActive: bar.panel == .color) { bar.toggle(.color) }
-                    tool("app:keyboard.askAI", .sparkle) { bar.openField(.ai) }
-                    tool("app:format.link", .link) { bar.openField(.link) }
-                    tool("app:keyboard.comment", .chatTeardropText) { bar.openComment() }
-                    tool("app:keyboard.more", .dotsThree) { bar.openBlockActions() }
-                } else {
-                    // Notion's order: what a line becomes first, then the block's own moves after a scroll.
-                    tool("app:keyboard.askAI", .sparkle) { bar.openField(.ai) }
-                    tool("app:keyboard.addBlock", .plus, isActive: bar.panel == .blocks) { bar.toggle(.blocks) }
-                    tool("app:keyboard.format", .textAa, isActive: bar.panel == .format) { bar.toggle(.format) }
-                    tool("app:keyboard.file", .paperclip) { bar.openMedia() }
-                    tool("app:keyboard.photo", .image) { bar.openMedia() }
-                    tool("app:keyboard.turnInto", .arrowsClockwise, isActive: bar.panel == .turnInto) { bar.toggle(.turnInto) }
-                    tool("app:format.undo", .arrowUUpLeft) { bar.run("undo") }
-                    tool("app:keyboard.comment", .chatTeardropText) { bar.openComment() }
-                    tool("app:keyboard.mention", .at) { bar.run("mention") }
-                    tool("app:keyboard.deleteBlock", .trash) { bar.run("delete") }
-                    tool("app:keyboard.indent", .textIndent) { bar.run("indent") }
-                    tool("app:keyboard.outdent", .textOutdent) { bar.run("outdent") }
-                    tool("app:shortcut.moveBlockUp", .arrowUp) { bar.run("moveUp") }
-                    tool("app:shortcut.moveBlockDown", .arrowDown) { bar.run("moveDown") }
-                    tool("app:keyboard.more", .dotsThree) { bar.openBlockActions() }
+                Group {
+                    if selecting {
+                        tool("app:keyboard.format", .textAa, isActive: bar.panel == .format) { bar.toggle(.format) }
+                        tool("app:format.bold", .textB, isActive: marked("bold")) { bar.run("bold") }
+                        tool("app:format.italic", .textItalic, isActive: marked("italic")) { bar.run("italic") }
+                        tool("app:format.underline", .textUnderline, isActive: marked("underline")) { bar.run("underline") }
+                        tool("app:format.strikethrough", .textStrikethrough, isActive: marked("strike")) { bar.run("strike") }
+                        tool("app:keyboard.color", .textAUnderline, isActive: bar.panel == .color) { bar.toggle(.color) }
+                        tool("app:keyboard.askAI", .sparkle) { bar.openField(.ai) }
+                        tool("app:format.link", .link) { bar.openField(.link) }
+                        tool("app:keyboard.comment", .chatTeardropText) { bar.openComment() }
+                        tool("app:keyboard.more", .dotsThree) { bar.openBlockActions() }
+                    } else {
+                        // Notion's order: what a line becomes first, then the block's own moves after a scroll.
+                        tool("app:keyboard.askAI", .sparkle) { bar.openField(.ai) }
+                        tool("app:keyboard.addBlock", .plus, isActive: bar.panel == .blocks) { bar.toggle(.blocks) }
+                        tool("app:keyboard.format", .textAa, isActive: bar.panel == .format) { bar.toggle(.format) }
+                        tool("app:keyboard.file", .paperclip) { bar.openMedia() }
+                        tool("app:keyboard.photo", .image) { bar.openMedia() }
+                        tool("app:keyboard.turnInto", .arrowsClockwise, isActive: bar.panel == .turnInto) { bar.toggle(.turnInto) }
+                        tool("app:format.undo", .arrowUUpLeft) { bar.run("undo") }
+                        tool("app:keyboard.comment", .chatTeardropText) { bar.openComment() }
+                        tool("app:keyboard.mention", .at) { bar.run("mention") }
+                        tool("app:keyboard.deleteBlock", .trash) { bar.run("delete") }
+                        tool("app:keyboard.indent", .textIndent) { bar.run("indent") }
+                        tool("app:keyboard.outdent", .textOutdent) { bar.run("outdent") }
+                        tool("app:shortcut.moveBlockUp", .arrowUp) { bar.run("moveUp") }
+                        tool("app:shortcut.moveBlockDown", .arrowDown) { bar.run("moveDown") }
+                        tool("app:keyboard.more", .dotsThree) { bar.openBlockActions() }
+                    }
                 }
+                .id(selecting)
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
             // A selection made or cleared: the marks the panel shows follow.
             .task(id: bar.controller?.selection) { await bar.refresh() }
             .onChange(of: bar.controller?.selection) { old, new in
                 if old != nil, new == nil { bar.selectionCollapsed() }
             }
+            .onChange(of: bar.controller?.caret) { _, _ in bar.caretMoved() }
+            // A caret becoming a selection (or back) swaps the tool set: the rows cross-fade and slide up a little
+            // instead of flipping, and the keyboard button's glyph eases as a panel opens or closes.
+            .animation(Motion.easeOut(), value: selecting)
+            .animation(Motion.easeOut(), value: bar.panel)
             .onAppear { bar.shown = true }
             .onDisappear { bar.shown = false }
         }
@@ -371,8 +399,18 @@
     /// brings the keyboard back, and putting the keyboard away (✕) takes the panel along.
     struct KeyboardPanelView: View {
         let bar: KeyboardBar
+        /// The panel is a fresh view each time it takes the keyboard's place (`reloadInputViews` swaps it in at
+        /// once): it eases in from just below instead of appearing whole.
+        @State private var shown = false
 
         var body: some View {
+            panel
+                .opacity(shown ? 1 : 0)
+                .offset(y: shown ? 0 : Spacing.s3)
+                .onAppear { withAnimation(Motion.easeOut()) { shown = true } }
+        }
+
+        @ViewBuilder private var panel: some View {
             switch bar.panel {
             case .blocks:
                 KeyboardBlockPanel(sections: bar.blocks, onPick: bar.insertBlock)

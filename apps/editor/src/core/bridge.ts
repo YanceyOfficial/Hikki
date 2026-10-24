@@ -86,6 +86,7 @@ export class EditorBridge {
   private selectionTimer: ReturnType<typeof setTimeout> | null = null
   /** The last selected text sent (so a selection is reported once, and its clearing once). */
   private sentSelection = ''
+  private sentCaret: number | null = null
   /** Settings → Editor → Check spelling; applied to every page's editor. */
   private spellcheck = true
 
@@ -693,10 +694,12 @@ export class EditorBridge {
       const text = empty
         ? ''
         : editor.state.doc.textBetween(from, to, '\n', ' ').trim().slice(0, SELECTION_LIMIT)
+      const caret = empty ? from : null
       const docId = this.page.get().docId
-      if (text === this.sentSelection || !docId) return
+      if ((text === this.sentSelection && caret === this.sentCaret) || !docId) return
       this.sentSelection = text
-      void this.send({ type: 'selection', docId, text })
+      this.sentCaret = caret
+      void this.send({ type: 'selection', docId, text, caret })
     }, 200)
   }
 

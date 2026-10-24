@@ -201,7 +201,11 @@ struct BridgeMessageTests {
                 == .aiChange(docId: "p1", id: "c2", status: .stale, before: nil, after: nil))
         #expect(try decode(["type": "aiChangeFocus", "docId": "p1", "id": "c1"]) == .aiChangeFocus(docId: "p1", id: "c1"))
         #expect(try decode(["type": "aiChangeFocus", "docId": "p1"]) == .aiChangeFocus(docId: "p1", id: nil))
-        #expect(try decode(["type": "selection", "docId": "p1", "text": "いいえ"]) == .selection(docId: "p1", text: "いいえ"))
+        #expect(
+            try decode(["type": "selection", "docId": "p1", "text": "いいえ", "caret": NSNull()])
+                == .selection(docId: "p1", text: "いいえ", caret: nil))
+        #expect(
+            try decode(["type": "selection", "docId": "p1", "text": "", "caret": 12]) == .selection(docId: "p1", text: "", caret: 12))
         #expect(try decode(["type": "sheet", "open": true]) == .sheet(open: true))
         #expect(try decode(["type": "fullScreen", "open": false]) == .fullScreen(open: false))
         #expect(try decode(["type": "drawingLibrary"]) == .drawingLibrary)

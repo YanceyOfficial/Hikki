@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 39
+export const PROTOCOL_VERSION = 40
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -166,8 +166,10 @@ export type ToNativeMessage =
       remind: number | null
       done: boolean
     }
-  /** The selected text (debounced; "" when nothing is): Ask AI offers it as context. Capped at 4000 characters. */
-  | { type: 'selection'; docId: string; text: string }
+  /** The selected text (debounced; "" when nothing is): Ask AI offers it as context. Capped at 4000 characters.
+   * `caret` is where the caret stands when nothing is selected (null with a selection): the keyboard bar closes
+   * its panel when it moves — a tap elsewhere in the text. */
+  | { type: 'selection'; docId: string; text: string; caret: number | null }
   /** A bottom sheet opened or closed (a touch screen's cover, icon or comment sheet): the native bars beside the page
    * step aside meanwhile (an iPhone Duo's vertical bar), so the sheet has the whole width. */
   | { type: 'sheet'; open: boolean }

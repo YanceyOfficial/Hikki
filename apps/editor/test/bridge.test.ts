@@ -78,13 +78,18 @@ describe('EditorBridge', () => {
     editor().commands.setTextSelection({ from: 1, to: 6 })
     editor().commands.setTextSelection({ from: 1, to: 4 })
     vi.advanceTimersByTime(250)
-    expect(selections()).toEqual([{ type: 'selection', docId: 'a', text: 'hel' }])
+    expect(selections()).toEqual([{ type: 'selection', docId: 'a', text: 'hel', caret: null }])
     editor().commands.setTextSelection({ from: 1, to: 4 })
     vi.advanceTimersByTime(250)
     expect(selections()).toHaveLength(1)
     editor().commands.setTextSelection(3)
     vi.advanceTimersByTime(250)
-    expect(selections().at(-1)).toEqual({ type: 'selection', docId: 'a', text: '' })
+    expect(selections().at(-1)).toEqual({ type: 'selection', docId: 'a', text: '', caret: 3 })
+    // A caret put elsewhere (a tap) is a change of its own: the keyboard bar closes its panel on it.
+    editor().commands.setTextSelection(5)
+    vi.advanceTimersByTime(250)
+    expect(selections().at(-1)).toEqual({ type: 'selection', docId: 'a', text: '', caret: 5 })
+    expect(selections()).toHaveLength(3)
   })
 
   it('loading a page does not emit a change and exposes header state', () => {
