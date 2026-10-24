@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { openBlockMenu } from '../src/components/block-menu'
 import { createEditor } from '../src/core/editor'
-import { columnFloor, handleLeft, listItemAtY } from '../src/extensions/block-controls'
+import { columnFloor, columnHitX, handleLeft, listItemAtY } from '../src/extensions/block-controls'
 import { BlockHighlightKey, setBlockHighlight } from '../src/extensions/block-highlight'
 import {
   deleteUnit,
@@ -408,6 +408,36 @@ describe('block handle in columns', () => {
       expect(Number.parseFloat(handle.style.left)).toBeGreaterThan(colOne.right)
     })
   }
+
+  it('hit-tests the gap between two columns in the column after it, whose gutter it is', () => {
+    const row = [colOne, colTwo]
+    // Over a column: unchanged.
+    expect(columnHitX(row, 100)).toBe(100)
+    expect(columnHitX(row, 500)).toBe(500)
+    // In the gap, near the column before too: inside the column after.
+    expect(columnHitX(row, colOne.right + 10)).toBe(colTwo.left + 2)
+    expect(columnHitX(row, colTwo.left - 1)).toBe(colTwo.left + 2)
+    // Outside the row, or a row that stacks its columns: unchanged.
+    expect(columnHitX(row, -40)).toBe(-40)
+    expect(columnHitX([colOne, { left: 0, right: 322 }], 340)).toBe(340)
+  })
+
+  it('a pointer in the gap on its way to the + / ⋮⋮ keeps the handle of the column after it', () => {
+    editor = createEditor(host, twoColumns())
+    layOut()
+    placeBox(editor.view.dom, 0, 708, 0, 200)
+    // A hit test finds the nearest text (as WebKit's does): in the gap, nearer the first column, that column's.
+    editor.view.posAtCoords = ({ left }) => ({
+      pos: posOf(left < (colOne.right + colTwo.left) / 2 ? 'left' : 'right'),
+      inside: -1
+    })
+    const controls = (
+      editor.view as unknown as { pluginViews: { unit?: BlockUnit | null }[] }
+    ).pluginViews.find((view) => 'unit' in view)!
+    const row = editor.view.dom.querySelector('.hk-cols')!
+    fireEvent.mouseMove(row, { clientX: colOne.right + 12, clientY: 10 })
+    expect(controls.unit?.node.textContent).toBe('right')
+  })
 
   it('steps aside while the pointer is on the divider between two columns', async () => {
     editor = createEditor(host, twoColumns())

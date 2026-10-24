@@ -116,6 +116,20 @@ const isList = (node: PMNode) =>
   node.type.name === 'orderedList' ||
   node.type.name === 'taskList'
 
+/**
+ * The x to hit-test for a pointer at `x` over a row of side-by-side columns (their boxes, left to right): inside the
+ * column it is over, and in the gap between two columns inside the column after it — the gap is that column's
+ * gutter, where its handle sits (a hit test there finds the nearest text, the column before's). Unchanged outside
+ * the row's span or when the row stacks its columns.
+ */
+export function columnHitX(columns: readonly { left: number; right: number }[], x: number): number {
+  if (columns.length < 2) return x
+  for (let i = 1; i < columns.length; i++) if (columns[i].left < columns[i - 1].right - 1) return x // stacked
+  if (x < columns[0].left || x > columns.at(-1)!.right) return x
+  const column = columns.find((c) => x <= c.right)!
+  return Math.min(Math.max(x, column.left + 2), column.right - 2)
+}
+
 const icon = (svg: string) =>
   svg.replace('<svg ', '<svg width="18" height="18" aria-hidden="true" ')
 
@@ -248,9 +262,19 @@ class BlockControlsView {
    * handle grabs — a block inside a toggle, quote or callout gives the container (`handleUnitAtPos`); drops keep
    * the inner block, so a block can still be dropped into one.
    */
-  private unitAtPoint(x: number, y: number, handle = false): BlockUnit | null {
+  private unitAtPoint(
+    x: number,
+    y: number,
+    handle = false,
+    row: Element | null = null
+  ): BlockUnit | null {
     const rect = this.contentRect()
-    const left = Math.min(Math.max(x, rect.left + 2), rect.right - 2)
+    const columns = row
+      ? Array.from(row.querySelectorAll(':scope > .hk-cols > .hk-col'), (c) =>
+          c.getBoundingClientRect()
+        )
+      : []
+    const left = Math.min(Math.max(columnHitX(columns, x), rect.left + 2), rect.right - 2)
     const at = this.view.posAtCoords({ left, top: y })
     if (!at) return null
     const pos = at.inside >= 0 ? at.inside : at.pos
@@ -276,10 +300,13 @@ class BlockControlsView {
       return
     }
     if (this.handle.contains(event.target as Node)) return
-    // On the divider between two columns: that is the resize line's moment, and the handle would cover it.
-    if (event.target instanceof Element && event.target.closest('.hk-col-gutter'))
-      return this.hide()
-    const unit = this.unitAtPoint(event.clientX, event.clientY, true)
+    const target = event.target instanceof Element ? event.target : null
+    // On the divider between two columns: that is the resize line's moment, and the handle would cover it. (Once
+    // the handle shows, it is on top of the divider and takes the pointer itself.)
+    if (target?.closest('.hk-col-gutter')) return this.hide()
+    // In a row, the gap between two columns is the later column's gutter (its handle sits there).
+    const row = target?.closest('.hk-cols-wrapper') ?? null
+    const unit = this.unitAtPoint(event.clientX, event.clientY, true, row)
     if (!unit) return this.hide()
     this.unit = unit
     this.reposition()
@@ -300,8 +327,16 @@ class BlockControlsView {
   private reposition = () => {
     const unit = this.unit
     if (!unit || this.press) return
+    const place = this.placement(unit)
+    if (!place) return this.hide()
+    Object.assign(this.handle.style, { left: `${place.left}px`, top: `${place.top}px` })
+    this.handle.dataset.hidden = 'false'
+  }
+
+  /** Where the handle's top-left corner goes for `unit`; null when the block isn't drawn. */
+  private placement(unit: BlockUnit): { left: number; top: number } | null {
     const dom = this.view.nodeDOM(unit.pos)
-    if (!(dom instanceof HTMLElement)) return this.hide()
+    if (!(dom instanceof HTMLElement)) return null
     const rect = dom.getBoundingClientRect()
     let centre = rect.top + Math.min(rect.height / 2, 14)
     const text = firstTextPos(unit)
@@ -323,11 +358,7 @@ class BlockControlsView {
       indent,
       columnFloor(this.view, unit.pos)
     )
-    Object.assign(this.handle.style, {
-      left: `${left}px`,
-      top: `${centre - this.handle.offsetHeight / 2}px`
-    })
-    this.handle.dataset.hidden = 'false'
+    return { left, top: centre - this.handle.offsetHeight / 2 }
   }
 
   // MARK: Add
