@@ -38,7 +38,7 @@ export function AIChangeBar({
   const kindLabel = KIND_LABELS[kind]()
   return (
     <div
-      className="flex w-[min(520px,calc(100vw-32px))] flex-wrap items-center gap-2 rounded-xl bg-popover p-2 text-popover-foreground shadow-popover"
+      className="flex w-(--layout-panel-review) max-w-(--layout-viewport-max) flex-wrap items-center gap-2 rounded-xl bg-popover p-2 text-popover-foreground shadow-popover"
       data-testid="ai-change-bar"
       // The page keeps the caret (↵ / ⌫ go to it).
       onMouseDown={(e) => e.preventDefault()}

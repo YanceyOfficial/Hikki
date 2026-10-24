@@ -56,7 +56,7 @@ export function DiffReview({
   const changed = selected.filter((line) => line.diff.some((s) => s.type !== 'same')).length
   return (
     <div className="flex flex-col gap-2" data-testid="ai-review-diff">
-      <div className="max-h-[min(360px,50vh)] overflow-auto rounded-md border border-border font-mono text-xs leading-relaxed">
+      <div className="max-h-(--layout-panel-height-answer) overflow-auto rounded-md border border-border font-mono text-xs leading-relaxed">
         {lines.map((line) =>
           line.added ? (
             <DiffRow

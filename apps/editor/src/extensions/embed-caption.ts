@@ -60,7 +60,9 @@ export function openCaptionPanel(editor: Editor, pos: number | undefined): void 
     close()
     if (!editor.isDestroyed) editor.commands.focus()
   }
-  const layer = new FloatingLayer('w-[360px] max-w-[calc(100vw-16px)] p-2', { onDismiss: cancel })
+  const layer = new FloatingLayer('w-(--layout-panel-caption) max-w-(--layout-viewport-max) p-2', {
+    onDismiss: cancel
+  })
   open = { layer, stop: () => at.stop() }
   renderCaptionPanel(
     layer,

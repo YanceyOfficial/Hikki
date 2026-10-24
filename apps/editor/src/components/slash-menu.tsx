@@ -101,7 +101,7 @@ export function SlashMenu({ items, query, selectedIndex, onSelect, onHover, onCl
     <div className="relative" data-testid="slash-menu">
       <div
         ref={cardRef}
-        className="flex w-[280px] max-w-[calc(100vw-16px)] flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-popover"
+        className="flex w-(--layout-panel-slash) max-w-(--layout-viewport-max) flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-popover"
         style={{ maxHeight: 'var(--hk-available-height, 360px)' }}
       >
         <div

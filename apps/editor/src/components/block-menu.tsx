@@ -442,7 +442,7 @@ function BlockMenu({
         )}
         <div
           ref={listRef}
-          className="relative max-h-[min(420px,calc(100vh-160px))] overflow-y-auto overscroll-contain"
+          className="relative max-h-(--layout-panel-height-menu) overflow-y-auto overscroll-contain"
         >
           <GlidingHighlight listRef={listRef} index={selected} />
           {visible.length === 0 && (
@@ -494,7 +494,7 @@ function BlockMenu({
         <div
           ref={submenuRef}
           role="menu"
-          className="hk-pop absolute top-0 left-full ml-1.5 flex max-h-[min(460px,calc(100vh-120px))] w-56 flex-col overflow-y-auto overscroll-contain rounded-xl bg-popover p-1 text-popover-foreground shadow-popover"
+          className="hk-pop absolute top-0 left-full ml-1.5 flex max-h-(--layout-panel-height-submenu) w-56 flex-col overflow-y-auto overscroll-contain rounded-xl bg-popover p-1 text-popover-foreground shadow-popover"
         >
           {shownSubmenu === 'ai' && (
             // Its field keeps its own keys (the menu's arrows and Escape stay out of the typing).

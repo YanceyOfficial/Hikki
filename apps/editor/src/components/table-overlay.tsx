@@ -241,7 +241,7 @@ function ColorItems({ editor, onDone }: { editor: Editor; onDone: () => void }) 
             }}
           >
             <span
-              className="size-4 rounded-[4px] border border-border"
+              className="size-4 rounded-sm border border-border"
               data-bg-color={color ?? undefined}
               aria-hidden
             />
@@ -489,7 +489,7 @@ function CellBar({ editor, selection }: { editor: Editor; selection: CellSelecti
               onClick={() => setCellBackground(editor, color)}
             >
               <span
-                className="size-4 rounded-[4px] border border-border"
+                className="size-4 rounded-sm border border-border"
                 data-bg-color={color ?? undefined}
                 aria-hidden
               />

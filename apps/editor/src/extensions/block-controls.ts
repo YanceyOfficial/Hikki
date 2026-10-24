@@ -8,6 +8,7 @@ import type { EditorView } from '@tiptap/pm/view'
 import { openBlockMenu } from '../components/block-menu'
 import { t } from '../core/i18n'
 import { tiptapShortcut, type ShortcutId } from '../core/shortcuts'
+import { LAYOUT } from '../generated/layout'
 import { FINE_POINTER, matches } from '../lib/device'
 import { BlockHighlight, BlockHighlightKey, setBlockHighlight } from './block-highlight'
 import {
@@ -265,7 +266,8 @@ class BlockControlsView {
     if (!this.editor.isEditable || this.selecting()) return this.hide()
     const rect = this.contentRect()
     // Over the page or its left gutter (where the handle sits), within the page's height.
-    const inBand = event.clientX >= rect.left - 96 && event.clientX <= rect.right + 24
+    const inBand =
+      event.clientX >= rect.left - LAYOUT.columnGutter && event.clientX <= rect.right + 24
     if (!inBand || event.clientY < rect.top - 4 || event.clientY > rect.bottom + 4) {
       if (!this.handle.contains(event.target as Node)) this.hide()
       return

@@ -312,9 +312,12 @@ export function openRubyPanel(editor: Editor, host: RubyHost | null): void {
     if (!editor.isDestroyed) editor.commands.focus()
   }
   // Escape or a press outside cancels (the layers' bus).
-  const layer = new FloatingLayer('hk-ruby-panel w-[320px] max-w-[calc(100vw-16px)] p-2', {
-    onDismiss: finish
-  })
+  const layer = new FloatingLayer(
+    'hk-ruby-panel w-(--layout-panel-ruby) max-w-(--layout-viewport-max) p-2',
+    {
+      onDismiss: finish
+    }
+  )
   // What the panel acts on — the ruby, or the selected text — followed through edits meanwhile (a remote
   // reload): the commands run on it where it is then, and the panel closes when it is gone.
   const gone = () => closePanel()

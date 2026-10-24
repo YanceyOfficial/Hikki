@@ -43,6 +43,7 @@ import {
   TrashIcon,
   XIcon
 } from '../generated/icons'
+import { LAYOUT } from '../generated/layout'
 import { useKeyboardViewport } from '../hooks/use-keyboard-viewport'
 import { useMediaQuery } from '../hooks/use-media-query'
 import {
@@ -57,10 +58,10 @@ import { sheetOpened } from '../lib/sheet-presence'
 import { CommandList, handleListKey } from './command-list'
 
 /** Card width in the margin, and the room the margin needs beside the text to hold one. */
-const CARD = 300
-const GAP = 40
+const CARD = LAYOUT.commentCard
+const GAP = LAYOUT.commentGap
 /** The room the outline rail's hover strip keeps at the window's right edge (`editor/src/page/outline.tsx`). */
-const RAIL = 64
+const RAIL = LAYOUT.outlineRail
 
 /** A thread anchored in the page, measured against the text column (the layer's box). */
 type Anchor = {

@@ -16,11 +16,15 @@ These rules are mandatory. Automated ones are noted.
   (shadcn/ui semantic color names, Tailwind scale names). Regenerate with `make tokens`; never edit
   `HikkiUI/Sources/Generated/DesignTokens.swift` or `apps/editor/src/theme.css` by hand. Swift uses `Theme.*`, `Spacing.*`,
   `Radius.*`, `Size.*`, `.font(.hk(.sm))`; the web uses Tailwind classes (`bg-background`, `text-muted-foreground`,
-  `rounded-md`, `p-2.5`). _Enforced by `make lint-design` (`scripts/lint-design.sh`: literal sizes, colours, spacing
+  `rounded-md`, `p-2.5`). The editor's geometry — panel widths and heights, the page's gutters, breakpoints — is the
+  `layout` group: `--layout-*` variables (`w-(--layout-panel-default) max-w-(--layout-viewport-max)`), Tailwind
+  breakpoints (`max-phone:`, `max-outline:`, `comments:` — derived from the column, its gutters and a comment card) and
+  `LAYOUT` in `apps/editor/src/generated/layout.ts` for TypeScript; no arbitrary px in web class names.
+  _Enforced by `make lint-design` (`scripts/lint-design.sh`: literal sizes, colours, spacing
   and radii, the system colours `.red` / `.yellow` / `.secondary` — `Theme.destructive`, `Theme.favorite`,
   `Theme.mutedForeground` instead —, system fonts (`.title2`, `.caption`, `Font.system(`) and one-off animations
   (`.snappy`, `.spring`, `.easeInOut(…)`)._ A justified exception carries
-  a `design-lint: allow` comment on the same line.
+  a `design-lint: allow` comment on the same line (`design-lint: allow-file` for a whole file).
 - **Motion.** Everything that appears, leaves or reacts moves the same way, from the `motion` tokens. Web surfaces
   (menus, popovers, tooltips, panels, the outline list) take `hk-pop` — mounted when shown: `FloatingLayer` adds it,
   the Base UI popups in `apps/editor/src/components/ui/` carry it, a React panel stays mounted through its leave with
@@ -761,7 +765,7 @@ HikkiUITests/                 XCUITest flows
   the block is outlined (`hk-comment-block`), and its card / badge / sheet are the passage threads' own. A draft is only a highlight until it is sent; adding or removing the mark is kept out of undo but saved (`SAVE_META`, `apps/editor/src/core/meta.ts`
   — `isUserEdit` in `apps/editor/src/core/bridge.ts` otherwise skips non-undo transactions), and an open thread whose mark is
   missing is marked again where its quote occurs once (`findQuote`). `apps/editor/src/components/comments.tsx` draws
-  cards in the right margin when the window is wide (`#page[data-comments]` shifts the page left at ≥ 1240 px), count
+  cards in the right margin when the window is wide (`#page[data-comments]` shifts the page left from the `comments` breakpoint, 1240 px), count
   badges with a thread card under the passage otherwise; on a phone (`PHONE_QUERY`: coarse pointer, narrow or short
   window) the open thread or a new comment is a bottom sheet instead (shadcn `Drawer`, `apps/editor/src/components/ui/drawer.tsx`,
   restyled to the motion tokens): grabber, quote, comments with their actions always shown, the reply field at the

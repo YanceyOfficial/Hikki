@@ -76,7 +76,7 @@ export function EmojiPickerPanel({ onSelect, onRemove, onRandom, locale: localeP
   }
 
   return (
-    <div className="flex h-[380px] max-h-[inherit] flex-col">
+    <div className="flex h-(--layout-panel-height-emoji) max-h-[inherit] flex-col">
       <div className="flex gap-1 px-2.5 pt-2.5 pb-1.5">
         <Input
           className="h-8 md:text-sm"
@@ -173,7 +173,7 @@ function EmojiGrid({
   onPick: (emoji: string) => void
 }) {
   return (
-    <div className="grid grid-cols-[repeat(auto-fill,minmax(34px,1fr))]">
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(var(--layout-grid-cell-emoji),1fr))]">
       {emojis.map((e) => (
         // One cell per emoji, about 1,900 of them: a plain button each (a Base UI Button per cell is hooks × 1,900
         // on every open); the look is the ghost Button's.

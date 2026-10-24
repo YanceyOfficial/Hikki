@@ -54,7 +54,7 @@
     }
   }
   .tiptap p {
-    @apply m-0 py-[3px];
+    @apply m-0 py-0.75;
   }
   .tiptap a {
     @apply cursor-pointer;
@@ -106,7 +106,7 @@
   }
   /* Inline highlight padding: spans only (callouts and table cells carry data-bg-color too). */
   span[data-bg-color] {
-    @apply -mx-[1px] rounded-[3px] box-decoration-clone px-[1px] py-[1px];
+    @apply -mx-px rounded-[3px] box-decoration-clone p-px; /* design-lint: allow — inline code's 3px corner, finer than radius-sm */
   }
   /* Whole-block background (block menu → Color). */
   .tiptap [data-block-bg] {
@@ -387,7 +387,7 @@
 
   /* Find (extensions/find.ts): every match, the current one stronger. */
   .tiptap .find-and-replace-result {
-    @apply rounded-[2px] bg-wash-yellow;
+    @apply rounded-[2px] bg-wash-yellow; /* design-lint: allow — a passage's 2px corner, finer than radius-sm */
     box-shadow: 0 0 0 1px var(--color-wash-yellow);
   }
   .tiptap .find-and-replace-result-current {
@@ -708,7 +708,7 @@
   }
   .tiptap blockquote::before {
     content: '';
-    @apply absolute inset-y-0.5 left-0 w-[3px] rounded-full bg-current;
+    @apply absolute inset-y-0.5 left-0 w-0.75 rounded-full bg-current;
   }
   .tiptap ul,
   .tiptap ol {
@@ -733,7 +733,7 @@
      first line in any font and engine (a fixed margin-top left it a pixel or two low, more on iOS). 3px: the
      paragraph's own padding (.tiptap p), which the item's paragraph gets inside its div. */
   .tiptap ul[data-type='taskList'] li > label {
-    @apply mt-[3px] flex h-lh shrink-0 items-center;
+    @apply mt-0.75 flex h-lh shrink-0 items-center;
   }
   .tiptap ul[data-type='taskList'] input[type='checkbox'] {
     @apply m-0 size-4 accent-primary;
@@ -1040,10 +1040,20 @@
   box-shadow: 0 0 0 2px var(--color-selection);
 }
 /* A page with open comments, in a window that can hold the column and a margin of cards: the column moves left so
-   the cards fit beside it (Notion's). 1240px = the column (708 + 2 × 96) + a card's room (340). */
-@media (min-width: 1240px) {
-  #page[data-comments] .hk-column {
-    margin-left: max(0px, calc((100vw - var(--size-column) - 192px - 340px) / 2));
+   the cards fit beside it (Notion's). `comments:` is the column with its gutters plus a card and its gap
+   (design/tokens.json layout; comments.tsx places the cards with the same numbers). */
+#page[data-comments] .hk-column {
+  @variant comments {
+    margin-left: max(
+      0px,
+      calc(
+        (
+            100vw - var(--layout-column-max) - var(--layout-comment-card) -
+              var(--layout-comment-gap)
+          ) /
+          2
+      )
+    );
     margin-right: auto;
   }
 }
@@ -1181,9 +1191,9 @@
    slim margin on the right (the outline rail only shows past 1000px, where both are back at 96px), so the text keeps
    most of the width. Touch screens have no handles: slim margins on both sides. */
 .hk-column {
-  @apply mx-auto box-border max-w-[calc(var(--size-column)+192px)];
-  --hk-column-pad-left: clamp(--spacing(14), 10vw, --spacing(24));
-  --hk-column-pad-right: clamp(--spacing(5), 10vw, --spacing(24));
+  @apply mx-auto box-border max-w-(--layout-column-max);
+  --hk-column-pad-left: clamp(var(--layout-column-gutter-min), 10vw, var(--layout-column-gutter));
+  --hk-column-pad-right: clamp(--spacing(5), 10vw, var(--layout-column-gutter));
   /* Plus the safe area at the sides, which is only there where the page runs under a vertical bar (an iPhone Duo's,
      beside the camera): the cover fills to the edge, the text keeps clear of the bar's buttons. */
   padding-left: calc(var(--hk-column-pad-left) + env(safe-area-inset-left));
@@ -1230,8 +1240,8 @@ body:has(.hk-find [data-testid='find-panel']) #outline {
 .hk-title {
   font-size: calc(var(--text-4xl) * var(--hk-text-scale, 1));
 }
-@media (max-width: 639px) {
-  .hk-title {
+.hk-title {
+  @variant max-phone {
     font-size: calc(var(--text-3xl) * var(--hk-text-scale, 1));
   }
 }

@@ -226,6 +226,34 @@ const toneVars = (t, mode, indent) => {
   ]
 }
 
+/** The web editor's geometry (`layout` in tokens.json), flattened: `column-gutter`, `panel-menu`… → CSS value. */
+const layout = tokens.layout
+const layoutValue = (v) =>
+  typeof v === 'number'
+    ? `${v}px`
+    : Array.isArray(v)
+      ? `min(${v[0]}px, calc(100vh - ${v[1]}px))`
+      : v
+function layoutVars() {
+  const out = []
+  for (const [k, v] of entries(layout)) {
+    if (k === 'breakpoint') continue
+    if (typeof v === 'object' && !Array.isArray(v))
+      for (const [n, w] of entries(v)) out.push([`${k}-${n}`, layoutValue(w)])
+    else out.push([k, layoutValue(v)])
+  }
+  return out
+}
+/** Breakpoints: as written, plus `comments` — the column, its gutters and a margin card with its gap fit. */
+const breakpoints = () => ({
+  ...Object.fromEntries(entries(layout.breakpoint)),
+  comments:
+    tokens.size.column +
+    2 * layout['column-gutter'] +
+    layout['comment-card'] +
+    layout['comment-gap']
+})
+
 /** Tailwind v4 theme (shadcn-style): semantic CSS variables switched by color scheme, mapped into
  *  Tailwind with `@theme inline`. Default palettes/scales are cleared so only tokens exist. */
 function css() {
@@ -233,6 +261,10 @@ function css() {
   L.push(header('/*') + ' */', '')
   L.push(':root {', ...colorVars('light', '  '))
   for (const [k, v] of entries(tokens.size)) L.push(`  --size-${k}: ${v}px;`)
+  for (const [k, v] of layoutVars()) L.push(`  --layout-${k}: ${v};`)
+  // Derived: a floating panel's widest (the window less a gutter each side), the page column with its gutters.
+  L.push('  --layout-viewport-max: calc(100vw - 2 * var(--layout-viewport-gutter));')
+  L.push('  --layout-column-max: calc(var(--size-column) + 2 * var(--layout-column-gutter));')
   for (const k of ['pop-in', 'pop-out', 'loop']) L.push(`  --motion-${k}: ${tokens.motion[k]}ms;`)
   // Built-in covers: the page header and the picker paint `var(--cover-<id>)` (src/lib/covers.ts).
   for (const [id, [from, to]] of entries(tokens.cover))
@@ -267,6 +299,8 @@ function css() {
   for (const [k, v] of entries(tokens.radius)) L.push(`  --radius-${k}: ${v}px;`)
   for (const [n] of entries(tokens.shadow)) L.push(`  --shadow-${n}: var(--${n}-shadow);`)
   for (const [k, v] of entries(tokens.font)) L.push(`  --font-${k}: ${v};`)
+  // `max-phone:`, `max-outline:`, `comments:`… (design/tokens.json layout.breakpoint).
+  for (const [k, v] of Object.entries(breakpoints())) L.push(`  --breakpoint-${k}: ${v}px;`)
   L.push('  --text-*: initial;')
   for (const [k, v] of entries(tokens.text)) L.push(`  --text-${k}: ${v}px;`)
   // Only the strong curves exist (`ease-out`, `ease-in-out`); Tailwind's defaults are too soft for UI.
@@ -312,9 +346,37 @@ function accentColor() {
   )
 }
 
+/** The same geometry for the editor's TypeScript (apps/editor/src/generated/layout.ts). */
+const camelKey = (k) => k.replace(/-([a-z])/g, (_, c) => c.toUpperCase())
+const tsValue = (v) => (typeof v === 'number' ? v : JSON.stringify(layoutValue(v)))
+function layoutTS() {
+  const L = [header('//'), '']
+  L.push(
+    '/** Page and panel geometry in px (or CSS where a value depends on the window), as theme.css has it. */'
+  )
+  L.push('export const LAYOUT = {')
+  for (const [k, v] of entries(layout)) {
+    if (k === 'breakpoint') continue
+    if (typeof v === 'object' && !Array.isArray(v)) {
+      L.push(`  ${camelKey(k)}: {`)
+      for (const [n, w] of entries(v)) L.push(`    ${camelKey(n)}: ${tsValue(w)},`)
+      L.push('  },')
+    } else L.push(`  ${camelKey(k)}: ${tsValue(v)},`)
+  }
+  L.push(
+    '  /** Window widths (px) where the layout changes: Tailwind `max-phone:`, `comments:`… */'
+  )
+  L.push('  breakpoint: {')
+  for (const [k, v] of Object.entries(breakpoints())) L.push(`    ${camelKey(k)}: ${v},`)
+  L.push('  }')
+  L.push('} as const', '')
+  return L.join('\n')
+}
+
 const outputs = [
   [join(root, 'HikkiUI/Sources/Generated/DesignTokens.swift'), swift()],
   [join(root, 'apps/editor/src/theme.css'), css()],
+  [join(root, 'apps/editor/src/generated/layout.ts'), layoutTS()],
   [join(root, 'Hikki/Resources/Assets.xcassets/AccentColor.colorset/Contents.json'), accentColor()]
 ]
 const check = process.argv.includes('--check')

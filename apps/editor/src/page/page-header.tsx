@@ -80,9 +80,9 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
   if (!page.docId) return null
 
   const iconButtonClass = cn(
-    '-ml-0.5 mb-1 flex size-[78px] rounded-lg p-0 font-emoji text-[78px] leading-none disabled:opacity-100',
+    '-ml-0.5 mb-1 flex size-(--layout-page-icon) rounded-lg p-0 font-emoji text-(length:--layout-page-icon) leading-none disabled:opacity-100',
     !frozen && 'cursor-pointer hover:bg-accent',
-    background && 'relative -mt-[39px]'
+    background && 'relative -mt-[calc(var(--layout-page-icon)/2)]'
   )
   const iconPicker = (
     <EmojiPickerPanel
@@ -140,7 +140,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
                   <PopoverTrigger render={<CoverAction />}>{t('page.changeCover')}</PopoverTrigger>
                   <PopoverContent
                     align="end"
-                    className="w-[440px] max-w-[calc(100vw-16px)] gap-0 p-0"
+                    className="w-(--layout-panel-cover) max-w-(--layout-viewport-max) gap-0 p-0"
                   >
                     <CoverPicker
                       current={page.cover}
@@ -221,7 +221,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
               <PopoverContent
                 align="start"
                 aria-label={t('page.chooseIcon')}
-                className="w-[400px] max-w-[calc(100vw-16px)] gap-0 p-0"
+                className="w-(--layout-panel-default) max-w-(--layout-viewport-max) gap-0 p-0"
               >
                 {iconPicker}
               </PopoverContent>
@@ -333,7 +333,7 @@ function TitleField({
     <Textarea
       ref={ref}
       data-page-title
-      className="hk-title mb-2 block min-h-0 w-full resize-none overflow-hidden rounded-none border-0 bg-transparent px-0 py-[3px] leading-tight font-bold tracking-[-0.01em] text-foreground shadow-none placeholder:text-placeholder focus-visible:ring-0 dark:bg-transparent"
+      className="hk-title mb-2 block min-h-0 w-full resize-none overflow-hidden rounded-none border-0 bg-transparent px-0 py-0.75 leading-tight font-bold tracking-[-0.01em] text-foreground shadow-none placeholder:text-placeholder focus-visible:ring-0 dark:bg-transparent"
       rows={1}
       value={title}
       readOnly={readOnly}
@@ -531,7 +531,7 @@ function CoverActions({ className, children }: { className?: string; children: R
       role="group"
       data-slot="cover-actions"
       className={cn(
-        'absolute top-[calc(var(--hk-bleed-top,0px)+0.75rem)] right-[calc(env(safe-area-inset-right)+0.75rem)] flex items-center gap-0.5 rounded-md bg-popover p-0.5 text-popover-foreground shadow-sm ring-1 ring-foreground/10',
+        'absolute top-[calc(var(--hk-bleed-top,0rem)+0.75rem)] right-[calc(env(safe-area-inset-right)+0.75rem)] flex items-center gap-0.5 rounded-md bg-popover p-0.5 text-popover-foreground shadow-sm ring-1 ring-foreground/10',
         className
       )}
     >

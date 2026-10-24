@@ -84,7 +84,7 @@ function MarkdownAnswer({
   return (
     <div
       ref={ref}
-      className="hk-ai-answer max-h-[min(360px,50vh)] overflow-y-auto overscroll-contain px-1 text-sm leading-relaxed"
+      className="hk-ai-answer max-h-(--layout-panel-height-answer) overflow-y-auto overscroll-contain px-1 text-sm leading-relaxed"
       data-testid="ai-answer"
     />
   )
@@ -249,7 +249,7 @@ export function AIReview({
 
   return (
     <div
-      className="flex w-[min(520px,calc(100vw-32px))] flex-col gap-2 rounded-xl bg-popover p-2 text-popover-foreground shadow-popover"
+      className="flex w-(--layout-panel-review) max-w-(--layout-viewport-max) flex-col gap-2 rounded-xl bg-popover p-2 text-popover-foreground shadow-popover"
       data-testid="ai-review"
       onMouseDown={(e) => {
         if (!(e.target as HTMLElement).closest('input')) e.preventDefault()

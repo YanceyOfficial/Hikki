@@ -517,9 +517,12 @@ export function openEmbedPanel(
     close()
     if (!editor.isDestroyed) editor.commands.focus()
   }
-  const layer = new FloatingLayer('hk-embed-panel w-[400px] max-w-[calc(100vw-16px)] p-2', {
-    onDismiss: cancel
-  })
+  const layer = new FloatingLayer(
+    'hk-embed-panel w-(--layout-panel-default) max-w-(--layout-viewport-max) p-2',
+    {
+      onDismiss: cancel
+    }
+  )
   open = { layer, at }
   renderEmbedPanel(
     layer,
@@ -551,12 +554,15 @@ function openReplacePanel(editor: Editor, pos: number): void {
     const box = dom.getBoundingClientRect()
     return new DOMRect(box.left, box.top, box.width, box.height)
   }
-  const layer = new FloatingLayer('hk-embed-panel w-[400px] max-w-[calc(100vw-16px)] p-2', {
-    onDismiss: () => {
-      close()
-      if (!editor.isDestroyed) editor.commands.focus()
+  const layer = new FloatingLayer(
+    'hk-embed-panel w-(--layout-panel-default) max-w-(--layout-viewport-max) p-2',
+    {
+      onDismiss: () => {
+        close()
+        if (!editor.isDestroyed) editor.commands.focus()
+      }
     }
-  })
+  )
   open = { layer, at }
   renderEmbedPanel(
     layer,

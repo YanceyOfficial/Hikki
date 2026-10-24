@@ -15,7 +15,7 @@ export function ColorSwatch({
 }) {
   return (
     <span
-      className="grid size-5 place-items-center rounded-[5px] border border-border text-xs font-semibold"
+      className="grid size-5 place-items-center rounded-sm border border-border text-xs font-semibold"
       data-text-color={text ?? undefined}
       data-bg-color={background ?? undefined}
     >
@@ -67,7 +67,7 @@ export function ColorList({
             <ColorSwatch text={null} background={color} />
           ) : (
             <span
-              className="size-5 rounded-[5px] border border-border"
+              className="size-5 rounded-sm border border-border"
               data-block-bg={color ?? undefined}
             />
           )}
