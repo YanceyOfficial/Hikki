@@ -49,6 +49,33 @@ struct AIPageEditsTests {
         #expect(AIPageEdits.changes(in: "```hikki-changes\n[1,2]\n```", blocks: ["b1"]).isEmpty)
     }
 
+    /// "At the end of the page": `after: "end"` is the last of the page's blocks in reading order, and several inserts
+    /// may share one `after` (they go in that order; the editor keeps each after the one before).
+    @Test func endNamesThePagesLastBlockAndInsertsMayShareAnAfter() {
+        let answer = """
+            放在文章尾。
+
+            ```hikki-changes
+            {"changes":[
+              {"kind":"insert","after":"end","type":"heading2","html":"区别","title":"小标题"},
+              {"kind":"insert","after":"end","html":"第一段","title":"第一段"},
+              {"kind":"insert","after":"end","html":"第二段","title":"第二段"},
+              {"kind":"move","block":"b1","after":"end","title":"移到最后"}
+            ]}
+            ```
+            """
+        // Reading order, not alphabetical: the last block is b2.
+        let changes = AIPageEdits.changes(in: answer, blocks: ["b3", "b1", "b2"])
+        #expect(changes.map(\.kind) == ["insert", "insert", "insert", "move"])
+        #expect(changes.map(\.after) == ["b2", "b2", "b2", "b2"])
+        #expect(changes.map(\.html) == ["区别", "第一段", "第二段", nil])
+        // A page with no blocks has no end.
+        #expect(AIPageEdits.changes(in: answer, blocks: []).isEmpty)
+        // A page whose last block is named "end" still reads it as the end (the move names b1, unknown there).
+        #expect(AIPageEdits.changes(in: answer, blocks: ["end"]).map(\.after) == ["end", "end", "end"])
+        #expect(AIPageEdits.instructions.contains("\"end\""))
+    }
+
     @Test func thePageGoesAsBlocksUpToTheBudget() {
         let blocks = [["id": "a", "type": "paragraph", "html": "one"], ["id": "b", "type": "heading1", "html": "two"]]
         let json = AIPageEdits.pageJSON(blocks, budget: 1000)

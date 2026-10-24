@@ -913,8 +913,11 @@ HikkiUITests/                 XCUITest flows
   inserts below the block; an unreadable file is `aiMediaUnreadable`. Web pictures, video and audio get no AI (nothing
   reads or transcribes them on the device). **Ask AI edits the page** (Notion's review cards): the chat
   sends the open page as blocks with their ids (`window.hikki.aiPageBlocks`, `AIPageEdits.pageJSON`) and an answer
-  that changes it ends with a fenced `hikki-changes` JSON block — rewrite / insert / move / delete, one block each —
-  hidden from the chat and checked against those ids (`HikkiAI/Sources/AIPageEdits.swift`). The changes
+  that changes it ends with a fenced `hikki-changes` JSON block — rewrite / insert / move / delete, one block each;
+  `"after": "end"` (or the last id) is the end of the page; several inserts with the same `after`, in reading order,
+  add a passage of several blocks, each kept after the one before it however they are approved (`inserted` in
+  `apps/editor/src/extensions/ai-changes.ts`) — hidden from the chat and checked against those ids, given in reading order
+  (`HikkiAI/Sources/AIPageEdits.swift`). The changes
   (`AIPageChange`, kept on the answer's `ChatTurn`) are HikkiUI's `AIChangeReview` under it: a card per pending change
   (a tap shows it in the page — `window.hikki.aiFocusChange`; ✓ / ✕ decide there), Approve all, and the reviewed ones
   in a stack of cards (newest on top, the AI's words green, a tap spreads it). In the page

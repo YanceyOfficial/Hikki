@@ -83,7 +83,8 @@ final class AIChat {
     /// The window's page editor: the open page's blocks for an answer to change, and its changes offered there.
     @ObservationIgnored weak var editor: EditorController?
     /// The page blocks the answer being written was given (its changes may name only these).
-    @ObservationIgnored private var askedBlocks: Set<String>?
+    /// The ids of the blocks the question went with, in reading order (`end` names the last).
+    @ObservationIgnored private var askedBlocks: [String]?
     var draft = ""
     var webSearch = true
     /// "auto" or a catalog id; starts from Settings → AI's default.
@@ -310,7 +311,7 @@ final class AIChat {
     ) {
         // Stopped (or moved to another page) while compacting.
         guard isStreaming else { return }
-        askedBlocks = blocks.map { Set($0.compactMap { $0["id"] }) }
+        askedBlocks = blocks.map { $0.compactMap { $0["id"] } }
         let turns: [AIMessage] = turnsToSend.map { message in
             // An answer's pictures are named by id, so a later answer can change one.
             guard message.role == .user else {
@@ -742,7 +743,7 @@ final class AIChat {
     // MARK: - Changes to the page
 
     /// The changes a finished answer proposes, checked against the blocks it was given.
-    private func proposedChanges(in message: Message, blocks: Set<String>) -> [AIPageChange] {
+    private func proposedChanges(in message: Message, blocks: [String]) -> [AIPageChange] {
         AIPageEdits.changes(in: message.text, blocks: blocks).enumerated().compactMap { index, change in
             guard let kind = AIPageChange.Kind(rawValue: change.kind) else { return nil }
             return AIPageChange(
@@ -1724,7 +1725,8 @@ private struct ChatBubble: View {
             .font(.hk(.sm))
             .padding(.horizontal, Spacing.s4)
             .padding(.vertical, Spacing.s2_5)
-            .background(Theme.muted, in: .capsule)
+            // A rounded rectangle, not a capsule: a two-line message in a capsule got huge round ends.
+            .background(Theme.muted, in: .rect(cornerRadius: Radius.xl))
     }
 
     /// The model at work: the line shimmers; with Reduce Motion it stands still, so a spinner says it's busy.

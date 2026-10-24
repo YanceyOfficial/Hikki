@@ -171,6 +171,105 @@ describe('Ask AI changes to the page', () => {
     expect(texts()).toEqual(['Verbs', 'He know it.', 'Second line.', 'one', 'two'])
   })
 
+  it('several inserts after one block keep their reading order, approved in order', () => {
+    editor.commands.aiSetChanges([
+      change({ id: 'p1', kind: 'insert', after: 'b', type: 'heading3', html: 'Difference' }),
+      change({ id: 'p2', kind: 'insert', after: 'b', html: 'First paragraph.' }),
+      change({ id: 'p3', kind: 'insert', after: 'b', html: 'Second paragraph.' })
+    ])
+    editor.commands.aiResolveChange('p1', 'approve')
+    editor.commands.aiResolveChange('p2', 'approve')
+    editor.commands.aiResolveChange('p3', 'approve')
+    expect(texts()).toEqual([
+      'Verbs',
+      'He know it.',
+      'Second line.',
+      'Difference',
+      'First paragraph.',
+      'Second paragraph.',
+      'one',
+      'two'
+    ])
+    // Approve all does the same in one step.
+    undo(editor.state, editor.view.dispatch)
+    undo(editor.state, editor.view.dispatch)
+    undo(editor.state, editor.view.dispatch)
+    editor.commands.aiSetChanges([
+      change({ id: 'q1', kind: 'insert', after: 'b', html: 'A' }),
+      change({ id: 'q2', kind: 'insert', after: 'b', html: 'B' }),
+      change({ id: 'q3', kind: 'insert', after: 'i2', html: 'three' })
+    ])
+    editor.commands.aiApproveAllChanges()
+    expect(texts()).toEqual([
+      'Verbs',
+      'He know it.',
+      'Second line.',
+      'A',
+      'B',
+      'one',
+      'two',
+      'three'
+    ])
+  })
+
+  it('several inserts after one block keep their reading order, approved out of order', () => {
+    editor.commands.aiSetChanges([
+      change({ id: 'p1', kind: 'insert', after: 'b', html: 'One.' }),
+      change({ id: 'p2', kind: 'insert', after: 'b', html: 'Two.' }),
+      change({ id: 'p3', kind: 'insert', after: 'b', html: 'Three.' })
+    ])
+    // The first skipped: the second goes straight after the block.
+    editor.commands.aiResolveChange('p1', 'skip')
+    editor.commands.aiResolveChange('p3', 'approve')
+    expect(texts().slice(2, 4)).toEqual(['Second line.', 'Three.'])
+    // Its ghost shows where the second will go: between the block and the third.
+    editor.commands.aiFocusChange('p2')
+    const ghost = host.querySelector('.hk-ai-ghost')
+    expect(ghost?.textContent).toBe('Two.')
+    expect(ghost?.previousElementSibling?.textContent).toBe('Second line.')
+    expect(ghost?.nextElementSibling?.textContent).toBe('Three.')
+    editor.commands.aiResolveChange('p2', 'approve')
+    expect(texts()).toEqual([
+      'Verbs',
+      'He know it.',
+      'Second line.',
+      'Two.',
+      'Three.',
+      'one',
+      'two'
+    ])
+    // Each inserted block carries an id of its own.
+    const ids = editor
+      .getJSON()
+      .content?.slice(3, 5)
+      .map((n) => n.attrs?.id as string | null)
+    expect(ids?.every(Boolean)).toBe(true)
+    expect(ids?.[0]).not.toBe(ids?.[1])
+  })
+
+  it("an insert's ghost shows its line breaks and marks as Approve will insert them", () => {
+    editor.commands.aiSetChanges([
+      change({
+        id: 'p1',
+        kind: 'insert',
+        after: 'b',
+        html: '<strong>ている</strong>: a state<br>ているところ: <em>right now</em>'
+      })
+    ])
+    editor.commands.aiFocusChange('p1')
+    const ghost = host.querySelector('.hk-ai-ghost')
+    expect(ghost?.querySelector('br')).not.toBeNull()
+    expect(ghost?.querySelector('strong')?.textContent).toBe('ている')
+    expect(ghost?.querySelector('em')?.textContent).toBe('right now')
+    editor.commands.aiResolveChange('p1', 'approve')
+    expect(reports[0]).toMatchObject({
+      status: 'approved',
+      after: 'ている: a state\nているところ: right now'
+    })
+    const added = editor.getJSON().content?.[3]
+    expect(added?.content?.some((n) => n.type === 'hardBreak')).toBe(true)
+  })
+
   it('a change whose block is edited goes stale, the others stay', () => {
     editor.commands.aiSetChanges([
       change({ id: 'c1', kind: 'rewrite', block: 'a', html: 'He knows it.' }),

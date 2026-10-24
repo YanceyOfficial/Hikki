@@ -1,5 +1,5 @@
 import { Extension, type Editor } from '@tiptap/core'
-import type { Node as PMNode } from '@tiptap/pm/model'
+import { DOMSerializer, Fragment, type Node as PMNode, type Schema } from '@tiptap/pm/model'
 import {
   Plugin,
   PluginKey,
@@ -32,6 +32,12 @@ export type AIChangesHost = {
 type Change = AIChangeInput & {
   /** The text of each block the change names, when it was proposed: an edit to any of them makes it stale. */
   basis: Map<string, string>
+  /**
+   * An approved insert: the id of the block it put in the page. Several inserts with the same `after` are one
+   * passage in reading order, so a later one goes after the block the one before it added, not straight after
+   * `after` — whichever order they are approved in.
+   */
+  inserted?: string
 }
 
 type Storage = {
@@ -302,7 +308,7 @@ function unfocus(editor: Editor, host: AIChangesHost): void {
   host.focused(null)
 }
 
-type Applied = { before: string; after: string; caret: number }
+type Applied = { before: string; after: string; caret: number; inserted?: string }
 
 /**
  * Applies a change in `tr` (blocks found by id in `tr.doc`), all or nothing: worked out on a copy, its steps added to
@@ -321,6 +327,23 @@ function apply(editor: Editor, tr: Transaction, change: Change): Applied | null 
   return result
 }
 
+/**
+ * The block an insert goes after: the one the latest approved insert before it in the list with the same `after`
+ * added (still in the page), else `after` itself — so a passage of several inserts keeps its reading order whatever
+ * order they are approved in.
+ */
+function insertAnchor(doc: PMNode, changes: Change[], change: Change): string | undefined {
+  if (!change.after) return undefined
+  const blocks = blocksById(doc)
+  let anchor = change.after
+  for (const other of changes) {
+    if (other === change) break
+    if (other.kind !== 'insert' || other.after !== change.after || !other.inserted) continue
+    if (blocks.has(other.inserted)) anchor = other.inserted
+  }
+  return anchor
+}
+
 function applyTo(editor: Editor, tr: Transform, change: Change): Applied | null {
   const schema = editor.schema
   switch (change.kind) {
@@ -335,13 +358,19 @@ function applyTo(editor: Editor, tr: Transform, change: Change): Applied | null 
     case 'insert': {
       const fragment = parseInline(schema, change.html ?? '')
       if (!fragment) return null
-      const unit = change.after ? unitRange(tr.doc, change.after) : null
-      if (change.after && !unit) return null
+      const anchor = insertAnchor(tr.doc, storage(editor).changes, change)
+      const unit = anchor ? unitRange(tr.doc, anchor) : null
+      if (anchor && !unit) return null
       const node = newBlock(editor, change.type, fragment, unit?.node)
       if (!node) return null
       const at = unit ? unit.to : 0
       tr.insert(at, node)
-      return { before: '', after: fragmentText(fragment), caret: at + node.nodeSize - 1 }
+      return {
+        before: '',
+        after: fragmentText(fragment),
+        caret: at + node.nodeSize - 1,
+        inserted: node.attrs.id as string
+      }
     }
     case 'move': {
       const unit = change.block ? unitRange(tr.doc, change.block) : null
@@ -366,7 +395,10 @@ function applyTo(editor: Editor, tr: Transform, change: Change): Applied | null 
   return null
 }
 
-/** The block an insert adds: the next item after a list item, else a paragraph or heading. */
+/**
+ * The block an insert adds: the next item after a list item, else a paragraph or heading. It carries its block id
+ * from the start (UniqueID would stamp one after the transaction), so the next insert of the passage can follow it.
+ */
 function newBlock(
   editor: Editor,
   type: string | undefined,
@@ -374,10 +406,12 @@ function newBlock(
   after: PMNode | undefined
 ): PMNode | null {
   const { nodes } = editor.schema
-  const paragraph = nodes.paragraph.create(null, content)
-  if (after && ITEM_TYPES.has(after.type.name)) return after.type.createAndFill(null, paragraph)
+  const paragraph = nodes.paragraph.create({ id: crypto.randomUUID() }, content)
+  if (after && ITEM_TYPES.has(after.type.name))
+    return after.type.createAndFill({ id: crypto.randomUUID() }, paragraph)
   const level = /^heading([1-3])$/u.exec(type ?? '')?.[1]
-  if (level && nodes.heading) return nodes.heading.create({ level: Number(level) }, content)
+  if (level && nodes.heading)
+    return nodes.heading.create({ level: Number(level), id: crypto.randomUUID() }, content)
   return paragraph
 }
 
@@ -400,6 +434,7 @@ function resolve(editor: Editor, host: AIChangesHost, id: string, verdict: Verdi
     const result = apply(editor, tr, change)
     if (result) {
       change.status = verdict === 'edit' ? 'edited' : 'approved'
+      change.inserted = result.inserted
       if (verdict === 'edit') placeCaret(tr, result.caret)
       tr.setMeta(AIChangesKey, true)
       editor.view.dispatch(tr)
@@ -450,10 +485,13 @@ function approveAll(editor: Editor, host: AIChangesHost): boolean {
   const todo = pending(store)
   if (todo.length === 0 || !editor.isEditable) return false
   const tr = editor.state.tr
-  const reports: [Change, Applied | null][] = todo.map((change) => [
-    change,
-    apply(editor, tr, change)
-  ])
+  const reports: [Change, Applied | null][] = []
+  for (const change of todo) {
+    const result = apply(editor, tr, change)
+    // Known at once: the next insert of the same passage follows this one's block.
+    if (result) change.inserted = result.inserted
+    reports.push([change, result])
+  }
   tr.setMeta(AIChangesKey, true)
   editor.view.dispatch(tr)
   for (const [change, result] of reports) {
@@ -502,17 +540,17 @@ function decorations(state: EditorState, store: Storage): DecorationSet {
         )
     }
     if (change.kind === 'insert' || change.kind === 'move') {
-      const unit = change.after ? unitRange(state.doc, change.after) : null
+      const anchor =
+        change.kind === 'insert' ? insertAnchor(state.doc, store.changes, change) : change.after
+      const unit = anchor ? unitRange(state.doc, anchor) : null
       const at = unit ? unit.to : 0
-      const text =
+      const content: Fragment | string =
         change.kind === 'move'
           ? (target?.node.textContent ?? '')
-          : fragmentText(
-              parseInline(state.schema, change.html ?? '') ??
-                state.schema.nodes.paragraph.create().content
-            )
+          : (parseInline(state.schema, change.html ?? '') ?? Fragment.empty)
+      const text = typeof content === 'string' ? content : fragmentText(content)
       decos.push(
-        Decoration.widget(at, () => ghost(text, change), {
+        Decoration.widget(at, () => ghost(state.schema, content, change), {
           side: 1,
           key: `${change.id}:${at}:${text}`
         })
@@ -561,15 +599,20 @@ function rewriteMarks(
   return decos
 }
 
-/** Where an inserted or moved block would go: its text, in green, between the blocks. */
-function ghost(text: string, change: Change): HTMLElement {
+/**
+ * Where an inserted or moved block would go: its words, in green, between the blocks. An insert is drawn from the
+ * same sanitised fragment Approve puts in the page, so its line breaks and marks show as they will be inserted (links
+ * only styled: the ghost takes no pointer); a move shows the block's text.
+ */
+function ghost(schema: Schema, content: Fragment | string, change: Change): HTMLElement {
   const div = document.createElement('div')
   const heading =
     change.kind === 'insert' ? /^heading([1-3])$/u.exec(change.type ?? '')?.[1] : undefined
   div.className = `hk-ai-ghost is-${change.kind}`
   if (heading) div.dataset.level = heading
   div.contentEditable = 'false'
-  div.textContent = text
+  if (typeof content === 'string') div.textContent = content
+  else div.append(DOMSerializer.fromSchema(schema).serializeFragment(content))
   return div
 }
 

@@ -976,6 +976,10 @@
   user-select: none;
   animation: hk-fade-in var(--motion-pop-in) var(--ease-out);
 }
+/* The ghost's marks as they will be inserted; a link only styled (the ghost takes no pointer), in the ghost's green. */
+.tiptap .hk-ai-ghost a {
+  color: inherit;
+}
 .tiptap .hk-ai-ghost[data-level] {
   font-weight: 600;
   line-height: 1.25;
