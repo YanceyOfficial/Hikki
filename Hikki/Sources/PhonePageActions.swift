@@ -11,6 +11,8 @@
         let page: PageSummary
         let navigator: Navigator
         let editor: EditorController
+        /// Move to Trash waiting for its confirmation, asked over this sheet.
+        @State private var confirmTrash: String?
 
         var body: some View {
             ScrollView {
@@ -27,6 +29,7 @@
             .scrollBounceBehavior(.basedOnSize)
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
+            .modifier(TrashConfirmation(pageID: $confirmTrash) { dismiss() })
         }
 
         private var path: [String] {
@@ -116,9 +119,9 @@
                     model.duplicate(id: page.id)
                     dismiss()
                 }
+                // Asks first, over this sheet (`TrashConfirmation`); the sheet closes once it is confirmed.
                 ActionRow(title: "app:page.moveToTrash", icon: .trash, destructive: true) {
-                    dismiss()
-                    model.moveToTrash(id: page.id)
+                    confirmTrash = page.id
                 }
             }
             .background(Theme.muted, in: .rect(cornerRadius: Radius.xl + Spacing.s1))

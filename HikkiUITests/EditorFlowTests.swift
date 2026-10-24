@@ -1594,6 +1594,15 @@ final class EditorFlowTests: XCTestCase {
         let trash = app.buttons["Move to Trash"].firstMatch
         XCTAssertTrue(waitOrDumpTree(trash, in: app), "Move to Trash missing from the page menu")
         trash.tap()
+        // It asks first (TrashConfirmation): the dialog names the page, and its own Move to Trash confirms — an alert
+        // on iOS (over the iPhone's ⋯ sheet, whose row has the same label), a sheet on the Mac.
+        XCTAssertTrue(
+            waitOrDumpTree(app.staticTexts["Move “Trash me” to Trash?"].firstMatch, in: app),
+            "Move to Trash did not ask first")
+        let dialog = app.alerts.count > 0 ? app.alerts.firstMatch : app.sheets.firstMatch
+        let confirm = dialog.buttons["Move to Trash"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(confirm, in: app), "the confirmation has no Move to Trash")
+        confirm.tap()
 
         // The page leaves the tree (and favorites) and shows up in Trash.
         backToSidebarIfNeeded(app)

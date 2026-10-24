@@ -473,7 +473,10 @@ HikkiUITests/                 XCUITest flows
   a filter and New Page on top; iPhone gets a list, and so does a Home narrower than the table's columns
   (`Size.homeNarrow`: a side of a split view), its filter on a line of its own. Sorting is `HomeSort` (Sendable, for Swift 6's table). The sidebar
   shows Home and Trash as Notion's row of icons (the open one widens into a pill with its name) and no section title.
-  Trash has the same layout (table: deleted, deleted for good, Restore/Delete). Settings → Workspace → Keep deleted pages
+  Trash has the same layout (table: deleted, deleted for good, Restore/Delete). Move to Trash asks first wherever it
+  is chosen — page menus set `Navigator.trashRequestID` and ContentView presents `TrashConfirmation`
+  (`Hikki/Sources/SidebarView.swift`: the title, the subpages going along — `PageTree.subpageCount`; the iPhone's ⋯
+  sheet presents its own over itself) — as deleting for good and emptying the Trash do. Settings → Workspace → Keep deleted pages
   (7/30/90 days or until emptied, default 30; `TrashPreferences`) purges older trash at launch and activation
   (`DocumentStore.purgeTrash`); the deletion reaches other devices through the workspace folder.
 - **Tabs** are the Mac's (`Navigator.usesTabs`): iPad and an unfolded iPhone Duo have no bar over the page — no tab

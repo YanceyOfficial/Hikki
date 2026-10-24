@@ -151,6 +151,20 @@ extension PageTree {
         }
     }
 
+    /// How many pages sit under the page, at any depth — the subpages that go to the trash along with it (the
+    /// "Move to Trash?" confirmation names them). 0 for a page without subpages or one the tree doesn't hold.
+    public func subpageCount(of id: String) -> Int {
+        func count(_ nodes: [PageNode]) -> Int { nodes.reduce(0) { $0 + 1 + count($1.children) } }
+        func find(_ nodes: [PageNode]) -> PageNode? {
+            for node in nodes {
+                if node.id == id { return node }
+                if let found = find(node.children) { return found }
+            }
+            return nil
+        }
+        return find(roots).map { count($0.children) } ?? 0
+    }
+
     /// Child ids of `parentId` (nil = top level) in sidebar order.
     public func children(of parentId: String?) -> [String] {
         func find(_ nodes: [PageNode]) -> [PageNode]? {

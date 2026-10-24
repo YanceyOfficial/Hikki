@@ -7991,6 +7991,74 @@
         }
       }
     },
+    "app:page.confirmTrash %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move “%@” to Trash?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要将“%@”移到回收站吗？"
+          }
+        }
+      }
+    },
+    "app:page.confirmTrash.hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can restore it from the Trash."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可以在回收站中恢复。"
+          }
+        }
+      }
+    },
+    "app:page.confirmTrash.subpage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Its subpage goes along with it. You can restore them from the Trash."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它的 1 个子页面也会一起移走，可以在回收站中恢复。"
+          }
+        }
+      }
+    },
+    "app:page.confirmTrash.subpages %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Its %@ subpages go along with it. You can restore them from the Trash."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它的 %@ 个子页面也会一起移走，可以在回收站中恢复。"
+          }
+        }
+      }
+    },
     "app:page.copyLink": {
       "extractionState": "manual",
       "localizations": {

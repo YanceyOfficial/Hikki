@@ -568,6 +568,40 @@ private struct HoverPageRow: View {
 
 // MARK: - Shared
 
+/// "Move to Trash" asks first, the same way wherever it is chosen (Notion's): the page's title, how many subpages go
+/// along, a destructive Move to Trash and Cancel. `pageID` set shows it; ContentView presents the one for page menus
+/// (`Navigator.trashRequestID`), a sheet with its own Move to Trash (the iPhone's ⋯) presents its own over itself and
+/// closes with `onTrash`.
+struct TrashConfirmation: ViewModifier {
+    @Environment(AppModel.self) private var model
+    @Binding var pageID: String?
+    var onTrash: () -> Void = {}
+
+    func body(content: Content) -> some View {
+        let page = pageID.flatMap { model.tree.page($0) }
+        let subpages = page.map { model.tree.subpageCount(of: $0.id) } ?? 0
+        let title = page.map { $0.title.isEmpty ? String(localized: "app:page.untitled") : $0.title } ?? ""
+        content.alert(
+            "app:page.confirmTrash \(title)",
+            isPresented: Binding(get: { page != nil }, set: { if !$0 { pageID = nil } })
+        ) {
+            Button("app:page.moveToTrash", role: .destructive) {
+                guard let page else { return }
+                onTrash()
+                model.moveToTrash(id: page.id)
+            }
+            .accessibilityIdentifier("confirm-trash")
+            Button("app:common.cancel", role: .cancel) {}
+        } message: {
+            switch subpages {
+            case 0: Text("app:page.confirmTrash.hint")
+            case 1: Text("app:page.confirmTrash.subpage")
+            default: Text("app:page.confirmTrash.subpages \(subpages.formatted())")
+            }
+        }
+    }
+}
+
 /// Shared page actions for the ⋯ menu, context menus and the page bar.
 struct PageActions: View {
     @Environment(AppModel.self) private var model
@@ -625,8 +659,9 @@ struct PageActions: View {
                 IconLabel("app:page.importInside", icon: .trayArrowDown)
             }
             .accessibilityIdentifier("page-import")
+            // Asks first (ContentView presents `TrashConfirmation`): a menu item one row from Import is easy to hit.
             Button(role: .destructive) {
-                model.moveToTrash(id: page.id)
+                navigator.trashRequestID = page.id
             } label: {
                 IconLabel("app:page.moveToTrash", icon: .trash)
             }

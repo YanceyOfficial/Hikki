@@ -99,6 +99,8 @@ final class Navigator {
     var isAskingAI = false
     /// The page whose actions sheet is open (iPhone's ⋯).
     var pageActionsID: String?
+    /// A page's "Move to Trash" waiting for its confirmation (`TrashConfirmation`, presented by ContentView).
+    var trashRequestID: String?
     /// iPhone: which column of the collapsed split view shows — the home screen (sidebar) or the page (detail).
     /// Opening anything shows the detail; the system's back sets it back.
     var compactColumn: NavigationSplitViewColumn = .sidebar

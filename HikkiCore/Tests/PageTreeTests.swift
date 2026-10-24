@@ -38,6 +38,14 @@ struct PageTreeTests {
         #expect(tree.path(to: "missing").isEmpty)
     }
 
+    @Test func subpageCountTakesEveryDepth() {
+        let tree = PageTree([page("a"), page("b"), page("a1", parent: "a"), page("a2", parent: "a"), page("a1x", parent: "a1")])
+        #expect(tree.subpageCount(of: "a") == 3)  // a1, a1x, a2 go to the trash with it
+        #expect(tree.subpageCount(of: "a1") == 1)
+        #expect(tree.subpageCount(of: "b") == 0)
+        #expect(tree.subpageCount(of: "missing") == 0)
+    }
+
     @Test func survivesParentCycles() {
         let tree = PageTree([page("a", parent: "b"), page("b", parent: "a")])
         #expect(tree.path(to: "a").count <= 2)
