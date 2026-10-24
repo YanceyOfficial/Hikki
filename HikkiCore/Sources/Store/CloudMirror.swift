@@ -18,7 +18,7 @@ public final class CloudMirror: @unchecked Sendable {
         public var systemFields: Data?
         /// When the server last changed the record, as last saved or fetched: a fetched version older than this is
         /// stale (fetched before this device's own newer save) and changes nothing. An optional key: format stays 1.
-        public var cloudModified: Date? = nil
+        public var cloudModified: Date?
     }
 
     struct State: Codable {
@@ -255,7 +255,7 @@ public final class CloudMirror: @unchecked Sendable {
                 guard let entry = state.entries[path], entry.size != file.size || entry.modified != file.modified else {
                     return nil
                 }
-                return (path, file.url)
+                return (path: path, url: file.url)
             }
         }
         var hashes: [String: String] = [:]

@@ -249,24 +249,49 @@ HikkiUITests/                 XCUITest flows
   `CKSyncEngine` in the user's private database (container `iCloud.app.yancey.hikki`, zone `Workspace`): one `File`
   record per file of the folder — pages, history, comments, chats, assets, the drawing library, workspace.json —
   named by its path's SHA-256, the path and contents in encrypted fields (end-to-end encrypted), contents over 512 KB
-  and every attachment as a `CKAsset`. `HikkiCore/Sources/Store/CloudMirror.swift` is the CloudKit-free half (tested
+  and every attachment as a `CKAsset` (copied aside per record — `copyItem`, hashed in chunks — and removed once that
+  record is settled; leftovers go at start); the file's modification date travels encrypted too (`modifiedAt`).
+  `HikkiCore/Sources/Store/CloudMirror.swift` is the CloudKit-free half (tested
   in `CloudMirrorTests`): what changed in the folder since it last agreed with the cloud (size and date, then a
-  content hash, kept with each record's system fields in a cloud-state file beside the database, not in the folder),
+  content hash, kept with each record's system fields and the server's modification date in a cloud-state file
+  beside the database, not in the folder; a record name → path index, so a record's path is a lookup),
   and what to do with what arrives — written over a file unchanged here, otherwise settled: a page by the later
-  change with the other as a conflicted copy (`ConflictCopy`), comments and chats merged (`mergeFiles`), anything
+  change with the other as a conflicted copy (`ConflictCopy`; a page whose row is ahead of its file is left to the
+  folder's pass, `Options.pageChange`, so one clash makes one copy), comments and chats merged (`mergeFiles`), anything
   else the cloud's — but a record still as last agreed (this device's own save fetched back) is no change
-  there: the file stays and goes up. Changes go up after a quiet second (`noteLocalChanges`: `WorkspaceSync.Options.didWrite`, a scan
-  every 10 s, activation), are sent before the app goes to the background (`flushWorkspace`), and come down with
+  there: the file stays and goes up; a version older than the agreed one (a stale fetch) is passed over. An arrival
+  holds the file's lock from read to write (`FileLocks`, `HikkiCore/Sources/Store/FileLocks.swift`, which
+  `PageComments`, `PageChats` and `DrawingLibrary` take around their own writes) and reads the file again before
+  writing, settling instead if it changed. Changes go up after a quiet second (`noteLocalChanges`: `WorkspaceSync.Options.didWrite`, a scan
+  every 10 s, activation), are sent before the app goes to the background (`flushWorkspace`; the scan and send are
+  `@concurrent`, never on the main thread), and come down with
   iCloud's pushes (`registerForRemoteNotifications`, iOS background mode `remote-notification`), on activation and
-  on a pull to refresh (iOS: Home, the phone drawer, the sidebar, Trash — `syncRefreshable` in
+  on a pull to refresh (iOS: Home and its phone drawer, the sidebar, Trash — `syncRefreshable` in
   `Hikki/Sources/SyncRefresh.swift`, `AppModel.refreshFromCloud`);
-  what arrives is a change on disk like any other (the folder reconciles, editors reload). The workspace belongs to the
+  what arrives is a change on disk like any other (the folder reconciles, editors reload; `CloudArrivals` names the
+  pages whose comments, AI conversation or history came in — `pageCommentsChanged`, `pageChatChanged`,
+  `pageHistoryChanged` reload them). `CloudSync`'s handlers take a small `CloudEngineState` (pending changes) so
+  `CloudSyncTests` run them without CloudKit: a clash settles with the server's record and goes up again only when the
+  result differs (one without its asset fetches instead); a record that arrived without its asset is fetched again by
+  itself (`fetchIncomplete`); an arrival drops a waiting deletion of its record; a delete of a record already gone
+  counts as done; cancelled saves are queued again; a save refused for good is held while the file is unchanged
+  (`CloudMirror.hold`, in memory), storage full for 15 min doubling to 6 h (released by a save going through,
+  activation, pull to refresh); `quotaFull` / `failed` stay shown (Settings, the save indicator) until a send goes
+  through without a refusal; a failed account check shows `unavailable` and asks again (30 s doubling to 15 min).
+  The workspace belongs to the
   first iCloud account it syncs with (`CloudMirror.accountAllows`, kept in the cloud state): the engine starts only
-  once `userRecordID` is that account and stops on any change (`.CKAccountChanged`, the engine's account events) —
+  once `userRecordID` is that account and stops on any change (`.CKAccountChanged`, the engine's account events; a
+  `switchAccounts` drops the engine's kept state) —
   another account, or a sign-out and sign-in as someone else, sends and fetches nothing (`Status.accountChanged`)
-  until the user turns iCloud off and on, which hands the workspace to the account in use (`releaseAccount`); a
-  deleted zone sends everything again. A workspace still in an iCloud Drive folder (before CloudKit) is copied into the app once its
-  files are all downloaded (`WorkspaceFolder.copyContents`, the folder left as it was; on the Mac a sandbox that
+  until the user turns iCloud off and on, which hands the workspace to the account in use (`releaseAccount`; another
+  account than the last starts from nothing — every file goes up to its zone). A zone deleted, emptied by an
+  encryption reset, or not found on a save sends everything again; one the user deleted (reason `purged`, or
+  `userDeletedZone`) pauses (`Status.cloudDataDeleted`, kept across launches) until they turn iCloud off and on.
+  iCloud starts beside the first folder pass, not after it (a push launch has seconds).
+  A workspace still in an iCloud Drive folder (before CloudKit) is copied into the app off the main thread while the
+  folder keeps working, once its files are all downloaded (`WorkspaceFolder.copyContents`: placeholders and the
+  downloading status — File Provider keeps a missing file's name — asked for and retried; the folder left as it was;
+  a second pass after its writers stop; Settings says "Moving into iCloud…"; on the Mac a sandbox that
   won't open the old bookmark asks for the folder first) and becomes `.cloud`; folders can no longer be picked.
   A run on its own data folder (`HIKKI_DATA_DIR`: UI tests, demos) never syncs (`AppModel.cloudAllowed`) — its
   pages would land in the account's one workspace zone — unless `HIKKI_CLOUD=1`.
@@ -286,7 +311,9 @@ HikkiUITests/                 XCUITest flows
   (`NWPathMonitor`, which also sends and fetches on coming back) wait; `PageSyncState.resolve` decides.
   Entitlements: `Hikki/Hikki-iOS.entitlements` and the Mac's two (see Mac sandbox); the CloudKit schema is created
   in the development environment on first save and must be deployed to production in the CloudKit console before
-  a release.
+  a release — record type `File`: `path` (encrypted string), `data` (encrypted bytes), `file` (asset), `modifiedAt`
+  (encrypted date/time). The plain `modified` field of earlier development builds is no longer written: reset the
+  development schema (or leave it out) before deploying.
 - **Storage (option C)**: the workspace folder is the source of truth — one JSON file per page
   (`HikkiCore/Sources/Store/PageFile.swift`: `pages/<id>.json`, format-versioned, content as JSON); SQLite is a
   rebuildable cache/index. `HikkiCore/Sources/Store/WorkspaceSync.swift` reconciles on launch and app activation
