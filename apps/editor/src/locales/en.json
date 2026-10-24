@@ -582,6 +582,7 @@
     "aiMediaUnreadable": "Couldn't read this file for AI.",
     "aiPictureRefused": "OpenAI declined to make this picture.",
     "aiPictureSaveFailed": "Couldn't save the picture.",
+    "aiKeySaveFailed": "Couldn't save the API key in iCloud Keychain.",
     "searchFailed": "Search isn't available right now.",
     "searchIndexFailed": "Couldn't update the search index.",
     "offline": "No internet connection.",

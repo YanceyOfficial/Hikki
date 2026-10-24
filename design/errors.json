@@ -317,6 +317,12 @@
       "en": "Couldn't save the picture.",
       "zh": "无法保存图片。"
     },
+    "aiKeySaveFailed": {
+      "code": 5012,
+      "severity": "error",
+      "en": "Couldn't save the API key in iCloud Keychain.",
+      "zh": "无法将 API 密钥保存到 iCloud 钥匙串。"
+    },
 
     "searchFailed": {
       "code": 6001,

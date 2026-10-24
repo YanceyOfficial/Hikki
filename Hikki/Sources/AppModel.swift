@@ -78,6 +78,8 @@ final class AppModel {
         searchIndexer.start()
         reminders.start()
         purgeTrash()
+        // Settings from the owner's other devices (iCloud key-value storage), then theirs and ours kept in step.
+        settingsSync = SyncedSettings.start(model: self)
         // One observation for the app (every window reads the same tree): it was a task per window, each writing it.
         observation = Task { [weak self] in await self?.observe() }
         Self.current = self
@@ -86,6 +88,8 @@ final class AppModel {
     /// The app's model, for what has no window to ask (quitting: `AppDelegate`).
     static weak var current: AppModel?
     @ObservationIgnored private var observation: Task<Void, Never>?
+    /// Settings synced across the owner's devices; nil for a run on its own data folder (SyncedSettings.swift).
+    @ObservationIgnored private var settingsSync: SyncedSettings?
 
     // MARK: Workspace folder (storage option C)
 

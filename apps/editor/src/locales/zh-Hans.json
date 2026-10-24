@@ -582,6 +582,7 @@
     "aiMediaUnreadable": "无法为 AI 读取此文件。",
     "aiPictureRefused": "OpenAI 拒绝生成这张图片。",
     "aiPictureSaveFailed": "无法保存图片。",
+    "aiKeySaveFailed": "无法将 API 密钥保存到 iCloud 钥匙串。",
     "searchFailed": "搜索暂时不可用。",
     "searchIndexFailed": "无法更新搜索索引。",
     "offline": "没有网络连接。",

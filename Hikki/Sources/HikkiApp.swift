@@ -28,6 +28,8 @@ struct HikkiApp: App {
         Log.info("launch", context: AppInfo.current().context)
         // The trial and the unlock: read now, followed from here on.
         Purchases.shared.start()
+        // AI keys from before settings synced move into iCloud Keychain (once; a key that can't move stays put).
+        Task.detached(priority: .utility) { Keychain.migrateToSynchronizable() }
         do {
             let store = try DocumentStore.onDisk(at: paths.database)
             #if DEBUG

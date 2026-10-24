@@ -58,6 +58,7 @@ extension ErrorCode {
         case .aiMediaUnreadable: String(localized: "app:error.aiMediaUnreadable")
         case .aiPictureRefused: String(localized: "app:error.aiPictureRefused")
         case .aiPictureSaveFailed: String(localized: "app:error.aiPictureSaveFailed")
+        case .aiKeySaveFailed: String(localized: "app:error.aiKeySaveFailed")
         case .searchFailed: String(localized: "app:error.searchFailed")
         case .searchIndexFailed: String(localized: "app:error.searchIndexFailed")
         case .offline: String(localized: "app:error.offline")

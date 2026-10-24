@@ -1616,6 +1616,23 @@
         }
       }
     },
+    "app:ai.settings.keys.sync": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keys are kept in iCloud Keychain: end-to-end encrypted, they reach your other devices signed in to the same Apple Account. Each key is still sent only to the address it was entered for."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密钥保存在 iCloud 钥匙串中：端到端加密，会同步到登录同一 Apple 账户的其他设备。每个密钥仍只发送到输入它时对应的地址。"
+          }
+        }
+      }
+    },
     "app:ai.settings.model": {
       "extractionState": "manual",
       "localizations": {
@@ -1782,6 +1799,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "未填写"
+          }
+        }
+      }
+    },
+    "app:ai.settings.status.notSaved": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not saved"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未保存"
           }
         }
       }
@@ -4383,6 +4417,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法读取 AI 的回复。"
+          }
+        }
+      }
+    },
+    "app:error.aiKeySaveFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't save the API key in iCloud Keychain."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法将 API 密钥保存到 iCloud 钥匙串。"
           }
         }
       }
@@ -10333,6 +10384,125 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ 个等待 iCloud 下载"
+          }
+        }
+      }
+    },
+    "app:settings.sync.checking": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在检查…"
+          }
+        }
+      }
+    },
+    "app:settings.sync.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your settings reach your other devices through iCloud, and AI keys through iCloud Keychain (end-to-end encrypted). The app's language and window layout stay on each device."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设置通过 iCloud 同步到你的其他设备，AI 密钥通过 iCloud 钥匙串同步（端到端加密）。应用语言和窗口布局仍按设备分别保存。"
+          }
+        }
+      }
+    },
+    "app:settings.sync.header": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同步"
+          }
+        }
+      }
+    },
+    "app:settings.sync.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings and AI keys"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设置与 AI 密钥"
+          }
+        }
+      }
+    },
+    "app:settings.sync.noAccount": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No iCloud account"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未登录 iCloud"
+          }
+        }
+      }
+    },
+    "app:settings.sync.off": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Off for this run"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本次运行未开启"
+          }
+        }
+      }
+    },
+    "app:settings.sync.on": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Syncing through iCloud"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在通过 iCloud 同步"
           }
         }
       }

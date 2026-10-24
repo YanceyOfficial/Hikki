@@ -274,6 +274,7 @@ private struct SettingsPageContent: View {
             #if os(macOS)
                 MenuBarSection()
             #endif
+            SettingsSyncSection()
         case .shortcuts:
             ShortcutsSection()
         case .ai:
@@ -378,11 +379,16 @@ private struct WorkspaceSection: View {
     }
 }
 
+/// Settings → Workspace → Import & Export's format (synced with the other settings, `SyncedSettings`).
+enum TransferPreferences {
+    static let formatKey = "transfer.format"
+}
+
 /// Settings → Workspace → Import & Export: many files and folders in at once, or the whole workspace out to a folder
 /// (BulkTransfer). The job runs on when Settings closes; its progress and its summary show here.
 private struct TransferSection: View {
     @Environment(AppModel.self) private var model
-    @AppStorage("transfer.format") private var format = WorkspaceExport.Format.markdown
+    @AppStorage(TransferPreferences.formatKey) private var format = WorkspaceExport.Format.markdown
     @State private var isPicking = false
     @State private var picking = Picking.importFiles
 
@@ -771,6 +777,35 @@ private struct SpotlightSection: View {
         }
     }
 #endif
+
+/// Settings → General → Sync: settings and AI keys follow the owner's devices through iCloud (SyncedSettings.swift).
+private struct SettingsSyncSection: View {
+    @State private var status: SyncedSettings.Status?
+
+    var body: some View {
+        Section {
+            LabeledContent("app:settings.sync.label") {
+                Text(statusText)
+                    .foregroundStyle(status == .noAccount ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+                    .accessibilityIdentifier("settings-settings-sync")
+            }
+        } header: {
+            Text("app:settings.sync.header")
+        } footer: {
+            Text("app:settings.sync.detail")
+        }
+        .task { status = await SyncedSettings.status() }
+    }
+
+    private var statusText: LocalizedStringKey {
+        switch status {
+        case nil: "app:settings.sync.checking"
+        case .on: "app:settings.sync.on"
+        case .noAccount: "app:settings.sync.noAccount"
+        case .off: "app:settings.sync.off"
+        }
+    }
+}
 
 private struct LanguageSection: View {
     var body: some View {

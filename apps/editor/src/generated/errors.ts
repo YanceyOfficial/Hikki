@@ -58,6 +58,7 @@ export const ERRORS = {
   aiMediaUnreadable: { code: 5009, severity: 'error' },
   aiPictureRefused: { code: 5010, severity: 'warning' },
   aiPictureSaveFailed: { code: 5011, severity: 'error' },
+  aiKeySaveFailed: { code: 5012, severity: 'error' },
   searchFailed: { code: 6001, severity: 'warning' },
   searchIndexFailed: { code: 6002, severity: 'warning' },
   offline: { code: 7001, severity: 'warning' },
@@ -188,6 +189,8 @@ export function errorMessage(id: ErrorId): string {
       return t('error.aiPictureRefused')
     case 'aiPictureSaveFailed':
       return t('error.aiPictureSaveFailed')
+    case 'aiKeySaveFailed':
+      return t('error.aiKeySaveFailed')
     case 'searchFailed':
       return t('error.searchFailed')
     case 'searchIndexFailed':

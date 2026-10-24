@@ -21,6 +21,11 @@ final class ShortcutStore {
         overrides = ShortcutOverrides(data: defaults.data(forKey: Self.storageKey)).sanitized(defaults: Self.registry)
     }
 
+    /// Reads the overrides again: another device's arrived (`SyncedSettings`), and the menus and editors follow.
+    func reload() {
+        overrides = ShortcutOverrides(data: defaults.data(forKey: Self.storageKey)).sanitized(defaults: Self.registry)
+    }
+
     func combo(_ shortcut: Shortcut) -> KeyCombo {
         overrides.combo(shortcut.rawValue, default: shortcut.defaultCombo)
     }

@@ -294,7 +294,8 @@ HikkiUITests/                 XCUITest flows
   a second pass after its writers stop; Settings says "Moving into iCloud…"; on the Mac a sandbox that
   won't open the old bookmark asks for the folder first) and becomes `.cloud`; folders can no longer be picked.
   A run on its own data folder (`HIKKI_DATA_DIR`: UI tests, demos) never syncs (`AppModel.cloudAllowed`) — its
-  pages would land in the account's one workspace zone — unless `HIKKI_CLOUD=1`.
+  pages would land in the account's one workspace zone — unless `HIKKI_CLOUD=1`. Settings and AI keys sync apart from
+  the workspace, whatever its location (see Settings).
   **Save indicator** (Google Docs' / Notion's, bottom-trailing corner of each side's page on Mac and iPad —
   `PaneColumn`'s overlay; none on iPhone, whose foot is the floating bar): HikkiUI's `SyncStatusBadge` drawn by
   `SyncIndicator` (`Hikki/Sources/SyncIndicator.swift`) — nothing until the page is edited in this run, then Saving… /
@@ -795,9 +796,13 @@ HikkiUITests/                 XCUITest flows
   the chat's composer and Settings → AI) is Notion's: Auto, starred models under Favorites, Recommended, Other
   models — a star on each row (`AIModelFavorites` in `HikkiAI/Sources/AIModelFavorites.swift`, UserDefaults
   `ai.favoriteModels`); a pick in the chat is also the default, which the page's Ask AI runs on. Each provider may have a base URL (blank: its own API; `HikkiAI/Sources/AIEndpoint.swift` — OpenAI's base
-  includes `/v1`, Anthropic's doesn't, as in their SDKs; https, or http only to loopback). Keys live in the Keychain
-  (`AIPreferences`, `Hikki/Sources/AISettings.swift`), one per provider and origin (`AIEndpoint.keyAccount`), so a key
-  only ever goes to the address it was entered for. The editor asks through `aiRequest` / `aiCancel` (selected parts of blocks as inline HTML + nearby
+  includes `/v1`, Anthropic's doesn't, as in their SDKs; https, or http only to loopback). Keys live in iCloud Keychain
+  (`Hikki/Sources/Keychain.swift`: synchronizable items in the data protection keychain, the Mac's too, so a key typed
+  on one device reaches the owner's others end-to-end encrypted; the device-only items from before move once —
+  `migrateToSynchronizable`: read, write the synced one, delete the old only then — and are still read meanwhile; a
+  write updates in place and a failure is `aiKeySaveFailed`, toasted once), read through `AIPreferences`
+  (`Hikki/Sources/AISettings.swift`), one per provider and origin (`AIEndpoint.keyAccount`), so a key
+  only ever goes to the address it was entered for — never in the key-value store with the other settings. The editor asks through `aiRequest` / `aiCancel` (selected parts of blocks as inline HTML + nearby
   text) and gets `window.hikki.aiEvent`s back. `Hikki/Sources/AIService.swift` runs them (one per window, both
   editors) with the prompts in `HikkiAI/Sources/AIPrompts.swift`: an edit asks for JSON
   `{"blocks":[{id, html}],"notes":["…"]}` — the blocks hold only what belongs in the page (same ids, inline tags only:
@@ -991,7 +996,22 @@ HikkiUITests/                 XCUITest flows
   up first, through `MenuBarRequests`), a page-sized sheet on a regular-width iPad, the hub list in a sheet on iPhone.
   Each page is a grouped form of sections, the last page opened is remembered; ⌘W closes Settings, not the tab under
   it. `HIKKI_OPEN_SETTINGS=<page>` opens that page (screenshots). Optional integrations get pages here with a
-  detected/not-detected status, exodus's way.
+  detected/not-detected status, exodus's way. **Every value in Settings syncs** across the owner's devices (General →
+  Sync says so, with the iCloud account's state): the AI keys through iCloud Keychain (see AI), the rest through
+  iCloud key-value storage — `Hikki/Sources/SyncedSettings.swift` lists the UserDefaults keys (theme, spelling, menu
+  bar, Spotlight, trash days, export format, shortcut overrides, AI model / favorites / review style / chat
+  retention / file use / base URLs) and HikkiCore's `SettingsSync` (`HikkiCore/Sources/Store/SettingsSync.swift`,
+  `SettingsSyncTests`) mirrors them, so `@AppStorage` keeps reading UserDefaults. Each value goes up as `{at, value}`
+  (`{at}` for a reset) and the later change wins key by key (`SettingsMerge`: the store keeps no time of its own); a
+  tie goes to iCloud's, and values nobody saw being set (from before syncing) have no age, so two devices end up
+  agreeing. At launch both sides are merged, then a UserDefaults change goes up and an external one comes down
+  (written while `applying`, against the last agreed state kept under `settingsSync.state`, so nothing echoes),
+  posted as `changedRemotely` for what doesn't follow UserDefaults (shortcuts reload, Spotlight, trash purge, chat
+  retention); quota and account-change notices keep what is here. Window layout (inspector width, split, Home's
+  layout, the last Settings page) stays per device, and so does the language (the system's per-app setting). A run
+  on its own data folder (`HIKKI_DATA_DIR`) never touches the account's settings unless `HIKKI_SETTINGS_SYNC=1`.
+  Entitlement: `com.apple.developer.ubiquity-kvstore-identifier` = `$(TeamIdentifierPrefix)app.yancey.hikki` in all
+  three entitlements files — one identifier, so the Mac and iOS share one store.
 - **Appearance** (Settings → General → Theme) is applied app-wide (`NSApp.appearance` / window `overrideUserInterfaceStyle`),
   not with `preferredColorScheme`, which left parts of windows in the old scheme after switching back.
 - **Mac sandbox** (the Mac App Store takes nothing else): `Hikki/Hikki.entitlements` (Release) — App Sandbox, network
