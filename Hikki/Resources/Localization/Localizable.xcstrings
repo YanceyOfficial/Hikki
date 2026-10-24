@@ -10218,6 +10218,23 @@
         }
       }
     },
+    "app:settings.storage.moving": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moving into iCloud…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在移入 iCloud…"
+          }
+        }
+      }
+    },
     "app:settings.storage.notSynced": {
       "extractionState": "manual",
       "localizations": {

@@ -362,6 +362,7 @@ private struct WorkspaceSection: View {
     /// When the folder was last reconciled, and what's still on its way ("2 waiting for iCloud").
     /// Always says something for a folder: not yet, why not, or when and what is still on its way.
     private var syncStatus: Text {
+        if model.movingWorkspace { return Text("app:settings.storage.moving") }
         if let error = model.syncError { return Text("app:settings.storage.syncError \(error)") }
         guard let sync = model.lastSync else { return Text("app:settings.storage.notSynced") }
         var text = Text("app:settings.storage.synced \(sync.at, format: .relative(presentation: .named))")

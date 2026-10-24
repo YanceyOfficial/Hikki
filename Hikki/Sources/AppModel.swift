@@ -142,7 +142,9 @@ final class AppModel {
             #endif
             if case .folder = workspace.location {
                 // iCloud Drive folders are retired: the folder's files move into the app, then sync through iCloud.
-                if moveFolderWorkspace(from: folder, appRoot: appRoot) { return }
+                // Copied off the main thread while the folder keeps working as before; the workspace switches over
+                // once the copy is done.
+                moveFolderWorkspace(from: folder, appRoot: appRoot)
             }
             workspaceFolder = folder
             syncIdentity()
@@ -197,10 +199,13 @@ final class AppModel {
             }
             self.sync = sync
             Task.detached(priority: .utility) { [weak self] in
+                // iCloud starts beside the first pass, not after it: its account check and engine are ready sooner —
+                // a launch for a push has only seconds. What it writes meanwhile is a change on disk like any other
+                // (the passes take turns on the workspace's queue).
+                cloud?.start()
                 do {
                     let report = try sync.start()
                     Self.log("workspace sync started", report)
-                    cloud?.start()
                     Task { @MainActor in
                         self?.lastSync = SyncStatus(at: .now, report: report)
                         self?.syncError = nil
@@ -352,33 +357,106 @@ final class AppModel {
         workspaceFolder?.stopAccessingSecurityScopedResource()
         workspaceFolder = nil
         identityUpdatedAt = nil
+        // A folder move under way stops with the folder (a later start begins another).
+        folderMove?.cancel()
+        folderMove = nil
+        folderMoveID = nil
+        movingWorkspace = false
     }
 
     /// A workspace in an iCloud Drive folder (before CloudKit) moves into the app: every file of the folder is
-    /// copied in — the folder itself is left as it was — and the workspace syncs through iCloud from then on.
-    /// Not while iCloud Drive still has files of it to download (it asks for them, and the move waits for a later
-    /// launch or activation; the folder keeps syncing meanwhile). Returns whether it moved.
-    private func moveFolderWorkspace(from folder: URL, appRoot: URL) -> Bool {
-        guard var workspace else { return false }
+    /// copied in — the folder itself is left as it was — and the workspace syncs through iCloud from then on. The
+    /// copy runs off the main thread (a large workspace kept launch waiting, on iOS past the watchdog) while the
+    /// folder keeps working; not while iCloud Drive still has files of it to download — it asks for them and tries
+    /// again in 30 s, doubling to 10 min. Settings → Storage says it is moving meanwhile (`movingWorkspace`).
+    private func moveFolderWorkspace(from folder: URL, appRoot: URL) {
+        guard folderMoveID == nil else { return }
         let local = appRoot.appending(path: "Workspace", directoryHint: .isDirectory)
+        let id = UUID()
+        folderMoveID = id
+        movingWorkspace = true
+        folderMove = Task { [weak self] in
+            var wait: Duration = .seconds(30)
+            moving: while !Task.isCancelled {
+                switch await Self.copyFolder(folder, into: local) {
+                case .copied:
+                    await self?.finishFolderMove(from: folder, into: local, id: id)
+                    return
+                case .downloading(let count):
+                    Log.info("workspace folder still downloading; move later", category: "workspace", context: ["files": "\(count)"])
+                    try? await Task.sleep(for: wait)
+                    wait = min(wait * 2, .seconds(600))
+                case .failed:
+                    break moving  // reported; tried again at the next launch
+                }
+            }
+            self?.endFolderMove(id)
+        }
+    }
+
+    /// The folder workspace's move into the app while it runs (`moveFolderWorkspace`), and which one it is.
+    @ObservationIgnored private var folderMove: Task<Void, Never>?
+    @ObservationIgnored private var folderMoveID: UUID?
+    /// The folder workspace is being copied into the app (Settings → Storage says so).
+    private(set) var movingWorkspace = false
+
+    nonisolated private enum FolderCopy: Sendable {
+        case copied(Int)
+        case downloading(Int)
+        case failed
+    }
+
+    /// One copy of the folder into the app's own, off the main thread. A failure is reported here.
+    @concurrent nonisolated private static func copyFolder(_ folder: URL, into local: URL) async -> FolderCopy {
         do {
-            let copied = try WorkspaceFolder.copyContents(of: folder, into: local)
-            folder.stopAccessingSecurityScopedResource()
+            return .copied(try WorkspaceFolder.copyContents(of: folder, into: local))
+        } catch WorkspaceFolder.CopyError.stillDownloading(let count) {
+            return .downloading(count)
+        } catch {
+            Toasts.report(.workspaceMoveFailed, error, category: "workspace")
+            return .failed
+        }
+    }
+
+    /// The copy is in: the old folder's writers stop, what they wrote during the copy follows (a second pass copies
+    /// only files newer than their copies, quickly), and the workspace switches to the app's folder and iCloud.
+    private func finishFolderMove(from folder: URL, into local: URL, id: UUID) async {
+        guard folderMoveID == id, var workspace, case .folder = workspace.location else {
+            endFolderMove(id)
+            return
+        }
+        folderMove = nil  // it is this task: nothing to cancel when the sync stops below
+        let scoped = folder.startAccessingSecurityScopedResource()
+        stopWorkspaceSync()
+        movingWorkspace = true
+        let caughtUp = await Self.copyFolder(folder, into: local)
+        if scoped { folder.stopAccessingSecurityScopedResource() }
+        folderMoveID = nil
+        guard case .copied(let copied) = caughtUp else {
+            // Not after all (a file went back to iCloud Drive meanwhile): the folder works on, and moves later.
+            movingWorkspace = false
+            startWorkspaceSync()
+            return
+        }
+        do {
             workspace.location = .cloud
             // The pages were synced with the old folder, not this one: a first pass compares them all again.
             try store.unmarkAllSynced()
             try workspaceStore.save(workspace)
             self.workspace = workspace
             Log.info("workspace moved from its folder into iCloud", category: "workspace", context: ["files": "\(copied)"])
-            startWorkspaceSync()
-            return true
-        } catch WorkspaceFolder.CopyError.stillDownloading(let count) {
-            Log.info("workspace folder still downloading; move later", category: "workspace", context: ["files": "\(count)"])
-            return false
         } catch {
             Toasts.report(.workspaceMoveFailed, error, category: "workspace")
-            return false
         }
+        movingWorkspace = false
+        startWorkspaceSync()
+    }
+
+    private func endFolderMove(_ id: UUID) {
+        guard folderMoveID == id else { return }
+        folderMove = nil
+        folderMoveID = nil
+        movingWorkspace = false
     }
 
     /// Keeps the identity in the folder (`workspace.json`) and this device's record in step: a folder without
@@ -454,8 +532,10 @@ final class AppModel {
     }
 
     /// Waits for queued file writes, then sends what iCloud hasn't got yet (before the app goes to the background).
+    /// Neither blocks the main thread: the folder's queue is awaited, and the scan and send run off it — so quitting's
+    /// 3 s cap (`SaveOnExit`) still runs on time.
     func flushWorkspace() async {
-        sync?.flush()
+        await sync?.flushed()
         await cloud?.sendNow()
     }
 

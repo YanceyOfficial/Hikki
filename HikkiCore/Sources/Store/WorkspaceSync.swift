@@ -446,6 +446,14 @@ public final class WorkspaceSync: @unchecked Sendable {
         queue.sync {}
     }
 
+    /// Waits until queued file writes are done without blocking the caller's thread (the app going to the
+    /// background or quitting: the main thread stays free for the quit timeout and the UI).
+    public func flushed() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            queue.async { continuation.resume() }
+        }
+    }
+
     /// Runs `body` once the file writes queued so far are done, without waiting for them: a page committed before
     /// this call has its file written by then (the commit observer queues its write as the transaction commits).
     public func afterQueuedWrites(_ body: @escaping @Sendable () -> Void) {

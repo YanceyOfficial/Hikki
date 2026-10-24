@@ -28,6 +28,16 @@ struct SyncSafetyTests {
         return (store, sync)
     }
 
+    /// Before the app goes to the background its queued file writes are awaited without blocking the main thread:
+    /// once `flushed()` returns, the page's file is written.
+    @Test func awaitingQueuedWritesSeesThemWritten() async throws {
+        let files = try folder()
+        let (store, sync) = try device(files)
+        try store.create(id: "p", now: t0)
+        await sync.flushed()
+        #expect(files.presentIDs().contains("p"))
+    }
+
     // MARK: Moves, trash, favorites (metadata that isn't an edit)
 
     @Test func movesTrashAndFavoritesReachTheOtherDevice() throws {

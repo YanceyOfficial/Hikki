@@ -320,8 +320,9 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
         if mirror.releaseTimedHolds() { noteLocalChanges(after: 0) }
     }
 
-    /// Sends what is pending now (the app going to the background).
-    public func sendNow() async {
+    /// Sends what is pending now (the app going to the background). Off the caller's actor: the scan before it reads
+    /// and hashes every changed file, which must never run on the main thread.
+    @concurrent public func sendNow() async {
         guard let engine = lock.withLock({ engine }) else { return }
         queueLocalChanges()
         do {
@@ -336,8 +337,9 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
         }
     }
 
-    /// Fetches now (app activation; pushes usually get there first).
-    public func fetchNow() async {
+    /// Fetches now (app activation; pushes usually get there first), off the caller's actor (what arrives is written
+    /// into the folder in the engine's callbacks, the account check makes an engine).
+    @concurrent public func fetchNow() async {
         if lock.withLock({ running && engine == nil }) { await confirmAccount() }
         guard let engine = lock.withLock({ engine }) else { return }
         do {

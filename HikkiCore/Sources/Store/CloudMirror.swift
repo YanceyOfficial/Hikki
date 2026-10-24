@@ -104,6 +104,9 @@ public final class CloudMirror: @unchecked Sendable {
     /// for a refusal that may pass (storage full), until its time — so they aren't read and sent again every ten
     /// seconds. In memory only: a relaunch tries each once more, and that is a fair time to. Under `lock`.
     private var holds: [String: Hold] = [:]
+    /// A write of the engine's latest state is on its way (`setEngineState`). Under `lock`.
+    private var engineWriteScheduled = false
+    private let persistQueue = DispatchQueue(label: "app.yancey.hikki.cloud-state", qos: .utility)
 
     public init(root: URL, stateURL: URL, options: Options = Options()) {
         self.root = root
@@ -158,9 +161,20 @@ public final class CloudMirror: @unchecked Sendable {
 
     public var engineState: Data? { lock.withLock { state.engine } }
 
+    /// Kept with the rest, written a second later at most: the engine reports its state after nearly every step, and
+    /// each write is the whole state (every file's entry). A crash in between costs a fetch of what came since.
     public func setEngineState(_ data: Data?) {
-        lock.withLock { state.engine = data }
-        persist()
+        let schedule: Bool = lock.withLock {
+            state.engine = data
+            defer { engineWriteScheduled = true }
+            return !engineWriteScheduled
+        }
+        guard schedule else { return }
+        persistQueue.asyncAfter(deadline: .now() + 1) { [weak self] in
+            guard let self else { return }
+            self.lock.withLock { self.engineWriteScheduled = false }
+            self.persist()
+        }
     }
 
     public func systemFields(_ path: String) -> Data? {

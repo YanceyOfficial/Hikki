@@ -174,4 +174,24 @@ struct FolderBookmarkTests {
             try WorkspaceFolder.copyContents(of: source, into: try makeTempDirectory())
         }
     }
+
+    /// File Provider iCloud Drive (macOS 14 and later): a file not downloaded keeps its name and is a regular file —
+    /// only its downloading status says so. Nothing is copied while one is not here yet.
+    @Test func aFileNotDownloadedUnderItsOwnNameHoldsTheMoveBack() throws {
+        let source = try makeTempDirectory()
+        for path in ["pages/p.json", "pages/q.json", "assets/a.png"] {
+            let url = source.appending(path: path)
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data("x".utf8).write(to: url)
+        }
+        let destination = try makeTempDirectory()
+        #expect(throws: WorkspaceFolder.CopyError.stillDownloading(1)) {
+            try WorkspaceFolder.copyContents(of: source, into: destination, downloaded: { $0.lastPathComponent != "a.png" })
+        }
+        #expect(!FileManager.default.fileExists(atPath: destination.appending(path: "pages/p.json").path))
+        // Downloaded since: it moves.
+        #expect(try WorkspaceFolder.copyContents(of: source, into: destination, downloaded: { _ in true }) == 3)
+        // A plain folder's files count as here.
+        #expect(WorkspaceFolder.isDownloaded(source.appending(path: "pages/p.json")))
+    }
 }
