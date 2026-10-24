@@ -317,6 +317,29 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
         return tabs.first { $0.route == route }?.id
     }
 
+    /// Shows `route` — in the tab already showing it, which gets focus, else in the focused tab (a search result, a
+    /// Spotlight pick, a hikki:// link from outside): opening a page never puts it in two tabs.
+    public mutating func open(_ route: Route) {
+        if let existing = tab(showing: route) { select(existing) } else { navigate(to: route) }
+    }
+
+    /// Closes the tabs outside a split that show what another tab shows (`isUnique` says which routes count: Home may
+    /// be open twice) — tabs saved by builds that let a page pile up in several. The focused tab and the splits stay;
+    /// of the others, the first one showing a route does.
+    public mutating func closeDuplicates(where isUnique: (Route) -> Bool) {
+        var claimed: Set<Route> = [route]
+        for tab in tabs where split(of: tab.id) != nil { claimed.insert(tab.route) }
+        var gone = Set<UUID>()
+        for tab in tabs where tab.id != activeID && split(of: tab.id) == nil && isUnique(tab.route) {
+            if !claimed.insert(tab.route).inserted { gone.insert(tab.id) }
+        }
+        guard !gone.isEmpty else { return }
+        tabs.removeAll { gone.contains($0.id) }
+        recency.removeAll { gone.contains($0) }
+        tidySplits()
+        recordVisit()
+    }
+
     /// A link in the page of the tab `id` followed to another page (Chrome's ⌘-click, made the default): the tab already
     /// showing it gets focus; otherwise it opens in a new tab right after `id` (after its split, when `id` is a side of
     /// one), focused, so the page the link was in stays where it was. Past `limit` tabs the least recently focused one
@@ -380,9 +403,15 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
         splits[index] = Split(leading: splits[index].trailing, trailing: splits[index].leading)
     }
 
-    /// Takes `id`'s split apart: both stay tabs, the focused one shown.
+    /// Takes `id`'s split apart: both stay tabs, the focused one shown — unless both sides show the same page, which
+    /// then needs one tab only: the focused side's (else the leading one) stays.
     public mutating func separate(_ id: UUID) {
+        guard let pair = split(of: id) else { return }
         splits.removeAll { $0.contains(id) }
+        let leading = tabs.first { $0.id == pair.leading }?.route
+        guard leading != nil, leading == tabs.first(where: { $0.id == pair.trailing })?.route else { return }
+        let kept = pair.contains(activeID) ? activeID : pair.leading
+        close(pair.other(kept))
     }
 
     /// The tab `id` shows `route` in place of its page now, with no history entry (an empty split pane picking a page).

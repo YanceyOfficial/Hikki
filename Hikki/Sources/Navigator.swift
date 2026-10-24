@@ -191,9 +191,17 @@ final class Navigator {
 
     // MARK: Navigation within the active tab
 
+    /// Shows a page (a search result, Spotlight, a hikki:// link from outside, Home's rows…): on the Mac the tab already
+    /// showing it gets focus (`NavigationTabs.open`), so a page never piles up in several tabs; otherwise the focused
+    /// tab goes there.
     func open(_ id: String) {
         reveal(id)
-        go(.page(id))
+        if Self.usesTabs {
+            tabs.open(.page(id))
+            syncSelection()
+        } else {
+            go(.page(id))
+        }
     }
 
     /// Opens the page with its title selected for typing (Notion's Rename, done in the editor so the title
@@ -246,19 +254,32 @@ final class Navigator {
 
     // MARK: Tabs
 
+    /// "Open in New Tab" (and "+", with Home): a page that has a tab already is focused there instead — only Home may
+    /// be open in several.
     func openInNewTab(_ route: Route) {
         if let id = route.pageID { reveal(id) }
-        if Self.usesTabs { tabs.openTab(route) } else { tabs.navigate(to: route) }
+        if !Self.usesTabs {
+            tabs.navigate(to: route)
+        } else if route != .home, let existing = tabs.tab(showing: route) {
+            tabs.select(existing)
+        } else {
+            tabs.openTab(route)
+        }
         syncSelection()
     }
 
-    /// A page dropped on the tab strip: between tabs it opens there (or its tab is focused), onto a tab it
-    /// shows in that tab.
+    /// A page dropped on the tab strip: between tabs it opens there, onto a tab it shows in that tab — unless another
+    /// tab shows it already, which is focused instead.
     func dropPage(_ id: String, _ target: TabStripDropTarget) {
         reveal(id)
         switch target {
         case .between(let index): tabs.openTab(.page(id), at: index)
-        case .onto(let tabID): tabs.navigate(tabID, to: .page(id))
+        case .onto(let tabID):
+            if let existing = tabs.tab(showing: .page(id)), existing != tabID {
+                tabs.select(existing)
+            } else {
+                tabs.navigate(tabID, to: .page(id))
+            }
         }
         syncSelection()
     }
@@ -312,9 +333,15 @@ final class Navigator {
     /// Shows `route` beside the focused side: in the other side when split (replacing what it shows), else in a new tab
     /// joined to the focused one. The same page may be on both sides (write on one, read on the other): the editors
     /// reload each other's saves (`EditorController.pageSavedInEditor`).
+    /// A page that has a loose tab of its own already (not the focused one) joins as that tab instead of opening twice.
     func openInSplit(_ route: Route) {
         guard splitAllowed, route.canSplit || route == .splitPicker else { return }
-        tabs.openSplit(route, beside: tabs.activeID)
+        let loose = tabs.tabs.first { $0.route == route && $0.id != tabs.activeID && tabs.split(of: $0.id) == nil }
+        if !isSplit, route.canSplit, let loose {
+            tabs.join(tabs.activeID, with: loose.id)
+        } else {
+            tabs.openSplit(route, beside: tabs.activeID)
+        }
         if let id = route.pageID { reveal(id) }
         tidyTabs()
     }
@@ -350,7 +377,8 @@ final class Navigator {
         syncSelection()
     }
 
-    /// Ends the split (⌘\): both pages stay tabs, the focused one shown (an empty side just goes).
+    /// Ends the split (⌘\): both pages stay tabs, the focused one shown (an empty side just goes; two sides on the same
+    /// page leave one tab).
     func closeSplit() {
         guard let split = tabs.activeSplit else { return }
         if focusedSide == .trailing { inspectors[.leading] = inspectors[.trailing] }
@@ -539,8 +567,9 @@ final class Navigator {
         // doesn't come back (the window opens on the page beside it, unsplit).
         tabs.prune(fallback: .home) { $0 == .splitPicker }
         tidyTabs()
-        // Tabs saved before windows on iOS lost their strip: the focused one stays.
-        if !Self.usesTabs { tabs.keepActiveOnly() }
+        // Tabs saved before windows on iOS lost their strip: the focused one stays. On the Mac, a page left open in
+        // several tabs by older builds keeps one.
+        if Self.usesTabs { tabs.closeDuplicates { $0 != .home } } else { tabs.keepActiveOnly() }
     }
 
     /// Page → Copy Link (⌥⌘C): the open page's hikki://page/<id>.

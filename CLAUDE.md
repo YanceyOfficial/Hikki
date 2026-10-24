@@ -488,7 +488,11 @@ HikkiUITests/                 XCUITest flows
   recency kept in the saved tabs). A link in a page to another page opens it in a tab of its own
   (`Navigator.openLink` → `NavigationTabs.openLink`: that page's tab is focused, else a new tab right after the link's —
   from a side of a split, after the split, which stays whole — under the same limit); a link to a block of the page
-  itself scrolls there; without tabs (iPhone, iPad) a link opens in place, in its side. Back / forward (the toolbar's arrows, ⌘[ ⌘]) walk the
+  itself scrolls there; without tabs (iPhone, iPad) a link opens in place, in its side. A page has one tab: opening
+  it from anywhere (search, Spotlight, a hikki:// link from outside, Open in New Tab, a drop onto a tab) focuses the
+  tab showing it (`NavigationTabs.open` / `tab(showing:)`) — only Home may repeat, and Duplicate is the explicit
+  exception; Open in Split View joins a page's own tab; separating a split on one page leaves one tab; tabs saved with
+  repeats keep one each when restored (`closeDuplicates`). Back / forward (the toolbar's arrows, ⌘[ ⌘]) walk the
   window's history of pages shown, across tabs (`NavigationTabs.visits`): back returns to the page shown before, focusing
   its tab — a page opened from the sidebar goes back to where the reader was; closed tabs and gone pages are passed over. A tab's context menu is
   Chrome's (`TabStripMenu` / `TabStripCommand` in `HikkiUI/Sources/TabStrip.swift`, the commands chosen by

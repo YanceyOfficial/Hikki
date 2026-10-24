@@ -557,4 +557,53 @@ struct NavigationTabsTests {
         tabs.openLink("d", from: a, limit: 3)
         #expect(tabs.tabs.map(\.route) == ["a", "d", "c"])
     }
+
+    @Test func openingAPageWithATabFocusesItInsteadOfShowingItTwice() {
+        var tabs = Tabs(initial: "a")
+        let a = tabs.activeID
+        tabs.openTab("b")
+        tabs.open("a")
+        #expect(tabs.activeID == a)
+        #expect(tabs.tabs.map(\.route) == ["a", "b"])
+        tabs.open("c")
+        #expect(tabs.tabs.map(\.route) == ["c", "b"], "a page without a tab shows in the focused one")
+        #expect(tabs.active.history == ["a", "c"])
+    }
+
+    @Test func separatingASplitOnOnePageLeavesOneTab() throws {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        let opened = tabs.openSplit("a", beside: left)
+        let right = try #require(opened)
+        tabs.select(right)
+        tabs.separate(right)
+        #expect(tabs.splits.isEmpty)
+        #expect(tabs.tabs.map(\.id) == [right], "the focused side's tab stays")
+        #expect(tabs.activeID == right)
+    }
+
+    @Test func separatingASplitOnTwoPagesKeepsBoth() {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        tabs.openSplit("b", beside: left)
+        tabs.separate(left)
+        #expect(tabs.tabs.map(\.route) == ["a", "b"])
+    }
+
+    @Test func closeDuplicatesKeepsTheFocusedTabTheSplitsAndAllowedRepeats() {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        tabs.openSplit("b", beside: left)
+        tabs.openTab("home")
+        tabs.openTab("b")
+        tabs.openTab("home")
+        tabs.openTab("c")
+        tabs.openTab("a")
+        tabs.openTab("c")
+        let focused = tabs.activeID
+        tabs.closeDuplicates { $0 != "home" }
+        #expect(tabs.tabs.map(\.route) == ["a", "b", "home", "home", "c"])
+        #expect(tabs.activeID == focused)
+        #expect(tabs.splits.count == 1)
+    }
 }
