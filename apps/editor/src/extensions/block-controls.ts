@@ -1,6 +1,7 @@
 import gripSvg from '@phosphor-icons/core/assets/bold/dots-six-vertical-bold.svg?raw'
 import plusSvg from '@phosphor-icons/core/assets/regular/plus.svg?raw'
 import { Extension, type Editor } from '@tiptap/core'
+import type { Node as PMNode } from '@tiptap/pm/model'
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 
@@ -84,6 +85,36 @@ export function columnFloor(view: EditorView, pos: number): number | null {
   }
   return null
 }
+
+/**
+ * A point over a list's markers (its numbers, bullets, checkboxes) hits the list, not an item: the markers sit in
+ * the list's padding. The item on that row is the unit, as over its text — nested lists too.
+ */
+export function listItemAtY(view: EditorView, unit: BlockUnit, y: number): BlockUnit {
+  let current = unit
+  for (;;) {
+    // A list: its item on that row. An item: a list nested in it on that row (then that list's item).
+    const wanted = isList(current.node) ? isItem : isItem(current.node) ? isList : null
+    if (!wanted) return current
+    let next: BlockUnit | null = null
+    current.node.forEach((child, offset) => {
+      if (next || !wanted(child)) return
+      const pos = current.pos + 1 + offset
+      const dom = view.nodeDOM(pos)
+      if (!(dom instanceof HTMLElement)) return
+      const rect = dom.getBoundingClientRect()
+      if (y >= rect.top && y < rect.bottom) next = { pos, node: child, depth: current.depth + 1 }
+    })
+    if (!next) return current
+    current = next
+  }
+}
+
+const isItem = (node: PMNode) => node.type.name === 'listItem' || node.type.name === 'taskItem'
+const isList = (node: PMNode) =>
+  node.type.name === 'bulletList' ||
+  node.type.name === 'orderedList' ||
+  node.type.name === 'taskList'
 
 const icon = (svg: string) =>
   svg.replace('<svg ', '<svg width="18" height="18" aria-hidden="true" ')
@@ -223,7 +254,8 @@ class BlockControlsView {
     const at = this.view.posAtCoords({ left, top: y })
     if (!at) return null
     const pos = at.inside >= 0 ? at.inside : at.pos
-    return handle ? handleUnitAtPos(this.view.state, pos) : unitAtPos(this.view.state, pos)
+    const unit = handle ? handleUnitAtPos(this.view.state, pos) : unitAtPos(this.view.state, pos)
+    return unit && listItemAtY(this.view, unit, y)
   }
 
   /** A non-empty text selection: the selection menu's moment, not the handle's. */

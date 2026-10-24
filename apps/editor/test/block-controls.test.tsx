@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { openBlockMenu } from '../src/components/block-menu'
 import { createEditor } from '../src/core/editor'
-import { columnFloor, handleLeft } from '../src/extensions/block-controls'
+import { columnFloor, handleLeft, listItemAtY } from '../src/extensions/block-controls'
 import { BlockHighlightKey, setBlockHighlight } from '../src/extensions/block-highlight'
 import {
   deleteUnit,
@@ -314,6 +314,43 @@ const twoColumns = (right: object = para('right')) => ({
 const tableWith = (text: string) => ({
   type: 'table',
   content: [{ type: 'tableRow', content: [{ type: 'tableCell', content: [para(text)] }] }]
+})
+
+const item = (text: string, ...nested: object[]) => ({
+  type: 'listItem',
+  content: [para(text), ...nested]
+})
+
+describe('block handle over list markers', () => {
+  it('a point over a number is the item on that row, nested items too — not the whole list', () => {
+    editor = createEditor(host, {
+      type: 'doc',
+      content: [
+        {
+          type: 'orderedList',
+          content: [
+            item('one'),
+            item('two', { type: 'bulletList', content: [item('inner a'), item('inner b')] })
+          ]
+        }
+      ]
+    })
+    const list = unitAtPos(editor.state, 0)!
+    expect(list.node.type.name).toBe('orderedList')
+    // Rows: "one" 0–24, "two" 24–96 holding its list 48–96 ("inner a" 48–72, "inner b" 72–96).
+    const lis = editor.view.dom.querySelectorAll('li')
+    placeBox(lis[0], 0, 400, 0, 24)
+    placeBox(lis[1], 0, 400, 24, 72)
+    placeBox(editor.view.dom.querySelector('ul')!, 22, 400, 48, 48)
+    placeBox(lis[2], 22, 400, 48, 24)
+    placeBox(lis[3], 22, 400, 72, 24)
+    const textAt = (y: number) => listItemAtY(editor.view, list, y).node.firstChild!.textContent
+    expect(textAt(10)).toBe('one')
+    expect(textAt(30)).toBe('two')
+    expect(textAt(80)).toBe('inner b')
+    // Below every row: the list itself, as before.
+    expect(listItemAtY(editor.view, list, 200)).toBe(list)
+  })
 })
 
 describe('block handle in columns', () => {
