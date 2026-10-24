@@ -5,7 +5,7 @@ import { act, cleanup, fireEvent, screen, within } from '@testing-library/react'
 import type { Editor } from '@tiptap/core'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { marginPlacement, PHONE_QUERY } from '../src/components/comments'
+import { marginPlacement } from '../src/components/comments'
 import { createEditor } from '../src/core/editor'
 import {
   commentRanges,
@@ -14,7 +14,7 @@ import {
   setThreads,
   type ThreadItem
 } from '../src/extensions/comments'
-import { UPRIGHT_PHONE } from '../src/lib/device'
+import { PHONE, UPRIGHT_PHONE } from '../src/lib/device'
 
 let host: HTMLElement
 let editor: Editor
@@ -72,7 +72,7 @@ afterEach(() => {
 /** An iPhone: a touch screen in a narrow window (jsdom has no matchMedia of its own). */
 function stubPhone() {
   vi.stubGlobal('matchMedia', (query: string) => ({
-    matches: query === PHONE_QUERY || query === UPRIGHT_PHONE || query === '(pointer: coarse)',
+    matches: query === PHONE || query === UPRIGHT_PHONE || query === '(pointer: coarse)',
     media: query,
     addEventListener: () => {},
     removeEventListener: () => {}

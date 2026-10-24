@@ -48,6 +48,7 @@ import { mediaRef } from '../lib/ai-content'
 import { AIPanel } from './ai-panel'
 import { BlockTypeList } from './block-type-list'
 import { ColorList } from './color-list'
+import { listStep } from './command-list'
 import { FloatingLayer, usePresence } from './floating'
 import { GlidingHighlight } from './gliding-highlight'
 import { IconProvider } from './icons'
@@ -403,10 +404,10 @@ function BlockMenu({
       onKeyDown={(e) => {
         if (e.nativeEvent.isComposing) return
         // Escape is the layers' bus (onDismiss in openBlockMenu): it never reaches here.
-        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        const step = listStep(e.key, visible.length, selected)
+        if (step !== null) {
           e.preventDefault()
-          const step = e.key === 'ArrowDown' ? 1 : -1
-          setSelected((i) => (i + step + visible.length) % Math.max(1, visible.length))
+          setSelected(step)
         } else if (e.key === 'Enter' || (e.key === 'ArrowRight' && visible[selected]?.submenu)) {
           e.preventDefault()
           choose(selected)

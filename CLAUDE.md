@@ -766,8 +766,9 @@ HikkiUITests/                 XCUITest flows
   — `isUserEdit` in `apps/editor/src/core/bridge.ts` otherwise skips non-undo transactions), and an open thread whose mark is
   missing is marked again where its quote occurs once (`findQuote`). `apps/editor/src/components/comments.tsx` draws
   cards in the right margin when the window is wide (`#page[data-comments]` shifts the page left from the `comments` breakpoint, 1240 px), count
-  badges with a thread card under the passage otherwise; on a phone (`PHONE_QUERY`: coarse pointer, narrow or short
-  window) the open thread or a new comment is a bottom sheet instead (shadcn `Drawer`, `apps/editor/src/components/ui/drawer.tsx`,
+  badges with a thread card under the passage otherwise; on a phone (`PHONE` in `apps/editor/src/lib/device.ts`: coarse pointer, narrow or short
+  window) the open thread or a new comment is a bottom sheet instead (the page's one `BottomSheet`, `apps/editor/src/components/bottom-sheet.tsx`, over shadcn's
+  `Drawer`, `apps/editor/src/components/ui/drawer.tsx`,
   restyled to the motion tokens): grabber, quote, comments with their actions always shown, the reply field at the
   foot riding the software keyboard (`visualViewport`) and clear of the native bottom bar (`--hk-inset-bottom`);
   scrim, swipe down or Escape close it, and neither opening nor closing it focuses the page. In the iPhone layout an open

@@ -6,7 +6,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { createRoot } from 'react-dom/client'
 
 import { Button } from '@/components/ui/button'
-import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,7 +43,6 @@ import {
   XIcon
 } from '../generated/icons'
 import { LAYOUT } from '../generated/layout'
-import { useKeyboardViewport } from '../hooks/use-keyboard-viewport'
 import { useMediaQuery } from '../hooks/use-media-query'
 import {
   bodyFromDraft,
@@ -54,7 +52,7 @@ import {
   type DraftMention
 } from '../lib/comment-text'
 import { PHONE, UPRIGHT_PHONE } from '../lib/device'
-import { sheetOpened } from '../lib/sheet-presence'
+import { BottomSheet } from './bottom-sheet'
 import { CommandList, handleListKey } from './command-list'
 
 /** Card width in the margin, and the room the margin needs beside the text to hold one. */
@@ -323,7 +321,8 @@ function CommentsLayer({
   column: HTMLElement
 }) {
   const layout = useLayout(editor, column)
-  const phone = usePhone()
+  // A phone (`PHONE` in lib/device: a touch screen in a narrow or short window): the open thread is a bottom sheet.
+  const phone = useMediaQuery(PHONE)
   // A page with open threads makes room for their cards: its column moves left where the window allows (style.css).
   const has = layout.anchors.length > 0 || layout.draft !== null
   useEffect(() => {
@@ -336,22 +335,6 @@ function CommentsLayer({
     <Margin editor={editor} host={host} layout={layout} />
   ) : (
     <Narrow editor={editor} host={host} layout={layout} phone={phone} />
-  )
-}
-
-/** A phone: a touch screen in a narrow (or short) window (`PHONE` in lib/device). Its open thread is a bottom sheet. */
-export const PHONE_QUERY = PHONE
-
-const phoneQuery = () => window.matchMedia?.(PHONE_QUERY) ?? null
-
-function usePhone(): boolean {
-  return useSyncExternalStore(
-    (notify) => {
-      const list = phoneQuery()
-      list?.addEventListener('change', notify)
-      return () => list?.removeEventListener('change', notify)
-    },
-    () => phoneQuery()?.matches ?? false
   )
 }
 
@@ -520,56 +503,33 @@ function CommentSheet({
   const [shown, setShown] = useState({ thread, draft })
   if (open && (shown.thread !== thread || shown.draft !== draft)) setShown({ thread, draft })
   const popup = useRef<HTMLDivElement>(null)
-  const { height, keyboard } = useKeyboardViewport()
-  // While open, the native bars beside the page step aside (as `BottomSheet`).
-  useEffect(() => (open ? sheetOpened() : undefined), [open])
   const close = () => editor.commands.commentOpen(null)
   return (
-    <Drawer
+    <BottomSheet
       open={open}
-      onOpenChange={(next) => {
-        if (!next) close()
-      }}
-      showSwipeHandle
+      onClose={close}
+      title={t('comments.discussion')}
+      titleHidden
+      testId="comment-sheet"
+      popupRef={popup}
+      initialFocus={shown.draft === null ? () => popup.current : true}
     >
-      <DrawerContent
-        ref={popup}
-        initialFocus={shown.draft === null ? () => popup.current : true}
-        finalFocus={false}
-        data-testid="comment-sheet"
-        // Its content's height: the Drawer pins the height it first measured (for stacking nested drawers), which
-        // would clip a reply added later or the room kept for the native bar.
-        className="rounded-t-sheet pt-1 [--drawer-content-height:auto] data-[swipe-direction=down]:rounded-t-sheet"
-        style={
-          {
-            bottom: keyboard,
-            '--drawer-content-max-height': `calc(${height}px - var(--hk-inset-top, 0px) - 12px)`,
-            // Over the keyboard it sits right on it; else clear of the home indicator and the native bottom bar.
-            paddingBottom:
-              keyboard > 0
-                ? 'calc(var(--spacing) * 2)'
-                : 'calc(env(safe-area-inset-bottom, 0px) + var(--hk-inset-bottom, 0px) + var(--spacing) * 2)'
-          } as React.CSSProperties
-        }
-      >
-        <DrawerTitle className="sr-only">{t('comments.discussion')}</DrawerTitle>
-        {shown.draft === null ? (
-          shown.thread && (
-            <ThreadCard
-              editor={editor}
-              host={host}
-              thread={shown.thread}
-              active
-              quote
-              onClose={close}
-              sheet
-            />
-          )
-        ) : (
-          <Composer editor={editor} host={host} quote={shown.draft} onClose={close} sheet />
-        )}
-      </DrawerContent>
-    </Drawer>
+      {shown.draft === null ? (
+        shown.thread && (
+          <ThreadCard
+            editor={editor}
+            host={host}
+            thread={shown.thread}
+            active
+            quote
+            onClose={close}
+            sheet
+          />
+        )
+      ) : (
+        <Composer editor={editor} host={host} quote={shown.draft} onClose={close} sheet />
+      )}
+    </BottomSheet>
   )
 }
 

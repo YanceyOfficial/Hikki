@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { t } from '../core/i18n'
 import type { PageIndexEntry } from '../extensions/page-links'
 import { pageMentionItems } from '../extensions/page-mention'
+import { listStep } from './command-list'
 import { GlidingHighlight } from './gliding-highlight'
 import { MenuRow, MenuTitle } from './menu-row'
 
@@ -27,10 +28,10 @@ export function PagePicker({
     <div
       onKeyDown={(e) => {
         if (e.nativeEvent.isComposing) return
-        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        const step = listStep(e.key, shown.length, selected)
+        if (step !== null) {
           e.preventDefault()
-          const step = e.key === 'ArrowDown' ? 1 : -1
-          setSelected((i) => (i + step + shown.length) % Math.max(1, shown.length))
+          setSelected(step)
         } else if (e.key === 'Enter' && shown[selected]) {
           e.preventDefault()
           onPick(shown[selected])
