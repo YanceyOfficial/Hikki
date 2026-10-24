@@ -300,6 +300,23 @@ struct ContentView: View {
         @Bindable var navigator = navigator
         return
             content
+            // Move to from any page menu: the picker, the size of Notion's popover on the Mac (it sizes itself), a form
+            // sheet on iPad, half the screen on iPhone (pulled up for more).
+            .sheet(
+                isPresented: Binding(
+                    get: { navigator.movePageID != nil },
+                    set: { if !$0 { navigator.movePageID = nil } })
+            ) {
+                if let id = navigator.movePageID {
+                    MovePageSheet(pageID: id, focusesField: wide) { navigator.movePageID = nil }
+                        #if os(iOS)
+                            .presentationSizing(.form)
+                            .presentationDetents([.medium, .large])
+                            .presentationDragIndicator(.visible)
+                            .sheetOverVerticalBar()
+                        #endif
+                }
+            }
             .sheet(
                 isPresented: Binding(
                     get: { navigator.historyPageID != nil },

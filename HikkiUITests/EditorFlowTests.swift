@@ -1616,6 +1616,49 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(waitOrDumpTree(app.staticTexts["Trash is empty"].firstMatch, in: app))
     }
 
+    /// Move to: the page menu opens Notion's picker — a search, a pick — and the page moves inside the page picked;
+    /// opened again, the workspace row offers the top level, which it no longer is at.
+    func testMoveToPicksAPageBySearch() throws {
+        continueAfterFailure = false
+        let app = launch()
+        createPage(app, title: "Move target")
+        backToSidebarIfNeeded(app)
+        createPage(app, title: "Move me")
+
+        openMovePicker(app)
+        let top = app.descendants(matching: .any)["move-target-top"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(top, in: app))
+        XCTAssertFalse(top.label.contains("Top level"), "a top-level page was offered the top level")
+        let field = app.textFields["move-search"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(field, in: app))
+        tapWhenSettled(field)  // iPhone: the field doesn't take the keyboard by itself
+        field.typeText("target")
+        let hit = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH 'move-target-' AND label CONTAINS 'Move target'")
+        ).firstMatch
+        XCTAssertTrue(waitOrDumpTree(hit, in: app), "the picker's search did not find the page")
+        attachScreenshot(app, "move-picker")
+        hit.tap()
+        XCTAssertTrue(field.waitForNonExistence(timeout: 5), "the picker stayed up after a pick")
+
+        openMovePicker(app)
+        XCTAssertTrue(waitOrDumpTree(top, in: app))
+        XCTAssertTrue(top.label.contains("Top level"), "the moved page still reads as top level")
+    }
+
+    /// The open page's ⋯ → Move to.
+    private func openMovePicker(_ app: XCUIApplication) {
+        let more = app.buttons["page-more"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(more, in: app))
+        more.tap()
+        // iPadOS menus drop the item's identifier: there it is found by its (English) title.
+        let move = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier == 'page-move' OR (identifier == '' AND label == 'Move to')")
+        ).firstMatch
+        XCTAssertTrue(waitOrDumpTree(move, in: app))
+        move.tap()
+    }
+
     func testSearchFindsChineseTitleByPinyinInitials() throws {
         continueAfterFailure = false
         let app = launch()

@@ -198,7 +198,15 @@ HikkiUITests/                 XCUITest flows
   dragged onto it import (`Hikki/Sources/SidebarFileDrop.swift`): on a page row as its children (the row tints as for
   "inside"), elsewhere at the top level (the sidebar is outlined); ContentView runs the import through
   `Navigator.importDrop` → `AppModel.importFiles(_:parentId:)`. A page row's own drag carries a page link, never a
-  file, so the two never mix; iPad drags (typed documents, no file URL) load as a temporary copy.
+  file, so the two never mix; iPad drags (typed documents, no file URL) load as a temporary copy. A page's Move to
+  (every page menu — sidebar and Home context menus, the page ⋯, the iPhone's ⋯ sheet) sets `Navigator.movePageID`
+  and ContentView presents `Hikki/Sources/MovePageSheet.swift`: HikkiUI's `MovePagePicker`, Notion's "Move page
+  to…" — a search field, the top-level pages as Suggested with a disclosure each (opening on the page's own place),
+  search results (title words folded, no case or accents) with their path, the workspace at the foot for the top
+  level; ↑ ↓ → ← ↩ esc — over `PageTree.moveChoices` (`HikkiCore/Sources/Store/MoveChoices.swift`: never the page's
+  own subtree, its current parent checked). A sheet the size of Notion's popover on the Mac (a context menu can't
+  hold a popover), a form sheet on iPad, half height on iPhone; a pick is `AppModel.movePage(_:onto:zone: .inside)`
+  or `movePageToTopLevel`.
 - **Device compatibility lives in two files**: `HikkiCore/Sources/Layout/DeviceRules.swift` (native — a table of
   iPhone / iPhone Duo folded and unfolded / iPad / Mac: orientation — phones and a folded Duo upright, iPads and an
   unfolded Duo on their side, through `OrientationDelegate` in `Hikki/Sources/HikkiApp.swift` — split view, the

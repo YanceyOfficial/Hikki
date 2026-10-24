@@ -101,20 +101,12 @@
                     ActionRowLabel(title: "app:export.menu", icon: .export, chevron: true)
                 }
                 .accessibilityIdentifier("page-export")
-                Menu {
-                    if page.parentId != nil {
-                        Button("app:page.moveToTopLevel") { model.movePageToTopLevel(page.id) }
-                    }
-                    ForEach(model.tree.moveTargets(for: page.id), id: \.page.id) { target in
-                        Button {
-                            model.movePage(page.id, onto: target.page.id, zone: .inside)
-                        } label: {
-                            Text(verbatim: String(repeating: "    ", count: target.depth) + Self.title(target.page))
-                        }
-                    }
-                } label: {
-                    ActionRowLabel(title: "app:page.moveTo", icon: .arrowBendUpRight, chevron: true)
+                // The move picker (`MovePageSheet`), which the window presents once this sheet has gone.
+                ActionRow(title: "app:page.moveTo", icon: .arrowBendUpRight) {
+                    dismiss()
+                    navigator.movePageID = page.id
                 }
+                .accessibilityIdentifier("page-move")
                 ActionRow(title: "app:page.duplicate", icon: .copy) {
                     model.duplicate(id: page.id)
                     dismiss()
@@ -153,11 +145,6 @@
         /// The page's title (or "Untitled").
         static func name(_ page: PageSummary) -> String {
             page.title.isEmpty ? String(localized: "app:page.untitled") : page.title
-        }
-
-        /// Icon and title, for the Move to menu.
-        static func title(_ page: PageSummary) -> String {
-            (page.icon.map { "\($0) " } ?? "") + name(page)
         }
     }
 

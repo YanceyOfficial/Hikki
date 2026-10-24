@@ -113,6 +113,9 @@ final class Navigator {
     var isShowingSettings = false
     /// Page ⋯ → Page History…: the page whose versions the history sheet shows.
     var historyPageID: String?
+    /// Move to (every page menu): the page the move picker is open for — ContentView presents `MovePageSheet`, since a
+    /// context menu can't hold a popover.
+    var movePageID: String?
     /// Page ⋯ → Export: the page and format being exported (ContentView presents the save panel / exporter).
     var exportRequest: ExportRequest?
     /// File → Import… / a page's Import…: the file picker is up.

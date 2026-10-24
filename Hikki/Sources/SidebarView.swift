@@ -705,28 +705,14 @@ struct PageActions: View {
         }
     }
 
-    /// Every other page (not this one's subtree), indented by depth, plus the top level.
+    /// Notion's "Move page to…": the window presents the picker (`MovePageSheet`).
     private var moveToMenu: some View {
-        Menu {
-            if page.parentId != nil {
-                Button("app:page.moveToTopLevel") { model.movePageToTopLevel(page.id) }
-            }
-            ForEach(model.tree.moveTargets(for: page.id), id: \.page.id) { target in
-                Button {
-                    model.movePage(page.id, onto: target.page.id, zone: .inside)
-                } label: {
-                    // The page's own title, shown as-is (indented by depth like the sidebar).
-                    Text(verbatim: String(repeating: "    ", count: target.depth) + displayTitle(target.page))
-                }
-            }
+        Button {
+            navigator.movePageID = page.id
         } label: {
             IconLabel("app:page.moveTo", icon: .arrowBendUpRight)
         }
-    }
-
-    private func displayTitle(_ page: PageSummary) -> String {
-        let icon = page.icon.map { "\($0) " } ?? ""
-        return icon + (page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
+        .accessibilityIdentifier("page-move")
     }
 
     private func copyLink() {

@@ -15,12 +15,26 @@
         @State private var recorded = "⌘B"
         @State private var drawerOpen = true
         @State private var dialogPage = "general"
+        @State private var moveQuery = ""
+        @State private var moveExpanded: Set<String> = ["work"]
         private let galleryTabs = [UUID(), UUID()]
         private let galleryToasts = [GalleryToast(message: "Page duplicated"), GalleryToast(message: "Link copied")]
 
         private struct GalleryToast: Identifiable {
             let id = UUID()
             let message: String
+        }
+
+        /// MovePagePicker's sample: a small tree, or one search result once something is typed.
+        private var galleryMoveItems: [MovePickerItem] {
+            guard moveQuery.isEmpty else {
+                return [MovePickerItem(id: "sync", title: "Weekly sync", icon: "🗓️", path: "Work / Meetings")]
+            }
+            let open = moveExpanded.contains("work")
+            var items = [MovePickerItem(id: "work", title: "Work", icon: "💼", hasChildren: true, isExpanded: open)]
+            if open { items.append(MovePickerItem(id: "roadmap", title: "Roadmap", icon: nil, depth: 1, isCurrent: true)) }
+            items.append(MovePickerItem(id: "trip", title: "Trip to Kyoto", icon: "🗾"))
+            return items
         }
 
         var body: some View {
@@ -474,6 +488,16 @@
                             SearchResultRow(
                                 title: "Trip", icon: "🧭", snippet: "…BOARDING PASS · gate B12…", terms: ["gate"],
                                 attachment: "boarding-pass.pdf", updatedAt: .now.addingTimeInterval(-86_400))
+                        }
+                        Section("MovePagePicker") {
+                            MovePagePicker(
+                                query: $moveQuery, items: galleryMoveItems, workspaceName: "Yancey's Notes", isAtTopLevel: false, focusesField: false,
+                                badge: { WorkspaceBadge(initial: "Y") },
+                                onToggle: { id in
+                                    if moveExpanded.contains(id) { moveExpanded.remove(id) } else { moveExpanded.insert(id) }
+                                },
+                                onPick: { _ in }, onCancel: {})
+                            .frame(height: Size.movePickerHeight)
                         }
                         Section("SearchMatchRow · SearchMatchesToggleRow") {
                             SearchMatchRow(snippet: "雨が降っているので家にいます。", terms: ["ので"], isSelected: true)

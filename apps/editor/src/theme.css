@@ -83,6 +83,8 @@
   --size-heatmap-cell: 12px;
   --size-search-width: 760px;
   --size-search-results: 480px;
+  --size-move-picker-width: 420px;
+  --size-move-picker-height: 480px;
   --size-inspector-min: 280px;
   --size-inspector-ideal: 360px;
   --size-inspector-max: 560px;

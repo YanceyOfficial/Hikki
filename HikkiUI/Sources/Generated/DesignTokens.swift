@@ -205,6 +205,8 @@ public nonisolated enum Size {
     public static let heatmapCell: CGFloat = 12
     public static let searchWidth: CGFloat = 760
     public static let searchResults: CGFloat = 480
+    public static let movePickerWidth: CGFloat = 420
+    public static let movePickerHeight: CGFloat = 480
     public static let inspectorMin: CGFloat = 280
     public static let inspectorIdeal: CGFloat = 360
     public static let inspectorMax: CGFloat = 560
