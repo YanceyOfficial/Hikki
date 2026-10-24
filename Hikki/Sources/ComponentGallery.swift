@@ -484,6 +484,26 @@
                                 PageIcon(nil, size: TextSize.lg.rawValue)
                             }
                         }
+                        Section("PageRowLabel") {
+                            VStack(spacing: Spacing.s0) {
+                                PageRowLabel(icon: "🗺️", title: "Trip to Kyoto")
+                                PageRowLabel(icon: nil, title: "")
+                                PageRowLabel(icon: "📚", title: "Reading notes", nested: true)
+                            }
+                        }
+                        Section("PressEffect · PressableButtonStyle · HikkiButtonStyle") {
+                            HStack(spacing: Spacing.s3) {
+                                Button {
+                                } label: {
+                                    Text(verbatim: "A tile")
+                                        .padding(Spacing.s4)
+                                        .background(Theme.muted, in: .rect(cornerRadius: Radius.lg))
+                                }
+                                .buttonStyle(.pressable)
+                                Button("Continue") {}.buttonStyle(.hikki())
+                                Button("Skip") {}.buttonStyle(.hikki(.ghost))
+                            }
+                        }
                         Section("SelectableCard") {
                             HStack(spacing: Spacing.s2) {
                                 SelectableCard("On this device", detail: "Only here", icon: .house, isSelected: true) {}

@@ -199,6 +199,7 @@ public nonisolated enum Size {
     public static let toolbarButtonWidth: CGFloat = 40
     public static let toolbarButtonHeight: CGFloat = 36
     public static let touchTarget: CGFloat = 44
+    public static let touchRow: CGFloat = 43
     public static let keyboardBar: CGFloat = 48
     public static let sidebarIcon: CGFloat = 18
     public static let onboardingBadge: CGFloat = 64

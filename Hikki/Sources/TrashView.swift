@@ -80,9 +80,7 @@ struct TrashView: View {
         }
     }
 
-    private func title(_ page: PageSummary) -> String {
-        page.title.isEmpty ? String(localized: "app:page.untitled") : page.title
-    }
+    private func title(_ page: PageSummary) -> String { page.displayTitle }
 
     @ViewBuilder private func purgeLabel(_ page: PageSummary) -> some View {
         if let deletedAt = page.deletedAt, let purge = TrashPreferences.purgeDate(for: deletedAt) {

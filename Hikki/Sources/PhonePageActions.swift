@@ -144,7 +144,7 @@
 
         /// The page's title (or "Untitled").
         static func name(_ page: PageSummary) -> String {
-            page.title.isEmpty ? String(localized: "app:page.untitled") : page.title
+            page.displayTitle
         }
     }
 
@@ -165,7 +165,7 @@
                 .background(Theme.muted, in: .rect(cornerRadius: Radius.xl + Spacing.s1))
                 .contentShape(.rect(cornerRadius: Radius.xl + Spacing.s1))
             }
-            .buttonStyle(PressableStyle())
+            .buttonStyle(.pressable)
         }
     }
 

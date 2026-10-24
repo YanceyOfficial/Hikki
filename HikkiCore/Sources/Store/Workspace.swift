@@ -258,21 +258,6 @@ public enum WorkspaceFolder {
         }
     }
 
-    /// What a picked folder already holds, for onboarding's "Opens ‘Yancey’s Space’ (12 pages)"; nil for an
-    /// unused folder (or one whose identity is still downloading — then it reads as new; joining still
-    /// adopts the identity once it arrives).
-    public static func existingWorkspace(at url: URL) -> (name: String, pages: Int)? {
-        withAccess(to: url) { root in
-            guard let identity = try? readIdentity(in: root) else { return nil }
-            return (identity.name, pageCount(in: root))
-        }
-    }
-
-    /// How many pages a folder holds (downloaded or not) — "Open ‘Yancey’s Space’ (12 pages)".
-    public static func pageCount(in root: URL) -> Int {
-        PageFiles(root: root).presentIDs().count  // names only: no file is read
-    }
-
     /// Runs `body` with the folder's page files, holding security-scoped access to a picked folder meanwhile.
     public static func withPages<T>(of workspace: Workspace, appRoot: URL, _ body: (PageFiles) throws -> T) throws -> T {
         let folder = try url(for: workspace, appRoot: appRoot)

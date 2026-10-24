@@ -33,7 +33,7 @@ public struct SearchResultRow: View {
                 .padding(.top, Spacing.px)
             VStack(alignment: .leading, spacing: Spacing.s0_5) {
                 HStack(alignment: .firstTextBaseline, spacing: Spacing.s2) {
-                    HighlightedText(title.isEmpty ? String(localized: "app:page.untitled") : title, terms: terms)
+                    HighlightedText(PageTitle.display(title), terms: terms)
                         .font(.hk(.sm, .medium))
                         .foregroundStyle(Theme.foreground)
                         .lineLimit(1)

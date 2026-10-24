@@ -181,13 +181,12 @@ struct HomeView: View {
 
     private func rebuildRows() {
         let query = filter.trimmingCharacters(in: .whitespaces)
-        let untitled = String(localized: "app:page.untitled")
         rows = model.tree.all
             .map { page in
                 HomeRow(
-                    id: page.id, title: page.title.isEmpty ? untitled : page.title, icon: page.icon,
+                    id: page.id, title: page.displayTitle, icon: page.icon,
                     location: model.tree.path(to: page.id).dropLast()
-                        .map { $0.title.isEmpty ? untitled : $0.title }
+                        .map(\.displayTitle)
                         .joined(separator: " › "),
                     createdAt: page.createdAt, updatedAt: page.updatedAt, words: page.wordCount,
                     isFavorite: page.isFavorite, cover: page.cover)

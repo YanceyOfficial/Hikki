@@ -1022,7 +1022,7 @@ struct AIChatView: View {
                             ForEach(contextPages) { page in
                                 ContextChip(label: "app:ai.chat.removePage", remove: { remove(page.id) }) {
                                     PageIcon(page.icon, size: TextSize.sm.rawValue)
-                                    Text(verbatim: page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
+                                    Text(verbatim: page.displayTitle)
                                 }
                             }
                             if let selection = chat.contextSelection {
@@ -1366,8 +1366,7 @@ private struct SendButtonStyle: ButtonStyle {
             .foregroundStyle(Color(ink.resolve(in: environment)))
             .frame(width: Size.iconButton + Spacing.s1, height: Size.iconButton + Spacing.s1)
             .background(Color(fill.resolve(in: environment)), in: .circle)
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(Motion.easeOut(), value: configuration.isPressed)
+            .pressEffect(configuration.isPressed)
             .contentShape(.circle)
     }
 }
@@ -1416,7 +1415,7 @@ private struct MentionList: View {
                     HStack(spacing: Spacing.s2_5) {
                         PageIcon(page.icon, size: TextSize.base.rawValue)
                         VStack(alignment: .leading, spacing: Spacing.px) {
-                            Text(verbatim: page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
+                            Text(verbatim: page.displayTitle)
                                 .font(.hk(.sm))
                                 .foregroundStyle(Theme.foreground)
                             let path = model.tree.path(to: page.id).dropLast().map(\.title).joined(separator: " › ")

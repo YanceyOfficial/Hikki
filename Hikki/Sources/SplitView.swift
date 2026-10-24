@@ -298,10 +298,7 @@ private struct PaneBar: View {
         .accessibilityIdentifier("ai-toggle-\(side.rawValue)")
     }
 
-    static func title(_ page: PageSummary?) -> String {
-        guard let page, !page.title.isEmpty else { return String(localized: "app:page.untitled") }
-        return page.title
-    }
+    static func title(_ page: PageSummary?) -> String { PageTitle.display(page?.title ?? "") }
 }
 
 /// What an empty side offers: the PDFs at hand (attached to the other side's page, open in tabs) and recent pages. A page

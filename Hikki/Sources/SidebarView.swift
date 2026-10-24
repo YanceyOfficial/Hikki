@@ -406,7 +406,7 @@ private struct PageRowDragDrop: ViewModifier {
                 // The row as a rounded chip (the default preview was the bare row, square-cornered).
                 HStack(spacing: Spacing.s2) {
                     PageIcon(row.icon, size: Size.pageIcon)
-                    Text(row.title.isEmpty ? String(localized: "app:page.untitled") : row.title)
+                    Text(PageTitle.display(row.title))
                         .font(.hk(.md))
                         .foregroundStyle(Theme.foreground)
                         .lineLimit(1)
@@ -590,7 +590,7 @@ struct TrashConfirmation: ViewModifier {
     func body(content: Content) -> some View {
         let page = pageID.flatMap { model.tree.page($0) }
         let subpages = page.map { model.tree.subpageCount(of: $0.id) } ?? 0
-        let title = page.map { $0.title.isEmpty ? String(localized: "app:page.untitled") : $0.title } ?? ""
+        let title = page?.displayTitle ?? ""
         content.alert(
             "app:page.confirmTrash \(title)",
             isPresented: Binding(get: { page != nil }, set: { if !$0 { pageID = nil } })

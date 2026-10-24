@@ -18,7 +18,7 @@ struct PageScreen: View {
     #endif
 
     var body: some View {
-        screen.screenTitle(model.tree.page(pageID).map { Self.title($0) } ?? "")
+        screen.screenTitle(model.tree.page(pageID)?.displayTitle ?? "")
     }
 
     @ViewBuilder private var screen: some View {
@@ -37,7 +37,7 @@ struct PageScreen: View {
             .ignoresSafeArea(.keyboard)
         }
         // The Mac's toolbar names the page; on iOS the page shows its own title and the bar keeps only its glass buttons.
-        .navigationTitle(phoneToolbar || !Navigator.usesTabs ? "" : page.map { Self.title($0) } ?? "")
+        .navigationTitle(phoneToolbar || !Navigator.usesTabs ? "" : page?.displayTitle ?? "")
         #if os(macOS)
             // Breadcrumbs, natively: the path in the subtitle ("Parent › Child · Edited …")…
             .navigationSubtitle(page.map(subtitle) ?? Text(verbatim: ""))
@@ -48,7 +48,7 @@ struct PageScreen: View {
                 Button {
                     navigator.open(parent.id)
                 } label: {
-                    Text(verbatim: (parent.icon.map { "\($0) " } ?? "") + Self.title(parent))
+                    Text(verbatim: (parent.icon.map { "\($0) " } ?? "") + parent.displayTitle)
                 }
             }
         }
@@ -254,13 +254,10 @@ struct PageScreen: View {
         let edited = Text("app:page.edited \(page.updatedAt, format: .relative(presentation: .named))")
         guard !ancestors.isEmpty else { return edited }
         // The page titles, shown as-is.
-        let path = Text(verbatim: ancestors.map(Self.title).joined(separator: " › "))
+        let path = Text(verbatim: ancestors.map(\.displayTitle).joined(separator: " › "))
         return Text("app:common.joined \(path) \(edited)")
     }
 
-    private static func title(_ page: PageSummary) -> String {
-        page.title.isEmpty ? String(localized: "app:page.untitled") : page.title
-    }
 }
 
 /// A lock in the toolbar while the page is locked; pressing it unlocks (the page is read-only meanwhile).
@@ -442,7 +439,7 @@ struct PageFacts: View {
 
     var body: some View {
         let path = model.tree.path(to: page.id).dropLast()
-            .map { $0.title.isEmpty ? String(localized: "app:page.untitled") : $0.title }
+            .map(\.displayTitle)
         if !path.isEmpty {
             Text("app:page.location \(path.joined(separator: " › "))")
         }

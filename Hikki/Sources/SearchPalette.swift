@@ -298,8 +298,7 @@ struct SearchPalette: View {
     }
 
     private func path(of id: String) -> String {
-        model.tree.path(to: id).dropLast().map { $0.title.isEmpty ? String(localized: "app:page.untitled") : $0.title }.joined(
-            separator: " / ")
+        model.tree.path(to: id).dropLast().map(\.displayTitle).joined(separator: " / ")
     }
 
     private func move(_ delta: Int) -> KeyPress.Result {

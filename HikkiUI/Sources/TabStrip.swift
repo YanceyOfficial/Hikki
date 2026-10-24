@@ -124,7 +124,6 @@ public struct TabStrip<Leading: View>: View {
     @State private var dropTarget: TabStripDropTarget?
     /// The tab whose drag started last (its drag carries `UTType.hikkiTab`, which says a drop is one).
     @State private var movingTab: UUID?
-    @Environment(\.chromeMetrics) private var metrics
     @Environment(\.colorTone) private var colorTone
 
     public init(
@@ -169,7 +168,7 @@ public struct TabStrip<Leading: View>: View {
             if showsHistory { Spacer(minLength: 24) }
         }
         .padding(.horizontal, Spacing.s2)
-        .frame(height: metrics.barHeight)
+        .frame(height: Size.tabBar)
     }
 
     /// The tabs and "+", one drop area: a page lands between tabs or on one.
@@ -425,7 +424,7 @@ private struct TabButton: View {
             } else {
                 PageIcon(item.icon, size: Size.pageIcon)
             }
-            Text(item.title.isEmpty ? String(localized: "app:page.untitled") : item.title)
+            Text(verbatim: PageTitle.display(item.title))
                 .font(.hk(.md, isActive ? .medium : .regular))
                 .foregroundStyle(isActive ? Theme.foreground : Theme.subtleForeground)
                 .lineLimit(1)
@@ -455,7 +454,7 @@ private struct TabButton: View {
         .onHover { hovering = $0 }
         .modifier(TabDrag(item: dragItem))
         // The whole title, for a tab narrowed down to "N1…".
-        .toolTip(item.title.isEmpty ? String(localized: "app:page.untitled") : item.title)
+        .toolTip(PageTitle.display(item.title))
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isActive ? [.isButton, .isSelected] : .isButton)
         .accessibilityAction(named: "app:tabs.close", onClose)

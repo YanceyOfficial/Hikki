@@ -1,6 +1,7 @@
 import Foundation
 import HikkiCore
 import HikkiSearch
+import HikkiUI
 import Observation
 
 #if os(iOS)
@@ -12,7 +13,7 @@ import Observation
 final class AppModel {
     /// The losing side of a conflict becomes a page of its own, titled in the app's language.
     nonisolated static let conflictTitle: ConflictCopy.Title = { title, source in
-        let title = title.isEmpty ? String(localized: "app:page.untitled") : title
+        let title = PageTitle.display(title)
         return String(localized: "app:sync.conflictedCopy \(title) \(source)")
     }
 
@@ -53,8 +54,6 @@ final class AppModel {
         self.store = store
         self.searchIndexer = SearchIndexer(index: searchIndex, store: store, assets: assets)
         self.reminders = Reminders(store: store)
-        // Semantic search was removed (2026-10-15): its settings go too.
-        for key in ["semantic.enabled", "semantic.endpoint", "semantic.model"] { UserDefaults.standard.removeObject(forKey: key) }
         self.assets = assets
         self.crashReporter = crashReporter
         self.workspaceStore = workspaceStore

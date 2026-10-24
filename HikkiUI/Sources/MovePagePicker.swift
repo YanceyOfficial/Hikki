@@ -178,7 +178,7 @@ public struct MovePagePicker<Badge: View>: View {
             if !searching { disclosure(item) }
             PageIcon(item.icon, size: Size.pageIcon)
             VStack(alignment: .leading, spacing: Spacing.s0) {
-                Text(verbatim: Self.title(item.title))
+                Text(verbatim: PageTitle.display(item.title))
                     .font(.hk(.sm))
                     .foregroundStyle(item.isCurrent ? Theme.mutedForeground : Theme.foreground)
                     .lineLimit(1)
@@ -252,9 +252,6 @@ public struct MovePagePicker<Badge: View>: View {
         .accessibilityIdentifier("move-target-top")
     }
 
-    private static func title(_ title: String) -> String {
-        title.isEmpty ? String(localized: "app:page.untitled") : title
-    }
 
     /// The highlight stays on its row while it is still there, else goes to the first one that can be picked.
     private func keepSelection() {

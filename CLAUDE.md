@@ -27,7 +27,9 @@ These rules are mandatory. Automated ones are noted.
   `usePresence` (`apps/editor/src/components/floating.tsx`) — or `hk-pop-toggle` + `data-open` when they stay mounted. Lists
   mark the selected row with one gliding surface (`apps/editor/src/components/gliding-highlight.tsx`, rows `relative` +
   `data-index`), block tints fade (`.tiptap [data-id]`), hover fades and the 97 % press live in the shadcn `Button` /
-  `Toggle` (restyled in `apps/editor/src/components/ui/`); Swift uses `Motion.easeOut()`. No per-component durations, easings or
+  `Toggle` (restyled in `apps/editor/src/components/ui/`); Swift uses `Motion.easeOut()`, and its press is HikkiUI's
+  `PressEffect` (`.pressEffect(configuration.isPressed)` inside a `ButtonStyle`, `.buttonStyle(.pressable)` for a card
+  or tile that draws itself; `HikkiButtonStyle` uses it). No per-component durations, easings or
   tw-animate classes. _Enforced by `make lint-design`._
 - **Reusable UI lives in `HikkiUI`** (no app state: plain values + closures, a `#Preview` each, listed in the DEBUG
   gallery `Hikki/Sources/ComponentGallery.swift`, launch argument `-HikkiGallery`). Native components follow the same
@@ -68,7 +70,9 @@ These rules are mandatory. Automated ones are noted.
 - **Copy language.** User-facing strings are keys, never literals: native `app:<area>.<element>` keys in
   `Hikki/Resources/Localization/Localizable.xcstrings` (interpolations become `%@`, e.g. `app:page.edited %@`); web
   `t('area.key')` with catalogs in `apps/editor/src/locales/`. English is the source; zh-Hans must be complete. The native
-  side tells the editor its language (`window.hikki.setLocale`). _Enforced by `make lint-l10n`
+  side tells the editor its language (`window.hikki.setLocale`). A page's title as shown is
+  `PageSummary.displayTitle` — HikkiUI's `PageTitle.display`, the one place the "Untitled" fallback is written (a
+  row that mutes an empty title draws `app:page.untitled` itself). _Enforced by `make lint-l10n`
   (`scripts/l10n-audit.mjs`): missing / unused keys, untranslated values, placeholder mismatches, literal UI text._
 - **Secrets stay server-side.** Third-party API keys (Unsplash) live only in the BFF (`apps/bff/`, Hono on Vercel).
   Unsplash rules: hotlink `urls`, attribute the photographer with utm links, report picks via the download endpoint.
@@ -226,7 +230,8 @@ HikkiUITests/                 XCUITest flows
   `simctl io <device> enumerate`) — the default display may be the Duo's inner screen, black while folded (prototype: the "Hikki iPhone redesign" canvas): the collapsed
   split view's sidebar column is `Hikki/Sources/PhoneHome.swift` (a ☰ · Home top bar, All pages / Trash tiles,
   "Jump back in" cards, Quick create — a blank page, today's note titled with the date, a page from the clipboard
-  (`QuickNote`, HikkiCore) — Ask AI suggestions sent with this week's pages (`Navigator.pendingAIQuestion`), This
+  (`QuickNote`, HikkiCore) — Ask AI suggestions sent with this week's pages (`Navigator.pendingAIQuestion`); its
+  page rows and the drawer's are HikkiUI's `PageRowLabel` (icon, title, `Size.touchRow` tall), This
   week — HikkiUI's `WeekActivityCard` over the store's daily activity, every device's writing (a newer page from the
   folder counts its added words on the day it was edited, `importPage(_:expecting:)`) — recently edited, and favorites; the lists come
   from a `HomeDigest` (HikkiCore) worked out per tree change, the activity read in a task) and opening anything shows the detail through `Navigator.compactColumn`

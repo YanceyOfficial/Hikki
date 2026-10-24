@@ -74,7 +74,7 @@ struct ContentView: View {
     /// confirmation offers to open it.
     private static func moveBlocks(_ request: BlockMoveRequest, model: AppModel?, navigator: Navigator?) async -> Bool {
         guard let model, let title = await model.moveBlocks(request) else { return false }
-        let name = title.isEmpty ? String(localized: "app:page.untitled") : title
+        let name = PageTitle.display(title)
         Toasts.shared.show(.success, String(localized: "app:toast.blocksMoved \(name)"), actionTitle: "app:toast.openPage") {
             [weak navigator] in navigator?.open(request.target)
         }

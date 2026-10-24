@@ -52,7 +52,7 @@ struct MovePageSheet: View {
             MovePickerItem(
                 id: choice.id, title: choice.title, icon: choice.icon, depth: choice.depth, hasChildren: choice.hasChildren,
                 isExpanded: choice.isExpanded, isCurrent: choice.isCurrentParent,
-                path: choice.path.map { $0.isEmpty ? String(localized: "app:page.untitled") : $0 }.joined(separator: " / "))
+                path: choice.path.map(PageTitle.display).joined(separator: " / "))
         }
     }
 }

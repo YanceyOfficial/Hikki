@@ -27,7 +27,7 @@ struct UpcomingSection<Header: View>: View {
     static func row(_ entry: DateEntry, now: Date) -> UpcomingList.Row {
         let calendar = Calendar.current
         let mention = entry.mention
-        let page = entry.pageTitle.isEmpty ? String(localized: "app:page.untitled") : entry.pageTitle
+        let page = PageTitle.display(entry.pageTitle)
         let kind: UpcomingList.Kind =
             if mention.remind == nil { .date } else if mention.done { .done } else if mention.isOverdue(now: now, calendar: calendar) {
                 .overdue

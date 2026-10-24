@@ -47,8 +47,7 @@ public struct HikkiButtonStyle: ButtonStyle {
                     }
                 }
                 .opacity(isEnabled ? 1 : 0.5)
-                .scaleEffect(configuration.isPressed ? 0.97 : 1)
-                .animation(Motion.easeOut(Motion.popOut), value: configuration.isPressed)
+                .pressEffect(configuration.isPressed)
                 .contentShape(shape)
                 .onHover { hovering = $0 }
         }

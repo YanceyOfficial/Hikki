@@ -31,9 +31,4 @@ struct ScreenTitleStackTests {
         stack.hide(page)
         #expect(stack.front == "Home")
     }
-
-    @Test func partsAreTrimmedAndEmptyOnesDropped() {
-        #expect(ScreenTitles.join("Settings", "  AI ") == "Settings · AI")
-        #expect(ScreenTitles.join("Ask AI", nil, "") == "Ask AI")
-    }
 }

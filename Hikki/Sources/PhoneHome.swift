@@ -387,7 +387,7 @@
                 .background(Theme.muted, in: .rect(cornerRadius: Radius.xl + Spacing.s0_5))
                 .contentShape(.rect(cornerRadius: Radius.xl + Spacing.s0_5))
             }
-            .buttonStyle(PressableStyle())
+            .buttonStyle(.pressable)
         }
     }
 
@@ -409,7 +409,7 @@
                         .padding(.top, -(Spacing.s3_5))
                         .padding(.leading, Spacing.s3)
                     VStack(alignment: .leading, spacing: Spacing.s0_5) {
-                        Text(verbatim: page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
+                        Text(verbatim: page.displayTitle)
                             .font(.hk(.sm, .semibold))
                             .foregroundStyle(Theme.foreground)
                             .lineLimit(1)
@@ -427,7 +427,7 @@
                 .clipShape(.rect(cornerRadius: Radius.xl + Spacing.s0_5))
                 .contentShape(.rect(cornerRadius: Radius.xl + Spacing.s0_5))
             }
-            .buttonStyle(PressableStyle())
+            .buttonStyle(.pressable)
             .accessibilityIdentifier("recent-\(page.title)")
         }
 
@@ -446,17 +446,7 @@
                 Button {
                     navigator.open(page.id)
                 } label: {
-                    HStack(spacing: Spacing.s2_5) {
-                        PageIcon(page.icon, size: TextSize.lg.rawValue)
-                            .frame(width: Size.iconButton)
-                        Text(verbatim: page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
-                            .font(.hk(.base))
-                            .foregroundStyle(Theme.foreground)
-                            .lineLimit(1)
-                        Spacer(minLength: 0)
-                    }
-                    .frame(height: Size.row + Spacing.s3)
-                    .contentShape(.rect)
+                    PageRowLabel(icon: page.icon, title: page.title)
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("page-row-\(page.title)")
@@ -467,14 +457,6 @@
         }
     }
 
-    /// The 97 % press of the design's buttons, for whole cards and tiles.
-    struct PressableStyle: ButtonStyle {
-        func makeBody(configuration: Configuration) -> some View {
-            configuration.label
-                .scaleEffect(configuration.isPressed ? 0.97 : 1)
-                .animation(Motion.easeOut(Motion.popOut), value: configuration.isPressed)
-        }
-    }
     extension View {
         /// Keeps a top bar clear of the screen's top edge where the safe area doesn't: an iPhone Duo shows its status
         /// bar in the strip beside the camera, so its top inset is a few points and a button there sits in the

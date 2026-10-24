@@ -1,5 +1,6 @@
 import Foundation
 import HikkiCore
+import HikkiUI
 import Observation
 import UserNotifications
 import os
@@ -222,7 +223,7 @@ nonisolated final class ReminderCenter: NSObject, UNUserNotificationCenterDelega
     /// unless the reader lets it show previews).
     static func request(for entry: DateEntry, at fire: DateComponents) -> UNNotificationRequest {
         let content = UNMutableNotificationContent()
-        let page = entry.pageTitle.isEmpty ? String(localized: "app:page.untitled") : entry.pageTitle
+        let page = PageTitle.display(entry.pageTitle)
         content.title = entry.found.text.isEmpty ? page : entry.found.text
         content.body = entry.found.text.isEmpty ? "" : page
         content.sound = .default
