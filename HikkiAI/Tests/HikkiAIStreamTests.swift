@@ -211,6 +211,11 @@ struct ImageSearchRequestTests {
 }
 
 struct ThinkingTests {
+    private func body(_ request: URLRequest) throws -> [String: Any] {
+        let data = try #require(request.httpBody)
+        return try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    }
+
     @Test func openAIStreamsItsReasoningSummary() {
         let lines = [
             #"data: {"type":"response.reasoning_summary_part.added","summary_index":0}"#,
@@ -248,10 +253,41 @@ struct ThinkingTests {
         #expect(try json(RequestBuilders.anthropic(request, apiKey: "k"))["thinking"] == nil)
         request.reasoning = true
         let anthropic = try json(RequestBuilders.anthropic(request, apiKey: "k"))
-        #expect((anthropic["thinking"] as? [String: Any])?["budget_tokens"] as? Int == RequestBuilders.anthropicThinkingBudget)
+        #expect((anthropic["thinking"] as? [String: Any])?["type"] as? String == "adaptive")
         #expect(anthropic["max_tokens"] as? Int == 1000 + RequestBuilders.anthropicThinkingBudget)
         request.model = AIModelCatalog.gptSol
         #expect((try json(RequestBuilders.openAI(request, apiKey: "k"))["reasoning"] as? [String: Any])?["summary"] as? String == "auto")
+    }
+
+    /// ISSUE-196: the 5.5 models answer `{"type": "enabled", "budget_tokens": …}` with a 400 ("use thinking.type.adaptive
+    /// and output_config.effort"), so every Anthropic model in the catalog asks for adaptive thinking with an effort.
+    @Test func currentAnthropicModelsThinkAdaptivelyWithAnEffort() throws {
+        for model in [AIModelCatalog.opus, AIModelCatalog.sonnet, AIModelCatalog.haiku] {
+            #expect(model.thinking == .adaptive(effort: .medium))
+            var request = AIRequest(model: model, instructions: "", messages: [.user("hi")], maxOutputTokens: 1000)
+            request.reasoning = true
+            let json = try body(RequestBuilders.anthropic(request, apiKey: "k"))
+            let thinking = try #require(json["thinking"] as? [String: Any])
+            #expect(thinking["type"] as? String == "adaptive")
+            // Summarized: the default (omitted) streams thinking blocks with no text for the chat's timeline.
+            #expect(thinking["display"] as? String == "summarized")
+            #expect(thinking["budget_tokens"] == nil)
+            #expect((json["output_config"] as? [String: Any])?["effort"] as? String == "medium")
+            #expect(json["max_tokens"] as? Int == 1000 + RequestBuilders.anthropicThinkingBudget)
+        }
+    }
+
+    @Test func anOlderAnthropicModelThinksOnABudget() throws {
+        let older = AIModel(
+            id: "claude-haiku-4-5", provider: .anthropic, family: "Haiku", version: "4.5", thinking: .budget(tokens: 2048))
+        var request = AIRequest(model: older, instructions: "", messages: [.user("hi")], maxOutputTokens: 1000)
+        request.reasoning = true
+        let json = try body(RequestBuilders.anthropic(request, apiKey: "k"))
+        let thinking = try #require(json["thinking"] as? [String: Any])
+        #expect(thinking["type"] as? String == "enabled")
+        #expect(thinking["budget_tokens"] as? Int == 2048)
+        #expect(json["output_config"] == nil)
+        #expect(json["max_tokens"] as? Int == 1000 + RequestBuilders.anthropicThinkingBudget)
     }
 
     @Test func stepsAreTitledByTheirBoldLine() {

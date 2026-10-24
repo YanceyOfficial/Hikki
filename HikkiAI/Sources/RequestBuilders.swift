@@ -5,7 +5,8 @@ enum RequestBuilders {
     static let openAIURL = AIEndpoint.requestURL(.openAI, base: AIEndpoint.defaultBase(.openAI))
     static let anthropicURL = AIEndpoint.requestURL(.anthropic, base: AIEndpoint.defaultBase(.anthropic))
     static let anthropicVersion = "2023-06-01"
-    /// Tokens Anthropic's models may think with before answering (extended thinking's minimum is 1024).
+    /// Tokens Anthropic's models may think with before answering, added on top of the answer's `max_tokens` (thinking
+    /// counts toward it); the fixed budget for models that take one (extended thinking's minimum is 1024).
     static let anthropicThinkingBudget = 4096
 
     /// OpenAI's Responses API: `instructions` + `input` messages (images as data URLs), the `web_search` tool (with its
@@ -110,9 +111,17 @@ enum RequestBuilders {
         tools += request.tools.map { ["name": $0.name, "description": $0.description, "input_schema": $0.schema] }
         if !tools.isEmpty { body["tools"] = tools }
         if !request.tools.isEmpty, !request.toolsAllowed { body["tool_choice"] = ["type": "none"] }
-        // Extended thinking: its budget comes on top of the answer's (max_tokens must exceed it).
+        // Thinking, as the model takes it (`AIThinkingStyle`): adaptive with an effort on current models — which answer
+        // a fixed budget with a 400 — a budget on older ones. Its tokens count toward max_tokens, so the answer keeps
+        // its own room on top. Summarized, since the default (omitted) streams thinking blocks with no text.
         if request.reasoning {
-            body["thinking"] = ["type": "enabled", "budget_tokens": anthropicThinkingBudget]
+            switch request.model.thinking ?? .adaptive(effort: .medium) {
+            case .adaptive(let effort):
+                body["thinking"] = ["type": "adaptive", "display": "summarized"]
+                body["output_config"] = ["effort": effort.rawValue]
+            case .budget(let tokens):
+                body["thinking"] = ["type": "enabled", "budget_tokens": tokens]
+            }
             body["max_tokens"] = request.maxOutputTokens + anthropicThinkingBudget
         }
         var http = URLRequest(url: url)

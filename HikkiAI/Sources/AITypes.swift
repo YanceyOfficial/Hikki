@@ -20,15 +20,31 @@ public struct AIModel: Identifiable, Hashable, Codable, Sendable {
     public let family: String
     /// "5.5", "Sol" — shown after the family, quieter.
     public let version: String
+    /// How an Anthropic model is asked to think (nil: OpenAI's, which take `reasoning` instead).
+    public let thinking: AIThinkingStyle?
 
-    public init(id: String, provider: AIProvider, family: String, version: String) {
+    public init(id: String, provider: AIProvider, family: String, version: String, thinking: AIThinkingStyle? = nil) {
         self.id = id
         self.provider = provider
         self.family = family
         self.version = version
+        self.thinking = thinking
     }
 
     public var displayName: String { "\(family) \(version)" }
+}
+
+/// How an Anthropic model thinks when a request asks it to. Current models (the 4.6 generation on) decide how much to
+/// think themselves — `adaptive`, steered by an effort — and refuse a fixed budget with a 400; older ones only take a
+/// `budget` of thinking tokens (at least 1024).
+public enum AIThinkingStyle: Hashable, Codable, Sendable {
+    case adaptive(effort: AIEffort)
+    case budget(tokens: Int)
+}
+
+/// Anthropic's `output_config.effort`: how thoroughly the model thinks and how many tokens it spends.
+public enum AIEffort: String, Hashable, Codable, Sendable {
+    case low, medium, high
 }
 
 /// A turn of a conversation.
