@@ -1335,6 +1335,8 @@ final class EditorController {
 
     private func makeWebView() -> HikkiWebView {
         let configuration = WKWebViewConfiguration()
+        // An embedded page may open a window only from a click (`EditorUIDelegate` checks that too).
+        configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
         configuration.setURLSchemeHandler(schemeHandler, forURLScheme: EditorSchemeHandler.scheme)
         configuration.userContentController.addScriptMessageHandler(
             ScriptMessageProxy(owner: self), contentWorld: .page, name: "hikki"
@@ -1440,17 +1442,25 @@ private final class ScriptMessageProxy: NSObject, WKScriptMessageHandlerWithRepl
 /// `<input type="file">` (covers, media, attachments): iOS presents the system picker itself, but a macOS WKWebView
 /// does nothing unless the UI delegate shows an open panel.
 private final class EditorUIDelegate: NSObject, WKUIDelegate {
-    /// A link inside an embed that wants a new window (target=_blank, window.open): the system browser gets it.
+    /// A link inside an embed that wants a new window (target=_blank, window.open from a click): the system browser
+    /// gets it. Only a click (`EditorNavigationPolicy`, with no target frame): an embedded page calling `window.open`
+    /// by itself — on load, on a timer — opens nothing, and the web view's preferences refuse those outright.
     func webView(
         _ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
         for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures
     ) -> WKWebView? {
-        if let url = navigationAction.request.url, url.scheme == "https" || url.scheme == "http" {
+        let url = navigationAction.request.url
+        let decision = EditorNavigationPolicy.decide(
+            url: url, isMainFrame: nil, isLinkClick: navigationAction.navigationType == .linkActivated,
+            editorScheme: EditorSchemeHandler.scheme)
+        if decision == .openOutside, let url {
             #if os(iOS)
                 UIApplication.shared.open(url)
             #else
                 NSWorkspace.shared.open(url)
             #endif
+        } else {
+            Log.warn("popup from a frame refused", category: "bridge", context: ["click": "\(navigationAction.navigationType == .linkActivated)"])
         }
         return nil
     }

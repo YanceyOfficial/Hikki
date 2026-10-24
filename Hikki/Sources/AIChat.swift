@@ -636,6 +636,8 @@ final class AIChat {
         var record = ChatToolCall(
             id: call.id, name: call.name, path: fields["path"] as? String ?? "", pattern: fields["pattern"] as? String)
         Log.info("AI tool", category: "ai", context: ["tool": call.name])
+        /// The change as the card showed it: what runs once allowed, never a fresh plan (`perform(_:approved:)`).
+        var approved: WorkspaceFiles.Change?
         if tool.changesFiles {
             switch await Task.detached(operation: { files.change(for: call) }).value {
             case .failure(let failure):
@@ -644,6 +646,7 @@ final class AIChat {
                 addTool(record, to: answer)
                 return .failure(failure.message)
             case .success(let change):
+                approved = change
                 record.path = change.path
                 // The card asks with the whole change — nothing cut — so what is allowed is what is shown; the texts are
                 // capped only when the turn is kept (`Message.turn`).
@@ -680,7 +683,10 @@ final class AIChat {
         } else {
             addTool(record, to: answer)
         }
-        let output = await Task.detached(operation: { files.perform(call) }).value
+        let shown = approved
+        let output = await Task.detached(operation: {
+            if let shown { files.perform(call, approved: shown) } else { files.perform(call) }
+        }).value
         updateTool(call.id, in: answer) { $0.record(output) }
         if let m = messages.firstIndex(where: { $0.id == answer }) { keep([messages[m]]) }
         return output

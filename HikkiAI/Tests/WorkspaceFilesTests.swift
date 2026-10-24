@@ -144,4 +144,27 @@ struct WorkspaceFilesTests {
         #expect(new.before == nil)
         #expect(WorkspaceFiles.Tool.editFile.changesFiles && !WorkspaceFiles.Tool.readFile.changesFiles)
     }
+
+    /// An approved change is written as the card showed it; a file that moved on since is refused, untouched.
+    @Test func anApprovedChangeIsWrittenAsShownOrRefusedWhenTheFileMovedOn() throws {
+        let call = AIToolCall(id: "c", name: "edit_file", arguments: #"{"path":"notes/plan.md","old_string":"train","new_string":"bus"}"#)
+        let change = try files.change(for: call).get()
+        // The file changes between the card and Allow: the plan would now find "train" elsewhere.
+        try "# Plan\nBook the train.\nBook the train again.\n".write(
+            to: folder.appending(path: "notes/plan.md"), atomically: true, encoding: .utf8)
+        let refused = files.perform(call, approved: change)
+        #expect(refused.isError)
+        #expect(refused.text.contains("changed since"))
+        #expect(try text("notes/plan.md") == "# Plan\nBook the train.\nBook the train again.\n")
+        // Put back as shown: the approved text goes in, not a fresh plan.
+        try change.before!.write(to: folder.appending(path: "notes/plan.md"), atomically: true, encoding: .utf8)
+        let written = files.perform(call, approved: change)
+        #expect(!written.isError)
+        #expect(try text("notes/plan.md") == change.after)
+        // A new file approved and created meanwhile by something else is refused too.
+        let fresh = try files.change(for: AIToolCall(id: "w", name: "write_file", arguments: #"{"path":"b.md","content":"x"}"#)).get()
+        try "someone else's".write(to: folder.appending(path: "b.md"), atomically: true, encoding: .utf8)
+        #expect(files.perform(AIToolCall(id: "w", name: "write_file", arguments: #"{"path":"b.md","content":"x"}"#), approved: fresh).isError)
+        #expect(try text("b.md") == "someone else's")
+    }
 }

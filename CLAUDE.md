@@ -539,8 +539,11 @@ HikkiUITests/                 XCUITest flows
   the `linkPreview` bridge request (exodus's `safe-fetch` rules: http/https, public hosts only, every redirect checked)
   and stored in the block when it is added; an older card without details reads them for display only. The height is an attribute, set by the handle
   under the frame. The native navigation delegate lets https / about: load in subframes only, and popups from a frame
-  open in the system browser (`HikkiCore/Sources/Bridge/EditorNavigationPolicy.swift` decides; the editor's own scheme
-  loads as the page only — in a frame it would be same-origin with the page). Embedded pages are hostile by default:
+  open in the system browser — from a click only: `window.open` on load opens nothing, and
+  `javaScriptCanOpenWindowsAutomatically` is off (`HikkiCore/Sources/Bridge/EditorNavigationPolicy.swift` decides both
+  the navigation and the UI delegate's new window; the editor's own scheme loads as the page only — in a frame it
+  would be same-origin with the page; the bundle's files are served by path component under its folder,
+  `BundleFiles`, so a sibling named like it is outside). Embedded pages are hostile by default:
   the bridge drops script messages from any frame but the editor's own main frame (`BridgeProtocol.trustsFrame` —
   WebKit hands `messageHandlers` to every frame), and a stored embed `src` loads only when it is an https page
   (`safeFrameSrc`). YouTube's player refuses to play (error 153) without an HTTP Referer, which a page on
@@ -895,7 +898,9 @@ HikkiUITests/                 XCUITest flows
   (`ChatTurn.tools`), drawn by HikkiUI's `ToolCallCards` (diffs: `LineDiff` in HikkiCore; mapping in
   `Hikki/Sources/AIChatTools.swift`). Settings → AI → Use files in the workspace folder (`AIPreferences.usesFiles`,
   off by default: a file read goes to the model and may carry instructions meant to send it on) turns them on. The
-  card asks with the whole change (texts are capped only when the turn is kept, `ChatToolCall.kept`), and a change
+  card asks with the whole change (texts are capped only when the turn is kept, `ChatToolCall.kept`), Allow writes
+  exactly the text the card showed (`WorkspaceFiles.perform(_:approved:)`: a file that changed since the card is
+  refused, nothing written — never a fresh plan), and a change
   too large to diff is refused, not asked about; protected names are compared folded (case, width, accents) and by
   their name on disk (`WorkspaceFiles.isProtected`).
   With web search on, the chat also asks OpenAI's search for pictures (`AIRequest.imageResults`: `search_content_types` + `include: web_search_call.results`, read from the search call's `image_result`s as `.image`) and shows them under the answer (HikkiUI's `ImageResultStrip`, kept as `ChatTurn.images`): Add to page fetches one into the assets (`WebImage`, `HikkiCore/Sources/Text/WebImage.swift`: LinkPreview's public-host rules) and puts it at the caret (`EditorController.insertWebImage`). While the model works the chat's "Thinking…" / "Searching the web…" line is HikkiUI's `ShimmerText` (a foreground

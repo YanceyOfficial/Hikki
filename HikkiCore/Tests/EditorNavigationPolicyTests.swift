@@ -34,6 +34,9 @@ struct EditorNavigationPolicyTests {
         #expect(decide("mailto:someone@example.com", isMainFrame: true, isLinkClick: true) == .openOutside)
         #expect(decide("https://example.com/", isMainFrame: nil, isLinkClick: true) == .openOutside)
         #expect(decide("https://example.com/", isMainFrame: true, isLinkClick: false) == .cancel)
+        // A new window an embedded page asks for by itself (`window.open` on load, no click) opens nothing.
+        #expect(decide("https://example.com/", isMainFrame: nil, isLinkClick: false) == .cancel)
+        #expect(decide("http://example.com/", isMainFrame: nil, isLinkClick: false) == .cancel)
         // A link in an embedded page must not launch other apps.
         #expect(decide("file:///Applications", isMainFrame: false, isLinkClick: true) == .cancel)
         #expect(decide("x-apple.systempreferences:com.apple.preference", isMainFrame: false, isLinkClick: true) == .cancel)
