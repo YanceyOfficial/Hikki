@@ -419,6 +419,7 @@ final class AppModel {
     func refreshFromCloud() async {
         Log.info("cloud refresh pulled", category: "cloud")
         guard let cloud else { return }
+        cloud.retryHeldBack()
         await cloud.sendNow()
         await cloud.fetchNow()
         reconcileWorkspace(fetch: false)
@@ -427,6 +428,8 @@ final class AppModel {
     func reconcileWorkspace(fetch: Bool = true) {
         guard let sync else { return }
         if fetch, let cloud {
+            // Back in the app: files waiting after "storage full" are tried again too.
+            cloud.retryHeldBack()
             cloud.noteLocalChanges(after: 0)
             Task { await cloud.fetchNow() }
         }

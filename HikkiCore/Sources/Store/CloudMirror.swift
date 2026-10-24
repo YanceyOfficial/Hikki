@@ -41,13 +41,24 @@ public final class CloudMirror: @unchecked Sendable {
         }
     }
 
-    /// A file as it goes up: its contents read once, so what the cloud gets is what `saved` records.
+    /// A file as it goes up: its contents read once — in memory, or copied aside for an asset (`staged`) — so what the
+    /// cloud gets is what `saved` records.
     public struct Outgoing: Sendable {
         public var path: String
-        public var contents: Data
+        /// The contents, when they travel inside the record (nil when staged, or once no longer needed).
+        public var contents: Data?
+        /// The copy that goes up as the record's asset.
+        public var staged: URL?
         public var size: Int64
         public var modified: Date
         public var hash: String
+    }
+
+    /// A file the cloud refused as it is now: for good (too large, not accepted) or until `until` (storage full).
+    struct Hold {
+        var size: Int64
+        var modified: Date
+        var until: Date?
     }
 
     public struct Options: Sendable {
@@ -75,6 +86,10 @@ public final class CloudMirror: @unchecked Sendable {
     private var namesByPath: [String: String] = [:]
     /// How many record names were worked out (tests: once per path).
     private var namesComputed = 0
+    /// Files the cloud refused (`hold`), by path: the scan leaves them out while they are as they were then — and,
+    /// for a refusal that may pass (storage full), until its time — so they aren't read and sent again every ten
+    /// seconds. In memory only: a relaunch tries each once more, and that is a fair time to. Under `lock`.
+    private var holds: [String: Hold] = [:]
 
     public init(root: URL, stateURL: URL, options: Options = Options()) {
         self.root = root
@@ -141,7 +156,10 @@ public final class CloudMirror: @unchecked Sendable {
     /// The cloud lost what it had (its zone was deleted): nothing agreed with it holds any more. The files stay;
     /// every one goes up again — to the same account.
     public func forgetCloud() {
-        lock.withLock { state = State(account: state.account) }
+        lock.withLock {
+            state = State(account: state.account)
+            holds = [:]
+        }
         persist()
     }
 
@@ -158,6 +176,7 @@ public final class CloudMirror: @unchecked Sendable {
                 if let previous = state.releasedFrom, previous != user {
                     state.entries = [:]
                     state.engine = nil
+                    holds = [:]
                     handedOver = true
                 }
                 state.account = user
@@ -183,23 +202,36 @@ public final class CloudMirror: @unchecked Sendable {
     // MARK: - Going up
 
     /// What changed in the folder since it last agreed with the cloud: files new or different (by size and date,
-    /// then by contents), and files gone.
-    public func localChanges() -> [Change] {
+    /// then by contents), and files gone. A file the cloud refused as it still is (`hold`) is left out.
+    public func localChanges(now: Date = .now) -> [Change] {
         let files = listFiles()
+        // Only files whose size or date moved since they agreed are read — outside the lock, a large one takes a while.
+        let suspects: [(path: String, url: URL)] = lock.withLock {
+            files.compactMap { path, file in
+                guard let entry = state.entries[path], entry.size != file.size || entry.modified != file.modified else {
+                    return nil
+                }
+                return (path, file.url)
+            }
+        }
+        var hashes: [String: String] = [:]
+        for suspect in suspects {
+            if let hash = Self.hash(fileAt: suspect.url) { hashes[suspect.path] = hash }
+        }
         return lock.withLock {
             var changes: [Change] = []
             for (path, file) in files.sorted(by: { $0.key < $1.key }) {
                 guard let entry = state.entries[path] else {
-                    changes.append(.save(path))
+                    if !isHeld(path, file, now: now) { changes.append(.save(path)) }
                     continue
                 }
                 if entry.size == file.size, entry.modified == file.modified { continue }
-                guard let data = try? Data(contentsOf: file.url) else { continue }
-                if Self.hash(data) == entry.hash {
+                guard let hash = hashes[path] else { continue }
+                if hash == entry.hash {
                     // Touched, not changed (an atomic rewrite of the same words): only the stamp moves.
                     state.entries[path]?.size = file.size
                     state.entries[path]?.modified = file.modified
-                } else {
+                } else if !isHeld(path, file, now: now) {
                     changes.append(.save(path))
                 }
             }
@@ -210,12 +242,56 @@ public final class CloudMirror: @unchecked Sendable {
         }
     }
 
-    /// The file as it is now, to go up; nil when it is gone (its deletion goes up instead).
-    public func outgoing(_ path: String) -> Outgoing? {
+    /// Whether the scan leaves the file out: refused as it still is, and — for a refusal that may pass — not yet
+    /// time to try again. A hold the file outgrew goes. Call under `lock`.
+    private func isHeld(_ path: String, _ file: FileInfo, now: Date) -> Bool {
+        guard let hold = holds[path] else { return false }
+        if hold.size == file.size, hold.modified == file.modified, hold.until.map({ now < $0 }) ?? true { return true }
+        holds[path] = nil
+        return false
+    }
+
+    /// The cloud refused `file` as it is: the scan leaves it out until it changes — or, with `until` (storage full),
+    /// until then.
+    public func hold(_ file: Outgoing, until: Date?) {
+        lock.withLock { holds[file.path] = Hold(size: file.size, modified: file.modified, until: until) }
+    }
+
+    /// Files held for a while go now (storage was freed — a save went through — or the user asked to sync);
+    /// returns whether there were any.
+    @discardableResult
+    public func releaseTimedHolds() -> Bool {
+        lock.withLock {
+            let before = holds.count
+            holds = holds.filter { $0.value.until == nil }
+            return holds.count != before
+        }
+    }
+
+    /// The file as it is now, to go up; nil when it is gone (its deletion goes up instead). `stage` says, from its
+    /// size, where to copy it when it goes as an asset (nil: its contents travel in the record): the copy is what is
+    /// sent and hashed, read in chunks, so a large file is never held in memory whole.
+    public func outgoing(_ path: String, stage: (Int64) -> URL? = { _ in nil }) -> Outgoing? {
         guard Self.isSyncable(path) else { return nil }
         let url = root.appending(path: path)
-        guard let data = try? Data(contentsOf: url), let attributes = Self.attributes(of: url) else { return nil }
-        return Outgoing(path: path, contents: data, size: attributes.size, modified: attributes.modified, hash: Self.hash(data))
+        guard let attributes = Self.attributes(of: url) else { return nil }
+        if let copy = stage(attributes.size) {
+            do {
+                let manager = FileManager.default
+                try manager.createDirectory(at: copy.deletingLastPathComponent(), withIntermediateDirectories: true)
+                if manager.fileExists(atPath: copy.path) { try manager.removeItem(at: copy) }
+                try manager.copyItem(at: url, to: copy)
+            } catch {
+                Log.error("cloud asset staging failed: \(error)", category: "cloud", context: ["kind": Self.kind(of: path)])
+                return nil
+            }
+            guard let hash = Self.hash(fileAt: copy) else { return nil }
+            return Outgoing(
+                path: path, contents: nil, staged: copy, size: attributes.size, modified: attributes.modified, hash: hash)
+        }
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return Outgoing(
+            path: path, contents: data, staged: nil, size: attributes.size, modified: attributes.modified, hash: Self.hash(data))
     }
 
     /// The cloud took `file` as the record whose system fields are `systemFields`.
@@ -436,6 +512,21 @@ public final class CloudMirror: @unchecked Sendable {
 
     static func hash(_ data: Data) -> String {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// The same hash of a file's contents, read a megabyte at a time; nil when it can't be read.
+    static func hash(fileAt url: URL) -> String? {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? handle.close() }
+        var hasher = SHA256()
+        do {
+            while let chunk = try handle.read(upToCount: 1 << 20), !chunk.isEmpty {
+                hasher.update(data: chunk)
+            }
+        } catch {
+            return nil
+        }
+        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 
     /// Runs `body` saving the state once at its end, not after every file (a fetch brings thousands).
