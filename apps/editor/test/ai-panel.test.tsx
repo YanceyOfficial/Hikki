@@ -25,6 +25,30 @@ const panel = () => {
   return onRun
 }
 
+describe('the AI panel’s field', () => {
+  it('is a textarea of one line that may grow to three; Enter sends, ⇧Enter breaks a line', () => {
+    const onRun = panel()
+    const field = screen.getByTestId('selection-menu-ai-input') as HTMLTextAreaElement
+    expect(field.tagName).toBe('TEXTAREA')
+    expect(field.getAttribute('rows')).toBe('1')
+    expect(field.className).toContain('max-h-[3lh]')
+    fireEvent.change(field, { target: { value: 'first line' } })
+    fireEvent.keyDown(field, { key: 'Enter', shiftKey: true })
+    expect(onRun).not.toHaveBeenCalled()
+    fireEvent.change(field, { target: { value: ' first line\nsecond line ' } })
+    fireEvent.keyDown(field, { key: 'Enter' })
+    expect(onRun).toHaveBeenCalledWith({ id: 'custom', instruction: 'first line\nsecond line' })
+  })
+
+  it('an empty field sends nothing', () => {
+    const onRun = panel()
+    const field = screen.getByTestId('selection-menu-ai-input')
+    fireEvent.change(field, { target: { value: '  \n ' } })
+    fireEvent.keyDown(field, { key: 'Enter' })
+    expect(onRun).not.toHaveBeenCalled()
+  })
+})
+
 describe('the AI panel’s model', () => {
   it('runs on the default unless another is picked, and offers no choice without a key', () => {
     const onRun = panel()

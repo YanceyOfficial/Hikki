@@ -5,7 +5,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
-  InputGroupInput
+  InputGroupTextarea
 } from '@/components/ui/input-group'
 
 import { t } from '../core/i18n'
@@ -79,7 +79,7 @@ export function AIPanel({
   const [menu] = useState(aiModels)
   const [model, setModel] = useState<string | null>(null)
   const [picking, setPicking] = useState(false)
-  const field = useRef<HTMLInputElement>(null)
+  const field = useRef<HTMLTextAreaElement>(null)
   const placeholder = media ? t('ai.askPlaceholder') : t('ai.editPlaceholder')
   const run = (action: AIAction) => onRun(model ? { ...action, model } : action)
   const submit = () => {
@@ -94,12 +94,15 @@ export function AIPanel({
   return (
     <div role="menu" aria-label={t('ai.menu')}>
       <div className="p-1">
-        <InputGroup className="h-8 shadow-none">
-          <InputGroupInput
+        {/* Notion's field: one line that grows with the words up to three, then scrolls; Enter sends, ⇧Enter
+            breaks a line. The send button stays on the last line. */}
+        <InputGroup className="min-h-8 items-end shadow-none">
+          <InputGroupTextarea
             ref={field}
             // oxlint-disable-next-line jsx-a11y/no-autofocus -- the panel opens to type an instruction
             autoFocus={autoFocus}
-            className="md:text-sm"
+            rows={1}
+            className="max-h-[3lh] min-h-0 overflow-y-auto px-2.5 py-1.5 md:text-sm"
             placeholder={placeholder}
             aria-label={placeholder}
             data-testid="selection-menu-ai-input"
@@ -107,7 +110,7 @@ export function AIPanel({
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => {
               if (e.nativeEvent.isComposing) return
-              if (e.key === 'Enter') {
+              if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
                 submit()
               } else if (e.key === 'Escape') {
@@ -117,7 +120,7 @@ export function AIPanel({
               }
             }}
           />
-          <InputGroupAddon align="inline-end">
+          <InputGroupAddon align="inline-end" className="py-1">
             <InputGroupButton
               size="icon-xs"
               aria-label={t('ai.send')}
