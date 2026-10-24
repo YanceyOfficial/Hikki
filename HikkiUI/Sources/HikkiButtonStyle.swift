@@ -7,20 +7,24 @@ public struct HikkiButtonStyle: ButtonStyle {
 
     private let variant: Variant
     private let fullWidth: Bool
+    private let capsule: Bool
 
-    public init(_ variant: Variant = .primary, fullWidth: Bool = false) {
+    /// `capsule`: round ends, for a button inside a capsule (a glass bar) where a rounded square looks out of place.
+    public init(_ variant: Variant = .primary, fullWidth: Bool = false, capsule: Bool = false) {
         self.variant = variant
         self.fullWidth = fullWidth
+        self.capsule = capsule
     }
 
     public func makeBody(configuration: Configuration) -> some View {
-        StyledButton(configuration: configuration, variant: variant, fullWidth: fullWidth)
+        StyledButton(configuration: configuration, variant: variant, fullWidth: fullWidth, capsule: capsule)
     }
 
     private struct StyledButton: View {
         let configuration: Configuration
         let variant: Variant
         let fullWidth: Bool
+        let capsule: Bool
         @Environment(\.isEnabled) private var isEnabled
         @State private var hovering = false
         @Environment(\.colorTone) private var tone
@@ -32,17 +36,25 @@ public struct HikkiButtonStyle: ButtonStyle {
                 .padding(.horizontal, Spacing.s4)
                 .frame(maxWidth: fullWidth ? .infinity : nil)
                 .frame(height: Size.iconButton + Spacing.s2)
-                .background(background, in: .rect(cornerRadius: Radius.md))
+                .background(background, in: shape)
                 .overlay {
                     if variant == .outline {
-                        RoundedRectangle(cornerRadius: Radius.md).strokeBorder(Theme.border)
+                        if capsule {
+                            Capsule().strokeBorder(Theme.border)
+                        } else {
+                            RoundedRectangle(cornerRadius: Radius.md).strokeBorder(Theme.border)
+                        }
                     }
                 }
                 .opacity(isEnabled ? 1 : 0.5)
                 .scaleEffect(configuration.isPressed ? 0.98 : 1)
                 .animation(.snappy(duration: 0.12), value: configuration.isPressed)
-                .contentShape(.rect(cornerRadius: Radius.md))
+                .contentShape(shape)
                 .onHover { hovering = $0 }
+        }
+
+        private var shape: AnyShape {
+            capsule ? AnyShape(Capsule()) : AnyShape(RoundedRectangle(cornerRadius: Radius.md))
         }
 
         private var foreground: Color {

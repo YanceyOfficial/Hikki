@@ -117,14 +117,18 @@ public struct ReadOnlyBar: View {
         HStack(spacing: Spacing.s3) {
             IconView(.lockSimple, size: TextSize.sm.rawValue).foregroundStyle(Theme.mutedForeground)
             Text("app:unlock.readOnly").font(.hk(.sm)).foregroundStyle(Theme.foreground)
+            // Round ends inside the round bar (a rounded square looked out of place there).
             Button("app:unlock.short", action: onUnlock)
-                .buttonStyle(HikkiButtonStyle(.primary))
+                .buttonStyle(HikkiButtonStyle(.primary, capsule: true))
                 .accessibilityIdentifier("read-only-unlock")
         }
         .padding(.leading, Spacing.s4)
         .padding(.trailing, Spacing.s1_5)
         .padding(.vertical, Spacing.s1_5)
-        .glassEffect(.regular, in: .capsule)
+        .glassEffect(.regular.interactive(), in: .capsule)
+        // The whole pill unlocks — a finger needn't find the button.
+        .contentShape(.capsule)
+        .onTapGesture(perform: onUnlock)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("read-only-bar")
     }
