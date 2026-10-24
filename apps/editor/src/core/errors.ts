@@ -1,6 +1,6 @@
 import { ERRORS, type ErrorId } from '../generated/errors'
 import { safeErrorMessage, safeMessageText, safeStack } from '../lib/safe-error'
-import type { Transport } from './bridge'
+import type { Transport } from './bridge-types'
 import type { LogLevel } from './protocol'
 
 /** Where toasts and reported errors go: the native app (set by `installErrorForwarding`); nowhere in a browser. */

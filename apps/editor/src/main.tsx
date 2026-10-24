@@ -5,6 +5,7 @@ import { IconProvider } from './components/icons'
 import { EditorBridge, type CommentAction } from './core/bridge'
 import { exportPage, importDocument } from './core/convert'
 import { installErrorForwarding } from './core/errors'
+import type { HikkiAPI } from './core/hikki-api'
 import { setLocale } from './core/i18n'
 import type { PictureItem, PicturePlace } from './core/pictures'
 import {
@@ -50,10 +51,10 @@ createRoot(document.getElementById('outline')!).render(
   </IconProvider>
 )
 
-// The native shell drives everything through this object (callAsyncJavaScript).
+// The native shell drives everything through this object (callAsyncJavaScript); its shape is `HikkiAPI`.
 declare global {
   interface Window {
-    hikki: unknown
+    hikki: HikkiAPI
   }
 }
 window.hikki = {
@@ -67,45 +68,46 @@ window.hikki = {
   // A search result opened: land on its block, its words selected (folded terms, as the search index matched them).
   revealText: (terms: string[], blockId: string | null) => bridge.revealText(terms, blockId),
   // Screenshots (the native DEBUG hook HIKKI_DEBUG_AI_EDIT): those words selected and an AI action run on them.
-  demoAI: (terms: string[], action: string) => bridge.demoAI(terms, action),
+  demoAI: (terms: string[], action: string) => bridge.ai.demoAI(terms, action),
   // AI on the selection: the answer to an `aiRequest`, one event at a time.
-  aiEvent: (event: AIStreamEvent) => bridge.aiEvent(event),
+  aiEvent: (event: AIStreamEvent) => bridge.ai.aiEvent(event),
   // Ask AI's changes to the page (the chat's cards): offered in the page, one picked, approved / skipped, all approved;
   // and the page's blocks with their ids for the chat to propose them by.
-  aiChanges: (docId: string, changes: AIChangeInput[]) => bridge.aiChanges(docId, changes),
-  aiFocusChange: (id: string) => bridge.aiFocusChange(id),
-  aiResolveChange: (id: string, verdict: 'approve' | 'skip') => bridge.aiResolveChange(id, verdict),
-  aiApproveAll: () => bridge.aiApproveAll(),
-  aiPageBlocks: (docId: string) => bridge.aiPageBlocks(docId),
+  aiChanges: (docId: string, changes: AIChangeInput[]) => bridge.ai.aiChanges(docId, changes),
+  aiFocusChange: (id: string) => bridge.ai.aiFocusChange(id),
+  aiResolveChange: (id: string, verdict: 'approve' | 'skip') =>
+    bridge.ai.aiResolveChange(id, verdict),
+  aiApproveAll: () => bridge.ai.aiApproveAll(),
+  aiPageBlocks: (docId: string) => bridge.ai.aiPageBlocks(docId),
   // The phone's keyboard bar (native): the "+" and "Aa" panels' contents, the page's state for them, and their tools.
-  setKeyboardBar: (on: boolean) => bridge.setKeyboardBar(on),
+  setKeyboardBar: (on: boolean) => bridge.touch.setKeyboardBar(on),
   // How drawings behave here: the Mac keeps Excalidraw's Library (drawings/library.json in the workspace), a
   // phone-sized screen only looks at them.
   setDrawings: (settings: { library: boolean; readOnly: boolean }) => bridge.setDrawings(settings),
-  touchBlockMenu: () => bridge.touchBlockMenu(),
-  touchTurnIntoMenu: () => bridge.touchTurnIntoMenu(),
-  touchState: () => bridge.touchState(),
-  touchInsertBlock: (id: string) => bridge.touchInsertBlock(id),
-  touchTurnInto: (id: string) => bridge.touchTurnInto(id),
-  touchRun: (tool: TouchTool) => bridge.touchRun(tool),
+  touchBlockMenu: () => bridge.touch.touchBlockMenu(),
+  touchTurnIntoMenu: () => bridge.touch.touchTurnIntoMenu(),
+  touchState: () => bridge.touch.touchState(),
+  touchInsertBlock: (id: string) => bridge.touch.touchInsertBlock(id),
+  touchTurnInto: (id: string) => bridge.touch.touchTurnInto(id),
+  touchRun: (tool: TouchTool) => bridge.touch.touchRun(tool),
   touchSetColor: (kind: 'text' | 'background', color: string | null) =>
-    bridge.touchSetColor(kind, color),
+    bridge.touch.touchSetColor(kind, color),
   // Its AI and link fields (native, over the keyboard) and the ⋯ sheet of the caret's block.
-  touchPrepare: (scope?: 'word' | 'block') => bridge.touchPrepare(scope),
-  touchAI: (action: AIAction) => bridge.touchAI(action),
-  touchLink: (href: string | null) => bridge.touchLink(href),
-  touchInsertMedia: (items: TouchMedia[]) => bridge.touchInsertMedia(items),
+  touchPrepare: (scope?: 'word' | 'block') => bridge.touch.touchPrepare(scope),
+  touchAI: (action: AIAction) => bridge.touch.touchAI(action),
+  touchLink: (href: string | null) => bridge.touch.touchLink(href),
+  touchInsertMedia: (items: TouchMedia[]) => bridge.touch.touchInsertMedia(items),
   insertPictures: (docId: string, items: PictureItem[], place: PicturePlace) =>
-    bridge.insertPictures(docId, items, place),
-  touchCommentQuote: (scope: TouchCommentScope) => bridge.touchCommentQuote(scope),
-  touchComment: (scope: TouchCommentScope, body: string) => bridge.touchComment(scope, body),
-  touchBlockInfo: () => bridge.touchBlockInfo(),
-  touchBlockAction: (action: TouchBlockAction) => bridge.touchBlockAction(action),
+    bridge.ai.insertPictures(docId, items, place),
+  touchCommentQuote: (scope: TouchCommentScope) => bridge.touch.touchCommentQuote(scope),
+  touchComment: (scope: TouchCommentScope, body: string) => bridge.touch.touchComment(scope, body),
+  touchBlockInfo: () => bridge.touch.touchBlockInfo(),
+  touchBlockAction: (action: TouchBlockAction) => bridge.touch.touchBlockAction(action),
   // The ⋯ sheet's Move to: the caret's block to the end of another page; true once it is there.
-  touchMoveBlock: (target: string) => bridge.touchMoveBlock(target),
+  touchMoveBlock: (target: string) => bridge.touch.touchMoveBlock(target),
   touchBlockColor: (kind: 'text' | 'background', color: string | null) =>
-    bridge.touchBlockColor(kind, color),
-  touchBlockLink: () => bridge.touchBlockLink(),
+    bridge.touch.touchBlockColor(kind, color),
+  touchBlockLink: () => bridge.touch.touchBlockLink(),
   // A tab shown again scrolls back to where it was.
   restoreScroll: (top: number) => bridge.restoreScroll(top),
   // The inspector's outline: a heading to the top of the page, marked as the one being read.
@@ -143,7 +145,7 @@ window.hikki = {
   // The split pane's editor: a loading page never takes the keyboard from the page beside it.
   setAutoFocus: (on: boolean) => bridge.setAutoFocus(on),
   // Settings → AI → Review style: inline (A) or diff (B); anything else reads as inline.
-  setAIReviewStyle: (style: string) => bridge.setAIReviewStyle(style),
+  setAIReviewStyle: (style: string) => bridge.ai.setAIReviewStyle(style),
   // The models the AI panel may run one request on, and the default (Settings → AI, the chat's last pick).
   setAIModels: (menu: AIModelMenu) => setAIModels(menu),
   // Split view (Mac, a wide iPad): what a page dropped on the right edge does — open / replace / here / off.
@@ -171,7 +173,7 @@ window.hikki = {
   setTone: (tone: string) => {
     document.documentElement.dataset.tone = tone
   }
-}
+} satisfies HikkiAPI
 
 // A press in the blank space under the page's last block opens a line there (Notion's). Only presses on the page's
 // own background count — not the header, not a block, not a floating panel.

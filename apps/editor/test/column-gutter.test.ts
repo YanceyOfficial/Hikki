@@ -3,8 +3,8 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { marginPlacement } from '../src/components/comments'
 import { LAYOUT } from '../src/generated/layout'
+import { marginPlacement } from '../src/lib/comment-layout'
 
 // vitest runs from editor/ (happy-dom rewrites import.meta.url, so resolve from the cwd).
 const css = readFileSync(join(process.cwd(), 'src/style.css'), 'utf8')

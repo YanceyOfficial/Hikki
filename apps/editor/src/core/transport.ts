@@ -1,4 +1,4 @@
-import type { Transport } from './bridge'
+import type { Transport } from './bridge-types'
 import type { ToNativeMessage } from './protocol'
 
 type WebKitHandler = { postMessage(message: unknown): Promise<unknown> }

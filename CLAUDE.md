@@ -88,7 +88,12 @@ These rules are mandatory. Automated ones are noted.
   A bug fix comes with a test that fails without the fix — check that it does.
 - **Bridge protocol.** Messages are defined twice — `apps/editor/src/core/protocol.ts` and
   `HikkiCore/Sources/Bridge/BridgeMessage.swift` — and versioned by `PROTOCOL_VERSION` / `BridgeProtocol.version`.
-  Change both together and bump both.
+  Change both together and bump both. What the native side calls in the page is `window.hikki`, typed by `HikkiAPI`
+  (`apps/editor/src/core/hikki-api.ts`) — the same rule. `EditorBridge` (`apps/editor/src/core/bridge.ts`: the page,
+  its editor and header) hands the rest to its parts: saving (`apps/editor/src/core/page-saver.ts`), the outline and
+  scroll (`apps/editor/src/core/outline-spy.ts`), comments (`apps/editor/src/core/bridge-comments.ts`), native sheets
+  (`apps/editor/src/core/bridge-sheets.ts`), the keyboard bar (`apps/editor/src/core/bridge-touch.ts`), AI (`apps/editor/src/core/bridge-ai.ts`) and
+  uploads (`apps/editor/src/core/uploads.ts`).
 - **Split write paths.** `DocumentStore.saveContent` writes only editor-owned columns; metadata (icon, cover,
   favorite, lock, trash) has its own methods, so a late debounced autosave can never revert it. The editor's `flush()`
   returns nothing when the page wasn't edited — viewing a page must never bump its edited time. An edit
@@ -764,7 +769,9 @@ HikkiUITests/                 XCUITest flows
   key in the file and in `commentCreate`; its `quote` is the block's name, "Image · photo.png"), nothing is marked,
   the block is outlined (`hk-comment-block`), and its card / badge / sheet are the passage threads' own. A draft is only a highlight until it is sent; adding or removing the mark is kept out of undo but saved (`SAVE_META`, `apps/editor/src/core/meta.ts`
   — `isUserEdit` in `apps/editor/src/core/bridge.ts` otherwise skips non-undo transactions), and an open thread whose mark is
-  missing is marked again where its quote occurs once (`findQuote`). `apps/editor/src/components/comments.tsx` draws
+  missing is marked again where its quote occurs once (`findQuote`). `apps/editor/src/components/comments.tsx` (placed by
+  `apps/editor/src/lib/comment-layout.ts`; cards in `apps/editor/src/components/comment-thread.tsx`, the field in
+  `apps/editor/src/components/comment-field.tsx`) draws
   cards in the right margin when the window is wide (`#page[data-comments]` shifts the page left from the `comments` breakpoint, 1240 px), count
   badges with a thread card under the passage otherwise; on a phone (`PHONE` in `apps/editor/src/lib/device.ts`: coarse pointer, narrow or short
   window) the open thread or a new comment is a bottom sheet instead (the page's one `BottomSheet`, `apps/editor/src/components/bottom-sheet.tsx`, over shadcn's
@@ -800,7 +807,7 @@ HikkiUITests/                 XCUITest flows
   characters — then where its file lives with the folder's sync state, and whose AI key is in use: `PageFacts`, the
   same on the iPhone sheet) are the last lines of its ⋯ menu. The editor reports the outline and size with `pageInfo` (headings with
   block ids, words — CJK characters count one each — and characters from Tiptap's CharacterCount) and the heading the
-  reader is in with `activeHeading` (a scroll-spy in `apps/editor/src/core/bridge.ts`: the last heading past a line under
+  reader is in with `activeHeading` (a scroll-spy in `apps/editor/src/core/outline-spy.ts`: the last heading past a line under
   the toolbar, the last one at the end; a heading jumped to from an outline stays marked until the reader scrolls).
   The panel's outline puts it on a background that glides from row to row and keeps it in view; the page's own hover rail lights its bar, and its list opens on it (the shared `GlidingHighlight`, following the hovered row meanwhile). A heading
   picked in the outline lands at the top (`window.hikki.jumpToHeading`). While the inspector shows the outline the

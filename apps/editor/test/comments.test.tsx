@@ -5,7 +5,6 @@ import { act, cleanup, fireEvent, screen, within } from '@testing-library/react'
 import type { Editor } from '@tiptap/core'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { marginPlacement } from '../src/components/comments'
 import { createEditor } from '../src/core/editor'
 import {
   commentRanges,
@@ -14,6 +13,7 @@ import {
   setThreads,
   type ThreadItem
 } from '../src/extensions/comments'
+import { marginPlacement } from '../src/lib/comment-layout'
 import { PHONE, UPRIGHT_PHONE } from '../src/lib/device'
 
 let host: HTMLElement

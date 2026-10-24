@@ -2,72 +2,37 @@ import type { Editor, JSONContent } from '@tiptap/core'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import type { Transaction } from '@tiptap/pm/state'
 
-import type { AIChangesHost } from '../extensions/ai-changes'
-import {
-  handleAIEvent,
-  type AIAction,
-  type AIHost,
-  type AIReviewStyle
-} from '../extensions/ai-review'
-import { unitAtPos } from '../extensions/block-units'
-import { PALETTE, type PaletteColor } from '../extensions/colors'
-import {
-  commentsState,
-  threadRange,
-  setThreads,
-  type CommentsHost,
-  type ThreadItem
-} from '../extensions/comments'
+import { threadRange, type ThreadItem } from '../extensions/comments'
 import { closeDrawing, finishDrawing, type DrawingEditorHost } from '../extensions/drawing'
 import { runFind, type FindMode } from '../extensions/find'
 import { localAssetSrc, UploadsKey, type MediaHost } from '../extensions/media'
 import { setMoveBlockHost } from '../extensions/move-block'
-import {
-  blockLabel,
-  pageLinkHref,
-  type PageIndexEntry,
-  type PageLinksHost
-} from '../extensions/page-links'
+import { pageLinkHref, type PageIndexEntry, type PageLinksHost } from '../extensions/page-links'
 import { notifyPageIndexChanged } from '../extensions/page-mention'
 import { rubySegmentsFrom, type RubyHost } from '../extensions/ruby'
-import { setKeyboardBar } from '../extensions/selection-menu'
 import type { SplitDropHost, SplitDropMode } from '../extensions/split-drop'
-import { openTogglesAround } from '../extensions/toggle'
-import { pageBlocks, type AIPageBlock } from '../lib/ai-content'
-import { bffURL } from '../lib/bff'
-import { setDateSheetOpener, type DateSheetChange } from '../lib/date-sheet'
-import { localMoment } from '../lib/dates'
+import type { DateSheetChange } from '../lib/date-sheet'
 import { dismissAllLayers } from '../lib/dismiss-bus'
 import { setDrawingsReadOnly } from '../lib/drawing-mode'
 import { linkCardFrom } from '../lib/embeds'
-import {
-  setIconSheetOpener,
-  type IconSheetHandlers,
-  type IconSheetRequest
-} from '../lib/icon-sheet'
 import { sheetPresence } from '../lib/sheet-presence'
-import { AI_GROUPS } from './ai-actions'
 import { withBlockIds } from './block-ids'
 import { setBlockLinkBuilder } from './block-link'
-import { DiagramRequests } from './diagram'
+import { AIBridge } from './bridge-ai'
+import { CommentsBridge, type CommentAction } from './bridge-comments'
+import { SheetsBridge } from './bridge-sheets'
+import { TouchBridge } from './bridge-touch'
+import type { BridgeContext, PageState, Transport } from './bridge-types'
 import { activeCommands, createEditor, runCommand } from './editor'
-import { reportError } from './errors'
 import { plainText, wordCount } from './extract'
-import {
-  activeHeadingIndex,
-  collectHeadings,
-  outlineItems,
-  sameOutline,
-  type OutlineItem
-} from './headings'
+import { outlineItems } from './headings'
 import { t } from './i18n'
 import { SAVE_META } from './meta'
 import { normalizeBody } from './normalize'
-import { insertPictures, type PictureItem, type PicturePlace } from './pictures'
+import { OutlineSpy } from './outline-spy'
+import { PageSaver, type SaverOptions } from './page-saver'
 import {
   COMMANDS,
-  type AIChangeInput,
-  type AIStreamEvent,
   type Command,
   type PagePayload,
   type Snapshot,
@@ -75,78 +40,12 @@ import {
 } from './protocol'
 import { readableContent } from './readable'
 import { Store } from './store'
-import {
-  selectAroundCaret,
-  selectBlockAtCaret,
-  touchComment,
-  touchCommentQuote,
-  type TouchCommentScope,
-  touchBlockAction,
-  touchMoveBlock,
-  touchBlockColor,
-  touchBlockInfo,
-  touchBlockMenu,
-  touchInsertBlock,
-  touchInsertMedia,
-  type TouchMedia,
-  touchRun,
-  touchSetColor,
-  touchState,
-  touchTurnInto,
-  touchTurnIntoMenu,
-  type TouchBlock,
-  type TouchBlockAction,
-  type TouchBlockGroup,
-  type TouchBlockInfo,
-  type TouchState,
-  type TouchTool
-} from './touch-tools'
+import { saveAsset, uploadFile } from './uploads'
 
-/** What the phone's native AI / link field acts on (`touchPrepare`). */
-export type TouchTarget = {
-  quote: string
-  href: string | null
-  presets: { id: string; label: string }[]
-}
-
-export interface Transport {
-  post(message: ToNativeMessage): Promise<unknown>
-}
-
-export type PageState = {
-  docId: string | null
-  title: string
-  icon: string | null
-  cover: string | null
-  /** Changes only when a heading's id, level or text does (not on every keystroke). */
-  headings: OutlineItem[]
-  /** Bumped when the caret should move into the title (EdgeNavigation, native Rename). */
-  focusTitleRequest: number
-  /** With the latest request: select the whole title (Rename) instead of a caret at its end. */
-  selectTitle: boolean
-  /**
-   * A new, empty page puts the caret in its title when it loads. Off for the split pane's editor: its page loading
-   * must not take the keyboard from the page being typed in beside it.
-   */
-  autoFocus: boolean
-  /**
-   * The stored content didn't fit the schema (corrupt, or written by a newer Hikki): the page is shown
-   * as far as possible but never saved, so the original stays intact on disk.
-   */
-  readOnly: boolean
-  /** Locked by the user (Page → Lock): read-only until unlocked, unlike `readOnly` it can be lifted live. */
-  locked: boolean
-  /** The native inspector shows the outline: the page's own hover rail steps aside. */
-  railHidden: boolean
-  /** The heading the reader is in (index into `headings`, -1 above the first): the rail and the inspector mark it. */
-  activeHeading: number
-}
-
-type Options = {
-  debounceMs: number
-  /** Continuous typing still saves at least this often (the debounce alone would wait for a pause). */
-  maxWaitMs?: number
-}
+export type { CommentAction } from './bridge-comments'
+export type { TouchTarget } from './bridge-touch'
+export type { PageState, Transport } from './bridge-types'
+export { extensionOf } from './uploads'
 
 /**
  * Edits the user made, as opposed to housekeeping the editor does by itself (UniqueID stamping block ids
@@ -157,8 +56,6 @@ const isUserEdit = (transaction: Transaction) =>
   transaction.getMeta('addToHistory') !== false || transaction.getMeta(SAVE_META) === true
 
 const MAX_TITLE_LENGTH = 500
-/** Where a heading counts as reached: this far below the toolbar (the top of the reading area). */
-const ACTIVE_LINE = 96
 
 /**
  * Owns the live page: header state (title/icon/cover) and the Tiptap body editor, and talks to the
@@ -167,13 +64,6 @@ const ACTIVE_LINE = 96
  */
 /** Longest selected text sent to the native side (Ask AI's context). */
 const SELECTION_LIMIT = 4000
-
-/** What the native thread sheet asks of the page (`commentAction`). */
-export type CommentAction =
-  | { type: 'reply'; threadId: string; body: string }
-  | { type: 'resolve'; threadId: string; resolved: boolean }
-  | { type: 'delete'; threadId: string; commentId?: string }
-  | { type: 'edit'; threadId: string; commentId: string; body: string }
 
 export class EditorBridge {
   readonly page = new Store<PageState>({
@@ -191,23 +81,6 @@ export class EditorBridge {
     activeHeading: -1
   })
   private editor: Editor | null = null
-  private timer: ReturnType<typeof setTimeout> | null = null
-  /** When the oldest unsaved edit was made (for maxWaitMs); null when nothing is pending. */
-  private pendingSince: number | null = null
-  /**
-   * User edits of the open page, counted; `handedOver` is the last one a snapshot carried to the app and
-   * `accepted` the last one the app took (its reply came back, or it took `flush()`'s return). A post that fails
-   * puts `handedOver` back to `accepted`, so the edit is pending again — never lost. Viewing never saves.
-   */
-  private edits = 0
-  private handedOver = 0
-  private accepted = 0
-  /** Which page load the counters above belong to (a reply arriving after a page switch is about the old one). */
-  private session = 0
-  /** Failed posts of the open page in a row (bounded retries before the failure is reported). */
-  private saveFailures = 0
-  /** Snapshots of pages no longer open whose every attempt failed: sent again with the next save that gets through. */
-  private readonly undelivered = new Map<string, Snapshot>()
   private lastActive = ''
   private pageInfoTimer: ReturnType<typeof setTimeout> | null = null
   private selectionTimer: ReturnType<typeof setTimeout> | null = null
@@ -215,109 +88,43 @@ export class EditorBridge {
   private sentSelection = ''
   /** Settings → Editor → Check spelling; applied to every page's editor. */
   private spellcheck = true
-  private aiReviewStyle: AIReviewStyle = 'inline'
+
+  /** What the bridge's parts share of it (bridge-types.ts). */
+  private readonly context: BridgeContext
+  private readonly saver: PageSaver
+  private readonly outline: OutlineSpy
+  private readonly comments: CommentsBridge
+  private readonly sheets: SheetsBridge
+  /** The phone's keyboard bar (`window.hikki.touch*`, bridge-touch.ts). */
+  readonly touch: TouchBridge
+  /** AI on the selection, Ask AI's changes, the chat's pictures (`window.hikki.ai*`, bridge-ai.ts). */
+  readonly ai: AIBridge
 
   constructor(
     private readonly host: HTMLElement,
     private readonly transport: Transport,
-    private readonly options: Options = { debounceMs: 400, maxWaitMs: 2000 }
+    options: SaverOptions = { debounceMs: 400, maxWaitMs: 2000 }
   ) {
+    this.context = {
+      page: this.page,
+      editor: () => this.editor,
+      frozen: () => this.frozen,
+      send: (message) => this.send(message),
+      transport
+    }
+    this.saver = new PageSaver(this.context, options, () => this.snapshot())
+    this.outline = new OutlineSpy(this.context)
+    this.comments = new CommentsBridge(this.context, this.pageLinks)
+    this.sheets = new SheetsBridge(this.context)
+    this.touch = new TouchBridge(this.context)
+    this.ai = new AIBridge(this.context)
     // A bottom sheet open or not: the native bars beside the page step aside meanwhile.
     sheetPresence((open) => void this.send({ type: 'sheet', open }))
-    // The heading the reader is in follows the scroll (once a frame at most).
-    let queued = false
-    window.addEventListener(
-      'scroll',
-      () => {
-        if (queued) return
-        queued = true
-        requestAnimationFrame(() => {
-          queued = false
-          this.updateActiveHeading()
-          this.reportScroll()
-        })
-      },
-      { passive: true }
-    )
-    // The reader scrolls by themselves: the scroll-spy takes over from a jump.
-    const release = () => {
-      this.pinnedHeading = null
-    }
-    for (const type of ['wheel', 'touchmove', 'keydown'] as const) {
-      window.addEventListener(type, release, { passive: true, capture: true })
-    }
   }
 
-  private scrollTimer: ReturnType<typeof setTimeout> | null = null
-
-  /** Where the page is scrolled, at most every 250 ms (the last position always goes out). */
-  private reportScroll(): void {
-    if (this.scrollTimer) return
-    this.scrollTimer = setTimeout(() => this.sendScroll(), 250)
-  }
-
-  /** Sends where the open page is scrolled now (also before another page replaces it: its last place counts). */
-  private sendScroll(): void {
-    if (this.scrollTimer) clearTimeout(this.scrollTimer)
-    this.scrollTimer = null
-    const { docId } = this.page.get()
-    if (!docId) return
-    const top = Math.round((document.scrollingElement ?? document.documentElement).scrollTop)
-    void this.send({ type: 'scroll', docId, top })
-  }
-
-  /**
-   * A tab shown again: back to where it was. At once — the native side calls it in the same turn as `loadDocument`, so
-   * no frame of the page at its top is painted first (that jump was a flash on every tab switch) — and once more after
-   * two frames, when what laid out late (node views, pictures) left it short of the place.
-   */
+  /** `window.hikki.restoreScroll`: a tab shown again, back to where it was (`OutlineSpy.restoreScroll`). */
   restoreScroll(top: number): void {
-    const target = Math.max(0, top)
-    const scroll = () => window.scrollTo({ top: target, left: 0, behavior: 'instant' })
-    scroll()
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        const scroller = document.scrollingElement ?? document.documentElement
-        if (Math.abs(scroller.scrollTop - target) > 1) scroll()
-      })
-    )
-  }
-
-  /** A heading jumped to from an outline: marked until the reader scrolls (wheel, touch, keys) by themselves. */
-  private pinnedHeading: number | null = null
-
-  /** The last id sent as `activeHeading` (the native inspector follows it). */
-  private lastActiveHeading: string | null | undefined = undefined
-
-  /**
-   * Which heading the reader is in: the last one whose top has passed a line a little below the toolbar, or the last
-   * once scrolled to the end. Kept in the page state (the rail) and sent to the native inspector when it changes.
-   */
-  private updateActiveHeading(): void {
-    const editor = this.editor
-    const { docId } = this.page.get()
-    if (!editor || !docId) return
-    const headings = collectHeadings(editor)
-    const tops = headings.map((h) => {
-      const dom = editor.view.nodeDOM(h.pos)
-      return dom instanceof HTMLElement ? dom.getBoundingClientRect().top : Number.POSITIVE_INFINITY
-    })
-    const inset =
-      Number.parseFloat(
-        getComputedStyle(document.documentElement).getPropertyValue('--hk-inset-top')
-      ) || 0
-    const scroller = document.scrollingElement ?? document.documentElement
-    const atBottom =
-      scroller.scrollTop > 0 && scroller.scrollTop + window.innerHeight >= scroller.scrollHeight - 2
-    const index =
-      this.pinnedHeading !== null && this.pinnedHeading < headings.length
-        ? this.pinnedHeading
-        : activeHeadingIndex(tops, inset + ACTIVE_LINE, atBottom)
-    if (index !== this.page.get().activeHeading) this.page.set({ activeHeading: index })
-    const id = index >= 0 ? (headings[index]?.id ?? null) : null
-    if (id === this.lastActiveHeading) return
-    this.lastActiveHeading = id
-    void this.send({ type: 'activeHeading', docId, id })
+    this.outline.restoreScroll(top)
   }
 
   loadDocument(loaded: PagePayload): void {
@@ -326,23 +133,20 @@ export class EditorBridge {
     // A drawing open over the page puts its last strokes into it first.
     closeDrawing()
     // Never drop a pending edit of the previous page (one whose save failed included), nor where it was last scrolled to.
-    this.flushPending(true)
+    this.saver.flushPending(true)
     // Words of this page that never reached the app are newer than what it sent: shown, and saved as an edit.
-    const undelivered = this.undelivered.get(loaded.id)
-    this.undelivered.delete(loaded.id)
+    const undelivered = this.saver.takeUndelivered(loaded.id)
     const payload = undelivered
       ? { ...loaded, title: undelivered.title, content: undelivered.content }
       : loaded
-    if (this.scrollTimer) this.sendScroll()
+    this.outline.flushScroll()
     // Another page starts at its top (the web view's scroll would otherwise carry over from the last one).
     if (payload.id !== this.page.get().docId)
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
     this.editor?.destroy()
     this.host.replaceChildren()
     this.lastActive = ''
-    this.session += 1
-    this.markSaved()
-    this.saveFailures = 0
+    this.saver.startSession()
     const { body: stored, title } = normalizeBody(payload.content, payload.title ?? '')
     // Pages from before block ids get theirs in one walk (the editor's own stamping of a big page is quadratic).
     const body = withBlockIds(stored)
@@ -378,9 +182,9 @@ export class EditorBridge {
       media: this.media,
       pageLinks: this.pageLinks,
       splitDrop: this.splitDropHost,
-      ai: this.aiHost,
-      aiChanges: this.aiChangesHost,
-      comments: this.commentsHost,
+      ai: this.ai.host,
+      aiChanges: this.ai.changesHost,
+      comments: this.comments.host,
       drawing: this.drawingHost,
       ruby: this.ruby,
       linkPreview: async (url) =>
@@ -400,11 +204,11 @@ export class EditorBridge {
       console.warn(`page opened read-only: content doesn't fit the schema (${payload.id})`)
     }
     editor.on('update', ({ transaction }) => {
-      this.refreshOutline(editor)
+      this.outline.refreshOutline(editor)
       this.reportPageInfo()
       // Measured once a frame, after the browser's own layout (not inside the keystroke's dispatch).
-      this.scheduleActiveHeading()
-      if (isUserEdit(transaction)) this.scheduleChanged()
+      this.outline.scheduleActiveHeading()
+      if (isUserEdit(transaction)) this.saver.scheduleChanged()
     })
     editor.on('selectionUpdate', () => {
       this.reportActive()
@@ -412,7 +216,7 @@ export class EditorBridge {
     })
     editor.on('transaction', () => {
       this.reportActive()
-      this.reportCommentThread()
+      this.comments.reportThread()
     })
     this.editor = editor
     this.page.set({
@@ -425,16 +229,14 @@ export class EditorBridge {
       locked
     })
     this.reportPageInfo(true)
-    this.lastActiveHeading = undefined
-    this.pinnedHeading = null
-    requestAnimationFrame(() => this.updateActiveHeading())
-    if (undelivered && !contentError && !locked) this.scheduleChanged()
+    this.outline.pageLoaded()
+    if (undelivered && !contentError && !locked) this.saver.scheduleChanged()
   }
 
   /** Page → Lock / Unlock while the page is open. */
   setLocked(locked: boolean): void {
     // Words typed before the lock are saved now, as they stand — not by a debounce that would land after it.
-    if (locked) this.flushPending(true)
+    if (locked) this.saver.flushPending(true)
     this.page.set({ locked })
     this.editor?.setEditable(!locked && !this.page.get().readOnly)
   }
@@ -453,7 +255,7 @@ export class EditorBridge {
   reload(payload: PagePayload): boolean {
     const editor = this.editor
     const { docId, readOnly } = this.page.get()
-    if (!editor || payload.id !== docId || this.dirty || readOnly) return false
+    if (!editor || payload.id !== docId || this.saver.dirty || readOnly) return false
     // A file still uploading lands where its placeholder stands; replacing the document would misplace it.
     if (UploadsKey.getState(editor.state)?.pending.length) return false
     const { body: stored, title } = normalizeBody(payload.content, payload.title ?? '')
@@ -493,7 +295,7 @@ export class EditorBridge {
     const clean = title.replace(/[\r\n]+/g, ' ').slice(0, MAX_TITLE_LENGTH)
     if (clean === this.page.get().title) return
     this.page.set({ title: clean })
-    this.scheduleChanged()
+    this.saver.scheduleChanged()
     this.reportPageInfo()
   }
 
@@ -503,7 +305,8 @@ export class EditorBridge {
     this.page.set({ icon })
     // The native side says why in a toast; the page only puts the old one back (while it still shows the page).
     void this.send({ type: 'setIcon', docId, icon }).then((stored) => {
-      if (!stored && this.page.get().docId === docId && this.page.get().icon === icon) this.page.set({ icon: previous })
+      if (!stored && this.page.get().docId === docId && this.page.get().icon === icon)
+        this.page.set({ icon: previous })
     })
   }
 
@@ -512,7 +315,8 @@ export class EditorBridge {
     if (!docId || this.frozen) return
     this.page.set({ cover })
     void this.send({ type: 'setCover', docId, cover }).then((stored) => {
-      if (!stored && this.page.get().docId === docId && this.page.get().cover === cover) this.page.set({ cover: previous })
+      if (!stored && this.page.get().docId === docId && this.page.get().cover === cover)
+        this.page.set({ cover: previous })
     })
   }
 
@@ -538,315 +342,27 @@ export class EditorBridge {
     hover: (active) => void this.send({ type: 'splitDropHover', active })
   }
 
-  /** AI on the selection: requests go to the native AI service; its answer comes back through `aiEvent`. */
-  readonly aiHost: AIHost = {
-    request: (message) => void this.send({ type: 'aiRequest', ...message }),
-    cancel: (id) => void this.send({ type: 'aiCancel', id }),
-    title: () => this.page.get().title,
-    style: () => this.aiReviewStyle,
-    handoff: ({ instruction, selection }) => {
-      const { docId } = this.page.get()
-      if (docId) void this.send({ type: 'aiHandoff', docId, instruction, selection })
-    }
-  }
-
-  /** Changes Ask AI proposed to the page: each verdict (and the change in view) goes to the chat's cards. */
-  readonly aiChangesHost: AIChangesHost = {
-    report: (id, status, before, after) => {
-      const docId = this.page.get().docId
-      if (docId)
-        void this.send({
-          type: 'aiChange',
-          docId,
-          id,
-          status,
-          ...(before === undefined ? {} : { before }),
-          ...(after === undefined ? {} : { after })
-        })
-    },
-    focused: (id) => {
-      const docId = this.page.get().docId
-      if (docId) void this.send({ type: 'aiChangeFocus', docId, ...(id ? { id } : {}) })
-    }
-  }
-
-  /** `window.hikki.aiChanges`: the changes an Ask AI answer proposes to this page (ignored for another page). */
-  aiChanges(docId: string, changes: AIChangeInput[]): boolean {
-    const editor = this.editor
-    if (!editor || docId !== this.page.get().docId) return false
-    return editor.commands.aiSetChanges(changes)
-  }
-
-  /** `window.hikki.aiFocusChange`: a card picked in the chat — its change shown in the page. */
-  aiFocusChange(id: string): boolean {
-    return this.editor?.commands.aiFocusChange(id) ?? false
-  }
-
-  /** `window.hikki.aiResolveChange`: a card's own approve / skip. */
-  aiResolveChange(id: string, verdict: 'approve' | 'skip'): boolean {
-    if (this.frozen) return false
-    return this.editor?.commands.aiResolveChange(id, verdict) ?? false
-  }
-
-  /** `window.hikki.aiApproveAll`: every pending change, one undo step. */
-  aiApproveAll(): boolean {
-    if (this.frozen) return false
-    return this.editor?.commands.aiApproveAllChanges() ?? false
-  }
-
-  // MARK: the phone's keyboard bar (native `KeyboardToolbar`): its panels' contents and tools.
-
-  /** `window.hikki.setKeyboardBar`: the native bar is up on this device — the selection's floating menu stays away. */
-  setKeyboardBar(on: boolean): void {
-    setKeyboardBar(on)
-  }
-
-  touchBlockMenu(): TouchBlockGroup[] {
-    return touchBlockMenu()
-  }
-
-  touchTurnIntoMenu(): TouchBlock[] {
-    return touchTurnIntoMenu()
-  }
-
-  touchState(): TouchState | null {
-    return this.editor ? touchState(this.editor) : null
-  }
-
-  touchInsertBlock(id: string): boolean {
-    return !this.frozen && !!this.editor && touchInsertBlock(this.editor, id)
-  }
-
-  touchTurnInto(id: string): boolean {
-    return !this.frozen && !!this.editor && touchTurnInto(this.editor, id)
-  }
-
-  touchRun(tool: TouchTool): boolean {
-    return !this.frozen && !!this.editor && touchRun(this.editor, tool)
-  }
-
-  touchSetColor(kind: 'text' | 'background', color: string | null): boolean {
-    return !this.frozen && !!this.editor && touchSetColor(this.editor, kind, color)
-  }
-
-  /**
-   * The bar's AI or link (a native field over the keyboard): the selection — or, with none, what the page selects
-   * now: the caret's whole block (`block`, AI's) or the word at the caret (`word`, a link's) — it will act on, the
-   * link there, and AI's presets as the selection menu offers them. Null: nothing to act on.
-   */
-  touchPrepare(scope: 'word' | 'block' = 'word'): TouchTarget | null {
-    const editor = this.editor
-    if (!editor || this.frozen) return null
-    if (!(scope === 'block' ? selectBlockAtCaret(editor) : selectAroundCaret(editor))) return null
-    const { from, to } = editor.state.selection
-    return {
-      quote: editor.state.doc.textBetween(from, to, ' ').trim().slice(0, 200),
-      href: (editor.getAttributes('link').href as string | undefined) ?? null,
-      presets: AI_GROUPS.flatMap((group) =>
-        group.actions.map((action) => ({ id: action.id, label: action.label() }))
-      )
-    }
-  }
-
-  /** The native AI field's request: a preset, or the user's words, on the selection `touchPrepare` made. */
-  touchAI(action: AIAction): boolean {
-    const editor = this.editor
-    if (!editor || this.frozen || editor.state.selection.empty) return false
-    return editor.commands.aiRun(action)
-  }
-
-  /** The native link field: a link on the selection (null removes the one there). */
-  touchLink(href: string | null): boolean {
-    const editor = this.editor
-    if (!editor || this.frozen) return false
-    const chain = editor.chain().focus().extendMarkRange('link')
-    return (href ? chain.setLink({ href }) : chain.unsetLink()).run()
-  }
-
-  /** Files the phone's photo / file sheet stored, as blocks at the caret. */
-  touchInsertMedia(items: TouchMedia[]): boolean {
-    return !this.frozen && !!this.editor && touchInsertMedia(this.editor, items)
-  }
-
-  /** `window.hikki.insertPictures`: pictures the chat made, on the page they were asked for (`insertPictures`). */
-  insertPictures(docId: string, items: PictureItem[], place: PicturePlace): boolean {
-    if (this.page.get().docId !== docId || this.frozen || !this.editor) return false
-    return insertPictures(this.editor, items, place)
-  }
-
-  /** The native comment field: what it quotes, then its Send (`touch-tools.ts`). */
-  touchCommentQuote(scope: TouchCommentScope): string | null {
-    return this.editor ? touchCommentQuote(this.editor, scope) : null
-  }
-
-  touchComment(scope: TouchCommentScope, body: string): boolean {
-    return !!this.editor && touchComment(this.editor, scope, body)
-  }
-
-  touchBlockInfo(): TouchBlockInfo | null {
-    return this.editor ? touchBlockInfo(this.editor) : null
-  }
-
-  touchBlockAction(action: TouchBlockAction): boolean {
-    return (
-      !!this.editor &&
-      (action === 'comment' || !this.frozen) &&
-      touchBlockAction(this.editor, action)
-    )
-  }
-
-  touchMoveBlock(target: string): Promise<boolean> {
-    return !this.frozen && this.editor
-      ? touchMoveBlock(this.editor, target)
-      : Promise.resolve(false)
-  }
-
-  touchBlockColor(kind: 'text' | 'background', color: string | null): boolean {
-    return !this.frozen && !!this.editor && touchBlockColor(this.editor, kind, color)
-  }
-
-  /** The ⋯ sheet's Copy link: the block's link and its text (the native side puts both on the clipboard). */
-  touchBlockLink(): { href: string; label: string } | null {
-    const editor = this.editor
-    const docId = this.page.get().docId
-    const unit = editor ? unitAtPos(editor.state, editor.state.selection.from) : null
-    const blockId = unit?.node.attrs.id as string | null | undefined
-    if (!unit || !docId || !blockId) return null
-    return {
-      href: pageLinkHref(docId, blockId),
-      label: blockLabel(unit.node) ?? this.page.get().title
-    }
-  }
-
-  /** `window.hikki.aiPageBlocks`: the open page's text blocks with their ids, for Ask AI to propose changes by. */
-  aiPageBlocks(docId: string): AIPageBlock[] | null {
-    const editor = this.editor
-    if (!editor || docId !== this.page.get().docId) return null
-    return pageBlocks(editor.state)
-  }
-
-  /** Comments on passages: written to the native store, which sends the page's threads back (`setComments`). */
-  readonly commentsHost: CommentsHost = {
-    create: (threadId, quote, body, blockId) =>
-      this.sendComment({
-        type: 'commentCreate',
-        threadId,
-        quote,
-        body,
-        ...(blockId ? { blockId } : {})
-      }),
-    reply: (threadId, body) => this.sendComment({ type: 'commentReply', threadId, body }),
-    resolve: (threadId, resolved) =>
-      this.sendComment({ type: 'commentResolve', threadId, resolved }),
-    remove: (threadId, commentId) =>
-      this.sendComment({ type: 'commentDelete', threadId, ...(commentId ? { commentId } : {}) }),
-    edit: (threadId, commentId, body) =>
-      this.sendComment({ type: 'commentEdit', threadId, commentId, body }),
-    device: () => this.device,
-    nativeThreads: () => this.nativeComments,
-    pages: () => this.pageLinks.pages(),
-    openPage: (pageId) => this.pageLinks.open({ pageId, blockId: null }),
-    link: (threadId) => {
-      const docId = this.page.get().docId
-      return docId ? pageLinkHref(docId, threadId) : null
-    }
-  }
-
-  /** This device's name ("Mac", "iPhone"), from `setComments`. */
-  private device: string | null = null
-
-  private sendComment(
-    message:
-      | { type: 'commentCreate'; threadId: string; quote: string; body: string; blockId?: string }
-      | { type: 'commentReply'; threadId: string; body: string }
-      | { type: 'commentResolve'; threadId: string; resolved: boolean }
-      | { type: 'commentDelete'; threadId: string; commentId?: string }
-      | { type: 'commentEdit'; threadId: string; commentId: string; body: string }
-  ): void {
-    const docId = this.page.get().docId
-    if (docId) void this.send({ ...message, docId } as ToNativeMessage)
-  }
-
-  /** The phone draws an open thread natively (`setNativeComments`): the page's own sheet stays shut. */
-  private nativeComments = false
-  /** The thread last reported open (`commentThread`). */
-  private reportedThread: string | null = null
+  // MARK: comments (bridge-comments.ts)
 
   /** `window.hikki.setNativeComments`: the native side shows open threads in its own sheet. */
   setNativeComments(on: boolean): void {
-    this.nativeComments = on
+    this.comments.setNativeComments(on)
   }
 
-  private reportCommentThread(): void {
-    const editor = this.editor
-    const docId = this.page.get().docId
-    if (!this.nativeComments || !editor || !docId) return
-    const threadId = commentsState(editor.state)?.active ?? null
-    if (threadId === this.reportedThread) return
-    this.reportedThread = threadId
-    void this.send({ type: 'commentThread', docId, threadId })
-  }
-
-  /** `window.hikki.commentAction`: the native thread sheet's actions, run as the page's own (deleting a thread also
-   * removes its mark; resolving or deleting the open thread closes it). Closing the sheet is `openComment(null)`.
-   * Returns whether it was done. */
+  /** `window.hikki.commentAction`: the native thread sheet's actions, run as the page's own. */
   commentAction(action: CommentAction): boolean {
-    const editor = this.editor
-    if (!editor) return false
-    const commands = editor.commands
-    switch (action.type) {
-      case 'reply':
-        if (!action.body.trim()) return false
-        this.commentsHost.reply(action.threadId, action.body.trim())
-        return true
-      case 'resolve':
-        return commands.commentResolve(action.threadId, action.resolved)
-      case 'delete':
-        return action.commentId
-          ? commands.commentDeleteReply(action.threadId, action.commentId)
-          : commands.commentDelete(action.threadId)
-      case 'edit':
-        return commands.commentEdit(action.threadId, action.commentId, action.body)
-    }
+    return this.comments.commentAction(action)
   }
 
-  /** `window.hikki.setComments`: the page's threads from the native store (after loading it, and after each change). */
+  /** `window.hikki.setComments`: the page's threads from the native store. */
   setComments(docId: string, threads: ThreadItem[], device: string | null): void {
-    this.device = device
-    if (this.editor && docId === this.page.get().docId) setThreads(this.editor, threads)
+    this.comments.setComments(docId, threads, device)
   }
 
   /** `window.hikki.openComment`: a thread picked in the side panel — open, and its passage in view. */
   openComment(threadId: string | null): void {
-    const editor = this.editor
-    if (!editor) return
-    if (threadId === null) {
-      editor.commands.commentOpen(null)
-      return
-    }
-    const range = threadRange(editor.state, threadId)
-    editor.commands.commentOpen(threadId)
-    if (range) {
-      openTogglesAround(editor, range.from)
-      const dom = editor.view.domAtPos(range.from).node
-      ;(dom instanceof Element ? dom : dom.parentElement)?.scrollIntoView({ block: 'center' })
-    }
+    this.comments.openComment(threadId)
   }
-
-  /** Settings → AI → Review style: how the next edit is shown. */
-  /** Anything but `diff` — the retired `bubble` card among them — reviews in the page. */
-  setAIReviewStyle(style: string): void {
-    this.aiReviewStyle = style === 'diff' ? 'diff' : 'inline'
-  }
-
-  /** `window.hikki.aiEvent`: one event of an AI request's answer. */
-  aiEvent(event: AIStreamEvent): void {
-    if (this.diagrams.handle(event)) return
-    if (this.editor) handleAIEvent(this.editor, this.aiHost, event)
-  }
-
-  /** Text to diagram requests in flight (a drawing's AI), apart from the page's own AI review. */
-  private readonly diagrams = new DiagramRequests((message) => void this.send(message))
 
   /** Drawings: their pictures and previews are stored like any upload; Text to diagram asks the native AI. */
   readonly drawingHost: DrawingEditorHost = {
@@ -860,7 +376,7 @@ export class EditorBridge {
       if (!response.ok) throw new Error(`read ${response.status}`)
       return response.blob()
     },
-    diagram: (prompt) => this.diagrams.request(prompt, this.page.get().title),
+    diagram: (prompt) => this.ai.diagram(prompt),
     openLink: (url) => void this.send({ type: 'openLink', url }),
     fullScreen: (open) => void this.send({ type: 'fullScreen', open }),
     library: () =>
@@ -923,13 +439,6 @@ export class EditorBridge {
     )
   }
 
-  /** Selects `terms` as a search result would and runs an AI action on them, as the selection menu does. */
-  demoAI(terms: string[], action: string): boolean {
-    const editor = this.editor
-    if (!editor || this.frozen || !editor.commands.revealText(terms, null)) return false
-    return editor.commands.aiRun({ id: action })
-  }
-
   /** Uploads and attachments for the editor's media blocks. */
   readonly media: MediaHost = {
     upload: (file, onProgress) => this.uploadFile(file, onProgress),
@@ -940,34 +449,15 @@ export class EditorBridge {
    * Sends a file to the native side in chunks (one base64 message per chunk instead of one huge one) and
    * resolves to its asset URL. A failure cancels the upload, so no partial file is kept.
    */
-  async uploadFile(
+  uploadFile(
     file: Blob & { name?: string },
     onProgress: (fraction: number) => void = () => {}
   ): Promise<string> {
-    const fileExtension = extensionOf(file)
-    const id = await this.transport.post({ type: 'beginUpload', fileExtension, size: file.size })
-    if (typeof id !== 'string') throw new Error('beginUpload: native side returned no id')
-    try {
-      for (let offset = 0; offset < file.size; offset += UPLOAD_CHUNK) {
-        const dataBase64 = await blobToBase64(file.slice(offset, offset + UPLOAD_CHUNK))
-        await this.transport.post({ type: 'uploadChunk', id, dataBase64 })
-        onProgress(Math.min(1, (offset + UPLOAD_CHUNK) / file.size))
-      }
-      const url = await this.transport.post({ type: 'finishUpload', id })
-      if (typeof url !== 'string') throw new Error('finishUpload: native side returned no URL')
-      return url
-    } catch (error) {
-      void this.send({ type: 'cancelUpload', id })
-      throw error
-    }
+    return uploadFile(this.transport, file, onProgress)
   }
-
   /** Hands an image to the native side for storage; resolves to the URL to reference it by. */
-  async saveAsset(file: Blob, fileExtension: string): Promise<string> {
-    const dataBase64 = await blobToBase64(file)
-    const url = await this.transport.post({ type: 'saveAsset', fileExtension, dataBase64 })
-    if (typeof url !== 'string') throw new Error('saveAsset: native side returned no URL')
-    return url
+  saveAsset(file: Blob, fileExtension: string): Promise<string> {
+    return saveAsset(this.transport, file, fileExtension)
   }
 
   // MARK: editor
@@ -979,23 +469,14 @@ export class EditorBridge {
     return runCommand(this.editor, command as Command)
   }
 
-  /**
-   * Returns the pending (unsaved) snapshot and cancels the debounce, or null when nothing changed —
-   * the native side calls this on page switch / backgrounding and saves whatever it gets.
-   */
   /** Closes an open drawing as its Done does (preview included), ahead of a page switch's flush. */
   finishDrawing(): Promise<void> {
     return finishDrawing()
   }
 
+  /** `window.hikki.flush`: the pending edit for the app to save, or null when the page wasn't edited (PageSaver). */
   flush(): Snapshot | null {
-    this.clearTimer()
-    if (!this.dirty) return null
-    const snapshot = this.snapshot()
-    // The app saves what this returns: taken, not just handed over.
-    this.markSaved()
-    this.accepted = this.edits
-    return snapshot
+    return this.saver.flush()
   }
 
   snapshot(): Snapshot | null {
@@ -1023,122 +504,44 @@ export class EditorBridge {
     this.editor?.commands.focus()
   }
 
-  /** Find in page (⌘F etc., or the native Edit menu). Returns whether there was an editor to search. */
-  /** Listeners for `editCover` (the page header opens its cover sheet). */
-  private readonly coverRequests = new Set<() => void>()
+  // MARK: sheets (bridge-sheets.ts)
 
   onCoverRequest(listener: () => void): () => void {
-    this.coverRequests.add(listener)
-    return () => {
-      this.coverRequests.delete(listener)
-    }
+    return this.sheets.onCoverRequest(listener)
   }
 
   /** `window.hikki.editCover`: the page ⋯ menu's Cover… — the cover's sheet opens (false on a locked page). */
   editCover(): boolean {
-    if (!this.editor || this.frozen || this.page.get().readOnly) return false
-    for (const listener of this.coverRequests) listener()
-    return this.coverRequests.size > 0
+    return this.sheets.editCover()
   }
 
-  /** The phone draws the cover's sheet natively (`setNativeCover`): the page asks for it instead of opening its own. */
-  private nativeCover = false
-
-  /** `window.hikki.setNativeCover`: the native side shows the cover's sheet itself. */
   setNativeCover(on: boolean): void {
-    this.nativeCover = on
+    this.sheets.setNativeCover(on)
   }
 
-  /** The cover's sheet, where the native side draws it: asks for it (`coverSheet`) and returns true; false means the
-   * page header opens its own. */
+  /** The cover's sheet where the native side draws it (true), or false: the page header opens its own. */
   requestCoverSheet(mode: 'actions' | 'picker'): boolean {
-    if (!this.nativeCover) return false
-    const { docId, cover } = this.page.get()
-    if (docId && !this.frozen)
-      void this.send({ type: 'coverSheet', docId, cover, mode, bff: bffURL() })
-    return true
+    return this.sheets.requestCoverSheet(mode)
   }
 
-  /** The sheet opened last (`iconSheet`) and what its picks do; a newer one replaces it. */
-  private iconSheet: { id: string; handlers: IconSheetHandlers } | null = null
-
-  /** `window.hikki.setNativeIcons`: the native side shows the page's and callouts' icon pickers itself. */
   setNativeIcons(on: boolean): void {
-    setIconSheetOpener(on ? (request, handlers) => this.requestIconSheet(request, handlers) : null)
-    if (!on) this.iconSheet = null
+    this.sheets.setNativeIcons(on)
   }
 
-  private requestIconSheet(request: IconSheetRequest, handlers: IconSheetHandlers): boolean {
-    const { docId } = this.page.get()
-    if (!docId || this.frozen) return true
-    const id = crypto.randomUUID()
-    this.iconSheet = { id, handlers }
-    void this.send({
-      type: 'iconSheet',
-      docId,
-      id,
-      kind: request.kind,
-      icon: request.icon,
-      color: request.kind === 'callout' ? request.color : null
-    })
-    return true
-  }
-
-  /** `window.hikki.applyIcon`: the native sheet's emoji (null: Remove) for the opening `id` names. Returns whether it
-   * was taken (still that opening, the page not locked). */
   applyIcon(id: string, icon: string | null): boolean {
-    if (this.iconSheet?.id !== id || this.frozen) return false
-    this.iconSheet.handlers.onIcon(icon)
-    return true
+    return this.sheets.applyIcon(id, icon)
   }
 
-  /** `window.hikki.applyIconColor`: a callout's background colour from the native sheet (null: the default). */
   applyIconColor(id: string, color: string | null): boolean {
-    const onColor = this.iconSheet?.id === id ? this.iconSheet.handlers.onColor : undefined
-    if (!onColor || this.frozen) return false
-    if (color !== null && !(PALETTE as readonly string[]).includes(color)) return false
-    onColor(color as PaletteColor | null)
-    return true
+    return this.sheets.applyIconColor(id, color)
   }
 
-  /** The date chip whose native sheet is open (`dateSheet`) and what its answer does; a newer one replaces it. */
-  private dateSheet: { id: string; onChange: (change: DateSheetChange) => void } | null = null
-
-  /** `window.hikki.setNativeDates`: the native side edits date chips in a sheet of its own. */
   setNativeDates(on: boolean): void {
-    setDateSheetOpener(
-      on
-        ? (attrs, onChange) => {
-            const { docId } = this.page.get()
-            if (!docId || this.frozen) return true
-            const id = crypto.randomUUID()
-            this.dateSheet = { id, onChange }
-            void this.send({
-              type: 'dateSheet',
-              docId,
-              id,
-              date: attrs.date,
-              time: attrs.time,
-              remind: attrs.remind,
-              done: attrs.done
-            })
-            return true
-          }
-        : null
-    )
-    if (!on) this.dateSheet = null
+    this.sheets.setNativeDates(on)
   }
 
-  /** `window.hikki.applyDate`: the native sheet's answer for the opening `id` names — the chip's new day, time,
-   * reminder and done, or null to remove it. Returns whether it was taken (still that opening, a well-formed date,
-   * the page not locked). */
   applyDate(id: string, change: DateSheetChange): boolean {
-    if (this.dateSheet?.id !== id || this.frozen) return false
-    if (change !== null && !localMoment(change.date, change.time)) return false
-    const { onChange } = this.dateSheet
-    this.dateSheet = null
-    onChange(change)
-    return true
+    return this.sheets.applyDate(id, change)
   }
 
   /** `window.hikki.applyCover`: the native sheet's pick (null: Remove), on the page it was opened for — as the page
@@ -1149,6 +552,7 @@ export class EditorBridge {
     return true
   }
 
+  /** Find in page (⌘F etc., or the native Edit menu). Returns whether there was an editor to search. */
   find(mode: FindMode): boolean {
     if (!this.editor) return false
     runFind(this.editor, mode)
@@ -1233,48 +637,21 @@ export class EditorBridge {
     document.documentElement.style.setProperty('--hk-text-scale', String(clamped))
   }
 
-  /** The page's hover rail: to the heading at this place in the outline (where it is now, looked up again). */
+  // MARK: the outline (outline-spy.ts)
+
+  /** The page's hover rail: to the heading at this place in the outline. */
   scrollToHeading(index: number): void {
-    const editor = this.editor
-    const heading = editor ? collectHeadings(editor)[index] : undefined
-    if (!editor || !heading) return
-    openTogglesAround(editor, heading.pos)
-    const dom = editor.view.nodeDOM(heading.pos)
-    if (dom instanceof HTMLElement) dom.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    editor.commands.setTextSelection(heading.pos + 1)
-    // The heading jumped to is the one marked (a short page can't scroll it up to the line), until the reader scrolls.
-    this.pinnedHeading = index
-    this.updateActiveHeading()
+    this.outline.scrollToHeading(index)
   }
 
-  /** The inspector's outline: to a heading by its block id, as the rail does (`scrollToHeading`). */
+  /** The inspector's outline: to a heading by its block id. */
   jumpToHeading(id: string): boolean {
-    if (!this.editor) return false
-    const index = collectHeadings(this.editor).findIndex((h) => h.id === id)
-    if (index < 0) return false
-    this.scrollToHeading(index)
-    return true
-  }
-
-  /** The outline goes to the page state only when it reads differently (its readers re-render on a change). */
-  private refreshOutline(editor: Editor): void {
-    const headings = outlineItems(editor)
-    if (!sameOutline(headings, this.page.get().headings)) this.page.set({ headings })
-  }
-
-  private activeHeadingFrame = 0
-
-  private scheduleActiveHeading(): void {
-    if (this.activeHeadingFrame) return
-    this.activeHeadingFrame = requestAnimationFrame(() => {
-      this.activeHeadingFrame = 0
-      this.updateActiveHeading()
-    })
+    return this.outline.jumpToHeading(id)
   }
 
   /** The native inspector shows the outline itself: the page's hover rail steps aside meanwhile. */
   setOutlineRail(visible: boolean): void {
-    this.page.set({ railHidden: !visible })
+    this.outline.setOutlineRail(visible)
   }
 
   /**
@@ -1332,96 +709,6 @@ export class EditorBridge {
     this.requestTitleFocus(true)
   }
 
-  private scheduleChanged(): void {
-    if (this.frozen) return
-    // Once per save: the native indicator shows "Saving…" until the snapshot arrives.
-    const docId = this.page.get().docId
-    if (!this.dirty && docId) void this.send({ type: 'editing', docId })
-    this.edits += 1
-    this.saveFailures = 0
-    const now = Date.now()
-    this.pendingSince ??= now
-    this.clearTimer()
-    const { debounceMs, maxWaitMs = Infinity } = this.options
-    const wait = Math.max(0, Math.min(debounceMs, this.pendingSince + maxWaitMs - now))
-    this.timer = setTimeout(() => this.flushPending(), wait)
-  }
-
-  /**
-   * Hands the pending edit to the app: when a save is scheduled (a debounce, a retry), or — `always` — whenever
-   * there is an edit the app hasn't taken (a page switch, a lock).
-   */
-  private flushPending(always = false): void {
-    if (!this.timer && !(always && this.dirty)) return
-    this.clearTimer()
-    const snapshot = this.snapshot()
-    const edit = this.edits
-    this.markSaved()
-    if (snapshot) this.postSnapshot(snapshot, edit)
-  }
-
-  /**
-   * Posts a save and follows it: the app's reply makes the edit taken; a failure (the message never reached the
-   * app) makes it pending again and retries, `SAVE_ATTEMPTS` times in all with a growing pause, then reports
-   * `editsNotDelivered`. The open page's edit stays pending after that (the next edit, flush or page switch hands
-   * it over again); a page no longer open keeps its snapshot for the next save that gets through.
-   */
-  private postSnapshot(
-    snapshot: Snapshot,
-    edit: number,
-    attempt = 0,
-    session = this.session
-  ): void {
-    const isOpen = () => session === this.session
-    this.transport.post({ type: 'changed', snapshot }).then(
-      () => {
-        if (isOpen()) {
-          this.accepted = Math.max(this.accepted, edit)
-          this.saveFailures = 0
-        }
-        this.undelivered.delete(snapshot.docId)
-        this.sendUndelivered()
-      },
-      (error: unknown) => {
-        // Can't route through the transport that just failed; ids only.
-        console.error('[hikki] save not delivered', snapshot.docId, error)
-        if (isOpen()) {
-          // A later save, or a flush, got there meanwhile.
-          if (this.accepted >= edit) return
-          this.handedOver = this.accepted
-          this.saveFailures += 1
-          if (this.saveFailures < SAVE_ATTEMPTS) {
-            // A retry is a scheduled save: it sends the page as it is then (this edit and any after it).
-            if (!this.timer)
-              this.timer = setTimeout(() => this.flushPending(), retryPause(this.saveFailures - 1))
-          } else {
-            reportError('editsNotDelivered', error, { docId: snapshot.docId })
-          }
-          return
-        }
-        if (attempt + 1 < SAVE_ATTEMPTS) {
-          setTimeout(
-            () => this.postSnapshot(snapshot, edit, attempt + 1, session),
-            retryPause(attempt)
-          )
-        } else {
-          this.undelivered.set(snapshot.docId, snapshot)
-          reportError('editsNotDelivered', error, { docId: snapshot.docId })
-        }
-      }
-    )
-  }
-
-  /** Snapshots of closed pages that never got through, sent again now that a save did. */
-  private sendUndelivered(): void {
-    const open = this.page.get().docId
-    for (const [docId, snapshot] of this.undelivered) {
-      if (docId === open) continue
-      this.undelivered.delete(docId)
-      this.postSnapshot(snapshot, 0, SAVE_ATTEMPTS - 1, -1)
-    }
-  }
-
   private reportActive(): void {
     if (!this.editor) return
     const active = activeCommands(this.editor)
@@ -1429,22 +716,6 @@ export class EditorBridge {
     if (key === this.lastActive) return
     this.lastActive = key
     void this.send({ type: 'activeFormats', active })
-  }
-
-  private clearTimer(): void {
-    if (this.timer) clearTimeout(this.timer)
-    this.timer = null
-  }
-
-  /** True while the open page has an edit no snapshot has carried to the app. */
-  private get dirty(): boolean {
-    return this.edits !== this.handedOver
-  }
-
-  /** Called whenever the pending edit is handed over (debounce fired, flush, page switch). */
-  private markSaved(): void {
-    this.handedOver = this.edits
-    this.pendingSince = null
   }
 
   /** Posts a message; false when the native side refused it (logged here: nothing can be routed through the
@@ -1458,45 +729,4 @@ export class EditorBridge {
       return false
     }
   }
-}
-
-/** Posts of one save before its failure is reported (the first try included). */
-const SAVE_ATTEMPTS = 3
-
-/** The pause before retry `attempt` + 1: 0.5 s, then 1 s… */
-function retryPause(attempt: number): number {
-  return 500 * 2 ** attempt
-}
-
-/** Raw bytes per upload message (base64 adds a third). */
-const UPLOAD_CHUNK = 768 * 1024
-
-const MIME_EXTENSIONS: Record<string, string> = {
-  'image/png': 'png',
-  'image/jpeg': 'jpg',
-  'image/gif': 'gif',
-  'image/webp': 'webp',
-  'image/heic': 'heic',
-  'video/mp4': 'mp4',
-  'video/quicktime': 'mov',
-  'audio/mpeg': 'mp3',
-  'audio/mp4': 'm4a'
-}
-
-/** The file's extension (from its name, else its type; "bin" when neither says). */
-export function extensionOf(file: { name?: string; type: string }): string {
-  const fromName = file.name?.includes('.') ? file.name.split('.').pop()?.toLowerCase() : undefined
-  if (fromName && /^[a-z0-9]{1,10}$/u.test(fromName)) return fromName
-  return MIME_EXTENSIONS[file.type] ?? 'bin'
-}
-
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.addEventListener('load', () =>
-      resolve(String(reader.result).replace(/^data:[^,]*,/u, ''))
-    )
-    reader.addEventListener('error', () => reject(reader.error))
-    reader.readAsDataURL(blob)
-  })
 }

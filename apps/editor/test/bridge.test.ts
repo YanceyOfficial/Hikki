@@ -507,11 +507,11 @@ describe('EditorBridge', () => {
 
   it('demoAI selects the words and asks AI to edit them, as the selection menu would', () => {
     bridge.loadDocument(page('a', { content: doc('Notes stay on your own devices.') }))
-    expect(bridge.demoAI(['stay on your own'], 'improve')).toBe(true)
+    expect(bridge.ai.demoAI(['stay on your own'], 'improve')).toBe(true)
     const request = sent.find((m) => m.type === 'aiRequest')
     expect(request).toMatchObject({ type: 'aiRequest', action: 'improve', answer: false })
     expect(JSON.stringify(request)).toContain('stay on your own')
-    expect(bridge.demoAI(['not in the page'], 'improve')).toBe(false)
+    expect(bridge.ai.demoAI(['not in the page'], 'improve')).toBe(false)
   })
 
   it("iOS's text size reaches the page as a clamped factor", () => {
@@ -529,15 +529,15 @@ describe('EditorBridge', () => {
   it("the phone's AI field takes the caret's block, its link field the word", () => {
     bridge.loadDocument(page('a', { content: doc('Kyoto trip in spring') }))
     editor().commands.setTextSelection(3)
-    expect(bridge.touchPrepare('block')?.quote).toBe('Kyoto trip in spring')
+    expect(bridge.touch.touchPrepare('block')?.quote).toBe('Kyoto trip in spring')
     editor().commands.setTextSelection(3)
-    expect(bridge.touchPrepare()?.quote).toBe('Kyoto')
+    expect(bridge.touch.touchPrepare()?.quote).toBe('Kyoto')
   })
 
   it("the phone's AI field offers the panel's presets only: no Translate, no Make", () => {
     bridge.loadDocument(page('a', { content: doc('Kyoto trip') }))
     editor().commands.setTextSelection({ from: 1, to: 6 })
-    const presets = bridge.touchPrepare()?.presets.map((p) => p.id) ?? []
+    const presets = bridge.touch.touchPrepare()?.presets.map((p) => p.id) ?? []
     expect(presets).toContain('improve')
     expect(presets.filter((id) => id.startsWith('translate:') || id.startsWith('make:'))).toEqual(
       []
