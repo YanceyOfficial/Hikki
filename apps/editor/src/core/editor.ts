@@ -17,7 +17,7 @@ import { Column, Columns, ColumnsKeymap } from '../extensions/columns'
 import { Comments, type CommentsHost } from '../extensions/comments'
 import { DateMention } from '../extensions/date-mention'
 import { Drawing, type DrawingEditorHost } from '../extensions/drawing'
-import { EdgeNavigation } from '../extensions/edge-navigation'
+import { EdgeNavigation, TabStaysInPage } from '../extensions/edge-navigation'
 import { Embed } from '../extensions/embed'
 import { EmojiSuggestion } from '../extensions/emoji-suggestion'
 import { Find } from '../extensions/find'
@@ -230,6 +230,7 @@ export function editorExtensions(options: EditorOptions = {}): AnyExtension[] {
       placeholder: ({ node }) => (node.type.name === 'paragraph' ? t('editor.bodyPlaceholder') : '')
     }),
     EdgeNavigation.configure({ onExitTop: options.onExitTop ?? (() => {}) }),
+    TabStaysInPage,
     SlashCommand,
     SelectionMenuExtension,
     SelectionPaint,
