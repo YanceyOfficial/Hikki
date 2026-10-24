@@ -128,6 +128,15 @@ struct PaneColumn<Content: View, Panel: View>: View {
                             .transition(.opacity)
                         }
                     }
+                    .overlay(alignment: .bottomTrailing) {
+                        // The page's save indicator (the iPhone's foot is its floating bar's). It reads the tracker
+                        // itself, so a save redraws only the chip.
+                        if wide, let pageID = pane?.route.pageID {
+                            SyncIndicator(pageID: pageID, tracker: model.pageSync)
+                                .padding(Spacing.s3)
+                                .ignoresSafeArea(.keyboard)
+                        }
+                    }
                 if wide && navigator.inspector(side).isShowing && pane?.route.pageID != nil {
                     panel(navigator.isSplit ? (width * 0.45).rounded() : nil)
                         .transition(.move(edge: .trailing).combined(with: .opacity))

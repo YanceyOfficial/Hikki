@@ -37,6 +37,9 @@ final class AppModel {
     private(set) var syncError: String?
     /// How iCloud is doing, for a workspace kept there (`Workspace.Location.cloud`); nil otherwise.
     private(set) var cloudStatus: CloudSync.Status?
+    /// Each page's latest edit — typed, saved, in iCloud — for the editor's save indicator (SyncIndicator.swift).
+    /// A `let`, so nothing reading the model observes it; only the indicator does.
+    let pageSync = PageSyncTracker()
 
     struct SyncStatus: Equatable, Sendable {
         var at: Date
@@ -56,6 +59,16 @@ final class AppModel {
         self.crashReporter = crashReporter
         self.workspaceStore = workspaceStore
         bulkTransfer.onFinish = Self.announce
+        // A page saved in an editor: its file is followed up to iCloud — once the write-through has written it, so
+        // a folder scan that read the file before can't vouch for this save.
+        pageSync.onSaved = { [weak self] id, at in
+            guard let self, let cloud = self.cloud else { return }
+            if let sync = self.sync {
+                sync.afterQueuedWrites { cloud.noteSaved(pageID: id, at: at) }
+            } else {
+                cloud.noteSaved(pageID: id, at: at)
+            }
+        }
         do {
             workspace = try workspaceStore.load()
         } catch {
@@ -154,6 +167,7 @@ final class AppModel {
             let cloud: CloudSync? =
                 if case .cloud = workspace.location, Self.cloudAllowed { makeCloudSync(folder: folder, appRoot: appRoot) } else { nil }
             self.cloud = cloud
+            if cloud == nil { pageSync.setCloud(.off) }
             let options = WorkspaceSync.Options(
                 device: Self.deviceName,
                 conflictTitle: Self.conflictTitle,
@@ -244,11 +258,22 @@ final class AppModel {
             mirror.releaseAccount()
             adoptsCloudAccount = false
         }
+        // A new `CloudSync` counts its uploads from nothing; a late copy from the one before is dropped.
+        let generation = pageSync.resetUploads()
         let cloud = CloudSync(
             mirror: mirror,
             onReceived: { [weak self] in Task { @MainActor in self?.cloudReceived() } },
-            onStatus: { [weak self] status in Task { @MainActor in self?.cloudStatus = status } })
+            onStatus: { [weak self] status in
+                Task { @MainActor in
+                    self?.cloudStatus = status
+                    self?.pageSync.setCloud(status.cloud)
+                }
+            },
+            onUploads: { [weak self] uploads in
+                Task { @MainActor in self?.pageSync.apply(uploads, generation: generation) }
+            })
         cloudStatus = .starting
+        pageSync.setCloud(.on)
         cloudScan?.cancel()
         cloudScan = Task { [weak cloud] in
             while !Task.isCancelled {
@@ -313,6 +338,7 @@ final class AppModel {
         cloudScan?.cancel()
         cloudScan = nil
         cloudStatus = nil
+        pageSync.setCloud(.off)
         workspaceFolder?.stopAccessingSecurityScopedResource()
         workspaceFolder = nil
         identityUpdatedAt = nil

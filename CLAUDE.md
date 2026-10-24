@@ -262,6 +262,20 @@ HikkiUITests/                 XCUITest flows
   won't open the old bookmark asks for the folder first) and becomes `.cloud`; folders can no longer be picked.
   A run on its own data folder (`HIKKI_DATA_DIR`: UI tests, demos) never syncs (`AppModel.cloudAllowed`) — its
   pages would land in the account's one workspace zone — unless `HIKKI_CLOUD=1`.
+  **Save indicator** (Google Docs' / Notion's, bottom-trailing corner of each side's page on Mac and iPad —
+  `PaneColumn`'s overlay; none on iPhone, whose foot is the floating bar): HikkiUI's `SyncStatusBadge` drawn by
+  `SyncIndicator` (`Hikki/Sources/SyncIndicator.swift`) — nothing until the page is edited in this run, then Saving… /
+  Saved (a `.device` workspace) / Syncing… / Synced to iCloud / Waiting to sync / Not syncing, words fading to the
+  glyph a few seconds after a settled state, the time in its tooltip. `PageSyncTracker` (`AppModel.pageSync`, a `let`
+  that only the chip observes — a save redraws nothing else) hears the page's `editing` bridge message (once per save,
+  the first edit since the last), `pageSavedInEditor` (with the time taken before the write) and
+  `pageSaveFailedInEditor` (no "Saving…" left hanging), and tells `CloudSync.noteSaved` once the write-through has
+  written the file (`WorkspaceSync.afterQueuedWrites`). `CloudUploads` (`HikkiCore/Sources/Store/PageSyncState.swift`,
+  tested in `PageSyncStateTests`) follows only those pages' `pages/<id>.json`: a scan's changes queue it (unchanged → in
+  the cloud as of the scan, if the scan started after the file was written), a batch sends it as of the file's
+  modification date, `sentRecordZoneChanges` acknowledges it —
+  synced only when the acknowledged file is at least as new as the save; network refusals and no network path
+  (`NWPathMonitor`, which also sends and fetches on coming back) wait; `PageSyncState.resolve` decides.
   Entitlements: `Hikki/Hikki-iOS.entitlements` and the Mac's two (see Mac sandbox); the CloudKit schema is created
   in the development environment on first save and must be deployed to production in the CloudKit console before
   a release.

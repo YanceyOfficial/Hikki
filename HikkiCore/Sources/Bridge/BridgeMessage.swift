@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of apps/editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 38
+    public static let version = 39
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -47,6 +47,8 @@ public struct OutlineHeading: Codable, Sendable, Equatable {
 public enum BridgeMessage: Sendable, Equatable {
     case ready(protocolVersion: Int)
     case changed(Snapshot)
+    /// The first edit since the page was last handed over (`changed`): the save indicator shows "Saving…".
+    case editing(docId: String)
     case activeFormats([String])
     /// The open page's outline and size for the inspector: on load, then throttled as it changes.
     case pageInfo(docId: String, headings: [OutlineHeading], words: Int, characters: Int)
@@ -210,6 +212,7 @@ extension BridgeMessage: Decodable {
         switch type {
         case "ready": self = .ready(protocolVersion: try c.decode(Int.self, forKey: .protocolVersion))
         case "changed": self = .changed(try c.decode(Snapshot.self, forKey: .snapshot))
+        case "editing": self = .editing(docId: try c.decode(String.self, forKey: .docId))
         case "activeFormats": self = .activeFormats(try c.decode([String].self, forKey: .active))
         case "scroll":
             self = .scroll(docId: try c.decode(String.self, forKey: .docId), top: try c.decode(Double.self, forKey: .top))

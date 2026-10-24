@@ -1104,6 +1104,9 @@ final class EditorController {
             }
         case .changed(let snapshot):
             save(snapshot)
+        case .editing(let docId):
+            // The save indicator (`PageSyncTracker`) shows "Saving…" until the snapshot is saved.
+            NotificationCenter.default.post(name: .pageEditingInEditor, object: self, userInfo: ["id": docId])
         case .activeFormats(let active):
             activeFormats = Set(active)
         case .pageInfo(let docId, let headings, let words, let characters):
@@ -1257,14 +1260,19 @@ final class EditorController {
         }
         do {
             let base = loaded?.id == snapshot.docId ? loaded?.content : nil
+            // Before the write: the page's file (written through after the commit) is at least this new.
+            let savedAt = Date.now
             if try store?.saveContent(snapshot, loaded: base, conflictTitle: AppModel.conflictTitle) == false {
                 Log.warn("save skipped: document no longer exists", category: "store", context: ["docId": snapshot.docId])
+                NotificationCenter.default.post(name: .pageSaveFailedInEditor, object: self, userInfo: ["id": snapshot.docId])
             } else {
                 loaded = (snapshot.docId, LoadedContent(snapshot))
-                NotificationCenter.default.post(name: .pageSavedInEditor, object: self, userInfo: ["id": snapshot.docId])
+                NotificationCenter.default.post(
+                    name: .pageSavedInEditor, object: self, userInfo: ["id": snapshot.docId, "at": savedAt])
             }
         } catch {
             Toasts.report(.pageSaveFailed, error, category: "store", context: ["docId": snapshot.docId])
+            NotificationCenter.default.post(name: .pageSaveFailedInEditor, object: self, userInfo: ["id": snapshot.docId])
         }
     }
 
@@ -1460,6 +1468,10 @@ private final class NavigationDelegate: NSObject, WKNavigationDelegate {
 extension Notification.Name {
     /// An editor saved a page (`userInfo["id"]`, the editor as `object`): another editor showing it reloads.
     static let pageSavedInEditor = Notification.Name("app.yancey.hikki.pageSavedInEditor")
+    /// The page's first edit since its last save (`editing` from the page): the save indicator shows "Saving…".
+    static let pageEditingInEditor = Notification.Name("app.yancey.hikki.pageEditingInEditor")
+    /// An editor's save of a page failed or was skipped (`userInfo["id"]`): the save indicator drops "Saving…".
+    static let pageSaveFailedInEditor = Notification.Name("app.yancey.hikki.pageSaveFailedInEditor")
     /// A page's comments changed (`userInfo["id"]`; none: any page — the app came back and other devices may have
     /// written): editors showing it and the side panel reload them.
     static let pageCommentsChanged = Notification.Name("app.yancey.hikki.pageCommentsChanged")

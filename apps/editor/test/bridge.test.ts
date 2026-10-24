@@ -86,6 +86,24 @@ describe('EditorBridge', () => {
     expect(changed()).toHaveLength(1)
   })
 
+  it('says "editing" once per save, never for a page only viewed', () => {
+    const editing = () => sent.filter((m) => m.type === 'editing')
+    bridge.loadDocument(page('a'))
+    vi.advanceTimersByTime(1000)
+    expect(editing()).toEqual([])
+    editor().commands.insertContent(' there')
+    editor().commands.insertContent(' again')
+    expect(editing()).toEqual([{ type: 'editing', docId: 'a' }])
+    vi.advanceTimersByTime(400)
+    expect(changed()).toHaveLength(1)
+    editor().commands.insertContent('!')
+    expect(editing()).toHaveLength(2)
+    // Handed over by a flush: the next edit says so again.
+    expect(bridge.flush()).not.toBeNull()
+    bridge.setTitle('Plan')
+    expect(editing()).toHaveLength(3)
+  })
+
   it('a comment saves the page (its passage mark is part of the page) without entering undo', () => {
     bridge.loadDocument(page('a', { content: doc('the quick fox') }))
     vi.advanceTimersByTime(1000)

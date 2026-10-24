@@ -204,6 +204,18 @@
     "cloud": {
       "sf": "icloud"
     },
+    "cloud-check": {
+      "sf": "checkmark.icloud"
+    },
+    "cloud-arrow-up": {
+      "sf": "icloud.and.arrow.up"
+    },
+    "cloud-slash": {
+      "sf": "icloud.slash"
+    },
+    "cloud-warning": {
+      "sf": "exclamationmark.icloud"
+    },
     "laptop": {
       "sf": "laptopcomputer"
     },

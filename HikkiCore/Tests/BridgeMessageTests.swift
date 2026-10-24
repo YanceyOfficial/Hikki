@@ -84,6 +84,11 @@ struct BridgeMessageTests {
                     words: 4, characters: 19))
     }
 
+    @Test func decodesEditing() throws {
+        let body: NSDictionary = ["type": "editing", "docId": "a"]
+        #expect(try BridgeMessage.decode(scriptMessageBody: body) == .editing(docId: "a"))
+    }
+
     @Test func decodesChangedWithOpaqueContent() throws {
         let content: NSDictionary = ["type": "doc", "content": [["type": "paragraph", "attrs": ["level": 1, "checked": true]]]]
         let body: NSDictionary = [

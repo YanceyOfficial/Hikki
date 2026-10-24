@@ -446,6 +446,12 @@ public final class WorkspaceSync: @unchecked Sendable {
         queue.sync {}
     }
 
+    /// Runs `body` once the file writes queued so far are done, without waiting for them: a page committed before
+    /// this call has its file written by then (the commit observer queues its write as the transaction commits).
+    public func afterQueuedWrites(_ body: @escaping @Sendable () -> Void) {
+        queue.async(execute: body)
+    }
+
     // MARK: - Write-through
 
     private func writeThrough(changed: [DocumentRecord], deletions: Bool, live: Set<String>?) {

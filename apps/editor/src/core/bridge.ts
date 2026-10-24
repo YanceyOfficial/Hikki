@@ -1294,6 +1294,9 @@ export class EditorBridge {
 
   private scheduleChanged(): void {
     if (this.frozen) return
+    // Once per save: the native indicator shows "Saving…" until the snapshot arrives.
+    const docId = this.page.get().docId
+    if (!this.dirty && docId) void this.send({ type: 'editing', docId })
     this.dirty = true
     const now = Date.now()
     this.pendingSince ??= now

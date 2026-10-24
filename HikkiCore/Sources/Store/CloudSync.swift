@@ -1,5 +1,6 @@
 import CloudKit
 import Foundation
+import Network
 
 /// The workspace in iCloud: `CKSyncEngine` over the user's private database (one zone, `Workspace`), carrying the
 /// workspace folder file by file as `CloudMirror` describes it. A `File` record holds its path and its contents —
@@ -36,6 +37,17 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
             case .noAccount, .accountChanged, .quotaFull, .failed: true
             }
         }
+
+        /// iCloud as the editor's save indicator sees it (`PageSyncState`).
+        public var cloud: PageSyncState.Cloud {
+            switch self {
+            case .starting, .synced, .syncing: .on
+            case .noAccount: .trouble(.noAccount)
+            case .accountChanged: .trouble(.accountChanged)
+            case .quotaFull: .trouble(.quotaFull)
+            case .failed: .trouble(.failed)
+            }
+        }
     }
 
     private let mirror: CloudMirror
@@ -53,16 +65,22 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
     /// Files changed in the folder from the cloud (the workspace reconciles; editors reload).
     private let onReceived: @Sendable () -> Void
     private let onStatus: @Sendable (Status) -> Void
+    /// Where the files of the pages edited in this run stand (the editor's save indicator); under `lock`.
+    private var uploads = CloudUploads()
+    private let onUploads: @Sendable (CloudUploads) -> Void
+    /// Whether the device has a network path: without one nothing goes up, and the indicator says it waits.
+    private var pathMonitor: NWPathMonitor?
 
     public init(
         mirror: CloudMirror, containerID: String = CloudSync.containerID, onReceived: @escaping @Sendable () -> Void,
-        onStatus: @escaping @Sendable (Status) -> Void
+        onStatus: @escaping @Sendable (Status) -> Void, onUploads: @escaping @Sendable (CloudUploads) -> Void = { _ in }
     ) {
         self.mirror = mirror
         container = CKContainer(identifier: containerID)
         staging = FileManager.default.temporaryDirectory.appending(path: "hikki-cloud", directoryHint: .isDirectory)
         self.onReceived = onReceived
         self.onStatus = onStatus
+        self.onUploads = onUploads
     }
 
     /// Checks the account, then starts the engine (it fetches right away) and queues the zone and whatever changed
@@ -72,23 +90,61 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
             [weak self] _ in
             Task { await self?.confirmAccount() }
         }
+        let monitor = NWPathMonitor()
+        monitor.pathUpdateHandler = { [weak self] path in
+            guard let self else { return }
+            let offline = path.status != .satisfied
+            let wasOffline = self.lock.withLock { self.uploads.offline }
+            self.updateUploads { $0.setOffline(offline) }
+            // Back online: what waited goes up, and what others saved comes down.
+            if wasOffline && !offline {
+                self.noteLocalChanges(after: 0)
+                Task { await self.fetchNow() }
+            }
+        }
+        monitor.start(queue: queue)
         lock.withLock {
             running = true
             accountObserver = observer
+            pathMonitor = monitor
         }
         onStatus(.starting)
         Task { await confirmAccount() }
     }
 
     public func stop() {
-        let observer = lock.withLock {
+        let (observer, monitor) = lock.withLock {
             running = false
             scheduled?.cancel()
             engine = nil
-            defer { accountObserver = nil }
-            return accountObserver
+            defer {
+                accountObserver = nil
+                pathMonitor = nil
+            }
+            return (accountObserver, pathMonitor)
         }
+        monitor?.cancel()
         if let observer { NotificationCenter.default.removeObserver(observer) }
+    }
+
+    // MARK: - The editor's save indicator
+
+    /// The editor saved this page here at `at` and its file has been written since (call it after the workspace's
+    /// write-through, `WorkspaceSync.afterQueuedWrites`): the file is followed up to iCloud from now on
+    /// (`CloudUploads`).
+    public func noteSaved(pageID: String, at: Date) {
+        let written = Date.now
+        updateUploads { $0.saved(pageID, at: at, written: written) }
+    }
+
+    /// Applies `change` to the followed pages and publishes them when anything changed.
+    private func updateUploads(_ change: (inout CloudUploads) -> Bool) {
+        let published: CloudUploads? = lock.withLock {
+            guard change(&uploads) else { return nil }
+            uploads.revision += 1
+            return uploads
+        }
+        if let published { onUploads(published) }
     }
 
     /// Runs the engine when the device's account is the workspace's, stops it when not.
@@ -174,7 +230,9 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
 
     private func queueLocalChanges() {
         guard let engine = lock.withLock({ engine }) else { return }
+        let scannedAt = Date.now
         let changes = mirror.localChanges()
+        updateUploads { $0.scanned(changed: changes.map(\.path), at: scannedAt) }
         guard !changes.isEmpty else { return }
         engine.state.add(
             pendingRecordZoneChanges: changes.map { change in
@@ -268,6 +326,7 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
         }
         record["modified"] = file.modified
         lock.withLock { inflight[id.recordName] = file }
+        updateUploads { $0.sending(path, asOf: file.modified) }
         return record
     }
 
@@ -316,10 +375,12 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
 
     private func handleSent(_ sent: CKSyncEngine.Event.SentRecordZoneChanges, syncEngine: CKSyncEngine) {
         var refetch = false
+        let acknowledged = Date.now
         mirror.batch {
             for record in sent.savedRecords {
                 guard let file = lock.withLock({ inflight.removeValue(forKey: record.recordID.recordName) }) else { continue }
                 mirror.saved(file, systemFields: Self.encodeSystemFields(record))
+                updateUploads { $0.uploaded(file.path, asOf: file.modified, at: acknowledged) }
             }
             for id in sent.deletedRecordIDs {
                 if let path = mirror.path(forRecordName: id.recordName) { mirror.deleted(path) }
@@ -340,18 +401,23 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
                 } else {
                     refetch = true
                 }
+                if let path { updateUploads { $0.refused(path, retry: .queued) } }
             case .zoneNotFound:
                 syncEngine.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: Self.zoneID))])
                 if let path { mirror.lostRecord(path) }
                 syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(id)])
+                if let path { updateUploads { $0.refused(path, retry: .queued) } }
             case .unknownItem:
                 if let path { mirror.lostRecord(path) }
                 syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(id)])
+                if let path { updateUploads { $0.refused(path, retry: .queued) } }
             case .networkFailure, .networkUnavailable, .zoneBusy, .serviceUnavailable, .requestRateLimited, .notAuthenticated:
-                break  // the engine tries again on its own
+                // the engine tries again on its own
+                if let path { updateUploads { $0.refused(path, retry: .retrying) } }
             default:
                 Log.error("cloud save failed: \(failed.error.code.rawValue)", category: "cloud")
                 report(failed.error)
+                if let path { updateUploads { $0.refused(path, retry: .failed) } }
             }
         }
         for (_, error) in sent.failedRecordDeletes where error.code != .unknownItem {

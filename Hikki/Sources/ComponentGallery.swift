@@ -384,6 +384,23 @@
                             ShimmerText("app:ai.thinking").font(.hk(.sm))
                             ShimmerText("app:ai.searching").font(.hk(.sm))
                         }
+                        Section("SyncStatusBadge") {
+                            let saving = String(localized: "app:saveStatus.saving")
+                            let synced = String(localized: "app:saveStatus.synced")
+                            SyncStatusBadge(kind: .saving, title: saving, detail: saving)
+                            SyncStatusBadge(
+                                kind: .uploading, title: String(localized: "app:saveStatus.uploading"),
+                                detail: String(localized: "app:saveStatus.uploadingDetail"))
+                            SyncStatusBadge(kind: .synced, title: synced, detail: synced)
+                            SyncStatusBadge(kind: .synced, title: synced, detail: synced, compact: true)
+                            SyncStatusBadge(
+                                kind: .waiting, title: String(localized: "app:saveStatus.waiting"),
+                                detail: String(localized: "app:saveStatus.waitingDetail"))
+                            SyncStatusBadge(
+                                kind: .trouble, title: String(localized: "app:saveStatus.notSyncing"),
+                                detail: String(localized: "app:cloud.noAccount"))
+                        }
+                        .id("SyncStatusBadge")
                         Section("CodeBlockView") {
                             CodeBlockView(
                                 code: "let greeting = \"Hello\"\nprint(greeting)  // a line long enough to scroll sideways in the block",
