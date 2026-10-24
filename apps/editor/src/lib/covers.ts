@@ -98,26 +98,33 @@ export function randomGradient(random: () => number = Math.random): string {
   return gradientCover(GRADIENTS[Math.floor(random() * GRADIENTS.length)].id)
 }
 
-/** A friendly starter set for "Add icon", like Notion's random pick. */
-export const STARTER_ICONS = [
-  '📝',
-  '📌',
-  '💡',
-  '🚀',
-  '🌱',
-  '📚',
-  '🎯',
-  '🧭',
-  '🗂️',
-  '✨',
-  '🌊',
-  '🍀',
-  '🔖',
-  '🧠',
-  '☕️',
-  '🎨'
+/** Blocks of single-code-point pictographs a random icon is drawn from (Notion's "Add icon" picks any emoji). */
+const EMOJI_BLOCKS: [number, number][] = [
+  [0x1f300, 0x1f64f], // symbols & pictographs, emoticons
+  [0x1f680, 0x1f6ff], // transport & map
+  [0x1f900, 0x1f9ff], // supplemental symbols & pictographs
+  [0x1fa70, 0x1faff] // symbols & pictographs extended-A
 ]
+const EMOJI_SPAN = EMOJI_BLOCKS.reduce((sum, [from, to]) => sum + to - from + 1, 0)
+/** Drawn as an emoji on its own: not a skin-tone modifier, not a gap in a block (unassigned in this engine's Unicode). */
+const DRAWN_ALONE = /^(?!\p{Emoji_Modifier})\p{Emoji_Presentation}$/u
 
+/**
+ * A random emoji for "Add icon": a code point from the emoji blocks, drawn again until it is one the system shows as
+ * an emoji on its own (gaps and modifiers skipped) — any emoji, not a fixed list.
+ */
 export function randomIcon(random: () => number = Math.random): string {
-  return STARTER_ICONS[Math.floor(random() * STARTER_ICONS.length)]
+  for (let attempt = 0; attempt < 64; attempt++) {
+    let offset = Math.floor(random() * EMOJI_SPAN)
+    for (const [from, to] of EMOJI_BLOCKS) {
+      const size = to - from + 1
+      if (offset < size) {
+        const emoji = String.fromCodePoint(from + offset)
+        if (DRAWN_ALONE.test(emoji)) return emoji
+        break
+      }
+      offset -= size
+    }
+  }
+  return '📝'
 }

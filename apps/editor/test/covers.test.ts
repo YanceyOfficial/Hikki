@@ -12,7 +12,6 @@ import {
   randomGradient,
   randomIcon,
   repositionedCover,
-  STARTER_ICONS,
   withCoverPosition
 } from '../src/lib/covers'
 
@@ -77,6 +76,22 @@ describe('covers', () => {
   it('random picks stay within the catalogs', () => {
     expect(randomGradient(() => 0)).toBe(`gradient:${GRADIENTS[0].id}`)
     expect(randomGradient(() => 0.9999)).toBe(`gradient:${GRADIENTS.at(-1)!.id}`)
-    expect(STARTER_ICONS).toContain(randomIcon(() => 0.5))
+  })
+
+  it('a random icon is any emoji shown on its own — gaps and skin-tone modifiers drawn again', () => {
+    const emoji = /^\p{Emoji_Presentation}$/u
+    for (let i = 0; i < 200; i++) expect(randomIcon()).toMatch(emoji)
+    // The first draws land on a skin-tone modifier (U+1F3FB, offset 251) and U+1F322 (offset 34, no emoji): again.
+    const span =
+      0x1f64f -
+      0x1f300 +
+      1 +
+      (0x1f6ff - 0x1f680 + 1) +
+      (0x1f9ff - 0x1f900 + 1) +
+      (0x1faff - 0x1fa70 + 1)
+    const draws = [251.5 / span, 34.5 / span, 0]
+    expect(randomIcon(() => draws.shift()!)).toBe(String.fromCodePoint(0x1f300))
+    // Nothing usable at all: a fixed fallback.
+    expect(randomIcon(() => 251.5 / span)).toBe('📝')
   })
 })
