@@ -81,6 +81,10 @@ These rules are mandatory. Automated ones are noted.
   (`scripts/l10n-audit.mjs`): missing / unused keys, untranslated values, placeholder mismatches, literal UI text._
 - **Secrets stay server-side.** Third-party API keys (Unsplash) live only in the BFF (`apps/bff/`, Hono on Vercel).
   Unsplash rules: hotlink `urls`, attribute the photographer with utm links, report picks via the download endpoint.
+  The key's quota is guarded there: CORS answers only the editor's origin (`hikki-editor://app`) and a localhost dev
+  server, and `/api/unsplash/*` is rate-limited per address (`apps/bff/src/rate-limit.ts`: 30 a minute, in memory
+  per function instance — the Vercel Firewall rate-limit rule on the project is the cap across instances); upstream
+  calls time out after 8 s.
 - **Pre-commit gate.** `.husky/pre-commit` runs lint-staged (oxlint + oxfmt for web files, `swift-format` for
   Swift), `make lint-design lint-docs lint-l10n`, the editor + BFF typecheck and web unit tests. `make check` adds the Swift tests and both
   platform builds. Don't `--no-verify`.

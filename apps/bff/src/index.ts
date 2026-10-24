@@ -3,6 +3,7 @@ import { env } from 'hono/adapter'
 import { cors } from 'hono/cors'
 
 import { errorBody, fail, onError, requestIdOf, requestLog } from './http.js'
+import { rateLimit } from './rate-limit.js'
 import { listPhotos, triggerDownload, type ProxyResult } from './unsplash.js'
 
 /**
@@ -14,16 +15,32 @@ const app = new Hono()
 app.use('*', requestLog())
 app.onError(onError)
 
-// The editor runs in a WKWebView (origin hikki-editor://app) and in a browser during development;
-// no cookies or credentials are involved, so any origin may call these read-only endpoints.
+/**
+ * Pages that may call the API from a browser: the editor in the app's web view (its custom scheme, `hikki-editor://app`
+ * — EditorSchemeHandler.entryURL) and the editor's dev server on this machine. The native app's own requests
+ * (URLSession: the cover sheet's Unsplash) carry no Origin and aren't subject to CORS. CORS only keeps other web pages
+ * from using the API through their visitors' browsers; the rate limit below is what holds back everyone else.
+ */
+export function allowedOrigin(origin: string | undefined): string | null {
+  if (!origin) return null
+  if (origin === 'hikki-editor://app') return origin
+  return /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d{1,5})?$/u.test(origin) ? origin : null
+}
+
 app.use(
   '/api/*',
   cors({
-    origin: '*',
+    origin: (origin) => allowedOrigin(origin),
     allowMethods: ['GET', 'POST'],
-    exposeHeaders: ['X-Ratelimit-Remaining', 'X-Request-Id']
+    exposeHeaders: ['X-Ratelimit-Remaining', 'X-Request-Id', 'Retry-After']
   })
 )
+
+// Each search is an upstream request on the operator's Unsplash key: one address gets 30 a minute, picks (download
+// reports) as many. Searches are debounced in the editor and a page of results is 30 photos, so a person picking a
+// cover stays well under it.
+app.use('/api/unsplash/photos', rateLimit({ limit: 30, windowMs: 60_000 }))
+app.use('/api/unsplash/download', rateLimit({ limit: 30, windowMs: 60_000 }))
 
 app.get('/', (c) => c.text('hikki-bff'))
 
