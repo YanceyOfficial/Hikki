@@ -778,7 +778,8 @@ HikkiUITests/                 XCUITest flows
   "@" in the field (typed, or its @ button) mentions a page: stored as `[@Title](hikki://page/<id>)` in the text
   (`apps/editor/src/lib/comment-text.ts`), drawn as a chip with the page's current icon and title, "@Title" natively
   (`PageComment.plainBody`). The page column is
-  `.hk-column` alone in `apps/editor/index.html` (fixed 96 px side margins).
+  `.hk-column` alone in `apps/editor/index.html` (96 px side margins in a wide window, 10 % of a narrower one —
+  never under the handles' 56 px on the left; slim on touch screens).
 - **Inspector** (Mac/iPad: a full-height trailing panel inside the detail column — SwiftUI's `.inspector` widened the
   window — with the window title hidden while it is open, as in Photos; on iPad and an unfolded Duo the sidebar hides
   while it is open and comes back as it was, `sidebarBeforeInspector` in ContentView; iPhone: a sheet from the page ⋯ menu):

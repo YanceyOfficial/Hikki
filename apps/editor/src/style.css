@@ -1176,17 +1176,21 @@
   @apply fixed top-0 left-0 z-50 overflow-y-auto overscroll-contain rounded-xl bg-popover text-popover-foreground shadow-popover;
 }
 /* The page column: the header and the editor share its width and gutters. */
-/* The page's text column: Notion's fixed side margins — a narrower window narrows the text, never the margins, so the
-   + / ⋮⋮ handles (left) and the outline rail (right) keep their room. Touch screens have no handles: slim margins. */
+/* The page's text column: Notion's 96px side margins in a wide window. A narrow one (a side of a split view, a small
+   Mac window) shrinks them with it — 10% of the width — down to what the + / ⋮⋮ handles need on the left (56px) and a
+   slim margin on the right (the outline rail only shows past 1000px, where both are back at 96px), so the text keeps
+   most of the width. Touch screens have no handles: slim margins on both sides. */
 .hk-column {
   @apply mx-auto box-border max-w-[calc(var(--size-column)+192px)];
-  --hk-column-pad: --spacing(24);
+  --hk-column-pad-left: clamp(--spacing(14), 10vw, --spacing(24));
+  --hk-column-pad-right: clamp(--spacing(5), 10vw, --spacing(24));
   /* Plus the safe area at the sides, which is only there where the page runs under a vertical bar (an iPhone Duo's,
      beside the camera): the cover fills to the edge, the text keeps clear of the bar's buttons. */
-  padding-left: calc(var(--hk-column-pad) + env(safe-area-inset-left));
-  padding-right: calc(var(--hk-column-pad) + env(safe-area-inset-right));
+  padding-left: calc(var(--hk-column-pad-left) + env(safe-area-inset-left));
+  padding-right: calc(var(--hk-column-pad-right) + env(safe-area-inset-right));
   @variant coarse {
-    --hk-column-pad: --spacing(5);
+    --hk-column-pad-left: --spacing(5);
+    --hk-column-pad-right: --spacing(5);
   }
 }
 
