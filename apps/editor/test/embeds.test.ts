@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
+import { isWebURL } from '../src/core/links'
 import {
   clampEmbedHeight,
   embedFromHTML,
   embedFromURL,
   frameSrc,
   htmlEmbedDocument,
-  isWebURL,
   linkCardFrom,
   safeFrameSrc,
   reloadsOnSchemeChange,

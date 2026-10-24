@@ -164,9 +164,7 @@ private struct PageChoiceList: View {
         return pages.filter { title($0).localizedStandardContains(q) }
     }
 
-    private func title(_ page: PageChoice) -> String {
-        page.title.isEmpty ? String(localized: "app:page.untitled") : page.title
-    }
+    private func title(_ page: PageChoice) -> String { PageTitle.display(page.title) }
 
     var body: some View {
         List(shown) { page in

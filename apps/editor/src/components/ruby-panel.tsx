@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 import { t } from '../core/i18n'
+import { keyLabel } from '../core/shortcuts'
 import { wholeReading, type RubySegment } from '../extensions/ruby'
 import type { FloatingAnchor, FloatingLayer } from './floating'
 import { IconProvider } from './icons'
@@ -122,7 +123,9 @@ export function RubyPanel({
         />
       )}
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">{t('ruby.hint')}</span>
+        <span className="text-xs text-muted-foreground">
+          {t('ruby.hint', { confirm: keyLabel('return'), cancel: keyLabel('escape') })}
+        </span>
         <div className="flex gap-1">
           {canRemove && (
             <Button variant="ghost" size="xs" className="text-destructive" onClick={onRemove}>

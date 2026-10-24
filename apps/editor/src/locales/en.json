@@ -281,8 +281,7 @@
   "math": {
     "placeholder": "E = mc^2",
     "label": "Formula (LaTeX)",
-    "hintInline": "Enter to finish · Esc to cancel",
-    "hintBlock": "⌘Enter to finish · Esc to cancel",
+    "hint": "{{confirm}} to finish · {{cancel}} to cancel",
     "done": "Done"
   },
   "toggle": {
@@ -373,7 +372,7 @@
     "baseLabel": "Reading for",
     "placeholder": "かな",
     "suggesting": "Looking up…",
-    "hint": "Enter to save · Esc to cancel",
+    "hint": "{{confirm}} to save · {{cancel}} to cancel",
     "done": "Done",
     "remove": "Remove",
     "mode": "Reading mode",
@@ -400,8 +399,8 @@
       "link": "Link to embed",
       "html": "HTML to embed"
     },
-    "hintLink": "Enter to embed · Esc to cancel",
-    "hintHtml": "⌘Enter to embed · Esc to cancel",
+    "hintLink": "{{confirm}} to embed · {{cancel}} to cancel",
+    "hintHtml": "{{confirm}} to embed · {{cancel}} to cancel",
     "invalid": "That link can’t be embedded.",
     "insert": "Embed",
     "open": "Open",
@@ -465,6 +464,8 @@
     "noChanges": "Nothing to change here.",
     "changes_one": "{{count}} change",
     "changes_other": "{{count}} changes",
+    "addedBlocks_one": "{{count}} new block below",
+    "addedBlocks_other": "{{count}} new blocks below",
     "sources": "Sources",
     "error": {
       "missingKey": "Add your {{provider}} API key in Settings → AI to use this model.",
@@ -550,9 +551,12 @@
     "blockMoveLocked": "That page is locked. Unlock it to move blocks into it.",
     "reminderUpdateFailed": "Couldn't update the reminder.",
     "pageLinkMissing": "The page this link points to no longer exists.",
+    "reminderScheduleFailed": "Couldn't set the reminder.",
+    "reminderNotificationsOff": "Reminders won't ring: notifications are off for Hikki.",
     "workspaceUnavailable": "The workspace folder can't be reached.",
     "workspaceFolderAccess": "Hikki needs your permission to open the workspace folder again.",
     "workspaceMoveFailed": "Couldn't move the workspace from its folder into iCloud. The folder is unchanged.",
+    "databaseRebuilt": "The page index couldn't be opened and was rebuilt from your pages.",
     "workspaceSyncFailed": "Couldn't sync with the workspace folder.",
     "workspaceOpenFailed": "Couldn't open the workspace.",
     "databaseOpenFailed": "Couldn't open the local database.",
@@ -562,6 +566,7 @@
     "pageReadOnly": "This page opened read-only: its content isn't something this version can edit.",
     "copyFailed": "Couldn't copy to the clipboard.",
     "drawingPreviewFailed": "Couldn't update the drawing's preview.",
+    "editsNotDelivered": "Couldn't hand your latest edits to Hikki to save. They're kept and will be saved with your next change.",
     "drawingLibrarySaveFailed": "Couldn't save the drawing library.",
     "drawingLoadFailed": "Couldn't open the drawing editor.",
     "importFailed": "Couldn't import the file.",
@@ -583,6 +588,9 @@
     "aiMediaUnreadable": "Couldn't read this file for AI.",
     "aiPictureRefused": "OpenAI declined to make this picture.",
     "aiPictureSaveFailed": "Couldn't save the picture.",
+    "aiKeySaveFailed": "Couldn't save the API key in iCloud Keychain.",
+    "aiChatSaveFailed": "Couldn't keep the AI conversation.",
+    "aiChatClearFailed": "Couldn't clear the AI conversation.",
     "searchFailed": "Search isn't available right now.",
     "searchIndexFailed": "Couldn't update the search index.",
     "offline": "No internet connection.",
@@ -600,7 +608,11 @@
     "noPreview": "Drawing — click to open",
     "loading": "Opening the drawing…",
     "done": "Done",
-    "close": "Close"
+    "close": "Close",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "zoomFit": "Show the whole drawing",
+    "zoomLevel": "{{percent}}%"
   },
   "date": {
     "today": "Today",

@@ -85,6 +85,13 @@ export function CommandList({ items, selectedIndex, emptyText, onSelect, onHover
   )
 }
 
+/** The row ↑ / ↓ moves to in a list of `count` (wrapping round), or null for any other key. */
+export function listStep(key: string, count: number, selected: number): number | null {
+  if (key !== 'ArrowDown' && key !== 'ArrowUp') return null
+  if (!count) return selected
+  return (selected + (key === 'ArrowDown' ? 1 : -1) + count) % count
+}
+
 /** Shared arrow/enter navigation for any CommandList-driven popup. Returns true when the key was handled. */
 export function handleListKey(
   key: string,
@@ -93,12 +100,9 @@ export function handleListKey(
   setSelected: (i: number) => void,
   choose: (i: number) => void
 ): boolean {
-  if (key === 'ArrowDown') {
-    if (count) setSelected((selected + 1) % count)
-    return true
-  }
-  if (key === 'ArrowUp') {
-    if (count) setSelected((selected - 1 + count) % count)
+  const step = listStep(key, count, selected)
+  if (step !== null) {
+    if (count) setSelected(step)
     return true
   }
   if (key === 'Enter' || key === 'Tab') {

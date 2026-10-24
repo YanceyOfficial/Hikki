@@ -9,11 +9,13 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 
 import { ImageBrokenIcon } from '../generated/icons'
+import { imageLoadedBefore, markImageLoaded } from '../lib/loaded-images'
 
 /**
  * Every image fetched from the network (exodus's `LazyLoadImage`, the owner's rule): a skeleton while it loads, a fade
  * in, an icon — or the caller's `fallback` — when it fails. Covers, the Unsplash grid; body images get the same through
- * `extensions/image-loading.ts`.
+ * `extensions/image-loading.ts`. A picture already loaded in this run (`lib/loaded-images.ts`) shows at once: a tab
+ * switched back to doesn't flash its cover.
  */
 export function LazyLoadImage({
   src,
@@ -40,12 +42,11 @@ export function LazyLoadImage({
   onLoad?: () => void
   imgTestId?: string
 }) {
-  // Keyed by the source: another picture starts loading afresh.
-  const [state, setState] = useState<{ src: string; status: 'loading' | 'loaded' | 'failed' }>({
-    src,
-    status: 'loading'
-  })
-  const status = state.src === src ? state.status : 'loading'
+  // Keyed by the source: another picture starts loading afresh — unless it has loaded before.
+  const [state, setState] = useState<{ src: string; status: 'loading' | 'loaded' | 'failed' }>(
+    () => ({ src, status: imageLoadedBefore(src) ? 'loaded' : 'loading' })
+  )
+  const status = state.src === src ? state.status : imageLoadedBefore(src) ? 'loaded' : 'loading'
 
   if (status === 'failed' && fallback !== undefined) return <>{fallback}</>
 
@@ -68,6 +69,7 @@ export function LazyLoadImage({
           draggable={false}
           referrerPolicy={referrerPolicy}
           onLoad={() => {
+            markImageLoaded(src)
             setState({ src, status: 'loaded' })
             onLoad?.()
           }}

@@ -148,24 +148,49 @@ public struct WorkspaceFiles: Sendable {
             case .findFiles: return .json(try find(fields))
             case .grep: return .json(try grep(fields))
             case .writeFile, .editFile:
-                let change = try plan(tool, fields)
-                try write(change)
-                var result: [String: Any] = ["path": change.path, "bytes": change.after.utf8.count]
-                if tool == .writeFile {
-                    result["created"] = change.before == nil
-                    result["appended"] = change.appended
-                } else {
-                    result["replacements"] = change.replacements
-                    result["linesBefore"] = LineCount.of(change.before ?? "")
-                    result["linesAfter"] = LineCount.of(change.after)
-                }
-                return .json(result)
+                return .json(try apply(try plan(tool, fields), tool: tool))
             }
         } catch let failure as Failure {
             return .failure(failure.message)
         } catch {
             return .failure(error.localizedDescription)
         }
+    }
+
+    /// Runs a write or edit the user approved on its card: exactly the text the card showed (`approved.after`, from
+    /// `change(for:)`), never a fresh plan. A file that changed since the card was shown — not the `before` the user
+    /// looked at any more — is refused, nothing written.
+    public func perform(_ call: AIToolCall, approved: Change) -> AIToolOutput {
+        guard let tool = Tool(rawValue: call.name), tool.changesFiles else { return .failure("There is no such change.") }
+        do {
+            let (url, path) = try resolve(approved.path, writing: true)
+            let current: String? =
+                FileManager.default.fileExists(atPath: url.path)
+                ? String(data: try readData(url, path, limit: Self.maxWrite + 1), encoding: .utf8) : nil
+            guard current == approved.before else {
+                throw Failure("\(path) changed since the change was shown. Read it again and make the change anew.")
+            }
+            return .json(try apply(approved, tool: tool))
+        } catch let failure as Failure {
+            return .failure(failure.message)
+        } catch {
+            return .failure(error.localizedDescription)
+        }
+    }
+
+    /// Writes a change and describes it for the model.
+    private func apply(_ change: Change, tool: Tool) throws -> [String: Any] {
+        try write(change)
+        var result: [String: Any] = ["path": change.path, "bytes": change.after.utf8.count]
+        if tool == .writeFile {
+            result["created"] = change.before == nil
+            result["appended"] = change.appended
+        } else {
+            result["replacements"] = change.replacements
+            result["linesBefore"] = LineCount.of(change.before ?? "")
+            result["linesAfter"] = LineCount.of(change.after)
+        }
+        return result
     }
 
     /// What a write or edit call would change, without changing anything.

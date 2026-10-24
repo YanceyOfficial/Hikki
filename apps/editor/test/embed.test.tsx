@@ -3,11 +3,11 @@ import type { Editor } from '@tiptap/core'
 import { siFigma } from 'simple-icons'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { brandFill, isDarkHex } from '../src/components/brand-logos'
 import { BLOCK_TYPES } from '../src/core/blocks'
 import { createEditor } from '../src/core/editor'
 import { openEmbedPanel } from '../src/extensions/embed'
 import type { PageLinksHost } from '../src/extensions/page-links'
+import { brandFill, isDarkHex } from '../src/lib/brand-logos'
 import { embedFromHTML, embedFromURL, type LinkCard } from '../src/lib/embeds'
 import { doc, settle } from './helpers'
 

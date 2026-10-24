@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 38
+export const PROTOCOL_VERSION = 39
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -61,6 +61,8 @@ export type OutlineHeading = { id: string | null; level: number; text: string }
 export type ToNativeMessage =
   | { type: 'ready'; protocolVersion: number }
   | { type: 'changed'; snapshot: Snapshot }
+  /** The first edit since the page was last handed over (`changed`): the native save indicator shows "Saving…". */
+  | { type: 'editing'; docId: string }
   | { type: 'activeFormats'; active: Command[] }
   /** The open page's outline and size, for the native inspector: on load, then throttled as it changes. */
   | {

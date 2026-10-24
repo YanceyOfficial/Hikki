@@ -35,7 +35,7 @@ struct InspectorPanel: View {
             .frame(width: min(CGFloat(width), cap ?? .infinity))
             .overlay(alignment: .leading) {
                 // Apple's inspector: full height on the right, the hairline from the window's top edge.
-                Theme.border.frame(width: 1)
+                Theme.border.frame(width: Spacing.px)
                     .frame(maxHeight: .infinity)
                     .ignoresSafeArea(edges: .top)
                     .overlay {

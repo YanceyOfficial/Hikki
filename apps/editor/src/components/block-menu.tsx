@@ -1,15 +1,16 @@
 import type { Editor } from '@tiptap/core'
-import type { Node as PMNode } from '@tiptap/pm/model'
 import { TextSelection } from '@tiptap/pm/state'
 import { cn } from 'cn'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
 import { Input } from '@/components/ui/input'
 
-import { blockKindLabel } from '../core/block-kinds'
+import { blockCounts, blockKindLabel, unitTypeId } from '../core/block-kinds'
+import { blockLinkFor } from '../core/block-link'
+import { TURN_INTO } from '../core/blocks'
 import { notify, reportError } from '../core/errors'
-import { wordCount } from '../core/extract'
 import { t } from '../core/i18n'
+import { isWebURL } from '../core/links'
 import { shortcutLabel } from '../core/shortcuts'
 import type { AIAction } from '../extensions/ai-review'
 import { setBlockHighlight } from '../extensions/block-highlight'
@@ -44,10 +45,10 @@ import {
   TrashIcon
 } from '../generated/icons'
 import { mediaRef } from '../lib/ai-content'
-import { isWebURL } from '../lib/embeds'
 import { AIPanel } from './ai-panel'
-import { BlockTypeList, TURN_INTO } from './block-type-list'
+import { BlockTypeList } from './block-type-list'
 import { ColorList } from './color-list'
+import { listStep } from './command-list'
 import { FloatingLayer, usePresence } from './floating'
 import { GlidingHighlight } from './gliding-highlight'
 import { IconProvider } from './icons'
@@ -55,14 +56,6 @@ import { MenuRow } from './menu-row'
 import { PagePicker } from './page-picker'
 
 let open: { layer: FloatingLayer; close: () => void } | null = null
-
-/** A link to a block (`hikki://page/<page>#<block>`) and the page's title, for blocks without text of their own. */
-export type BlockLink = { href: string; pageLabel: string }
-/** Set by the bridge, which knows the page. */
-let blockLink: ((blockId: string) => BlockLink | null) | null = null
-export function setBlockLinkBuilder(builder: ((blockId: string) => BlockLink | null) | null): void {
-  blockLink = builder
-}
 
 /** Opens the block menu for `unit` below `anchor` (the grip). One at a time. */
 export function openBlockMenu(editor: Editor, unit: BlockUnit, anchor: DOMRect): void {
@@ -126,14 +119,6 @@ type Item = {
 function embedHost(editor: Editor): EmbedHost | null {
   const embed = editor.extensionManager.extensions.find((e) => e.name === 'embed')
   return (embed?.options as { host?: EmbedHost | null } | undefined)?.host ?? null
-}
-
-/** The block's words and characters, as the page's counts reckon them (CJK characters a word each); null without
- * text. */
-export function blockCounts(node: PMNode): { words: number; characters: number } | null {
-  const text = node.textBetween(0, node.content.size, ' ', ' ')
-  if (!text.trim()) return null
-  return { words: wordCount(text), characters: text.length }
 }
 
 function BlockMenu({
@@ -210,7 +195,7 @@ function BlockMenu({
     if (!editor.isDestroyed) editor.view.focus()
   }
   const blockId = unit.node.attrs.id as string | null | undefined
-  const link = blockId ? blockLink?.(blockId) : null
+  const link = blockId ? blockLinkFor(blockId) : null
 
   // AI works on the block's text (not on code), or reads its picture or PDF.
   const hasAIText = unitTextRange(unit) !== null
@@ -419,10 +404,10 @@ function BlockMenu({
       onKeyDown={(e) => {
         if (e.nativeEvent.isComposing) return
         // Escape is the layers' bus (onDismiss in openBlockMenu): it never reaches here.
-        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        const step = listStep(e.key, visible.length, selected)
+        if (step !== null) {
           e.preventDefault()
-          const step = e.key === 'ArrowDown' ? 1 : -1
-          setSelected((i) => (i + step + visible.length) % Math.max(1, visible.length))
+          setSelected(step)
         } else if (e.key === 'Enter' || (e.key === 'ArrowRight' && visible[selected]?.submenu)) {
           e.preventDefault()
           choose(selected)
@@ -458,7 +443,7 @@ function BlockMenu({
         )}
         <div
           ref={listRef}
-          className="relative max-h-[min(420px,calc(100vh-160px))] overflow-y-auto overscroll-contain"
+          className="relative max-h-(--layout-panel-height-menu) overflow-y-auto overscroll-contain"
         >
           <GlidingHighlight listRef={listRef} index={selected} />
           {visible.length === 0 && (
@@ -490,7 +475,7 @@ function BlockMenu({
                 {item.icon}
               </span>
               <span className="flex-1 truncate">{item.label}</span>
-              {item.keys && <span className="text-xs text-placeholder">{item.keys}</span>}
+              {item.keys && <span className="text-xs text-muted-foreground">{item.keys}</span>}
               {item.submenu && <CaretRightIcon size={14} aria-hidden />}
             </MenuRow>
           ])}
@@ -510,7 +495,7 @@ function BlockMenu({
         <div
           ref={submenuRef}
           role="menu"
-          className="hk-pop absolute top-0 left-full ml-1.5 flex max-h-[min(460px,calc(100vh-120px))] w-56 flex-col overflow-y-auto overscroll-contain rounded-xl bg-popover p-1 text-popover-foreground shadow-popover"
+          className="hk-pop absolute top-0 left-full ml-1.5 flex max-h-(--layout-panel-height-submenu) w-56 flex-col overflow-y-auto overscroll-contain rounded-xl bg-popover p-1 text-popover-foreground shadow-popover"
         >
           {shownSubmenu === 'ai' && (
             // Its field keeps its own keys (the menu's arrows and Escape stay out of the typing).
@@ -557,33 +542,6 @@ function BlockMenu({
       )}
     </div>
   )
-}
-
-/** The catalog id of the unit's kind (read from the document, no selection needed). */
-export function unitTypeId(editor: Editor, unit: BlockUnit): string | null {
-  const { node } = unit
-  switch (node.type.name) {
-    case 'paragraph':
-      return 'paragraph'
-    case 'heading':
-      return `heading${node.attrs.level as number}`
-    case 'listItem':
-      return editor.state.doc.resolve(unit.pos).parent.type.name === 'orderedList'
-        ? 'orderedList'
-        : 'bulletList'
-    case 'taskItem':
-      return 'taskList'
-    case 'blockquote':
-      return 'blockquote'
-    case 'codeBlock':
-      return 'codeBlock'
-    case 'details':
-      return 'toggle'
-    case 'callout':
-      return 'callout'
-    default:
-      return null
-  }
 }
 
 /** Puts the caret inside the unit (before a turn-into command). */

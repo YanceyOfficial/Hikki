@@ -30,11 +30,11 @@ struct OnboardingView: View {
             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
             StepDots(count: Step.allCases.count, current: step.rawValue)
         }
-        .frame(maxWidth: 440)
+        .frame(maxWidth: Size.onboardingWidth)
         .padding(Spacing.s8)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.background)
-        .animation(.snappy(duration: 0.25), value: step)
+        .animation(Motion.easeOut(), value: step)
         #if os(macOS)
             .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
             .ignoresSafeArea()
@@ -223,7 +223,7 @@ private struct StepDots: View {
                     .frame(width: index == current ? Spacing.s5 : Spacing.s1_5, height: Spacing.s1_5)
             }
         }
-        .animation(.snappy, value: current)
+        .animation(Motion.easeOut(), value: current)
         .accessibilityHidden(true)
     }
 }

@@ -14,7 +14,8 @@ struct UnsplashTests {
     @Test func readsTheBackendsPhotos() throws {
         let body = """
             {"photos":[{"id":"p1","thumb":"https://images.unsplash.com/1?w=400","regular":"https://images.unsplash.com/1?w=1080",
-            "full":"https://images.unsplash.com/1","color":"#a0b1c2","alt":null,"author":"Ann",
+            "full":"https://images.unsplash.com/1","cover":"https://images.unsplash.com/1?w=2560&q=85&fm=jpg&fit=max",
+            "color":"#a0b1c2","alt":null,"author":"Ann",
             "authorUrl":"https://unsplash.com/@ann?utm_source=hikki&utm_medium=referral",
             "photoUrl":"https://unsplash.com/photos/p1?utm_source=hikki&utm_medium=referral",
             "downloadLocation":"https://api.unsplash.com/photos/p1/download"}],"totalPages":3}
@@ -24,6 +25,19 @@ struct UnsplashTests {
         #expect(photos[0].author == "Ann")
         #expect(photos[0].alt == nil)
         #expect(photos[0].regular.absoluteString == "https://images.unsplash.com/1?w=1080")
+        #expect(photos[0].coverURL.absoluteString == "https://images.unsplash.com/1?w=2560&q=85&fm=jpg&fit=max")
+    }
+
+    @Test func anOlderBackendsPhotoWithoutACoverFallsBackToRegular() throws {
+        let body = """
+            {"photos":[{"id":"p1","thumb":"https://images.unsplash.com/1?w=400","regular":"https://images.unsplash.com/1?w=1080",
+            "full":"https://images.unsplash.com/1","color":null,"alt":null,"author":"Ann",
+            "authorUrl":"https://unsplash.com/@ann","photoUrl":"https://unsplash.com/photos/p1",
+            "downloadLocation":"https://api.unsplash.com/photos/p1/download"}],"totalPages":null}
+            """
+        let photos = try UnsplashClient.photos(from: Data(body.utf8), status: 200)
+        #expect(photos[0].cover == nil)
+        #expect(photos[0].coverURL.absoluteString == "https://images.unsplash.com/1?w=1080")
     }
 
     @Test func aFailureCarriesTheBackendsCode() {

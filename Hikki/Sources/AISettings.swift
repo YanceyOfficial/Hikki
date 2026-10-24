@@ -3,8 +3,9 @@ import HikkiCore
 import HikkiUI
 import SwiftUI
 
-/// Settings → AI: the providers' API keys (in the Keychain; each sent only to the origin it was entered for), an
-/// optional base URL per provider, and the model AI uses by default. The models are a fixed list (`AIModelCatalog`).
+/// Settings → AI: the providers' API keys (in iCloud Keychain, so they reach the owner's other devices; each sent only
+/// to the origin it was entered for), an optional base URL per provider, and the model AI uses by default. The models
+/// are a fixed list (`AIModelCatalog`). Everything but the keys syncs through `SyncedSettings`.
 enum AIPreferences {
     /// The model chosen: an id from the catalog or "auto". Settings → AI and the chat's model menu both set it, and
     /// the page's own AI (Ask AI in the selection and block menus) runs on it too.
@@ -141,6 +142,10 @@ struct AISettingsSection: View {
         ForEach(AIProvider.allCases, id: \.self) { provider in
             AIKeySection(provider: provider)
         }
+        Section {
+        } footer: {
+            Text("app:ai.settings.keys.sync")
+        }
     }
 
     private func title(_ sketch: ReviewStyleThumbnail.Sketch) -> LocalizedStringKey {
@@ -213,11 +218,13 @@ struct AIModelButton<Label: View>: View {
     }
 }
 
-/// One provider's key: typed once, kept in the Keychain; the field shows dots, never the key.
+/// One provider's key: typed once, kept in iCloud Keychain (`Keychain`); the field shows dots, never the key.
 private struct AIKeySection: View {
     let provider: AIProvider
     @State private var key = ""
     @State private var baseText = ""
+    /// The last write to iCloud Keychain failed (its toast is up): the status says so until one works.
+    @State private var saveFailed = false
 
     /// The base as typed, or nil while it isn't a usable URL (the key field waits for one).
     private var base: URL? { AIEndpoint.base(baseText, for: provider) }
@@ -230,7 +237,16 @@ private struct AIKeySection: View {
                 .disabled(account == nil)
                 .onChange(of: key) { _, value in
                     guard let account else { return }
-                    Keychain.write(value.trimmingCharacters(in: .whitespacesAndNewlines), for: account)
+                    do {
+                        try Keychain.write(value.trimmingCharacters(in: .whitespacesAndNewlines), for: account)
+                        saveFailed = false
+                    } catch {
+                        // Once per run of failures (the field writes on every keystroke), not a toast per key typed.
+                        if !saveFailed {
+                            Toasts.report(.aiKeySaveFailed, error, category: "keychain", context: ["provider": provider.rawValue])
+                        }
+                        saveFailed = true
+                    }
                 }
             TextField(
                 "app:ai.settings.baseURL", text: $baseText,
@@ -249,7 +265,7 @@ private struct AIKeySection: View {
                 key = account.flatMap(Keychain.read) ?? ""
             }
             LabeledContent("app:ai.settings.status") {
-                Text(status).foregroundStyle(problem ? AnyShapeStyle(.red) : AnyShapeStyle(Theme.subtleForeground))
+                Text(status).foregroundStyle(problem ? AnyShapeStyle(Theme.destructive) : AnyShapeStyle(Theme.subtleForeground))
             }
         } header: {
             Text(verbatim: provider.name)
@@ -265,11 +281,12 @@ private struct AIKeySection: View {
         }
     }
 
-    private var problem: Bool { base.map { !AIEndpoint.mayCarryKey($0) } ?? true }
+    private var problem: Bool { saveFailed || (base.map { !AIEndpoint.mayCarryKey($0) } ?? true) }
 
     private var status: LocalizedStringKey {
         guard let base else { return "app:ai.settings.status.badURL" }
         if !AIEndpoint.mayCarryKey(base) { return "app:ai.settings.status.insecure" }
+        if saveFailed { return "app:ai.settings.status.notSaved" }
         return key.isEmpty ? "app:ai.settings.status.none" : "app:ai.settings.status.saved"
     }
 

@@ -1616,6 +1616,23 @@
         }
       }
     },
+    "app:ai.settings.keys.sync": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keys are kept in iCloud Keychain: end-to-end encrypted, they reach your other devices signed in to the same Apple Account. Each key is still sent only to the address it was entered for."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密钥保存在 iCloud 钥匙串中：端到端加密，会同步到登录同一 Apple 账户的其他设备。每个密钥仍只发送到输入它时对应的地址。"
+          }
+        }
+      }
+    },
     "app:ai.settings.model": {
       "extractionState": "manual",
       "localizations": {
@@ -1782,6 +1799,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "未填写"
+          }
+        }
+      }
+    },
+    "app:ai.settings.status.notSaved": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not saved"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未保存"
           }
         }
       }
@@ -2602,6 +2636,125 @@
         }
       }
     },
+    "app:calendar.edited %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ pages edited"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑了 %@ 个页面"
+          }
+        }
+      }
+    },
+    "app:calendar.more %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%@ more"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还有 %@ 个"
+          }
+        }
+      }
+    },
+    "app:calendar.next": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next month"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下个月"
+          }
+        }
+      }
+    },
+    "app:calendar.nothing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No pages were edited this day."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这一天没有编辑过页面。"
+          }
+        }
+      }
+    },
+    "app:calendar.pages %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ pages"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 个页面"
+          }
+        }
+      }
+    },
+    "app:calendar.previous": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Previous month"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上个月"
+          }
+        }
+      }
+    },
+    "app:calendar.today": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天"
+          }
+        }
+      }
+    },
     "app:chrome.back": {
       "extractionState": "manual",
       "localizations": {
@@ -2649,6 +2802,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "已暂停：这台设备登录了另一个 iCloud 账户。关掉再打开 iCloud 即可改为与它同步。"
+          }
+        }
+      }
+    },
+    "app:cloud.dataDeleted": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paused: this workspace's iCloud data was deleted. Turn iCloud off and on to upload it again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已暂停：此工作区的 iCloud 数据已被删除。关掉再打开 iCloud 即可重新上传。"
           }
         }
       }
@@ -2734,6 +2904,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在同步…"
+          }
+        }
+      }
+    },
+    "app:cloud.unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can't reach iCloud right now; trying again"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂时无法连接 iCloud，稍后会再试"
           }
         }
       }
@@ -4217,6 +4404,40 @@
         }
       }
     },
+    "app:error.aiChatClearFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't clear the AI conversation."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法清空 AI 对话。"
+          }
+        }
+      }
+    },
+    "app:error.aiChatSaveFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't keep the AI conversation."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法保存 AI 对话。"
+          }
+        }
+      }
+    },
     "app:error.aiInvalidResponse": {
       "extractionState": "manual",
       "localizations": {
@@ -4230,6 +4451,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法读取 AI 的回复。"
+          }
+        }
+      }
+    },
+    "app:error.aiKeySaveFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't save the API key in iCloud Keychain."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法将 API 密钥保存到 iCloud 钥匙串。"
           }
         }
       }
@@ -4506,6 +4744,23 @@
         }
       }
     },
+    "app:error.databaseRebuilt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The page index couldn't be opened and was rebuilt from your pages."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "页面索引无法打开，已根据页面文件重建。"
+          }
+        }
+      }
+    },
     "app:error.diagnosticsExportFailed": {
       "extractionState": "manual",
       "localizations": {
@@ -4604,6 +4859,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "编辑器出错了。"
+          }
+        }
+      }
+    },
+    "app:error.editsNotDelivered": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't hand your latest edits to Hikki to save. They're kept and will be saved with your next change."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法将最新的编辑交给 Hikki 保存。编辑已保留，会随下一次修改一起保存。"
           }
         }
       }
@@ -4961,6 +5233,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "请求太频繁，请稍后再试。"
+          }
+        }
+      }
+    },
+    "app:error.reminderNotificationsOff": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reminders won't ring: notifications are off for Hikki."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提醒不会响起：Hikki 的通知已关闭。"
+          }
+        }
+      }
+    },
+    "app:error.reminderScheduleFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't set the reminder."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法设置提醒。"
           }
         }
       }
@@ -6240,6 +6546,23 @@
         }
       }
     },
+    "app:home.layout.calendar": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calendar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日历"
+          }
+        }
+      }
+    },
     "app:home.layout.gallery": {
       "extractionState": "manual",
       "localizations": {
@@ -6903,23 +7226,6 @@
         }
       }
     },
-    "app:keyboard.emoji": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Emoji"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "表情"
-          }
-        }
-      }
-    },
     "app:keyboard.file": {
       "extractionState": "manual",
       "localizations": {
@@ -7515,6 +7821,91 @@
         }
       }
     },
+    "app:move.current": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current location"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前位置"
+          }
+        }
+      }
+    },
+    "app:move.noResults": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No pages match"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有匹配的页面"
+          }
+        }
+      }
+    },
+    "app:move.placeholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move page to…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将页面移动到…"
+          }
+        }
+      }
+    },
+    "app:move.results": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pages"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "页面"
+          }
+        }
+      }
+    },
+    "app:move.suggested": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suggested"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "建议"
+          }
+        }
+      }
+    },
     "app:nav.home": {
       "extractionState": "manual",
       "localizations": {
@@ -7987,6 +8378,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "字符"
+          }
+        }
+      }
+    },
+    "app:page.confirmTrash %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move “%@” to Trash?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要将“%@”移到回收站吗？"
+          }
+        }
+      }
+    },
+    "app:page.confirmTrash.hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can restore it from the Trash."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可以在回收站中恢复。"
+          }
+        }
+      }
+    },
+    "app:page.confirmTrash.subpage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Its subpage goes along with it. You can restore them from the Trash."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它的 1 个子页面也会一起移走，可以在回收站中恢复。"
+          }
+        }
+      }
+    },
+    "app:page.confirmTrash.subpages %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Its %@ subpages go along with it. You can restore them from the Trash."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它的 %@ 个子页面也会一起移走，可以在回收站中恢复。"
           }
         }
       }
@@ -8807,6 +9266,23 @@
         }
       }
     },
+    "app:reminder.openSettings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Settings"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开设置"
+          }
+        }
+      }
+    },
     "app:reminder.snooze": {
       "extractionState": "manual",
       "localizations": {
@@ -8820,6 +9296,193 @@
           "stringUnit": {
             "state": "translated",
             "value": "15 分钟后再提醒"
+          }
+        }
+      }
+    },
+    "app:saveStatus.notSyncing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not syncing"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未同步"
+          }
+        }
+      }
+    },
+    "app:saveStatus.refused": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved on this device, but iCloud couldn't take this page"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已保存在此设备上，但 iCloud 未能接收此页面"
+          }
+        }
+      }
+    },
+    "app:saveStatus.saved": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已保存"
+          }
+        }
+      }
+    },
+    "app:saveStatus.savedAt %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved on this device at %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已于 %@ 保存在此设备上"
+          }
+        }
+      }
+    },
+    "app:saveStatus.saving": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saving…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在保存…"
+          }
+        }
+      }
+    },
+    "app:saveStatus.synced": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synced to iCloud"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已同步到 iCloud"
+          }
+        }
+      }
+    },
+    "app:saveStatus.syncedAt %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synced to iCloud at %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已于 %@ 同步到 iCloud"
+          }
+        }
+      }
+    },
+    "app:saveStatus.uploading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Syncing…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在同步…"
+          }
+        }
+      }
+    },
+    "app:saveStatus.uploadingDetail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved on this device, uploading to iCloud"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已保存在此设备上，正在上传到 iCloud"
+          }
+        }
+      }
+    },
+    "app:saveStatus.waiting": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting to sync"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "等待同步"
+          }
+        }
+      }
+    },
+    "app:saveStatus.waitingDetail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved on this device. It goes up to iCloud as soon as iCloud can take it (offline?)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已保存在此设备上。iCloud 可用时会自动上传（是否已断网？）"
           }
         }
       }
@@ -9725,6 +10388,23 @@
         }
       }
     },
+    "app:settings.storage.moving": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moving into iCloud…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在移入 iCloud…"
+          }
+        }
+      }
+    },
     "app:settings.storage.notSynced": {
       "extractionState": "manual",
       "localizations": {
@@ -9823,6 +10503,125 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ 个等待 iCloud 下载"
+          }
+        }
+      }
+    },
+    "app:settings.sync.checking": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在检查…"
+          }
+        }
+      }
+    },
+    "app:settings.sync.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your settings reach your other devices through iCloud, and AI keys through iCloud Keychain (end-to-end encrypted). The app's language and window layout stay on each device."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设置通过 iCloud 同步到你的其他设备，AI 密钥通过 iCloud 钥匙串同步（端到端加密）。应用语言和窗口布局仍按设备分别保存。"
+          }
+        }
+      }
+    },
+    "app:settings.sync.header": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同步"
+          }
+        }
+      }
+    },
+    "app:settings.sync.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings and AI keys"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设置与 AI 密钥"
+          }
+        }
+      }
+    },
+    "app:settings.sync.noAccount": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No iCloud account"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未登录 iCloud"
+          }
+        }
+      }
+    },
+    "app:settings.sync.off": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Off for this run"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本次运行未开启"
+          }
+        }
+      }
+    },
+    "app:settings.sync.on": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Syncing through iCloud"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在通过 iCloud 同步"
           }
         }
       }
@@ -10609,6 +11408,57 @@
         }
       }
     },
+    "app:shortcut.duplicatePage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duplicate page"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "创建页面副本"
+          }
+        }
+      }
+    },
+    "app:shortcut.exportMarkdown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export page as Markdown"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将页面导出为 Markdown"
+          }
+        }
+      }
+    },
+    "app:shortcut.favoritePage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add to or remove from Favorites"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加到或移出收藏"
+          }
+        }
+      }
+    },
     "app:shortcut.find": {
       "extractionState": "manual",
       "localizations": {
@@ -10830,6 +11680,40 @@
         }
       }
     },
+    "app:shortcut.movePage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move page to"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移动页面到"
+          }
+        }
+      }
+    },
+    "app:shortcut.moveToTrash": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move page to Trash"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将页面移到回收站"
+          }
+        }
+      }
+    },
     "app:shortcut.newChat": {
       "extractionState": "manual",
       "localizations": {
@@ -10915,6 +11799,23 @@
         }
       }
     },
+    "app:shortcut.pageHistory": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Page history"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "页面历史"
+          }
+        }
+      }
+    },
     "app:shortcut.previousTab": {
       "extractionState": "manual",
       "localizations": {
@@ -10945,6 +11846,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "引用"
+          }
+        }
+      }
+    },
+    "app:shortcut.reopenClosedTab": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reopen closed tab"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新打开关闭的标签页"
           }
         }
       }
@@ -11047,6 +11965,159 @@
           "stringUnit": {
             "state": "translated",
             "value": "上标"
+          }
+        }
+      }
+    },
+    "app:shortcut.tab1": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab 1"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页 1"
+          }
+        }
+      }
+    },
+    "app:shortcut.tab2": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab 2"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页 2"
+          }
+        }
+      }
+    },
+    "app:shortcut.tab3": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab 3"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页 3"
+          }
+        }
+      }
+    },
+    "app:shortcut.tab4": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab 4"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页 4"
+          }
+        }
+      }
+    },
+    "app:shortcut.tab5": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab 5"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页 5"
+          }
+        }
+      }
+    },
+    "app:shortcut.tab6": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab 6"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页 6"
+          }
+        }
+      }
+    },
+    "app:shortcut.tab7": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab 7"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页 7"
+          }
+        }
+      }
+    },
+    "app:shortcut.tab8": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab 8"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页 8"
+          }
+        }
+      }
+    },
+    "app:shortcut.tab9": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab 9"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页 9"
           }
         }
       }
@@ -11748,6 +12819,23 @@
         }
       }
     },
+    "app:tabs.closeAll": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close All Tabs"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭所有标签页"
+          }
+        }
+      }
+    },
     "app:tabs.closeOthers": {
       "extractionState": "manual",
       "localizations": {
@@ -11778,6 +12866,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "关闭右侧标签页"
+          }
+        }
+      }
+    },
+    "app:tabs.copyLink": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy Link"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制链接"
           }
         }
       }
@@ -11867,6 +12972,23 @@
         }
       }
     },
+    "app:tabs.number %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tab %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签页 %@"
+          }
+        }
+      }
+    },
     "app:tabs.previous": {
       "extractionState": "manual",
       "localizations": {
@@ -11880,6 +13002,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "上一个标签页"
+          }
+        }
+      }
+    },
+    "app:tabs.reopenClosed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reopen Closed Tab"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新打开关闭的标签页"
+          }
+        }
+      }
+    },
+    "app:tabs.revealInSidebar": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reveal in Sidebar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在边栏中显示"
           }
         }
       }

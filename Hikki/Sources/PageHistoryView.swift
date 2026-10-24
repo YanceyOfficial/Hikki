@@ -20,6 +20,8 @@ struct PageHistoryView: View {
     @State private var restoring = false
     /// The page as it is now, flattened once for every version's comparison.
     @State private var current: CurrentPage?
+    /// Bumped when another device's versions of the page arrive: the list is read again.
+    @State private var arrivals = 0
 
     var body: some View {
         screen.screenTitle(String(localized: "app:history.title"))
@@ -75,15 +77,19 @@ struct PageHistoryView: View {
         #if os(macOS)
             .frame(minWidth: Size.historyWidth, minHeight: Size.historyHeight)
         #endif
-        .task {
+        .task(id: arrivals) {
             // Every version file is read and decoded, and the page flattened, off the main thread.
             let record = try? model.store.document(id: pageID)
             async let loadedVersions = Self.load(model.history, pageID: pageID)
             async let now = Self.flatten(record)
             versions = await loadedVersions
             current = await now
-            selection = versions.first?.id
+            // Read again (versions arrived): the one picked stays picked while it is there.
+            if selection == nil || !versions.contains(where: { $0.id == selection }) { selection = versions.first?.id }
             loaded = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .pageHistoryChanged)) { note in
+            if note.userInfo?["id"] as? String == pageID { arrivals += 1 }
         }
     }
 
@@ -299,7 +305,7 @@ private struct VersionRow: View {
                 .font(.hk(.sm, .medium))
             Text(version.savedAt, format: .relative(presentation: .named))
                 .font(.hk(.xs))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.mutedForeground)
             VersionCaption(version: version)
         }
         .padding(.vertical, Spacing.s1)
@@ -322,7 +328,7 @@ private struct VersionCaption: View {
             }
         }
         .font(.hk(.xs))
-        .foregroundStyle(.secondary)
+        .foregroundStyle(Theme.mutedForeground)
         .lineLimit(1)
     }
 }

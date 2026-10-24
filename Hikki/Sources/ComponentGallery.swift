@@ -15,12 +15,45 @@
         @State private var recorded = "⌘B"
         @State private var drawerOpen = true
         @State private var dialogPage = "general"
+        @State private var moveQuery = ""
+        @State private var moveExpanded: Set<String> = ["work"]
         private let galleryTabs = [UUID(), UUID()]
         private let galleryToasts = [GalleryToast(message: "Page duplicated"), GalleryToast(message: "Link copied")]
 
         private struct GalleryToast: Identifiable {
             let id = UUID()
             let message: String
+        }
+
+        /// MovePagePicker's sample: a small tree, or one search result once something is typed.
+        private var galleryMoveItems: [MovePickerItem] {
+            guard moveQuery.isEmpty else {
+                return [MovePickerItem(id: "sync", title: "Weekly sync", icon: "🗓️", path: "Work / Meetings")]
+            }
+            let open = moveExpanded.contains("work")
+            var items = [MovePickerItem(id: "work", title: "Work", icon: "💼", hasChildren: true, isExpanded: open)]
+            if open { items.append(MovePickerItem(id: "roadmap", title: "Roadmap", icon: nil, depth: 1, isCurrent: true)) }
+            items.append(MovePickerItem(id: "trip", title: "Trip to Kyoto", icon: "🗾"))
+            return items
+        }
+
+        /// MonthCalendar's sample: October 2026, a few pages on some days.
+        private var galleryWeeks: [[MonthCalendar.Day]] {
+            let calendar = HomeCalendar.calendar()
+            let month = CalendarMonth(year: 2026, month: 10)
+            let pages = [
+                MonthCalendar.Page(id: "a", title: "Trip to Kyoto", icon: "🗺️"),
+                MonthCalendar.Page(id: "b", title: "Reading notes", icon: nil),
+            ]
+            return HomeCalendar.weeks(of: month, calendar: calendar).map { week in
+                week.map { day in
+                    let number = calendar.component(.day, from: day)
+                    let count = [0, 1, 0, 2, 4][number % 5]
+                    return MonthCalendar.Day(
+                        id: day, number: number, inMonth: month.contains(day, in: calendar), isToday: number == 24,
+                        pages: Array(pages.prefix(count)), total: count, label: day.formatted(date: .complete, time: .omitted))
+                }
+            }
         }
 
         var body: some View {
@@ -186,6 +219,27 @@
                                         id: $0, label: "MTWTFSS".map(String.init)[$0], value: [1, 0, 8, 3, 0, 12, 0][$0], isToday: $0 == 5)
                                 },
                                 footnote: "32 pages · 41,203 words in all")
+                        }
+                        Section("MonthCalendar · CalendarDayList") {
+                            MonthCalendar(
+                                title: "October 2026", summary: "23 pages edited",
+                                weekdays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], weeks: galleryWeeks,
+                                selection: galleryWeeks[3][5].id, onSelect: { _ in }, onMove: { _ in }, onToday: {})
+                            CalendarDayList(
+                                title: "Saturday, October 24",
+                                rows: [
+                                    .init(
+                                        id: "a", title: "Trip to Kyoto", icon: "🗺️", location: "Travel", words: "1,204 words",
+                                        time: "3:41 PM"),
+                                    .init(id: "b", title: "Reading notes", icon: nil, location: "", words: "312 words", time: "9:02 AM"),
+                                ], onOpen: { _ in })
+                        }
+                        .id("MonthCalendar")
+                        Section("PageCoverView") {
+                            HStack(spacing: Spacing.s3) {
+                                PageCoverView(.gradient(.ocean)).frame(height: Size.homeCardCover)
+                                PageCoverView(.gradient(.ember)).frame(height: Size.homeCardCover)
+                            }
                         }
                         Section("UnlockSheet · ReadOnlyBar") {
                             UnlockSheet(status: .trial(daysLeft: 9), price: "$19.99", onUnlock: {}, onRestore: {}, onClose: {})
@@ -384,6 +438,23 @@
                             ShimmerText("app:ai.thinking").font(.hk(.sm))
                             ShimmerText("app:ai.searching").font(.hk(.sm))
                         }
+                        Section("SyncStatusBadge") {
+                            let saving = String(localized: "app:saveStatus.saving")
+                            let synced = String(localized: "app:saveStatus.synced")
+                            SyncStatusBadge(kind: .saving, title: saving, detail: saving)
+                            SyncStatusBadge(
+                                kind: .uploading, title: String(localized: "app:saveStatus.uploading"),
+                                detail: String(localized: "app:saveStatus.uploadingDetail"))
+                            SyncStatusBadge(kind: .synced, title: synced, detail: synced)
+                            SyncStatusBadge(kind: .synced, title: synced, detail: synced, compact: true)
+                            SyncStatusBadge(
+                                kind: .waiting, title: String(localized: "app:saveStatus.waiting"),
+                                detail: String(localized: "app:saveStatus.waitingDetail"))
+                            SyncStatusBadge(
+                                kind: .trouble, title: String(localized: "app:saveStatus.notSyncing"),
+                                detail: String(localized: "app:cloud.noAccount"))
+                        }
+                        .id("SyncStatusBadge")
                         Section("CodeBlockView") {
                             CodeBlockView(
                                 code: "let greeting = \"Hello\"\nprint(greeting)  // a line long enough to scroll sideways in the block",
@@ -411,6 +482,26 @@
                                 PageIcon("🌱")
                                 PageIcon("📚", size: TextSize.xl.rawValue)
                                 PageIcon(nil, size: TextSize.lg.rawValue)
+                            }
+                        }
+                        Section("PageRowLabel") {
+                            VStack(spacing: Spacing.s0) {
+                                PageRowLabel(icon: "🗺️", title: "Trip to Kyoto")
+                                PageRowLabel(icon: nil, title: "")
+                                PageRowLabel(icon: "📚", title: "Reading notes", nested: true)
+                            }
+                        }
+                        Section("PressEffect · PressableButtonStyle · HikkiButtonStyle") {
+                            HStack(spacing: Spacing.s3) {
+                                Button {
+                                } label: {
+                                    Text(verbatim: "A tile")
+                                        .padding(Spacing.s4)
+                                        .background(Theme.muted, in: .rect(cornerRadius: Radius.lg))
+                                }
+                                .buttonStyle(.pressable)
+                                Button("Continue") {}.buttonStyle(.hikki())
+                                Button("Skip") {}.buttonStyle(.hikki(.ghost))
                             }
                         }
                         Section("SelectableCard") {
@@ -457,6 +548,16 @@
                             SearchResultRow(
                                 title: "Trip", icon: "🧭", snippet: "…BOARDING PASS · gate B12…", terms: ["gate"],
                                 attachment: "boarding-pass.pdf", updatedAt: .now.addingTimeInterval(-86_400))
+                        }
+                        Section("MovePagePicker") {
+                            MovePagePicker(
+                                query: $moveQuery, items: galleryMoveItems, workspaceName: "Yancey's Notes", isAtTopLevel: false, focusesField: false,
+                                badge: { WorkspaceBadge(initial: "Y") },
+                                onToggle: { id in
+                                    if moveExpanded.contains(id) { moveExpanded.remove(id) } else { moveExpanded.insert(id) }
+                                },
+                                onPick: { _ in }, onCancel: {})
+                            .frame(height: Size.movePickerHeight)
                         }
                         Section("SearchMatchRow · SearchMatchesToggleRow") {
                             SearchMatchRow(snippet: "雨が降っているので家にいます。", terms: ["ので"], isSelected: true)

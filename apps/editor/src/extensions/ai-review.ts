@@ -1,5 +1,5 @@
 import { Extension, type Editor } from '@tiptap/core'
-import type { Fragment } from '@tiptap/pm/model'
+import { DOMSerializer, type Fragment, type Node as PMNode, type Schema } from '@tiptap/pm/model'
 import {
   Plugin,
   PluginKey,
@@ -11,14 +11,18 @@ import { Decoration, DecorationSet } from '@tiptap/pm/view'
 
 import { renderAIReview, type AIReviewProps } from '../components/ai-review'
 import { FloatingLayer } from '../components/floating'
-import { markdownBlocks } from '../core/convert'
+import { answerBlocks, answerDOM } from '../core/answer-markdown'
+import { reportError } from '../core/errors'
+import { isWebURL } from '../core/links'
 import type { AIMediaRef, AIStreamEvent } from '../core/protocol'
 import {
+  type AddedType,
   type AIUnit,
   fragmentText,
   isHandoff,
   mediaRef,
   OBJECT_CHAR,
+  parseEditAdded,
   parseEditNotes,
   parseEditReply,
   parseInline,
@@ -38,6 +42,10 @@ const ANSWER_ACTIONS = new Set(['explain', 'summarize', 'ask', 'describe', 'extr
 
 /** Requests in the user's own words: the model may hand them to the chat instead (`mayHandOff`). */
 const HANDOFF_ACTIONS = new Set(['custom', 'ask'])
+
+/** The one action whose reply may add blocks after the selection (`"added"`): the user's own instruction for an
+ * edit. A preset is an edit of the selected text alone, and an answer adds nothing (it goes to notes). */
+const ADDING_ACTIONS = new Set(['custom'])
 
 /**
  * How an edit is reviewed (Settings → AI): A `inline` — tracked changes in the page; B `diff` — before/after lines in
@@ -87,6 +95,9 @@ export type AISession = {
   reply: string
   /** For edits: each unit's replacement, and its diff against the selection. */
   edits: Map<string, { fragment: Fragment; diff: DiffSegment[] }>
+  /** For edits: the new blocks that go right after the selection (the user asked for new material), in order —
+   * ghosts in the page until accepted. */
+  added: AIAddedBlock[]
   /** For edits: what the model says to the user (Markdown each) — answers, verdicts, explanations — shown in a card,
    * never part of the edit. */
   notes: string[]
@@ -99,6 +110,9 @@ export type AISession = {
   citations: { url: string; title?: string | null }[]
   error: { code: string; provider?: string | null; message?: string | null } | null
 }
+
+/** A block the model adds after the selection, parsed: its kind, its content for this schema and its text. */
+export type AIAddedBlock = { type: AddedType; fragment: Fragment; text: string }
 
 export const AIReviewKey = new PluginKey<DecorationSet>('aiReview')
 
@@ -116,8 +130,9 @@ const newID = () => `ai-${Date.now().toString(36)}-${(counter++).toString(36)}`
 /**
  * AI on the selection, reviewed inline (style A): while the model works the selection shimmers; its edit comes back
  * as decorations — removed text struck through, added text inserted beside it — with a bar under the selection to
- * accept (one undo step), discard, retry or ask for a change. Nothing touches the document until accepted, and the
- * review closes if the page changes under it. Explain / summarize answer in a card instead. What the model says
+ * accept (one undo step), discard, retry or ask for a change. New blocks the user's own instruction asked for
+ * (`added`) stand as green ghosts after the selection's block and go in with the edit on Accept. Nothing touches the
+ * document until accepted, and the review closes if the page changes under it. Explain / summarize answer in a card instead. What the model says
  * beside an edit (`notes`) is a card of its own under the bar — each note copied or inserted below the selection,
  * never part of the edit, and still there once the edit is accepted. A request in the user's words the model judges
  * too big for the selection (`{"handoff": …}`) closes here and continues in the chat (`AIHost.handoff`).
@@ -193,7 +208,7 @@ export function AIReview(host: AIHost) {
                 close(editor, host)
                 return true
               }
-              if (event.key === 'Enter' && session.status === 'review' && session.edits.size > 0) {
+              if (event.key === 'Enter' && session.status === 'review' && acceptable(session)) {
                 editor.commands.aiAccept()
                 return true
               }
@@ -286,6 +301,7 @@ function start(
     status: 'thinking',
     reply: '',
     edits: new Map(),
+    added: [],
     notes: [],
     inserted: [],
     searching: null,
@@ -341,7 +357,7 @@ export function handleAIEvent(editor: Editor, host: AIHost, event: AIStreamEvent
       break
     case 'citation':
       // Only web pages, once each (the URL comes from the model's search).
-      if (webURL(event.url) && !session.citations.some((c) => c.url === event.url))
+      if (isWebURL(event.url) && !session.citations.some((c) => c.url === event.url))
         session.citations.push({ url: event.url, title: event.title })
       break
     case 'done':
@@ -391,16 +407,6 @@ function redraw(editor: Editor, host: AIHost): void {
   draw(editor, host)
 }
 
-function webURL(url: unknown): boolean {
-  if (typeof url !== 'string') return false
-  try {
-    const { protocol } = new URL(url)
-    return protocol === 'https:' || protocol === 'http:'
-  } catch {
-    return false
-  }
-}
-
 /** Whether the model may hand this request to the chat: the user's own words about text, and a host that can. */
 function mayHandOff(host: AIHost, session: AISession): boolean {
   return (
@@ -438,7 +444,15 @@ function finishEdit(editor: Editor, session: AISession): void {
     session.units.map((u) => u.key)
   )
   session.notes = parseEditNotes(session.reply)
-  if (!replies && session.notes.length === 0) {
+  // Only the user's own instruction may add blocks; whatever a preset's reply adds is ignored.
+  if (ADDING_ACTIONS.has(session.action.id.split(':')[0])) {
+    for (const block of parseEditAdded(session.reply)) {
+      const fragment = parseInline(editor.schema, block.html)
+      if (!fragment || fragment.size === 0) continue
+      session.added.push({ type: block.type, fragment, text: fragmentText(fragment) })
+    }
+  }
+  if (!replies && session.notes.length === 0 && session.added.length === 0) {
     session.status = 'error'
     session.error = { code: 'invalidResponse' }
     return
@@ -453,6 +467,72 @@ function finishEdit(editor: Editor, session: AISession): void {
       session.edits.set(unit.key, { fragment, diff })
   }
   session.status = 'review'
+}
+
+/** Whether there is an edit to accept: a changed block, or blocks to add. */
+const acceptable = (session: AISession): boolean =>
+  session.edits.size > 0 || session.added.length > 0
+
+/** How many separate changes the review holds: the diffs' changes, and each added block as one. */
+const changeTotal = (session: AISession): number =>
+  [...session.edits.values()].reduce((sum, edit) => sum + changeCount(edit.diff), 0) +
+  session.added.length
+
+/**
+ * The added blocks as nodes of the schema: a paragraph, a heading, a quote around a paragraph, and a run of list
+ * items as one list (bullet or numbered), so they go in as the page would hold them.
+ */
+export function addedNodes(schema: Schema, added: AIAddedBlock[]): PMNode[] {
+  const { nodes } = schema
+  const out: PMNode[] = []
+  let list: { type: 'bullet' | 'numbered'; items: PMNode[] } | null = null
+  const flush = () => {
+    if (!list) return
+    const listType = list.type === 'bullet' ? nodes.bulletList : nodes.orderedList
+    const node = listType?.createAndFill(null, list.items)
+    if (node) out.push(node)
+    else out.push(...list.items.map((item) => item.firstChild ?? item))
+    list = null
+  }
+  for (const block of added) {
+    const paragraph = nodes.paragraph.create(null, block.fragment)
+    const level = /^heading([1-3])$/u.exec(block.type)?.[1]
+    if (block.type === 'bullet' || block.type === 'numbered') {
+      const item = nodes.listItem?.createAndFill(null, paragraph)
+      if (item) {
+        if (list && list.type !== block.type) flush()
+        list ??= { type: block.type, items: [] }
+        list.items.push(item)
+        continue
+      }
+    }
+    flush()
+    const quote = block.type === 'quote' ? nodes.blockquote?.createAndFill(null, paragraph) : null
+    if (level && nodes.heading)
+      out.push(nodes.heading.create({ level: Number(level) }, block.fragment))
+    else if (quote) out.push(quote)
+    else out.push(paragraph)
+  }
+  flush()
+  return out
+}
+
+/**
+ * The ghost of a block to add, drawn between the page's blocks in green (the look of the chat's proposed inserts,
+ * `.hk-ai-ghost`): its inline content as the page would draw it — marks, links and line breaks kept — a heading at its
+ * size, a list item with its marker, a quote with its rule.
+ */
+function ghostBlock(schema: Schema, block: AIAddedBlock, ordinal: number): HTMLElement {
+  const div = document.createElement('div')
+  div.className = 'hk-ai-ghost is-added'
+  div.contentEditable = 'false'
+  div.dataset.kind = block.type
+  const level = /^heading([1-3])$/u.exec(block.type)?.[1]
+  if (level) div.dataset.level = level
+  if (block.type === 'bullet') div.dataset.marker = '•'
+  if (block.type === 'numbered') div.dataset.marker = `${ordinal}.`
+  div.append(DOMSerializer.fromSchema(schema).serializeFragment(block.fragment))
+  return div
 }
 
 /** The review on the page: the shimmer while waiting, the edit's removals and additions once it is back. */
@@ -508,7 +588,30 @@ function decorations(state: EditorState, session: AISession | null): DecorationS
       }
     }
   }
+  // The blocks to add, as ghosts right after the selection's last block (style B lists them in the bar).
+  if (session.status === 'review' && session.style === 'inline' && session.added.length > 0) {
+    const at = afterSelection(state, session)
+    let ordinal = 0
+    session.added.forEach((block, index) => {
+      ordinal = block.type === 'numbered' ? ordinal + 1 : 0
+      const number = ordinal
+      decos.push(
+        Decoration.widget(at, () => ghostBlock(state.schema, block, number), {
+          // Before anything inserted there meanwhile (a note), as Accept puts the blocks.
+          side: -1,
+          key: `added:${index}:${block.type}:${block.text}`
+        })
+      )
+    })
+  }
   return DecorationSet.create(state.doc, decos)
+}
+
+/** Where blocks the edit adds go: right after the top-level block the selection ends in. */
+function afterSelection(state: EditorState, session: AISession): number {
+  const end = Math.min(session.units.at(-1)!.to, state.doc.content.size)
+  const $end = state.doc.resolve(end)
+  return $end.depth > 0 ? $end.after(1) : end
 }
 
 /**
@@ -522,12 +625,21 @@ function accept(
   dispatch?: (tr: Transaction) => void
 ): boolean {
   const session = storage(editor).session
-  if (!session || session.status !== 'review' || session.edits.size === 0) return false
+  if (!session || session.status !== 'review' || !acceptable(session)) return false
   if (!dispatch) return true
+  const addAt = session.added.length > 0 ? afterSelection(editor.state, session) : null
   // From the last unit back, so earlier positions stay valid.
   for (const unit of session.units.toReversed()) {
     const edit = session.edits.get(unit.key)
     if (edit) tr.replaceWith(unit.from, unit.to, edit.fragment)
+  }
+  // The added blocks after the selection, in the same step (one undo takes the edit and them together).
+  let addedEnd: number | undefined
+  if (addAt !== null) {
+    const nodes = addedNodes(editor.schema, session.added)
+    const at = tr.mapping.map(addAt, -1)
+    tr.insert(at, nodes)
+    addedEnd = at + nodes.reduce((sum, node) => sum + node.nodeSize, 0)
   }
   const end = tr.mapping.map(session.units.at(-1)!.to)
   tr.setSelection(TextSelection.create(tr.doc, Math.min(end, tr.doc.content.size)))
@@ -540,7 +652,10 @@ function accept(
       to: tr.mapping.map(unit.to, 1)
     }))
     if (session.insertAt !== undefined) session.insertAt = tr.mapping.map(session.insertAt)
+    // A note inserted from here on goes below the added blocks, not between them and the selection.
+    else if (addedEnd !== undefined) session.insertAt = addedEnd
     session.edits = new Map()
+    session.added = []
     session.accepted = true
     // Redrawn once the transaction is in (the bar measures the page).
     queueMicrotask(() => {
@@ -578,7 +693,7 @@ function insertBelow(editor: Editor, host: AIHost, text: string): void {
   if (!session) return
   const after = belowSelection(editor, session)
   // The answer's Markdown as real blocks (lists, headings, emphasis), media and non-web links left out.
-  const blocks = text.trim() ? markdownBlocks(text) : []
+  const blocks = text.trim() ? answerBlocks(editor, text) : []
   close(editor, host)
   if (blocks.length > 0) editor.chain().focus().insertContentAt(after, blocks).run()
 }
@@ -592,7 +707,7 @@ function insertNote(editor: Editor, host: AIHost, index: number): void {
   const session = storage(editor).session
   const note = session?.notes[index]
   if (!session || !note || session.inserted.includes(index)) return
-  const blocks = markdownBlocks(note)
+  const blocks = answerBlocks(editor, note)
   if (blocks.length === 0) return
   const at = session.insertAt ?? belowSelection(editor, session)
   let next = at
@@ -615,6 +730,17 @@ function insertNote(editor: Editor, host: AIHost, index: number): void {
   draw(editor, host)
 }
 
+/** One drawing function per editor, so the card redraws an answer only when its text changes. */
+const renderers = new WeakMap<Editor, (text: string) => DocumentFragment>()
+function markdownRenderer(editor: Editor): (text: string) => DocumentFragment {
+  let render = renderers.get(editor)
+  if (!render) {
+    render = (text) => answerDOM(editor, text)
+    renderers.set(editor, render)
+  }
+  return render
+}
+
 /** The bar or card under the selection, redrawn on every change of the session. */
 function draw(editor: Editor, host: AIHost): void {
   const store = storage(editor)
@@ -631,12 +757,20 @@ function draw(editor: Editor, host: AIHost): void {
       searching: session.searching,
       citations: session.citations,
       error: session.error,
-      changes: [...session.edits.values()].reduce((sum, edit) => sum + changeCount(edit.diff), 0),
+      changes: changeTotal(session),
       style: session.style,
-      lines: session.units.map((unit) => ({
-        key: unit.key,
-        diff: session.edits.get(unit.key)?.diff ?? [{ type: 'same', text: unit.text }]
-      })),
+      lines: [
+        ...session.units.map((unit) => ({
+          key: unit.key,
+          diff: session.edits.get(unit.key)?.diff ?? [{ type: 'same' as const, text: unit.text }]
+        })),
+        // The blocks to add, each a + line after the selection's.
+        ...session.added.map((block, index) => ({
+          key: `added:${index}`,
+          diff: [{ type: 'add' as const, text: block.text }],
+          added: true
+        }))
+      ],
       notes: session.notes,
       inserted: session.inserted,
       accepted: !!session.accepted
@@ -654,11 +788,21 @@ function draw(editor: Editor, host: AIHost): void {
       ),
     onInsertBelow: () => insertBelow(editor, host, session.reply),
     onInsertNote: (index) => insertNote(editor, host, index),
-    onCopy: (text) => void navigator.clipboard?.writeText(text ?? session.reply).catch(() => {})
+    renderMarkdown: markdownRenderer(editor),
+    onCopy: (text) =>
+      void navigator.clipboard
+        ?.writeText(text ?? session.reply)
+        .catch((error: unknown) => reportError('copyFailed', error))
   }
+  // The bar hangs under a picture's block, or under the last ghost of the blocks to add (not over them).
   const mediaBottom = () => {
     const dom = session.media ? editor.view.nodeDOM(session.units[0].from) : null
-    return dom instanceof HTMLElement ? dom.getBoundingClientRect() : null
+    if (dom instanceof HTMLElement) return dom.getBoundingClientRect()
+    const ghost =
+      session.added.length > 0
+        ? [...editor.view.dom.querySelectorAll<HTMLElement>('.hk-ai-ghost.is-added')].at(-1)
+        : undefined
+    return ghost?.getBoundingClientRect() ?? null
   }
   renderAIReview(store.layer, props, () => {
     try {

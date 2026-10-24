@@ -105,6 +105,25 @@ export function shortcutFor(event: KeyboardEvent): ShortcutId | undefined {
 export const shortcutLabel = (id: ShortcutId): string => SHORTCUTS[id].display
 
 /**
+ * A fixed key's label in the registry's glyphs — the keys inside a panel that aren't commands of their own (Enter
+ * to confirm, Escape to cancel, ⌘Enter where Enter is a new line): `keyLabel('escape')` → "⎋",
+ * `keyLabel('return', ['command'])` → "⌘↩". Never a literal "esc" / "⌘Enter" in the UI.
+ */
+export function keyLabel(
+  key: 'return' | 'escape' | 'delete' | 'tab',
+  modifiers: readonly ('command' | 'shift' | 'option' | 'control')[] = []
+): string {
+  const has = (m: (typeof modifiers)[number]) => modifiers.includes(m)
+  return (
+    (has('control') ? '⌃' : '') +
+    (has('option') ? '⌥' : '') +
+    (has('shift') ? '⇧' : '') +
+    (has('command') ? '⌘' : '') +
+    NAMED[key].glyph
+  )
+}
+
+/**
  * The registry's keys as a Tiptap/ProseMirror keymap key ("Mod-Alt-5", "Mod-Shift-ArrowDown"). Keymaps are built
  * once, so they always hold the default; a rebinding is applied in front of them (`ShortcutOverrides`).
  */

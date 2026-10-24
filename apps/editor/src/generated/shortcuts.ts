@@ -41,6 +41,22 @@ export type ShortcutId =
   | 'moveBlockDown'
   | 'ruby'
   | 'comment'
+  | 'favoritePage'
+  | 'duplicatePage'
+  | 'movePage'
+  | 'moveToTrash'
+  | 'pageHistory'
+  | 'exportMarkdown'
+  | 'reopenClosedTab'
+  | 'tab1'
+  | 'tab2'
+  | 'tab3'
+  | 'tab4'
+  | 'tab5'
+  | 'tab6'
+  | 'tab7'
+  | 'tab8'
+  | 'tab9'
 
 export type Shortcut = {
   /** A character (lower case) or a DOM key name (ArrowUp, Tab…). */
@@ -95,5 +111,21 @@ export const SHORTCUTS: Record<ShortcutId, Shortcut> = {
   moveBlockUp: { key: 'ArrowUp', command: true, shift: true, option: false, control: false, bound: 'editor', display: '⇧⌘↑' },
   moveBlockDown: { key: 'ArrowDown', command: true, shift: true, option: false, control: false, bound: 'editor', display: '⇧⌘↓' },
   ruby: { key: 'r', command: true, shift: true, option: false, control: false, bound: 'editor', display: '⇧⌘R' },
-  comment: { key: 'm', command: true, shift: true, option: false, control: false, bound: 'editor', display: '⇧⌘M' }
+  comment: { key: 'm', command: true, shift: true, option: false, control: false, bound: 'editor', display: '⇧⌘M' },
+  favoritePage: { key: 'p', command: true, shift: true, option: false, control: false, bound: 'app', display: '⇧⌘P' },
+  duplicatePage: { key: 'd', command: true, shift: true, option: false, control: false, bound: 'app', display: '⇧⌘D' },
+  movePage: { key: 'v', command: true, shift: false, option: true, control: false, bound: 'app', display: '⌥⌘V' },
+  moveToTrash: { key: 'Backspace', command: true, shift: false, option: false, control: false, bound: 'app', display: '⌘⌫' },
+  pageHistory: { key: 'h', command: true, shift: true, option: false, control: false, bound: 'app', display: '⇧⌘H' },
+  exportMarkdown: { key: 'e', command: true, shift: true, option: false, control: false, bound: 'app', display: '⇧⌘E' },
+  reopenClosedTab: { key: 't', command: true, shift: true, option: false, control: false, bound: 'app', display: '⇧⌘T' },
+  tab1: { key: '1', command: true, shift: false, option: false, control: false, bound: 'app', display: '⌘1' },
+  tab2: { key: '2', command: true, shift: false, option: false, control: false, bound: 'app', display: '⌘2' },
+  tab3: { key: '3', command: true, shift: false, option: false, control: false, bound: 'app', display: '⌘3' },
+  tab4: { key: '4', command: true, shift: false, option: false, control: false, bound: 'app', display: '⌘4' },
+  tab5: { key: '5', command: true, shift: false, option: false, control: false, bound: 'app', display: '⌘5' },
+  tab6: { key: '6', command: true, shift: false, option: false, control: false, bound: 'app', display: '⌘6' },
+  tab7: { key: '7', command: true, shift: false, option: false, control: false, bound: 'app', display: '⌘7' },
+  tab8: { key: '8', command: true, shift: false, option: false, control: false, bound: 'app', display: '⌘8' },
+  tab9: { key: '9', command: true, shift: false, option: false, control: false, bound: 'app', display: '⌘9' }
 }

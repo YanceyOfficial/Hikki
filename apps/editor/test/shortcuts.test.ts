@@ -6,11 +6,14 @@ import {
   applyShortcutOverrides,
   codeFor,
   isRebound,
+  keyLabel,
   matchesShortcut,
   SHORTCUTS,
   shortcutLabel,
   tiptapShortcut
 } from '../src/core/shortcuts'
+import en from '../src/locales/en.json'
+import zh from '../src/locales/zh-Hans.json'
 import { doc } from './helpers'
 
 const key = (init: KeyboardEventInit) => new KeyboardEvent('keydown', init)
@@ -160,5 +163,28 @@ describe('rebound shortcuts (Settings → Shortcuts)', () => {
     expect(editor.getJSON().content?.[0].type).toBe('paragraph')
     press({ metaKey: true, ctrlKey: true, code: 'Digit1', key: '1' })
     expect(editor.getJSON().content?.[0]).toMatchObject({ type: 'heading', attrs: { level: 1 } })
+  })
+})
+
+/** Every string in a locale catalog. */
+const strings = (node: unknown): string[] =>
+  typeof node === 'string'
+    ? [node]
+    : node && typeof node === 'object'
+      ? Object.values(node).flatMap(strings)
+      : []
+
+describe('fixed keys in panels', () => {
+  it("are labelled in the registry's glyphs", () => {
+    expect(keyLabel('escape')).toBe('⎋')
+    expect(keyLabel('return')).toBe('↩')
+    expect(keyLabel('return', ['command'])).toBe('⌘↩')
+    expect(keyLabel('delete', ['shift', 'command'])).toBe('⇧⌘⌫')
+  })
+
+  it('never appear as literal key names in the copy', () => {
+    for (const text of [...strings(en), ...strings(zh)]) {
+      expect(text).not.toMatch(/⌘|⌥|⇧|\bEsc\b|\b(?:Enter|Return) to\b/u)
+    }
   })
 })

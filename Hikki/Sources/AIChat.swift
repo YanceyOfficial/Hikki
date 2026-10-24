@@ -83,7 +83,8 @@ final class AIChat {
     /// The window's page editor: the open page's blocks for an answer to change, and its changes offered there.
     @ObservationIgnored weak var editor: EditorController?
     /// The page blocks the answer being written was given (its changes may name only these).
-    @ObservationIgnored private var askedBlocks: Set<String>?
+    /// The ids of the blocks the question went with, in reading order (`end` names the last).
+    @ObservationIgnored private var askedBlocks: [String]?
     var draft = ""
     var webSearch = true
     /// "auto" or a catalog id; starts from Settings → AI's default.
@@ -106,32 +107,67 @@ final class AIChat {
         load()
     }
 
-    /// The open page's kept conversation (none for no page).
+    /// Another device's turns arrived for page `id` (nil: any page): the open conversation is read again — unless
+    /// something is under way in it here (an answer, a summary, pictures or tools), which keeps it as it is until next
+    /// time.
+    func reloadIfShowing(_ id: String?) {
+        guard let open = openPageID, id == nil || id == open, !isStreaming, !isCompacting else { return }
+        let busy = messages.contains { message in
+            message.pictures.contains { $0.status == .making }
+                || message.tools.contains { $0.status == .running || $0.status == .waiting }
+        }
+        guard !busy else { return }
+        load()
+    }
+
+    /// The conversation files are read and written on one queue off the main actor — a page switch with the panel
+    /// open read the whole file on the main thread, and every turn wrote it there — in order, so a read after a
+    /// write sees it.
+    private static let files = DispatchQueue(label: "app.yancey.hikki.ai-chat", qos: .utility)
+    /// The read under way (a newer page's read makes an older one moot).
+    @ObservationIgnored private var loading: Task<Void, Never>?
+
+    private static func onFiles<T: Sendable>(_ body: @escaping @Sendable () -> T) async -> T {
+        await withCheckedContinuation { continuation in files.async { continuation.resume(returning: body()) } }
+    }
+
+    /// The open page's kept conversation (none for no page), read off the main actor; shown once it is read — unless
+    /// the chat moved on meanwhile (another page, an answer under way).
     private func load() {
+        loading?.cancel()
         guard let id = openPageID, let chats = chatStore() else {
             messages = []
             summary = nil
             return
         }
-        do {
-            let conversation = try chats.conversation(of: id, retention: AIPreferences.chatRetention)
-            messages = conversation.turns.map(Message.init)
-            summary = conversation.summary
-            offerChanges()
-        } catch {
-            messages = []
-            summary = nil
-            Log.warn("AI chat not read: \(error)", category: "ai", context: ["docId": id])
+        let retention = AIPreferences.chatRetention
+        loading = Task { [weak self] in
+            let result = await Self.onFiles { Result { try chats.conversation(of: id, retention: retention) } }
+            guard let self, !Task.isCancelled, openPageID == id, !isStreaming else { return }
+            switch result {
+            case .success(let conversation):
+                messages = conversation.turns.map(Message.init)
+                summary = conversation.summary
+                offerChanges()
+            case .failure(let error):
+                messages = []
+                summary = nil
+                Log.warn("AI chat not read: \(error)", category: "ai", context: ["docId": id])
+            }
         }
     }
 
-    /// Keeps turns of the open page's conversation.
+    /// Keeps turns of the open page's conversation (written off the main actor, in order).
     private func keep(_ kept: [Message]) {
         guard let id = openPageID, let chats = chatStore(), !kept.isEmpty else { return }
-        do {
-            try chats.save(kept.map(\.turn), pageId: id)
-        } catch {
-            Log.warn("AI chat not kept: \(error)", category: "ai", context: ["docId": id])
+        let turns = kept.map(\.turn)
+        Self.files.async {
+            do {
+                try chats.save(turns, pageId: id)
+            } catch {
+                // The turns stay on screen; what isn't kept is gone with the page switch, so the user hears of it.
+                Toasts.report(.aiChatSaveFailed, error, category: "ai", context: ["docId": id, "turns": "\(turns.count)"])
+            }
         }
     }
 
@@ -261,7 +297,13 @@ final class AIChat {
         let compacted = ChatSummary(text: text, through: last.id, createdAt: .now)
         summary = compacted
         Log.info("AI chat compacted", category: "ai", context: ["turns": "\(older.count)"])
-        if let id = openPageID, let chats = chatStore() { try? chats.setSummary(compacted, pageId: id) }
+        if let id = openPageID, let chats = chatStore() {
+            do {
+                try chats.setSummary(compacted, pageId: id)
+            } catch {
+                Toasts.report(.aiChatSaveFailed, error, category: "ai", context: ["docId": id, "step": "summary"])
+            }
+        }
     }
 
     private func ask(
@@ -269,7 +311,7 @@ final class AIChat {
     ) {
         // Stopped (or moved to another page) while compacting.
         guard isStreaming else { return }
-        askedBlocks = blocks.map { Set($0.compactMap { $0["id"] }) }
+        askedBlocks = blocks.map { $0.compactMap { $0["id"] } }
         let turns: [AIMessage] = turnsToSend.map { message in
             // An answer's pictures are named by id, so a later answer can change one.
             guard message.role == .user else {
@@ -347,12 +389,19 @@ final class AIChat {
             do {
                 previous = try chats.clear(pageId: page)
             } catch {
-                Log.warn("AI chat not cleared: \(error)", category: "ai", context: ["docId": page])
+                // The screen is empty but the file still holds the turns: they come back on the next load.
+                Toasts.report(.aiChatClearFailed, error, category: "ai", context: ["docId": page])
             }
         }
         Toasts.shared.show(.info, String(localized: "app:ai.chatCleared"), actionTitle: "app:format.undo") { [weak self] in
             guard let self else { return }
-            if let page, let previous, let chats = self.chatStore() { try? chats.restore(previous, pageId: page) }
+            if let page, let previous, let chats = self.chatStore() {
+                do {
+                    try chats.restore(previous, pageId: page)
+                } catch {
+                    Toasts.report(.aiChatSaveFailed, error, category: "ai", context: ["docId": page, "step": "undo"])
+                }
+            }
             guard self.openPageID == page else { return }
             if page != nil, previous != nil {
                 self.load()
@@ -373,8 +422,10 @@ final class AIChat {
     private(set) var roughPictures: [String: Data] = [:]
     @ObservationIgnored private var pictureRequests: [String: PictureRequest] = [:]
     @ObservationIgnored private var pictureRuns: [String: Task<Void, Never>] = [:]
-    /// Made pictures, read once from their files.
-    @ObservationIgnored private var pictureImages: [String: Image] = [:]
+    /// Made pictures, read once from their files (observed: a tile redraws when its picture is in).
+    private var pictureImages: [String: Image] = [:]
+    /// Pictures being read, or that couldn't be (`pictureImage`).
+    @ObservationIgnored private var pictureLoads: Set<String> = []
     var isMakingPictures: Bool { !pictureQueue.isEmpty }
 
     /// The picture attached to the question an answer replies to.
@@ -509,16 +560,21 @@ final class AIChat {
         makePictures([id], answer: messages[m].id)
     }
 
-    /// What a tile shows: the made picture, or the rough version so far.
+    /// What a tile shows: the made picture, or the rough version so far. A made picture not read yet is nil for now:
+    /// its file is read off the main actor (a view body asked for it), and the tile redraws once it is in.
     func pictureImage(_ picture: ChatPicture) -> Image? {
         if let rough = roughPictures[picture.id] { return PlatformImage.image(rough) }
         guard picture.status == .done, let asset = picture.asset else { return nil }
         if let image = pictureImages[asset] { return image }
-        guard let file = pictureFile(asset), let data = try? Data(contentsOf: file), let image = PlatformImage.image(data) else {
-            return nil
+        guard !pictureLoads.contains(asset), let file = pictureFile(asset) else { return nil }
+        pictureLoads.insert(asset)
+        Task { [weak self] in
+            let data = await Task.detached(priority: .userInitiated) { try? Data(contentsOf: file) }.value
+            // One that can't be read stays nil (not read again on every redraw).
+            guard let self, let data, let image = PlatformImage.image(data) else { return }
+            pictureImages[asset] = image
         }
-        pictureImages[asset] = image
-        return image
+        return nil
     }
 
     /// Made pictures put into the page the chat sits beside, where the answer's pictures go; marked added there.
@@ -581,6 +637,8 @@ final class AIChat {
         var record = ChatToolCall(
             id: call.id, name: call.name, path: fields["path"] as? String ?? "", pattern: fields["pattern"] as? String)
         Log.info("AI tool", category: "ai", context: ["tool": call.name])
+        /// The change as the card showed it: what runs once allowed, never a fresh plan (`perform(_:approved:)`).
+        var approved: WorkspaceFiles.Change?
         if tool.changesFiles {
             switch await Task.detached(operation: { files.change(for: call) }).value {
             case .failure(let failure):
@@ -589,6 +647,7 @@ final class AIChat {
                 addTool(record, to: answer)
                 return .failure(failure.message)
             case .success(let change):
+                approved = change
                 record.path = change.path
                 // The card asks with the whole change — nothing cut — so what is allowed is what is shown; the texts are
                 // capped only when the turn is kept (`Message.turn`).
@@ -625,7 +684,10 @@ final class AIChat {
         } else {
             addTool(record, to: answer)
         }
-        let output = await Task.detached(operation: { files.perform(call) }).value
+        let shown = approved
+        let output = await Task.detached(operation: {
+            if let shown { files.perform(call, approved: shown) } else { files.perform(call) }
+        }).value
         updateTool(call.id, in: answer) { $0.record(output) }
         if let m = messages.firstIndex(where: { $0.id == answer }) { keep([messages[m]]) }
         return output
@@ -681,7 +743,7 @@ final class AIChat {
     // MARK: - Changes to the page
 
     /// The changes a finished answer proposes, checked against the blocks it was given.
-    private func proposedChanges(in message: Message, blocks: Set<String>) -> [AIPageChange] {
+    private func proposedChanges(in message: Message, blocks: [String]) -> [AIPageChange] {
         AIPageEdits.changes(in: message.text, blocks: blocks).enumerated().compactMap { index, change in
             guard let kind = AIPageChange.Kind(rawValue: change.kind) else { return nil }
             return AIPageChange(
@@ -967,7 +1029,7 @@ struct AIChatView: View {
                             ForEach(contextPages) { page in
                                 ContextChip(label: "app:ai.chat.removePage", remove: { remove(page.id) }) {
                                     PageIcon(page.icon, size: TextSize.sm.rawValue)
-                                    Text(verbatim: page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
+                                    Text(verbatim: page.displayTitle)
                                 }
                             }
                             if let selection = chat.contextSelection {
@@ -1029,7 +1091,7 @@ struct AIChatView: View {
                 }
             }
             if let error = chat.attachError {
-                Text(verbatim: error).font(.hk(.xs)).foregroundStyle(.red).padding(.horizontal, Spacing.s1)
+                Text(verbatim: error).font(.hk(.xs)).foregroundStyle(Theme.destructive).padding(.horizontal, Spacing.s1)
             }
         }
         .padding(.horizontal, Spacing.s3)
@@ -1081,7 +1143,8 @@ struct AIChatView: View {
         }
         .onChange(of: mentionQuery) { mentionIndex = 0 }
         #if os(macOS)
-            .onPasteCommand(of: [.fileURL, .image, .pdf]) { receive($0) }
+            // Not `.onPasteCommand`: the field's text view takes every paste itself, as text, before it is asked.
+            .background(PasteAttachments(active: composing) { receive($0, from: $1) })
         #endif
         .accessibilityIdentifier("ai-chat-field")
     }
@@ -1160,7 +1223,25 @@ struct AIChatView: View {
         return .handled
     }
 
-    /// Dropped or pasted files: file URLs read from disk, pictures and PDFs as data.
+    #if os(macOS)
+        /// A paste the field was kept from (`PasteAttachments`): the copied files, or the pasteboard's picture or PDF.
+        private func receive(_ paste: AIPaste, from pasteboard: NSPasteboard) {
+            switch paste {
+            case .files(let urls):
+                urls.forEach(chat.attach(fileAt:))
+            case .data(let type):
+                guard let data = pasteboard.data(forType: NSPasteboard.PasteboardType(type.identifier)) else {
+                    chat.attachError = String(localized: "app:ai.attach.unreadable")
+                    return
+                }
+                chat.attach(data, type: type, name: String(localized: "app:ai.attach.photo"))
+            case .text:
+                break
+            }
+        }
+    #endif
+
+    /// Dropped files: file URLs read from disk, pictures and PDFs as data.
     private func receive(_ providers: [NSItemProvider]) {
         for provider in providers {
             if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
@@ -1197,6 +1278,87 @@ struct AIChatView: View {
     }
 }
 
+#if os(macOS)
+    /// ⌘V in the composer's field with a picture or a PDF on the pasteboard attaches it (ISSUE-197). The field is a
+    /// native text view that takes every paste itself — as text: a copied file's name — before `.onPasteCommand` is
+    /// asked, so a local key monitor sees the Paste key first (whatever the Edit menu's Paste is bound to) and keeps
+    /// it from the field when `AIPaste` says there is something to attach; text still pastes as the field does.
+    private struct PasteAttachments: NSViewRepresentable {
+        /// The field has the focus.
+        let active: Bool
+        let onPaste: (AIPaste, NSPasteboard) -> Void
+
+        func makeNSView(context: Context) -> MonitorView {
+            let view = MonitorView()
+            updateNSView(view, context: context)
+            return view
+        }
+
+        func updateNSView(_ view: MonitorView, context: Context) {
+            view.active = active
+            view.onPaste = onPaste
+        }
+
+        static func dismantleNSView(_ view: MonitorView, coordinator: ()) { view.stop() }
+
+        final class MonitorView: NSView {
+            var active = false
+            var onPaste: ((AIPaste, NSPasteboard) -> Void)?
+            private var monitor: Any?
+
+            override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+            override func viewDidMoveToWindow() {
+                super.viewDidMoveToWindow()
+                stop()
+                guard window != nil else { return }
+                // A local monitor sees the key before the menu's Paste sends `paste:` to the field.
+                monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                    let taken = MainActor.assumeIsolated { self?.handle(event) ?? false }
+                    return taken ? nil : event
+                }
+            }
+
+            /// Whether the event was a paste into this window's field that attached something (and so is used up).
+            private func handle(_ event: NSEvent) -> Bool {
+                guard active, let window, event.window === window, window.firstResponder is NSTextView,
+                    Self.isPaste(event)
+                else { return false }
+                let pasteboard = NSPasteboard.general
+                let urls =
+                    pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
+                let paste = AIPaste.decide(
+                    fileURLs: urls, hasText: pasteboard.string(forType: .string) != nil,
+                    types: (pasteboard.types ?? []).compactMap { UTType($0.rawValue) })
+                guard paste != .text else { return false }
+                onPaste?(paste, pasteboard)
+                return true
+            }
+
+            /// The event is the Edit menu's Paste key (read from the menu, so a rebinding in System Settings holds).
+            private static func isPaste(_ event: NSEvent) -> Bool {
+                guard let item = pasteItem(in: NSApp.mainMenu), !item.keyEquivalent.isEmpty else { return false }
+                let modifiers: NSEvent.ModifierFlags = [.command, .option, .control, .shift]
+                return event.modifierFlags.intersection(modifiers) == item.keyEquivalentModifierMask.intersection(modifiers)
+                    && event.charactersIgnoringModifiers?.lowercased() == item.keyEquivalent.lowercased()
+            }
+
+            private static func pasteItem(in menu: NSMenu?) -> NSMenuItem? {
+                for item in menu?.items ?? [] {
+                    if item.action == #selector(NSText.paste(_:)) { return item }
+                    if let found = pasteItem(in: item.submenu) { return found }
+                }
+                return nil
+            }
+
+            func stop() {
+                if let monitor { NSEvent.removeMonitor(monitor) }
+                monitor = nil
+            }
+        }
+    }
+#endif
+
 /// The composer's round send button: a solid tone fill with a white arrow when it can send, muted grey when it
 /// can't — never the label dimmed over the fill, which read as pale pink in light mode. The colours are resolved
 /// against the environment so a vibrant panel (the inspector) can't wash them out either.
@@ -1211,8 +1373,7 @@ private struct SendButtonStyle: ButtonStyle {
             .foregroundStyle(Color(ink.resolve(in: environment)))
             .frame(width: Size.iconButton + Spacing.s1, height: Size.iconButton + Spacing.s1)
             .background(Color(fill.resolve(in: environment)), in: .circle)
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(Motion.easeOut(), value: configuration.isPressed)
+            .pressEffect(configuration.isPressed)
             .contentShape(.circle)
     }
 }
@@ -1261,7 +1422,7 @@ private struct MentionList: View {
                     HStack(spacing: Spacing.s2_5) {
                         PageIcon(page.icon, size: TextSize.base.rawValue)
                         VStack(alignment: .leading, spacing: Spacing.px) {
-                            Text(verbatim: page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
+                            Text(verbatim: page.displayTitle)
                                 .font(.hk(.sm))
                                 .foregroundStyle(Theme.foreground)
                             let path = model.tree.path(to: page.id).dropLast().map(\.title).joined(separator: " › ")
@@ -1477,7 +1638,7 @@ private struct ChatBubble: View {
                 if let chat, !message.changes.isEmpty { changeReview(chat) }
                 if let chat, !message.pictures.isEmpty { pictureTiles(chat) }
                 if let error = message.error {
-                    Text(verbatim: error).font(.hk(.sm)).foregroundStyle(.red)
+                    Text(verbatim: error).font(.hk(.sm)).foregroundStyle(Theme.destructive)
                 }
                 if !message.citations.isEmpty {
                     FlowLayout(spacing: Spacing.s1_5) {
@@ -1564,7 +1725,8 @@ private struct ChatBubble: View {
             .font(.hk(.sm))
             .padding(.horizontal, Spacing.s4)
             .padding(.vertical, Spacing.s2_5)
-            .background(Theme.muted, in: .capsule)
+            // A rounded rectangle, not a capsule: a two-line message in a capsule got huge round ends.
+            .background(Theme.muted, in: .rect(cornerRadius: Radius.xl))
     }
 
     /// The model at work: the line shimmers; with Reduce Motion it stands still, so a spinner says it's busy.

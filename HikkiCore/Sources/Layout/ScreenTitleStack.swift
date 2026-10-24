@@ -1,19 +1,5 @@
 import Foundation
 
-/// How a screen's title is put together: its parts, trimmed, the empty ones dropped, joined by a middle dot
-/// ("Settings · AI", "Ask AI · Trip to Kyoto").
-public enum ScreenTitles {
-    public static let separator = " \u{00B7} "
-
-    public static func join(_ parts: String?...) -> String { join(parts) }
-
-    public static func join(_ parts: [String?]) -> String {
-        parts.compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-            .joined(separator: separator)
-    }
-}
-
 /// Every titled screen on display, and which one is in front — what iOS names a screenshot after (actovia's). A
 /// screen nested in another (a sheet over the screen that presents it) is deeper; at the same depth the one shown last
 /// is in front, so a sheet wins over what is beneath it, and when it goes the title beneath is back.

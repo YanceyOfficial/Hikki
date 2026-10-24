@@ -16,7 +16,8 @@ public nonisolated extension Theme {
     static let secondary = dynamic(light: 0x37352F, lightAlpha: 0.06, dark: 0xFFFFFF, darkAlpha: 0.055)
     static let secondaryForeground = dynamic(light: 0x37352F, lightAlpha: 1, dark: 0xFFFFFF, darkAlpha: 0.81)
     static let muted = dynamic(light: 0x37352F, lightAlpha: 0.06, dark: 0xFFFFFF, darkAlpha: 0.055)
-    static let mutedForeground = dynamic(light: 0x37352F, lightAlpha: 0.45, dark: 0xFFFFFF, darkAlpha: 0.443)
+    /// Secondary text (descriptions, hints, counts, shortcut keys): at least 4.5:1 on background, card and popover, and on a muted / accent hover under it — light 4.84 on white, 4.59 on muted; dark 5.21 on popover, 4.75 on its hover.
+    static let mutedForeground = dynamic(light: 0x37352F, lightAlpha: 0.7, dark: 0xFFFFFF, darkAlpha: 0.52)
     static let accent = dynamic(light: 0x37352F, lightAlpha: 0.06, dark: 0xFFFFFF, darkAlpha: 0.055)
     static let accentForeground = dynamic(light: 0x37352F, lightAlpha: 1, dark: 0xFFFFFF, darkAlpha: 0.81)
     static let destructive = dynamic(light: 0xE03E3E, lightAlpha: 1, dark: 0xFF7369, darkAlpha: 1)
@@ -33,9 +34,9 @@ public nonisolated extension Theme {
     static let sidebarAccentForeground = dynamic(light: 0x37352F, lightAlpha: 1, dark: 0xFFFFFF, darkAlpha: 0.81)
     static let sidebarBorder = dynamic(light: 0x37352F, lightAlpha: 0.09, dark: 0xFFFFFF, darkAlpha: 0.094)
     /// Hikki: secondary text between foreground and muted
-    static let subtleForeground = dynamic(light: 0x37352F, lightAlpha: 0.65, dark: 0xFFFFFF, darkAlpha: 0.6)
-    /// Hikki
-    static let placeholder = dynamic(light: 0x37352F, lightAlpha: 0.3, dark: 0xFFFFFF, darkAlpha: 0.28)
+    static let subtleForeground = dynamic(light: 0x37352F, lightAlpha: 0.82, dark: 0xFFFFFF, darkAlpha: 0.66)
+    /// Hikki: placeholder text in empty fields and blocks, and quiet icons — at least 3:1 (WCAG's non-text contrast; a placeholder repeats what its field's label or the empty block already says, and must read as unfilled beside entered text): light 3.2 on white, dark 3.26 on popover. Anything that carries information of its own (shortcut keys, hints) is muted-foreground.
+    static let placeholder = dynamic(light: 0x37352F, lightAlpha: 0.55, dark: 0xFFFFFF, darkAlpha: 0.36)
     /// Hikki: pressed / selected surface
     static let accentStrong = dynamic(light: 0x37352F, lightAlpha: 0.1, dark: 0xFFFFFF, darkAlpha: 0.1)
     static let selection = dynamic(light: 0x1C1C1C, lightAlpha: 0.12, dark: 0xE6E4DF, darkAlpha: 0.2)
@@ -199,12 +200,15 @@ public nonisolated enum Size {
     public static let toolbarButtonWidth: CGFloat = 40
     public static let toolbarButtonHeight: CGFloat = 36
     public static let touchTarget: CGFloat = 44
+    public static let touchRow: CGFloat = 43
     public static let keyboardBar: CGFloat = 48
     public static let sidebarIcon: CGFloat = 18
     public static let onboardingBadge: CGFloat = 64
     public static let heatmapCell: CGFloat = 12
     public static let searchWidth: CGFloat = 760
     public static let searchResults: CGFloat = 480
+    public static let movePickerWidth: CGFloat = 420
+    public static let movePickerHeight: CGFloat = 480
     public static let inspectorMin: CGFloat = 280
     public static let inspectorIdeal: CGFloat = 360
     public static let inspectorMax: CGFloat = 560
@@ -223,6 +227,9 @@ public nonisolated enum Size {
     public static let homeNarrow: CGFloat = 600
     public static let aiPicture: CGFloat = 96
     public static let homeCard: CGFloat = 240
+    public static let homeCardCover: CGFloat = 96
+    public static let homeCalendarCell: CGFloat = 96
+    public static let homeCalendarPanel: CGFloat = 300
     public static let splitMin: CGFloat = 320
     public static let historyList: CGFloat = 240
     public static let historyWidth: CGFloat = 880
@@ -242,6 +249,14 @@ public nonisolated enum Size {
     public static let weekBar: CGFloat = 40
     public static let drawer: CGFloat = 360
     public static let tableCellMax: CGFloat = 260
+    public static let pageIcon: CGFloat = 16
+    public static let pageIconLg: CGFloat = 28
+    public static let tabMin: CGFloat = 60
+    public static let tabIdeal: CGFloat = 200
+    public static let tabMax: CGFloat = 220
+    public static let tabHeight: CGFloat = 30
+    public static let searchHeader: CGFloat = 52
+    public static let onboardingWidth: CGFloat = 440
 }
 
 /// Motion: one timing for everything that appears, leaves or reacts (popovers, hover states, scrims).

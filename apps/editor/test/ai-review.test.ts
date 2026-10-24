@@ -3,7 +3,8 @@ import { undo } from '@tiptap/pm/history'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createEditor } from '../src/core/editor'
-import type { AIStreamEvent } from '../src/core/protocol'
+import { installErrorForwarding } from '../src/core/errors'
+import type { AIStreamEvent, ToNativeMessage } from '../src/core/protocol'
 import {
   aiReviewOpen,
   revealBelow,
@@ -26,10 +27,15 @@ const text = () => editor.state.doc.textContent
 type Unsent<T> = T extends unknown ? Omit<T, 'id'> : never
 const send = (event: Unsent<AIStreamEvent>) =>
   handleAIEvent(editor, ai, { id: requests.at(-1)!.id, ...event } as AIStreamEvent)
-const reply = (blocks: Record<string, string>, notes?: string[]) =>
+const reply = (
+  blocks: Record<string, string>,
+  notes?: string[],
+  added?: { type: string; html: string }[]
+) =>
   JSON.stringify({
     blocks: Object.entries(blocks).map(([id, html]) => ({ id, html })),
-    ...(notes ? { notes } : {})
+    ...(notes ? { notes } : {}),
+    ...(added ? { added } : {})
   })
 const review = () => document.querySelector<HTMLElement>('[data-testid="ai-review"]')
 const button = (label: string) =>
@@ -283,6 +289,139 @@ describe('AI review (style A)', () => {
     expect(editor.state.doc.child(2).textContent).toBe('first remark')
   })
 
+  it('shows the blocks the model adds as ghosts after the selection and accepts them with the edit in one step', () => {
+    editor.commands.aiRun({ id: 'custom', instruction: '在文末补充说明和例句' })
+    send({
+      type: 'text',
+      delta: reply({ 'p1:0': 'the fast fox' }, undefined, [
+        { type: 'heading2', html: 'Explanation' },
+        { type: 'paragraph', html: 'A <strong>bold</strong> start<br>and a second line' },
+        { type: 'bullet', html: 'one' },
+        { type: 'bullet', html: 'two' },
+        { type: 'numbered', html: 'first' },
+        { type: 'quote', html: 'said <script>alert(1)</script>so' }
+      ])
+    })
+    send({ type: 'done' })
+    // Ghosts in the page, after the paragraph, with their marks and breaks (never flat text) and their kind.
+    const ghosts = [...host.querySelectorAll<HTMLElement>('.hk-ai-ghost')]
+    expect(ghosts).toHaveLength(6)
+    expect(ghosts[0].dataset.level).toBe('2')
+    expect(ghosts[0].textContent).toBe('Explanation')
+    expect(ghosts[1].querySelector('strong')?.textContent).toBe('bold')
+    expect(ghosts[1].querySelector('br')).not.toBeNull()
+    expect(ghosts[2].dataset.marker).toBe('•')
+    expect(ghosts[4].dataset.marker).toBe('1.')
+    expect(ghosts[5].dataset.kind).toBe('quote')
+    expect(ghosts[5].querySelector('script')).toBeNull()
+    expect(ghosts[0].compareDocumentPosition(host.querySelector('p')!)).toBe(
+      Node.DOCUMENT_POSITION_PRECEDING
+    )
+    // The bar counts them: one change in the text and six blocks.
+    expect(review()?.textContent).toContain('7 changes')
+    expect(text()).toBe('the quick fox')
+
+    expect(editor.commands.aiAccept()).toBe(true)
+    expect(editor.getJSON().content?.map((node) => node.type)).toEqual([
+      'paragraph',
+      'heading',
+      'paragraph',
+      'bulletList',
+      'orderedList',
+      'blockquote',
+      'paragraph'
+    ])
+    const doc = editor.state.doc
+    expect(doc.child(0).textContent).toBe('the fast fox')
+    expect(doc.child(1).attrs.level).toBe(2)
+    expect(doc.child(2).toJSON().content).toEqual([
+      { type: 'text', text: 'A ' },
+      { type: 'text', text: 'bold', marks: [{ type: 'bold' }] },
+      { type: 'text', text: ' start' },
+      { type: 'hardBreak' },
+      { type: 'text', text: 'and a second line' }
+    ])
+    expect(doc.child(3).childCount).toBe(2)
+    expect(doc.child(5).textContent).toBe('said so')
+    expect(aiReviewOpen(editor)).toBe(false)
+    expect(host.querySelector('.hk-ai-ghost')).toBeNull()
+    // One undo takes the edit and the added blocks together.
+    undo(editor.state, editor.view.dispatch)
+    expect(text()).toBe('the quick fox')
+    expect(editor.state.doc.childCount).toBe(1)
+  })
+
+  it('added blocks alone are a review too, and a preset’s reply may not add any', () => {
+    editor.commands.aiRun({ id: 'custom', instruction: 'Add an example' })
+    send({
+      type: 'text',
+      delta: reply({ 'p1:0': 'the quick fox' }, undefined, [
+        { type: 'paragraph', html: 'Example.' }
+      ])
+    })
+    send({ type: 'done' })
+    expect(host.querySelectorAll('.hk-ai-ghost')).toHaveLength(1)
+    expect(review()?.textContent).toContain('1 change')
+    expect(document.querySelector('[data-testid="ai-accept"]')).not.toBeNull()
+    expect(editor.commands.aiAccept()).toBe(true)
+    expect(editor.state.doc.child(1).textContent).toBe('Example.')
+
+    editor.commands.setTextSelection({ from: 1, to: 14 })
+    editor.commands.aiRun({ id: 'improve' })
+    send({
+      type: 'text',
+      delta: reply({ 'p1:0': 'the quick fox' }, undefined, [
+        { type: 'paragraph', html: 'Sneaked in.' }
+      ])
+    })
+    send({ type: 'done' })
+    expect(host.querySelector('.hk-ai-ghost')).toBeNull()
+    expect(review()?.textContent).toContain('Nothing to change')
+    expect(editor.commands.aiAccept()).toBe(false)
+  })
+
+  it('a note inserted after accepting lands below the added blocks', async () => {
+    editor.commands.aiRun({ id: 'custom', instruction: 'Add an example and tell me why' })
+    send({
+      type: 'text',
+      delta: reply(
+        { 'p1:0': 'the fast fox' },
+        ['Because.'],
+        [{ type: 'paragraph', html: 'Example.' }]
+      )
+    })
+    send({ type: 'done' })
+    document.querySelector<HTMLButtonElement>('[data-testid="ai-accept"]')!.click()
+    await tick()
+    inserts()[0].click()
+    await tick()
+    expect(editor.state.doc.child(0).textContent).toBe('the fast fox')
+    expect(editor.state.doc.child(1).textContent).toBe('Example.')
+    expect(editor.state.doc.child(2).textContent).toBe('Because.')
+  })
+
+  it('style B lists the added blocks as + lines after the selection’s', () => {
+    style = 'diff'
+    editor.commands.aiRun({ id: 'custom', instruction: 'Add two examples' })
+    send({
+      type: 'text',
+      delta: reply({ 'p1:0': 'the fast fox' }, undefined, [
+        { type: 'paragraph', html: 'One <em>example</em>.' },
+        { type: 'heading3', html: 'More' }
+      ])
+    })
+    send({ type: 'done' })
+    expect(host.querySelector('.hk-ai-ghost')).toBeNull()
+    const diff = document.querySelector('[data-testid="ai-review-diff"]')!
+    const added = [...diff.querySelectorAll('[data-testid="ai-review-added"]')]
+    expect(added.map((row) => row.textContent)).toEqual(['+One example.', '+More'])
+    expect(diff.textContent).toContain('3 changes in 1 of 1 lines')
+    expect(diff.textContent).toContain('2 new blocks below')
+    expect(editor.commands.aiAccept()).toBe(true)
+    expect(editor.state.doc.child(1).textContent).toBe('One example.')
+    expect(editor.state.doc.child(2).type.name).toBe('heading')
+  })
+
   it('copies a note’s Markdown with one click', async () => {
     const copied: string[] = []
     Object.defineProperty(navigator, 'clipboard', {
@@ -296,6 +435,24 @@ describe('AI review (style A)', () => {
     expect(copied).toEqual(['Correct: *fine*.'])
     await tick()
     expect(button('Copied')).toBeDefined()
+  })
+
+  it('a copy the clipboard refuses is reported, not swallowed', async () => {
+    const reports: ToNativeMessage[] = []
+    const quiet = Object.assign(new EventTarget(), {
+      console: { ...console, warn: () => {}, error: () => {} }
+    }) as unknown as Window & typeof globalThis
+    installErrorForwarding({ post: (m) => Promise.resolve(void reports.push(m)) }, quiet)
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: () => Promise.reject(new Error('denied')) }
+    })
+    editor.commands.aiRun({ id: 'custom', instruction: 'Check it' })
+    send({ type: 'text', delta: reply({ 'p1:0': 'the quick fox' }, ['Correct: *fine*.']) })
+    send({ type: 'done' })
+    button('Copy')!.click()
+    await tick()
+    expect(reports).toContainEqual(expect.objectContaining({ type: 'reportError', code: 3004 }))
   })
 
   it('hands a request in the user’s words to the chat when the model says so', () => {

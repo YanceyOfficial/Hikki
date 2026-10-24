@@ -40,7 +40,8 @@ nonisolated final class SearchIndexer: Sendable {
     /// Starts writing changes through, then reconciles once (in that order, so nothing slips between).
     func start() {
         do {
-            try store.observePageCommits { [weak self] changed, deletions, live in
+            try store.observePageCommits(onError: { [weak self] error in self?.fail("page commit unread", error) }) {
+                [weak self] changed, deletions, live in
                 guard let self else { return }
                 queue.async { [self] in apply(changed: changed, deletions: deletions, live: live) }
             }

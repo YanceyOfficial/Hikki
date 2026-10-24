@@ -52,6 +52,14 @@ let project = Project(
                 ],
                 // hikki://page/<id> — "Copy link" (HikkiCore/Sources/Store/PageLink.swift).
                 "CFBundleURLTypes": [["CFBundleURLName": "app.yancey.hikki", "CFBundleURLSchemes": ["hikki"]]],
+                // A tab dragged along the tab strip carries its id as this type, inside the app only (HikkiUI's TabStrip).
+                "UTExportedTypeDeclarations": [
+                    [
+                        "UTTypeIdentifier": "app.yancey.hikki.tab",
+                        "UTTypeDescription": "Hikki tab",
+                        "UTTypeConformsTo": ["public.data"],
+                    ]
+                ],
                 "UIApplicationSceneManifest": ["UIApplicationSupportsMultipleScenes": true],
                 // Pages picked in Spotlight arrive as this activity (SpotlightIndex.swift).
                 "NSUserActivityTypes": ["com.apple.corespotlightitem", "app.yancey.hikki.viewing"],
@@ -89,8 +97,10 @@ let project = Project(
                 ],
                 debug: [
                     // The Mac app is sandboxed (the Mac App Store takes nothing else): network out, folders the user picks,
-                    // bookmarks to them; on both platforms iCloud (CloudKit, `CloudSync`) and its pushes. Debug may also
-                    // reach the temporary folders, where UI tests and demo runs keep their data (`HIKKI_DATA_DIR`).
+                    // bookmarks to them; on both platforms iCloud (CloudKit, `CloudSync`) and its pushes, and one iCloud
+                    // key-value store for settings (`SettingsSync`; the same identifier on every platform, so the Mac and
+                    // iOS share it). Debug may also reach the temporary folders, where UI tests and demo runs keep their
+                    // data (`HIKKI_DATA_DIR`).
                     "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": "Hikki/Hikki-Debug.entitlements",
                     "CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]": "Hikki/Hikki-iOS.entitlements",
                     "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]": "Hikki/Hikki-iOS.entitlements",

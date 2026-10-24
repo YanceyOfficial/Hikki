@@ -204,6 +204,18 @@
     "cloud": {
       "sf": "icloud"
     },
+    "cloud-check": {
+      "sf": "checkmark.icloud"
+    },
+    "cloud-arrow-up": {
+      "sf": "icloud.and.arrow.up"
+    },
+    "cloud-slash": {
+      "sf": "icloud.slash"
+    },
+    "cloud-warning": {
+      "sf": "exclamationmark.icloud"
+    },
     "laptop": {
       "sf": "laptopcomputer"
     },
@@ -341,6 +353,10 @@
       "sf": "arrow.up.right.square",
       "native": false
     },
+    "arrows-in": {
+      "sf": "arrow.down.right.and.arrow.up.left",
+      "native": false
+    },
     "arrows-in-line-horizontal": {
       "sf": "arrow.right.and.line.vertical.and.arrow.left",
       "native": false
@@ -415,6 +431,14 @@
     },
     "magic-wand": {
       "sf": "wand.and.stars",
+      "native": false
+    },
+    "magnifying-glass-minus": {
+      "sf": "minus.magnifyingglass",
+      "native": false
+    },
+    "magnifying-glass-plus": {
+      "sf": "plus.magnifyingglass",
       "native": false
     },
     "math-operations": {

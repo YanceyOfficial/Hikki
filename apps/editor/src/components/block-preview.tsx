@@ -1,3 +1,4 @@
+// design-lint: allow-file — a miniature drawing of blocks: hairline corners and border triangles at fixed pixel sizes
 import { cn } from 'cn'
 import type { ReactNode } from 'react'
 

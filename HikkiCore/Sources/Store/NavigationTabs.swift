@@ -92,6 +92,17 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
 
     public private(set) var splits: [Split] = []
 
+    /// A tab that was closed, as it was and where it sat in the strip, for Reopen Closed Tab (⇧⌘T).
+    public struct ClosedTab: Codable, Equatable, Sendable {
+        public var tab: Tab
+        public var index: Int
+    }
+
+    /// The tabs closed in this window, the last closed last — at most `maxClosed`. Tabs that leave with Close Other
+    /// Tabs, Close Tabs to the Right and Close All Tabs are remembered too; an evicted tab (`openRecent`) is not.
+    public private(set) var closed: [ClosedTab] = []
+    public static var maxClosed: Int { 10 }
+
     /// The split the tab `id` is in.
     public func split(of id: UUID) -> Split? { splits.first { $0.contains(id) } }
     /// The split the window shows (the focused tab's), if any.
@@ -109,7 +120,7 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
         visits = [Visit(tab: tab.id, route: initial)]
     }
 
-    private enum CodingKeys: String, CodingKey { case tabs, activeID, maxHistory, recency, visits, visitIndex, splits }
+    private enum CodingKeys: String, CodingKey { case tabs, activeID, maxHistory, recency, visits, visitIndex, splits, closed }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -126,6 +137,7 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
             visitIndex = 0
         }
         splits = try c.decodeIfPresent([Split].self, forKey: .splits) ?? []
+        closed = try c.decodeIfPresent([ClosedTab].self, forKey: .closed) ?? []
         tidySplits()
     }
 
@@ -138,6 +150,27 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
         try c.encode(visits, forKey: .visits)
         try c.encode(visitIndex, forKey: .visitIndex)
         try c.encode(splits, forKey: .splits)
+        try c.encode(closed, forKey: .closed)
+    }
+
+    /// Remembers tabs leaving the strip (`close`, `closeOthers`, `closeTabs(after:)`, `closeAll`), in strip order.
+    private mutating func remember(closing ids: [UUID]) {
+        for (index, tab) in tabs.enumerated() where ids.contains(tab.id) {
+            closed.append(ClosedTab(tab: tab, index: index))
+        }
+        if closed.count > Self.maxClosed { closed.removeFirst(closed.count - Self.maxClosed) }
+    }
+
+    /// Reopen Closed Tab (⇧⌘T): the tab closed last comes back with its history, at its old place in the strip (or
+    /// the end), focused, under a new id. nil when nothing was closed. A page gone meanwhile is the caller's to prune.
+    @discardableResult
+    public mutating func reopenClosed() -> UUID? {
+        guard let last = closed.popLast() else { return nil }
+        let tab = Tab(copying: last.tab)
+        tabs.insert(tab, at: insertionIndex(min(max(last.index, 0), tabs.count)))
+        activeID = tab.id
+        recordVisit()
+        return tab.id
     }
 
     public var active: Tab { tabs.first { $0.id == activeID } ?? tabs[0] }
@@ -229,6 +262,7 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
     public mutating func closeOthers(_ id: UUID) {
         guard tabs.contains(where: { $0.id == id }) else { return }
         let kept = split(of: id).map { [$0.leading, $0.trailing] } ?? [id]
+        remember(closing: tabs.map(\.id).filter { !kept.contains($0) })
         tabs.removeAll { !kept.contains($0.id) }
         recency.removeAll { !kept.contains($0) }
         activeID = id
@@ -248,6 +282,7 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
     public mutating func closeTabs(after id: UUID) {
         guard let index = tabs.firstIndex(where: { $0.id == id }), index < tabs.count - 1 else { return }
         let gone = Set(tabs[(index + 1)...].map(\.id))
+        remember(closing: Array(gone))
         tabs.removeSubrange((index + 1)...)
         recency.removeAll { gone.contains($0) }
         if gone.contains(activeID) { activeID = id }
@@ -305,10 +340,85 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
         let tab = Tab(route: route)
         tabs.append(tab)
         activeID = tab.id
-        while tabs.count > max(limit, 1), let oldest = recency.last(where: { $0 != tab.id && split(of: $0) == nil }) {
-            tabs.removeAll { $0.id == oldest }
-            recency.removeAll { $0 == oldest }
+        evict(beyond: limit, sparing: [tab.id])
+        tidySplits()
+        recordVisit()
+        return tab.id
+    }
+
+    /// The tab showing `route`: the focused one when it does, else the first in the strip that does.
+    public func tab(showing route: Route) -> UUID? {
+        if self.route == route { return activeID }
+        return tabs.first { $0.route == route }?.id
+    }
+
+    /// Shows `route` — in the tab already showing it, which gets focus, else in the focused tab (a search result, a
+    /// Spotlight pick, a hikki:// link from outside): opening a page never puts it in two tabs.
+    public mutating func open(_ route: Route) {
+        if let existing = tab(showing: route) { select(existing) } else { navigate(to: route) }
+    }
+
+    /// Closes the tabs outside a split that show what another tab shows (`isUnique` says which routes count: Home may
+    /// be open twice) — tabs saved by builds that let a page pile up in several. The focused tab and the splits stay;
+    /// of the others, the first one showing a route does.
+    public mutating func closeDuplicates(where isUnique: (Route) -> Bool) {
+        var claimed: Set<Route> = [route]
+        for tab in tabs where split(of: tab.id) != nil { claimed.insert(tab.route) }
+        var gone = Set<UUID>()
+        for tab in tabs where tab.id != activeID && split(of: tab.id) == nil && isUnique(tab.route) {
+            if !claimed.insert(tab.route).inserted { gone.insert(tab.id) }
         }
+        guard !gone.isEmpty else { return }
+        tabs.removeAll { gone.contains($0.id) }
+        recency.removeAll { gone.contains($0) }
+        tidySplits()
+        recordVisit()
+    }
+
+    /// Closes every tab ("Close All Tabs"): the window keeps one new tab, on `fallback` (Home).
+    public mutating func closeAll(fallback: Route) {
+        remember(closing: tabs.map(\.id))
+        let tab = Tab(route: fallback)
+        tabs = [tab]
+        splits = []
+        recency = []
+        activeID = tab.id
+        recordVisit()
+    }
+
+    /// Moves the tab `id` — with the other side when it is in a split, the two staying together — into the gap before
+    /// the tab at `index` (`tabs.count`: after the last one), as dragging a tab along the strip does. A gap between the
+    /// two sides of another split means after them; a gap at either edge of the moving tabs moves nothing. The focus
+    /// and the histories don't change.
+    public mutating func move(_ id: UUID, to index: Int) {
+        guard let at = tabs.firstIndex(where: { $0.id == id }) else { return }
+        let first = split(of: id).flatMap { pair in tabs.firstIndex { $0.id == pair.leading } } ?? at
+        let count = split(of: id) == nil ? 1 : 2
+        let gap = min(max(index, 0), tabs.count)
+        guard gap < first || gap > first + count else { return }
+        let moving = Array(tabs[first..<(first + count)])
+        tabs.removeSubrange(first..<(first + count))
+        tabs.insert(contentsOf: moving, at: insertionIndex(gap > first ? gap - count : gap))
+        tidySplits()
+    }
+
+    /// A link in the page of the tab `id` followed to another page (Chrome's ⌘-click, made the default): the tab already
+    /// showing it gets focus; otherwise it opens in a new tab right after `id` (after its split, when `id` is a side of
+    /// one), focused, so the page the link was in stays where it was. Past `limit` tabs the least recently focused one
+    /// closes, as for sidebar picks — never the new tab, nor `id`, nor a tab of a split.
+    @discardableResult
+    public mutating func openLink(_ route: Route, from id: UUID, limit: Int) -> UUID {
+        if let existing = tab(showing: route) {
+            select(existing)
+            return existing
+        }
+        let source = tabs.contains { $0.id == id } ? id : activeID
+        let after = split(of: source)?.trailing ?? source
+        let tab = Tab(route: route)
+        let index = (tabs.firstIndex { $0.id == after } ?? tabs.count - 1) + 1
+        tabs.insert(tab, at: insertionIndex(index))
+        activeID = tab.id
+        evict(beyond: limit, sparing: [tab.id, source])
         tidySplits()
         recordVisit()
         return tab.id
@@ -355,9 +465,15 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
         splits[index] = Split(leading: splits[index].trailing, trailing: splits[index].leading)
     }
 
-    /// Takes `id`'s split apart: both stay tabs, the focused one shown.
+    /// Takes `id`'s split apart: both stay tabs, the focused one shown — unless both sides show the same page, which
+    /// then needs one tab only: the focused side's (else the leading one) stays.
     public mutating func separate(_ id: UUID) {
+        guard let pair = split(of: id) else { return }
         splits.removeAll { $0.contains(id) }
+        let leading = tabs.first { $0.id == pair.leading }?.route
+        guard leading != nil, leading == tabs.first(where: { $0.id == pair.trailing })?.route else { return }
+        let kept = pair.contains(activeID) ? activeID : pair.leading
+        removeTab(pair.other(kept))
     }
 
     /// The tab `id` shows `route` in place of its page now, with no history entry (an empty split pane picking a page).
@@ -369,7 +485,7 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
     /// last tab shows `fallback` instead.
     public mutating func closeLoose(_ isLoose: (Route) -> Bool, fallback: Route) {
         for tab in tabs where split(of: tab.id) == nil && isLoose(tab.route) {
-            if !close(tab.id) { tabs[0] = Tab(id: tabs[0].id, route: fallback) }
+            if !removeTab(tab.id) { tabs[0] = Tab(id: tabs[0].id, route: fallback) }
         }
     }
 
@@ -385,6 +501,15 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
     /// browsers.
     @discardableResult
     public mutating func close(_ id: UUID) -> Bool {
+        guard tabs.count > 1, tabs.contains(where: { $0.id == id }) else { return false }
+        remember(closing: [id])
+        return removeTab(id)
+    }
+
+    /// `close` without remembering the tab — for tabs the window takes away itself (an emptied side of a split, a
+    /// picker left outside one, a split's twin tab), which Reopen Closed Tab shouldn't bring back.
+    @discardableResult
+    private mutating func removeTab(_ id: UUID) -> Bool {
         guard tabs.count > 1, let index = tabs.firstIndex(where: { $0.id == id }) else { return false }
         let partner = split(of: id)?.other(id)
         tabs.remove(at: index)
@@ -404,7 +529,7 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
             emptied.append(tabs[index].id)
         }
         // A side of a split with nothing left closes instead, the other side taking the window.
-        for id in emptied where split(of: id) != nil { _ = close(id) }
+        for id in emptied where split(of: id) != nil { _ = removeTab(id) }
         recordVisit()
     }
 
@@ -434,6 +559,14 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
             else { return false }
             seen.formUnion([split.leading, split.trailing])
             return true
+        }
+    }
+
+    /// Closes the least recently focused tabs until at most `limit` are left — never one of `kept`, nor one of a split.
+    private mutating func evict(beyond limit: Int, sparing kept: Set<UUID>) {
+        while tabs.count > max(limit, 1), let oldest = recency.last(where: { !kept.contains($0) && split(of: $0) == nil }) {
+            tabs.removeAll { $0.id == oldest }
+            recency.removeAll { $0 == oldest }
         }
     }
 

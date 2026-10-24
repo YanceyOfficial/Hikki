@@ -124,7 +124,7 @@ public struct PictureTiles: View {
             PictureTileFace(item: item)
                 .overlay {
                     VStack(spacing: Spacing.s2) {
-                        IconView(.warningCircle, size: TextSize.lg.rawValue).foregroundStyle(.red)
+                        IconView(.warningCircle, size: TextSize.lg.rawValue).foregroundStyle(Theme.destructive)
                         Text(verbatim: reason)
                             .font(.hk(.xs))
                             .foregroundStyle(Theme.mutedForeground)

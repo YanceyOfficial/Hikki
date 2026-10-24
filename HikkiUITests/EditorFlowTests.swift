@@ -1594,6 +1594,15 @@ final class EditorFlowTests: XCTestCase {
         let trash = app.buttons["Move to Trash"].firstMatch
         XCTAssertTrue(waitOrDumpTree(trash, in: app), "Move to Trash missing from the page menu")
         trash.tap()
+        // It asks first (TrashConfirmation): the dialog names the page, and its own Move to Trash confirms — an alert
+        // on iOS (over the iPhone's ⋯ sheet, whose row has the same label), a sheet on the Mac.
+        XCTAssertTrue(
+            waitOrDumpTree(app.staticTexts["Move “Trash me” to Trash?"].firstMatch, in: app),
+            "Move to Trash did not ask first")
+        let dialog = app.alerts.count > 0 ? app.alerts.firstMatch : app.sheets.firstMatch
+        let confirm = dialog.buttons["Move to Trash"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(confirm, in: app), "the confirmation has no Move to Trash")
+        confirm.tap()
 
         // The page leaves the tree (and favorites) and shows up in Trash.
         backToSidebarIfNeeded(app)
@@ -1605,6 +1614,49 @@ final class EditorFlowTests: XCTestCase {
         attachScreenshot(app, "trash")
         app.buttons["Restore"].firstMatch.tap()
         XCTAssertTrue(waitOrDumpTree(app.staticTexts["Trash is empty"].firstMatch, in: app))
+    }
+
+    /// Move to: the page menu opens Notion's picker — a search, a pick — and the page moves inside the page picked;
+    /// opened again, the workspace row offers the top level, which it no longer is at.
+    func testMoveToPicksAPageBySearch() throws {
+        continueAfterFailure = false
+        let app = launch()
+        createPage(app, title: "Move target")
+        backToSidebarIfNeeded(app)
+        createPage(app, title: "Move me")
+
+        openMovePicker(app)
+        let top = app.descendants(matching: .any)["move-target-top"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(top, in: app))
+        XCTAssertFalse(top.label.contains("Top level"), "a top-level page was offered the top level")
+        let field = app.textFields["move-search"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(field, in: app))
+        tapWhenSettled(field)  // iPhone: the field doesn't take the keyboard by itself
+        field.typeText("target")
+        let hit = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH 'move-target-' AND label CONTAINS 'Move target'")
+        ).firstMatch
+        XCTAssertTrue(waitOrDumpTree(hit, in: app), "the picker's search did not find the page")
+        attachScreenshot(app, "move-picker")
+        hit.tap()
+        XCTAssertTrue(field.waitForNonExistence(timeout: 5), "the picker stayed up after a pick")
+
+        openMovePicker(app)
+        XCTAssertTrue(waitOrDumpTree(top, in: app))
+        XCTAssertTrue(top.label.contains("Top level"), "the moved page still reads as top level")
+    }
+
+    /// The open page's ⋯ → Move to.
+    private func openMovePicker(_ app: XCUIApplication) {
+        let more = app.buttons["page-more"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(more, in: app))
+        more.tap()
+        // iPadOS menus drop the item's identifier: there it is found by its (English) title.
+        let move = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier == 'page-move' OR (identifier == '' AND label == 'Move to')")
+        ).firstMatch
+        XCTAssertTrue(waitOrDumpTree(move, in: app))
+        move.tap()
     }
 
     func testSearchFindsChineseTitleByPinyinInitials() throws {

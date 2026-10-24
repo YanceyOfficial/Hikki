@@ -19,7 +19,7 @@ function close(editor?: Editor) {
 }
 
 /**
- * Edits the formula at `pos` in a small panel under it (live KaTeX preview). Replaces Tiptap's default
+ * Edits the formula at `pos` in a panel under it (source beside a live KaTeX preview). Replaces Tiptap's default
  * `prompt()`, which would block the web view. An emptied formula is removed.
  */
 export function openMathEditor(editor: Editor, pos: number, kind: MathKind): void {
@@ -38,9 +38,12 @@ export function openMathEditor(editor: Editor, pos: number, kind: MathKind): voi
     close(editor)
   }
   // Escape or a press outside cancels (the layers' bus).
-  const layer = new FloatingLayer('hk-math-editor w-[360px] max-w-[calc(100vw-16px)] p-2', {
-    onDismiss: cancel
-  })
+  const layer = new FloatingLayer(
+    'hk-math-editor w-(--layout-panel-math) max-w-(--layout-viewport-max) p-2',
+    {
+      onDismiss: cancel
+    }
+  )
   open = { layer, formula }
   const commit = (latex: string) => {
     const now = at()

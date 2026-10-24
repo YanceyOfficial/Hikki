@@ -50,3 +50,38 @@ public enum AIAttachments {
         return .image(output as Data, mimeType: transparent ? "image/png" : "image/jpeg")
     }
 }
+
+/// What pasting into the question field means, decided from what the pasteboard holds — so ⌘V with a picture attaches
+/// it instead of the field typing the file's name (Finder puts a copied file's name beside its URL, and its icon as a
+/// picture).
+public enum AIPaste: Equatable, Sendable {
+    /// Attach these files (the pictures and PDFs among those copied).
+    case files([URL])
+    /// Attach the pasteboard's data of this type (a screenshot copied to the clipboard, a picture copied in Preview).
+    case data(UTType)
+    /// A plain paste: the field takes it as text.
+    case text
+
+    /// - Parameters:
+    ///   - fileURLs: the files on the pasteboard.
+    ///   - hasText: whether it holds plain text.
+    ///   - types: its types, richest first (as the pasteboard lists them).
+    public static func decide(fileURLs: [URL], hasText: Bool, types: [UTType]) -> AIPaste {
+        // Copied files: the pictures and PDFs among them; none of those (a text file, a folder) is a plain paste of
+        // the names, never the icon Finder adds as a picture.
+        if !fileURLs.isEmpty {
+            let files = fileURLs.filter { url in
+                UTType(filenameExtension: url.pathExtension).map(isAttachable) ?? false
+            }
+            return files.isEmpty ? .text : .files(files)
+        }
+        // Text wins over a picture of itself (Pages, Word and browsers put both when text is copied).
+        if hasText { return .text }
+        if let type = types.first(where: isAttachable) { return .data(type) }
+        return .text
+    }
+
+    private static func isAttachable(_ type: UTType) -> Bool {
+        type.conforms(to: .image) || type.conforms(to: .pdf)
+    }
+}

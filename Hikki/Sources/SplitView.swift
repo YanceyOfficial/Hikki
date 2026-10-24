@@ -128,6 +128,15 @@ struct PaneColumn<Content: View, Panel: View>: View {
                             .transition(.opacity)
                         }
                     }
+                    .overlay(alignment: .bottomTrailing) {
+                        // The page's save indicator (the iPhone's foot is its floating bar's). It reads the tracker
+                        // itself, so a save redraws only the chip.
+                        if wide, let pageID = pane?.route.pageID {
+                            SyncIndicator(pageID: pageID, tracker: model.pageSync)
+                                .padding(Spacing.s3)
+                                .ignoresSafeArea(.keyboard)
+                        }
+                    }
                 if wide && navigator.inspector(side).isShowing && pane?.route.pageID != nil {
                     panel(navigator.isSplit ? (width * 0.45).rounded() : nil)
                         .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -289,10 +298,7 @@ private struct PaneBar: View {
         .accessibilityIdentifier("ai-toggle-\(side.rawValue)")
     }
 
-    static func title(_ page: PageSummary?) -> String {
-        guard let page, !page.title.isEmpty else { return String(localized: "app:page.untitled") }
-        return page.title
-    }
+    static func title(_ page: PageSummary?) -> String { PageTitle.display(page?.title ?? "") }
 }
 
 /// What an empty side offers: the PDFs at hand (attached to the other side's page, open in tabs) and recent pages. A page
@@ -333,7 +339,7 @@ struct SplitPicker: View {
                     Text("app:split.empty").font(.hk(.md)).foregroundStyle(Theme.mutedForeground).padding(Spacing.s2)
                 }
                 ForEach(recent) { page in
-                    row(title: PaneBar.title(page), icon: AnyView(PageIcon(page.icon, size: 16))) {
+                    row(title: PaneBar.title(page), icon: AnyView(PageIcon(page.icon, size: Size.pageIcon))) {
                         navigator.show(.page(page.id), in: side)
                     }
                     .accessibilityIdentifier("split-pick-\(PaneBar.title(page))")

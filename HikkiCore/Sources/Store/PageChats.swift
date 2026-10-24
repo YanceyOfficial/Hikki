@@ -382,7 +382,7 @@ public final class PageChats: @unchecked Sendable {
     public func conversation(of pageId: String, retention: ChatRetention = .default, now: Date = .now) throws
         -> ChatConversation
     {
-        guard let file = try lock.withLock({ try read(pageId) }) else { return ChatConversation() }
+        guard let file = try locked(pageId, { try read(pageId) }) else { return ChatConversation() }
         let cutoff = retention.cutoff(now: now) ?? .distantPast
         return ChatConversation(
             turns: Self.visible(file).filter { $0.sentAt >= cutoff }, summary: file.summary, clearedAt: file.clearedAt)
@@ -434,7 +434,7 @@ public final class PageChats: @unchecked Sendable {
     /// The page is gone for good: its conversation goes too.
     public func removeAll(pageId: String) {
         guard let file = try? url(for: pageId) else { return }
-        lock.withLock { _ = try? FileManager.default.removeItem(at: file) }
+        lock.withLock { FileLocks.shared.withLock(file) { _ = try? FileManager.default.removeItem(at: file) } }
     }
 
     /// Settings → AI → Delete all conversations.
@@ -449,7 +449,7 @@ public final class PageChats: @unchecked Sendable {
         else { return }
         for url in files where url.pathExtension == "json" {
             let pageId = url.deletingPathExtension().lastPathComponent
-            try? lock.withLock {
+            try? locked(pageId) {
                 guard var file = try read(pageId) else { return }
                 let kept = file.turns.filter { $0.sentAt >= cutoff }
                 guard kept.count != file.turns.count else { return }
@@ -472,11 +472,18 @@ public final class PageChats: @unchecked Sendable {
     }
 
     private func change(_ pageId: String, _ apply: (inout File) throws -> Void) throws {
-        try lock.withLock {
+        try locked(pageId) {
             var file = try read(pageId) ?? File(format: Self.currentFormat, pageId: pageId, turns: [])
             try apply(&file)
             try write(file)
         }
+    }
+
+    /// Runs `body` holding this store's lock and the file's own (`FileLocks`): what arrives from iCloud is written
+    /// under the file's lock too, so a turn kept meanwhile is never written over.
+    private func locked<T>(_ pageId: String, _ body: () throws -> T) throws -> T {
+        let file = try url(for: pageId)
+        return try lock.withLock { try FileLocks.shared.withLock(file, body) }
     }
 
     /// The file, with any conflicting versions iCloud kept merged in (and then let go); nil when there is none.

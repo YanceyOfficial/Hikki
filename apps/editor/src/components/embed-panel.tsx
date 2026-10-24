@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 
 import { t } from '../core/i18n'
+import { keyLabel } from '../core/shortcuts'
 import { embedFromHTML, embedFromURL, type EmbedProvider, type EmbedSource } from '../lib/embeds'
 import type { FloatingAnchor, FloatingLayer } from './floating'
 import { IconProvider } from './icons'
@@ -98,9 +99,12 @@ export function EmbedPanel({ provider, onDone, initial = '', replacing = false }
           {invalid ? (
             <span className="text-destructive">{t('embed.invalid')}</span>
           ) : html ? (
-            t('embed.hintHtml')
+            t('embed.hintHtml', {
+              confirm: keyLabel('return', ['command']),
+              cancel: keyLabel('escape')
+            })
           ) : (
-            t('embed.hintLink')
+            t('embed.hintLink', { confirm: keyLabel('return'), cancel: keyLabel('escape') })
           )}
         </span>
         <Button size="xs" onClick={submit} disabled={!value.trim()}>

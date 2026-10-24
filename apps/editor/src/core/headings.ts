@@ -1,5 +1,7 @@
 import type { Editor } from '@tiptap/core'
 
+import { textOf } from './extract'
+
 export type HeadingItem = { id: string | null; pos: number; level: number; text: string }
 
 /** A heading as the outline shows it: no position (positions move with every keystroke above it; look them up
@@ -22,7 +24,8 @@ export function collectHeadings(editor: Editor): HeadingItem[] {
   const items: HeadingItem[] = []
   editor.state.doc.descendants((node, pos) => {
     if (node.type.name === 'heading') {
-      const text = node.textContent.trim()
+      // A formula, a mention or ruby counts as the heading's words (a heading of only a formula has no text nodes).
+      const text = textOf(node.toJSON()).trim()
       if (text)
         items.push({
           id: (node.attrs.id as string | undefined) ?? null,

@@ -17,6 +17,8 @@
         /// This week's writing and the workspace's totals (two queries), read when the tree changes.
         @State private var activity: [DailyActivity] = []
         @State private var stats = WorkspaceStats(pages: 0, words: 0)
+        /// The figures have been read once (later reads wait for the tree to rest).
+        @State private var figuresLoaded = false
         /// An iPhone Duo's vertical bar: ☰ and the floating bar's buttons go there instead.
         @Environment(\.verticalBarEdge) private var verticalBar
 
@@ -72,8 +74,17 @@
             }
             .onChange(of: model.tree, initial: true) { _, tree in digest = HomeDigest(pages: tree.all) }
             .task(id: model.tree) {
-                activity = model.activity(days: 7)
-                stats = model.stats()
+                // Two store reads, off the main thread; after the first, debounced — typing in a page over Home
+                // changes the tree every 2 s, and a newer change cancels the wait.
+                if figuresLoaded {
+                    try? await Task.sleep(for: .milliseconds(500))
+                    guard !Task.isCancelled else { return }
+                }
+                let figures = await model.homeFigures(days: 7)
+                guard !Task.isCancelled else { return }
+                activity = figures.activity
+                stats = figures.stats
+                figuresLoaded = true
             }
         }
 
@@ -376,7 +387,7 @@
                 .background(Theme.muted, in: .rect(cornerRadius: Radius.xl + Spacing.s0_5))
                 .contentShape(.rect(cornerRadius: Radius.xl + Spacing.s0_5))
             }
-            .buttonStyle(PressableStyle())
+            .buttonStyle(.pressable)
         }
     }
 
@@ -398,7 +409,7 @@
                         .padding(.top, -(Spacing.s3_5))
                         .padding(.leading, Spacing.s3)
                     VStack(alignment: .leading, spacing: Spacing.s0_5) {
-                        Text(verbatim: page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
+                        Text(verbatim: page.displayTitle)
                             .font(.hk(.sm, .semibold))
                             .foregroundStyle(Theme.foreground)
                             .lineLimit(1)
@@ -416,7 +427,7 @@
                 .clipShape(.rect(cornerRadius: Radius.xl + Spacing.s0_5))
                 .contentShape(.rect(cornerRadius: Radius.xl + Spacing.s0_5))
             }
-            .buttonStyle(PressableStyle())
+            .buttonStyle(.pressable)
             .accessibilityIdentifier("recent-\(page.title)")
         }
 
@@ -435,17 +446,7 @@
                 Button {
                     navigator.open(page.id)
                 } label: {
-                    HStack(spacing: Spacing.s2_5) {
-                        PageIcon(page.icon, size: TextSize.lg.rawValue)
-                            .frame(width: Size.iconButton)
-                        Text(verbatim: page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
-                            .font(.hk(.base))
-                            .foregroundStyle(Theme.foreground)
-                            .lineLimit(1)
-                        Spacer(minLength: 0)
-                    }
-                    .frame(height: Size.row + Spacing.s3)
-                    .contentShape(.rect)
+                    PageRowLabel(icon: page.icon, title: page.title)
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("page-row-\(page.title)")
@@ -456,14 +457,6 @@
         }
     }
 
-    /// The 97 % press of the design's buttons, for whole cards and tiles.
-    struct PressableStyle: ButtonStyle {
-        func makeBody(configuration: Configuration) -> some View {
-            configuration.label
-                .scaleEffect(configuration.isPressed ? 0.97 : 1)
-                .animation(Motion.easeOut(Motion.popOut), value: configuration.isPressed)
-        }
-    }
     extension View {
         /// Keeps a top bar clear of the screen's top edge where the safe area doesn't: an iPhone Duo shows its status
         /// bar in the strip beside the camera, so its top inset is a few points and a button there sits in the

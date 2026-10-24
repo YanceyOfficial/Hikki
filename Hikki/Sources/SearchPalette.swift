@@ -55,9 +55,9 @@ struct SearchPalette: View {
                 #endif
             }
             .padding(.horizontal, Spacing.s4)
-            .frame(height: 52)
+            .frame(height: Size.searchHeader)
             filters
-            Theme.border.frame(height: 1)
+            Theme.border.frame(height: Spacing.px)
 
             ScrollViewReader { proxy in
                 ScrollView {
@@ -100,7 +100,7 @@ struct SearchPalette: View {
             }
 
             #if os(macOS)
-                Theme.border.frame(height: 1)
+                Theme.border.frame(height: Spacing.px)
                 HStack(spacing: Spacing.s3_5) {
                     hint("↑↓", "app:search.hintSelect")
                     hint("↵", "app:search.hintOpen")
@@ -108,7 +108,7 @@ struct SearchPalette: View {
                     Spacer()
                 }
                 .padding(.horizontal, Spacing.s4)
-                .frame(height: 34)
+                .frame(height: Size.searchField)
             #endif
         }
         .background(phone ? Theme.background : Theme.popover)
@@ -298,8 +298,7 @@ struct SearchPalette: View {
     }
 
     private func path(of id: String) -> String {
-        model.tree.path(to: id).dropLast().map { $0.title.isEmpty ? String(localized: "app:page.untitled") : $0.title }.joined(
-            separator: " / ")
+        model.tree.path(to: id).dropLast().map(\.displayTitle).joined(separator: " / ")
     }
 
     private func move(_ delta: Int) -> KeyPress.Result {

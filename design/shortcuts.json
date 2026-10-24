@@ -240,6 +240,102 @@
       "modifiers": ["command", "shift"],
       "bound": "editor",
       "group": "format"
+    },
+    "favoritePage": {
+      "key": "p",
+      "modifiers": ["command", "shift"],
+      "bound": "app",
+      "group": "general"
+    },
+    "duplicatePage": {
+      "key": "d",
+      "modifiers": ["command", "shift"],
+      "bound": "app",
+      "group": "general"
+    },
+    "movePage": {
+      "key": "v",
+      "modifiers": ["command", "option"],
+      "bound": "app",
+      "group": "general"
+    },
+    "moveToTrash": {
+      "key": "delete",
+      "modifiers": ["command"],
+      "bound": "app",
+      "group": "general"
+    },
+    "pageHistory": {
+      "key": "h",
+      "modifiers": ["command", "shift"],
+      "bound": "app",
+      "group": "general"
+    },
+    "exportMarkdown": {
+      "key": "e",
+      "modifiers": ["command", "shift"],
+      "bound": "app",
+      "group": "general"
+    },
+    "reopenClosedTab": {
+      "key": "t",
+      "modifiers": ["command", "shift"],
+      "bound": "app",
+      "group": "navigation"
+    },
+    "tab1": {
+      "key": "1",
+      "modifiers": ["command"],
+      "bound": "app",
+      "group": "navigation"
+    },
+    "tab2": {
+      "key": "2",
+      "modifiers": ["command"],
+      "bound": "app",
+      "group": "navigation"
+    },
+    "tab3": {
+      "key": "3",
+      "modifiers": ["command"],
+      "bound": "app",
+      "group": "navigation"
+    },
+    "tab4": {
+      "key": "4",
+      "modifiers": ["command"],
+      "bound": "app",
+      "group": "navigation"
+    },
+    "tab5": {
+      "key": "5",
+      "modifiers": ["command"],
+      "bound": "app",
+      "group": "navigation"
+    },
+    "tab6": {
+      "key": "6",
+      "modifiers": ["command"],
+      "bound": "app",
+      "group": "navigation"
+    },
+    "tab7": {
+      "key": "7",
+      "modifiers": ["command"],
+      "bound": "app",
+      "group": "navigation"
+    },
+    "tab8": {
+      "key": "8",
+      "modifiers": ["command"],
+      "bound": "app",
+      "group": "navigation"
+    },
+    "tab9": {
+      "key": "9",
+      "modifiers": ["command"],
+      "bound": "app",
+      "group": "navigation"
     }
   }
 }

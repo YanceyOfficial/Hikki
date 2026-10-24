@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { act, cleanup, render, screen } from '@testing-library/react'
 import { useRef } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -153,5 +156,13 @@ describe('shared motion', () => {
     expect(screen.queryByTestId('panel')).not.toBeNull()
     rerender(<Panel open={false} />)
     expect(screen.queryByTestId('panel')).toBeNull()
+  })
+})
+
+describe('motion tokens reach every animation', () => {
+  it("a skeleton's pulse runs on the loading period, not Tailwind's own 2 s", () => {
+    const theme = readFileSync(join(process.cwd(), 'src/theme.css'), 'utf8')
+    const tokens = JSON.parse(readFileSync(join(process.cwd(), '../../design/tokens.json'), 'utf8'))
+    expect(theme).toContain(`--animate-pulse: pulse ${tokens.motion.loop}ms`)
   })
 })

@@ -11,6 +11,8 @@
         let page: PageSummary
         let navigator: Navigator
         let editor: EditorController
+        /// Move to Trash waiting for its confirmation, asked over this sheet.
+        @State private var confirmTrash: String?
 
         var body: some View {
             ScrollView {
@@ -27,6 +29,7 @@
             .scrollBounceBehavior(.basedOnSize)
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
+            .modifier(TrashConfirmation(pageID: $confirmTrash) { dismiss() })
         }
 
         private var path: [String] {
@@ -98,27 +101,19 @@
                     ActionRowLabel(title: "app:export.menu", icon: .export, chevron: true)
                 }
                 .accessibilityIdentifier("page-export")
-                Menu {
-                    if page.parentId != nil {
-                        Button("app:page.moveToTopLevel") { model.movePageToTopLevel(page.id) }
-                    }
-                    ForEach(model.tree.moveTargets(for: page.id), id: \.page.id) { target in
-                        Button {
-                            model.movePage(page.id, onto: target.page.id, zone: .inside)
-                        } label: {
-                            Text(verbatim: String(repeating: "    ", count: target.depth) + Self.title(target.page))
-                        }
-                    }
-                } label: {
-                    ActionRowLabel(title: "app:page.moveTo", icon: .arrowBendUpRight, chevron: true)
+                // The move picker (`MovePageSheet`), which the window presents once this sheet has gone.
+                ActionRow(title: "app:page.moveTo", icon: .arrowBendUpRight) {
+                    dismiss()
+                    navigator.movePageID = page.id
                 }
+                .accessibilityIdentifier("page-move")
                 ActionRow(title: "app:page.duplicate", icon: .copy) {
                     model.duplicate(id: page.id)
                     dismiss()
                 }
+                // Asks first, over this sheet (`TrashConfirmation`); the sheet closes once it is confirmed.
                 ActionRow(title: "app:page.moveToTrash", icon: .trash, destructive: true) {
-                    dismiss()
-                    model.moveToTrash(id: page.id)
+                    confirmTrash = page.id
                 }
             }
             .background(Theme.muted, in: .rect(cornerRadius: Radius.xl + Spacing.s1))
@@ -149,12 +144,7 @@
 
         /// The page's title (or "Untitled").
         static func name(_ page: PageSummary) -> String {
-            page.title.isEmpty ? String(localized: "app:page.untitled") : page.title
-        }
-
-        /// Icon and title, for the Move to menu.
-        static func title(_ page: PageSummary) -> String {
-            (page.icon.map { "\($0) " } ?? "") + name(page)
+            page.displayTitle
         }
     }
 
@@ -175,7 +165,7 @@
                 .background(Theme.muted, in: .rect(cornerRadius: Radius.xl + Spacing.s1))
                 .contentShape(.rect(cornerRadius: Radius.xl + Spacing.s1))
             }
-            .buttonStyle(PressableStyle())
+            .buttonStyle(.pressable)
         }
     }
 
@@ -206,7 +196,7 @@
                     IconView(.caretUpDown, size: TextSize.xs.rawValue).foregroundStyle(Theme.placeholder)
                 }
             }
-            .foregroundStyle(destructive ? AnyShapeStyle(.red) : AnyShapeStyle(Theme.foreground))
+            .foregroundStyle(destructive ? AnyShapeStyle(Theme.destructive) : AnyShapeStyle(Theme.foreground))
             .padding(.horizontal, Spacing.s4)
             .frame(height: Size.row + Spacing.s4)
             .contentShape(.rect)

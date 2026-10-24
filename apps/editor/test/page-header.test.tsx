@@ -577,8 +577,14 @@ describe('Outline marks where the reader is', () => {
     window.scrollTo = ((options: unknown) => void scrolls.push(options)) as typeof window.scrollTo
     try {
       bridge.restoreScroll(840)
-      await new Promise((resolve) => setTimeout(resolve, 60))
+      // At once, in the same turn as the page's load: no frame of it at its top.
       expect(scrolls).toEqual([{ top: 840, left: 0, behavior: 'instant' }])
+      await new Promise((resolve) => setTimeout(resolve, 60))
+      // Again after layout only while it isn't there yet (this stub never moves the page), never anywhere else.
+      expect(scrolls.length).toBeLessThanOrEqual(2)
+      expect(new Set(scrolls.map((s) => JSON.stringify(s)))).toEqual(
+        new Set([JSON.stringify({ top: 840, left: 0, behavior: 'instant' })])
+      )
     } finally {
       window.scrollTo = original
       host.remove()

@@ -34,8 +34,10 @@ export default defineConfig({
     // No source map in the app: it was 8 MB of the bundle and nothing reads it (dev builds have their own).
     sourcemap: false,
     // One bundle on purpose: it loads from the app bundle (custom scheme, no network) once per window, and
-    // our JS evaluates in ~110 ms (WebKit, 2026-10-17). Splitting Tiptap/React buys little.
-    chunkSizeWarningLimit: 1500
+    // our JS evaluates in ~110 ms (WebKit, 2026-10-17). Splitting Tiptap/React buys little. The main chunk is
+    // 2.56 MB (2026-10-24): KaTeX and re2js come in through Tiptap's math and find extensions, which import them
+    // statically; Excalidraw and Mermaid are their own lazy chunks. The limit warns past what that measured.
+    chunkSizeWarningLimit: 2800
   },
   test: {
     environment: 'happy-dom',

@@ -51,7 +51,7 @@ export function Outline({ bridge }: { bridge: EditorBridge }) {
 
   return (
     <nav
-      className="fixed top-1/2 right-0 z-20 flex -translate-y-1/2 justify-end max-[1000px]:hidden"
+      className="fixed top-1/2 right-0 z-20 flex -translate-y-1/2 justify-end max-outline:hidden"
       aria-label={t('page.outline')}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => {

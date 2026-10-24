@@ -81,11 +81,11 @@
             Task { await editor.applyCover(cover, docId: docId) }
         }
 
-        /// An Unsplash photo: its regular size becomes the cover, and the pick counts as a download for its
+        /// An Unsplash photo: its high-resolution picture becomes the cover, and the pick counts as a download for its
         /// photographer (Unsplash's guideline).
         private func pick(_ cell: CoverPhoto) {
             guard let photo = photos[cell.id], let base = request.bff else { return }
-            apply(photo.regular.absoluteString)
+            apply(photo.coverURL.absoluteString)
             Task { await UnsplashClient(base: base).trackDownload(photo) }
         }
 

@@ -9,8 +9,9 @@ import {
 } from '@/components/ui/input-group'
 import { Kbd } from '@/components/ui/kbd'
 
-import { markdownDOM } from '../core/convert'
+import { aiErrorText } from '../core/ai-errors'
 import { t } from '../core/i18n'
+import { keyLabel } from '../core/shortcuts'
 import type { AIReviewStyle } from '../extensions/ai-review'
 import {
   ArrowClockwiseIcon,
@@ -51,6 +52,8 @@ export type AIReviewProps = {
   onInsertNote: (index: number) => void
   /** Copies `text`, or the answer. */
   onCopy: (text?: string) => void
+  /** Markdown (an answer, a note) drawn as the page's own blocks — built from the editor's schema, never as HTML. */
+  renderMarkdown: (text: string) => DocumentFragment
 }
 
 /** The three dots of AI at work (the one loading shimmer's timing, `--motion-loop`). */
@@ -67,16 +70,22 @@ function Working({ label }: { label: string }) {
   )
 }
 
-/** The answer's Markdown, drawn with the page's own blocks (`markdownDOM`: built from the schema, never as HTML). */
-function MarkdownAnswer({ text }: { text: string }) {
+/** The answer's Markdown, drawn with the page's own blocks (`render`: built from the schema, never as HTML). */
+function MarkdownAnswer({
+  text,
+  render
+}: {
+  text: string
+  render: (text: string) => DocumentFragment
+}) {
   const ref = useRef<HTMLDivElement>(null)
   useLayoutEffect(() => {
-    ref.current?.replaceChildren(markdownDOM(text))
-  }, [text])
+    ref.current?.replaceChildren(render(text))
+  }, [text, render])
   return (
     <div
       ref={ref}
-      className="hk-ai-answer max-h-[min(360px,50vh)] overflow-y-auto overscroll-contain px-1 text-sm leading-relaxed"
+      className="hk-ai-answer max-h-(--layout-panel-height-answer) overflow-y-auto overscroll-contain px-1 text-sm leading-relaxed"
       data-testid="ai-answer"
     />
   )
@@ -93,12 +102,14 @@ function NotesCard({
   notes,
   inserted,
   onCopy,
-  onInsert
+  onInsert,
+  render
 }: {
   notes: string[]
   inserted: number[]
   onCopy: (text: string) => void
   onInsert: (index: number) => void
+  render: (text: string) => DocumentFragment
 }) {
   const [copied, setCopied] = useState<number | null>(null)
   // "Copied" for a moment, as the code block's Copy says it.
@@ -119,7 +130,7 @@ function NotesCard({
           className="flex flex-col gap-1 not-first:border-t not-first:border-border not-first:pt-1.5"
           data-testid="ai-note"
         >
-          <MarkdownAnswer text={note} />
+          <MarkdownAnswer text={note} render={render} />
           <div className="flex items-center justify-end gap-1">
             <Button
               variant="ghost"
@@ -197,33 +208,6 @@ function FollowUp({
   )
 }
 
-export function aiErrorText(error: NonNullable<AIReviewProps['session']['error']>): string {
-  switch (error.code) {
-    case 'missingKey':
-      return t('ai.error.missingKey', { provider: error.provider ?? '' })
-    case 'badBaseURL':
-      return t('ai.error.badBaseURL', { provider: error.provider ?? '' })
-    case 'unauthorized':
-      return t('ai.error.unauthorized')
-    case 'rateLimited':
-      return t('ai.error.rateLimited')
-    case 'unavailable':
-      return t('ai.error.unavailable')
-    case 'offline':
-      return t('ai.error.offline')
-    case 'rejected':
-      return error.message
-        ? t('ai.error.rejectedWith', { message: error.message })
-        : t('ai.error.rejected')
-    case 'mediaUnreadable':
-      return t('ai.error.mediaUnreadable')
-    case 'locked':
-      return t('ai.error.locked')
-    default:
-      return t('ai.error.invalidResponse')
-  }
-}
-
 /**
  * Under the selection while AI works on it: a working line, then — for an edit — the change count, a follow-up field
  * and Retry / Discard / Accept (style A draws the edit in the page, style B as − / + lines here), and the model's notes
@@ -238,6 +222,7 @@ export function AIReview({
   onFollowUp,
   onInsertBelow,
   onInsertNote,
+  renderMarkdown,
   onCopy
 }: AIReviewProps) {
   const {
@@ -265,7 +250,7 @@ export function AIReview({
 
   return (
     <div
-      className="flex w-[min(520px,calc(100vw-32px))] flex-col gap-2 rounded-xl bg-popover p-2 text-popover-foreground shadow-popover"
+      className="flex w-(--layout-panel-review) max-w-(--layout-viewport-max) flex-col gap-2 rounded-xl bg-popover p-2 text-popover-foreground shadow-popover"
       data-testid="ai-review"
       onMouseDown={(e) => {
         if (!(e.target as HTMLElement).closest('input')) e.preventDefault()
@@ -284,7 +269,7 @@ export function AIReview({
         </div>
       )}
 
-      {answer && reply && <MarkdownAnswer text={reply} />}
+      {answer && reply && <MarkdownAnswer text={reply} render={renderMarkdown} />}
       {citations.length > 0 && (
         <ol className="m-0 flex list-none flex-wrap gap-1 p-0 px-1" aria-label={t('ai.sources')}>
           {citations.map((c, index) => (
@@ -337,11 +322,13 @@ export function AIReview({
             </Button>
             <Button variant="outline" size="sm" onClick={onDiscard} data-testid="ai-discard">
               {t('ai.discard')}
-              <Kbd>esc</Kbd>
+              <Kbd>{keyLabel('escape')}</Kbd>
             </Button>
             <Button size="sm" onClick={onAccept} data-testid="ai-accept">
               {t('ai.accept')}
-              <Kbd className="bg-primary-foreground/15 text-primary-foreground">↵</Kbd>
+              <Kbd className="bg-primary-foreground/15 text-primary-foreground">
+                {keyLabel('return')}
+              </Kbd>
             </Button>
           </div>
         </>
@@ -349,7 +336,13 @@ export function AIReview({
 
       {status === 'review' && notes.length > 0 && (
         <>
-          <NotesCard notes={notes} inserted={inserted} onCopy={onCopy} onInsert={onInsertNote} />
+          <NotesCard
+            notes={notes}
+            inserted={inserted}
+            onCopy={onCopy}
+            onInsert={onInsertNote}
+            render={renderMarkdown}
+          />
           {/* Nothing (left) to accept: the notes alone, closed from here. */}
           {changes === 0 && (
             <div className="flex flex-wrap items-center justify-end gap-1.5">
@@ -361,7 +354,7 @@ export function AIReview({
               )}
               <Button variant="outline" size="sm" onClick={onDiscard} data-testid="ai-close">
                 {t('ai.close')}
-                <Kbd>esc</Kbd>
+                <Kbd>{keyLabel('escape')}</Kbd>
               </Button>
             </div>
           )}

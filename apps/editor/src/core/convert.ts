@@ -7,8 +7,11 @@ import {
   type JSONContent
 } from '@tiptap/core'
 import { MarkdownManager } from '@tiptap/markdown'
-import { DOMSerializer, type Mark, Node as PMNode, type Schema } from '@tiptap/pm/model'
+import { DOMSerializer, Node as PMNode, type Schema } from '@tiptap/pm/model'
 
+import { safeErrorMessage } from '../lib/safe-error'
+import { withBlockIds } from './block-ids'
+import { emptyDoc, fitMarks, textDocument } from './content-fit'
 import { editorExtensions } from './editor'
 import { plainText, textOf, wordCount } from './extract'
 import { normalizeBody } from './normalize'
@@ -55,8 +58,6 @@ function nodeHTML(schema: Schema, json: JSONContent): string {
   }
 }
 
-const emptyDoc = (): JSONContent => ({ type: 'doc', content: [{ type: 'paragraph' }] })
-
 /** The page's body as stored, the title taken out of it (old pages carried it) — what the editor shows. */
 function pageBody(page: Pick<PagePayload, 'title' | 'content'>): {
   title: string
@@ -101,25 +102,6 @@ ${heading}${html}
 }
 
 /**
- * Marks a text may not carry together resolved the way the editor would (ProseMirror's `addToSet`: a mark that
- * excludes another replaces it — inline code inside bold stays code), so one such run doesn't send the whole file to
- * the text fallback. Unknown marks are left for the schema check to refuse.
- */
-function fitMarks(node: JSONContent, schema: Schema): JSONContent {
-  let marks = node.marks
-  if (marks && marks.length > 1 && marks.every((mark) => schema.marks[mark.type])) {
-    let set: readonly Mark[] = []
-    for (const mark of marks) set = schema.mark(mark.type, mark.attrs).addToSet(set)
-    marks = set.map((mark) => mark.toJSON() as NonNullable<JSONContent['marks']>[number])
-  }
-  return {
-    ...node,
-    ...(marks ? { marks } : {}),
-    ...(node.content ? { content: node.content.map((child) => fitMarks(child, schema)) } : {})
-  }
-}
-
-/**
  * A Markdown, HTML or plain-text file as a new page's title and body. A leading level-1 heading (or an HTML
  * `<title>`) becomes the title; otherwise `fallbackTitle` (the file's name). Whatever the file holds, the body fits
  * the schema: anything that doesn't parse falls back to the text, line by line.
@@ -146,9 +128,7 @@ export function importDocument(
     PMNode.fromJSON(schema, content).check()
   } catch (error) {
     // Into the native log (the reason only — never the file's text).
-    console.warn(
-      `import fell back to text: ${error instanceof Error ? error.message : String(error)}`
-    )
+    console.warn(`import fell back to text: ${safeErrorMessage(error)}`)
     content = textDocument(text)
   }
   const blocks = [...(content.content ?? [])]
@@ -162,7 +142,8 @@ export function importDocument(
     }
   }
   const pageTitle = (title || fallbackTitle).trim().slice(0, 500)
-  const doc = blocks.length ? { type: 'doc', content: blocks } : emptyDoc()
+  // Block ids now, in one walk: the editor's own stamping of a big page without them is quadratic.
+  const doc = withBlockIds(blocks.length ? { type: 'doc', content: blocks } : emptyDoc())
   // Text and word count as a save computes them (the page is stored like any other).
   const plain = plainText(doc)
   return {
@@ -218,28 +199,6 @@ function trimRun(run: JSONContent[]): JSONContent[] {
   return out.filter((n) => n.type !== 'text' || (n.text ?? '') !== '')
 }
 
-/** Plain text: a paragraph per run of lines, blank lines between them; lines inside one keep their breaks. */
-function textDocument(text: string): JSONContent {
-  const paragraphs = text
-    .replaceAll(/\r\n?/gu, '\n')
-    .split(/\n{2,}/u)
-    .map((chunk) => chunk.replaceAll(/^\n+|\n+$/gu, ''))
-    .filter((chunk) => chunk.trim() !== '')
-  if (paragraphs.length === 0) return emptyDoc()
-  return {
-    type: 'doc',
-    content: paragraphs.map((chunk) => ({
-      type: 'paragraph',
-      content: chunk
-        .split('\n')
-        .flatMap((line, index): JSONContent[] => [
-          ...(index > 0 ? [{ type: 'hardBreak' }] : []),
-          ...(line ? [{ type: 'text', text: line }] : [])
-        ])
-    }))
-  }
-}
-
 const plainLines = (node: JSONContent): string =>
   (node.content ?? []).map(textOf).filter(Boolean).join('\n')
 
@@ -249,73 +208,3 @@ const escapeHTML = (text: string) =>
     .replaceAll(/</gu, '&lt;')
     .replaceAll(/>/gu, '&gt;')
     .replaceAll(/"/gu, '&quot;')
-
-/** What an AI answer may hold: text, lists, quotes, code and tables — no media or embeds (a remote picture in an
- * answer would load from wherever the model pointed). */
-const ANSWER_NODES = new Set([
-  'doc',
-  'paragraph',
-  'text',
-  'hardBreak',
-  'heading',
-  'bulletList',
-  'orderedList',
-  'listItem',
-  'taskList',
-  'taskItem',
-  'blockquote',
-  'codeBlock',
-  'horizontalRule',
-  'table',
-  'tableRow',
-  'tableHeader',
-  'tableCell'
-])
-
-/** Only web links stay links; other marks stay as they are. */
-function answerNode(node: JSONContent): JSONContent | null {
-  if (!node.type || !ANSWER_NODES.has(node.type)) return null
-  const marks = node.marks?.filter((mark) => {
-    if (mark.type !== 'link') return true
-    const href = mark.attrs?.href
-    return typeof href === 'string' && /^https?:\/\//iu.test(href)
-  })
-  const content = node.content?.map(answerNode).filter((n): n is JSONContent => n !== null)
-  return {
-    ...node,
-    ...(marks ? { marks } : {}),
-    ...(content ? { content } : {})
-  }
-}
-
-/**
- * An AI answer's Markdown (untrusted) as blocks of the page's schema — media and embeds left out, non-web links
- * unlinked — or its text as paragraphs when it doesn't parse into something the schema takes.
- */
-export function markdownBlocks(text: string): JSONContent[] {
-  const { schema, markdown } = converter()
-  try {
-    const answer = answerNode(markdown.parse(text))
-    if (!answer) throw new Error('no content')
-    const content = fitMarks(answer, schema)
-    PMNode.fromJSON(schema, content).check()
-    return content.content ?? []
-  } catch {
-    return textDocument(text).content ?? []
-  }
-}
-
-/** The same blocks drawn for the answer card: built node by node from the schema, never parsed from a string. */
-export function markdownDOM(text: string): DocumentFragment {
-  const { schema } = converter()
-  try {
-    const doc = PMNode.fromJSON(schema, { type: 'doc', content: markdownBlocks(text) })
-    const fragment = document.createDocumentFragment()
-    fragment.append(DOMSerializer.fromSchema(schema).serializeFragment(doc.content))
-    return fragment
-  } catch {
-    const fragment = document.createDocumentFragment()
-    fragment.append(document.createTextNode(text))
-    return fragment
-  }
-}

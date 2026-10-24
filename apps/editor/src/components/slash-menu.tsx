@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 
 import { BLOCK_GROUPS, type BlockGroup, type BlockType } from '../core/blocks'
 import { t } from '../core/i18n'
+import { keyLabel } from '../core/shortcuts'
 import { BlockPreview } from './block-preview'
 import type { FloatingAnchor, FloatingLayer } from './floating'
 import { GlidingHighlight } from './gliding-highlight'
@@ -91,7 +92,7 @@ export function SlashMenu({ items, query, selectedIndex, onSelect, onHover, onCl
         <Icon size={18} className="flex-none text-subtle-foreground" aria-hidden />
         <span className="min-w-0 flex-1 truncate text-foreground">{item.label()}</span>
         {item.shortcut && (
-          <span className="flex-none font-mono text-xs text-placeholder">{item.shortcut}</span>
+          <span className="flex-none font-mono text-xs text-muted-foreground">{item.shortcut}</span>
         )}
       </MenuRow>
     )
@@ -101,7 +102,7 @@ export function SlashMenu({ items, query, selectedIndex, onSelect, onHover, onCl
     <div className="relative" data-testid="slash-menu">
       <div
         ref={cardRef}
-        className="flex w-[280px] max-w-[calc(100vw-16px)] flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-popover"
+        className="flex w-(--layout-panel-slash) max-w-(--layout-viewport-max) flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-popover"
         style={{ maxHeight: 'var(--hk-available-height, 360px)' }}
       >
         <div
@@ -136,7 +137,7 @@ export function SlashMenu({ items, query, selectedIndex, onSelect, onHover, onCl
           onClick={onClose}
         >
           <span>{t('slash.close')}</span>
-          <span className="text-xs text-placeholder">esc</span>
+          <span className="text-xs text-muted-foreground">{keyLabel('escape')}</span>
         </Button>
       </div>
       {selected && previewReady && (

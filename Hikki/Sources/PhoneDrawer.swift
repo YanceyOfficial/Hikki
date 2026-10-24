@@ -47,7 +47,7 @@
                     }
                 }
                 .padding(.vertical, Spacing.s2)
-                .overlay(alignment: .top) { Theme.sidebarBorder.frame(height: 1) }
+                .overlay(alignment: .top) { Theme.sidebarBorder.frame(height: Spacing.px) }
             }
             .background(Theme.sidebar)
         }
@@ -80,7 +80,7 @@
                     .background(Theme.sidebarAccent, in: .rect(cornerRadius: Radius.xl))
                     .contentShape(.rect(cornerRadius: Radius.xl))
                 }
-                .buttonStyle(PressableStyle())
+                .buttonStyle(.pressable)
                 .accessibilityIdentifier("drawer-search")
             }
             .padding(.horizontal, Spacing.s4)
@@ -122,7 +122,7 @@
                 }
                 .padding(.leading, inTree ? Spacing.s2 + Size.iconButton + Spacing.s1 : Spacing.s3)
                 .padding(.trailing, Spacing.s3)
-                .frame(height: Size.row + Spacing.s3)
+                .frame(height: Size.touchRow)
                 .contentShape(.rect)
             }
             .buttonStyle(.plain)
@@ -175,7 +175,7 @@
                             IconView(.caretRight, size: TextSize.xs.rawValue)
                                 .foregroundStyle(Theme.placeholder)
                                 .rotationEffect(.degrees(isExpanded.wrappedValue ? 90 : 0))
-                                .frame(width: Size.iconButton, height: Size.row + Spacing.s3)
+                                .frame(width: Size.iconButton, height: Size.touchRow)
                                 .contentShape(.rect)
                         }
                         .buttonStyle(.plain)
@@ -189,17 +189,7 @@
                     close()
                     navigator.open(page.id)
                 } label: {
-                    HStack(spacing: Spacing.s2_5) {
-                        PageIcon(page.icon, size: TextSize.lg.rawValue)
-                            .frame(width: Size.iconButton)
-                        Text(verbatim: title)
-                            .font(.hk(.base))
-                            .foregroundStyle(depth == 0 ? Theme.foreground : Theme.subtleForeground)
-                            .lineLimit(1)
-                        Spacer(minLength: 0)
-                    }
-                    .frame(height: Size.row + Spacing.s3)
-                    .contentShape(.rect)
+                    PageRowLabel(icon: page.icon, title: page.title, nested: depth > 0)
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("page-row-\(title)")
@@ -210,6 +200,6 @@
             .contextMenu { PageActions(page: page, navigator: navigator) }
         }
 
-        private var title: String { page.title.isEmpty ? String(localized: "app:page.untitled") : page.title }
+        private var title: String { page.displayTitle }
     }
 #endif

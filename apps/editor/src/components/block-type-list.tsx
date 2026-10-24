@@ -1,9 +1,6 @@
-import { BLOCK_TYPES, type BlockType } from '../core/blocks'
+import { TURN_INTO, type BlockType } from '../core/blocks'
 import { CheckIcon } from '../generated/icons'
 import { MenuRow, MenuTitle } from './menu-row'
-
-/** The kinds a block can be turned into (the catalog's `turnInto` entries). */
-export const TURN_INTO = BLOCK_TYPES.filter((b) => b.turnInto)
 
 /**
  * "Turn into": every kind a block can become, the current one checked. Shared by the selection menu and the

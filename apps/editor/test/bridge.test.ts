@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { openBlockMenu } from '../src/components/block-menu'
 import { openFloatingLayers } from '../src/components/floating'
 import { EditorBridge, type Transport } from '../src/core/bridge'
+import { installErrorForwarding } from '../src/core/errors'
 import type { ToNativeMessage } from '../src/core/protocol'
 import { unitAtPos } from '../src/extensions/block-units'
 import { openEmbedPanel } from '../src/extensions/embed'
@@ -19,6 +20,23 @@ const heading = (level: number, text: string) => ({
 })
 const pageInfo = (sent: ToNativeMessage[]) =>
   sent.filter((m) => m.type === 'pageInfo') as Extract<ToNativeMessage, { type: 'pageInfo' }>[]
+
+const ofType = (sent: ToNativeMessage[], type: ToNativeMessage['type']) =>
+  sent.filter((m) => m.type === type)
+
+/** A transport whose `changed` posts fail while `failing` is set. */
+function flakyTransport(sent: ToNativeMessage[]) {
+  const state = { failing: true, posts: 0 }
+  const transport: Transport = {
+    post: (m) => {
+      sent.push(m)
+      if (m.type !== 'changed') return Promise.resolve(null)
+      state.posts += 1
+      return state.failing ? Promise.reject(new Error('handler gone')) : Promise.resolve(null)
+    }
+  }
+  return { state, transport }
+}
 
 describe('EditorBridge', () => {
   let sent: ToNativeMessage[]
@@ -44,6 +62,14 @@ describe('EditorBridge', () => {
   })
 
   const changed = () => sent.filter((m) => m.type === 'changed')
+  const editing = () => ofType(sent, 'editing')
+  const reported = () => ofType(sent, 'reportError')
+  /** The bridge over a transport whose saves fail until told otherwise. */
+  const flaky = () => {
+    const { state, transport } = flakyTransport(sent)
+    bridge = new EditorBridge(host, transport, { debounceMs: 400 })
+    return state
+  }
   const selections = () => sent.filter((m) => m.type === 'selection')
   const editor = () => (bridge as any).editor
 
@@ -84,6 +110,23 @@ describe('EditorBridge', () => {
     expect(changed()).toHaveLength(0)
     vi.advanceTimersByTime(1)
     expect(changed()).toHaveLength(1)
+  })
+
+  it('says "editing" once per save, never for a page only viewed', () => {
+    bridge.loadDocument(page('a'))
+    vi.advanceTimersByTime(1000)
+    expect(editing()).toEqual([])
+    editor().commands.insertContent(' there')
+    editor().commands.insertContent(' again')
+    expect(editing()).toEqual([{ type: 'editing', docId: 'a' }])
+    vi.advanceTimersByTime(400)
+    expect(changed()).toHaveLength(1)
+    editor().commands.insertContent('!')
+    expect(editing()).toHaveLength(2)
+    // Handed over by a flush: the next edit says so again.
+    expect(bridge.flush()).not.toBeNull()
+    bridge.setTitle('Plan')
+    expect(editing()).toHaveLength(3)
   })
 
   it('a comment saves the page (its passage mark is part of the page) without entering undo', () => {
@@ -167,6 +210,25 @@ describe('EditorBridge', () => {
       { type: 'setCover', docId: 'a', cover: 'gradient:dusk' }
     ])
     expect(changed()).toHaveLength(0)
+  })
+
+  it('an icon or cover the native side refuses to store goes back to what it was', async () => {
+    vi.useRealTimers()
+    const refusing: Transport = {
+      post: async (m) => {
+        if (m.type === 'setIcon' || m.type === 'setCover') throw new Error('locked')
+        return null
+      }
+    }
+    const refused = new EditorBridge(host, refusing, { debounceMs: 400 })
+    refused.loadDocument(page('a', { icon: '🌊', cover: 'gradient:ocean' }))
+    refused.setIcon('👋')
+    refused.setCover('gradient:dusk')
+    expect(refused.page.get().icon).toBe('👋')
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(refused.page.get().icon).toBe('🌊')
+    expect(refused.page.get().cover).toBe('gradient:ocean')
   })
 
   it('saveAsset base64-encodes the file and resolves to the URL the native side returns', async () => {
@@ -326,17 +388,17 @@ describe('EditorBridge', () => {
       editor().storage.characterCount.characters() + 'Plan'.length
     )
     expect(pageInfo(sent)[0].headings).toMatchObject([{ level: 1, text: 'One' }])
-    // UniqueID stamps the block ids right after load; the throttled follow-up carries them.
+    // Block ids are stamped before the editor sees the page: the first report carries them, no follow-up.
+    expect(typeof pageInfo(sent)[0].headings[0].id).toBe('string')
     vi.advanceTimersByTime(300)
-    expect(pageInfo(sent)).toHaveLength(2)
-    expect(typeof pageInfo(sent)[1].headings[0].id).toBe('string')
+    expect(pageInfo(sent)).toHaveLength(1)
     editor().commands.insertContentAt(editor().state.doc.content.size, heading(2, 'Two'))
     bridge.setTitle('Plan B')
-    expect(pageInfo(sent)).toHaveLength(2)
+    expect(pageInfo(sent)).toHaveLength(1)
     vi.advanceTimersByTime(300)
-    expect(pageInfo(sent)).toHaveLength(3)
-    expect(pageInfo(sent)[2].headings.map((h) => h.text)).toEqual(['One', 'Two'])
-    expect(pageInfo(sent)[2].words).toBe(6)
+    expect(pageInfo(sent)).toHaveLength(2)
+    expect(pageInfo(sent)[1].headings.map((h) => h.text)).toEqual(['One', 'Two'])
+    expect(pageInfo(sent)[1].words).toBe(6)
     // Hiding the rail is state the outline reads; it never reaches the native side.
     bridge.setOutlineRail(false)
     expect(bridge.page.get().railHidden).toBe(true)
@@ -445,11 +507,11 @@ describe('EditorBridge', () => {
 
   it('demoAI selects the words and asks AI to edit them, as the selection menu would', () => {
     bridge.loadDocument(page('a', { content: doc('Notes stay on your own devices.') }))
-    expect(bridge.demoAI(['stay on your own'], 'improve')).toBe(true)
+    expect(bridge.ai.demoAI(['stay on your own'], 'improve')).toBe(true)
     const request = sent.find((m) => m.type === 'aiRequest')
     expect(request).toMatchObject({ type: 'aiRequest', action: 'improve', answer: false })
     expect(JSON.stringify(request)).toContain('stay on your own')
-    expect(bridge.demoAI(['not in the page'], 'improve')).toBe(false)
+    expect(bridge.ai.demoAI(['not in the page'], 'improve')).toBe(false)
   })
 
   it("iOS's text size reaches the page as a clamped factor", () => {
@@ -467,15 +529,15 @@ describe('EditorBridge', () => {
   it("the phone's AI field takes the caret's block, its link field the word", () => {
     bridge.loadDocument(page('a', { content: doc('Kyoto trip in spring') }))
     editor().commands.setTextSelection(3)
-    expect(bridge.touchPrepare('block')?.quote).toBe('Kyoto trip in spring')
+    expect(bridge.touch.touchPrepare('block')?.quote).toBe('Kyoto trip in spring')
     editor().commands.setTextSelection(3)
-    expect(bridge.touchPrepare()?.quote).toBe('Kyoto')
+    expect(bridge.touch.touchPrepare()?.quote).toBe('Kyoto')
   })
 
   it("the phone's AI field offers the panel's presets only: no Translate, no Make", () => {
     bridge.loadDocument(page('a', { content: doc('Kyoto trip') }))
     editor().commands.setTextSelection({ from: 1, to: 6 })
-    const presets = bridge.touchPrepare()?.presets.map((p) => p.id) ?? []
+    const presets = bridge.touch.touchPrepare()?.presets.map((p) => p.id) ?? []
     expect(presets).toContain('improve')
     expect(presets.filter((id) => id.startsWith('translate:') || id.startsWith('make:'))).toEqual(
       []
@@ -511,6 +573,70 @@ describe('EditorBridge', () => {
       const snapshot = bridge.flush()
       expect(snapshot?.content.content?.[0].attrs?.id).toBe('keep-me')
       expect(snapshot?.content.content?.[1].attrs?.id).toEqual(expect.any(String))
+    })
+  })
+
+  describe('a save that does not reach the app', () => {
+    beforeEach(() => {
+      // reportError posts through the forwarding sink: this test's list.
+      const quiet = Object.assign(new EventTarget(), {
+        console: { ...console, warn: () => {}, error: () => {} }
+      }) as any
+      installErrorForwarding({ post: (m) => Promise.resolve(void sent.push(m)) }, quiet)
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+    })
+    afterEach(() => vi.restoreAllMocks())
+
+    it('keeps the edit pending, retries, and reports once the retries are spent', async () => {
+      const state = flaky()
+      bridge.loadDocument(page('a'))
+      editor().commands.insertContent('!')
+      await vi.advanceTimersByTimeAsync(400)
+      expect(state.posts).toBe(1)
+      await vi.advanceTimersByTimeAsync(500)
+      expect(state.posts).toBe(2)
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(state.posts).toBe(3)
+      expect(reported()).toEqual([expect.objectContaining({ code: 3008 })])
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(state.posts).toBe(3)
+      // Never taken: still pending, so a flush (a page switch, backgrounding) hands it over — nothing is lost.
+      expect(bridge.flush()?.text).toBe('!hi')
+    })
+
+    it('a retry that gets through settles it: nothing more is sent or reported', async () => {
+      const state = flaky()
+      bridge.loadDocument(page('a'))
+      editor().commands.insertContent('!')
+      await vi.advanceTimersByTimeAsync(400)
+      state.failing = false
+      await vi.advanceTimersByTimeAsync(500)
+      expect(state.posts).toBe(2)
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(state.posts).toBe(2)
+      expect(reported()).toEqual([])
+      expect(bridge.flush()).toBeNull()
+    })
+
+    it("a page left keeps its words: retried, and shown again if it's opened before they got through", async () => {
+      const state = flaky()
+      bridge.loadDocument(page('a'))
+      editor().commands.insertContent('!')
+      bridge.loadDocument(page('b'))
+      await vi.advanceTimersByTimeAsync(5000)
+      expect(changed().map((m) => (m.type === 'changed' ? m.snapshot.docId : ''))).toEqual([
+        'a',
+        'a',
+        'a'
+      ])
+      expect(reported()).toHaveLength(1)
+      // The app still has the old words; the page opens with the ones that never reached it, as an edit.
+      bridge.loadDocument(page('a'))
+      expect(editor().getText()).toBe('!hi')
+      state.failing = false
+      await vi.advanceTimersByTimeAsync(400)
+      const last = changed().at(-1)
+      expect(last?.type === 'changed' && last.snapshot.text).toBe('!hi')
     })
   })
 
@@ -550,6 +676,46 @@ describe('EditorBridge', () => {
       expect(changed()).toHaveLength(0)
       expect(bridge.flush()).toBeNull()
       expect(bridge.page.get().title).toBe('Future')
+    })
+
+    it('shows what it can — an unknown block as its text, a misnested one as its blocks — never a blank page', () => {
+      const newer = {
+        type: 'doc',
+        content: [
+          { type: 'paragraph', content: [{ type: 'text', text: 'before' }] },
+          {
+            type: 'futureBlock',
+            attrs: { flavour: 'x' },
+            content: [{ type: 'text', text: 'kept words', marks: [{ type: 'futureMark' }] }]
+          },
+          {
+            type: 'columns',
+            content: [
+              {
+                type: 'column',
+                content: [{ type: 'paragraph', content: [{ type: 'text', text: 'in a column' }] }]
+              }
+            ]
+          },
+          {
+            type: 'paragraph',
+            content: [
+              { type: 'text', text: 'after', marks: [{ type: 'bold' }, { type: 'futureMark' }] }
+            ]
+          }
+        ]
+      }
+      bridge.loadDocument(page('a', { content: newer }))
+      expect(bridge.page.get().readOnly).toBe(true)
+      expect(stripIds(editor().getJSON()).content).toEqual([
+        { type: 'paragraph', content: [{ type: 'text', text: 'before' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'kept words' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'in a column' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'after', marks: [{ type: 'bold' }] }] }
+      ])
+      vi.advanceTimersByTime(5000)
+      expect(changed()).toHaveLength(0)
+      expect(bridge.flush()).toBeNull()
     })
 
     it('a valid page loaded afterwards is editable again', () => {

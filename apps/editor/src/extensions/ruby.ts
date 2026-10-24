@@ -6,6 +6,7 @@ import type { NodeView } from '@tiptap/pm/view'
 import { FloatingLayer } from '../components/floating'
 import { renderRubyPanel } from '../components/ruby-panel'
 import { tiptapShortcut } from '../core/shortcuts'
+import { changedRanges, visitChanged } from '../lib/changed-ranges'
 import { followNode, followPosition } from './block-units'
 
 /** A run of the selection: kanji with their reading, or kana/punctuation left bare. */
@@ -242,7 +243,8 @@ function rubyMarksInside(): Plugin {
     appendTransaction: (transactions, _old, state) => {
       if (!transactions.some((tr) => tr.docChanged)) return null
       const tr = state.tr
-      state.doc.descendants((node, pos) => {
+      // Only where the page changed: a mark only lands on a ruby there.
+      visitChanged(state.doc, changedRanges(transactions, state.doc), (node, pos) => {
         if (node.type.name !== 'ruby') return true
         for (const mark of node.marks) {
           tr.removeNodeMark(tr.mapping.map(pos), mark)
@@ -312,9 +314,12 @@ export function openRubyPanel(editor: Editor, host: RubyHost | null): void {
     if (!editor.isDestroyed) editor.commands.focus()
   }
   // Escape or a press outside cancels (the layers' bus).
-  const layer = new FloatingLayer('hk-ruby-panel w-[320px] max-w-[calc(100vw-16px)] p-2', {
-    onDismiss: finish
-  })
+  const layer = new FloatingLayer(
+    'hk-ruby-panel w-(--layout-panel-ruby) max-w-(--layout-viewport-max) p-2',
+    {
+      onDismiss: finish
+    }
+  )
   // What the panel acts on — the ruby, or the selected text — followed through edits meanwhile (a remote
   // reload): the commands run on it where it is then, and the panel closes when it is gone.
   const gone = () => closePanel()

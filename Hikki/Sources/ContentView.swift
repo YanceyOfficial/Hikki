@@ -66,14 +66,15 @@ struct ContentView: View {
             .focusedSceneValue(\.editor, editor(for: navigator.focusedSide))
             .focusedSceneValue(\.navigator, navigator)
             .focusedSceneValue(\.aiChat, chat(for: navigator.focusedSide))
-            .focusedSceneValue(\.lockedPage, navigator.currentPage?.isLocked)
+        // The open page's lock and favorite (plain values for the menu bar) are set by `TreeFollower`: they read the
+        // tree, which changes on every save.
     }
 
     /// Block menu → Move to, from either side's editor: the app writes the blocks into the target, and the
     /// confirmation offers to open it.
     private static func moveBlocks(_ request: BlockMoveRequest, model: AppModel?, navigator: Navigator?) async -> Bool {
         guard let model, let title = await model.moveBlocks(request) else { return false }
-        let name = title.isEmpty ? String(localized: "app:page.untitled") : title
+        let name = PageTitle.display(title)
         Toasts.shared.show(.success, String(localized: "app:toast.blocksMoved \(name)"), actionTitle: "app:toast.openPage") {
             [weak navigator] in navigator?.open(request.target)
         }
@@ -228,6 +229,8 @@ struct ContentView: View {
         ) {
             UnlockHost()
         }
+        // A page menu's Move to Trash (sidebar, Home, the page's ⋯, the drawer) asks here first.
+        .modifier(TrashConfirmation(pageID: $navigator.trashRequestID))
         .onChange(of: Purchases.shared.access.canWrite, initial: true) { _, canWrite in
             editors.main.readOnly = !canWrite
             editors.split?.readOnly = !canWrite
@@ -261,7 +264,7 @@ struct ContentView: View {
                 SearchPalette(navigator: navigator) { navigator.isSearching = false }
             }
         #endif
-        .animation(.snappy(duration: 0.18), value: navigator.isSearching)
+        .animation(Motion.easeOut(), value: navigator.isSearching)
         // Attachments opened from the editor.
         .quickLookPreview($editor.previewURL)
         // An attached PDF clicked in the page: the viewer over it, the page staying in its tab.
@@ -298,6 +301,23 @@ struct ContentView: View {
         @Bindable var navigator = navigator
         return
             content
+            // Move to from any page menu: the picker, the size of Notion's popover on the Mac (it sizes itself), a form
+            // sheet on iPad, half the screen on iPhone (pulled up for more).
+            .sheet(
+                isPresented: Binding(
+                    get: { navigator.movePageID != nil },
+                    set: { if !$0 { navigator.movePageID = nil } })
+            ) {
+                if let id = navigator.movePageID {
+                    MovePageSheet(pageID: id, focusesField: wide) { navigator.movePageID = nil }
+                        #if os(iOS)
+                            .presentationSizing(.form)
+                            .presentationDetents([.medium, .large])
+                            .presentationDragIndicator(.visible)
+                            .sheetOverVerticalBar()
+                        #endif
+                }
+            }
             .sheet(
                 isPresented: Binding(
                     get: { navigator.historyPageID != nil },
@@ -394,6 +414,10 @@ struct ContentView: View {
                 if let pane = new.trailing, pane != old.trailing { show(pane, after: old.trailing, in: splitPaneEditor()) }
             }
             .onChange(of: navigator.route) { navigator.revealCurrent() }
+            // A tab's Reveal in Sidebar: a hidden sidebar comes back (it scrolls to the row itself).
+            .onChange(of: navigator.sidebarReveal) {
+                if columns == .detailOnly { withAnimation(Motion.easeOut()) { columns = .all } }
+            }
             .onChange(of: navigator.tabs.tabs.map(\.id)) { _, ids in
                 tabScroll = tabScroll.filter { ids.contains($0.key) }
             }
@@ -452,18 +476,9 @@ struct ContentView: View {
             // Full screen (macOS): menu bar, traffic lights and toolbar stay, as in a window (FullScreenChrome.swift).
             .fullScreenChrome()
             .onChange(of: navigator.tabs) { _, _ in storedTabs = navigator.encodedTabs() }
-            // Tabs restored from the last run may name pages this workspace doesn't have (an empty one never changes
-            // its tree, so the prune below doesn't run for it).
-            .onChange(of: model.treeLoaded) { _, loaded in if loaded { navigator.prune { model.tree.page($0) != nil } } }
-            .onChange(of: model.tree) { _, tree in
-                // Pages trashed here or in another window disappear from every tab's history. Each step changes
-                // nothing (and so re-renders nothing) when nothing it shows changed — this runs on every save.
-                navigator.prune { tree.page($0) != nil }
-                navigator.revealCurrent()
-                // Each editor: its link index when a title or icon changed, its page's lock when that changed.
-                editor.setPages(tree)
-                splitEditor?.setPages(tree)
-            }
+            // What the window does when the tree changes — on every save — lives in a view of its own, so this
+            // body and its modifier chain aren't evaluated again for each (`TreeFollower`).
+            .background(TreeFollower(navigator: navigator, editor: editor, splitEditor: splitEditor))
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {
                     model.reconcileWorkspace()  // pick up other devices' changes
@@ -474,6 +489,12 @@ struct ContentView: View {
                     let editors = [editor] + (splitEditor.map { [$0] } ?? [])
                     SaveOnExit.flush(editors, model: model, reason: "scenePhase-\(phase)")
                 }
+            }
+            // Another device's AI turns for the page a chat is about came in through iCloud.
+            .onReceive(NotificationCenter.default.publisher(for: .pageChatChanged)) { note in
+                let id = note.userInfo?["id"] as? String
+                chat.reloadIfShowing(id)
+                trailingChat.reloadIfShowing(id)
             }
     }
 
@@ -530,13 +551,13 @@ struct ContentView: View {
         // Settings' bulk import / export converts Markdown and HTML with a window's editor.
         model.bulkTransfer.register(editor, model: model)
         editor.deviceName = AppModel.deviceKind
-        // A link in the leading page opens there (split or not).
-        editor.onOpenPage = { [weak navigator, weak model, weak editor] id, block in
+        // A link in the leading page: a block of its own scrolls there; another page opens in its own tab on the Mac
+        // (`Navigator.openLink`), in place elsewhere.
+        editor.onOpenPage = { [weak navigator, weak model, weak editors] id, block in
             Self.followLink(to: id, model: model) {
                 guard let navigator else { return }
-                navigator.focus(.leading)
-                navigator.open(id)
-                if let block { editor?.scrollToBlock(block, in: id) }
+                navigator.openLink(id, from: .leading)
+                if let block { editors?.editor(for: navigator.focusedSide)?.scrollToBlock(block, in: id) }
             }
         }
         editor.setPages(model.tree)
@@ -752,10 +773,11 @@ struct ContentView: View {
         pane.moveBlocks = { [weak model, weak navigator] in await Self.moveBlocks($0, model: model, navigator: navigator) }
         pane.deviceName = AppModel.deviceKind
         pane.attach(store: model.store, assets: model.assets) { [weak model] in model?.history }
-        pane.onOpenPage = { [weak navigator, weak model, weak pane] id, block in
+        pane.onOpenPage = { [weak navigator, weak model, weak editors] id, block in
             Self.followLink(to: id, model: model) {
-                navigator?.show(.page(id), in: .trailing)
-                if let block { pane?.scrollToBlock(block, in: id) }
+                guard let navigator else { return }
+                navigator.openLink(id, from: .trailing)
+                if let block { editors?.editor(for: navigator.focusedSide)?.scrollToBlock(block, in: id) }
             }
         }
         pane.onOpenDocument = { [weak navigator] name, label in navigator?.showDocument(name: name, label: label) }
@@ -806,6 +828,39 @@ struct ContentView: View {
         #else
             sizeClass == .regular
         #endif
+    }
+}
+
+/// What the window does when the page tree changes (every save, every 2 s while typing): tabs pruned of pages gone,
+/// the sidebar path to the open page, each editor's page index and lock. The only view of the window that reads
+/// `model.tree` in its body — so a save redraws this (nothing) and not the window's root with its whole modifier
+/// chain. Each step changes nothing (and so re-renders nothing) when nothing it shows changed.
+private struct TreeFollower: View {
+    @Environment(AppModel.self) private var model
+    let navigator: Navigator
+    let editor: EditorController
+    let splitEditor: EditorController?
+
+    var body: some View {
+        let page = navigator.route.pageID.flatMap { model.tree.page($0) }
+        Color.clear
+            .frame(width: 0, height: 0)
+            .allowsHitTesting(false)
+            // The open page's lock and favorite for the menu bar (nil on Home / Trash): plain values — reading the
+            // model's tree from `Commands` made the main menu and the scene rebuild each other without end.
+            .focusedSceneValue(\.lockedPage, page?.isLocked)
+            .focusedSceneValue(\.favoritePage, page?.isFavorite)
+            // Tabs restored from the last run may name pages this workspace doesn't have (an empty one never changes
+            // its tree, so the prune below doesn't run for it).
+            .onChange(of: model.treeLoaded) { _, loaded in if loaded { navigator.prune { model.tree.page($0) != nil } } }
+            .onChange(of: model.tree) { _, tree in
+                // Pages trashed here or in another window disappear from every tab's history.
+                navigator.prune { tree.page($0) != nil }
+                navigator.revealCurrent()
+                // Each editor: its link index when a title or icon changed, its page's lock when that changed.
+                editor.setPages(tree)
+                splitEditor?.setPages(tree)
+            }
     }
 }
 
@@ -913,7 +968,9 @@ private struct NativeDetailToolbar: ToolbarContent {
                 dragItem: { id in
                     navigator.tabs.tabs.first { $0.id == id }?.route.pageID.map(PageLink.dragItem)
                 },
-                menu: TabStripMenu(commands: tabMenuCommands, perform: performTabCommand)
+                menu: TabStripMenu(commands: tabMenuCommands, perform: performTabCommand),
+                // A tab dragged along the strip moves there, Chrome's way.
+                onMove: { id, index in withAnimation(Motion.easeOut()) { navigator.moveTab(id, to: index) } }
             )
             .frame(minWidth: 240, idealWidth: 480, maxWidth: 640)  // design-lint: allow (toolbar item width)
             // Its own glass (the toolbar's shared capsule is hidden below), so the capsule moves with it.
@@ -993,7 +1050,9 @@ private struct NativeDetailToolbar: ToolbarContent {
         #if os(macOS)
             if route?.pageID != nil { first.append(.moveToNewWindow) }
         #endif
-        return [first, [.close, .closeOthers, .closeToRight]]
+        // VS Code's: the page's link and its row in the sidebar, then the closes down to all of them.
+        let page: [TabStripCommand] = route?.pageID != nil ? [.copyLink, .revealInSidebar] : []
+        return [first, page, [.close, .closeOthers, .closeToRight, .closeAll]].filter { !$0.isEmpty }
     }
 
     private func performTabCommand(_ command: TabStripCommand, _ id: UUID) {
@@ -1009,9 +1068,12 @@ private struct NativeDetailToolbar: ToolbarContent {
                 openWindow(id: "page", value: pageID)
                 navigator.closeTab(id)
             #endif
+        case .copyLink: navigator.copyLink(ofTab: id)
+        case .revealInSidebar: navigator.revealInSidebar(tab: id)
         case .close: navigator.closeTab(id)
         case .closeOthers: navigator.closeOtherTabs(id)
         case .closeToRight: navigator.closeTabs(rightOf: id)
+        case .closeAll: navigator.closeAllTabs()
         }
     }
 
@@ -1116,4 +1178,9 @@ private struct PaneRoutes: Equatable {
 final class WindowEditors {
     @ObservationIgnored private(set) lazy var main = EditorController()
     var split: EditorController?
+
+    /// The editor drawing a side (the trailing one exists once a page has shown there).
+    func editor(for side: PaneSide) -> EditorController? {
+        side == .leading ? main : split
+    }
 }

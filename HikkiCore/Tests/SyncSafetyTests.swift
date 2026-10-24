@@ -28,6 +28,16 @@ struct SyncSafetyTests {
         return (store, sync)
     }
 
+    /// Before the app goes to the background its queued file writes are awaited without blocking the main thread:
+    /// once `flushed()` returns, the page's file is written.
+    @Test func awaitingQueuedWritesSeesThemWritten() async throws {
+        let files = try folder()
+        let (store, sync) = try device(files)
+        try store.create(id: "p", now: t0)
+        await sync.flushed()
+        #expect(files.presentIDs().contains("p"))
+    }
+
     // MARK: Moves, trash, favorites (metadata that isn't an edit)
 
     @Test func movesTrashAndFavoritesReachTheOtherDevice() throws {
@@ -259,6 +269,30 @@ struct SyncSafetyTests {
         try store.move(id: "d", toParent: nil, at: 2)  // a b d c
         #expect(seen.all == ["c", "d"])
         observation.cancel()
+    }
+
+    /// Every observation shares one read of the commit's rows; cancelling one leaves the others hearing.
+    @Test func commitObservationsShareTheRowsAndCancelApart() throws {
+        let store = try DocumentStore.inMemory()
+        let first = SeenIDs()
+        let second = SeenIDs()
+        let one = try store.observePageCommits { changed, _, _ in first.add(changed.map(\.id)) }
+        let two = try store.observePageCommits { changed, _, _ in second.add(changed.map(\.id)) }
+        try store.create(id: "a", now: t0)
+        #expect(first.all == ["a"])
+        #expect(second.all == ["a"])
+        one.cancel()
+        try store.create(id: "b", now: t0)
+        #expect(first.all == ["a"])
+        #expect(second.all == ["a", "b"])
+        two.cancel()
+        try store.create(id: "c", now: t0)
+        #expect(second.all == ["a", "b"])
+        // A later observation hears again (the shared observer stays with the database).
+        let three = try store.observePageCommits { changed, _, _ in first.add(changed.map(\.id)) }
+        try store.create(id: "d", now: t0)
+        #expect(first.all == ["a", "d"])
+        three.cancel()
     }
 
     @Test func aCancelledCommitObservationHearsNothing() throws {

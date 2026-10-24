@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { openBlockMenu } from '../src/components/block-menu'
 import { createEditor } from '../src/core/editor'
-import { columnFloor, handleLeft } from '../src/extensions/block-controls'
+import { columnFloor, columnHitX, handleLeft, listItemAtY } from '../src/extensions/block-controls'
 import { BlockHighlightKey, setBlockHighlight } from '../src/extensions/block-highlight'
 import {
   deleteUnit,
@@ -275,6 +275,21 @@ describe('block handle', () => {
     expect(handle.dataset.hidden).toBe('false')
   })
 
+  it('its + and ⋮⋮ are never in the tab order, and out of reach entirely while hidden', () => {
+    editor = createEditor(host, doc('first line'))
+    const handle = document.querySelector('.hk-block-handle') as HTMLElement
+    const buttons = [...handle.querySelectorAll('button')]
+    expect(buttons).toHaveLength(2)
+    expect(buttons.every((b) => b.tabIndex === -1)).toBe(true)
+    expect(handle.dataset.hidden).toBe('true')
+    expect(handle.inert).toBe(true)
+    // Typing hides a handle that was showing: inert again.
+    handle.dataset.hidden = 'false'
+    handle.inert = false
+    editor.view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: 'x' }))
+    expect(handle.inert).toBe(true)
+  })
+
   it('stays hidden while typing, and when the page scrolls meanwhile', () => {
     editor = createEditor(host, doc('first line', 'second line'))
     const handle = document.querySelector('.hk-block-handle') as HTMLElement
@@ -314,6 +329,43 @@ const twoColumns = (right: object = para('right')) => ({
 const tableWith = (text: string) => ({
   type: 'table',
   content: [{ type: 'tableRow', content: [{ type: 'tableCell', content: [para(text)] }] }]
+})
+
+const item = (text: string, ...nested: object[]) => ({
+  type: 'listItem',
+  content: [para(text), ...nested]
+})
+
+describe('block handle over list markers', () => {
+  it('a point over a number is the item on that row, nested items too — not the whole list', () => {
+    editor = createEditor(host, {
+      type: 'doc',
+      content: [
+        {
+          type: 'orderedList',
+          content: [
+            item('one'),
+            item('two', { type: 'bulletList', content: [item('inner a'), item('inner b')] })
+          ]
+        }
+      ]
+    })
+    const list = unitAtPos(editor.state, 0)!
+    expect(list.node.type.name).toBe('orderedList')
+    // Rows: "one" 0–24, "two" 24–96 holding its list 48–96 ("inner a" 48–72, "inner b" 72–96).
+    const lis = editor.view.dom.querySelectorAll('li')
+    placeBox(lis[0], 0, 400, 0, 24)
+    placeBox(lis[1], 0, 400, 24, 72)
+    placeBox(editor.view.dom.querySelector('ul')!, 22, 400, 48, 48)
+    placeBox(lis[2], 22, 400, 48, 24)
+    placeBox(lis[3], 22, 400, 72, 24)
+    const textAt = (y: number) => listItemAtY(editor.view, list, y).node.firstChild!.textContent
+    expect(textAt(10)).toBe('one')
+    expect(textAt(30)).toBe('two')
+    expect(textAt(80)).toBe('inner b')
+    // Below every row: the list itself, as before.
+    expect(listItemAtY(editor.view, list, 200)).toBe(list)
+  })
 })
 
 describe('block handle in columns', () => {
@@ -371,6 +423,36 @@ describe('block handle in columns', () => {
       expect(Number.parseFloat(handle.style.left)).toBeGreaterThan(colOne.right)
     })
   }
+
+  it('hit-tests the gap between two columns in the column after it, whose gutter it is', () => {
+    const row = [colOne, colTwo]
+    // Over a column: unchanged.
+    expect(columnHitX(row, 100)).toBe(100)
+    expect(columnHitX(row, 500)).toBe(500)
+    // In the gap, near the column before too: inside the column after.
+    expect(columnHitX(row, colOne.right + 10)).toBe(colTwo.left + 2)
+    expect(columnHitX(row, colTwo.left - 1)).toBe(colTwo.left + 2)
+    // Outside the row, or a row that stacks its columns: unchanged.
+    expect(columnHitX(row, -40)).toBe(-40)
+    expect(columnHitX([colOne, { left: 0, right: 322 }], 340)).toBe(340)
+  })
+
+  it('a pointer in the gap on its way to the + / ⋮⋮ keeps the handle of the column after it', () => {
+    editor = createEditor(host, twoColumns())
+    layOut()
+    placeBox(editor.view.dom, 0, 708, 0, 200)
+    // A hit test finds the nearest text (as WebKit's does): in the gap, nearer the first column, that column's.
+    editor.view.posAtCoords = ({ left }) => ({
+      pos: posOf(left < (colOne.right + colTwo.left) / 2 ? 'left' : 'right'),
+      inside: -1
+    })
+    const controls = (
+      editor.view as unknown as { pluginViews: { unit?: BlockUnit | null }[] }
+    ).pluginViews.find((view) => 'unit' in view)!
+    const row = editor.view.dom.querySelector('.hk-cols')!
+    fireEvent.mouseMove(row, { clientX: colOne.right + 12, clientY: 10 })
+    expect(controls.unit?.node.textContent).toBe('right')
+  })
 
   it('steps aside while the pointer is on the divider between two columns', async () => {
     editor = createEditor(host, twoColumns())

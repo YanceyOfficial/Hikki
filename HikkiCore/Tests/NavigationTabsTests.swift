@@ -511,4 +511,205 @@ struct NavigationTabsTests {
         #expect(Set(tabs.tabs.map(\.route)) == ["c", "d"])
         #expect(tabs.activeSplit != nil)
     }
+
+    @Test func aLinkOpensItsPageInANewTabRightAfterTheLinksTab() {
+        var tabs = Tabs(initial: "a")
+        let a = tabs.activeID
+        tabs.openTab("z")
+        tabs.select(a)
+        let opened = tabs.openLink("b", from: a, limit: 6)
+        #expect(tabs.tabs.map(\.route) == ["a", "b", "z"])
+        #expect(tabs.activeID == opened)
+        #expect(tabs.tabs[0].history == ["a"], "the page the link was in stays in its tab")
+        tabs.goBack()
+        #expect(tabs.activeID == a, "back returns to the page with the link")
+    }
+
+    @Test func aLinkToAPageAlreadyInATabFocusesThatTab() {
+        var tabs = Tabs(initial: "a")
+        let a = tabs.activeID
+        let b = tabs.openTab("b")
+        tabs.select(a)
+        #expect(tabs.openLink("b", from: a, limit: 6) == b)
+        #expect(tabs.tabs.count == 2)
+        #expect(tabs.activeID == b)
+    }
+
+    @Test func aLinkFromASideOpensAfterTheSplitAndLeavesItWhole() throws {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        let opened = tabs.openSplit("b", beside: left)
+        let right = try #require(opened)
+        tabs.openTab("z")
+        tabs.select(right)
+        tabs.openLink("c", from: right, limit: 6)
+        #expect(tabs.tabs.map(\.route) == ["a", "b", "c", "z"])
+        #expect(tabs.split(of: left) == .init(leading: left, trailing: right))
+        #expect(tabs.activeSplit == nil)
+    }
+
+    @Test func linkTabsKeepTheStripToTheLimitAndSpareTheLinksTab() {
+        var tabs = Tabs(initial: "a")
+        let a = tabs.activeID
+        tabs.openTab("b")
+        tabs.openTab("c")
+        tabs.select(a)
+        tabs.openLink("d", from: a, limit: 3)
+        #expect(tabs.tabs.map(\.route) == ["a", "d", "c"])
+    }
+
+    @Test func openingAPageWithATabFocusesItInsteadOfShowingItTwice() {
+        var tabs = Tabs(initial: "a")
+        let a = tabs.activeID
+        tabs.openTab("b")
+        tabs.open("a")
+        #expect(tabs.activeID == a)
+        #expect(tabs.tabs.map(\.route) == ["a", "b"])
+        tabs.open("c")
+        #expect(tabs.tabs.map(\.route) == ["c", "b"], "a page without a tab shows in the focused one")
+        #expect(tabs.active.history == ["a", "c"])
+    }
+
+    @Test func separatingASplitOnOnePageLeavesOneTab() throws {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        let opened = tabs.openSplit("a", beside: left)
+        let right = try #require(opened)
+        tabs.select(right)
+        tabs.separate(right)
+        #expect(tabs.splits.isEmpty)
+        #expect(tabs.tabs.map(\.id) == [right], "the focused side's tab stays")
+        #expect(tabs.activeID == right)
+    }
+
+    @Test func separatingASplitOnTwoPagesKeepsBoth() {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        tabs.openSplit("b", beside: left)
+        tabs.separate(left)
+        #expect(tabs.tabs.map(\.route) == ["a", "b"])
+    }
+
+    @Test func closeDuplicatesKeepsTheFocusedTabTheSplitsAndAllowedRepeats() {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        tabs.openSplit("b", beside: left)
+        tabs.openTab("home")
+        tabs.openTab("b")
+        tabs.openTab("home")
+        tabs.openTab("c")
+        tabs.openTab("a")
+        tabs.openTab("c")
+        let focused = tabs.activeID
+        tabs.closeDuplicates { $0 != "home" }
+        #expect(tabs.tabs.map(\.route) == ["a", "b", "home", "home", "c"])
+        #expect(tabs.activeID == focused)
+        #expect(tabs.splits.count == 1)
+    }
+
+    @Test func movingATabPutsItInTheGapAndKeepsTheFocus() {
+        var tabs = Tabs(initial: "a")
+        tabs.openTab("b")
+        tabs.openTab("c")
+        let focused = tabs.openTab("d")
+        let a = tabs.tabs[0].id
+        tabs.move(a, to: 3)
+        #expect(tabs.tabs.map(\.route) == ["b", "c", "a", "d"])
+        tabs.move(focused, to: 0)
+        #expect(tabs.tabs.map(\.route) == ["d", "b", "c", "a"])
+        #expect(tabs.activeID == focused)
+        tabs.move(focused, to: 1)
+        #expect(tabs.tabs.map(\.route) == ["d", "b", "c", "a"], "its own edges move nothing")
+        tabs.move(focused, to: 99)
+        #expect(tabs.tabs.map(\.route) == ["b", "c", "a", "d"])
+    }
+
+    @Test func aSplitMovesWholeAndNoTabLandsBetweenItsSides() throws {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        let opened = tabs.openSplit("b", beside: left)
+        let right = try #require(opened)
+        tabs.openTab("c")
+        let d = tabs.openTab("d")
+        tabs.move(right, to: 4)
+        #expect(tabs.tabs.map(\.route) == ["c", "d", "a", "b"])
+        #expect(tabs.split(of: left) == .init(leading: left, trailing: right))
+        tabs.move(d, to: 3)
+        #expect(tabs.tabs.map(\.route) == ["c", "a", "b", "d"], "a gap inside the split means after it")
+        #expect(tabs.splits.count == 1)
+    }
+
+    @Test func closeAllLeavesOneNewTabOnTheFallback() throws {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        tabs.openSplit("b", beside: left)
+        tabs.openTab("c")
+        tabs.closeAll(fallback: "home")
+        #expect(tabs.tabs.map(\.route) == ["home"])
+        #expect(tabs.splits.isEmpty)
+        #expect(tabs.recency == [tabs.activeID])
+        #expect(!tabs.canGoBack, "the closed tabs' pages are passed over")
+    }
+
+    // MARK: Reopen Closed Tab
+
+    @Test func aClosedTabComesBackWithItsHistoryAtItsPlace() {
+        var tabs = Tabs(initial: "home")
+        let first = tabs.activeID
+        tabs.openTab("a")
+        let middle = tabs.activeID
+        tabs.navigate(to: "b")
+        tabs.openTab("c")
+        #expect(tabs.reopenClosed() == nil, "nothing closed yet")
+        tabs.close(middle)
+        #expect(tabs.tabs.map(\.route) == ["home", "c"])
+        let reopened = tabs.reopenClosed()
+        #expect(reopened != nil && reopened != middle, "a new id, the old one is gone")
+        #expect(tabs.activeID == reopened)
+        #expect(tabs.tabs.map(\.route) == ["home", "b", "c"], "back at its place")
+        #expect(tabs.active.history == ["a", "b"] && tabs.active.canGoBack, "with its history")
+        #expect(tabs.reopenClosed() == nil, "reopened once")
+        tabs.select(first)
+        #expect(tabs.tabs.count == 3)
+    }
+
+    @Test func closeOthersRightAndAllAreRememberedLastClosedFirstOut() {
+        var tabs = Tabs(initial: "home")
+        tabs.openTab("a")
+        tabs.openTab("b")
+        tabs.openTab("c")
+        tabs.closeTabs(after: tabs.tabs[1].id)  // b, c
+        tabs.closeOthers(tabs.tabs[0].id)  // a
+        #expect(tabs.closed.map(\.tab.route) == ["b", "c", "a"])
+        tabs.reopenClosed()
+        #expect(tabs.route == "a")
+        tabs.closeAll(fallback: "home")
+        #expect(tabs.closed.map(\.tab.route) == ["b", "c", "home", "a"])
+        #expect(tabs.tabs.map(\.route) == ["home"])
+    }
+
+    @Test func theWindowsOwnRemovalsAreNotRememberedAndTheListIsCapped() {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        tabs.openSplit("a", beside: left)
+        tabs.separate(left)  // both sides showed "a": one tab goes, the window's doing
+        #expect(tabs.closed.isEmpty)
+        for i in 0..<(Tabs.maxClosed + 3) {
+            tabs.openTab("p\(i)")
+            tabs.close(tabs.activeID)
+        }
+        #expect(tabs.closed.count == Tabs.maxClosed)
+        #expect(tabs.closed.last?.tab.route == "p\(Tabs.maxClosed + 2)")
+    }
+
+    @Test func closedTabsSurviveSaving() throws {
+        var tabs = Tabs(initial: "home")
+        tabs.openTab("a")
+        tabs.close(tabs.activeID)
+        let data = try JSONEncoder().encode(tabs)
+        var restored = try JSONDecoder().decode(Tabs.self, from: data)
+        #expect(restored.closed.map(\.tab.route) == ["a"])
+        restored.reopenClosed()
+        #expect(restored.route == "a")
+    }
 }

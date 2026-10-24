@@ -73,6 +73,27 @@ struct CloudMirrorTests {
         #expect(mirror.path(forRecordName: name) == "pages/secret-title.json")
     }
 
+    /// A first sync builds a record for every file: each one's path is a lookup in the index the scan filled — a
+    /// record name worked out once per path, never per lookup (that was a hash of every path, or a walk of the folder,
+    /// per record).
+    @Test func recordPathsAreLookedUpNotSearched() throws {
+        let root = try makeTempDirectory()
+        let count = 5_000
+        let paths = (0..<count).map { "history/p\($0 % 50)/\($0).json" }
+        for path in paths { try write("v", path, in: root) }
+        let mirror = try mirror(root)
+        #expect(mirror.localChanges().count == count)
+        #expect(mirror.recordNamesComputed == count)
+        for path in paths {
+            #expect(mirror.path(forRecordName: CloudMirror.recordName(for: path)) == path)
+        }
+        // Agreed, scanned again: still one name per path.
+        pushAll(mirror)
+        #expect(mirror.localChanges().isEmpty)
+        #expect(mirror.recordNamesComputed == count)
+        #expect(mirror.path(forRecordName: CloudMirror.recordName(for: "pages/never-here.json")) == nil)
+    }
+
     @Test func aFileUnchangedHereTakesTheCloudsVersion() throws {
         let root = try makeTempDirectory()
         let mirror = try mirror(root)
@@ -113,6 +134,107 @@ struct CloudMirrorTests {
         #expect(Set(mirror.localChanges()) == [.save("pages/p.json"), .save("pages/\(copy.id).json")])
     }
 
+    /// ISSUE-195: typing went on after a save went up, then the fetch brought this device's own save back (CloudKit
+    /// returns a device's own changes too). The cloud didn't change — no conflicted copy, and the newer words stay.
+    @Test func anEchoOfThisDevicesOwnSaveIsNoConflict() throws {
+        let root = try makeTempDirectory()
+        let mirror = try mirror(root)
+        try PageFiles(root: root).write(try pageFile("first words", at: t0))
+        try write("library v1", "drawings/library.json", in: root)
+        var sent: [String: Data] = [:]
+        for case .save(let path) in mirror.localChanges() {
+            let file = try #require(mirror.outgoing(path))
+            sent[path] = file.contents
+            mirror.saved(file, systemFields: Data([1]))
+        }
+
+        // Typing goes on (the next autosave), and the library changes, before the fetch returns the saved records.
+        try PageFiles(root: root).write(try pageFile("first words, and more", at: t0.addingTimeInterval(2)))
+        try write("library v2, longer", "drawings/library.json", in: root)
+        for path in ["pages/p.json", "drawings/library.json"] {
+            let echo = try mirror.receive(path, contents: try #require(sent[path]), systemFields: Data([2]))
+            #expect(echo == .init(touched: false, needsPush: true))
+            #expect(mirror.systemFields(path) == Data([2]))
+        }
+
+        let pages = try PageFiles(root: root).readAll().pages
+        #expect(pages.count == 1)
+        #expect(pages.first?.plainText == "first words, and more")
+        #expect(try String(contentsOf: root.appending(path: "drawings/library.json"), encoding: .utf8) == "library v2, longer")
+        #expect(Set(mirror.localChanges()) == [.save("pages/p.json"), .save("drawings/library.json")])
+    }
+
+    /// A fetch that started before this device's own newer save went through brings the older version afterwards:
+    /// it is passed over, not written over the newer file (the cloud wins for the library, so it took it back).
+    @Test func anOlderVersionThanTheAgreedOneIsPassedOver() throws {
+        let root = try makeTempDirectory()
+        let mirror = try mirror(root)
+        try write("library v2", "drawings/library.json", in: root)
+        let file = try #require(mirror.outgoing("drawings/library.json"))
+        mirror.saved(file, systemFields: Data([2]), cloudModified: t0.addingTimeInterval(60))
+
+        let stale = try mirror.receive(
+            "drawings/library.json", contents: Data("library v1".utf8), systemFields: Data([1]), cloudModified: t0)
+        #expect(stale == .init(touched: false, needsPush: false, stale: true))
+        #expect(try String(contentsOf: root.appending(path: "drawings/library.json"), encoding: .utf8) == "library v2")
+        #expect(mirror.systemFields("drawings/library.json") == Data([2]))
+
+        // A newer one still comes in.
+        let newer = try mirror.receive(
+            "drawings/library.json", contents: Data("library v3".utf8), systemFields: Data([3]),
+            cloudModified: t0.addingTimeInterval(120))
+        #expect(newer.touched && !newer.stale)
+        #expect(try String(contentsOf: root.appending(path: "drawings/library.json"), encoding: .utf8) == "library v3")
+    }
+
+    /// The page's row is ahead of its file (typed since the last write-through): the cloud's version becomes the file
+    /// without a copy here — the workspace's pass settles it against the row and makes the one conflicted copy.
+    @Test func aPageTypedOnSinceItsFileLeavesTheCopyToTheWorkspace() throws {
+        let root = try makeTempDirectory()
+        let typedAt = t0.addingTimeInterval(300)
+        let mirror = CloudMirror(
+            root: root, stateURL: try makeTempDirectory().appending(path: "cloud.json"),
+            options: .init(device: "Mac", pageChange: { $0 == "p" ? typedAt : nil }))
+        try PageFiles(root: root).write(try pageFile("base", at: t0))
+        pushAll(mirror)
+        try PageFiles(root: root).write(try pageFile("mine", at: t0.addingTimeInterval(60)))
+        let theirs = try PageFiles.encoder.encode(try pageFile("theirs", at: t0.addingTimeInterval(120)))
+        let received = try mirror.receive("pages/p.json", contents: theirs, systemFields: nil)
+        #expect(received == .init(touched: true, needsPush: false))
+        let pages = try PageFiles(root: root).readAll().pages
+        #expect(pages.count == 1)
+        #expect(pages.first?.plainText == "theirs")
+    }
+
+    @Test func arrivalsNameThePagesWhoseThreadsChatsAndHistoryChanged() {
+        let arrivals = CloudArrivals(paths: [
+            "comments/p1.json", "ai/p2.json", "history/p3/20261024T101010.000Z.json", "pages/p4.json", "assets/x.png",
+            "workspace.json",
+        ])
+        #expect(arrivals.comments == ["p1"])
+        #expect(arrivals.chats == ["p2"])
+        #expect(arrivals.history == ["p3"])
+    }
+
+    /// The user deleted the workspace's iCloud data: paused across launches, nothing agreed holds; turning iCloud off
+    /// and on (`releaseAccount`) resumes, and every file goes up.
+    @Test func dataDeletedByTheUserStaysPausedUntilTurnedOnAgain() throws {
+        let root = try makeTempDirectory()
+        let state = try makeTempDirectory().appending(path: "cloud.json")
+        let mirror = CloudMirror(root: root, stateURL: state)
+        #expect(mirror.accountAllows("_alice"))
+        try write("a", "pages/a.json", in: root)
+        pushAll(mirror)
+        mirror.markCloudDeleted()
+        let relaunched = CloudMirror(root: root, stateURL: state)
+        #expect(relaunched.cloudDeleted)
+        #expect(relaunched.accountAllows("_alice"))
+        relaunched.releaseAccount()
+        #expect(relaunched.accountAllows("_alice"))
+        #expect(!relaunched.cloudDeleted)
+        #expect(relaunched.localChanges() == [.save("pages/a.json")])
+    }
+
     @Test func aPageChangedOnlyInItsDetailsMakesNoCopy() throws {
         let root = try makeTempDirectory()
         let mirror = try mirror(root)
@@ -146,6 +268,60 @@ struct CloudMirrorTests {
         #expect(Set(try mine.threads(of: "p").map(\.id)) == ["t1", "t2", "t3"])
     }
 
+    /// The page's comments here (t1, agreed with the cloud) and another device's version of them with t2 added.
+    private func commentsAgreedThenChangedThere(_ mirror: CloudMirror, here: URL) throws -> (PageComments, Data) {
+        let mine = PageComments(root: here, author: "A", device: "Mac")
+        try mine.create(pageId: "p", threadId: "t1", quote: "q", body: "first", now: t0)
+        pushAll(mirror)
+        let there = try makeTempDirectory()
+        try FileManager.default.createDirectory(at: there.appending(path: "comments"), withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: here.appending(path: "comments/p.json"), to: there.appending(path: "comments/p.json"))
+        try PageComments(root: there, author: "B", device: "iPhone")
+            .create(pageId: "p", threadId: "t2", quote: "r", body: "theirs", now: t0.addingTimeInterval(5))
+        return (mine, try Data(contentsOf: there.appending(path: "comments/p.json")))
+    }
+
+    /// A comment written between the cloud's version being read and written (by a writer the lock can't hold back)
+    /// is settled with it, not written over.
+    @Test func aCommentWrittenWhileTheCloudsVersionArrivesIsKept() throws {
+        let root = try makeTempDirectory()
+        let mirror = try mirror(root)
+        let (mine, cloud) = try commentsAgreedThenChangedThere(mirror, here: root)
+        var wrote = false
+        mirror.beforeWrite = { _ in
+            guard !wrote else { return }
+            wrote = true
+            try? mine.create(pageId: "p", threadId: "t3", quote: "s", body: "mine", now: self.t0.addingTimeInterval(6))
+        }
+        let received = try mirror.receive("comments/p.json", contents: cloud, systemFields: nil)
+        #expect(wrote)
+        #expect(received.needsPush)
+        #expect(Set(try mine.threads(of: "p").map(\.id)) == ["t1", "t2", "t3"])
+    }
+
+    /// A comment saved on another thread while the cloud's version is written waits for it, then adds to it.
+    @Test func aCommentWriterWaitsForAnArrivingFile() throws {
+        let root = try makeTempDirectory()
+        let mirror = try mirror(root)
+        let (mine, cloud) = try commentsAgreedThenChangedThere(mirror, here: root)
+        let written = DispatchSemaphore(value: 0)
+        var started = false
+        let later = t0.addingTimeInterval(6)
+        mirror.beforeWrite = { _ in
+            guard !started else { return }
+            started = true
+            Thread.detachNewThread {
+                try? mine.create(pageId: "p", threadId: "t3", quote: "s", body: "mine", now: later)
+                written.signal()
+            }
+            // Held back by the file's lock while the cloud's version goes in.
+            #expect(written.wait(timeout: .now() + 0.3) == .timedOut)
+        }
+        _ = try mirror.receive("comments/p.json", contents: cloud, systemFields: nil)
+        #expect(written.wait(timeout: .now() + 5) == .success)
+        #expect(Set(try mine.threads(of: "p").map(\.id)) == ["t1", "t2", "t3"])
+    }
+
     @Test func aDeletionTakesTheFileUnlessItChangedHere() throws {
         let root = try makeTempDirectory()
         let mirror = try mirror(root)
@@ -163,7 +339,8 @@ struct CloudMirrorTests {
         #expect(mirror.systemFields("pages/b.json") == nil)
     }
 
-    @Test func aNewAccountSendsEverythingAgain() throws {
+    /// A deleted zone: the files stay and every one goes up again.
+    @Test func aForgottenCloudSendsEverythingAgain() throws {
         let root = try makeTempDirectory()
         let mirror = try mirror(root)
         try write("a", "pages/a.json", in: root)
@@ -171,6 +348,42 @@ struct CloudMirrorTests {
         mirror.forgetCloud()
         #expect(mirror.localChanges() == [.save("pages/a.json")])
         #expect(FileManager.default.fileExists(atPath: root.appending(path: "pages/a.json").path))
+    }
+
+    /// iCloud turned off and on (`AppModel.setICloud` → `releaseAccount`) with the device signed in to another
+    /// account: that account's zone has nothing, so every file goes up, and the old account's engine state goes.
+    @Test func aNewAccountSendsEverythingAgain() throws {
+        let root = try makeTempDirectory()
+        let state = try makeTempDirectory().appending(path: "cloud.json")
+        let mirror = CloudMirror(root: root, stateURL: state)
+        #expect(mirror.accountAllows("_alice"))
+        mirror.setEngineState(Data([7]))
+        try write("a", "pages/a.json", in: root)
+        try write("b", "assets/b.png", in: root)
+        pushAll(mirror)
+        #expect(mirror.localChanges().isEmpty)
+
+        mirror.releaseAccount()
+        // Released, a relaunch before the account is checked keeps it so.
+        let relaunched = CloudMirror(root: root, stateURL: state)
+        #expect(relaunched.accountAllows("_bob"))
+        #expect(Set(relaunched.localChanges()) == [.save("pages/a.json"), .save("assets/b.png")])
+        #expect(relaunched.engineState == nil)
+        #expect(relaunched.systemFields("pages/a.json") == nil)
+    }
+
+    /// The same account turned off and on carries on: nothing goes up again.
+    @Test func theSameAccountTurnedOnAgainSendsNothing() throws {
+        let root = try makeTempDirectory()
+        let mirror = try mirror(root)
+        #expect(mirror.accountAllows("_alice"))
+        mirror.setEngineState(Data([7]))
+        try write("a", "pages/a.json", in: root)
+        pushAll(mirror)
+        mirror.releaseAccount()
+        #expect(mirror.accountAllows("_alice"))
+        #expect(mirror.localChanges().isEmpty)
+        #expect(mirror.engineState == Data([7]))
     }
 
     @Test func theWorkspaceSyncsOnlyWithTheAccountItFirstMet() throws {

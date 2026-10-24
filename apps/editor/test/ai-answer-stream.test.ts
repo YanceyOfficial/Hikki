@@ -7,13 +7,13 @@ import { handleAIEvent, type AIHost, type AIRequestMessage } from '../src/extens
 
 /** Counts how often an answer's Markdown is drawn (and still draws it). */
 const parses = vi.hoisted(() => ({ count: 0 }))
-vi.mock('../src/core/convert', async (original) => {
-  const actual = await original<typeof import('../src/core/convert')>()
+vi.mock('../src/core/answer-markdown', async (original) => {
+  const actual = await original<typeof import('../src/core/answer-markdown')>()
   return {
     ...actual,
-    markdownDOM: (...args: Parameters<typeof actual.markdownDOM>) => {
+    answerDOM: (...args: Parameters<typeof actual.answerDOM>) => {
       parses.count++
-      return actual.markdownDOM(...args)
+      return actual.answerDOM(...args)
     }
   }
 })

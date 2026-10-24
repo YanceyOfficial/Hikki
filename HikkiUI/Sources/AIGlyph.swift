@@ -27,35 +27,6 @@ public struct AIGlyph: View {
     }
 }
 
-/// The app icon's sparkle: a large four-point star with a small one below its right, their sides curved inwards.
-/// Coordinates are the icon's (a 1024 grid), fitted into the rect.
-nonisolated public struct HikkiSparkle: Shape {
-    public init() {}
-
-    public func path(in rect: CGRect) -> Path {
-        // The pair spans x 648…910 (262) and y 184…476 (292) on the icon's grid: scaled to fit, centred.
-        let scale = min(rect.width / 262, rect.height / 292)
-        let left = rect.midX - 262 * scale / 2
-        let top = rect.midY - 292 * scale / 2
-        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
-            CGPoint(x: left + (x - 648) * scale, y: top + (y - 184) * scale)
-        }
-        var path = Path()
-        func star(cx: CGFloat, cy: CGFloat, r: CGFloat) {
-            let k = r * 0.24  // the control point's pull towards the centre (the icon's 27.84 of 116)
-            path.move(to: point(cx, cy - r))
-            path.addQuadCurve(to: point(cx + r, cy), control: point(cx + k, cy - k))
-            path.addQuadCurve(to: point(cx, cy + r), control: point(cx + k, cy + k))
-            path.addQuadCurve(to: point(cx - r, cy), control: point(cx - k, cy + k))
-            path.addQuadCurve(to: point(cx, cy - r), control: point(cx - k, cy - k))
-            path.closeSubpath()
-        }
-        star(cx: 764, cy: 300, r: 116)
-        star(cx: 866, cy: 432, r: 44)
-        return path
-    }
-}
-
 #Preview {
     HStack(spacing: Spacing.s4) {
         AIGlyph()

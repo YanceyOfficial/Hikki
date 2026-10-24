@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TooltipProvider } from '@/components/ui/tooltip'
 
-import { SelectionMenu } from '../src/components/selection-menu'
+import { panelShiftFor, SelectionMenu } from '../src/components/selection-menu'
 import { createEditor } from '../src/core/editor'
 import { isSafeHref, normalizeHref } from '../src/core/links'
 import { doc } from './helpers'
@@ -266,5 +266,30 @@ describe('after the editor is gone', () => {
       vi.unstubAllGlobals()
       vi.useRealTimers()
     }
+  })
+})
+
+/** A side panel `height` tall under a menu whose top is at `menuTop` (jsdom has no layout). */
+const panel = (menuTop: number, height: number) => {
+  const menu = document.createElement('div')
+  menu.getBoundingClientRect = () => new DOMRect(0, menuTop, 300, 100)
+  const element = document.createElement('div')
+  Object.defineProperty(element, 'offsetParent', { value: menu })
+  Object.defineProperty(element, 'offsetHeight', { value: height })
+  return element
+}
+
+describe('side panel in a short window', () => {
+  it('stays level with the menu while it fits', () => {
+    expect(panelShiftFor(panel(100, 400), 900, 52)).toBe(0)
+  })
+
+  it('moves up just enough for its foot to stay in the window', () => {
+    // Menu at 270 in a 520 px window, a 420 px panel: its foot would be at 690 — 178 px past 512.
+    expect(panelShiftFor(panel(270, 420), 520, 0)).toBe(-178)
+  })
+
+  it('never goes under the toolbar, even when that leaves its foot cut (it scrolls)', () => {
+    expect(panelShiftFor(panel(120, 440), 400, 52)).toBe(-60)
   })
 })

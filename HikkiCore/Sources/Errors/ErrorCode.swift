@@ -27,9 +27,12 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
     case blockMoveLocked
     case reminderUpdateFailed
     case pageLinkMissing
+    case reminderScheduleFailed
+    case reminderNotificationsOff
     case workspaceUnavailable
     case workspaceFolderAccess
     case workspaceMoveFailed
+    case databaseRebuilt
     case workspaceSyncFailed
     case workspaceOpenFailed
     case databaseOpenFailed
@@ -39,6 +42,7 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
     case pageReadOnly
     case copyFailed
     case drawingPreviewFailed
+    case editsNotDelivered
     case drawingLibrarySaveFailed
     case drawingLoadFailed
     case importFailed
@@ -60,6 +64,9 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
     case aiMediaUnreadable
     case aiPictureRefused
     case aiPictureSaveFailed
+    case aiKeySaveFailed
+    case aiChatSaveFailed
+    case aiChatClearFailed
     case searchFailed
     case searchIndexFailed
     case offline
@@ -92,9 +99,12 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .blockMoveLocked: 2012
         case .reminderUpdateFailed: 2013
         case .pageLinkMissing: 2014
+        case .reminderScheduleFailed: 2015
+        case .reminderNotificationsOff: 2016
         case .workspaceUnavailable: 2101
         case .workspaceFolderAccess: 2106
         case .workspaceMoveFailed: 2107
+        case .databaseRebuilt: 2108
         case .workspaceSyncFailed: 2102
         case .workspaceOpenFailed: 2103
         case .databaseOpenFailed: 2104
@@ -104,6 +114,7 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .pageReadOnly: 3003
         case .copyFailed: 3004
         case .drawingPreviewFailed: 3005
+        case .editsNotDelivered: 3008
         case .drawingLibrarySaveFailed: 3007
         case .drawingLoadFailed: 3006
         case .importFailed: 4001
@@ -125,6 +136,9 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .aiMediaUnreadable: 5009
         case .aiPictureRefused: 5010
         case .aiPictureSaveFailed: 5011
+        case .aiKeySaveFailed: 5012
+        case .aiChatSaveFailed: 5013
+        case .aiChatClearFailed: 5014
         case .searchFailed: 6001
         case .searchIndexFailed: 6002
         case .offline: 7001
@@ -177,9 +191,12 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .blockMoveLocked: .warning
         case .reminderUpdateFailed: .error
         case .pageLinkMissing: .warning
+        case .reminderScheduleFailed: .error
+        case .reminderNotificationsOff: .warning
         case .workspaceUnavailable: .error
         case .workspaceFolderAccess: .warning
         case .workspaceMoveFailed: .error
+        case .databaseRebuilt: .warning
         case .workspaceSyncFailed: .warning
         case .workspaceOpenFailed: .error
         case .databaseOpenFailed: .error
@@ -189,6 +206,7 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .pageReadOnly: .warning
         case .copyFailed: .error
         case .drawingPreviewFailed: .error
+        case .editsNotDelivered: .error
         case .drawingLibrarySaveFailed: .error
         case .drawingLoadFailed: .error
         case .importFailed: .error
@@ -210,6 +228,9 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .aiMediaUnreadable: .error
         case .aiPictureRefused: .warning
         case .aiPictureSaveFailed: .error
+        case .aiKeySaveFailed: .error
+        case .aiChatSaveFailed: .error
+        case .aiChatClearFailed: .error
         case .searchFailed: .warning
         case .searchIndexFailed: .warning
         case .offline: .warning

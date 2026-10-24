@@ -1,4 +1,4 @@
-import { normalizeHref } from '../core/links'
+import { isWebURL, normalizeHref } from '../core/links'
 
 /** What an embed block shows: a third-party page in a frame, or a snippet of HTML in a sandboxed one. */
 export type EmbedKind = 'iframe' | 'html'
@@ -307,17 +307,6 @@ export function safeFrameSrc(src: string | null | undefined): string | null {
     return url.protocol === 'https:' ? url.href : null
   } catch {
     return null
-  }
-}
-
-/** Whether `href` is a web page the system browser can be handed. */
-export function isWebURL(href: string | null | undefined): href is string {
-  if (!href) return false
-  try {
-    const { protocol } = new URL(href)
-    return protocol === 'https:' || protocol === 'http:'
-  } catch {
-    return false
   }
 }
 

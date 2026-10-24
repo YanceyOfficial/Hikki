@@ -69,6 +69,12 @@ struct PaneHandoff: Equatable {
     let side: PaneSide
 }
 
+/// Reveal in Sidebar (a tab's menu): the sidebar scrolls to the page's row, its parents expanded.
+struct SidebarRevealRequest: Equatable {
+    let pageID: String
+    let serial: Int
+}
+
 struct TitleFocusRequest: Equatable {
     let pageID: String
     let serial: Int
@@ -99,12 +105,17 @@ final class Navigator {
     var isAskingAI = false
     /// The page whose actions sheet is open (iPhone's ⋯).
     var pageActionsID: String?
+    /// A page's "Move to Trash" waiting for its confirmation (`TrashConfirmation`, presented by ContentView).
+    var trashRequestID: String?
     /// iPhone: which column of the collapsed split view shows — the home screen (sidebar) or the page (detail).
     /// Opening anything shows the detail; the system's back sets it back.
     var compactColumn: NavigationSplitViewColumn = .sidebar
     var isShowingSettings = false
     /// Page ⋯ → Page History…: the page whose versions the history sheet shows.
     var historyPageID: String?
+    /// Move to (every page menu): the page the move picker is open for — ContentView presents `MovePageSheet`, since a
+    /// context menu can't hold a popover.
+    var movePageID: String?
     /// Page ⋯ → Export: the page and format being exported (ContentView presents the save panel / exporter).
     var exportRequest: ExportRequest?
     /// File → Import… / a page's Import…: the file picker is up.
@@ -175,6 +186,8 @@ final class Navigator {
     /// Bumped by "Rename": the editor selects that page's title once it has loaded it.
     private(set) var titleFocusRequest: TitleFocusRequest?
     private(set) var textRevealRequest: TextRevealRequest?
+    /// Bumped by a tab's Reveal in Sidebar: ContentView shows the sidebar, which scrolls to the page's row.
+    private(set) var sidebarReveal: SidebarRevealRequest?
     var expanded: Set<String> = []
     /// Sidebar drag state: the page being dragged and where it would land (for the drop indicator).
     var draggingPageID: String?
@@ -189,9 +202,17 @@ final class Navigator {
 
     // MARK: Navigation within the active tab
 
+    /// Shows a page (a search result, Spotlight, a hikki:// link from outside, Home's rows…): on the Mac the tab already
+    /// showing it gets focus (`NavigationTabs.open`), so a page never piles up in several tabs; otherwise the focused
+    /// tab goes there.
     func open(_ id: String) {
         reveal(id)
-        go(.page(id))
+        if Self.usesTabs {
+            tabs.open(.page(id))
+            syncSelection()
+        } else {
+            go(.page(id))
+        }
     }
 
     /// Opens the page with its title selected for typing (Notion's Rename, done in the editor so the title
@@ -244,19 +265,32 @@ final class Navigator {
 
     // MARK: Tabs
 
+    /// "Open in New Tab" (and "+", with Home): a page that has a tab already is focused there instead — only Home may
+    /// be open in several.
     func openInNewTab(_ route: Route) {
         if let id = route.pageID { reveal(id) }
-        if Self.usesTabs { tabs.openTab(route) } else { tabs.navigate(to: route) }
+        if !Self.usesTabs {
+            tabs.navigate(to: route)
+        } else if route != .home, let existing = tabs.tab(showing: route) {
+            tabs.select(existing)
+        } else {
+            tabs.openTab(route)
+        }
         syncSelection()
     }
 
-    /// A page dropped on the tab strip: between tabs it opens there (or its tab is focused), onto a tab it
-    /// shows in that tab.
+    /// A page dropped on the tab strip: between tabs it opens there, onto a tab it shows in that tab — unless another
+    /// tab shows it already, which is focused instead.
     func dropPage(_ id: String, _ target: TabStripDropTarget) {
         reveal(id)
         switch target {
         case .between(let index): tabs.openTab(.page(id), at: index)
-        case .onto(let tabID): tabs.navigate(tabID, to: .page(id))
+        case .onto(let tabID):
+            if let existing = tabs.tab(showing: .page(id)), existing != tabID {
+                tabs.select(existing)
+            } else {
+                tabs.navigate(tabID, to: .page(id))
+            }
         }
         syncSelection()
     }
@@ -310,9 +344,15 @@ final class Navigator {
     /// Shows `route` beside the focused side: in the other side when split (replacing what it shows), else in a new tab
     /// joined to the focused one. The same page may be on both sides (write on one, read on the other): the editors
     /// reload each other's saves (`EditorController.pageSavedInEditor`).
+    /// A page that has a loose tab of its own already (not the focused one) joins as that tab instead of opening twice.
     func openInSplit(_ route: Route) {
         guard splitAllowed, route.canSplit || route == .splitPicker else { return }
-        tabs.openSplit(route, beside: tabs.activeID)
+        let loose = tabs.tabs.first { $0.route == route && $0.id != tabs.activeID && tabs.split(of: $0.id) == nil }
+        if !isSplit, route.canSplit, let loose {
+            tabs.join(tabs.activeID, with: loose.id)
+        } else {
+            tabs.openSplit(route, beside: tabs.activeID)
+        }
         if let id = route.pageID { reveal(id) }
         tidyTabs()
     }
@@ -348,7 +388,8 @@ final class Navigator {
         syncSelection()
     }
 
-    /// Ends the split (⌘\): both pages stay tabs, the focused one shown (an empty side just goes).
+    /// Ends the split (⌘\): both pages stay tabs, the focused one shown (an empty side just goes; two sides on the same
+    /// page leave one tab).
     func closeSplit() {
         guard let split = tabs.activeSplit else { return }
         if focusedSide == .trailing { inspectors[.leading] = inspectors[.trailing] }
@@ -389,6 +430,28 @@ final class Navigator {
         if let id = route.pageID { reveal(id) }
         if Self.usesTabs { tabs.openRecent(route, limit: Self.recentTabLimit) } else { tabs.navigate(to: route) }
         syncSelection()
+    }
+
+    /// A page link (`hikki://page/<id>`) clicked in a side's page. A link to the page itself (a block in it) stays
+    /// there — the caller scrolls. Another page opens in a tab of its own on the Mac (`NavigationTabs.openLink`: the
+    /// tab already showing it gets focus, else a new tab right after the link's — after the split, from a side of one,
+    /// so the split stays as it was in the strip), never over the page the link was in. Without tabs (iPhone, iPad) it
+    /// opens in place, in the side it was clicked in.
+    func openLink(_ id: String, from side: PaneSide) {
+        guard let pane = pane(side) else { return }
+        let route = Route.page(id)
+        reveal(id)
+        if pane.route == route {
+            focus(side)
+        } else if Self.usesTabs {
+            tabs.openLink(route, from: pane.tab, limit: Self.recentTabLimit)
+            syncSelection()
+        } else if side == .trailing {
+            show(route, in: .trailing)
+        } else {
+            focus(.leading)
+            go(route)
+        }
     }
 
     /// An attached PDF clicked in a page: it opens in a viewer over the page (a sheet on the Mac, a full-screen cover on
@@ -445,6 +508,11 @@ final class Navigator {
         syncSelection()
     }
 
+    /// A tab dragged along the strip, dropped in the gap before the tab at `index` (a split moves whole).
+    func moveTab(_ id: UUID, to index: Int) {
+        tabs.move(id, to: index)
+    }
+
     func duplicateTab(_ id: UUID) {
         tabs.duplicate(id)
         syncSelection()
@@ -454,6 +522,25 @@ final class Navigator {
         tabs.closeOthers(id)
         tidyTabs()
         syncSelection()
+    }
+
+    /// "Close All Tabs": the window keeps one new tab, on Home (the last tab never closes, as for Close).
+    func closeAllTabs() {
+        inspectors[.trailing] = nil
+        tabs.closeAll(fallback: .home)
+        syncSelection()
+    }
+
+    /// "Copy Link": the tab's page as hikki://page/<id>.
+    func copyLink(ofTab id: UUID) {
+        if let pageID = route(ofTab: id)?.pageID { PageLink.copyToPasteboard(pageID) }
+    }
+
+    /// "Reveal in Sidebar": the tab's page's row, its parents expanded, scrolled into view.
+    func revealInSidebar(tab id: UUID) {
+        guard let pageID = route(ofTab: id)?.pageID else { return }
+        reveal(pageID)
+        sidebarReveal = SidebarRevealRequest(pageID: pageID, serial: (sidebarReveal?.serial ?? 0) + 1)
     }
 
     func closeTabs(rightOf id: UUID) {
@@ -515,8 +602,9 @@ final class Navigator {
         // doesn't come back (the window opens on the page beside it, unsplit).
         tabs.prune(fallback: .home) { $0 == .splitPicker }
         tidyTabs()
-        // Tabs saved before windows on iOS lost their strip: the focused one stays.
-        if !Self.usesTabs { tabs.keepActiveOnly() }
+        // Tabs saved before windows on iOS lost their strip: the focused one stays. On the Mac, a page left open in
+        // several tabs by older builds keeps one.
+        if Self.usesTabs { tabs.closeDuplicates { $0 != .home } } else { tabs.keepActiveOnly() }
     }
 
     /// Page → Copy Link (⌥⌘C): the open page's hikki://page/<id>.
@@ -533,6 +621,56 @@ final class Navigator {
     func toggleLockCurrentPage() {
         guard let page = currentPage else { return }
         model?.setLocked(!page.isLocked, id: page.id)
+    }
+
+    /// Page → Add to / Remove from Favorites (⇧⌘P).
+    func toggleFavoriteCurrentPage() {
+        guard let page = currentPage else { return }
+        model?.setFavorite(!page.isFavorite, id: page.id)
+    }
+
+    /// Page → Duplicate (⇧⌘D).
+    func duplicateCurrentPage() {
+        if let id = route.pageID { model?.duplicate(id: id) }
+    }
+
+    /// Page → Move to… (⌥⌘V): the move picker (`MovePageSheet`).
+    func moveCurrentPage() {
+        if let id = route.pageID { movePageID = id }
+    }
+
+    /// Page → Move to Trash (⌘⌫): asks first (`TrashConfirmation`), as every other way in.
+    func trashCurrentPage() {
+        if let id = route.pageID { trashRequestID = id }
+    }
+
+    /// Page → Page History… (⇧⌘H).
+    func showHistoryOfCurrentPage() {
+        if let id = route.pageID { historyPageID = id }
+    }
+
+    /// Page → Export → a format (⇧⌘E for Markdown).
+    func exportCurrentPage(as format: PageExport.Format) {
+        if let id = route.pageID { exportRequest = ExportRequest(pageID: id, format: format) }
+    }
+
+    /// Go → Reopen Closed Tab (⇧⌘T): the tab closed last comes back (`NavigationTabs.reopenClosed`), less any page
+    /// trashed meanwhile.
+    var canReopenClosedTab: Bool { !tabs.closed.isEmpty }
+
+    func reopenClosedTab() {
+        guard tabs.reopenClosed() != nil else { return }
+        if let model { tabs.prune(fallback: .home) { route in route.pageID.map { model.tree.page($0) == nil } ?? false } }
+        tidyTabs()
+        syncSelection()
+    }
+
+    /// Go → Tab 1…9 (⌘1…⌘9): the nth tab of the strip; ⌘9 the last one, as browsers have it.
+    func selectTab(number: Int) {
+        let list = tabs.tabs
+        let index = number >= 9 ? list.count - 1 : number - 1
+        guard list.indices.contains(index) else { return }
+        selectTab(list[index].id)
     }
 
     /// Expands the sidebar path to the open page (switching tabs, back/forward, the tree loading after launch).
@@ -562,4 +700,6 @@ extension FocusedValues {
     /// model's tree from `Commands` through the navigator made the main menu and the scene rebuild each
     /// other without end.
     @Entry var lockedPage: Bool?
+    /// Whether the open page is a favorite (nil on Home / Trash) — the same plain value, for the Page menu's title.
+    @Entry var favoritePage: Bool?
 }

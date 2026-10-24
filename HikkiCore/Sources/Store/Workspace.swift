@@ -177,14 +177,29 @@ public enum WorkspaceFolder {
         case stillDownloading(Int)
     }
 
+    /// Whether iCloud Drive has the file's contents on this device. A file not in iCloud Drive always has. On a
+    /// File Provider iCloud Drive (macOS 14 and later) a file not downloaded keeps its real name and is still a regular
+    /// file — only its downloading status tells; copying it would download it then and there, or fail offline.
+    public static func isDownloaded(_ url: URL) -> Bool {
+        guard let values = try? url.resourceValues(forKeys: [.isUbiquitousItemKey, .ubiquitousItemDownloadingStatusKey]),
+            values.isUbiquitousItem == true, let status = values.ubiquitousItemDownloadingStatus
+        else { return true }
+        return status == .current || status == .downloaded
+    }
+
     /// Copies every file of a workspace folder (pages, history, comments, chats, assets, workspace.json) into
     /// `destination`, keeping their places; a file already there is replaced only by a newer one. Hidden files are
-    /// left out. Throws `stillDownloading` — copying nothing — while any file is an iCloud placeholder. Returns how
-    /// many files it copied.
+    /// left out. Throws `stillDownloading` — copying nothing, and asking iCloud Drive for the missing files — while
+    /// any file is an iCloud placeholder or not downloaded (`downloaded`, `isDownloaded` but for tests). Returns how
+    /// many files it copied. Reads and copies the whole folder: call it off the main thread.
     @discardableResult
-    public static func copyContents(of source: URL, into destination: URL) throws -> Int {
+    public static func copyContents(
+        of source: URL, into destination: URL, downloaded: (URL) -> Bool = WorkspaceFolder.isDownloaded
+    ) throws -> Int {
         let manager = FileManager.default
-        let keys: [URLResourceKey] = [.isRegularFileKey, .contentModificationDateKey]
+        let keys: [URLResourceKey] = [
+            .isRegularFileKey, .contentModificationDateKey, .isUbiquitousItemKey, .ubiquitousItemDownloadingStatusKey,
+        ]
         guard let enumerator = manager.enumerator(at: source, includingPropertiesForKeys: keys, options: []) else { return 0 }
         let base = source.standardizedFileURL.path
         var files: [(URL, String)] = []
@@ -195,9 +210,15 @@ public enum WorkspaceFolder {
                 placeholders.append(url.deletingLastPathComponent().appending(path: String(name.dropFirst().dropLast(7))))
                 continue
             }
-            guard !name.hasPrefix("."), (try? url.resourceValues(forKeys: Set(keys)))?.isRegularFile == true else { continue }
+            guard !name.hasPrefix("."), (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true else {
+                continue
+            }
             let full = url.standardizedFileURL.path
             guard full.hasPrefix(base + "/") else { continue }
+            guard downloaded(url) else {
+                placeholders.append(url)
+                continue
+            }
             files.append((url, String(full.dropFirst(base.count + 1))))
         }
         if !placeholders.isEmpty {
@@ -235,21 +256,6 @@ public enum WorkspaceFolder {
         } catch {
             return false
         }
-    }
-
-    /// What a picked folder already holds, for onboarding's "Opens ‘Yancey’s Space’ (12 pages)"; nil for an
-    /// unused folder (or one whose identity is still downloading — then it reads as new; joining still
-    /// adopts the identity once it arrives).
-    public static func existingWorkspace(at url: URL) -> (name: String, pages: Int)? {
-        withAccess(to: url) { root in
-            guard let identity = try? readIdentity(in: root) else { return nil }
-            return (identity.name, pageCount(in: root))
-        }
-    }
-
-    /// How many pages a folder holds (downloaded or not) — "Open ‘Yancey’s Space’ (12 pages)".
-    public static func pageCount(in root: URL) -> Int {
-        PageFiles(root: root).presentIDs().count  // names only: no file is read
     }
 
     /// Runs `body` with the folder's page files, holding security-scoped access to a picked folder meanwhile.

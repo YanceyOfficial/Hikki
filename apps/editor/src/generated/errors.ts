@@ -25,9 +25,12 @@ export const ERRORS = {
   blockMoveLocked: { code: 2012, severity: 'warning' },
   reminderUpdateFailed: { code: 2013, severity: 'error' },
   pageLinkMissing: { code: 2014, severity: 'warning' },
+  reminderScheduleFailed: { code: 2015, severity: 'error' },
+  reminderNotificationsOff: { code: 2016, severity: 'warning' },
   workspaceUnavailable: { code: 2101, severity: 'error' },
   workspaceFolderAccess: { code: 2106, severity: 'warning' },
   workspaceMoveFailed: { code: 2107, severity: 'error' },
+  databaseRebuilt: { code: 2108, severity: 'warning' },
   workspaceSyncFailed: { code: 2102, severity: 'warning' },
   workspaceOpenFailed: { code: 2103, severity: 'error' },
   databaseOpenFailed: { code: 2104, severity: 'error' },
@@ -37,6 +40,7 @@ export const ERRORS = {
   pageReadOnly: { code: 3003, severity: 'warning' },
   copyFailed: { code: 3004, severity: 'error' },
   drawingPreviewFailed: { code: 3005, severity: 'error' },
+  editsNotDelivered: { code: 3008, severity: 'error' },
   drawingLibrarySaveFailed: { code: 3007, severity: 'error' },
   drawingLoadFailed: { code: 3006, severity: 'error' },
   importFailed: { code: 4001, severity: 'error' },
@@ -58,6 +62,9 @@ export const ERRORS = {
   aiMediaUnreadable: { code: 5009, severity: 'error' },
   aiPictureRefused: { code: 5010, severity: 'warning' },
   aiPictureSaveFailed: { code: 5011, severity: 'error' },
+  aiKeySaveFailed: { code: 5012, severity: 'error' },
+  aiChatSaveFailed: { code: 5013, severity: 'error' },
+  aiChatClearFailed: { code: 5014, severity: 'error' },
   searchFailed: { code: 6001, severity: 'warning' },
   searchIndexFailed: { code: 6002, severity: 'warning' },
   offline: { code: 7001, severity: 'warning' },
@@ -122,12 +129,18 @@ export function errorMessage(id: ErrorId): string {
       return t('error.reminderUpdateFailed')
     case 'pageLinkMissing':
       return t('error.pageLinkMissing')
+    case 'reminderScheduleFailed':
+      return t('error.reminderScheduleFailed')
+    case 'reminderNotificationsOff':
+      return t('error.reminderNotificationsOff')
     case 'workspaceUnavailable':
       return t('error.workspaceUnavailable')
     case 'workspaceFolderAccess':
       return t('error.workspaceFolderAccess')
     case 'workspaceMoveFailed':
       return t('error.workspaceMoveFailed')
+    case 'databaseRebuilt':
+      return t('error.databaseRebuilt')
     case 'workspaceSyncFailed':
       return t('error.workspaceSyncFailed')
     case 'workspaceOpenFailed':
@@ -146,6 +159,8 @@ export function errorMessage(id: ErrorId): string {
       return t('error.copyFailed')
     case 'drawingPreviewFailed':
       return t('error.drawingPreviewFailed')
+    case 'editsNotDelivered':
+      return t('error.editsNotDelivered')
     case 'drawingLibrarySaveFailed':
       return t('error.drawingLibrarySaveFailed')
     case 'drawingLoadFailed':
@@ -188,6 +203,12 @@ export function errorMessage(id: ErrorId): string {
       return t('error.aiPictureRefused')
     case 'aiPictureSaveFailed':
       return t('error.aiPictureSaveFailed')
+    case 'aiKeySaveFailed':
+      return t('error.aiKeySaveFailed')
+    case 'aiChatSaveFailed':
+      return t('error.aiChatSaveFailed')
+    case 'aiChatClearFailed':
+      return t('error.aiChatClearFailed')
     case 'searchFailed':
       return t('error.searchFailed')
     case 'searchIndexFailed':

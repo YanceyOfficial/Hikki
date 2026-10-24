@@ -15,6 +15,8 @@ export type Photo = {
   thumb: string
   regular: string
   full: string
+  /** What a pick sets as the cover: high resolution, sized for a cover (`coverURL`). */
+  cover: string
   color: string | null
   alt: string | null
   author: string
@@ -30,12 +32,30 @@ type RawPhoto = {
   id: string
   color?: string | null
   alt_description?: string | null
-  urls: { thumb: string; small: string; regular: string; full: string }
+  urls: { raw?: string; thumb: string; small: string; regular: string; full: string }
   links: { html: string; download_location: string }
   user: { name: string; links: { html: string } }
 }
 
 const withUtm = (url: string) => `${url}${url.includes('?') ? '&' : '?'}${UTM}`
+
+/** imgix params on `urls.raw` for a cover: 2560 px wide fills a Retina window edge to edge, where `full` (the
+ * original size, often 6000 px and 10 MB+) is far more than a cover shows and `regular` (1080 px) is soft. */
+export const COVER_PARAMS = { w: '2560', q: '85', fm: 'jpg', fit: 'max' } as const
+
+/** The picture a pick sets as the cover: `urls.raw` sized by `COVER_PARAMS` (its `ixid` kept: still a hotlink),
+ * `urls.full` when there is no raw URL. */
+export function coverURL(urls: RawPhoto['urls']): string {
+  if (!urls.raw) return urls.full
+  let url: URL
+  try {
+    url = new URL(urls.raw)
+  } catch {
+    return urls.full
+  }
+  for (const [name, value] of Object.entries(COVER_PARAMS)) url.searchParams.set(name, value)
+  return url.toString()
+}
 
 export function toPhoto(raw: RawPhoto): Photo {
   return {
@@ -43,6 +63,7 @@ export function toPhoto(raw: RawPhoto): Photo {
     thumb: raw.urls.small,
     regular: raw.urls.regular,
     full: raw.urls.full,
+    cover: coverURL(raw.urls),
     color: raw.color ?? null,
     alt: raw.alt_description ?? null,
     author: raw.user.name,
@@ -72,7 +93,12 @@ function rateHeaders(response: Response): Record<string, string> {
   return headers
 }
 
-/** Landscape photos for covers: search when there is a query, the editorial feed otherwise. */
+/** Photos per answer; `/photos/random` takes at most 30. */
+export const PER_PAGE = 24
+
+/** Landscape photos for covers: a search when there is a query, a random batch otherwise. `/photos/random` has no
+ * pages: each `page` is just another batch (a different URL, so not the cached one), duplicates within it dropped —
+ * a client loading more de-duplicates across batches by id. */
 export async function listPhotos(
   accessKey: string,
   query: string,
@@ -80,13 +106,15 @@ export async function listPhotos(
   fetcher: Fetch = fetch
 ): Promise<ProxyResult> {
   const q = query.trim()
-  const url = new URL(q ? '/search/photos' : '/photos', UNSPLASH_API)
-  url.searchParams.set('page', String(Math.max(1, Math.min(page, 50))))
-  url.searchParams.set('per_page', '24')
+  const url = new URL(q ? '/search/photos' : '/photos/random', UNSPLASH_API)
   if (q) {
     url.searchParams.set('query', q.slice(0, 100))
-    url.searchParams.set('orientation', 'landscape')
+    url.searchParams.set('page', String(Math.max(1, Math.min(page, 50))))
+    url.searchParams.set('per_page', String(PER_PAGE))
+  } else {
+    url.searchParams.set('count', String(PER_PAGE))
   }
+  url.searchParams.set('orientation', 'landscape')
   const upstream = await call(fetcher, url, accessKey)
   if (!(upstream instanceof Response)) return upstream
   if (!upstream.ok) return upstreamFailure(upstream)
@@ -97,10 +125,13 @@ export async function listPhotos(
     return failure('upstreamFailed', rateHeaders(upstream))
   }
   const raw = Array.isArray(json) ? json : json.results
+  if (!Array.isArray(raw)) return failure('upstreamFailed', rateHeaders(upstream))
+  const seen = new Set<string>()
+  const unique = raw.filter((photo) => !seen.has(photo.id) && Boolean(seen.add(photo.id)))
   const totalPages = Array.isArray(json) ? null : json.total_pages
   return {
     status: 200,
-    body: { photos: raw.map(toPhoto), totalPages },
+    body: { photos: unique.map(toPhoto), totalPages },
     headers: rateHeaders(upstream)
   }
 }
@@ -130,11 +161,15 @@ export async function triggerDownload(
   return { status: 204, body: null, headers: rateHeaders(upstream) }
 }
 
-/** Unsplash, or a failure result when it can't be reached at all. */
+/** How long Unsplash may take to answer before the request counts as failed (a hung upstream holds no function). */
+export const UPSTREAM_TIMEOUT_MS = 8000
+
+/** Unsplash, or a failure result when it can't be reached at all (or doesn't answer in time). */
 async function call(fetcher: Fetch, url: URL, accessKey: string): Promise<Response | ProxyResult> {
   try {
     return await fetcher(url, {
-      headers: { Authorization: `Client-ID ${accessKey}`, 'Accept-Version': 'v1' }
+      headers: { Authorization: `Client-ID ${accessKey}`, 'Accept-Version': 'v1' },
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)
     })
   } catch {
     return failure('upstreamFailed', {})

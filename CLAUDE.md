@@ -16,15 +16,24 @@ These rules are mandatory. Automated ones are noted.
   (shadcn/ui semantic color names, Tailwind scale names). Regenerate with `make tokens`; never edit
   `HikkiUI/Sources/Generated/DesignTokens.swift` or `apps/editor/src/theme.css` by hand. Swift uses `Theme.*`, `Spacing.*`,
   `Radius.*`, `Size.*`, `.font(.hk(.sm))`; the web uses Tailwind classes (`bg-background`, `text-muted-foreground`,
-  `rounded-md`, `p-2.5`). _Enforced by `make lint-design` (`scripts/lint-design.sh`)._ A justified exception carries
-  a `design-lint: allow` comment on the same line.
+  `rounded-md`, `p-2.5`). The editor's geometry — panel widths and heights, the page's gutters, breakpoints — is the
+  `layout` group: `--layout-*` variables (`w-(--layout-panel-default) max-w-(--layout-viewport-max)`), Tailwind
+  breakpoints (`max-phone:`, `max-outline:`, `comments:` — derived from the column, its gutters and a comment card) and
+  `LAYOUT` in `apps/editor/src/generated/layout.ts` for TypeScript; no arbitrary px in web class names.
+  _Enforced by `make lint-design` (`scripts/lint-design.sh`: literal sizes, colours, spacing
+  and radii, the system colours `.red` / `.yellow` / `.secondary` — `Theme.destructive`, `Theme.favorite`,
+  `Theme.mutedForeground` instead —, system fonts (`.title2`, `.caption`, `Font.system(`) and one-off animations
+  (`.snappy`, `.spring`, `.easeInOut(…)`)._ A justified exception carries
+  a `design-lint: allow` comment on the same line (`design-lint: allow-file` for a whole file).
 - **Motion.** Everything that appears, leaves or reacts moves the same way, from the `motion` tokens. Web surfaces
   (menus, popovers, tooltips, panels, the outline list) take `hk-pop` — mounted when shown: `FloatingLayer` adds it,
   the Base UI popups in `apps/editor/src/components/ui/` carry it, a React panel stays mounted through its leave with
   `usePresence` (`apps/editor/src/components/floating.tsx`) — or `hk-pop-toggle` + `data-open` when they stay mounted. Lists
   mark the selected row with one gliding surface (`apps/editor/src/components/gliding-highlight.tsx`, rows `relative` +
   `data-index`), block tints fade (`.tiptap [data-id]`), hover fades and the 97 % press live in the shadcn `Button` /
-  `Toggle` (restyled in `apps/editor/src/components/ui/`); Swift uses `Motion.easeOut()`. No per-component durations, easings or
+  `Toggle` (restyled in `apps/editor/src/components/ui/`); Swift uses `Motion.easeOut()`, and its press is HikkiUI's
+  `PressEffect` (`.pressEffect(configuration.isPressed)` inside a `ButtonStyle`, `.buttonStyle(.pressable)` for a card
+  or tile that draws itself; `HikkiButtonStyle` uses it). No per-component durations, easings or
   tw-animate classes. _Enforced by `make lint-design`._
 - **Reusable UI lives in `HikkiUI`** (no app state: plain values + closures, a `#Preview` each, listed in the DEBUG
   gallery `Hikki/Sources/ComponentGallery.swift`, launch argument `-HikkiGallery`). Native components follow the same
@@ -56,7 +65,8 @@ These rules are mandatory. Automated ones are noted.
   `Hikki/Sources/Generated/Shortcuts.swift` (`Shortcut.x.keyboardShortcut` / `.display`) and
   `apps/editor/src/generated/shortcuts.ts` (`matchesShortcut`, `shortcutLabel`, `tiptapShortcut` in
   `apps/editor/src/core/shortcuts.ts`). Each entry says who binds it: `app` (native menu), `editor` (the page; menus only
-  display it) or `both`. No literal key equivalents or "⌘X" labels in code; the generator refuses two shortcuts on
+  display it) or `both`. No literal key equivalents or "⌘X" labels in code (a panel's fixed keys —
+  Enter, Escape, ⌘Enter — are `keyLabel` in `apps/editor/src/core/shortcuts.ts`, the registry's glyphs); the generator refuses two shortcuts on
   the same keys. _Checked by `make lint-design`._ Users rebind any of them in Settings → Shortcuts: the overrides
   (`HikkiCore/Sources/Shortcuts/KeyCombo.swift` — what may be bound, conflicts) live in
   `Hikki/Sources/ShortcutStore.swift` (UserDefaults; `Shortcut.keyboardShortcut` / `.display` read it, observed by the
@@ -65,10 +75,16 @@ These rules are mandatory. Automated ones are noted.
 - **Copy language.** User-facing strings are keys, never literals: native `app:<area>.<element>` keys in
   `Hikki/Resources/Localization/Localizable.xcstrings` (interpolations become `%@`, e.g. `app:page.edited %@`); web
   `t('area.key')` with catalogs in `apps/editor/src/locales/`. English is the source; zh-Hans must be complete. The native
-  side tells the editor its language (`window.hikki.setLocale`). _Enforced by `make lint-l10n`
+  side tells the editor its language (`window.hikki.setLocale`). A page's title as shown is
+  `PageSummary.displayTitle` — HikkiUI's `PageTitle.display`, the one place the "Untitled" fallback is written (a
+  row that mutes an empty title draws `app:page.untitled` itself). _Enforced by `make lint-l10n`
   (`scripts/l10n-audit.mjs`): missing / unused keys, untranslated values, placeholder mismatches, literal UI text._
 - **Secrets stay server-side.** Third-party API keys (Unsplash) live only in the BFF (`apps/bff/`, Hono on Vercel).
   Unsplash rules: hotlink `urls`, attribute the photographer with utm links, report picks via the download endpoint.
+  The key's quota is guarded there: CORS answers only the editor's origin (`hikki-editor://app`) and a localhost dev
+  server, and `/api/unsplash/*` is rate-limited per address (`apps/bff/src/rate-limit.ts`: 30 a minute, in memory
+  per function instance — the Vercel Firewall rate-limit rule on the project is the cap across instances); upstream
+  calls time out after 8 s.
 - **Pre-commit gate.** `.husky/pre-commit` runs lint-staged (oxlint + oxfmt for web files, `swift-format` for
   Swift), `make lint-design lint-docs lint-l10n`, the editor + BFF typecheck and web unit tests. `make check` adds the Swift tests and both
   platform builds. Don't `--no-verify`.
@@ -77,13 +93,25 @@ These rules are mandatory. Automated ones are noted.
   A bug fix comes with a test that fails without the fix — check that it does.
 - **Bridge protocol.** Messages are defined twice — `apps/editor/src/core/protocol.ts` and
   `HikkiCore/Sources/Bridge/BridgeMessage.swift` — and versioned by `PROTOCOL_VERSION` / `BridgeProtocol.version`.
-  Change both together and bump both.
+  Change both together and bump both. What the native side calls in the page is `window.hikki`, typed by `HikkiAPI`
+  (`apps/editor/src/core/hikki-api.ts`) — the same rule. `EditorBridge` (`apps/editor/src/core/bridge.ts`: the page,
+  its editor and header) hands the rest to its parts: saving (`apps/editor/src/core/page-saver.ts`), the outline and
+  scroll (`apps/editor/src/core/outline-spy.ts`), comments (`apps/editor/src/core/bridge-comments.ts`), native sheets
+  (`apps/editor/src/core/bridge-sheets.ts`), the keyboard bar (`apps/editor/src/core/bridge-touch.ts`), AI (`apps/editor/src/core/bridge-ai.ts`) and
+  uploads (`apps/editor/src/core/uploads.ts`).
 - **Split write paths.** `DocumentStore.saveContent` writes only editor-owned columns; metadata (icon, cover,
   favorite, lock, trash) has its own methods, so a late debounced autosave can never revert it. The editor's `flush()`
-  returns nothing when the page wasn't edited — viewing a page must never bump its edited time.
+  returns nothing when the page wasn't edited — viewing a page must never bump its edited time. An edit
+  counts as saved once the app has taken it (the `changed` post's reply, or `flush()`'s return): a post that fails
+  leaves it pending, retries (three tries in all), then reports `editsNotDelivered`; a page left before its words got
+  through keeps them and shows them again, as an edit, if it is opened first.
 - **Concurrency.** The app and `HikkiUI` default to MainActor isolation. Anything AppKit/UIKit may call off the main
   thread (dynamic color providers, KVO callbacks) must be `nonisolated` / `@Sendable`.
 - **Logs never contain page content.** Use `Log.info` / `Log.warn` / `Log.error` with a category; IDs and counts only.
+  The editor forwards console.warn/error to the native log as strings and Errors' messages only (`consoleLine` in
+  `apps/editor/src/core/errors.ts`: objects dropped, a Tiptap warning cut to its first argument), and every error's text — those, `reportError` details,
+  uncaught errors, the import fallback — goes through `safeErrorMessage` (`apps/editor/src/lib/safe-error.ts`), which
+  cuts the content ProseMirror quotes (`Invalid content for node doc: <…>`); stacks keep their frames only.
 - **Failures have codes and reach the user as toasts.** Every user-visible failure has a code in `design/errors.json`
   (`make errors` generates `ErrorCode` in `HikkiCore/Sources/Errors/ErrorCode.swift`, its messages in
   `Hikki/Sources/Generated/ErrorMessages.swift`, `apps/editor/src/generated/errors.ts`, `apps/bff/src/generated/errors.ts` and both
@@ -143,7 +171,9 @@ HikkiAI/Sources/              framework: AI — one streaming client over OpenAI
                               (swift-markdown) and code colouring (HighlightSwift); tests in HikkiAI/Tests/
 HikkiUI/Sources/              framework: reusable SwiftUI components + Theme
 apps/editor/src/                   web editor: main.tsx + style.css; each folder below holds only .tsx or only .ts
-apps/editor/src/core/              bridge, protocol, transport, editor setup, block catalog, i18n, shortcuts, links, page store
+apps/editor/src/core/              bridge, protocol, transport, editor setup, block catalog, i18n, shortcuts, links, page store;
+                              never imports from components/ (its data — AI actions, block kinds, transaction metas — lives
+                              here; the extension ↔ panel pairs are the only import cycles left)
 apps/editor/src/extensions/        Tiptap extensions (.ts; React panels are drawn through the components' render* helpers)
 apps/editor/src/components/        editor UI (.tsx): menus, panels, the floating layer, icons (kebab-case files)
 apps/editor/src/components/ui/     shadcn components (generated via `bun run ui:add`)
@@ -198,7 +228,15 @@ HikkiUITests/                 XCUITest flows
   dragged onto it import (`Hikki/Sources/SidebarFileDrop.swift`): on a page row as its children (the row tints as for
   "inside"), elsewhere at the top level (the sidebar is outlined); ContentView runs the import through
   `Navigator.importDrop` → `AppModel.importFiles(_:parentId:)`. A page row's own drag carries a page link, never a
-  file, so the two never mix; iPad drags (typed documents, no file URL) load as a temporary copy.
+  file, so the two never mix; iPad drags (typed documents, no file URL) load as a temporary copy. A page's Move to
+  (every page menu — sidebar and Home context menus, the page ⋯, the iPhone's ⋯ sheet) sets `Navigator.movePageID`
+  and ContentView presents `Hikki/Sources/MovePageSheet.swift`: HikkiUI's `MovePagePicker`, Notion's "Move page
+  to…" — a search field, the top-level pages as Suggested with a disclosure each (opening on the page's own place),
+  search results (title words folded, no case or accents) with their path, the workspace at the foot for the top
+  level; ↑ ↓ → ← ↩ esc — over `PageTree.moveChoices` (`HikkiCore/Sources/Store/MoveChoices.swift`: never the page's
+  own subtree, its current parent checked). A sheet the size of Notion's popover on the Mac (a context menu can't
+  hold a popover), a form sheet on iPad, half height on iPhone; a pick is `AppModel.movePage(_:onto:zone: .inside)`
+  or `movePageToTopLevel`.
 - **Device compatibility lives in two files**: `HikkiCore/Sources/Layout/DeviceRules.swift` (native — a table of
   iPhone / iPhone Duo folded and unfolded / iPad / Mac: orientation — phones and a folded Duo upright, iPads and an
   unfolded Duo on their side, through `OrientationDelegate` in `Hikki/Sources/HikkiApp.swift` — split view, the
@@ -215,7 +253,8 @@ HikkiUITests/                 XCUITest flows
   `simctl io <device> enumerate`) — the default display may be the Duo's inner screen, black while folded (prototype: the "Hikki iPhone redesign" canvas): the collapsed
   split view's sidebar column is `Hikki/Sources/PhoneHome.swift` (a ☰ · Home top bar, All pages / Trash tiles,
   "Jump back in" cards, Quick create — a blank page, today's note titled with the date, a page from the clipboard
-  (`QuickNote`, HikkiCore) — Ask AI suggestions sent with this week's pages (`Navigator.pendingAIQuestion`), This
+  (`QuickNote`, HikkiCore) — Ask AI suggestions sent with this week's pages (`Navigator.pendingAIQuestion`); its
+  page rows and the drawer's are HikkiUI's `PageRowLabel` (icon, title, `Size.touchRow` tall), This
   week — HikkiUI's `WeekActivityCard` over the store's daily activity, every device's writing (a newer page from the
   folder counts its added words on the day it was edited, `importPage(_:expecting:)`) — recently edited, and favorites; the lists come
   from a `HomeDigest` (HikkiCore) worked out per tree change, the activity read in a task) and opening anything shows the detail through `Navigator.compactColumn`
@@ -241,34 +280,83 @@ HikkiUITests/                 XCUITest flows
   `CKSyncEngine` in the user's private database (container `iCloud.app.yancey.hikki`, zone `Workspace`): one `File`
   record per file of the folder — pages, history, comments, chats, assets, the drawing library, workspace.json —
   named by its path's SHA-256, the path and contents in encrypted fields (end-to-end encrypted), contents over 512 KB
-  and every attachment as a `CKAsset`. `HikkiCore/Sources/Store/CloudMirror.swift` is the CloudKit-free half (tested
+  and every attachment as a `CKAsset` (copied aside per record — `copyItem`, hashed in chunks — and removed once that
+  record is settled; leftovers go at start); the file's modification date travels encrypted too (`modifiedAt`).
+  `HikkiCore/Sources/Store/CloudMirror.swift` is the CloudKit-free half (tested
   in `CloudMirrorTests`): what changed in the folder since it last agreed with the cloud (size and date, then a
-  content hash, kept with each record's system fields in a cloud-state file beside the database, not in the folder),
+  content hash, kept with each record's system fields and the server's modification date in a cloud-state file
+  beside the database, not in the folder; a record name → path index, so a record's path is a lookup),
   and what to do with what arrives — written over a file unchanged here, otherwise settled: a page by the later
-  change with the other as a conflicted copy (`ConflictCopy`), comments and chats merged (`mergeFiles`), anything
-  else the cloud's. Changes go up after a quiet second (`noteLocalChanges`: `WorkspaceSync.Options.didWrite`, a scan
-  every 10 s, activation), are sent before the app goes to the background (`flushWorkspace`), and come down with
+  change with the other as a conflicted copy (`ConflictCopy`; a page whose row is ahead of its file is left to the
+  folder's pass, `Options.pageChange`, so one clash makes one copy), comments and chats merged (`mergeFiles`), anything
+  else the cloud's — but a record still as last agreed (this device's own save fetched back) is no change
+  there: the file stays and goes up; a version older than the agreed one (a stale fetch) is passed over. An arrival
+  holds the file's lock from read to write (`FileLocks`, `HikkiCore/Sources/Store/FileLocks.swift`, which
+  `PageComments`, `PageChats` and `DrawingLibrary` take around their own writes) and reads the file again before
+  writing, settling instead if it changed. Changes go up after a quiet second (`noteLocalChanges`: `WorkspaceSync.Options.didWrite`, a scan
+  every 10 s, activation), are sent before the app goes to the background (`flushWorkspace`; the scan and send are
+  `@concurrent`, never on the main thread), and come down with
   iCloud's pushes (`registerForRemoteNotifications`, iOS background mode `remote-notification`), on activation and
-  on a pull to refresh (iOS: Home, the phone drawer, the sidebar, Trash — `syncRefreshable` in
+  on a pull to refresh (iOS: Home and its phone drawer, the sidebar, Trash — `syncRefreshable` in
   `Hikki/Sources/SyncRefresh.swift`, `AppModel.refreshFromCloud`);
-  what arrives is a change on disk like any other (the folder reconciles, editors reload). The workspace belongs to the
+  what arrives is a change on disk like any other (the folder reconciles, editors reload; `CloudArrivals` names the
+  pages whose comments, AI conversation or history came in — `pageCommentsChanged`, `pageChatChanged`,
+  `pageHistoryChanged` reload them). `CloudSync`'s handlers take a small `CloudEngineState` (pending changes) so
+  `CloudSyncTests` run them without CloudKit: a clash settles with the server's record and goes up again only when the
+  result differs (one without its asset fetches instead); a record that arrived without its asset is fetched again by
+  itself (`fetchIncomplete`); an arrival drops a waiting deletion of its record; a delete of a record already gone
+  counts as done; cancelled saves are queued again; a save refused for good is held while the file is unchanged
+  (`CloudMirror.hold`, in memory), storage full for 15 min doubling to 6 h (released by a save going through,
+  activation, pull to refresh); `quotaFull` / `failed` stay shown (Settings, the save indicator) until a send goes
+  through without a refusal; a failed account check shows `unavailable` and asks again (30 s doubling to 15 min).
+  The workspace belongs to the
   first iCloud account it syncs with (`CloudMirror.accountAllows`, kept in the cloud state): the engine starts only
-  once `userRecordID` is that account and stops on any change (`.CKAccountChanged`, the engine's account events) —
+  once `userRecordID` is that account and stops on any change (`.CKAccountChanged`, the engine's account events; a
+  `switchAccounts` drops the engine's kept state) —
   another account, or a sign-out and sign-in as someone else, sends and fetches nothing (`Status.accountChanged`)
-  until the user turns iCloud off and on, which hands the workspace to the account in use (`releaseAccount`); a
-  deleted zone sends everything again. A workspace still in an iCloud Drive folder (before CloudKit) is copied into the app once its
-  files are all downloaded (`WorkspaceFolder.copyContents`, the folder left as it was; on the Mac a sandbox that
+  until the user turns iCloud off and on, which hands the workspace to the account in use (`releaseAccount`; another
+  account than the last starts from nothing — every file goes up to its zone). A zone deleted, emptied by an
+  encryption reset, or not found on a save sends everything again; one the user deleted (reason `purged`, or
+  `userDeletedZone`) pauses (`Status.cloudDataDeleted`, kept across launches) until they turn iCloud off and on.
+  iCloud starts beside the first folder pass, not after it (a push launch has seconds).
+  A workspace still in an iCloud Drive folder (before CloudKit) is copied into the app off the main thread while the
+  folder keeps working, once its files are all downloaded (`WorkspaceFolder.copyContents`: placeholders and the
+  downloading status — File Provider keeps a missing file's name — asked for and retried; the folder left as it was;
+  a second pass after its writers stop; Settings says "Moving into iCloud…"; on the Mac a sandbox that
   won't open the old bookmark asks for the folder first) and becomes `.cloud`; folders can no longer be picked.
   A run on its own data folder (`HIKKI_DATA_DIR`: UI tests, demos) never syncs (`AppModel.cloudAllowed`) — its
-  pages would land in the account's one workspace zone — unless `HIKKI_CLOUD=1`.
+  pages would land in the account's one workspace zone — unless `HIKKI_CLOUD=1`. Settings and AI keys sync apart from
+  the workspace, whatever its location (see Settings).
+  **Save indicator** (Google Docs' / Notion's, bottom-trailing corner of each side's page on Mac and iPad —
+  `PaneColumn`'s overlay; none on iPhone, whose foot is the floating bar): HikkiUI's `SyncStatusBadge` drawn by
+  `SyncIndicator` (`Hikki/Sources/SyncIndicator.swift`) — nothing until the page is edited in this run, then Saving… /
+  Saved (a `.device` workspace) / Syncing… / Synced to iCloud / Waiting to sync / Not syncing, words fading to the
+  glyph a few seconds after a settled state, the time in its tooltip. `PageSyncTracker` (`AppModel.pageSync`, a `let`
+  that only the chip observes — a save redraws nothing else) hears the page's `editing` bridge message (once per save,
+  the first edit since the last), `pageSavedInEditor` (with the time taken before the write) and
+  `pageSaveFailedInEditor` (no "Saving…" left hanging), and tells `CloudSync.noteSaved` once the write-through has
+  written the file (`WorkspaceSync.afterQueuedWrites`). `CloudUploads` (`HikkiCore/Sources/Store/PageSyncState.swift`,
+  tested in `PageSyncStateTests`) follows only those pages' `pages/<id>.json`: a scan's changes queue it (unchanged → in
+  the cloud as of the scan, if the scan started after the file was written), a batch sends it as of the file's
+  modification date, `sentRecordZoneChanges` acknowledges it —
+  synced only when the acknowledged file is at least as new as the save; network refusals and no network path
+  (`NWPathMonitor`, which also sends and fetches on coming back) wait; `PageSyncState.resolve` decides.
   Entitlements: `Hikki/Hikki-iOS.entitlements` and the Mac's two (see Mac sandbox); the CloudKit schema is created
   in the development environment on first save and must be deployed to production in the CloudKit console before
-  a release.
+  a release — record type `File`: `path` (encrypted string), `data` (encrypted bytes), `file` (asset), `modifiedAt`
+  (encrypted date/time). The plain `modified` field of earlier development builds is no longer written: reset the
+  development schema (or leave it out) before deploying.
 - **Storage (option C)**: the workspace folder is the source of truth — one JSON file per page
   (`HikkiCore/Sources/Store/PageFile.swift`: `pages/<id>.json`, format-versioned, content as JSON); SQLite is a
-  rebuildable cache/index. `HikkiCore/Sources/Store/WorkspaceSync.swift` reconciles on launch and app activation
+  rebuildable cache/index: a database that won't open at launch (corrupt) is set aside as `<name>.broken-<stamp>`
+  with its -wal / -shm (`DocumentStore.onDiskRecovering`) and a fresh one is filled from `pages/` by the first pass,
+  said in a toast (`databaseRebuilt`) — never a crash at every launch; should not even a fresh file open, the run
+  keeps its pages in memory (`databaseOpenFailed`). `HikkiCore/Sources/Store/WorkspaceSync.swift` reconciles on launch and app activation
   (newer side wins; a missing file deletes the page only if it was synced before — `pageFileState`) and writes every
-  committed page change through (a GRDB transaction observer). "Newer" is `changedAt` (`lastChange`): every write
+  committed page change through (`DocumentStore.observePageCommits`: one GRDB transaction observer shared by the
+  write-through, the search indexer and the reminders, which reads the changed rows once per commit — inside the
+  save, on the typing thread — and hands them to each; a commit it couldn't read is logged, told to each observer's
+  `onError`, and goes out with the next commit). "Newer" is `changedAt` (`lastChange`): every write
   method sets it — moves, reorders, trash, restore and favorites too, which leave `updatedAt` (the "Edited" date)
   alone — and page files carry it as an optional key (format stays 1; absent = `updatedAt`). A pass compares ids,
   parents and change times only (`syncHeads`), reading a full row just for pages it writes or replaces; an import
@@ -340,7 +428,7 @@ HikkiUITests/                 XCUITest flows
   name/icon on activation, and one arriving from iCloud is adopted as it comes (a second device joining takes the
   workspace's name and icon).
 - **Popups close one way**: every `FloatingLayer` opened with `onDismiss` (`apps/editor/src/components/floating.tsx`) joins
-  one dismiss bus — a single pair of document listeners: Escape and a press outside every open layer dismiss the newest
+  one dismiss bus (`apps/editor/src/lib/dismiss-bus.ts`) — a single pair of document listeners: Escape and a press outside every open layer dismiss the newest
   one, and the opener says what that means (the slash and block menus exit, the math and ruby panels cancel; it gets
   the reason and may answer `'keep'` — Escape in the block menu closes its submenu first). No popup installs its own
   outside-click or Escape listener. `dismissAllLayers` runs as `loadDocument` starts, so nothing outlives its page, and a
@@ -364,8 +452,8 @@ HikkiUITests/                 XCUITest flows
   own + / ⋮⋮ handle on pointer events (HTML5 drag-and-drop is unreliable in WebKit), centred on the block's first line;
   anything inside a toggle, quote or callout shows the outermost container's handle (`handleUnitAtPos`; drops and caret
   commands still reach the blocks inside; list items keep one each; a columns row has none of its own — each
-  column's blocks do, wherever in the column the pointer is: `unitAt` — in its own column's gutter, the gap between columns, never over the column before: `handleLeft` / `columnFloor`, and it steps aside while the pointer is on the column divider); drag shows a ghost and a drop line (side edges make columns); a click opens `apps/editor/src/components/block-menu.tsx`. Fine
-  pointers only. The block menu is Notion's: a search field over the actions (and Turn-into targets), the block's kind
+  column's blocks do, wherever in the column the pointer is: `unitAt`, the gap before a column hit-testing in that column (`columnHitX` — WebKit's hit test there finds the column before) — in its own column's gutter, the gap between columns, never over the column before: `handleLeft` / `columnFloor`, and it steps aside while the pointer is on the column divider); drag shows a ghost and a drop line (side edges make columns); a click opens `apps/editor/src/components/block-menu.tsx`. Fine
+  pointers only: the + / ⋮⋮ are never in the tab order (`tabIndex -1`) and the hidden handle is `inert`. The block menu is Notion's: a search field over the actions (and Turn-into targets), the block's kind
   as its section title (`apps/editor/src/core/block-kinds.ts`: catalog labels, an embed's service), then an embed's own
   actions (Replace — the embed panel on its link, same block; Caption — `apps/editor/src/extensions/embed-caption.ts`, a
   `caption` attribute drawn under the frame or card; Open in browser; Copy link to original), Turn into / Color, Copy
@@ -380,7 +468,19 @@ HikkiUITests/                 XCUITest flows
   never classes on the node's DOM, which ProseMirror drops on redraw.
 - **Drawings** (`apps/editor/src/extensions/drawing.ts`, "/" Drawing): an atom `drawing` block storing Excalidraw's
   live elements and its pictures as asset references (`files`: id → `{src, mimeType}`, never data URLs), shown in the
-  page as a PNG preview asset (`preview`, twice the size; dark mode inverts it as Excalidraw does). A click opens the
+  page as a PNG preview asset (`preview`: a pixel per scene unit, shown at half — twice as sharp as drawn; fewer for
+  a drawing past an iOS canvas, 4096² pixels, `previewScale` in `packages/excalidraw/src/scene.ts`, so a whole
+  whiteboard still gets one; dark mode inverts it as Excalidraw does). The preview zooms and pans in place
+  (`apps/editor/src/extensions/drawing-zoom.ts`, arithmetic in `apps/editor/src/lib/drawing-view.ts`, controls
+  `apps/editor/src/components/drawing-zoom-controls.tsx`): ⌘/Ctrl + wheel and a trackpad pinch (Chromium's Ctrl-wheel,
+  WebKit's `gesture*` events) zoom around the pointer, a mouse drag pans once zoomed (a press that moves under 4 px is
+  still the click that opens it), two fingers pinch and pan on a touch screen (`touch-action: pan-x pan-y`; one finger
+  and a plain wheel still scroll the page), the hover controls (and + / − / 0 on the focused block) zoom in, out and
+  back; at most as far as the preview has pixels, 4–8×. The spot shown is the drawing's: `view` `{x, y, zoom}` (the
+  middle as fractions of the preview, null = the whole drawing, checked like everything stored — `storedView`), stored
+  once a gesture ends, out of undo with `SAVE_META`, only where the drawing can be edited (a locked page or a phone
+  zooms for the reader alone); Done carries it onto the new preview by the part of the plane each shows
+  (`DrawingPreview.frame` / `before`, `remapView`). A click opens the
   full-screen editor (`apps/editor/src/components/drawing-overlay.tsx` over `@hikki/excalidraw/canvas`, loaded on
   first open — Excalidraw and Mermaid are their own chunks, never in the page's start-up): changes go into the block
   as they rest (out of the page's undo, saved with `SAVE_META`), Done stores the preview. On a phone-sized screen
@@ -416,12 +516,14 @@ HikkiUITests/                 XCUITest flows
   (`apps/editor/src/extensions/table.ts` + `apps/editor/src/extensions/table-ops.ts`, controls drawn by
   `apps/editor/src/components/table-overlay.tsx`) and columns (`apps/editor/src/extensions/columns.ts`: schema needs 2–5 columns, so
   removing one of two replaces the row; dragging a block onto another's side edge makes a row; Notion's 64 px gap holds
-  the next column's block handle, the resize line in its middle shown only on hover; a row narrower than
+  the next column's block handle, the resize line in its middle shown only on hover — a drag sets the shares as CSS variables on the row's wrapper once a frame (never a style on a column: ProseMirror redraws it, and the drag lost the row) and stores them in one transaction on release; a row narrower than
   480 px — an iPhone's page — stacks its columns, a container query in style.css).
 - **Network images** load like exodus's (`apps/editor/src/components/lazy-load-image.tsx`: skeleton, fade in, an icon on
   failure) — covers and the Unsplash grid use the component; body images get the same through
   `apps/editor/src/extensions/image-loading.ts` (`data-load` states styled in `apps/editor/src/style.css`; Tiptap's resizable view hides its
-  container until an image loads, so the CSS shows it meanwhile).
+  container until an image loads, so the CSS shows it meanwhile). A picture already loaded in this run
+  (`apps/editor/src/lib/loaded-images.ts`) skips both — a tab switch rebuilds the page, and its cover and pictures
+  went through skeleton and fade again: a flash on every switch.
 - **Covers**: the stored value is `gradient:<id>` or an image URL, and an image's vertical position rides along
   as a `#y=<0-100>` fragment (`apps/editor/src/lib/covers.ts`: `coverPosition`, `withCoverPosition`), so the store and
   the protocol keep a plain string. "Reposition" on the cover (`apps/editor/src/page/page-header.tsx`) drags the picture
@@ -446,7 +548,7 @@ HikkiUITests/                 XCUITest flows
   the "/" menu's Embeds group — a short list of work services: Embed, HTML, Google Drive, Figma, Miro, Loom, Airtable,
   Calendly, GitHub Gist, CodeSandbox, draw.io, Excalidraw (that row inserts a drawing block — a pasted
   excalidraw.com link still embeds), each by its Simple Icons mark (`simple-icons`, one named
-  import per logo, `apps/editor/src/components/brand-logos.tsx`), in its brand colour (near-black ones in the row's text colour) at the icons' size.
+  import per logo, `apps/editor/src/lib/brand-logos.ts`), in its brand colour (near-black ones in the row's text colour) at the icons' size.
   `embedFromURL` turns a pasted link into the provider's embeddable URL (YouTube, Vimeo, Figma's embed.figma.com, Maps,
   Drive/Docs, gists as a script snippet, tweets via platform.twitter.com, CodePen, draw.io's viewer, Loom, Excalidraw,
   Miro's live embed, Airtable views, Spotify, CodeSandbox, Calendly, Typeform) — services without a row still embed
@@ -460,19 +562,33 @@ HikkiUITests/                 XCUITest flows
   the `linkPreview` bridge request (exodus's `safe-fetch` rules: http/https, public hosts only, every redirect checked)
   and stored in the block when it is added; an older card without details reads them for display only. The height is an attribute, set by the handle
   under the frame. The native navigation delegate lets https / about: load in subframes only, and popups from a frame
-  open in the system browser (`HikkiCore/Sources/Bridge/EditorNavigationPolicy.swift` decides; the editor's own scheme
-  loads as the page only — in a frame it would be same-origin with the page). Embedded pages are hostile by default:
+  open in the system browser — from a click only: `window.open` on load opens nothing, and
+  `javaScriptCanOpenWindowsAutomatically` is off (`HikkiCore/Sources/Bridge/EditorNavigationPolicy.swift` decides both
+  the navigation and the UI delegate's new window; the editor's own scheme loads as the page only — in a frame it
+  would be same-origin with the page; the bundle's files are served by path component under its folder,
+  `BundleFiles`, so a sibling named like it is outside). Embedded pages are hostile by default:
   the bridge drops script messages from any frame but the editor's own main frame (`BridgeProtocol.trustsFrame` —
   WebKit hands `messageHandlers` to every frame), and a stored embed `src` loads only when it is an https page
   (`safeFrameSrc`). YouTube's player refuses to play (error 153) without an HTTP Referer, which a page on
   the app's own scheme never sends, so with `VITE_HIKKI_BFF_URL` set the frame loads the BFF's shim page
   (`/embed/youtube/<id>`, `apps/bff/src/index.ts`) and the player sees that as its referrer.
 - **Home** (`Hikki/Sources/HomeView.swift`) is a database of every page (Notion's): a native `Table` (Name, Location,
-  Created, Edited, Words, Favorite — click a header to sort, double-click or Return opens) or a gallery of cards, with
-  a filter and New Page on top; iPhone gets a list, and so does a Home narrower than the table's columns
+  Created, Edited, Words, Favorite — click a header to sort, double-click or Return opens), a gallery of cards (a
+  card shows the page's cover as a band: `PageCover` in HikkiCore reads the stored value as the editor does —
+  `gradient:<id>` or a picture with its `#y=` position —, an asset resolved to its file through `AssetStore.file(named:)`,
+  drawn by HikkiUI's `PageCoverView`, which decodes pictures off the main thread as thumbnails and keeps them in a
+  memory cache) or a calendar (Mac and iPad only — the layout picker's third choice, `home.layout`): HikkiUI's
+  `MonthCalendar` — Monday-first weeks, each day its number (today in the tone's circle), two of the pages edited
+  that day (by `updatedAt`, local calendar) and "+N more", plain cells with no shading by amount — beside
+  `CalendarDayList`, the picked day's pages (below it on a narrow side); the dates, grouping, month count and the
+  default day (today, else the month's last day with pages) are `HomeCalendar` / `CalendarMonth` in HikkiCore. All
+  three take the filter, with New Page on top; iPhone gets a list, and so does a Home narrower than the table's columns
   (`Size.homeNarrow`: a side of a split view), its filter on a line of its own. Sorting is `HomeSort` (Sendable, for Swift 6's table). The sidebar
   shows Home and Trash as Notion's row of icons (the open one widens into a pill with its name) and no section title.
-  Trash has the same layout (table: deleted, deleted for good, Restore/Delete). Settings → Workspace → Keep deleted pages
+  Trash has the same layout (table: deleted, deleted for good, Restore/Delete). Move to Trash asks first wherever it
+  is chosen — page menus set `Navigator.trashRequestID` and ContentView presents `TrashConfirmation`
+  (`Hikki/Sources/SidebarView.swift`: the title, the subpages going along — `PageTree.subpageCount`; the iPhone's ⋯
+  sheet presents its own over itself) — as deleting for good and emptying the Trash do. Settings → Workspace → Keep deleted pages
   (7/30/90 days or until emptied, default 30; `TrashPreferences`) purges older trash at launch and activation
   (`DocumentStore.purgeTrash`); the deletion reaches other devices through the workspace folder.
 - **Tabs** are the Mac's (`Navigator.usesTabs`): iPad and an unfolded iPhone Duo have no bar over the page — no tab
@@ -481,20 +597,38 @@ HikkiUITests/                 XCUITest flows
   back / forward walk that one tab, and a window keeps no tab but its split's two (`NavigationTabs.keepActiveOnly`).
   On the Mac a sidebar row focuses the tab already showing its page, or opens it as a new tab
   at the end; past `Navigator.recentTabLimit` the least recently focused tab closes (`NavigationTabs.openRecent`,
-  recency kept in the saved tabs). Links navigate inside the active tab. Back / forward (the toolbar's arrows, ⌘[ ⌘]) walk the
+  recency kept in the saved tabs). A link in a page to another page opens it in a tab of its own
+  (`Navigator.openLink` → `NavigationTabs.openLink`: that page's tab is focused, else a new tab right after the link's —
+  from a side of a split, after the split, which stays whole — under the same limit); a link to a block of the page
+  itself scrolls there; without tabs (iPhone, iPad) a link opens in place, in its side. A page has one tab: opening
+  it from anywhere (search, Spotlight, a hikki:// link from outside, Open in New Tab, a drop onto a tab) focuses the
+  tab showing it (`NavigationTabs.open` / `tab(showing:)`) — only Home may repeat, and Duplicate is the explicit
+  exception; Open in Split View joins a page's own tab; separating a split on one page leaves one tab; tabs saved with
+  repeats keep one each when restored (`closeDuplicates`). Back / forward (the toolbar's arrows, ⌘[ ⌘]) walk the
   window's history of pages shown, across tabs (`NavigationTabs.visits`): back returns to the page shown before, focusing
-  its tab — a page opened from the sidebar goes back to where the reader was; closed tabs and gone pages are passed over. A tab's context menu is
+  its tab — a page opened from the sidebar goes back to where the reader was; closed tabs and gone pages are passed over. A tab dragged along the strip moves
+  there, Chrome's way (`TabStrip`'s `onMove` → `NavigationTabs.move`: a split's two tabs move together, a gap between
+  them means after them); the drag carries the page's link as before plus the tab's id as `app.yancey.hikki.tab`
+  (in-process only, declared in Project.swift's Info.plist), which is how the strip tells a reorder from a page drop. A tab's context menu is
   Chrome's (`TabStripMenu` / `TabStripCommand` in `HikkiUI/Sources/TabStrip.swift`, the commands chosen by
   `NativeDetailToolbar` in ContentView): New Tab to the Right (Home), Open in Split View (where the window splits),
   Duplicate (the whole history), Move to New Window (Mac, a page: the "page" window group, then the tab closes — iPad
-  has no such scene yet), Close, Close Other Tabs, Close Tabs to the Right — the rules in `NavigationTabs`.
+  has no such scene yet); for a page VS Code's Copy Link (`PageLink`) and Reveal in Sidebar (`Navigator.sidebarReveal`:
+  parents expanded, the sidebar shown and scrolled to the row); then Close, Close Other Tabs, Close Tabs to the Right,
+  Close All Tabs (one new tab on Home) — the rules in `NavigationTabs`. Tabs closed by the user — Close, the three
+  closes above — are remembered (`NavigationTabs.closed`, the last ten, saved with the tabs; the window's own removals
+  — an emptied split side, a picker, a split's twin — are not) and File → Reopen Closed Tab (⇧⌘T) brings the last
+  one back with its history at its old place; Go → Tab 1…9 (⌘1…⌘9, ⌘9 the last) focus by place. The Mac's Page menu
+  is the page ⋯'s (`AppCommands`: Favorite ⇧⌘P, Lock ⇧⌘L, Copy Link ⌥⌘C, Duplicate ⇧⌘D, Move to… ⌥⌘V, Page
+  History… ⇧⌘H, Export — Markdown ⇧⌘E —, Move to Trash ⌘⌫, which asks first), acting on the focused side's page
+  through the navigator; its titles come from `FocusedValues.lockedPage` / `favoritePage`, set by `TreeFollower`.
 - **Page links** (`apps/editor/src/extensions/page-links.ts`): `hikki://page/<id>#<block>`. The native side feeds the editor
   the page index (`window.hikki.setPages`) so pasted links get titles; "Copy link to block" puts a ready `<a>` plus the
   URL on the clipboard; a plain-text paste of a link becomes a labelled hyperlink, and so does a dropped one: a
   sidebar row's drag carries the page's link (`PageLink.dragItem`), the editor's `handleDrop` inserts it where it
   lands, and the toolbar's `TabStrip` (`TabStripDrop`, `HikkiUI/Sources/TabStrip.swift`) opens it — between tabs
   as a new tab (or that page's tab is focused), onto a tab in that tab. Clicks go through the bridge
-  (`openPage` with the block, `openLink` for the web) and `window.hikki.scrollToBlock` lands on the block; a link to a
+  (`openPage` with the block — another page in its own tab on the Mac, see Tabs —, `openLink` for the web) and `window.hikki.scrollToBlock` lands on the block; a link to a
   page in the Trash toasts that with Restore, one to a page that is gone `pageLinkMissing` (ContentView's
   `followLink`) — a link never does nothing.
 - **Mentions, emoji, typography**: "@" mentions a page (`apps/editor/src/extensions/page-mention.ts`, Tiptap's Mention: a
@@ -520,7 +654,8 @@ HikkiUITests/                 XCUITest flows
   `<time datetime>`. Natively `HikkiCore/Sources/Store/DateMentions.swift` reads chips out of content (`DateEntry`:
   the line's words and block id), works out when each rings (`fireComponents`, the editor's `fireMoment`) and what
   Home lists (`Upcoming.items`: rung and not done first, then the next 7 days). `Hikki/Sources/Reminders.swift` keeps
-  every live page's dates (`pagesWithDates` at launch, then the store's commit feed) and schedules the reminders
+  every live page's dates (`pagesWithDates` at launch, then the store's commit feed — each page's content parsed on
+  a queue of its own, never on the commit's thread, commits applied in order) and schedules the reminders
   still to ring as local notifications (`ReminderCenter`, at most 64, calendar triggers, the line as the title and
   the page under it; permission asked at the first one), so every device with the workspace rings. Mark done and
   Snooze (15 minutes) on a notification change the chip in its page (`AppModel.updateDate`, the move-blocks way:
@@ -637,12 +772,15 @@ HikkiUITests/                 XCUITest flows
   `window.hikki.setComments`. A block without text (an image, an embed, a file, a formula) gets a thread on the whole
   block instead — the block menu's Comment, or ⇧⌘M on a selected block: the thread carries `blockId` (an optional
   key in the file and in `commentCreate`; its `quote` is the block's name, "Image · photo.png"), nothing is marked,
-  the block is outlined (`hk-comment-block`), and its card / badge / sheet are the passage threads' own. A draft is only a highlight until it is sent; adding or removing the mark is kept out of undo but saved (`SAVE_META`
+  the block is outlined (`hk-comment-block`), and its card / badge / sheet are the passage threads' own. A draft is only a highlight until it is sent; adding or removing the mark is kept out of undo but saved (`SAVE_META`, `apps/editor/src/core/meta.ts`
   — `isUserEdit` in `apps/editor/src/core/bridge.ts` otherwise skips non-undo transactions), and an open thread whose mark is
-  missing is marked again where its quote occurs once (`findQuote`). `apps/editor/src/components/comments.tsx` draws
-  cards in the right margin when the window is wide (`#page[data-comments]` shifts the page left at ≥ 1240 px), count
-  badges with a thread card under the passage otherwise; on a phone (`PHONE_QUERY`: coarse pointer, narrow or short
-  window) the open thread or a new comment is a bottom sheet instead (shadcn `Drawer`, `apps/editor/src/components/ui/drawer.tsx`,
+  missing is marked again where its quote occurs once (`findQuote`). `apps/editor/src/components/comments.tsx` (placed by
+  `apps/editor/src/lib/comment-layout.ts`; cards in `apps/editor/src/components/comment-thread.tsx`, the field in
+  `apps/editor/src/components/comment-field.tsx`) draws
+  cards in the right margin when the window is wide (`#page[data-comments]` shifts the page left from the `comments` breakpoint, 1240 px), count
+  badges with a thread card under the passage otherwise; on a phone (`PHONE` in `apps/editor/src/lib/device.ts`: coarse pointer, narrow or short
+  window) the open thread or a new comment is a bottom sheet instead (the page's one `BottomSheet`, `apps/editor/src/components/bottom-sheet.tsx`, over shadcn's
+  `Drawer`, `apps/editor/src/components/ui/drawer.tsx`,
   restyled to the motion tokens): grabber, quote, comments with their actions always shown, the reply field at the
   foot riding the software keyboard (`visualViewport`) and clear of the native bottom bar (`--hk-inset-bottom`);
   scrim, swipe down or Escape close it, and neither opening nor closing it focuses the page. In the iPhone layout an open
@@ -659,7 +797,8 @@ HikkiUITests/                 XCUITest flows
   "@" in the field (typed, or its @ button) mentions a page: stored as `[@Title](hikki://page/<id>)` in the text
   (`apps/editor/src/lib/comment-text.ts`), drawn as a chip with the page's current icon and title, "@Title" natively
   (`PageComment.plainBody`). The page column is
-  `.hk-column` alone in `apps/editor/index.html` (fixed 96 px side margins).
+  `.hk-column` alone in `apps/editor/index.html` (96 px side margins in a wide window, 10 % of a narrower one —
+  never under the handles' 56 px on the left; slim on touch screens).
 - **Inspector** (Mac/iPad: a full-height trailing panel inside the detail column — SwiftUI's `.inspector` widened the
   window — with the window title hidden while it is open, as in Photos; on iPad and an unfolded Duo the sidebar hides
   while it is open and comes back as it was, `sidebarBeforeInspector` in ContentView; iPhone: a sheet from the page ⋯ menu):
@@ -673,20 +812,24 @@ HikkiUITests/                 XCUITest flows
   characters — then where its file lives with the folder's sync state, and whose AI key is in use: `PageFacts`, the
   same on the iPhone sheet) are the last lines of its ⋯ menu. The editor reports the outline and size with `pageInfo` (headings with
   block ids, words — CJK characters count one each — and characters from Tiptap's CharacterCount) and the heading the
-  reader is in with `activeHeading` (a scroll-spy in `apps/editor/src/core/bridge.ts`: the last heading past a line under
+  reader is in with `activeHeading` (a scroll-spy in `apps/editor/src/core/outline-spy.ts`: the last heading past a line under
   the toolbar, the last one at the end; a heading jumped to from an outline stays marked until the reader scrolls).
   The panel's outline puts it on a background that glides from row to row and keeps it in view; the page's own hover rail lights its bar, and its list opens on it (the shared `GlidingHighlight`, following the hovered row meanwhile). A heading
   picked in the outline lands at the top (`window.hikki.jumpToHeading`). While the inspector shows the outline the
   page's hover rail hides (`window.hikki.setOutlineRail`).
 - **Tabs keep their place**: the editor reports where the page is scrolled (`scroll` message, throttled); ContentView
   remembers it per tab when another tab takes over and, when a tab is shown again, loads its page and scrolls back
-  (`window.hikki.restoreScroll`). Another page opened inside a tab starts at its top (`loadDocument`).
+  (`window.hikki.restoreScroll`, in the same JavaScript call as `loadDocument` and at once, so no frame of the page at
+  its top is painted before the jump). Another page opened inside a tab starts at its top (`loadDocument`).
 - **A window's editors** (`WindowEditors` in `Hikki/Sources/ContentView.swift`): the main one made once per window, the
   split pane's on first use. Each holds the window's `EditorSettings` (tone, spelling, AI review style, shortcuts —
   ContentView sets both at once) and replays them on ready; bridge calls go through its `call` helper. The tree
-  changes on every save, so nothing on that path may re-render or re-send for nothing: the navigator assigns tabs /
+  changes on every save, so nothing on that path may re-render or re-send for nothing: the window's root never reads
+  `model.tree` in its body — `TreeFollower` (a zero-size view in ContentView) alone does, pruning tabs, revealing the
+  page and feeding the editors — the navigator assigns tabs /
   expanded rows only when they changed (`NavigationTabs.pruned`), and each editor sends the page index and its own
-  page's lock only when they changed (`EditorPageState`, `HikkiCore/Sources/Bridge/EditorPageState.swift`). Editor
+  page's lock only when they changed (`EditorPageState`, `HikkiCore/Sources/Bridge/EditorPageState.swift`); the
+  iPhone's Home reads its figures (`AppModel.homeFigures`) off the main thread, debounced. Editor
   callbacks capture weakly (a strong capture kept closed windows' web processes alive; DEBUG logs "editor released").
   Unsaved typing is flushed when a window goes to the background or closes and on ⌘Q (`Hikki/Sources/SaveOnExit.swift`:
   every editor, then the workspace folder, 3 s cap; iOS under a background-task assertion). The page / trash
@@ -707,13 +850,22 @@ HikkiUITests/                 XCUITest flows
   the chat's composer and Settings → AI) is Notion's: Auto, starred models under Favorites, Recommended, Other
   models — a star on each row (`AIModelFavorites` in `HikkiAI/Sources/AIModelFavorites.swift`, UserDefaults
   `ai.favoriteModels`); a pick in the chat is also the default, which the page's Ask AI runs on. Each provider may have a base URL (blank: its own API; `HikkiAI/Sources/AIEndpoint.swift` — OpenAI's base
-  includes `/v1`, Anthropic's doesn't, as in their SDKs; https, or http only to loopback). Keys live in the Keychain
-  (`AIPreferences`, `Hikki/Sources/AISettings.swift`), one per provider and origin (`AIEndpoint.keyAccount`), so a key
-  only ever goes to the address it was entered for. The editor asks through `aiRequest` / `aiCancel` (selected parts of blocks as inline HTML + nearby
+  includes `/v1`, Anthropic's doesn't, as in their SDKs; https, or http only to loopback). Keys live in iCloud Keychain
+  (`Hikki/Sources/Keychain.swift`: synchronizable items in the data protection keychain, the Mac's too, so a key typed
+  on one device reaches the owner's others end-to-end encrypted; the device-only items from before move once —
+  `migrateToSynchronizable`: read, write the synced one, delete the old only then — and are still read meanwhile; a
+  write updates in place and a failure is `aiKeySaveFailed`, toasted once), read through `AIPreferences`
+  (`Hikki/Sources/AISettings.swift`), one per provider and origin (`AIEndpoint.keyAccount`), so a key
+  only ever goes to the address it was entered for — never in the key-value store with the other settings. The editor asks through `aiRequest` / `aiCancel` (selected parts of blocks as inline HTML + nearby
   text) and gets `window.hikki.aiEvent`s back. `Hikki/Sources/AIService.swift` runs them (one per window, both
   editors) with the prompts in `HikkiAI/Sources/AIPrompts.swift`: an edit asks for JSON
-  `{"blocks":[{id, html}],"notes":["…"]}` — the blocks hold only what belongs in the page (same ids, inline tags only:
-  the edited text, a translation added after each sentence), `notes` everything said to the user (Markdown: answers, a
+  `{"blocks":[{id, html}],"added":[{type, html}],"notes":["…"]}` — the blocks hold only what belongs in the page (same ids, inline tags only:
+  the edited text, a translation added after each sentence), `added` the new blocks the user's own instruction asked
+  for (`custom` only — a preset never adds, an answer goes to notes; `paragraph` / `heading1-3` / `bullet` /
+  `numbered` / `quote` with inline HTML, parsed by `parseEditAdded` in `apps/editor/src/lib/ai-content.ts`, at most
+  20; green ghosts after the selection's last block in the `inline` style, `+` lines in `diff`; Accept inserts them
+  after the selection in the same undo step as the edit, a run of items as one list, and a note inserted afterwards
+  lands below them), `notes` everything said to the user (Markdown: answers, a
   check's verdict, why — reasons too, when asked; the per-change `explain` of the retired card style is gone) — an
   answer for short Markdown with web search; page text is wrapped in tags as data. In the page: the selection menu's
   "Ask AI" (`apps/editor/src/components/ai-panel.tsx`) runs a preset or the user's words, on the default model or
@@ -737,7 +889,8 @@ HikkiUITests/                 XCUITest flows
   chat by `AIHandoff.placement` (HikkiCore) — the inspector in AI mode (opened, or switched from outline / comments) on
   Mac and a wide iPad — in a split window, the panel of the side that handed off — the Ask AI sheet on iPhone — then sets the passage as the chat's selection and sends the
   instruction as the next turn of that page's conversation. Answers get a card (Insert below, Copy) that draws their
-  Markdown as page blocks (`markdownBlocks` / `markdownDOM` in `apps/editor/src/core/convert.ts`: no media, web links only)
+  Markdown as page blocks (`answerBlocks` / `answerDOM` in `apps/editor/src/core/answer-markdown.ts`, read with the open editor's
+  schema: no media, web links only)
   and inserts it as blocks; answers and reasons are written in the app's language (`AIPrompts.languageLine`). The chat's
   answers (`Hikki/Sources/AIAnswerText.swift`) are full GitHub-flavoured Markdown: `AIMarkdown`
   (`HikkiAI/Sources/AIMarkdown.swift`, swift-markdown's cmark-gfm tree, ported from exodus-ios's MarkdownKit) gives
@@ -778,7 +931,9 @@ HikkiUITests/                 XCUITest flows
   (`ChatTurn.tools`), drawn by HikkiUI's `ToolCallCards` (diffs: `LineDiff` in HikkiCore; mapping in
   `Hikki/Sources/AIChatTools.swift`). Settings → AI → Use files in the workspace folder (`AIPreferences.usesFiles`,
   off by default: a file read goes to the model and may carry instructions meant to send it on) turns them on. The
-  card asks with the whole change (texts are capped only when the turn is kept, `ChatToolCall.kept`), and a change
+  card asks with the whole change (texts are capped only when the turn is kept, `ChatToolCall.kept`), Allow writes
+  exactly the text the card showed (`WorkspaceFiles.perform(_:approved:)`: a file that changed since the card is
+  refused, nothing written — never a fresh plan), and a change
   too large to diff is refused, not asked about; protected names are compared folded (case, width, accents) and by
   their name on disk (`WorkspaceFiles.isProtected`).
   With web search on, the chat also asks OpenAI's search for pictures (`AIRequest.imageResults`: `search_content_types` + `include: web_search_call.results`, read from the search call's `image_result`s as `.image`) and shows them under the answer (HikkiUI's `ImageResultStrip`, kept as `ChatTurn.images`): Add to page fetches one into the assets (`WebImage`, `HikkiCore/Sources/Text/WebImage.swift`: LinkPreview's public-host rules) and puts it at the caret (`EditorController.insertWebImage`). While the model works the chat's "Thinking…" / "Searching the web…" line is HikkiUI's `ShimmerText` (a foreground
@@ -791,8 +946,11 @@ HikkiUITests/                 XCUITest flows
   inserts below the block; an unreadable file is `aiMediaUnreadable`. Web pictures, video and audio get no AI (nothing
   reads or transcribes them on the device). **Ask AI edits the page** (Notion's review cards): the chat
   sends the open page as blocks with their ids (`window.hikki.aiPageBlocks`, `AIPageEdits.pageJSON`) and an answer
-  that changes it ends with a fenced `hikki-changes` JSON block — rewrite / insert / move / delete, one block each —
-  hidden from the chat and checked against those ids (`HikkiAI/Sources/AIPageEdits.swift`). The changes
+  that changes it ends with a fenced `hikki-changes` JSON block — rewrite / insert / move / delete, one block each;
+  `"after": "end"` (or the last id) is the end of the page; several inserts with the same `after`, in reading order,
+  add a passage of several blocks, each kept after the one before it however they are approved (`inserted` in
+  `apps/editor/src/extensions/ai-changes.ts`) — hidden from the chat and checked against those ids, given in reading order
+  (`HikkiAI/Sources/AIPageEdits.swift`). The changes
   (`AIPageChange`, kept on the answer's `ChatTurn`) are HikkiUI's `AIChangeReview` under it: a card per pending change
   (a tap shows it in the page — `window.hikki.aiFocusChange`; ✓ / ✕ decide there), Approve all, and the reviewed ones
   in a stack of cards (newest on top, the AI's words green, a tap spreads it). In the page
@@ -808,14 +966,15 @@ HikkiUITests/                 XCUITest flows
 - **Keyboard bar (iOS)**, Notion's (`Hikki/Sources/KeyboardToolbar.swift`): native SwiftUI over the software keyboard
   as the web view's input accessory (a runtime subclass of WebKit's content view, no private API) — one Liquid Glass
   capsule (HikkiUI's `KeyboardAccessoryBar`: tools scroll inside it, the keyboard button pinned at its end). With a
-  caret: AI · + · Aa · file · photo · turn into · undo · emoji · comment · @ · delete · indent · outdent · move up ·
+  caret: AI · + · Aa · file · photo · turn into · undo · comment · @ · delete · indent · outdent · move up ·
   move down · ⋯; with a selection: Aa · B · I · U · S · colour · AI · link · comment · ⋯ — the page's floating
   selection menu stays away meanwhile (`window.hikki.setKeyboardBar`). +, Aa and turn into open a panel in the
   keyboard's place at its height (the same subclass's `inputView`, swapped with `reloadInputViews`, the caret staying
   put): HikkiUI's `KeyboardBlockPanel` (the "/" catalog as flat two-column rows; turn into marks the current kind) and
   `KeyboardFormatPanel` (marks, Turn into, text colour and background — `Content`: the marks row only while the bar
   doesn't show those marks itself, and the bar's colour tool opens the colours alone, `Panel.color`); the bar's end
-  button brings the keyboard back; a swipe down on a panel is only ever its scroll, never a close. The bar's tools are `ToolbarIconButton`'s `quiet` style
+  button brings the keyboard back, and so does a tap elsewhere in the text that collapses the selection a panel was
+  opened on (`selectionCollapsed`); a swipe down on a panel is only ever its scroll, never a close. The bar's tools are `ToolbarIconButton`'s `quiet` style
   (muted glyphs, the open tool's glyph in the tone, no box — Notion's), each a full `Size.touchTarget` (44 pt) square,
   as are the panels' rows. The page's floating bar steps aside while the keyboard bar is on screen (`KeyboardBar.shown`,
   set by the bar's own view: a hardware keyboard shows the bar alone at the screen's foot without the keyboard
@@ -853,14 +1012,17 @@ HikkiUITests/                 XCUITest flows
   `UIContentSizeCategory.didChangeNotification`; `--hk-text-scale`, clamped 0.85–2, on `.tiptap` and the title
   `.hk-title`; the UI around them keeps its size). `testPageFollowsTheSystemTextSize` launches at XXXL.
 - **Editor content safety**: content that doesn't fit the schema (corrupt, or from a newer Hikki) opens read-only and
-  is never saved (`enableContentCheck`); housekeeping transactions (`addToHistory: false` — UniqueID stamping
-  block ids, remote reloads) never count as edits; continuous typing still saves every 2 s (`maxWaitMs`).
+  is never saved (`enableContentCheck`), showing what fits (`readableContent` in `apps/editor/src/core/readable.ts`:
+  unknown blocks as their text, misnested ones as their blocks, unknown marks dropped) rather than Tiptap's empty page; housekeeping transactions (`addToHistory: false` — UniqueID stamping
+  block ids, remote reloads) never count as edits; imports and loads stamp missing block ids themselves first
+  (`withBlockIds`, `apps/editor/src/core/block-ids.ts`: UniqueID's own pass over a page without them is quadratic —
+  2000 blocks took 7 s); continuous typing still saves every 2 s (`maxWaitMs`).
 - **Trial and unlock** (StoreKit 2, `Hikki/Sources/Purchases.swift`): free for `Access.trialDays` (14) days from the
   first download (`AppTransaction.originalPurchaseDate`; this install's first launch where the store can't say), then
   one non-consumable, `app.yancey.hikki.unlock` (universal purchase: iPhone, iPad and Mac). Past the trial without it
   the app is read only (`Access`, `HikkiCore/Sources/Store/Access.swift`): every editor is locked the way a locked page
   is (`EditorController.readOnly`, `EditorPageState.lockChange(…readOnly:)`), a `ReadOnlyBar` sits over the detail
-  column, and every way to write — new pages, imports, restores, AI — goes through `Purchases.allowsWriting()`, which
+  column, and every way to write — new pages, duplicates, moves, the trash (in, out, for good, emptied), imports, restored versions, AI — goes through `Purchases.allowsWriting()`, which
   brings up HikkiUI's `UnlockSheet` instead (also Settings → About → Purchase, with Restore Purchases). Reading,
   search, copy and export stay open. Debug runs are unlocked unless `HIKKI_ACCESS=trial|expired|unlocked|store`;
   `store` asks StoreKit itself — the `Hikki-StoreKit` scheme runs with `Hikki/Hikki.storekit`.
@@ -902,7 +1064,22 @@ HikkiUITests/                 XCUITest flows
   up first, through `MenuBarRequests`), a page-sized sheet on a regular-width iPad, the hub list in a sheet on iPhone.
   Each page is a grouped form of sections, the last page opened is remembered; ⌘W closes Settings, not the tab under
   it. `HIKKI_OPEN_SETTINGS=<page>` opens that page (screenshots). Optional integrations get pages here with a
-  detected/not-detected status, exodus's way.
+  detected/not-detected status, exodus's way. **Every value in Settings syncs** across the owner's devices (General →
+  Sync says so, with the iCloud account's state): the AI keys through iCloud Keychain (see AI), the rest through
+  iCloud key-value storage — `Hikki/Sources/SyncedSettings.swift` lists the UserDefaults keys (theme, spelling, menu
+  bar, Spotlight, trash days, export format, shortcut overrides, AI model / favorites / review style / chat
+  retention / file use / base URLs) and HikkiCore's `SettingsSync` (`HikkiCore/Sources/Store/SettingsSync.swift`,
+  `SettingsSyncTests`) mirrors them, so `@AppStorage` keeps reading UserDefaults. Each value goes up as `{at, value}`
+  (`{at}` for a reset) and the later change wins key by key (`SettingsMerge`: the store keeps no time of its own); a
+  tie goes to iCloud's, and values nobody saw being set (from before syncing) have no age, so two devices end up
+  agreeing. At launch both sides are merged, then a UserDefaults change goes up and an external one comes down
+  (written while `applying`, against the last agreed state kept under `settingsSync.state`, so nothing echoes),
+  posted as `changedRemotely` for what doesn't follow UserDefaults (shortcuts reload, Spotlight, trash purge, chat
+  retention); quota and account-change notices keep what is here. Window layout (inspector width, split, Home's
+  layout, the last Settings page) stays per device, and so does the language (the system's per-app setting). A run
+  on its own data folder (`HIKKI_DATA_DIR`) never touches the account's settings unless `HIKKI_SETTINGS_SYNC=1`.
+  Entitlement: `com.apple.developer.ubiquity-kvstore-identifier` = `$(TeamIdentifierPrefix)app.yancey.hikki` in all
+  three entitlements files — one identifier, so the Mac and iOS share one store.
 - **Appearance** (Settings → General → Theme) is applied app-wide (`NSApp.appearance` / window `overrideUserInterfaceStyle`),
   not with `preferredColorScheme`, which left parts of windows in the old scheme after switching back.
 - **Mac sandbox** (the Mac App Store takes nothing else): `Hikki/Hikki.entitlements` (Release) — App Sandbox, network

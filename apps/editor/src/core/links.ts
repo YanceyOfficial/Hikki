@@ -27,3 +27,14 @@ export function normalizeHref(raw: string): string | null {
     /^[a-z][a-z0-9+.-]*:/iu.test(value) || /^[/#]/u.test(value) ? value : `https://${value}`
   return isSafeHref(href) ? href : null
 }
+
+/** Whether `href` is a web page (http or https) — one the system browser can be handed, or a citation may name. */
+export function isWebURL(href: unknown): href is string {
+  if (typeof href !== 'string' || !href) return false
+  try {
+    const { protocol } = new URL(href)
+    return protocol === 'https:' || protocol === 'http:'
+  } catch {
+    return false
+  }
+}

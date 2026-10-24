@@ -20,6 +20,38 @@ const ACTIONS = [
   { title: 'On a picture or a PDF', items: ['Describe', 'Extract text', 'Explain', 'Summarize'] }
 ]
 
+/**
+ * The chat's built-in tools, as HikkiAI gives them to the model: page changes (`AIPageEdits`), the provider's web
+ * search, `make_picture` (`AIPictures`), attachments and @ pages, the workspace file tools (`WorkspaceFiles`, off
+ * until Settings → AI turns them on) and a drawing's Text to diagram.
+ */
+const TOOLS = [
+  {
+    title: 'Edit the page',
+    text: 'Rewrites, adds, moves or deletes blocks. Each change waits as a card: approve it, skip it or edit it first.'
+  },
+  {
+    title: 'Search the web',
+    text: 'Answers with their sources linked, and pictures it finds can go straight into the page. One switch turns it off.'
+  },
+  {
+    title: 'Make pictures',
+    text: 'Illustrations, covers and infographics from a sentence, or a change to a picture you attach. Needs an OpenAI key.'
+  },
+  {
+    title: 'Read what you give it',
+    text: 'The open page, the passage you selected, other pages added with @, and pictures and PDFs you attach.'
+  },
+  {
+    title: 'Look through your workspace',
+    text: 'With file use on, it lists, reads and searches the files in your workspace, your pages among them, and writes one only once you approve. Off until you turn it on.'
+  },
+  {
+    title: 'Draw diagrams',
+    text: 'In a drawing, describe a flowchart or a sequence and it is drawn as shapes you can move.'
+  }
+]
+
 /** The two ways an edit can be reviewed (Settings → AI), shown on the same sentence, each cropped to its panel. */
 const REVIEW_STYLES = [
   {
@@ -40,7 +72,7 @@ const REVIEW_STYLES = [
   }
 ]
 
-/** AI: the panel beside the page and the reviewed edit of a selection. */
+/** AI: the panel beside the page, the reviewed edit of a selection and the chat's built-in tools. */
 export function AskAI() {
   return (
     <section id="ai" class={`${row} grid-cols-1 lg:grid-cols-12`}>
@@ -74,10 +106,9 @@ export function AskAI() {
         <div class="mt-auto">
           <h3 class="expanded text-2xl leading-tight font-[800]">Ask beside the page.</h3>
           <p class="mt-4 leading-relaxed">
-            The AI panel reads the page you have open and the passage you selected. Add other pages
-            with @, attach a picture or a PDF, and let it search the web, with its sources linked.
-            Ask it to change the page and each change waits for your approval; ask for a picture and
-            it draws one (with an OpenAI key).
+            The AI panel reads the page you have open and the passage you selected. Each page keeps
+            its own conversation, on every device. Ask it to change the page and each change waits
+            for your approval.
           </p>
         </div>
       </div>
@@ -117,6 +148,23 @@ export function AskAI() {
                 <strong class="text-ink">{style.title}</strong> {style.text}
               </figcaption>
             </figure>
+          )}
+        </For>
+      </div>
+      <div class={`${row} grid-cols-1 sm:grid-cols-2 lg:col-span-12 lg:grid-cols-4`}>
+        <div class="cell bg-yellow p-6 sm:col-span-2 md:p-8 lg:col-span-1 lg:row-span-2">
+          <h3 class="expanded text-2xl leading-tight font-[800]">Built-in tools.</h3>
+          <p class="mt-4 leading-relaxed text-muted">
+            The chat doesn’t only answer. It reaches for these when a question calls for them, and
+            nothing it changes stays until you say so.
+          </p>
+        </div>
+        <For each={TOOLS}>
+          {(tool) => (
+            <article class="cell p-6 md:p-8">
+              <h4 class="expanded text-xl font-[800]">{tool.title}</h4>
+              <p class="mt-3 leading-relaxed text-muted">{tool.text}</p>
+            </article>
           )}
         </For>
       </div>

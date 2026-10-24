@@ -56,9 +56,14 @@ public enum AIPageEdits {
     /// Whether the answer has started its changes block (the chat says it is preparing changes meanwhile).
     public static func hasChanges(_ answer: String) -> Bool { answer.contains(fence) }
 
-    /// The changes the answer proposes, kept only where they name `blocks` of the page (rewrite, move and delete one
-    /// change per block); none when there is no block or it can't be read.
-    public static func changes(in answer: String, blocks: Set<String>) -> [ProposedPageChange] {
+    /// `"after": "end"` in an insert or a move: after the page's last block.
+    public static let endOfPage = "end"
+
+    /// The changes the answer proposes, kept only where they name `blocks` of the page — its block ids in reading
+    /// order (rewrite, move and delete one change per block; `after` may be `end`, which reads as the last id; several
+    /// inserts may share one `after`: they go in that order); none when there is no block or it can't be read.
+    public static func changes(in answer: String, blocks: [String]) -> [ProposedPageChange] {
+        let known = Set(blocks)
         guard let start = answer.range(of: fence) else { return [] }
         var body = answer[start.upperBound...]
         if let end = body.range(of: "```") { body = body[..<end.lowerBound] }
@@ -74,14 +79,15 @@ public enum AIPageEdits {
                 let kind = fields["kind"] as? String, kinds.contains(kind)
             else { continue }
             let block = fields["block"] as? String
-            let after = fields["after"] as? String
+            var after = fields["after"] as? String
+            if after == endOfPage, let last = blocks.last { after = last }
             let html = (fields["html"] as? String).map { String($0.prefix(maxHTML)) }
-            if let after, !blocks.contains(after) { continue }
+            if let after, !known.contains(after) { continue }
             switch kind {
             case "insert":
                 guard let html, !html.isEmpty else { continue }
             default:
-                guard let block, blocks.contains(block), !touched.contains(block) else { continue }
+                guard let block, known.contains(block), !touched.contains(block) else { continue }
                 if kind == "rewrite", html == nil { continue }
                 if kind == "move", after == block { continue }
                 touched.insert(block)
@@ -126,14 +132,17 @@ public enum AIPageEdits {
         ```
         Kinds:
         - rewrite: one block's text is replaced — "block", "html".
-        - insert: a new block — "after" (the id it follows, or null for the top of the page), "type" (paragraph, \
-        heading1, heading2 or heading3; after a list item it becomes the next item), "html".
-        - move: "block" goes after "after" (an id, or null for the top).
+        - insert: a new block — "after" (the id it follows: the last id in the list puts it at the end of the page, \
+        and "end" means the same; null for the top of the page), "type" (paragraph, heading1, heading2 or heading3; \
+        after a list item it becomes the next item), "html". To add several blocks in one place, list several inserts \
+        with the same "after", in reading order, one block each: a paragraph break is a new insert, never <br><br> \
+        inside one block.
+        - move: "block" goes after "after" (an id, "end" for the end of the page, or null for the top).
         - delete: "block" is removed.
-        Rules: use the page's block ids exactly as given; at most one change per block; each change touches one block, \
-        so prefer several small changes to one large one; in html use only inline tags (strong, em, u, s, code, a with \
-        href, br) and keep the formatting the text already has; keep the page's language unless asked to translate; \
-        write titles and reasons in the user's language. Never put a hikki-changes block in a reply that doesn't change \
-        the page.
+        Rules: use the page's block ids exactly as given; at most one change per existing block; each change touches \
+        one block, so prefer several small changes to one large one; in html use only inline tags (strong, em, u, s, \
+        code, a with href, br) and keep the formatting the text already has; keep the page's language unless asked to \
+        translate; write titles and reasons in the user's language. Never put a hikki-changes block in a reply that \
+        doesn't change the page.
         """
 }

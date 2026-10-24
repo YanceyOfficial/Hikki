@@ -1,12 +1,15 @@
 import Foundation
 
 /// A photo for a cover, as Hikki's backend (`apps/bff`, which keeps the Unsplash key) hands it over: the picture at
-/// three sizes, its photographer with utm-tagged links (Unsplash's attribution rule) and where a pick is reported.
+/// three sizes plus one sized for a cover, its photographer with utm-tagged links (Unsplash's attribution rule) and
+/// where a pick is reported.
 public struct UnsplashPhoto: Decodable, Sendable, Identifiable, Equatable {
     public let id: String
     public let thumb: URL
     public let regular: URL
     public let full: URL
+    /// High resolution, sized for a cover (the backend's `coverURL`: `urls.raw` at 2560 px); nil from an older one.
+    public let cover: URL?
     /// The photo's average colour ("#a0b1c2"), shown while it loads.
     public let color: String?
     public let alt: String?
@@ -16,13 +19,14 @@ public struct UnsplashPhoto: Decodable, Sendable, Identifiable, Equatable {
     public let downloadLocation: URL
 
     public init(
-        id: String, thumb: URL, regular: URL, full: URL, color: String?, alt: String?, author: String, authorUrl: URL,
-        photoUrl: URL, downloadLocation: URL
+        id: String, thumb: URL, regular: URL, full: URL, cover: URL? = nil, color: String?, alt: String?, author: String,
+        authorUrl: URL, photoUrl: URL, downloadLocation: URL
     ) {
         self.id = id
         self.thumb = thumb
         self.regular = regular
         self.full = full
+        self.cover = cover
         self.color = color
         self.alt = alt
         self.author = author
@@ -30,10 +34,14 @@ public struct UnsplashPhoto: Decodable, Sendable, Identifiable, Equatable {
         self.photoUrl = photoUrl
         self.downloadLocation = downloadLocation
     }
+
+    /// What a pick sets as the cover: the high-resolution `cover` (the grid keeps the thumbnails), `regular` from a
+    /// backend that doesn't send one.
+    public var coverURL: URL { cover ?? regular }
 }
 
 /// Unsplash through Hikki's backend — the native side of `apps/editor/src/lib/unsplash.ts`: landscape photos for a
-/// search (the editorial feed for no query), and a pick counted as a download (Unsplash's guideline).
+/// search (a random batch for no query), and a pick counted as a download (Unsplash's guideline).
 public struct UnsplashClient: Sendable {
     /// Unsplash's home with the referral utm the attribution guideline asks for.
     public static let home = URL(string: "https://unsplash.com/?utm_source=hikki&utm_medium=referral")!

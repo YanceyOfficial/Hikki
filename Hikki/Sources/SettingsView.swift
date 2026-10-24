@@ -274,6 +274,7 @@ private struct SettingsPageContent: View {
             #if os(macOS)
                 MenuBarSection()
             #endif
+            SettingsSyncSection()
         case .shortcuts:
             ShortcutsSection()
         case .ai:
@@ -315,7 +316,7 @@ private struct WorkspaceSection: View {
             if model.workspace?.location == .cloud {
                 LabeledContent("app:settings.storage.sync") {
                     Text(model.cloudStatusText)
-                        .foregroundStyle(model.cloudStatus?.isTrouble == true ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+                        .foregroundStyle(model.cloudStatus?.isTrouble == true ? AnyShapeStyle(Theme.destructive) : AnyShapeStyle(Theme.mutedForeground))
                         .accessibilityIdentifier("settings-sync-status")
                 }
             } else if case .folder(_, let displayName) = model.workspace?.location {
@@ -325,7 +326,7 @@ private struct WorkspaceSection: View {
                 }
                 LabeledContent("app:settings.storage.sync") {
                     syncStatus
-                        .foregroundStyle(model.syncError == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
+                        .foregroundStyle(model.syncError == nil ? AnyShapeStyle(Theme.mutedForeground) : AnyShapeStyle(Theme.destructive))
                         .accessibilityIdentifier("settings-sync-status")
                 }
             }
@@ -362,6 +363,7 @@ private struct WorkspaceSection: View {
     /// When the folder was last reconciled, and what's still on its way ("2 waiting for iCloud").
     /// Always says something for a folder: not yet, why not, or when and what is still on its way.
     private var syncStatus: Text {
+        if model.movingWorkspace { return Text("app:settings.storage.moving") }
         if let error = model.syncError { return Text("app:settings.storage.syncError \(error)") }
         guard let sync = model.lastSync else { return Text("app:settings.storage.notSynced") }
         var text = Text("app:settings.storage.synced \(sync.at, format: .relative(presentation: .named))")
@@ -377,11 +379,16 @@ private struct WorkspaceSection: View {
     }
 }
 
+/// Settings → Workspace → Import & Export's format (synced with the other settings, `SyncedSettings`).
+enum TransferPreferences {
+    static let formatKey = "transfer.format"
+}
+
 /// Settings → Workspace → Import & Export: many files and folders in at once, or the whole workspace out to a folder
 /// (BulkTransfer). The job runs on when Settings closes; its progress and its summary show here.
 private struct TransferSection: View {
     @Environment(AppModel.self) private var model
-    @AppStorage("transfer.format") private var format = WorkspaceExport.Format.markdown
+    @AppStorage(TransferPreferences.formatKey) private var format = WorkspaceExport.Format.markdown
     @State private var isPicking = false
     @State private var picking = Picking.importFiles
 
@@ -560,18 +567,25 @@ private struct WorkspaceIconRow: View {
         } label: {
             Text("app:settings.icon")
             if failed {
-                Text("app:settings.icon.error").font(.caption).foregroundStyle(.red)
+                Text("app:settings.icon.error").font(.hk(.xs)).foregroundStyle(Theme.destructive)
             }
         }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.image]) { result in
             guard case .success(let url) = result else { return }
-            let scoped = url.startAccessingSecurityScopedResource()
-            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-            if let data = try? Data(contentsOf: url), let thumbnail = WorkspaceIcon.thumbnail(of: data) {
-                failed = false
-                model.setWorkspaceIcon(.image(thumbnail))
-            } else {
-                failed = true
+            Task {
+                // Read and scaled off the main actor (a photo can be large).
+                let thumbnail = await Task.detached(priority: .userInitiated) { () -> Data? in
+                    let scoped = url.startAccessingSecurityScopedResource()
+                    defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+                    guard let data = try? Data(contentsOf: url) else { return nil }
+                    return WorkspaceIcon.thumbnail(of: data)
+                }.value
+                if let thumbnail {
+                    failed = false
+                    model.setWorkspaceIcon(.image(thumbnail))
+                } else {
+                    failed = true
+                }
             }
         }
     }
@@ -584,7 +598,7 @@ private struct WorkspaceIconRow: View {
                     pickingEmoji = false
                 } label: {
                     Text(verbatim: emoji)
-                        .font(.title2)
+                        .font(.hk(.xl))
                         .frame(width: Size.iconButton + Spacing.s2, height: Size.iconButton + Spacing.s2)
                         .contentShape(.rect)
                 }
@@ -770,6 +784,35 @@ private struct SpotlightSection: View {
         }
     }
 #endif
+
+/// Settings → General → Sync: settings and AI keys follow the owner's devices through iCloud (SyncedSettings.swift).
+private struct SettingsSyncSection: View {
+    @State private var status: SyncedSettings.Status?
+
+    var body: some View {
+        Section {
+            LabeledContent("app:settings.sync.label") {
+                Text(statusText)
+                    .foregroundStyle(status == .noAccount ? AnyShapeStyle(Theme.destructive) : AnyShapeStyle(Theme.mutedForeground))
+                    .accessibilityIdentifier("settings-settings-sync")
+            }
+        } header: {
+            Text("app:settings.sync.header")
+        } footer: {
+            Text("app:settings.sync.detail")
+        }
+        .task { status = await SyncedSettings.status() }
+    }
+
+    private var statusText: LocalizedStringKey {
+        switch status {
+        case nil: "app:settings.sync.checking"
+        case .on: "app:settings.sync.on"
+        case .noAccount: "app:settings.sync.noAccount"
+        case .off: "app:settings.sync.off"
+        }
+    }
+}
 
 private struct LanguageSection: View {
     var body: some View {

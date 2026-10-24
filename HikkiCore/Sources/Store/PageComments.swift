@@ -109,7 +109,7 @@ public final class PageComments: @unchecked Sendable {
 
     /// The page's threads still there (not deleted), oldest first, each with its remaining comments.
     public func threads(of pageId: String) throws -> [CommentThread] {
-        try lock.withLock { try read(pageId) }
+        try locked(pageId) { try read(pageId) }
             .filter { $0.deletedAt == nil }
             .map { thread in
                 var shown = thread
@@ -182,7 +182,7 @@ public final class PageComments: @unchecked Sendable {
     /// The page is gone for good: its comments go too.
     public func removeAll(pageId: String) {
         guard let file = try? url(for: pageId) else { return }
-        lock.withLock { _ = try? FileManager.default.removeItem(at: file) }
+        lock.withLock { FileLocks.shared.withLock(file) { _ = try? FileManager.default.removeItem(at: file) } }
     }
 
     // MARK: Reading, writing, merging
@@ -198,11 +198,18 @@ public final class PageComments: @unchecked Sendable {
     }
 
     private func change(_ pageId: String, _ apply: (inout [CommentThread]) throws -> Void) throws {
-        try lock.withLock {
+        try locked(pageId) {
             var threads = try read(pageId)
             try apply(&threads)
             try write(threads, pageId)
         }
+    }
+
+    /// Runs `body` holding this store's lock and the file's own (`FileLocks`): what arrives from iCloud is written
+    /// under the file's lock too, so a comment saved meanwhile is never written over.
+    private func locked<T>(_ pageId: String, _ body: () throws -> T) throws -> T {
+        let file = try url(for: pageId)
+        return try lock.withLock { try FileLocks.shared.withLock(file, body) }
     }
 
     /// The file's threads, with any conflicting versions iCloud kept merged in (and then let go).

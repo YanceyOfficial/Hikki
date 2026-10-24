@@ -136,7 +136,7 @@ public struct IconPickerSheet: View {
                     withAnimation(Motion.easeInOut()) { scroller.scrollTo(section.id, anchor: .top) }
                 } label: {
                     Text(verbatim: section.emojis.first?.emoji ?? "")
-                        .font(.system(size: TextSize.lg.rawValue))
+                        .font(.system(size: TextSize.lg.rawValue))  // design-lint: allow (an emoji at a token size)
                         .grayscale(1)
                         .opacity(0.7)
                         .frame(maxWidth: .infinity, minHeight: Size.iconButton)
@@ -187,7 +187,7 @@ public struct IconPickerSheet: View {
                     pick(item.emoji)
                 } label: {
                     Text(verbatim: item.emoji)
-                        .font(.system(size: TextSize.x3l.rawValue))
+                        .font(.system(size: TextSize.x3l.rawValue))  // design-lint: allow (an emoji at a token size)
                         .frame(maxWidth: .infinity, minHeight: Size.emojiCell)
                         .background(
                             item.emoji == current ? Theme.accent : Color.clear, in: .rect(cornerRadius: Radius.md)

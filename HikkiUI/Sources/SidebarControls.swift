@@ -45,7 +45,7 @@ public struct GlassSearchField: View {
                 Spacer(minLength: Spacing.s1)
                 Text(verbatim: shortcut).font(.hk(.xs, .medium))
             }
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.mutedForeground)
             .padding(.horizontal, Spacing.s3)
             .frame(height: Size.searchField)
             .contentShape(.capsule)

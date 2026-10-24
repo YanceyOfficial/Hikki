@@ -19,14 +19,6 @@ struct PageTreeTests {
         #expect(tree.all.map(\.id) == ["a", "a1", "a1x", "a2", "b"])
     }
 
-    @Test func moveTargetsSkipTheSubtreeAndCurrentParent() {
-        let tree = PageTree([page("a"), page("b"), page("a1", parent: "a"), page("a1x", parent: "a1"), page("b1", parent: "b")])
-        let targets = tree.moveTargets(for: "a1")
-        #expect(targets.map(\.page.id) == ["b", "b1"])  // not a1 / a1x (own subtree), not a (already its parent)
-        #expect(targets.map(\.depth) == [0, 1])
-        #expect(tree.moveTargets(for: "b").map(\.page.id) == ["a", "a1", "a1x"])
-    }
-
     @Test func orphansSurfaceAtTheTopLevel() {
         let tree = PageTree([page("a"), page("orphan", parent: "gone")])
         #expect(tree.roots.map(\.id) == ["a", "orphan"])
@@ -36,6 +28,14 @@ struct PageTreeTests {
         let tree = PageTree([page("a"), page("a1", parent: "a"), page("a1x", parent: "a1")])
         #expect(tree.path(to: "a1x").map(\.id) == ["a", "a1", "a1x"])
         #expect(tree.path(to: "missing").isEmpty)
+    }
+
+    @Test func subpageCountTakesEveryDepth() {
+        let tree = PageTree([page("a"), page("b"), page("a1", parent: "a"), page("a2", parent: "a"), page("a1x", parent: "a1")])
+        #expect(tree.subpageCount(of: "a") == 3)  // a1, a1x, a2 go to the trash with it
+        #expect(tree.subpageCount(of: "a1") == 1)
+        #expect(tree.subpageCount(of: "b") == 0)
+        #expect(tree.subpageCount(of: "missing") == 0)
     }
 
     @Test func survivesParentCycles() {

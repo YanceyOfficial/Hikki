@@ -1,16 +1,18 @@
 import gripSvg from '@phosphor-icons/core/assets/bold/dots-six-vertical-bold.svg?raw'
 import plusSvg from '@phosphor-icons/core/assets/regular/plus.svg?raw'
 import { Extension, type Editor } from '@tiptap/core'
+import type { Node as PMNode } from '@tiptap/pm/model'
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 
 import { openBlockMenu } from '../components/block-menu'
 import { t } from '../core/i18n'
 import { tiptapShortcut, type ShortcutId } from '../core/shortcuts'
+import { LAYOUT } from '../generated/layout'
 import { FINE_POINTER, matches } from '../lib/device'
 import { BlockHighlight, BlockHighlightKey, setBlockHighlight } from './block-highlight'
 import {
-  duplicateUnit,
+  BLOCK_UNIT_ACTIONS,
   firstTextPos,
   handleUnitAtPos,
   moveUnit,
@@ -20,26 +22,6 @@ import {
 import { dropBeside, MAX_COLUMNS } from './columns'
 
 export const BlockControlsKey = new PluginKey('blockControls')
-
-const atCaret = (editor: Editor) => unitAtPos(editor.state, editor.state.selection.from)
-
-/** Moves the block at the caret one place up or down among its siblings. */
-const moveAtCaret = (editor: Editor, dir: -1 | 1) => {
-  const unit = atCaret(editor)
-  if (!unit) return false
-  const $pos = editor.state.doc.resolve(unit.pos)
-  const index = $pos.index()
-  const parent = $pos.parent
-  if (dir === -1 && index === 0) return true
-  if (dir === 1 && index >= parent.childCount - 1) return true
-  const target =
-    dir === -1
-      ? unit.pos - parent.child(index - 1).nodeSize
-      : unit.pos + unit.node.nodeSize + parent.child(index + 1).nodeSize
-  const tr = moveUnit(editor.state, unit, target)
-  if (tr) editor.view.dispatch(tr)
-  return true
-}
 
 /** Pixels the pointer must travel before a press on the grip becomes a drag (otherwise it's a click). */
 const DRAG_THRESHOLD = 4
@@ -85,6 +67,50 @@ export function columnFloor(view: EditorView, pos: number): number | null {
   return null
 }
 
+/**
+ * A point over a list's markers (its numbers, bullets, checkboxes) hits the list, not an item: the markers sit in
+ * the list's padding. The item on that row is the unit, as over its text — nested lists too.
+ */
+export function listItemAtY(view: EditorView, unit: BlockUnit, y: number): BlockUnit {
+  let current = unit
+  for (;;) {
+    // A list: its item on that row. An item: a list nested in it on that row (then that list's item).
+    const wanted = isList(current.node) ? isItem : isItem(current.node) ? isList : null
+    if (!wanted) return current
+    let next: BlockUnit | null = null
+    current.node.forEach((child, offset) => {
+      if (next || !wanted(child)) return
+      const pos = current.pos + 1 + offset
+      const dom = view.nodeDOM(pos)
+      if (!(dom instanceof HTMLElement)) return
+      const rect = dom.getBoundingClientRect()
+      if (y >= rect.top && y < rect.bottom) next = { pos, node: child, depth: current.depth + 1 }
+    })
+    if (!next) return current
+    current = next
+  }
+}
+
+const isItem = (node: PMNode) => node.type.name === 'listItem' || node.type.name === 'taskItem'
+const isList = (node: PMNode) =>
+  node.type.name === 'bulletList' ||
+  node.type.name === 'orderedList' ||
+  node.type.name === 'taskList'
+
+/**
+ * The x to hit-test for a pointer at `x` over a row of side-by-side columns (their boxes, left to right): inside the
+ * column it is over, and in the gap between two columns inside the column after it — the gap is that column's
+ * gutter, where its handle sits (a hit test there finds the nearest text, the column before's). Unchanged outside
+ * the row's span or when the row stacks its columns.
+ */
+export function columnHitX(columns: readonly { left: number; right: number }[], x: number): number {
+  if (columns.length < 2) return x
+  for (let i = 1; i < columns.length; i++) if (columns[i].left < columns[i - 1].right - 1) return x // stacked
+  if (x < columns[0].left || x > columns.at(-1)!.right) return x
+  const column = columns.find((c) => x <= c.right)!
+  return Math.min(Math.max(x, column.left + 2), column.right - 2)
+}
+
 const icon = (svg: string) =>
   svg.replace('<svg ', '<svg width="18" height="18" aria-hidden="true" ')
 
@@ -94,18 +120,6 @@ const icon = (svg: string) =>
  * ghost follows the pointer and a line marks the gap; near another block's side edge the drop makes
  * columns. Click the grip for the block menu. Fine pointers only (touch would fight text selection).
  */
-/** Duplicate the block (Notion ⌘D), move it up/down (⌘⇧↑ / ⌘⇧↓) — by shortcut id, for rebound keys too. */
-export const BLOCK_UNIT_ACTIONS: Partial<Record<ShortcutId, (editor: Editor) => boolean>> = {
-  duplicateBlock: (editor) => {
-    const unit = atCaret(editor)
-    if (!unit) return false
-    editor.view.dispatch(duplicateUnit(editor.state, unit))
-    return true
-  },
-  moveBlockUp: (editor) => moveAtCaret(editor, -1),
-  moveBlockDown: (editor) => moveAtCaret(editor, 1)
-}
-
 export const BlockControls = Extension.create<{ enabled: boolean | null }>({
   name: 'blockControls',
 
@@ -157,9 +171,11 @@ class BlockControlsView {
   ) {
     this.handle = document.createElement('div')
     this.handle.className = 'hk-block-handle'
-    this.handle.dataset.hidden = 'true'
+    this.setHandleHidden(true)
     const plus = document.createElement('button')
     plus.type = 'button'
+    // Pointer-only, as Notion's: the keyboard has "/" and the block shortcuts; never a stop in the tab order.
+    plus.tabIndex = -1
     plus.className = 'hk-block-plus'
     plus.setAttribute('aria-label', t('blockMenu.add'))
     plus.innerHTML = icon(plusSvg)
@@ -167,6 +183,7 @@ class BlockControlsView {
     plus.addEventListener('click', () => this.addBelow())
     const grip = document.createElement('button')
     grip.type = 'button'
+    grip.tabIndex = -1
     grip.className = 'hk-block-grip'
     grip.setAttribute('aria-label', t('editor.dragBlock'))
     grip.innerHTML = icon(gripSvg)
@@ -217,13 +234,24 @@ class BlockControlsView {
    * handle grabs — a block inside a toggle, quote or callout gives the container (`handleUnitAtPos`); drops keep
    * the inner block, so a block can still be dropped into one.
    */
-  private unitAtPoint(x: number, y: number, handle = false): BlockUnit | null {
+  private unitAtPoint(
+    x: number,
+    y: number,
+    handle = false,
+    row: Element | null = null
+  ): BlockUnit | null {
     const rect = this.contentRect()
-    const left = Math.min(Math.max(x, rect.left + 2), rect.right - 2)
+    const columns = row
+      ? Array.from(row.querySelectorAll(':scope > .hk-cols > .hk-col'), (c) =>
+          c.getBoundingClientRect()
+        )
+      : []
+    const left = Math.min(Math.max(columnHitX(columns, x), rect.left + 2), rect.right - 2)
     const at = this.view.posAtCoords({ left, top: y })
     if (!at) return null
     const pos = at.inside >= 0 ? at.inside : at.pos
-    return handle ? handleUnitAtPos(this.view.state, pos) : unitAtPos(this.view.state, pos)
+    const unit = handle ? handleUnitAtPos(this.view.state, pos) : unitAtPos(this.view.state, pos)
+    return unit && listItemAtY(this.view, unit, y)
   }
 
   /** A non-empty text selection: the selection menu's moment, not the handle's. */
@@ -238,24 +266,34 @@ class BlockControlsView {
     if (!this.editor.isEditable || this.selecting()) return this.hide()
     const rect = this.contentRect()
     // Over the page or its left gutter (where the handle sits), within the page's height.
-    const inBand = event.clientX >= rect.left - 96 && event.clientX <= rect.right + 24
+    const inBand =
+      event.clientX >= rect.left - LAYOUT.columnGutter && event.clientX <= rect.right + 24
     if (!inBand || event.clientY < rect.top - 4 || event.clientY > rect.bottom + 4) {
       if (!this.handle.contains(event.target as Node)) this.hide()
       return
     }
     if (this.handle.contains(event.target as Node)) return
-    // On the divider between two columns: that is the resize line's moment, and the handle would cover it.
-    if (event.target instanceof Element && event.target.closest('.hk-col-gutter'))
-      return this.hide()
-    const unit = this.unitAtPoint(event.clientX, event.clientY, true)
+    const target = event.target instanceof Element ? event.target : null
+    // On the divider between two columns: that is the resize line's moment, and the handle would cover it. (Once
+    // the handle shows, it is on top of the divider and takes the pointer itself.)
+    if (target?.closest('.hk-col-gutter')) return this.hide()
+    // In a row, the gap between two columns is the later column's gutter (its handle sits there).
+    const row = target?.closest('.hk-cols-wrapper') ?? null
+    const unit = this.unitAtPoint(event.clientX, event.clientY, true, row)
     if (!unit) return this.hide()
     this.unit = unit
     this.reposition()
   }
 
+  /** Hidden is gone for everyone: invisible (data-hidden), and inert — out of reach of focus and screen readers. */
+  private setHandleHidden(hidden: boolean): void {
+    this.handle.dataset.hidden = String(hidden)
+    this.handle.inert = hidden
+  }
+
   private hide = () => {
     if (this.press) return
-    this.handle.dataset.hidden = 'true'
+    this.setHandleHidden(true)
   }
 
   /** A handle already showing keeps up with its block (the page scrolled, the block moved). A hidden one stays
@@ -268,8 +306,16 @@ class BlockControlsView {
   private reposition = () => {
     const unit = this.unit
     if (!unit || this.press) return
+    const place = this.placement(unit)
+    if (!place) return this.hide()
+    Object.assign(this.handle.style, { left: `${place.left}px`, top: `${place.top}px` })
+    this.setHandleHidden(false)
+  }
+
+  /** Where the handle's top-left corner goes for `unit`; null when the block isn't drawn. */
+  private placement(unit: BlockUnit): { left: number; top: number } | null {
     const dom = this.view.nodeDOM(unit.pos)
-    if (!(dom instanceof HTMLElement)) return this.hide()
+    if (!(dom instanceof HTMLElement)) return null
     const rect = dom.getBoundingClientRect()
     let centre = rect.top + Math.min(rect.height / 2, 14)
     const text = firstTextPos(unit)
@@ -291,11 +337,7 @@ class BlockControlsView {
       indent,
       columnFloor(this.view, unit.pos)
     )
-    Object.assign(this.handle.style, {
-      left: `${left}px`,
-      top: `${centre - this.handle.offsetHeight / 2}px`
-    })
-    this.handle.dataset.hidden = 'false'
+    return { left, top: centre - this.handle.offsetHeight / 2 }
   }
 
   // MARK: Add
@@ -355,7 +397,7 @@ class BlockControlsView {
     this.ghostOffset = { x: event.clientX - rect.left, y: event.clientY - rect.top }
     document.body.classList.add('hk-block-dragging')
     setBlockHighlight(this.view, { source: { from: unit.pos, to: unit.pos + unit.node.nodeSize } })
-    this.handle.dataset.hidden = 'true'
+    this.setHandleHidden(true)
   }
 
   private moveGhost(x: number, y: number) {

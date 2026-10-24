@@ -1,7 +1,15 @@
 import Foundation
 import HikkiCore
+import HikkiUI
 import Observation
 import UserNotifications
+import os
+
+#if os(iOS)
+    import UIKit
+#else
+    import AppKit
+#endif
 
 /// Every date in the workspace's live pages (the editor's date chips), kept current from the store — read once at
 /// launch (`pagesWithDates`), then from each committed page change — for Home's Upcoming and for reminders: the ones
@@ -16,6 +24,12 @@ final class Reminders {
     @ObservationIgnored private var reported: Set<String> = []
     @ObservationIgnored private let store: DocumentStore
     @ObservationIgnored private var scheduling: Task<Void, Never>?
+    /// Reads a page's dates out of its content off the commit's thread (the commit observer runs inside the save, on
+    /// the typing thread; parsing a long page's JSON there held every save). One queue, so commits apply in order.
+    @ObservationIgnored private let parsing = DispatchQueue(label: "app.yancey.hikki.reminders", qos: .utility)
+    /// The commit each page's entries came from, so a slower parse of an older commit never overwrites a newer one.
+    @ObservationIgnored private var appliedCommit: [String: Int] = [:]
+    @ObservationIgnored private let commitCount = OSAllocatedUnfairLock(initialState: 0)
 
     init(store: DocumentStore) {
         self.store = store
@@ -24,8 +38,17 @@ final class Reminders {
     func start() {
         do {
             try store.observePageCommits { [weak self] changed, deletions, live in
-                let updates = changed.map { ($0.id, Self.entries(of: $0)) }
-                Task { @MainActor in self?.apply(updates, live: deletions ? live : nil, reload: deletions && live == nil) }
+                guard let self else { return }
+                let commit = commitCount.withLock { count in
+                    count += 1
+                    return count
+                }
+                parsing.async {
+                    let updates = changed.map { ($0.id, Self.entries(of: $0)) }
+                    Task { @MainActor in
+                        self.apply(updates, commit: commit, live: deletions ? live : nil, reload: deletions && live == nil)
+                    }
+                }
             }
         } catch {
             Log.error("reminders observation failed: \(error)", category: "reminders")
@@ -55,8 +78,9 @@ final class Reminders {
         changed()
     }
 
-    private func apply(_ updates: [(String, [DateEntry])], live: Set<String>?, reload: Bool) {
-        for (id, entries) in updates {
+    private func apply(_ updates: [(String, [DateEntry])], commit: Int, live: Set<String>?, reload: Bool) {
+        for (id, entries) in updates where (appliedCommit[id] ?? 0) < commit {
+            appliedCommit[id] = commit
             reported.insert(id)
             byPage[id] = entries.isEmpty ? nil : entries
         }
@@ -132,37 +156,74 @@ nonisolated final class ReminderCenter: NSObject, UNUserNotificationCenterDelega
         if !stale.isEmpty { center.removePendingNotificationRequests(withIdentifiers: stale) }
         let add = wanted.filter { !keep.contains($0.identifier) }
         guard !add.isEmpty, await authorized(center) else { return }
+        // One that the system refuses is said once per pass (the toast carries the code; every refusal is logged).
+        var failed = 0
+        var firstError: (any Error)?
         for request in add {
             do {
                 try await center.add(request)
             } catch {
+                failed += 1
+                if firstError == nil { firstError = error }
                 Log.warn("reminder not scheduled: \(error)", category: "reminders")
             }
         }
+        if let firstError {
+            Toasts.report(.reminderScheduleFailed, firstError, category: "reminders", context: ["failed": "\(failed)"])
+        }
         Log.info(
             "reminders scheduled", category: "reminders",
-            context: ["pending": "\(wanted.count)", "added": "\(add.count)", "removed": "\(stale.count)"])
+            context: ["pending": "\(wanted.count)", "added": "\(add.count - failed)", "removed": "\(stale.count)"])
     }
 
+    /// Whether the user has let Hikki notify. Denied, the reminders in the pages look set but would never ring: said
+    /// once per run, with a way to the system's notification settings.
     private func authorized(_ center: UNUserNotificationCenter) async -> Bool {
         switch await center.notificationSettings().authorizationStatus {
         case .authorized, .provisional, .ephemeral: return true
         case .notDetermined:
             do {
-                return try await center.requestAuthorization(options: [.alert, .sound, .badge])
+                let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
+                if !granted { await warnNotificationsOff() }
+                return granted
             } catch {
                 Log.warn("notification permission failed: \(error)", category: "reminders")
                 return false
             }
-        default: return false
+        default:
+            await warnNotificationsOff()
+            return false
         }
+    }
+
+    private let warnedOff = OSAllocatedUnfairLock(initialState: false)
+
+    @MainActor private func warnNotificationsOff() {
+        let first = warnedOff.withLock { warned in
+            defer { warned = true }
+            return !warned
+        }
+        guard first else { return }
+        Toasts.report(.reminderNotificationsOff, category: "reminders", actionTitle: "app:reminder.openSettings") {
+            Self.openNotificationSettings()
+        }
+    }
+
+    @MainActor private static func openNotificationSettings() {
+        #if os(iOS)
+            if let url = URL(string: UIApplication.openNotificationSettingsURLString) { UIApplication.shared.open(url) }
+        #else
+            if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") {
+                NSWorkspace.shared.open(url)
+            }
+        #endif
     }
 
     /// The block's words as the title, the page's title under them (the system hides both on a locked screen
     /// unless the reader lets it show previews).
     static func request(for entry: DateEntry, at fire: DateComponents) -> UNNotificationRequest {
         let content = UNMutableNotificationContent()
-        let page = entry.pageTitle.isEmpty ? String(localized: "app:page.untitled") : entry.pageTitle
+        let page = PageTitle.display(entry.pageTitle)
         content.title = entry.found.text.isEmpty ? page : entry.found.text
         content.body = entry.found.text.isEmpty ? "" : page
         content.sound = .default

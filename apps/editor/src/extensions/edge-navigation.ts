@@ -32,3 +32,17 @@ export const EdgeNavigation = Extension.create<{ onExitTop: () => void }>({
     }
   }
 })
+
+/**
+ * Tab and ⇧Tab stay in the page. Lists, tables and code blocks bind them first (their own keymaps, higher priority);
+ * anywhere else the browser would move focus out of the editor — to the next focusable element, scrolling the page
+ * back to its top.
+ */
+export const TabStaysInPage = Extension.create({
+  name: 'tabStaysInPage',
+  priority: 1,
+
+  addKeyboardShortcuts() {
+    return { Tab: () => true, 'Shift-Tab': () => true }
+  }
+})

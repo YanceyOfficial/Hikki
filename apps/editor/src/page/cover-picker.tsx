@@ -12,6 +12,7 @@ import { reportError } from '../core/errors'
 import { GRADIENTS, gradientCover } from '../lib/covers'
 import {
   bffURL,
+  coverURL,
   searchUnsplash,
   trackUnsplashDownload,
   UNSPLASH_HOME,
@@ -48,14 +49,14 @@ export function CoverPicker({ current, onSelect, onRemove, onUpload }: Props) {
       </div>
       <TabsContent
         value="gallery"
-        className="grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-2 p-3"
+        className="grid grid-cols-[repeat(auto-fill,minmax(var(--layout-grid-cell-cover),1fr))] gap-2 p-3"
       >
         {GRADIENTS.map((g) => (
           <Button
             key={g.id}
             variant="ghost"
             className={cn(
-              'h-14 w-full cursor-pointer rounded-sm p-0 shadow-[inset_0_0_0_1px_var(--color-border)] hover:opacity-85',
+              'h-14 w-full cursor-pointer rounded-sm p-0 inset-ring inset-ring-border hover:opacity-85',
               current === gradientCover(g.id) && 'outline-2 outline-offset-2 outline-primary'
             )}
             aria-label={g.label()}
@@ -198,7 +199,7 @@ function UnsplashPane({ onSelect }: { onSelect: Props['onSelect'] }) {
         aria-label={t('cover.unsplashLabel')}
       />
       {error && <p className="m-0 text-xs text-destructive">{error}</p>}
-      <div className="grid max-h-80 grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3 overflow-y-auto">
+      <div className="grid max-h-80 grid-cols-[repeat(auto-fill,minmax(var(--layout-grid-cell-photo),1fr))] gap-3 overflow-y-auto">
         {loading &&
           Array.from({ length: 9 }, (_, i) => (
             <div key={i} className="flex min-w-0 flex-col gap-1.5" data-testid="unsplash-skeleton">
@@ -215,7 +216,7 @@ function UnsplashPane({ onSelect }: { onSelect: Props['onSelect'] }) {
               style={{ backgroundColor: photo.color ?? undefined }}
               onClick={() => {
                 trackUnsplashDownload(photo)
-                onSelect(photo.regular)
+                onSelect(coverURL(photo))
               }}
               aria-label={photo.alt ?? t('cover.photoBy', { name: photo.author })}
             >

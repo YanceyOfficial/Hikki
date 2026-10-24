@@ -2,6 +2,8 @@ import type { Editor } from '@tiptap/core'
 import type { Node as PMNode, ResolvedPos } from '@tiptap/pm/model'
 import { NodeSelection, TextSelection, type EditorState, type Transaction } from '@tiptap/pm/state'
 
+import type { ShortcutId } from '../core/shortcuts'
+
 /**
  * Blocks as the user sees them (Notion): the unit the handle grabs, moves, duplicates and deletes. A
  * paragraph or heading on its own; a list item (with its nested items); a whole table, toggle, code block
@@ -267,4 +269,36 @@ export function followPosition(editor: Editor, pos: number, onGone: () => void):
     },
     stop
   }
+}
+
+const atCaret = (editor: Editor) => unitAtPos(editor.state, editor.state.selection.from)
+
+/** Moves the block at the caret one place up or down among its siblings. */
+const moveAtCaret = (editor: Editor, dir: -1 | 1) => {
+  const unit = atCaret(editor)
+  if (!unit) return false
+  const $pos = editor.state.doc.resolve(unit.pos)
+  const index = $pos.index()
+  const parent = $pos.parent
+  if (dir === -1 && index === 0) return true
+  if (dir === 1 && index >= parent.childCount - 1) return true
+  const target =
+    dir === -1
+      ? unit.pos - parent.child(index - 1).nodeSize
+      : unit.pos + unit.node.nodeSize + parent.child(index + 1).nodeSize
+  const tr = moveUnit(editor.state, unit, target)
+  if (tr) editor.view.dispatch(tr)
+  return true
+}
+
+/** Duplicate the block (Notion ⌘D), move it up/down (⌘⇧↑ / ⌘⇧↓) — by shortcut id, for rebound keys too. */
+export const BLOCK_UNIT_ACTIONS: Partial<Record<ShortcutId, (editor: Editor) => boolean>> = {
+  duplicateBlock: (editor) => {
+    const unit = atCaret(editor)
+    if (!unit) return false
+    editor.view.dispatch(duplicateUnit(editor.state, unit))
+    return true
+  },
+  moveBlockUp: (editor) => moveAtCaret(editor, -1),
+  moveBlockDown: (editor) => moveAtCaret(editor, 1)
 }

@@ -99,7 +99,10 @@ export function CalloutIcon({ icon, color, editable, onIcon, onColor }: Props) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger render={trigger}>{glyph}</PopoverTrigger>
-      <PopoverContent align="start" className="w-[400px] max-w-[calc(100vw-16px)] gap-0 p-0">
+      <PopoverContent
+        align="start"
+        className="w-(--layout-panel-default) max-w-(--layout-viewport-max) gap-0 p-0"
+      >
         {picker}
       </PopoverContent>
     </Popover>

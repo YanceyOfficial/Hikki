@@ -28,8 +28,8 @@ final class EditorSchemeHandler: NSObject, WKURLSchemeHandler {
         if isAsset {
             file = assets?.file(named: relative)
         } else if let root {
-            let candidate = root.appending(path: relative.isEmpty ? "index.html" : relative).standardizedFileURL
-            file = candidate.path.hasPrefix(root.standardizedFileURL.path) ? candidate : nil
+            // Inside the bundle's folder only (by path components — `BundleFiles`, tested).
+            file = BundleFiles.file(for: relative, in: root)
         } else {
             fail(urlSchemeTask, "editor bundle missing — run `make editor`")
             return

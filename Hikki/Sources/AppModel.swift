@@ -1,6 +1,7 @@
 import Foundation
 import HikkiCore
 import HikkiSearch
+import HikkiUI
 import Observation
 
 #if os(iOS)
@@ -12,7 +13,7 @@ import Observation
 final class AppModel {
     /// The losing side of a conflict becomes a page of its own, titled in the app's language.
     nonisolated static let conflictTitle: ConflictCopy.Title = { title, source in
-        let title = title.isEmpty ? String(localized: "app:page.untitled") : title
+        let title = PageTitle.display(title)
         return String(localized: "app:sync.conflictedCopy \(title) \(source)")
     }
 
@@ -37,6 +38,9 @@ final class AppModel {
     private(set) var syncError: String?
     /// How iCloud is doing, for a workspace kept there (`Workspace.Location.cloud`); nil otherwise.
     private(set) var cloudStatus: CloudSync.Status?
+    /// Each page's latest edit — typed, saved, in iCloud — for the editor's save indicator (SyncIndicator.swift).
+    /// A `let`, so nothing reading the model observes it; only the indicator does.
+    let pageSync = PageSyncTracker()
 
     struct SyncStatus: Equatable, Sendable {
         var at: Date
@@ -50,12 +54,20 @@ final class AppModel {
         self.store = store
         self.searchIndexer = SearchIndexer(index: searchIndex, store: store, assets: assets)
         self.reminders = Reminders(store: store)
-        // Semantic search was removed (2026-10-15): its settings go too.
-        for key in ["semantic.enabled", "semantic.endpoint", "semantic.model"] { UserDefaults.standard.removeObject(forKey: key) }
         self.assets = assets
         self.crashReporter = crashReporter
         self.workspaceStore = workspaceStore
         bulkTransfer.onFinish = Self.announce
+        // A page saved in an editor: its file is followed up to iCloud — once the write-through has written it, so
+        // a folder scan that read the file before can't vouch for this save.
+        pageSync.onSaved = { [weak self] id, at in
+            guard let self, let cloud = self.cloud else { return }
+            if let sync = self.sync {
+                sync.afterQueuedWrites { cloud.noteSaved(pageID: id, at: at) }
+            } else {
+                cloud.noteSaved(pageID: id, at: at)
+            }
+        }
         do {
             workspace = try workspaceStore.load()
         } catch {
@@ -65,6 +77,8 @@ final class AppModel {
         searchIndexer.start()
         reminders.start()
         purgeTrash()
+        // Settings from the owner's other devices (iCloud key-value storage), then theirs and ours kept in step.
+        settingsSync = SyncedSettings.start(model: self)
         // One observation for the app (every window reads the same tree): it was a task per window, each writing it.
         observation = Task { [weak self] in await self?.observe() }
         Self.current = self
@@ -73,6 +87,8 @@ final class AppModel {
     /// The app's model, for what has no window to ask (quitting: `AppDelegate`).
     static weak var current: AppModel?
     @ObservationIgnored private var observation: Task<Void, Never>?
+    /// Settings synced across the owner's devices; nil for a run on its own data folder (SyncedSettings.swift).
+    @ObservationIgnored private var settingsSync: SyncedSettings?
 
     // MARK: Workspace folder (storage option C)
 
@@ -129,7 +145,9 @@ final class AppModel {
             #endif
             if case .folder = workspace.location {
                 // iCloud Drive folders are retired: the folder's files move into the app, then sync through iCloud.
-                if moveFolderWorkspace(from: folder, appRoot: appRoot) { return }
+                // Copied off the main thread while the folder keeps working as before; the workspace switches over
+                // once the copy is done.
+                moveFolderWorkspace(from: folder, appRoot: appRoot)
             }
             workspaceFolder = folder
             syncIdentity()
@@ -154,6 +172,7 @@ final class AppModel {
             let cloud: CloudSync? =
                 if case .cloud = workspace.location, Self.cloudAllowed { makeCloudSync(folder: folder, appRoot: appRoot) } else { nil }
             self.cloud = cloud
+            if cloud == nil { pageSync.setCloud(.off) }
             let options = WorkspaceSync.Options(
                 device: Self.deviceName,
                 conflictTitle: Self.conflictTitle,
@@ -183,10 +202,13 @@ final class AppModel {
             }
             self.sync = sync
             Task.detached(priority: .utility) { [weak self] in
+                // iCloud starts beside the first pass, not after it: its account check and engine are ready sooner —
+                // a launch for a push has only seconds. What it writes meanwhile is a change on disk like any other
+                // (the passes take turns on the workspace's queue).
+                cloud?.start()
                 do {
                     let report = try sync.start()
                     Self.log("workspace sync started", report)
-                    cloud?.start()
                     Task { @MainActor in
                         self?.lastSync = SyncStatus(at: .now, report: report)
                         self?.syncError = nil
@@ -239,16 +261,30 @@ final class AppModel {
     private func makeCloudSync(folder: URL, appRoot: URL) -> CloudSync {
         let mirror = CloudMirror(
             root: folder, stateURL: appRoot.appending(path: "cloud-state.json"),
-            options: .init(device: Self.deviceName, conflictTitle: Self.conflictTitle))
+            options: .init(
+                device: Self.deviceName, conflictTitle: Self.conflictTitle,
+                // A page typed on since its file was written is settled by the folder's pass (one conflicted copy).
+                pageChange: { [store] id in (try? store.document(id: id))?.lastChange }))
         if adoptsCloudAccount {
             mirror.releaseAccount()
             adoptsCloudAccount = false
         }
+        // A new `CloudSync` counts its uploads from nothing; a late copy from the one before is dropped.
+        let generation = pageSync.resetUploads()
         let cloud = CloudSync(
             mirror: mirror,
-            onReceived: { [weak self] in Task { @MainActor in self?.cloudReceived() } },
-            onStatus: { [weak self] status in Task { @MainActor in self?.cloudStatus = status } })
+            onReceived: { [weak self] arrivals in Task { @MainActor in self?.cloudReceived(arrivals) } },
+            onStatus: { [weak self] status in
+                Task { @MainActor in
+                    self?.cloudStatus = status
+                    self?.pageSync.setCloud(status.cloud)
+                }
+            },
+            onUploads: { [weak self] uploads in
+                Task { @MainActor in self?.pageSync.apply(uploads, generation: generation) }
+            })
         cloudStatus = .starting
+        pageSync.setCloud(.on)
         cloudScan?.cancel()
         cloudScan = Task { [weak cloud] in
             while !Task.isCancelled {
@@ -259,10 +295,15 @@ final class AppModel {
         return cloud
     }
 
-    private func cloudReceived() {
+    private func cloudReceived(_ arrivals: CloudArrivals) {
         // workspace.json may be another device's (a second device joining takes the workspace's name and icon).
         identityUpdatedAt = nil
         reconcileWorkspace(fetch: false)
+        // Open threads, chats and history lists show what another device just wrote, not only after an activation.
+        let center = NotificationCenter.default
+        for id in arrivals.comments { center.post(name: .pageCommentsChanged, object: nil, userInfo: ["id": id]) }
+        for id in arrivals.chats { center.post(name: .pageChatChanged, object: nil, userInfo: ["id": id]) }
+        for id in arrivals.history { center.post(name: .pageHistoryChanged, object: nil, userInfo: ["id": id]) }
     }
 
     /// Where the workspace lives, as the sidebar, Settings and a page's facts name it.
@@ -283,6 +324,8 @@ final class AppModel {
         case .accountChanged?: String(localized: "app:cloud.accountChanged")
         case .quotaFull?: String(localized: "app:cloud.quotaFull")
         case .failed(let code)?: String(localized: "app:cloud.failed \(code)")
+        case .cloudDataDeleted?: String(localized: "app:cloud.dataDeleted")
+        case .unavailable?: String(localized: "app:cloud.unavailable")
         }
     }
 
@@ -313,36 +356,110 @@ final class AppModel {
         cloudScan?.cancel()
         cloudScan = nil
         cloudStatus = nil
+        pageSync.setCloud(.off)
         workspaceFolder?.stopAccessingSecurityScopedResource()
         workspaceFolder = nil
         identityUpdatedAt = nil
+        // A folder move under way stops with the folder (a later start begins another).
+        folderMove?.cancel()
+        folderMove = nil
+        folderMoveID = nil
+        movingWorkspace = false
     }
 
     /// A workspace in an iCloud Drive folder (before CloudKit) moves into the app: every file of the folder is
-    /// copied in — the folder itself is left as it was — and the workspace syncs through iCloud from then on.
-    /// Not while iCloud Drive still has files of it to download (it asks for them, and the move waits for a later
-    /// launch or activation; the folder keeps syncing meanwhile). Returns whether it moved.
-    private func moveFolderWorkspace(from folder: URL, appRoot: URL) -> Bool {
-        guard var workspace else { return false }
+    /// copied in — the folder itself is left as it was — and the workspace syncs through iCloud from then on. The
+    /// copy runs off the main thread (a large workspace kept launch waiting, on iOS past the watchdog) while the
+    /// folder keeps working; not while iCloud Drive still has files of it to download — it asks for them and tries
+    /// again in 30 s, doubling to 10 min. Settings → Storage says it is moving meanwhile (`movingWorkspace`).
+    private func moveFolderWorkspace(from folder: URL, appRoot: URL) {
+        guard folderMoveID == nil else { return }
         let local = appRoot.appending(path: "Workspace", directoryHint: .isDirectory)
+        let id = UUID()
+        folderMoveID = id
+        movingWorkspace = true
+        folderMove = Task { [weak self] in
+            var wait: Duration = .seconds(30)
+            moving: while !Task.isCancelled {
+                switch await Self.copyFolder(folder, into: local) {
+                case .copied:
+                    await self?.finishFolderMove(from: folder, into: local, id: id)
+                    return
+                case .downloading(let count):
+                    Log.info("workspace folder still downloading; move later", category: "workspace", context: ["files": "\(count)"])
+                    try? await Task.sleep(for: wait)
+                    wait = min(wait * 2, .seconds(600))
+                case .failed:
+                    break moving  // reported; tried again at the next launch
+                }
+            }
+            self?.endFolderMove(id)
+        }
+    }
+
+    /// The folder workspace's move into the app while it runs (`moveFolderWorkspace`), and which one it is.
+    @ObservationIgnored private var folderMove: Task<Void, Never>?
+    @ObservationIgnored private var folderMoveID: UUID?
+    /// The folder workspace is being copied into the app (Settings → Storage says so).
+    private(set) var movingWorkspace = false
+
+    nonisolated private enum FolderCopy: Sendable {
+        case copied(Int)
+        case downloading(Int)
+        case failed
+    }
+
+    /// One copy of the folder into the app's own, off the main thread. A failure is reported here.
+    @concurrent nonisolated private static func copyFolder(_ folder: URL, into local: URL) async -> FolderCopy {
         do {
-            let copied = try WorkspaceFolder.copyContents(of: folder, into: local)
-            folder.stopAccessingSecurityScopedResource()
+            return .copied(try WorkspaceFolder.copyContents(of: folder, into: local))
+        } catch WorkspaceFolder.CopyError.stillDownloading(let count) {
+            return .downloading(count)
+        } catch {
+            Toasts.report(.workspaceMoveFailed, error, category: "workspace")
+            return .failed
+        }
+    }
+
+    /// The copy is in: the old folder's writers stop, what they wrote during the copy follows (a second pass copies
+    /// only files newer than their copies, quickly), and the workspace switches to the app's folder and iCloud.
+    private func finishFolderMove(from folder: URL, into local: URL, id: UUID) async {
+        guard folderMoveID == id, var workspace, case .folder = workspace.location else {
+            endFolderMove(id)
+            return
+        }
+        folderMove = nil  // it is this task: nothing to cancel when the sync stops below
+        let scoped = folder.startAccessingSecurityScopedResource()
+        stopWorkspaceSync()
+        movingWorkspace = true
+        let caughtUp = await Self.copyFolder(folder, into: local)
+        if scoped { folder.stopAccessingSecurityScopedResource() }
+        folderMoveID = nil
+        guard case .copied(let copied) = caughtUp else {
+            // Not after all (a file went back to iCloud Drive meanwhile): the folder works on, and moves later.
+            movingWorkspace = false
+            startWorkspaceSync()
+            return
+        }
+        do {
             workspace.location = .cloud
             // The pages were synced with the old folder, not this one: a first pass compares them all again.
             try store.unmarkAllSynced()
             try workspaceStore.save(workspace)
             self.workspace = workspace
             Log.info("workspace moved from its folder into iCloud", category: "workspace", context: ["files": "\(copied)"])
-            startWorkspaceSync()
-            return true
-        } catch WorkspaceFolder.CopyError.stillDownloading(let count) {
-            Log.info("workspace folder still downloading; move later", category: "workspace", context: ["files": "\(count)"])
-            return false
         } catch {
             Toasts.report(.workspaceMoveFailed, error, category: "workspace")
-            return false
         }
+        movingWorkspace = false
+        startWorkspaceSync()
+    }
+
+    private func endFolderMove(_ id: UUID) {
+        guard folderMoveID == id else { return }
+        folderMove = nil
+        folderMoveID = nil
+        movingWorkspace = false
     }
 
     /// Keeps the identity in the folder (`workspace.json`) and this device's record in step: a folder without
@@ -393,6 +510,7 @@ final class AppModel {
     func refreshFromCloud() async {
         Log.info("cloud refresh pulled", category: "cloud")
         guard let cloud else { return }
+        cloud.retryHeldBack()
         await cloud.sendNow()
         await cloud.fetchNow()
         reconcileWorkspace(fetch: false)
@@ -401,6 +519,8 @@ final class AppModel {
     func reconcileWorkspace(fetch: Bool = true) {
         guard let sync else { return }
         if fetch, let cloud {
+            // Back in the app: files waiting after "storage full" are tried again too.
+            cloud.retryHeldBack()
             cloud.noteLocalChanges(after: 0)
             Task { await cloud.fetchNow() }
         }
@@ -415,8 +535,10 @@ final class AppModel {
     }
 
     /// Waits for queued file writes, then sends what iCloud hasn't got yet (before the app goes to the background).
+    /// Neither blocks the main thread: the folder's queue is awaited, and the scan and send run off it — so quitting's
+    /// 3 s cap (`SaveOnExit`) still runs on time.
     func flushWorkspace() async {
-        sync?.flush()
+        await sync?.flushed()
         await cloud?.sendNow()
     }
 
@@ -552,14 +674,17 @@ final class AppModel {
     }
 
     func duplicate(id: String) {
+        guard Purchases.shared.allowsWriting() else { return }
         perform("duplicate", id, code: .pageCreateFailed) { try store.duplicate(id: id) }
     }
 
     func moveToTrash(id: String) {
+        guard Purchases.shared.allowsWriting() else { return }
         perform("move to trash", id, code: .pageDeleteFailed) { try store.moveToTrash(id: id) }
     }
 
     func restore(id: String) {
+        guard Purchases.shared.allowsWriting() else { return }
         perform("restore", id, code: .pageRestoreFailed) { try store.restore(id: id) }
     }
 
@@ -567,6 +692,7 @@ final class AppModel {
     @discardableResult
     func movePage(_ dragged: String, onto target: String, zone: DropZone) -> Bool {
         guard let destination = tree.destination(dropping: dragged, onto: target, zone: zone) else { return false }
+        guard Purchases.shared.allowsWriting() else { return false }
         return perform("move page", dragged, code: .pageMoveFailed) {
             try store.move(id: dragged, toParent: destination.parentId, at: destination.index)
         } != nil
@@ -575,12 +701,15 @@ final class AppModel {
     /// Drop onto a section header: to the end of the top level.
     @discardableResult
     func movePageToTopLevel(_ dragged: String) -> Bool {
-        perform("move page", dragged, code: .pageMoveFailed) { try store.move(id: dragged, toParent: nil, at: .max) } != nil
+        guard Purchases.shared.allowsWriting() else { return false }
+        return perform("move page", dragged, code: .pageMoveFailed) { try store.move(id: dragged, toParent: nil, at: .max) } != nil
     }
 
+    /// The page's history, comments and chat go with it (`WorkspaceSync.Options.onDeleted`, which hears every page
+    /// deleted for good).
     func deletePermanently(id: String) {
+        guard Purchases.shared.allowsWriting() else { return }
         perform("delete permanently", id, code: .pageDeleteFailed) { try store.deletePermanently(id: id) }
-        comments?.removeAll(pageId: id)
     }
 
     /// Deletes what has been in the trash longer than Settings → Keep deleted pages allows (at launch and when the
@@ -613,6 +742,7 @@ final class AppModel {
     }
 
     func emptyTrash() {
+        guard Purchases.shared.allowsWriting() else { return }
         perform("empty trash", code: .trashEmptyFailed) { try store.emptyTrash() }
     }
 
@@ -630,14 +760,25 @@ final class AppModel {
         }
     }
 
-    /// Home: this device's writing activity over the last `days` days, and the workspace's totals.
-    func activity(days: Int) -> [DailyActivity] {
+    /// Home: this device's writing activity over the last `days` days and the workspace's totals, read off the main
+    /// thread (the iPhone's Home reads them on every tree change, with a page open over it). A failure is logged;
+    /// the figures are then empty.
+    func homeFigures(days: Int) async -> (activity: [DailyActivity], stats: WorkspaceStats) {
         let start = Calendar.current.date(byAdding: .day, value: -days, to: .now) ?? .now
-        return perform("load activity") { try store.activity(since: start) } ?? []
+        do {
+            return try await Self.figures(store, since: start)
+        } catch {
+            Log.error("home figures failed: \(Incident.describe(error))", category: "store")
+            return ([], WorkspaceStats(pages: 0, words: 0))
+        }
     }
 
-    func stats() -> WorkspaceStats {
-        perform("load stats") { try store.stats() } ?? WorkspaceStats(pages: 0, words: 0)
+    @concurrent private static func figures(_ store: DocumentStore, since start: Date) async throws -> (
+        activity: [DailyActivity], stats: WorkspaceStats
+    ) {
+        let activity = try store.activity(since: start)
+        let stats = try store.stats()
+        return (activity, stats)
     }
 
     /// A bulk import or export ended (Settings → Workspace): a toast says how it went, wherever the user is now.
@@ -678,6 +819,10 @@ final class AppModel {
 extension Notification.Name {
     /// Pages the workspace sync imported from the folder; `userInfo["ids"]` is `[String]`.
     static let pagesChangedOnDisk = Notification.Name("app.yancey.hikki.pagesChangedOnDisk")
+    /// A page's AI conversation arrived from another device; `userInfo["id"]` is the page id.
+    static let pageChatChanged = Notification.Name("app.yancey.hikki.pageChatChanged")
+    /// A page's history arrived from another device; `userInfo["id"]` is the page id.
+    static let pageHistoryChanged = Notification.Name("app.yancey.hikki.pageHistoryChanged")
 }
 
 /// Settings → Workspace → Keep deleted pages: how many days a page stays in the trash (0 = until emptied).

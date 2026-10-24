@@ -41,9 +41,16 @@ public struct TabStripDrop {
     }
 }
 
+extension UTType {
+    /// What a tab dragged along a `TabStrip` carries besides its page's link: its id, to this process only — the strip
+    /// reorders by it (declared in the app's Info.plist, `UTExportedTypeDeclarations`).
+    nonisolated static let hikkiTab = UTType(exportedAs: "app.yancey.hikki.tab", conformingTo: .data)
+}
+
 /// A command in a tab's context menu (Chrome's tab menu).
 public enum TabStripCommand: String, CaseIterable, Hashable, Sendable {
-    case newToRight, openInSplit, swapSides, separate, duplicate, moveToNewWindow, close, closeOthers, closeToRight
+    case newToRight, openInSplit, swapSides, separate, duplicate, moveToNewWindow, copyLink, revealInSidebar, close,
+        closeOthers, closeToRight, closeAll
 
     var title: LocalizedStringKey {
         switch self {
@@ -53,9 +60,12 @@ public enum TabStripCommand: String, CaseIterable, Hashable, Sendable {
         case .separate: "app:split.separate"
         case .duplicate: "app:tabs.duplicate"
         case .moveToNewWindow: "app:tabs.moveToNewWindow"
+        case .copyLink: "app:tabs.copyLink"
+        case .revealInSidebar: "app:tabs.revealInSidebar"
         case .close: "app:tabs.close"
         case .closeOthers: "app:tabs.closeOthers"
         case .closeToRight: "app:tabs.closeToRight"
+        case .closeAll: "app:tabs.closeAll"
         }
     }
 
@@ -67,9 +77,12 @@ public enum TabStripCommand: String, CaseIterable, Hashable, Sendable {
         case .separate: .square
         case .duplicate: .copy
         case .moveToNewWindow: .appWindow
+        case .copyLink: .link
+        case .revealInSidebar: .sidebarSimple
         case .close: .x
         case .closeOthers: .xSquare
         case .closeToRight: .arrowLineRight
+        case .closeAll: .xCircle
         }
     }
 }
@@ -88,7 +101,9 @@ public struct TabStripMenu {
 
 /// Browser-style tab bar (Notion's top row): back/forward, tabs that shrink to fit, close on hover, "+".
 /// Purely presentational — all state lives with the caller. With `drop`, a page dragged over it shows a
-/// line between tabs or a tint on one (Safari's tab bar), and the caller gets where it landed.
+/// line between tabs or a tint on one (Safari's tab bar), and the caller gets where it landed. With `onMove`, a tab
+/// dragged along it shows a line in the gap it would go to (Chrome's reordering), and the caller moves it there — the
+/// index is the gap before that tab (`items.count`: after the last one); a split's two tabs move together.
 public struct TabStrip<Leading: View>: View {
     private let items: [TabStripItem]
     private let activeID: UUID
@@ -104,9 +119,11 @@ public struct TabStrip<Leading: View>: View {
     private let drop: TabStripDrop?
     private let dragItem: ((UUID) -> NSItemProvider?)?
     private let menu: TabStripMenu?
+    private let onMove: ((UUID, Int) -> Void)?
     @State private var frames: [UUID: CGRect] = [:]
     @State private var dropTarget: TabStripDropTarget?
-    @Environment(\.chromeMetrics) private var metrics
+    /// The tab whose drag started last (its drag carries `UTType.hikkiTab`, which says a drop is one).
+    @State private var movingTab: UUID?
     @Environment(\.colorTone) private var colorTone
 
     public init(
@@ -114,7 +131,7 @@ public struct TabStrip<Leading: View>: View {
         onSelect: @escaping (UUID) -> Void, onClose: @escaping (UUID) -> Void, onNew: @escaping () -> Void,
         onBack: @escaping () -> Void, onForward: @escaping () -> Void, showsHistory: Bool = true,
         drop: TabStripDrop? = nil, dragItem: ((UUID) -> NSItemProvider?)? = nil, menu: TabStripMenu? = nil,
-        @ViewBuilder leading: () -> Leading = { EmptyView() }
+        onMove: ((UUID, Int) -> Void)? = nil, @ViewBuilder leading: () -> Leading = { EmptyView() }
     ) {
         self.showsHistory = showsHistory
         self.items = items
@@ -129,6 +146,7 @@ public struct TabStrip<Leading: View>: View {
         self.drop = drop
         self.dragItem = dragItem
         self.menu = menu
+        self.onMove = onMove
         self.leading = leading()
     }
 
@@ -150,7 +168,7 @@ public struct TabStrip<Leading: View>: View {
             if showsHistory { Spacer(minLength: 24) }
         }
         .padding(.horizontal, Spacing.s2)
-        .frame(height: metrics.barHeight)
+        .frame(height: Size.tabBar)
     }
 
     /// The tabs and "+", one drop area: a page lands between tabs or on one.
@@ -185,13 +203,21 @@ public struct TabStrip<Leading: View>: View {
             // The line sits on the strip's own middle (the toolbar bar is taller than the tabs).
             GeometryReader { strip in
                 if case .between(let index) = dropTarget, let x = gapX(before: index) {
-                    colorTone.fill.frame(width: 2, height: 22).clipShape(.capsule)
+                    colorTone.fill.frame(width: Spacing.s0_5, height: Size.iconButtonSm).clipShape(.capsule)
                         .position(x: x, y: strip.size.height / 2)
                 }
             }
             .allowsHitTesting(false)
         }
-        .modifier(DropArea(drop: drop, target: target(at:), indicator: $dropTarget))
+        .modifier(
+            DropArea(
+                drop: drop, target: target(at:), indicator: $dropTarget,
+                move: onMove.map { onMove in
+                    TabMove(moving: { movingTab }, target: moveTarget(at:)) { id, index in
+                        movingTab = nil
+                        onMove(id, index)
+                    }
+                }))
         // In a window toolbar macOS lifts the first `.help` inside the item up to the whole item, so hovering any tab
         // showed that one. The strip says nothing itself; each tab carries an AppKit tooltip of its own (`toolTip`).
         .help(Text(verbatim: ""))
@@ -216,7 +242,7 @@ public struct TabStrip<Leading: View>: View {
         TabButton(
             item: item, isActive: item.id == activeID, canClose: items.count > 1,
             isDropTarget: dropTarget == .onto(item.id),
-            dragItem: dragItem.map { make in { make(item.id) } },
+            dragItem: dragItem != nil || onMove != nil ? { () -> NSItemProvider? in tabDragItem(item.id) } : nil,
             onSelect: { onSelect(item.id) }, onClose: { onClose(item.id) }
         )
         .contextMenu {
@@ -229,8 +255,41 @@ public struct TabStrip<Leading: View>: View {
         }
     }
 
-    /// The tab's menu, its sections divided; Close / Close Other Tabs need another tab, Close Tabs to the Right one
-    /// after this.
+    /// What dragging the tab `id` carries: its page's link (the caller's `dragItem`), and — where tabs reorder — its id
+    /// as `UTType.hikkiTab`, which only this app reads.
+    private func tabDragItem(_ id: UUID) -> NSItemProvider {
+        let provider = dragItem?(id) ?? NSItemProvider()
+        if onMove != nil {
+            movingTab = id
+            provider.registerDataRepresentation(forTypeIdentifier: UTType.hikkiTab.identifier, visibility: .ownProcess) {
+                completion in
+                completion(Data(id.uuidString.utf8), nil)
+                return nil
+            }
+        }
+        return provider
+    }
+
+    /// Where the tab being dragged would go: the gap nearest the pointer (a tab's left half is the gap before it), a
+    /// gap between a split's two sides meaning after them. Nil at either edge of the tab itself (with its split
+    /// partner), where nothing would move.
+    private func moveTarget(at point: CGPoint) -> TabStripDropTarget? {
+        guard let moving = movingTab, let at = items.firstIndex(where: { $0.id == moving }) else { return nil }
+        var gap = items.count
+        for (index, item) in items.enumerated() {
+            if let frame = frames[item.id], point.x < frame.midX {
+                gap = index
+                break
+            }
+        }
+        if gap > 0, gap < items.count, items[gap - 1].joinedToNext { gap += 1 }
+        let first = at > 0 && items[at - 1].joinedToNext ? at - 1 : at
+        let last = items[first].joinedToNext ? first + 1 : first
+        return (first...(last + 1)).contains(gap) ? nil : .between(gap)
+    }
+
+    /// The tab's menu, its sections divided; Close / Close Other Tabs / Close All need another tab, Close Tabs to the
+    /// Right one after this.
     @ViewBuilder
     private func menuContent(_ menu: TabStripMenu, for id: UUID) -> some View {
         let sections = menu.commands(id)
@@ -250,7 +309,7 @@ public struct TabStrip<Leading: View>: View {
 
     private func isAvailable(_ command: TabStripCommand, for id: UUID) -> Bool {
         switch command {
-        case .close, .closeOthers: items.count > 1
+        case .close, .closeOthers, .closeAll: items.count > 1
         case .closeToRight: items.last?.id != id
         default: true
         }
@@ -282,15 +341,25 @@ public struct TabStrip<Leading: View>: View {
 /// The coordinate space the tab frames and the drop point share.
 nonisolated private let tabStripSpace = "hk-tab-strip"
 
-/// Applies the strip's drop handling when there is any.
+/// A tab dragged along the strip: which one (the last whose drag started), where it would go, and moving it there.
+private struct TabMove {
+    let moving: () -> UUID?
+    let target: (CGPoint) -> TabStripDropTarget?
+    let perform: (UUID, Int) -> Void
+}
+
+/// Applies the strip's drop handling when there is any: pages dropped on it, tabs dragged along it.
 private struct DropArea: ViewModifier {
     let drop: TabStripDrop?
     let target: (CGPoint) -> TabStripDropTarget?
     @Binding var indicator: TabStripDropTarget?
+    let move: TabMove?
 
     func body(content: Content) -> some View {
-        if let drop {
-            content.onDrop(of: drop.types, delegate: TabStripDropDelegate(drop: drop, target: target, indicator: $indicator))
+        if drop != nil || move != nil {
+            content.onDrop(
+                of: (drop?.types ?? []) + (move != nil ? [.hikkiTab] : []),
+                delegate: TabStripDropDelegate(drop: drop, target: target, move: move, indicator: $indicator))
         } else {
             content
         }
@@ -298,15 +367,26 @@ private struct DropArea: ViewModifier {
 }
 
 private struct TabStripDropDelegate: DropDelegate {
-    let drop: TabStripDrop
+    let drop: TabStripDrop?
     let target: (CGPoint) -> TabStripDropTarget?
+    let move: TabMove?
     @Binding var indicator: TabStripDropTarget?
 
-    func validateDrop(info: DropInfo) -> Bool { drop.accepts() }
+    /// A tab of this strip being dragged along it (a tab's drag also carries its page's link, so this comes first).
+    private func isMove(_ info: DropInfo) -> Bool {
+        move?.moving() != nil && info.hasItemsConforming(to: [.hikkiTab])
+    }
+
+    func validateDrop(info: DropInfo) -> Bool { isMove(info) || drop?.accepts() == true }
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
+        if let move, isMove(info) {
+            let next = move.target(info.location)
+            if indicator != next { indicator = next }
+            return DropProposal(operation: .move)
+        }
         // Updates can still arrive after the drop (the session winding down): nothing to show then.
-        let next = drop.accepts() ? target(info.location) : nil
+        let next = drop?.accepts() == true ? target(info.location) : nil
         if indicator != next { indicator = next }
         return DropProposal(operation: next == nil ? .forbidden : .copy)
     }
@@ -315,7 +395,12 @@ private struct TabStripDropDelegate: DropDelegate {
 
     func performDrop(info: DropInfo) -> Bool {
         indicator = nil
-        guard let target = target(info.location) else { return false }
+        if let move, isMove(info), let id = move.moving() {
+            // Dropped where it already was: the drag is over all the same.
+            if case .between(let index)? = move.target(info.location) { move.perform(id, index) }
+            return true
+        }
+        guard let drop, let target = target(info.location) else { return false }
         return drop.perform(target)
     }
 }
@@ -337,9 +422,9 @@ private struct TabButton: View {
             if let symbol = item.symbol {
                 IconView(symbol, size: TextSize.sm.rawValue).foregroundStyle(Theme.subtleForeground)
             } else {
-                PageIcon(item.icon, size: 15)
+                PageIcon(item.icon, size: Size.pageIcon)
             }
-            Text(item.title.isEmpty ? String(localized: "app:page.untitled") : item.title)
+            Text(verbatim: PageTitle.display(item.title))
                 .font(.hk(.md, isActive ? .medium : .regular))
                 .foregroundStyle(isActive ? Theme.foreground : Theme.subtleForeground)
                 .lineLimit(1)
@@ -348,7 +433,7 @@ private struct TabButton: View {
                 Button(action: onClose) {
                     IconView(.x, size: TextSize.xs.rawValue)
                         .foregroundStyle(Theme.mutedForeground)
-                        .frame(width: 18, height: 18)
+                        .frame(width: Size.sidebarIcon, height: Size.sidebarIcon)
                         .contentShape(.circle)
                 }
                 .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.full))
@@ -356,7 +441,7 @@ private struct TabButton: View {
             }
         }
         .padding(.horizontal, Spacing.s3)
-        .frame(minWidth: 60, idealWidth: 200, maxWidth: 220, minHeight: 30, maxHeight: 30)
+        .frame(minWidth: Size.tabMin, idealWidth: Size.tabIdeal, maxWidth: Size.tabMax, minHeight: Size.tabHeight, maxHeight: Size.tabHeight)
         // Capsules inside the toolbar's glass capsule, like a segmented control (App Store's sidebar).
         .background(
             Capsule()
@@ -369,7 +454,7 @@ private struct TabButton: View {
         .onHover { hovering = $0 }
         .modifier(TabDrag(item: dragItem))
         // The whole title, for a tab narrowed down to "N1…".
-        .toolTip(item.title.isEmpty ? String(localized: "app:page.untitled") : item.title)
+        .toolTip(PageTitle.display(item.title))
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isActive ? [.isButton, .isSelected] : .isButton)
         .accessibilityAction(named: "app:tabs.close", onClose)

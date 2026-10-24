@@ -381,3 +381,32 @@ export function excalidrawLanguage(locale: string): string {
  * — its toolbar then fills the top, so whatever the editor adds goes in a bar of its own.
  */
 export const COMPACT_DRAWING_QUERY = '(max-width: 729px), (max-height: 499px) and (pointer: coarse)'
+
+/** The part of a drawing's plane a preview shows, in scene units: the drawing's bounds with the export padding. */
+export type DrawingFrame = { x: number; y: number; width: number; height: number }
+
+/** A drawing's preview as Done hands it over: the PNG, the part of the plane it shows, and what the stored preview
+ * showed as the drawing opened (null when it was empty), so a view chosen on the old one can follow (`remapView`). */
+export type DrawingPreview = { blob: Blob; frame: DrawingFrame; before: DrawingFrame | null }
+
+/** Space kept around a drawing in its preview, in scene units. */
+export const PREVIEW_PADDING = 16
+
+/** The largest canvas WebKit draws on iOS (pixels), and the longest side anywhere: a preview past either comes out
+ * blank or not at all — and it is decoded on every device the page reaches, a phone included. */
+const MAX_PREVIEW_AREA = 4096 * 4096
+const MAX_PREVIEW_SIDE = 16_384
+
+/**
+ * Preview pixels per scene unit for a drawing `width` × `height` units (padding included): one, shown in the page at
+ * half (so twice as sharp as it is drawn), or less for a drawing too large for a canvas — a whole whiteboard still
+ * gets a preview, as large as one can be.
+ */
+export function previewScale(width: number, height: number): number {
+  if (!(width > 0 && height > 0)) return 1
+  return Math.min(
+    1,
+    Math.sqrt(MAX_PREVIEW_AREA / (width * height)),
+    MAX_PREVIEW_SIDE / Math.max(width, height)
+  )
+}

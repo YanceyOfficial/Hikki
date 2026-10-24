@@ -292,18 +292,36 @@ final class EditorController {
         func uploadCover(_ media: PickedMedia, docId: String) async {
             defer { try? FileManager.default.removeItem(at: media.url.deletingLastPathComponent()) }
             guard let assets else { return }
-            do {
-                let src = try assets.importFile(at: media.url, fileExtension: media.url.pathExtension)
+            switch await Self.importMedia([media.url], into: assets).first?.result {
+            case .success(let src)?:
                 Log.info("cover uploaded", category: "covers", context: ["ext": media.url.pathExtension.lowercased()])
                 await applyCover(src, docId: docId)
-            } catch {
-                let code: ErrorCode =
-                    switch error as? AssetStore.AssetError {
-                    case .tooLarge?: .fileTooLarge
-                    case .unsupportedType?: .fileTypeNotAllowed
-                    default: .uploadFailed
-                    }
-                Toasts.report(code, error, category: "covers", context: ["ext": media.url.pathExtension.lowercased()])
+            case .failure(let error)?:
+                Toasts.report(
+                    Self.assetErrorCode(error), error, category: "covers", context: ["ext": media.url.pathExtension.lowercased()])
+            case nil:
+                break
+            }
+        }
+
+        /// Picked files moved into the assets off the main actor (a video is a copy of its size), each with its size in
+        /// bytes (read before the move) and how it went.
+        nonisolated private static func importMedia(_ urls: [URL], into assets: AssetStore) async -> [(
+            url: URL, size: Int, result: Result<String, any Error>
+        )] {
+            await Task.detached(priority: .userInitiated) {
+                urls.map { url in
+                    let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                    return (url: url, size: size, result: Result { try assets.importFile(at: url, fileExtension: url.pathExtension) })
+                }
+            }.value
+        }
+
+        nonisolated private static func assetErrorCode(_ error: any Error) -> ErrorCode {
+            switch error as? AssetStore.AssetError {
+            case .tooLarge?: .fileTooLarge
+            case .unsupportedType?: .fileTypeNotAllowed
+            default: .uploadFailed
             }
         }
     #endif
@@ -537,13 +555,9 @@ final class EditorController {
         send("window.hikki.setOutlineRail(visible)", ["visible": visible], label: "setOutlineRail")
     }
 
+    /// Shows a page; `scrollTop`: where its tab left it (restored in the same call as the load, see `load`).
     func open(documentID: String?, scrollTop: Double? = nil) {
-        Task {
-            await load(documentID)
-            if let scrollTop, scrollTop > 0, let id = documentID, currentDocumentID == id {
-                await call("window.hikki.restoreScroll(top)", ["top": scrollTop], label: "restoreScroll")
-            }
-        }
+        Task { await load(documentID, scrollTop: scrollTop) }
     }
 
     /// Where the open page was last scrolled (the editor reports it), for a tab to come back to.
@@ -717,22 +731,15 @@ final class EditorController {
         func insertMedia(_ picked: [PickedMedia]) async {
             guard let assets else { return }
             var items: [[String: Any]] = []
-            for media in picked {
-                let name = media.url.lastPathComponent
-                let size = (try? media.url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-                do {
-                    let src = try assets.importFile(at: media.url, fileExtension: media.url.pathExtension)
-                    items.append(["src": src, "name": name, "size": size])
-                } catch {
-                    let code: ErrorCode =
-                        switch error as? AssetStore.AssetError {
-                        case .tooLarge?: .fileTooLarge
-                        case .unsupportedType?: .fileTypeNotAllowed
-                        default: .uploadFailed
-                        }
-                    Toasts.report(code, error, category: "media", context: ["ext": media.url.pathExtension.lowercased()])
+            for (url, size, result) in await Self.importMedia(picked.map(\.url), into: assets) {
+                switch result {
+                case .success(let src):
+                    items.append(["src": src, "name": url.lastPathComponent, "size": size])
+                case .failure(let error):
+                    Toasts.report(
+                        Self.assetErrorCode(error), error, category: "media", context: ["ext": url.pathExtension.lowercased()])
                 }
-                try? FileManager.default.removeItem(at: media.url.deletingLastPathComponent())
+                try? FileManager.default.removeItem(at: url.deletingLastPathComponent())
             }
             guard !items.isEmpty else { return }
             Log.info("media picked", category: "media", context: ["count": "\(items.count)"])
@@ -1034,7 +1041,7 @@ final class EditorController {
 
     // MARK: - Loading
 
-    private func load(_ id: String?) async {
+    private func load(_ id: String?, scrollTop: Double? = nil) async {
         guard isReady else {
             pendingDocumentID = .some(id)
             return
@@ -1052,9 +1059,11 @@ final class EditorController {
                 Log.warn("open: document missing", category: "store", context: ["docId": id])
                 return
             }
+            // A tab shown again goes back to its place in the same turn as its page loads: a separate call let WebKit
+            // paint the page at its top first, then jump — a flash on every tab switch.
             _ = try await webView.callAsyncJavaScript(
-                "window.hikki.loadDocument(page)",
-                arguments: ["page": try payload(record)],
+                "window.hikki.loadDocument(page); if (top > 0) window.hikki.restoreScroll(top)",
+                arguments: ["page": try payload(record), "top": scrollTop ?? 0],
                 contentWorld: .page
             )
             loaded = (id, try LoadedContent(record))
@@ -1083,6 +1092,37 @@ final class EditorController {
     // MARK: - Bridge
 
     /// Returns the reply for messages that expect one (WKScriptMessageHandlerWithReply).
+    /// The file writes among the bridge messages — a picture saved from the page, a chunk of an upload, its end — as
+    /// work for a thread of its own: the proxy awaits it off the main actor, so a video dropped on the page never
+    /// holds the window. nil for every other message (and for these with no asset store attached, which `handle`
+    /// then refuses).
+    fileprivate func assetWork(for message: BridgeMessage) -> (@Sendable () throws -> String?)? {
+        switch message {
+        case .saveAsset(let fileExtension, let data):
+            guard let assets else { return nil }
+            return {
+                let url = try assets.save(data, fileExtension: fileExtension)
+                Log.info("asset saved", category: "store", context: ["bytes": "\(data.count)", "ext": fileExtension])
+                return url
+            }
+        case .uploadChunk(let id, let data):
+            guard let uploads else { return nil }
+            return {
+                try uploads.append(id, data)
+                return nil
+            }
+        case .finishUpload(let id):
+            guard let uploads else { return nil }
+            return {
+                let url = try uploads.finish(id)
+                Log.info("upload saved", category: "store", context: ["ext": (url as NSString).pathExtension])
+                return url
+            }
+        default:
+            return nil
+        }
+    }
+
     func handle(_ message: BridgeMessage) throws -> Any? {
         switch message {
         case .ready(let version):
@@ -1106,6 +1146,9 @@ final class EditorController {
             }
         case .changed(let snapshot):
             save(snapshot)
+        case .editing(let docId):
+            // The save indicator (`PageSyncTracker`) shows "Saving…" until the snapshot is saved.
+            NotificationCenter.default.post(name: .pageEditingInEditor, object: self, userInfo: ["id": docId])
         case .activeFormats(let active):
             activeFormats = Set(active)
         case .pageInfo(let docId, let headings, let words, let characters):
@@ -1168,24 +1211,27 @@ final class EditorController {
             if let detail { fields["detail"] = String(detail.prefix(500)) }
             Toasts.report(ErrorCode(number: number) ?? .unknown, category: "editor", context: fields)
         case .setIcon(let docId, let icon):
-            try store?.setIcon(icon, for: docId)
+            // The page already shows the new icon / cover; a store that refuses it is said in a toast (and the page,
+            // told by the reply, puts the old one back).
+            do {
+                try store?.setIcon(icon, for: docId)
+            } catch {
+                Toasts.report(.pageUpdateFailed, error, category: "store", context: ["docId": docId, "field": "icon"])
+                throw error
+            }
         case .setCover(let docId, let cover):
-            try store?.setCover(cover, for: docId)
-        case .saveAsset(let fileExtension, let data):
-            guard let assets else { throw BridgeError.invalidPayload("asset store not attached") }
-            let url = try assets.save(data, fileExtension: fileExtension)
-            Log.info("asset saved", category: "store", context: ["bytes": "\(data.count)", "ext": fileExtension])
-            return url
+            do {
+                try store?.setCover(cover, for: docId)
+            } catch {
+                Toasts.report(.pageUpdateFailed, error, category: "store", context: ["docId": docId, "field": "cover"])
+                throw error
+            }
+        case .saveAsset, .uploadChunk, .finishUpload:
+            // Answered by `assetWork` off the main actor; here only when no asset store is attached.
+            throw BridgeError.invalidPayload("asset store not attached")
         case .beginUpload(let fileExtension, let size):
             guard let uploads else { throw BridgeError.invalidPayload("asset store not attached") }
             return try uploads.begin(fileExtension: fileExtension, size: size)
-        case .uploadChunk(let id, let data):
-            try uploads?.append(id, data)
-        case .finishUpload(let id):
-            guard let uploads else { throw BridgeError.invalidPayload("asset store not attached") }
-            let url = try uploads.finish(id)
-            Log.info("upload saved", category: "store", context: ["ext": (url as NSString).pathExtension])
-            return url
         case .cancelUpload(let id):
             uploads?.cancel(id)
         case .openAsset(let url, let label):
@@ -1259,14 +1305,19 @@ final class EditorController {
         }
         do {
             let base = loaded?.id == snapshot.docId ? loaded?.content : nil
+            // Before the write: the page's file (written through after the commit) is at least this new.
+            let savedAt = Date.now
             if try store?.saveContent(snapshot, loaded: base, conflictTitle: AppModel.conflictTitle) == false {
                 Log.warn("save skipped: document no longer exists", category: "store", context: ["docId": snapshot.docId])
+                NotificationCenter.default.post(name: .pageSaveFailedInEditor, object: self, userInfo: ["id": snapshot.docId])
             } else {
                 loaded = (snapshot.docId, LoadedContent(snapshot))
-                NotificationCenter.default.post(name: .pageSavedInEditor, object: self, userInfo: ["id": snapshot.docId])
+                NotificationCenter.default.post(
+                    name: .pageSavedInEditor, object: self, userInfo: ["id": snapshot.docId, "at": savedAt])
             }
         } catch {
             Toasts.report(.pageSaveFailed, error, category: "store", context: ["docId": snapshot.docId])
+            NotificationCenter.default.post(name: .pageSaveFailedInEditor, object: self, userInfo: ["id": snapshot.docId])
         }
     }
 
@@ -1284,6 +1335,8 @@ final class EditorController {
 
     private func makeWebView() -> HikkiWebView {
         let configuration = WKWebViewConfiguration()
+        // An embedded page may open a window only from a click (`EditorUIDelegate` checks that too).
+        configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
         configuration.setURLSchemeHandler(schemeHandler, forURLScheme: EditorSchemeHandler.scheme)
         configuration.userContentController.addScriptMessageHandler(
             ScriptMessageProxy(owner: self), contentWorld: .page, name: "hikki"
@@ -1373,6 +1426,10 @@ private final class ScriptMessageProxy: NSObject, WKScriptMessageHandlerWithRepl
                 ]
                 return (reply, nil)
             }
+            // Asset writes (a picture dropped on the page, a chunked upload) run off the main actor.
+            if let work = await owner?.assetWork(for: decoded) {
+                return (try await Task.detached(priority: .userInitiated, operation: work).value, nil)
+            }
             let reply = try owner?.handle(decoded)
             return (reply, nil)
         } catch {
@@ -1385,17 +1442,25 @@ private final class ScriptMessageProxy: NSObject, WKScriptMessageHandlerWithRepl
 /// `<input type="file">` (covers, media, attachments): iOS presents the system picker itself, but a macOS WKWebView
 /// does nothing unless the UI delegate shows an open panel.
 private final class EditorUIDelegate: NSObject, WKUIDelegate {
-    /// A link inside an embed that wants a new window (target=_blank, window.open): the system browser gets it.
+    /// A link inside an embed that wants a new window (target=_blank, window.open from a click): the system browser
+    /// gets it. Only a click (`EditorNavigationPolicy`, with no target frame): an embedded page calling `window.open`
+    /// by itself — on load, on a timer — opens nothing, and the web view's preferences refuse those outright.
     func webView(
         _ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
         for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures
     ) -> WKWebView? {
-        if let url = navigationAction.request.url, url.scheme == "https" || url.scheme == "http" {
+        let url = navigationAction.request.url
+        let decision = EditorNavigationPolicy.decide(
+            url: url, isMainFrame: nil, isLinkClick: navigationAction.navigationType == .linkActivated,
+            editorScheme: EditorSchemeHandler.scheme)
+        if decision == .openOutside, let url {
             #if os(iOS)
                 UIApplication.shared.open(url)
             #else
                 NSWorkspace.shared.open(url)
             #endif
+        } else {
+            Log.warn("popup from a frame refused", category: "bridge", context: ["click": "\(navigationAction.navigationType == .linkActivated)"])
         }
         return nil
     }
@@ -1462,6 +1527,10 @@ private final class NavigationDelegate: NSObject, WKNavigationDelegate {
 extension Notification.Name {
     /// An editor saved a page (`userInfo["id"]`, the editor as `object`): another editor showing it reloads.
     static let pageSavedInEditor = Notification.Name("app.yancey.hikki.pageSavedInEditor")
+    /// The page's first edit since its last save (`editing` from the page): the save indicator shows "Saving…".
+    static let pageEditingInEditor = Notification.Name("app.yancey.hikki.pageEditingInEditor")
+    /// An editor's save of a page failed or was skipped (`userInfo["id"]`): the save indicator drops "Saving…".
+    static let pageSaveFailedInEditor = Notification.Name("app.yancey.hikki.pageSaveFailedInEditor")
     /// A page's comments changed (`userInfo["id"]`; none: any page — the app came back and other devices may have
     /// written): editors showing it and the side panel reload them.
     static let pageCommentsChanged = Notification.Name("app.yancey.hikki.pageCommentsChanged")

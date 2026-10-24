@@ -171,10 +171,20 @@ private struct PageSidebar: View {
         #if DEBUG
             let _ = SidebarRenderStats.sidebarRendered()
         #endif
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: Spacing.px) { sections }
-                .padding(.horizontal, Spacing.s4)
-                .padding(.vertical, Spacing.s1)
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: Spacing.px) { sections }
+                    .padding(.horizontal, Spacing.s4)
+                    .padding(.vertical, Spacing.s1)
+            }
+            // A tab's Reveal in Sidebar: to the page's row (by its id in the tree), once its parents' expansion has
+            // laid it out.
+            .onChange(of: navigator.sidebarReveal) { _, request in
+                guard let request else { return }
+                Task {
+                    withAnimation(Motion.easeOut()) { proxy.scrollTo(request.pageID, anchor: .center) }
+                }
+            }
         }
         .scrollIndicators(.never)
         .syncRefreshable()
@@ -383,7 +393,7 @@ private struct PageRowDragDrop: ViewModifier {
             }
             .overlay(alignment: indicator == .before ? .top : .bottom) {
                 if indicator == .before || indicator == .after {
-                    colorTone.fill.frame(height: 2).clipShape(.capsule)
+                    colorTone.fill.frame(height: Spacing.s0_5).clipShape(.capsule)
                         .padding(.leading, CGFloat(depth) * Spacing.s3_5 + Spacing.s3_5)
                 }
             }
@@ -395,8 +405,8 @@ private struct PageRowDragDrop: ViewModifier {
             } preview: {
                 // The row as a rounded chip (the default preview was the bare row, square-cornered).
                 HStack(spacing: Spacing.s2) {
-                    PageIcon(row.icon, size: 16)
-                    Text(row.title.isEmpty ? String(localized: "app:page.untitled") : row.title)
+                    PageIcon(row.icon, size: Size.pageIcon)
+                    Text(PageTitle.display(row.title))
                         .font(.hk(.md))
                         .foregroundStyle(Theme.foreground)
                         .lineLimit(1)
@@ -424,8 +434,8 @@ private struct SidebarHeader: View {
 
     var body: some View {
         Text(title)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(.secondary)
+            .font(.hk(.sm, .semibold))
+            .foregroundStyle(Theme.mutedForeground)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, Spacing.s2)
             .padding(.top, Spacing.s4)
@@ -444,11 +454,11 @@ private struct DisclosureChevron: View {
         Group {
             if let isExpanded {
                 Button {
-                    withAnimation(.snappy(duration: 0.2)) { toggle() }
+                    withAnimation(Motion.easeOut()) { toggle() }
                 } label: {
                     IconView(.caretRight, size: TextSize.xs.rawValue)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.mutedForeground)
                         .frame(width: Size.sidebarIcon + Spacing.s1, height: Size.iconButtonSm)
                         .contentShape(.rect)
                 }
@@ -495,7 +505,7 @@ private struct NativePageLabel: View {
     var body: some View {
         Label {
             if page.title.isEmpty {
-                Text("app:page.untitled").foregroundStyle(.secondary)
+                Text("app:page.untitled").foregroundStyle(Theme.mutedForeground)
             } else {
                 Text(verbatim: page.title)  // the page's own title
             }
@@ -527,7 +537,7 @@ private struct HoverPageRow: View {
                 .frame(width: Size.sidebarIcon + Spacing.s1, height: Size.iconButtonSm)
             Group {
                 if row.title.isEmpty {
-                    Text("app:page.untitled").foregroundStyle(.secondary)
+                    Text("app:page.untitled").foregroundStyle(Theme.mutedForeground)
                 } else {
                     Text(verbatim: row.title)  // the page's own title
                 }
@@ -559,7 +569,7 @@ private struct HoverPageRow: View {
                     .help("app:page.addInside")
                     .accessibilityLabel("app:page.addInside")
                 }
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.mutedForeground)
             }
         }
         .onHover { hovering = $0 }
@@ -567,6 +577,40 @@ private struct HoverPageRow: View {
 }
 
 // MARK: - Shared
+
+/// "Move to Trash" asks first, the same way wherever it is chosen (Notion's): the page's title, how many subpages go
+/// along, a destructive Move to Trash and Cancel. `pageID` set shows it; ContentView presents the one for page menus
+/// (`Navigator.trashRequestID`), a sheet with its own Move to Trash (the iPhone's ⋯) presents its own over itself and
+/// closes with `onTrash`.
+struct TrashConfirmation: ViewModifier {
+    @Environment(AppModel.self) private var model
+    @Binding var pageID: String?
+    var onTrash: () -> Void = {}
+
+    func body(content: Content) -> some View {
+        let page = pageID.flatMap { model.tree.page($0) }
+        let subpages = page.map { model.tree.subpageCount(of: $0.id) } ?? 0
+        let title = page?.displayTitle ?? ""
+        content.alert(
+            "app:page.confirmTrash \(title)",
+            isPresented: Binding(get: { page != nil }, set: { if !$0 { pageID = nil } })
+        ) {
+            Button("app:page.moveToTrash", role: .destructive) {
+                guard let page else { return }
+                onTrash()
+                model.moveToTrash(id: page.id)
+            }
+            .accessibilityIdentifier("confirm-trash")
+            Button("app:common.cancel", role: .cancel) {}
+        } message: {
+            switch subpages {
+            case 0: Text("app:page.confirmTrash.hint")
+            case 1: Text("app:page.confirmTrash.subpage")
+            default: Text("app:page.confirmTrash.subpages \(subpages.formatted())")
+            }
+        }
+    }
+}
 
 /// Shared page actions for the ⋯ menu, context menus and the page bar.
 struct PageActions: View {
@@ -625,8 +669,9 @@ struct PageActions: View {
                 IconLabel("app:page.importInside", icon: .trayArrowDown)
             }
             .accessibilityIdentifier("page-import")
+            // Asks first (ContentView presents `TrashConfirmation`): a menu item one row from Import is easy to hit.
             Button(role: .destructive) {
-                model.moveToTrash(id: page.id)
+                navigator.trashRequestID = page.id
             } label: {
                 IconLabel("app:page.moveToTrash", icon: .trash)
             }
@@ -660,28 +705,14 @@ struct PageActions: View {
         }
     }
 
-    /// Every other page (not this one's subtree), indented by depth, plus the top level.
+    /// Notion's "Move page to…": the window presents the picker (`MovePageSheet`).
     private var moveToMenu: some View {
-        Menu {
-            if page.parentId != nil {
-                Button("app:page.moveToTopLevel") { model.movePageToTopLevel(page.id) }
-            }
-            ForEach(model.tree.moveTargets(for: page.id), id: \.page.id) { target in
-                Button {
-                    model.movePage(page.id, onto: target.page.id, zone: .inside)
-                } label: {
-                    // The page's own title, shown as-is (indented by depth like the sidebar).
-                    Text(verbatim: String(repeating: "    ", count: target.depth) + displayTitle(target.page))
-                }
-            }
+        Button {
+            navigator.movePageID = page.id
         } label: {
             IconLabel("app:page.moveTo", icon: .arrowBendUpRight)
         }
-    }
-
-    private func displayTitle(_ page: PageSummary) -> String {
-        let icon = page.icon.map { "\($0) " } ?? ""
-        return icon + (page.title.isEmpty ? String(localized: "app:page.untitled") : page.title)
+        .accessibilityIdentifier("page-move")
     }
 
     private func copyLink() {

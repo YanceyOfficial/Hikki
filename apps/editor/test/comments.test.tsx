@@ -1,8 +1,10 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { act, cleanup, fireEvent, screen, within } from '@testing-library/react'
 import type { Editor } from '@tiptap/core'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { marginPlacement, PHONE_QUERY } from '../src/components/comments'
 import { createEditor } from '../src/core/editor'
 import {
   commentRanges,
@@ -11,6 +13,8 @@ import {
   setThreads,
   type ThreadItem
 } from '../src/extensions/comments'
+import { marginPlacement } from '../src/lib/comment-layout'
+import { PHONE, UPRIGHT_PHONE } from '../src/lib/device'
 
 let host: HTMLElement
 let editor: Editor
@@ -68,12 +72,16 @@ afterEach(() => {
 /** An iPhone: a touch screen in a narrow window (jsdom has no matchMedia of its own). */
 function stubPhone() {
   vi.stubGlobal('matchMedia', (query: string) => ({
-    matches: query === PHONE_QUERY || query === '(pointer: coarse)',
+    matches: query === PHONE || query === UPRIGHT_PHONE || query === '(pointer: coarse)',
     media: query,
     addEventListener: () => {},
     removeEventListener: () => {}
   }))
 }
+
+/** The thread's card in the margin, or its badge in a narrow window. */
+const drawn = () =>
+  document.querySelector('.hk-comments-layer [data-thread], [data-testid="comment-badge"]')
 
 /** A thread on "quick", known to the store. */
 function commentOnQuick(): string {
@@ -98,6 +106,26 @@ describe('comments', () => {
       editor.commands.setTextSelection(3)
     })
     expect(measured).not.toHaveBeenCalled()
+  })
+
+  it('typing beside open threads measures nothing as it happens, then once a frame', async () => {
+    commentOnQuick()
+    // Typing in "the", before the passage: its block moves in the document, not on screen.
+    act(() => editor.commands.setTextSelection(3))
+    const measured = vi.spyOn(editor.view, 'coordsAtPos')
+    const badge = drawn()
+    expect(badge).not.toBeNull()
+    act(() => {
+      for (const char of 'typing') editor.commands.insertContent(char)
+      editor.commands.setTextSelection(3)
+    })
+    // Keystrokes and caret moves measure nothing as they happen…
+    expect(measured).not.toHaveBeenCalled()
+    // …the frame after them measures once (a passage's start, end and block: three positions).
+    await act(() => new Promise((resolve) => requestAnimationFrame(() => resolve(undefined))))
+    expect(measured.mock.calls.length).toBeLessThanOrEqual(3)
+    // The thread's block moved in the document, not on screen: the same card, not a new one.
+    expect(drawn()).toBe(badge)
   })
 
   it('moving the caret does not walk the page for comment passages again', () => {
@@ -164,6 +192,25 @@ describe('comments', () => {
     act(() => setThreads(editor, [thread(id, true)]))
     expect(host.querySelector('.hk-comment')).toBeNull()
     expect(screen.queryByTestId('comment-thread')).toBeNull()
+  })
+
+  it('a selection over a commented passage is painted over its wash, not under it', () => {
+    commentOnQuick()
+    act(() => editor.commands.setTextSelection({ from: 5, to: 10 }))
+    // One span carries both: the later rule in the stylesheet decides which background shows.
+    const span = host.querySelector('.hk-comment.hk-selection')
+    expect(span?.textContent).toBe('quick')
+    const styles = readFileSync(join(process.cwd(), 'src/style.css'), 'utf8')
+    const wash = styles.indexOf('.tiptap .hk-comment {')
+    const selected = styles.search(
+      /\.tiptap \.hk-comment\.hk-selection\s*\{\s*background: var\(--color-selection\)/u
+    )
+    expect(wash).toBeGreaterThan(-1)
+    expect(selected).toBeGreaterThan(wash)
+    // While a drag paints its own layer behind the text, the wash steps aside.
+    expect(styles).toMatch(
+      /\.hk-column:has\(> \.hk-selection-layer:not\(:empty\)\) \.hk-comment\s*\{\s*background: transparent/u
+    )
   })
 
   it('replies, resolves and deletes through the host; deleting takes the mark away', async () => {
@@ -329,6 +376,24 @@ describe('comments', () => {
     fireEvent.click(scrim)
     await vi.waitFor(() => expect(commentsState(editor.state)?.active).toBeNull())
     expect(document.activeElement).not.toBe(editor.view.dom)
+  })
+
+  it('a narrow window shows a count badge beside the passage', async () => {
+    // Too narrow for margin cards (jsdom has no layout: the text's right edge is 0).
+    vi.stubGlobal('innerWidth', 380)
+    commentOnQuick()
+    await act(async () => window.dispatchEvent(new Event('resize')))
+    expect(screen.queryAllByTestId('comment-badge')).toHaveLength(1)
+  })
+
+  it('an upright phone shows no badge (the wash is enough); the thread still opens', async () => {
+    vi.stubGlobal('innerWidth', 380)
+    stubPhone()
+    const id = commentOnQuick()
+    await act(async () => window.dispatchEvent(new Event('resize')))
+    expect(screen.queryAllByTestId('comment-badge')).toHaveLength(0)
+    act(() => editor.commands.commentOpen(id))
+    expect(commentsState(editor.state)?.active).toBe(id)
   })
 
   it('a tap on a commented passage opens its thread without placing the caret (no keyboard)', () => {

@@ -45,6 +45,22 @@ enum Shortcut: String, CaseIterable {
     case moveBlockDown
     case ruby
     case comment
+    case favoritePage
+    case duplicatePage
+    case movePage
+    case moveToTrash
+    case pageHistory
+    case exportMarkdown
+    case reopenClosedTab
+    case tab1
+    case tab2
+    case tab3
+    case tab4
+    case tab5
+    case tab6
+    case tab7
+    case tab8
+    case tab9
 
     /// Who handles the key: the native menu (`app`), the page (`editor` — menus only display it), or
     /// the page when it has focus and the menu otherwise (`both`).
@@ -101,6 +117,22 @@ enum Shortcut: String, CaseIterable {
         case .moveBlockDown: .editor
         case .ruby: .editor
         case .comment: .editor
+        case .favoritePage: .app
+        case .duplicatePage: .app
+        case .movePage: .app
+        case .moveToTrash: .app
+        case .pageHistory: .app
+        case .exportMarkdown: .app
+        case .reopenClosedTab: .app
+        case .tab1: .app
+        case .tab2: .app
+        case .tab3: .app
+        case .tab4: .app
+        case .tab5: .app
+        case .tab6: .app
+        case .tab7: .app
+        case .tab8: .app
+        case .tab9: .app
         }
     }
 
@@ -146,6 +178,22 @@ enum Shortcut: String, CaseIterable {
         case .moveBlockDown: .blocks
         case .ruby: .format
         case .comment: .format
+        case .favoritePage: .general
+        case .duplicatePage: .general
+        case .movePage: .general
+        case .moveToTrash: .general
+        case .pageHistory: .general
+        case .exportMarkdown: .general
+        case .reopenClosedTab: .navigation
+        case .tab1: .navigation
+        case .tab2: .navigation
+        case .tab3: .navigation
+        case .tab4: .navigation
+        case .tab5: .navigation
+        case .tab6: .navigation
+        case .tab7: .navigation
+        case .tab8: .navigation
+        case .tab9: .navigation
         }
     }
 
@@ -192,6 +240,22 @@ enum Shortcut: String, CaseIterable {
         case .moveBlockDown: KeyCombo("arrowDown", [.shift, .command])
         case .ruby: KeyCombo("r", [.shift, .command])
         case .comment: KeyCombo("m", [.shift, .command])
+        case .favoritePage: KeyCombo("p", [.shift, .command])
+        case .duplicatePage: KeyCombo("d", [.shift, .command])
+        case .movePage: KeyCombo("v", [.option, .command])
+        case .moveToTrash: KeyCombo("delete", [.command])
+        case .pageHistory: KeyCombo("h", [.shift, .command])
+        case .exportMarkdown: KeyCombo("e", [.shift, .command])
+        case .reopenClosedTab: KeyCombo("t", [.shift, .command])
+        case .tab1: KeyCombo("1", [.command])
+        case .tab2: KeyCombo("2", [.command])
+        case .tab3: KeyCombo("3", [.command])
+        case .tab4: KeyCombo("4", [.command])
+        case .tab5: KeyCombo("5", [.command])
+        case .tab6: KeyCombo("6", [.command])
+        case .tab7: KeyCombo("7", [.command])
+        case .tab8: KeyCombo("8", [.command])
+        case .tab9: KeyCombo("9", [.command])
         }
     }
 
@@ -238,6 +302,22 @@ enum Shortcut: String, CaseIterable {
         case .moveBlockDown: "app:shortcut.moveBlockDown"
         case .ruby: "app:shortcut.ruby"
         case .comment: "app:shortcut.comment"
+        case .favoritePage: "app:shortcut.favoritePage"
+        case .duplicatePage: "app:shortcut.duplicatePage"
+        case .movePage: "app:shortcut.movePage"
+        case .moveToTrash: "app:shortcut.moveToTrash"
+        case .pageHistory: "app:shortcut.pageHistory"
+        case .exportMarkdown: "app:shortcut.exportMarkdown"
+        case .reopenClosedTab: "app:shortcut.reopenClosedTab"
+        case .tab1: "app:shortcut.tab1"
+        case .tab2: "app:shortcut.tab2"
+        case .tab3: "app:shortcut.tab3"
+        case .tab4: "app:shortcut.tab4"
+        case .tab5: "app:shortcut.tab5"
+        case .tab6: "app:shortcut.tab6"
+        case .tab7: "app:shortcut.tab7"
+        case .tab8: "app:shortcut.tab8"
+        case .tab9: "app:shortcut.tab9"
         }
     }
 }

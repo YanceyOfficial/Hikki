@@ -9,6 +9,7 @@ import { Header } from '../components/header'
 import { row } from '../components/row'
 import { Shot } from '../components/shot'
 import { SplitView } from '../components/split-view'
+import { Price, StoreActions } from '../components/store'
 
 export const Route = createFileRoute('/')({ component: Home })
 
@@ -38,8 +39,8 @@ const HERO_FACTS = [
 
 /**
  * The first screen: the headline leads, with the word Hikki comes from as its mark — large on a wide screen, small
- * beside the headline on a phone, its meaning right under it either way — and the screenshot beside; the four
- * facts under the screenshot, where they have room at every width.
+ * beside the headline on a phone, its meaning right under it either way — then the price and the one thing to do
+ * today, and the screenshot beside; the four facts under the screenshot, where they have room at every width.
  */
 function Hero() {
   return (
@@ -62,6 +63,10 @@ function Hero() {
             Hikki is a block editor for iPhone, iPad and Mac. Every page is kept on your device and
             syncs through your own iCloud, so your writing never waits on an account or a server.
           </p>
+        </div>
+        <div class="mt-auto flex max-w-[34rem] flex-col items-start gap-5">
+          <Price class="w-full" />
+          <StoreActions />
         </div>
       </div>
       <div class="cell bg-red flex items-center justify-center p-5 md:p-8 lg:col-span-8">
@@ -88,13 +93,20 @@ function Hero() {
   )
 }
 
+/** Where a page is kept, and where it never goes. */
+const WHERE_PAGES_ARE = [
+  { title: 'On your devices', text: 'Every page, ready offline.' },
+  { title: 'In your iCloud', text: 'When you turn it on.' },
+  { title: 'Nowhere else', text: 'No Hikki server holds a page.' }
+]
+
 function LocalFirst() {
   const facts = [
     { title: 'No account', text: 'Open the app and write. There is nothing to sign up for.' },
     { title: 'Works offline', text: 'Everything is on the device first; the network is optional.' },
     {
       title: 'Syncs through your iCloud',
-      text: 'Changes reach your other devices in moments. Or keep it on this device only.'
+      text: 'Changes reach your other devices in moments, page text encrypted end to end. Or keep it on this device only.'
     },
     {
       title: 'Nothing is overwritten',
@@ -109,21 +121,23 @@ function LocalFirst() {
     <section id="local-first" class={`${row} grid-cols-1 lg:grid-cols-12`}>
       <div class="cell p-8 md:p-12 lg:col-span-5">
         <h2 class="expanded text-[clamp(1.875rem,3.4vw,3rem)] leading-[1.05] font-[850] tracking-[-0.02em]">
-          Your notes are files.
+          Your devices, your iCloud, no one else.
         </h2>
         <p class="mt-6 max-w-[32rem] text-lg leading-relaxed text-muted">
-          Each page is one small file, kept in the app’s storage on the device. With iCloud on, it
-          also goes to your own iCloud account and reaches every device you own. Export writes
-          everything out as Markdown, HTML, PDF or the original page files.
+          Pages are kept on the device and open without a network. With iCloud on, they go to the
+          private database of your own iCloud account and from there to every device you own. Export
+          writes everything out as Markdown, HTML, PDF or JSON whenever you like.
         </p>
-        <pre class="border-ink bg-paper mt-8 overflow-x-auto border-4 p-5 font-mono text-sm leading-7">
-          {`Workspace/
-  pages/
-    product-launch.json
-    kyoto-in-spring.json
-  history/
-  assets/`}
-        </pre>
+        <dl class="border-line bg-line mt-8 grid grid-cols-1 gap-1 border-4 sm:grid-cols-3">
+          <For each={WHERE_PAGES_ARE}>
+            {(place) => (
+              <div class="bg-paper p-4">
+                <dt class="expanded text-caption font-[800]">{place.title}</dt>
+                <dd class="m-0 mt-1 text-sm leading-snug text-muted">{place.text}</dd>
+              </div>
+            )}
+          </For>
+        </dl>
       </div>
       <ul class={`${row} m-0 list-none grid-cols-1 p-0 sm:grid-cols-2 lg:col-span-7`}>
         <For each={facts}>
@@ -255,9 +269,14 @@ function Features() {
         text="Lock a finished page and nothing in it changes by accident, on any device."
       />
       <Feature
-        class="md:col-span-4 lg:col-span-8"
+        class="bg-yellow md:col-span-2 lg:col-span-4"
+        title="Draw on the page"
+        text="A drawing block opens an Excalidraw whiteboard in the page. Sketch by hand, or describe a flowchart and have AI draw it."
+      />
+      <Feature
+        class="md:col-span-2 lg:col-span-4"
         title="Markdown in, Markdown out"
-        text="Import Markdown, HTML and text files or whole folders. Export a page or everything as Markdown, HTML, PDF or the original files."
+        text="Import Markdown, HTML and text files or whole folders. Export a page or everything as Markdown, HTML, PDF or JSON."
       />
       <Feature
         class="bg-blue md:col-span-2 lg:col-span-4"

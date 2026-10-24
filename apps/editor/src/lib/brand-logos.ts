@@ -5,7 +5,7 @@
  * the Phosphor icons' size; a brand colour too dark to read on a dark surface (GitHub's near-black) takes the row's
  * text colour instead, so it reads in both themes.
  */
-import type { SVGProps } from 'react'
+import { createElement, type SVGProps } from 'react'
 import {
   siAirtable,
   siCalendly,
@@ -40,10 +40,11 @@ export const brandFill = (hex: string) => (isDarkHex(hex) ? 'currentColor' : `#$
 function logo(icon: SimpleIcon, name: string) {
   const fill = brandFill(icon.hex)
   function Logo({ size = 18, ...rest }: LogoProps) {
-    return (
-      <svg viewBox={VIEW_BOX} width={size} height={size} fill={fill} data-logo={name} {...rest}>
-        <path d={icon.path} />
-      </svg>
+    // createElement, not JSX: lib/ is plain TypeScript (the "/" catalog in core/ names these as its icons).
+    return createElement(
+      'svg',
+      { viewBox: VIEW_BOX, width: size, height: size, fill, 'data-logo': name, ...rest },
+      createElement('path', { d: icon.path })
     )
   }
   Logo.displayName = `${name}Logo`

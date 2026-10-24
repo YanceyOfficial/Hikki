@@ -96,9 +96,12 @@ export function openDateMention(editor: Editor, pos: number): void {
     open = { layer: null, chip }
     return
   }
-  const layer = new FloatingLayer('hk-date-popover w-[272px] max-w-[calc(100vw-16px)] p-1.5', {
-    onDismiss: () => close(editor)
-  })
+  const layer = new FloatingLayer(
+    'hk-date-popover w-(--layout-panel-date) max-w-(--layout-viewport-max) p-1.5',
+    {
+      onDismiss: () => close(editor)
+    }
+  )
   open = { layer, chip }
   const anchor = () => {
     const now = chip.current?.pos

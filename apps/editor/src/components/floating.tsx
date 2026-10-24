@@ -4,66 +4,14 @@ import { useEffect, useState, type ReactElement, type RefObject } from 'react'
 import { flushSync } from 'react-dom'
 import { createRoot, type Root } from 'react-dom/client'
 
+import { register, unregister, type DismissReason } from '../lib/dismiss-bus'
+
 /** Where a layer sits: a function giving the anchor's rect (null while it has none); nothing leaves it in place. */
 export type FloatingAnchor = (() => DOMRect | null) | null | undefined
 
-/**
- * The open layers, newest last. One pair of document listeners serves them all: Escape and a press outside
- * every open layer dismiss the newest one (its own `onDismiss` decides what that means — close the menu, cancel
- * the panel). So every popup closes the same way, and a press on something else closes what was open before
- * it opens anything new.
- */
-const openLayers: FloatingLayer[] = []
+export { dismissAllLayers, openFloatingLayers, type DismissReason } from '../lib/dismiss-bus'
 
-/**
- * Why a layer is dismissed: Escape, a press outside it, or `all` — the page it belongs to is going away
- * (`dismissAllLayers`). Its `onDismiss` may answer `'keep'` to stay open (Escape closing a submenu first).
- */
-export type DismissReason = 'escape' | 'press' | 'all'
 type OnDismiss = (reason: DismissReason) => 'keep' | void
-
-function dismissOnPress(event: PointerEvent): void {
-  const top = openLayers.at(-1)
-  if (!top || openLayers.some((layer) => layer.element.contains(event.target as Node))) return
-  top.dismiss('press')
-}
-
-function dismissOnEscape(event: KeyboardEvent): void {
-  if (event.key !== 'Escape') return
-  const top = openLayers.at(-1)
-  if (!top) return
-  event.preventDefault()
-  event.stopPropagation()
-  top.dismiss('escape')
-}
-
-/**
- * Dismisses every open layer, newest first: the page they point into is about to be replaced
- * (`loadDocument`), so a menu or panel must not outlive it and act on the next page.
- */
-export function dismissAllLayers(): void {
-  for (const layer of openLayers.toReversed()) layer.dismiss('all')
-}
-
-function register(layer: FloatingLayer): void {
-  if (openLayers.length === 0) {
-    document.addEventListener('pointerdown', dismissOnPress, true)
-    document.addEventListener('keydown', dismissOnEscape, true)
-  }
-  openLayers.push(layer)
-}
-
-function unregister(layer: FloatingLayer): void {
-  const index = openLayers.indexOf(layer)
-  if (index >= 0) openLayers.splice(index, 1)
-  if (openLayers.length === 0) {
-    document.removeEventListener('pointerdown', dismissOnPress, true)
-    document.removeEventListener('keydown', dismissOnEscape, true)
-  }
-}
-
-/** The layers the bus is managing right now (tests). */
-export const openFloatingLayers = (): readonly FloatingLayer[] => openLayers
 
 /**
  * A React tree rendered into a body-level layer and positioned next to a caret rect.

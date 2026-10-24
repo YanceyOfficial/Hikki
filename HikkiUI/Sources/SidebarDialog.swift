@@ -60,7 +60,7 @@ public struct SidebarDialog<ID: Hashable, Content: View>: View {
                 .frame(width: Size.settingsSidebar)
                 .frame(maxHeight: .infinity, alignment: .top)
                 .background(Theme.sidebar)
-            Rectangle().fill(Theme.border).frame(width: 1)
+            Rectangle().fill(Theme.border).frame(width: Spacing.px)
             VStack(spacing: Spacing.s0) {
                 header
                 content(selection)

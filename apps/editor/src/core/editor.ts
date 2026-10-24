@@ -17,7 +17,7 @@ import { Column, Columns, ColumnsKeymap } from '../extensions/columns'
 import { Comments, type CommentsHost } from '../extensions/comments'
 import { DateMention } from '../extensions/date-mention'
 import { Drawing, type DrawingEditorHost } from '../extensions/drawing'
-import { EdgeNavigation } from '../extensions/edge-navigation'
+import { EdgeNavigation, TabStaysInPage } from '../extensions/edge-navigation'
 import { Embed } from '../extensions/embed'
 import { EmojiSuggestion } from '../extensions/emoji-suggestion'
 import { Find } from '../extensions/find'
@@ -37,6 +37,7 @@ import { TableOfContents } from '../extensions/toc'
 import { Quote, toggleExtensions } from '../extensions/toggle'
 import { bffURL } from '../lib/bff'
 import type { LinkCard } from '../lib/embeds'
+import { BLOCK_ID_TYPES } from './block-ids'
 import { setMediaHost } from './blocks'
 import { t } from './i18n'
 import { isSafeHref } from './links'
@@ -77,34 +78,6 @@ export type EditorOptions = {
   /** Drawings: storing their pictures and previews, Text to diagram; without it a drawing shows but doesn't open. */
   drawing?: DrawingEditorHost
 }
-
-/**
- * Blocks that carry a stable `id` attribute: the anchor for version diffs, block links and, later,
- * comments and collaboration. Inline nodes and list wrappers don't need one.
- */
-export const BLOCK_ID_TYPES = [
-  'paragraph',
-  'heading',
-  'blockquote',
-  'codeBlock',
-  'horizontalRule',
-  'listItem',
-  'taskItem',
-  'bulletList',
-  'orderedList',
-  'taskList',
-  'details',
-  'callout',
-  'blockMath',
-  'table',
-  'columns',
-  'image',
-  'video',
-  'audio',
-  'fileAttachment',
-  'embed',
-  'drawing'
-]
 
 /** The page body editor. `content` must already be normalized (see normalizeBody). */
 const noComments: CommentsHost = {
@@ -230,6 +203,7 @@ export function editorExtensions(options: EditorOptions = {}): AnyExtension[] {
       placeholder: ({ node }) => (node.type.name === 'paragraph' ? t('editor.bodyPlaceholder') : '')
     }),
     EdgeNavigation.configure({ onExitTop: options.onExitTop ?? (() => {}) }),
+    TabStaysInPage,
     SlashCommand,
     SelectionMenuExtension,
     SelectionPaint,
