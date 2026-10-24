@@ -152,7 +152,12 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
         do {
             try await engine.sendChanges()
         } catch {
-            Log.warn("cloud send failed: \(error)", category: "cloud")
+            // Records another device changed first come back as a partial failure; `handleSent` settles each.
+            if let error = error as? CKError, error.code == .partialFailure {
+                Log.info("cloud send partly refused", category: "cloud", context: ["records": "\(error.partialErrorsByItemID?.count ?? 0)"])
+            } else {
+                Log.warn("cloud send failed: \(error)", category: "cloud")
+            }
         }
     }
 
@@ -277,7 +282,8 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
         mirror.batch {
             for record in records {
                 guard let path = record.encryptedValues["path"] as? String, let contents = Self.contents(of: record) else {
-                    Log.warn("cloud record unreadable", category: "cloud")
+                    let reason = record.encryptedValues["path"] == nil ? "path" : record["file"] == nil ? "data" : "asset"
+                    Log.warn("cloud record unreadable", category: "cloud", context: ["missing": reason])
                     continue
                 }
                 do {
@@ -309,6 +315,7 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
     }
 
     private func handleSent(_ sent: CKSyncEngine.Event.SentRecordZoneChanges, syncEngine: CKSyncEngine) {
+        var refetch = false
         mirror.batch {
             for record in sent.savedRecords {
                 guard let file = lock.withLock({ inflight.removeValue(forKey: record.recordID.recordName) }) else { continue }
@@ -324,11 +331,15 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
             let path = failed.record.encryptedValues["path"] as? String
             switch failed.error.code {
             case .serverRecordChanged:
-                // Another device saved it first: settle with theirs, then send the result over it.
-                if let server = failed.error.serverRecord {
+                // Another device saved it first: settle with theirs, then send the result over it. The server's
+                // record in the error may come without its asset: then nothing is resent on the old version (it
+                // would clash again) — a fetch brings the record whole, and settling it queues the save.
+                if let server = failed.error.serverRecord, Self.isReadable(server) {
                     receive([server], deletions: [], syncEngine: syncEngine)
+                    syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(id)])
+                } else {
+                    refetch = true
                 }
-                syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(id)])
             case .zoneNotFound:
                 syncEngine.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: Self.zoneID))])
                 if let path { mirror.lostRecord(path) }
@@ -347,6 +358,7 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
             Log.error("cloud delete failed: \(error.code.rawValue)", category: "cloud")
         }
         try? FileManager.default.removeItem(at: staging)
+        if refetch { Task { try? await syncEngine.fetchChanges() } }
     }
 
     private func handleAccountChange(_ change: CKSyncEngine.Event.AccountChange) {
@@ -369,6 +381,10 @@ public final class CloudSync: CKSyncEngineDelegate, @unchecked Sendable {
     }
 
     // MARK: - Coding
+
+    static func isReadable(_ record: CKRecord) -> Bool {
+        record.encryptedValues["path"] is String && contents(of: record) != nil
+    }
 
     static func contents(of record: CKRecord) -> Data? {
         if let data = record.encryptedValues["data"] as? Data { return data }

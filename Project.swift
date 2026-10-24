@@ -7,7 +7,7 @@ let baseSettings: SettingsDictionary = [
     "SWIFT_VERSION": "6.0",
     "SWIFT_APPROACHABLE_CONCURRENCY": "YES",
     "ENABLE_USER_SCRIPT_SANDBOXING": "YES",
-    "DEVELOPMENT_TEAM": "YLF27G9ZMT",
+    "DEVELOPMENT_TEAM": "A542S7SY83",
 ]
 
 let project = Project(
