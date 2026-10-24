@@ -246,7 +246,8 @@ HikkiUITests/                 XCUITest flows
   content hash, kept with each record's system fields in a cloud-state file beside the database, not in the folder),
   and what to do with what arrives — written over a file unchanged here, otherwise settled: a page by the later
   change with the other as a conflicted copy (`ConflictCopy`), comments and chats merged (`mergeFiles`), anything
-  else the cloud's. Changes go up after a quiet second (`noteLocalChanges`: `WorkspaceSync.Options.didWrite`, a scan
+  else the cloud's — but a record still as last agreed (this device's own save fetched back) is no change
+  there: the file stays and goes up. Changes go up after a quiet second (`noteLocalChanges`: `WorkspaceSync.Options.didWrite`, a scan
   every 10 s, activation), are sent before the app goes to the background (`flushWorkspace`), and come down with
   iCloud's pushes (`registerForRemoteNotifications`, iOS background mode `remote-notification`), on activation and
   on a pull to refresh (iOS: Home, the phone drawer, the sidebar, Trash — `syncRefreshable` in

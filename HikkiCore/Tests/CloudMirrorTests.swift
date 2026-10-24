@@ -113,6 +113,36 @@ struct CloudMirrorTests {
         #expect(Set(mirror.localChanges()) == [.save("pages/p.json"), .save("pages/\(copy.id).json")])
     }
 
+    /// ISSUE-195: typing went on after a save went up, then the fetch brought this device's own save back (CloudKit
+    /// returns a device's own changes too). The cloud didn't change — no conflicted copy, and the newer words stay.
+    @Test func anEchoOfThisDevicesOwnSaveIsNoConflict() throws {
+        let root = try makeTempDirectory()
+        let mirror = try mirror(root)
+        try PageFiles(root: root).write(try pageFile("first words", at: t0))
+        try write("library v1", "drawings/library.json", in: root)
+        var sent: [String: Data] = [:]
+        for case .save(let path) in mirror.localChanges() {
+            let file = try #require(mirror.outgoing(path))
+            sent[path] = file.contents
+            mirror.saved(file, systemFields: Data([1]))
+        }
+
+        // Typing goes on (the next autosave), and the library changes, before the fetch returns the saved records.
+        try PageFiles(root: root).write(try pageFile("first words, and more", at: t0.addingTimeInterval(2)))
+        try write("library v2, longer", "drawings/library.json", in: root)
+        for path in ["pages/p.json", "drawings/library.json"] {
+            let echo = try mirror.receive(path, contents: try #require(sent[path]), systemFields: Data([2]))
+            #expect(echo == .init(touched: false, needsPush: true))
+            #expect(mirror.systemFields(path) == Data([2]))
+        }
+
+        let pages = try PageFiles(root: root).readAll().pages
+        #expect(pages.count == 1)
+        #expect(pages.first?.plainText == "first words, and more")
+        #expect(try String(contentsOf: root.appending(path: "drawings/library.json"), encoding: .utf8) == "library v2, longer")
+        #expect(Set(mirror.localChanges()) == [.save("pages/p.json"), .save("drawings/library.json")])
+    }
+
     @Test func aPageChangedOnlyInItsDetailsMakesNoCopy() throws {
         let root = try makeTempDirectory()
         let mirror = try mirror(root)

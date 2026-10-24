@@ -223,6 +223,15 @@ public final class CloudMirror: @unchecked Sendable {
             record(path, url: url, hash: incomingHash, systemFields: systemFields)
             return Received(touched: localHash != incomingHash, needsPush: false)
         }
+        // The cloud still holds what this device last agreed with it — an echo of this device's own save fetched
+        // back, or a record fetched again — while the file has moved on (typing since): only this side changed.
+        // Nothing to settle (settling made a conflicted copy of the page's own earlier words, or took the older
+        // version back for files the cloud wins); the file stays and goes up on the record's current change tag.
+        if let entry, incomingHash == entry.hash {
+            lock.withLock { state.entries[path]?.systemFields = systemFields ?? entry.systemFields }
+            persist()
+            return Received(touched: false, needsPush: true)
+        }
         // Both sides changed it.
         let settled = resolve(path, local: local, cloud: contents)
         for (extraPath, data) in settled.extra {
