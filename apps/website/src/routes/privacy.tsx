@@ -26,7 +26,7 @@ export const Route = createFileRoute('/privacy')({
 })
 
 /** The date the text below last changed. */
-const EFFECTIVE = '23 October 2026'
+const EFFECTIVE = '24 October 2026'
 
 /** The short version, in the yellow cell. */
 const IN_SHORT = [
@@ -94,8 +94,8 @@ function Privacy() {
                   scheduled on the device.
                 </li>
                 <li>
-                  <strong>Your AI keys</strong> are kept in the device’s Keychain. Settings are kept
-                  in the app’s preferences.
+                  <strong>Your AI keys</strong> are kept in iCloud Keychain. Settings are kept in
+                  the app’s preferences, and a copy in iCloud key-value storage (see iCloud below).
                 </li>
               </ul>
             </Part>
@@ -114,7 +114,10 @@ function Privacy() {
                   page larger than that, go as CloudKit assets, encrypted by Apple, and end-to-end
                   encrypted when you turn on Advanced Data Protection. Apple’s terms govern iCloud.
                   If you set Hikki up for this device only, or turn iCloud off in Settings →
-                  Storage, nothing syncs.
+                  Storage, your workspace doesn’t sync. <strong>Settings and AI keys</strong> sync
+                  either way: keys through iCloud Keychain, end-to-end encrypted; the other settings
+                  (theme, shortcuts, the AI model — never a key or anything you wrote) through
+                  iCloud key-value storage, encrypted by Apple but not end-to-end.
                 </li>
                 <li>
                   <strong>AI</strong>, only when you ask: Ask AI on a selection, the chat beside a
