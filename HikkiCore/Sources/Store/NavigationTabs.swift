@@ -340,6 +340,16 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
         recordVisit()
     }
 
+    /// Closes every tab ("Close All Tabs"): the window keeps one new tab, on `fallback` (Home).
+    public mutating func closeAll(fallback: Route) {
+        let tab = Tab(route: fallback)
+        tabs = [tab]
+        splits = []
+        recency = []
+        activeID = tab.id
+        recordVisit()
+    }
+
     /// Moves the tab `id` — with the other side when it is in a split, the two staying together — into the gap before
     /// the tab at `index` (`tabs.count`: after the last one), as dragging a tab along the strip does. A gap between the
     /// two sides of another split means after them; a gap at either edge of the moving tabs moves nothing. The focus

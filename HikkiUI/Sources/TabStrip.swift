@@ -49,7 +49,8 @@ extension UTType {
 
 /// A command in a tab's context menu (Chrome's tab menu).
 public enum TabStripCommand: String, CaseIterable, Hashable, Sendable {
-    case newToRight, openInSplit, swapSides, separate, duplicate, moveToNewWindow, close, closeOthers, closeToRight
+    case newToRight, openInSplit, swapSides, separate, duplicate, moveToNewWindow, copyLink, revealInSidebar, close,
+        closeOthers, closeToRight, closeAll
 
     var title: LocalizedStringKey {
         switch self {
@@ -59,9 +60,12 @@ public enum TabStripCommand: String, CaseIterable, Hashable, Sendable {
         case .separate: "app:split.separate"
         case .duplicate: "app:tabs.duplicate"
         case .moveToNewWindow: "app:tabs.moveToNewWindow"
+        case .copyLink: "app:tabs.copyLink"
+        case .revealInSidebar: "app:tabs.revealInSidebar"
         case .close: "app:tabs.close"
         case .closeOthers: "app:tabs.closeOthers"
         case .closeToRight: "app:tabs.closeToRight"
+        case .closeAll: "app:tabs.closeAll"
         }
     }
 
@@ -73,9 +77,12 @@ public enum TabStripCommand: String, CaseIterable, Hashable, Sendable {
         case .separate: .square
         case .duplicate: .copy
         case .moveToNewWindow: .appWindow
+        case .copyLink: .link
+        case .revealInSidebar: .sidebarSimple
         case .close: .x
         case .closeOthers: .xSquare
         case .closeToRight: .arrowLineRight
+        case .closeAll: .xCircle
         }
     }
 }
@@ -282,8 +289,8 @@ public struct TabStrip<Leading: View>: View {
         return (first...(last + 1)).contains(gap) ? nil : .between(gap)
     }
 
-    /// The tab's menu, its sections divided; Close / Close Other Tabs need another tab, Close Tabs to the Right one
-    /// after this.
+    /// The tab's menu, its sections divided; Close / Close Other Tabs / Close All need another tab, Close Tabs to the
+    /// Right one after this.
     @ViewBuilder
     private func menuContent(_ menu: TabStripMenu, for id: UUID) -> some View {
         let sections = menu.commands(id)
@@ -303,7 +310,7 @@ public struct TabStrip<Leading: View>: View {
 
     private func isAvailable(_ command: TabStripCommand, for id: UUID) -> Bool {
         switch command {
-        case .close, .closeOthers: items.count > 1
+        case .close, .closeOthers, .closeAll: items.count > 1
         case .closeToRight: items.last?.id != id
         default: true
         }

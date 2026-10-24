@@ -11816,6 +11816,23 @@
         }
       }
     },
+    "app:tabs.closeAll": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close All Tabs"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭所有标签页"
+          }
+        }
+      }
+    },
     "app:tabs.closeOthers": {
       "extractionState": "manual",
       "localizations": {
@@ -11846,6 +11863,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "关闭右侧标签页"
+          }
+        }
+      }
+    },
+    "app:tabs.copyLink": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy Link"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制链接"
           }
         }
       }
@@ -11948,6 +11982,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "上一个标签页"
+          }
+        }
+      }
+    },
+    "app:tabs.revealInSidebar": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reveal in Sidebar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在边栏中显示"
           }
         }
       }

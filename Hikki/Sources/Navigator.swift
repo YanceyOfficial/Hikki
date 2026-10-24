@@ -69,6 +69,12 @@ struct PaneHandoff: Equatable {
     let side: PaneSide
 }
 
+/// Reveal in Sidebar (a tab's menu): the sidebar scrolls to the page's row, its parents expanded.
+struct SidebarRevealRequest: Equatable {
+    let pageID: String
+    let serial: Int
+}
+
 struct TitleFocusRequest: Equatable {
     let pageID: String
     let serial: Int
@@ -177,6 +183,8 @@ final class Navigator {
     /// Bumped by "Rename": the editor selects that page's title once it has loaded it.
     private(set) var titleFocusRequest: TitleFocusRequest?
     private(set) var textRevealRequest: TextRevealRequest?
+    /// Bumped by a tab's Reveal in Sidebar: ContentView shows the sidebar, which scrolls to the page's row.
+    private(set) var sidebarReveal: SidebarRevealRequest?
     var expanded: Set<String> = []
     /// Sidebar drag state: the page being dragged and where it would land (for the drop indicator).
     var draggingPageID: String?
@@ -511,6 +519,25 @@ final class Navigator {
         tabs.closeOthers(id)
         tidyTabs()
         syncSelection()
+    }
+
+    /// "Close All Tabs": the window keeps one new tab, on Home (the last tab never closes, as for Close).
+    func closeAllTabs() {
+        inspectors[.trailing] = nil
+        tabs.closeAll(fallback: .home)
+        syncSelection()
+    }
+
+    /// "Copy Link": the tab's page as hikki://page/<id>.
+    func copyLink(ofTab id: UUID) {
+        if let pageID = route(ofTab: id)?.pageID { PageLink.copyToPasteboard(pageID) }
+    }
+
+    /// "Reveal in Sidebar": the tab's page's row, its parents expanded, scrolled into view.
+    func revealInSidebar(tab id: UUID) {
+        guard let pageID = route(ofTab: id)?.pageID else { return }
+        reveal(pageID)
+        sidebarReveal = SidebarRevealRequest(pageID: pageID, serial: (sidebarReveal?.serial ?? 0) + 1)
     }
 
     func closeTabs(rightOf id: UUID) {

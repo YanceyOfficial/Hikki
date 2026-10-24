@@ -503,7 +503,9 @@ HikkiUITests/                 XCUITest flows
   Chrome's (`TabStripMenu` / `TabStripCommand` in `HikkiUI/Sources/TabStrip.swift`, the commands chosen by
   `NativeDetailToolbar` in ContentView): New Tab to the Right (Home), Open in Split View (where the window splits),
   Duplicate (the whole history), Move to New Window (Mac, a page: the "page" window group, then the tab closes — iPad
-  has no such scene yet), Close, Close Other Tabs, Close Tabs to the Right — the rules in `NavigationTabs`.
+  has no such scene yet); for a page VS Code's Copy Link (`PageLink`) and Reveal in Sidebar (`Navigator.sidebarReveal`:
+  parents expanded, the sidebar shown and scrolled to the row); then Close, Close Other Tabs, Close Tabs to the Right,
+  Close All Tabs (one new tab on Home) — the rules in `NavigationTabs`.
 - **Page links** (`apps/editor/src/extensions/page-links.ts`): `hikki://page/<id>#<block>`. The native side feeds the editor
   the page index (`window.hikki.setPages`) so pasted links get titles; "Copy link to block" puts a ready `<a>` plus the
   URL on the clipboard; a plain-text paste of a link becomes a labelled hyperlink, and so does a dropped one: a

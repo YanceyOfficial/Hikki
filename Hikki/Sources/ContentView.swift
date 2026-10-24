@@ -396,6 +396,10 @@ struct ContentView: View {
                 if let pane = new.trailing, pane != old.trailing { show(pane, after: old.trailing, in: splitPaneEditor()) }
             }
             .onChange(of: navigator.route) { navigator.revealCurrent() }
+            // A tab's Reveal in Sidebar: a hidden sidebar comes back (it scrolls to the row itself).
+            .onChange(of: navigator.sidebarReveal) {
+                if columns == .detailOnly { withAnimation(Motion.easeOut()) { columns = .all } }
+            }
             .onChange(of: navigator.tabs.tabs.map(\.id)) { _, ids in
                 tabScroll = tabScroll.filter { ids.contains($0.key) }
             }
@@ -998,7 +1002,9 @@ private struct NativeDetailToolbar: ToolbarContent {
         #if os(macOS)
             if route?.pageID != nil { first.append(.moveToNewWindow) }
         #endif
-        return [first, [.close, .closeOthers, .closeToRight]]
+        // VS Code's: the page's link and its row in the sidebar, then the closes down to all of them.
+        let page: [TabStripCommand] = route?.pageID != nil ? [.copyLink, .revealInSidebar] : []
+        return [first, page, [.close, .closeOthers, .closeToRight, .closeAll]].filter { !$0.isEmpty }
     }
 
     private func performTabCommand(_ command: TabStripCommand, _ id: UUID) {
@@ -1014,9 +1020,12 @@ private struct NativeDetailToolbar: ToolbarContent {
                 openWindow(id: "page", value: pageID)
                 navigator.closeTab(id)
             #endif
+        case .copyLink: navigator.copyLink(ofTab: id)
+        case .revealInSidebar: navigator.revealInSidebar(tab: id)
         case .close: navigator.closeTab(id)
         case .closeOthers: navigator.closeOtherTabs(id)
         case .closeToRight: navigator.closeTabs(rightOf: id)
+        case .closeAll: navigator.closeAllTabs()
         }
     }
 

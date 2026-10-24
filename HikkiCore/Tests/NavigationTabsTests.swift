@@ -638,4 +638,16 @@ struct NavigationTabsTests {
         #expect(tabs.tabs.map(\.route) == ["c", "a", "b", "d"], "a gap inside the split means after it")
         #expect(tabs.splits.count == 1)
     }
+
+    @Test func closeAllLeavesOneNewTabOnTheFallback() throws {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        tabs.openSplit("b", beside: left)
+        tabs.openTab("c")
+        tabs.closeAll(fallback: "home")
+        #expect(tabs.tabs.map(\.route) == ["home"])
+        #expect(tabs.splits.isEmpty)
+        #expect(tabs.recency == [tabs.activeID])
+        #expect(!tabs.canGoBack, "the closed tabs' pages are passed over")
+    }
 }

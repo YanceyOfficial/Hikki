@@ -171,10 +171,20 @@ private struct PageSidebar: View {
         #if DEBUG
             let _ = SidebarRenderStats.sidebarRendered()
         #endif
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: Spacing.px) { sections }
-                .padding(.horizontal, Spacing.s4)
-                .padding(.vertical, Spacing.s1)
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: Spacing.px) { sections }
+                    .padding(.horizontal, Spacing.s4)
+                    .padding(.vertical, Spacing.s1)
+            }
+            // A tab's Reveal in Sidebar: to the page's row (by its id in the tree), once its parents' expansion has
+            // laid it out.
+            .onChange(of: navigator.sidebarReveal) { _, request in
+                guard let request else { return }
+                Task {
+                    withAnimation(Motion.easeOut()) { proxy.scrollTo(request.pageID, anchor: .center) }
+                }
+            }
         }
         .scrollIndicators(.never)
         .syncRefreshable()
