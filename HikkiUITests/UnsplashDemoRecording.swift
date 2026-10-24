@@ -50,7 +50,7 @@
                 ? app.webViews.radioButtons["Unsplash"].firstMatch : app.webViews.tabs["Unsplash"].firstMatch
             XCTAssertTrue(tab.waitForExistence(timeout: 5))
             tab.click()
-            sleep(2)  // the editorial feed loads first
+            sleep(2)  // a random batch of landscape photos loads first
 
             let search =
                 app.webViews.searchFields["Search Unsplash"].exists

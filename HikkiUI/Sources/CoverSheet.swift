@@ -35,7 +35,7 @@ public struct CoverSheet: View {
     let current: String?
     let startsInPicker: Bool
     let uploadSources: Set<MediaSource>
-    /// Searches Unsplash (an empty query: the editorial feed); nil where this build has no backend for it.
+    /// Searches Unsplash (an empty query: a random batch); nil where this build has no backend for it.
     let search: (@Sendable (String) async -> CoverSearchResult)?
     let onSelect: (String) -> Void
     let onPickPhoto: (CoverPhoto) -> Void
@@ -294,7 +294,7 @@ private struct CoverLinkPane: View {
     }
 }
 
-/// Unsplash: a search (the editorial feed while it is empty), photos in two columns, each credited.
+/// Unsplash: a search (a random batch while it is empty), photos in two columns, each credited.
 private struct CoverUnsplashPane: View {
     let search: (@Sendable (String) async -> CoverSearchResult)?
     let onPick: (CoverPhoto) -> Void

@@ -1,12 +1,18 @@
 import { describe, expect, test } from 'bun:test'
 
-import { listPhotos, toPhoto, triggerDownload } from '../src/unsplash.js'
+import { coverURL, listPhotos, toPhoto, triggerDownload } from '../src/unsplash.js'
 
 const raw = {
   id: 'abc',
   color: '#0c2626',
   alt_description: 'storm',
-  urls: { thumb: 't', small: 's', regular: 'r', full: 'f' },
+  urls: {
+    raw: 'https://images.unsplash.com/photo-1?ixid=M3w&ixlib=rb-4.0.3',
+    thumb: 't',
+    small: 's',
+    regular: 'r',
+    full: 'f'
+  },
   links: {
     html: 'https://unsplash.com/photos/abc',
     download_location: 'https://api.unsplash.com/photos/abc/download?ixid=x'
@@ -36,6 +42,23 @@ describe('toPhoto', () => {
     )
     expect(photo.downloadLocation).toBe(raw.links.download_location)
   })
+
+  test('the cover is the raw picture sized for a cover, not the original or the 1080 px one', () => {
+    const cover = new URL(toPhoto(raw).cover)
+    expect(cover.origin + cover.pathname).toBe('https://images.unsplash.com/photo-1')
+    // Unsplash's ixid stays (still a hotlink of urls.raw); imgix sizes it.
+    expect(cover.searchParams.get('ixid')).toBe('M3w')
+    expect(cover.searchParams.get('w')).toBe('2560')
+    expect(cover.searchParams.get('q')).toBe('85')
+    expect(cover.searchParams.get('fm')).toBe('jpg')
+    expect(cover.searchParams.get('fit')).toBe('max')
+    // Params already on raw are replaced, not doubled.
+    const resized = new URL(coverURL({ ...raw.urls, raw: 'https://images.unsplash.com/p?w=100' }))
+    expect(resized.searchParams.getAll('w')).toEqual(['2560'])
+    // No (or a broken) raw URL: the full-size one.
+    expect(coverURL({ ...raw.urls, raw: undefined })).toBe('f')
+    expect(coverURL({ ...raw.urls, raw: 'not a url' })).toBe('f')
+  })
 })
 
 describe('listPhotos', () => {
@@ -48,7 +71,7 @@ describe('listPhotos', () => {
       fakeFetch({ results: [raw], total_pages: 7 }, 200, seen)
     )
     expect(seen[0]).toContain(
-      '/search/photos?page=2&per_page=24&query=clouds&orientation=landscape'
+      '/search/photos?query=clouds&page=2&per_page=24&orientation=landscape'
     )
     expect(seen[0]).toEndWith('Client-ID KEY')
     expect(result.status).toBe(200)
@@ -56,11 +79,32 @@ describe('listPhotos', () => {
     expect(result.headers['X-Ratelimit-Remaining']).toBe('49')
   })
 
-  test('uses the editorial feed without a query and clamps the page', async () => {
+  test('without a query, a random batch of 24 landscape photos (no pages), duplicates dropped', async () => {
     const seen: string[] = []
-    await listPhotos('KEY', '', 999, fakeFetch([raw], 200, seen))
-    expect(seen[0]).toContain('/photos?page=50&per_page=24')
-    expect(seen[0]).not.toContain('query=')
+    const result = await listPhotos(
+      'KEY',
+      '',
+      999,
+      fakeFetch([raw, { ...raw, id: 'def' }, raw], 200, seen)
+    )
+    const url = new URL(seen[0]!.split(' ')[0]!)
+    expect(url.origin + url.pathname).toBe('https://api.unsplash.com/photos/random')
+    expect(url.searchParams.get('orientation')).toBe('landscape')
+    expect(url.searchParams.get('count')).toBe('24')
+    expect(url.searchParams.has('page')).toBe(false)
+    expect(url.searchParams.has('per_page')).toBe(false)
+    expect(url.searchParams.has('query')).toBe(false)
+    expect(result.body).toEqual({
+      photos: [toPhoto(raw), toPhoto({ ...raw, id: 'def' })],
+      totalPages: null
+    })
+  })
+
+  test('an answer without a list of photos is a failure', async () => {
+    expect(await listPhotos('KEY', 'x', 1, fakeFetch({ results: null }))).toMatchObject({
+      status: 502,
+      error: 'upstreamFailed'
+    })
   })
 
   test('passes upstream errors through without leaking the key', async () => {

@@ -12,6 +12,7 @@ import { reportError } from '../core/errors'
 import { GRADIENTS, gradientCover } from '../lib/covers'
 import {
   bffURL,
+  coverURL,
   searchUnsplash,
   trackUnsplashDownload,
   UNSPLASH_HOME,
@@ -215,7 +216,7 @@ function UnsplashPane({ onSelect }: { onSelect: Props['onSelect'] }) {
               style={{ backgroundColor: photo.color ?? undefined }}
               onClick={() => {
                 trackUnsplashDownload(photo)
-                onSelect(photo.regular)
+                onSelect(coverURL(photo))
               }}
               aria-label={photo.alt ?? t('cover.photoBy', { name: photo.author })}
             >

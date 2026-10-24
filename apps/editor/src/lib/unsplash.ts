@@ -10,6 +10,8 @@ export type UnsplashPhoto = {
   thumb: string
   regular: string
   full: string
+  /** High resolution, sized for a cover (the BFF's `coverURL`); absent from an older BFF. */
+  cover?: string
   color: string | null
   alt: string | null
   author: string
@@ -55,6 +57,12 @@ export async function searchUnsplash(
     throw new UnsplashError(limited ? 'rate_limited' : 'unsplash_error', response.status, code)
   }
   return (await response.json()) as UnsplashPage
+}
+
+/** What a picked photo sets as the cover: the high-resolution `cover` (the grid keeps the small thumbnails), the
+ * 1080 px `regular` from a BFF that doesn't send one. */
+export function coverURL(photo: UnsplashPhoto): string {
+  return photo.cover ?? photo.regular
 }
 
 /** Unsplash guideline: picking a photo counts as a download. Fire-and-forget; never blocks the pick. */

@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  coverURL,
   searchUnsplash,
   trackUnsplashDownload,
   UNSPLASH_HOME,
@@ -15,6 +16,7 @@ const photo: UnsplashPhoto = {
   thumb: 'https://images.unsplash.com/t',
   regular: 'https://images.unsplash.com/r',
   full: 'https://images.unsplash.com/f',
+  cover: 'https://images.unsplash.com/raw?w=2560&q=85&fm=jpg&fit=max',
   color: '#000',
   alt: 'storm',
   author: 'Jeremy Bishop',
@@ -52,6 +54,11 @@ describe('unsplash client', () => {
     await expect(
       searchUnsplash('x', 1, 'https://bff.example', coded as unknown as typeof fetch)
     ).rejects.toMatchObject({ message: 'rate_limited', code: 'rateLimited' })
+  })
+
+  it('a pick sets the high-resolution cover, falling back to regular from an older BFF', () => {
+    expect(coverURL(photo)).toBe(photo.cover)
+    expect(coverURL({ ...photo, cover: undefined })).toBe(photo.regular)
   })
 
   it('reports a pick to the download endpoint', () => {
@@ -103,7 +110,7 @@ describe('CoverPicker tabs', () => {
       vi.fn(() => pending)
     )
     try {
-      renderPicker()
+      const onSelect = renderPicker()
       fireEvent.click(screen.getByRole('tab', { name: 'Unsplash' }))
       expect(screen.getAllByTestId('unsplash-skeleton')).toHaveLength(9)
       await act(async () => {
@@ -113,6 +120,14 @@ describe('CoverPicker tabs', () => {
       })
       expect(screen.queryAllByTestId('unsplash-skeleton')).toHaveLength(0)
       expect(screen.getByRole('link', { name: 'Jeremy Bishop' })).toBeTruthy()
+      // The grid shows the thumbnail; the pick sets the high-resolution cover and is reported as a download.
+      expect(document.querySelector(`img[src="${photo.thumb}"]`)).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'storm' }))
+      expect(onSelect).toHaveBeenCalledWith(photo.cover)
+      expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+        'https://bff.example/api/unsplash/download',
+        expect.objectContaining({ method: 'POST' })
+      )
     } finally {
       vi.unstubAllGlobals()
       vi.unstubAllEnvs()
