@@ -388,17 +388,17 @@ describe('EditorBridge', () => {
       editor().storage.characterCount.characters() + 'Plan'.length
     )
     expect(pageInfo(sent)[0].headings).toMatchObject([{ level: 1, text: 'One' }])
-    // UniqueID stamps the block ids right after load; the throttled follow-up carries them.
+    // Block ids are stamped before the editor sees the page: the first report carries them, no follow-up.
+    expect(typeof pageInfo(sent)[0].headings[0].id).toBe('string')
     vi.advanceTimersByTime(300)
-    expect(pageInfo(sent)).toHaveLength(2)
-    expect(typeof pageInfo(sent)[1].headings[0].id).toBe('string')
+    expect(pageInfo(sent)).toHaveLength(1)
     editor().commands.insertContentAt(editor().state.doc.content.size, heading(2, 'Two'))
     bridge.setTitle('Plan B')
-    expect(pageInfo(sent)).toHaveLength(2)
+    expect(pageInfo(sent)).toHaveLength(1)
     vi.advanceTimersByTime(300)
-    expect(pageInfo(sent)).toHaveLength(3)
-    expect(pageInfo(sent)[2].headings.map((h) => h.text)).toEqual(['One', 'Two'])
-    expect(pageInfo(sent)[2].words).toBe(6)
+    expect(pageInfo(sent)).toHaveLength(2)
+    expect(pageInfo(sent)[1].headings.map((h) => h.text)).toEqual(['One', 'Two'])
+    expect(pageInfo(sent)[1].words).toBe(6)
     // Hiding the rail is state the outline reads; it never reaches the native side.
     bridge.setOutlineRail(false)
     expect(bridge.page.get().railHidden).toBe(true)

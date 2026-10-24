@@ -10,6 +10,7 @@ import { MarkdownManager } from '@tiptap/markdown'
 import { DOMSerializer, type Mark, Node as PMNode, type Schema } from '@tiptap/pm/model'
 
 import { safeErrorMessage } from '../lib/safe-error'
+import { withBlockIds } from './block-ids'
 import { editorExtensions } from './editor'
 import { plainText, textOf, wordCount } from './extract'
 import { normalizeBody } from './normalize'
@@ -161,7 +162,8 @@ export function importDocument(
     }
   }
   const pageTitle = (title || fallbackTitle).trim().slice(0, 500)
-  const doc = blocks.length ? { type: 'doc', content: blocks } : emptyDoc()
+  // Block ids now, in one walk: the editor's own stamping of a big page without them is quadratic.
+  const doc = withBlockIds(blocks.length ? { type: 'doc', content: blocks } : emptyDoc())
   // Text and word count as a save computes them (the page is stored like any other).
   const plain = plainText(doc)
   return {

@@ -49,6 +49,7 @@ import {
   type IconSheetRequest
 } from '../lib/icon-sheet'
 import { sheetPresence } from '../lib/sheet-presence'
+import { withBlockIds } from './block-ids'
 import { DiagramRequests } from './diagram'
 import { activeCommands, createEditor, runCommand } from './editor'
 import { reportError } from './errors'
@@ -342,7 +343,9 @@ export class EditorBridge {
     this.session += 1
     this.markSaved()
     this.saveFailures = 0
-    const { body, title } = normalizeBody(payload.content, payload.title ?? '')
+    const { body: stored, title } = normalizeBody(payload.content, payload.title ?? '')
+    // Pages from before block ids get theirs in one walk (the editor's own stamping of a big page is quadratic).
+    const body = withBlockIds(stored)
     let contentError: Error | null = null
     setBlockLinkBuilder((blockId) => {
       const { docId, title: pageTitle } = this.page.get()
@@ -453,7 +456,9 @@ export class EditorBridge {
     if (!editor || payload.id !== docId || this.dirty || readOnly) return false
     // A file still uploading lands where its placeholder stands; replacing the document would misplace it.
     if (UploadsKey.getState(editor.state)?.pending.length) return false
-    const { body, title } = normalizeBody(payload.content, payload.title ?? '')
+    const { body: stored, title } = normalizeBody(payload.content, payload.title ?? '')
+    // Pages from before block ids get theirs in one walk (the editor's own stamping of a big page is quadratic).
+    const body = withBlockIds(stored)
     const { from, to } = editor.state.selection
     // Not an edit of this page: no undo step, no save. An invalid body leaves the page as it is.
     let applied = false

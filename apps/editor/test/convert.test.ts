@@ -189,7 +189,7 @@ describe('import', () => {
     expect(page.title).toBe('plain')
     expect(page.text).toBe('first\nline two\nsecond')
     expect(page.wordCount).toBe(5) // the title counts too
-    expect(page.content).toEqual({
+    expect(stripIds(page.content)).toEqual({
       type: 'doc',
       content: [
         {
@@ -218,5 +218,24 @@ describe('import', () => {
     expect(page.title).toBe('Round')
     const types = stripIds(page.content).content.map((b: { type: string }) => b.type)
     expect(types.slice(0, 4)).toEqual(['heading', 'paragraph', 'bulletList', 'codeBlock'])
+  })
+})
+
+type Walked = { type?: string; attrs?: { id?: unknown }; content?: Walked[] }
+const blockIds = (node: Walked, out: unknown[] = []): unknown[] => {
+  if (node.type && node.type !== 'doc' && node.type !== 'text') out.push(node.attrs?.id)
+  for (const child of node.content ?? []) blockIds(child, out)
+  return out
+}
+
+describe('block ids at import', () => {
+  it('every block of an imported page carries an id before the editor sees it, all different', () => {
+    const md = Array.from({ length: 50 }, (_, i) =>
+      i % 5 === 0 ? `## H${i}` : `- item ${i}`
+    ).join('\n\n')
+    const ids = blockIds(importDocument(md, 'markdown', 'x').content as Walked)
+    expect(ids.length).toBeGreaterThan(50)
+    expect(ids.every((id) => typeof id === 'string' && id !== '')).toBe(true)
+    expect(new Set(ids).size).toBe(ids.length)
   })
 })
