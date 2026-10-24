@@ -457,4 +457,5 @@
   --ease-*: initial;
   --ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --animate-pulse: pulse 1400ms cubic-bezier(0.77, 0, 0.175, 1) infinite;
 }

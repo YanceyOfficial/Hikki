@@ -281,7 +281,7 @@
   "math": {
     "placeholder": "E = mc^2",
     "label": "公式（LaTeX）",
-    "hint": "⌘Enter 完成 · Esc 取消",
+    "hint": "{{confirm}} 完成 · {{cancel}} 取消",
     "done": "完成"
   },
   "toggle": {
@@ -372,7 +372,7 @@
     "baseLabel": "为以下文字标注读音：",
     "placeholder": "かな",
     "suggesting": "正在查找…",
-    "hint": "Enter 保存 · Esc 取消",
+    "hint": "{{confirm}} 保存 · {{cancel}} 取消",
     "done": "完成",
     "remove": "移除",
     "mode": "标注方式",
@@ -399,8 +399,8 @@
       "link": "要嵌入的链接",
       "html": "要嵌入的 HTML"
     },
-    "hintLink": "Enter 嵌入 · Esc 取消",
-    "hintHtml": "⌘Enter 嵌入 · Esc 取消",
+    "hintLink": "{{confirm}} 嵌入 · {{cancel}} 取消",
+    "hintHtml": "{{confirm}} 嵌入 · {{cancel}} 取消",
     "invalid": "这个链接无法嵌入。",
     "insert": "嵌入",
     "open": "打开",

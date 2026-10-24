@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 
 import { t } from '../core/i18n'
+import { keyLabel } from '../core/shortcuts'
 import type { FloatingAnchor, FloatingLayer } from './floating'
 import { IconProvider } from './icons'
 
@@ -60,7 +61,9 @@ export function MathEditor({ initial, multiline, onDone }: Props) {
         />
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">{t('math.hint')}</span>
+        <span className="text-xs text-muted-foreground">
+          {t('math.hint', { confirm: keyLabel('return', ['command']), cancel: keyLabel('escape') })}
+        </span>
         <Button size="xs" onClick={() => onDone(latex)}>
           {t('math.done')}
         </Button>

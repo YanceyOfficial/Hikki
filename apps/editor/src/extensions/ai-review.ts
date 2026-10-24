@@ -12,6 +12,7 @@ import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { renderAIReview, type AIReviewProps } from '../components/ai-review'
 import { FloatingLayer } from '../components/floating'
 import { answerBlocks, answerDOM } from '../core/answer-markdown'
+import { reportError } from '../core/errors'
 import { isWebURL } from '../core/links'
 import type { AIMediaRef, AIStreamEvent } from '../core/protocol'
 import {
@@ -788,7 +789,10 @@ function draw(editor: Editor, host: AIHost): void {
     onInsertBelow: () => insertBelow(editor, host, session.reply),
     onInsertNote: (index) => insertNote(editor, host, index),
     renderMarkdown: markdownRenderer(editor),
-    onCopy: (text) => void navigator.clipboard?.writeText(text ?? session.reply).catch(() => {})
+    onCopy: (text) =>
+      void navigator.clipboard
+        ?.writeText(text ?? session.reply)
+        .catch((error: unknown) => reportError('copyFailed', error))
   }
   // The bar hangs under a picture's block, or under the last ghost of the blocks to add (not over them).
   const mediaBottom = () => {

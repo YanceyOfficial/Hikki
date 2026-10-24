@@ -27,6 +27,9 @@ if [ -n "$motion" ]; then echo "✗ one-off motion in web code — hk-pop / hk-p
 # breakpoints and the page's gutters are design/tokens.json `layout` (`w-(--layout-panel-default)`, `max-phone:`).
 px=$(grep -rnE --include='*.css' --include='*.tsx' --include='*.ts' -e '-\[[^] "'"'"'`]*[0-9]px' apps/editor/src | grep -v '^apps/editor/src/components/ui/' | grep -v '^apps/editor/src/generated/' | grep -v 'apps/editor/src/theme.css' | grep -v 'design-lint: allow' | { if [ -n "$allowed_files" ]; then grep -vE "^($allowed_files):"; else cat; fi; })
 if [ -n "$px" ]; then echo "✗ arbitrary px in a web class — add a size to design/tokens.json layout (make tokens) and use its variable"; echo "$px" | sed 's/^/    /'; status=1; fi
+# A Tailwind transition takes the motion tokens' timing on the same line (its defaults are 150 ms and a soft curve).
+untimed=$(grep -rnE --include='*.css' --include='*.tsx' --include='*.ts' -e "(^|[ \"'\`])transition(-opacity|-colors|-transform|-shadow)?([ \"'\`;]|$)" apps/editor/src $(ls -d packages/*/src 2>/dev/null) | grep -v '^apps/editor/src/components/ui/' | grep -v 'apps/editor/src/theme.css' | grep -v 'duration-(--motion-' | grep -v 'design-lint: allow')
+if [ -n "$untimed" ]; then echo "✗ a transition without the motion tokens — add duration-(--motion-pop-in) ease-out (CLAUDE.md: Motion)"; echo "$untimed" | sed 's/^/    /'; status=1; fi
 # Web UI is shadcn: rows are MenuRow (apps/editor/src/components/menu-row.tsx), the rest Button / Input… (CLAUDE.md).
 bare=$(grep -rnE '<(button|input)\b' apps/editor/src/components apps/editor/src/page $(ls -d packages/*/src 2>/dev/null) --include='*.tsx' | grep -v '^apps/editor/src/components/ui/' | grep -v 'design-lint: allow')
 if [ -n "$bare" ]; then echo "✗ bare <button> / <input> in web UI — use the shadcn components (MenuRow, Button, Input…)"; echo "$bare" | sed 's/^/    /'; status=1; fi

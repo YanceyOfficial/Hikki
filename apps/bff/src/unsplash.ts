@@ -161,11 +161,15 @@ export async function triggerDownload(
   return { status: 204, body: null, headers: rateHeaders(upstream) }
 }
 
-/** Unsplash, or a failure result when it can't be reached at all. */
+/** How long Unsplash may take to answer before the request counts as failed (a hung upstream holds no function). */
+export const UPSTREAM_TIMEOUT_MS = 8000
+
+/** Unsplash, or a failure result when it can't be reached at all (or doesn't answer in time). */
 async function call(fetcher: Fetch, url: URL, accessKey: string): Promise<Response | ProxyResult> {
   try {
     return await fetcher(url, {
-      headers: { Authorization: `Client-ID ${accessKey}`, 'Accept-Version': 'v1' }
+      headers: { Authorization: `Client-ID ${accessKey}`, 'Accept-Version': 'v1' },
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)
     })
   } catch {
     return failure('upstreamFailed', {})

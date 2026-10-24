@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Kbd } from '@/components/ui/kbd'
 
 import { t } from '../core/i18n'
+import { keyLabel } from '../core/shortcuts'
 import { diffSide, type DiffSegment } from '../lib/ai-diff'
 
 /** A line of the review: a selected block's diff, or (`added`) a block the model adds after the selection. */
@@ -91,11 +92,13 @@ export function DiffReview({
         </span>
         <Button variant="outline" size="sm" onClick={onDiscard} data-testid="ai-discard">
           {t('ai.discard')}
-          <Kbd>esc</Kbd>
+          <Kbd>{keyLabel('escape')}</Kbd>
         </Button>
         <Button size="sm" onClick={onAccept} data-testid="ai-accept">
           {t('ai.accept')}
-          <Kbd className="bg-primary-foreground/15 text-primary-foreground">↵</Kbd>
+          <Kbd className="bg-primary-foreground/15 text-primary-foreground">
+            {keyLabel('return')}
+          </Kbd>
         </Button>
       </div>
     </div>

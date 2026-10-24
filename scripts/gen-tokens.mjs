@@ -306,6 +306,10 @@ function css() {
   // Only the strong curves exist (`ease-out`, `ease-in-out`); Tailwind's defaults are too soft for UI.
   L.push('  --ease-*: initial;')
   for (const k of ['ease-out', 'ease-in-out']) L.push(`  --${k}: cubic-bezier(${curve(k)});`)
+  // A skeleton's pulse (loading pictures) runs on the one loading period, not Tailwind's own 2 s.
+  L.push(
+    `  --animate-pulse: pulse ${tokens.motion.loop}ms cubic-bezier(${curve('ease-in-out')}) infinite;`
+  )
   L.push('}', '')
   return L.join('\n')
 }

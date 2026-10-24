@@ -65,13 +65,12 @@ export type BlockIcon = Icon | ComponentType<LogoProps>
 export type BlockType = {
   id: string
   title: string
-  hint: string
   icon: BlockIcon
   group: BlockGroup
   /** The Markdown shortcut that creates it as you type, shown at the row's end. */
   shortcut?: string
   aliases: string[]
-  /** Localized display name / hint (title + aliases stay English/pinyin/Chinese for search). */
+  /** Localized display name and description (title + aliases stay English/pinyin/Chinese for search). */
   label: () => string
   description: () => string
   /** Inserts it at the (empty) current block — the "/" menu. */
@@ -102,7 +101,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'paragraph',
     title: 'Text',
-    hint: 'Plain text',
     label: () => t('blocks.paragraph.title'),
     description: () => t('blocks.paragraph.hint'),
     icon: TextTIcon,
@@ -120,7 +118,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'heading1',
     title: 'Heading 1',
-    hint: 'Big section heading',
     label: () => t('blocks.heading1.title'),
     description: () => t('blocks.heading1.hint'),
     icon: TextHOneIcon,
@@ -134,7 +131,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'heading2',
     title: 'Heading 2',
-    hint: 'Medium section heading',
     label: () => t('blocks.heading2.title'),
     description: () => t('blocks.heading2.hint'),
     icon: TextHTwoIcon,
@@ -148,7 +144,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'heading3',
     title: 'Heading 3',
-    hint: 'Small section heading',
     label: () => t('blocks.heading3.title'),
     description: () => t('blocks.heading3.hint'),
     icon: TextHThreeIcon,
@@ -162,7 +157,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'heading4',
     title: 'Heading 4',
-    hint: 'Smallest section heading',
     label: () => t('blocks.heading4.title'),
     description: () => t('blocks.heading4.hint'),
     icon: TextHFourIcon,
@@ -176,7 +170,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'bulletList',
     title: 'Bulleted list',
-    hint: 'Simple bulleted list',
     label: () => t('blocks.bulletList.title'),
     description: () => t('blocks.bulletList.hint'),
     icon: ListBulletsIcon,
@@ -190,7 +183,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'orderedList',
     title: 'Numbered list',
-    hint: 'List with numbering',
     label: () => t('blocks.orderedList.title'),
     description: () => t('blocks.orderedList.hint'),
     icon: ListNumbersIcon,
@@ -204,7 +196,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'taskList',
     title: 'To-do list',
-    hint: 'Track tasks with checkboxes',
     label: () => t('blocks.taskList.title'),
     description: () => t('blocks.taskList.hint'),
     icon: CheckSquareIcon,
@@ -218,7 +209,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'toggle',
     title: 'Toggle list',
-    hint: 'Hide content inside',
     label: () => t('blocks.toggle.title'),
     description: () => t('blocks.toggle.hint'),
     icon: CaretCircleRightIcon,
@@ -233,7 +223,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'image',
     title: 'Image',
-    hint: 'Upload an image',
     label: () => t('blocks.image.title'),
     description: () => t('blocks.image.hint'),
     icon: ImageSquareIcon,
@@ -247,7 +236,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'video',
     title: 'Video',
-    hint: 'Upload a video',
     label: () => t('blocks.video.title'),
     description: () => t('blocks.video.hint'),
     icon: FilmStripIcon,
@@ -261,7 +249,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'audio',
     title: 'Audio',
-    hint: 'Upload audio',
     label: () => t('blocks.audio.title'),
     description: () => t('blocks.audio.hint'),
     icon: MusicNotesIcon,
@@ -275,7 +262,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'file',
     title: 'File',
-    hint: 'Attach a file',
     label: () => t('blocks.file.title'),
     description: () => t('blocks.file.hint'),
     icon: PaperclipIcon,
@@ -300,7 +286,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'drawing',
     title: 'Drawing',
-    hint: 'Sketch or diagram by hand',
     label: () => t('blocks.drawing.title'),
     description: () => t('blocks.drawing.hint'),
     icon: ScribbleIcon,
@@ -329,7 +314,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'embed',
     title: 'Embed',
-    hint: 'A link, shown on the page',
     label: () => t('blocks.embed.title'),
     description: () => t('blocks.embed.hint'),
     icon: BrowserIcon,
@@ -356,7 +340,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'html',
     title: 'HTML',
-    hint: 'A snippet of HTML, in a sandbox',
     label: () => t('blocks.html.title'),
     description: () => t('blocks.html.hint'),
     icon: CodeBlockIcon,
@@ -368,7 +351,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'googleDrive',
     title: 'Google Drive',
-    hint: 'A Doc, Sheet, Slides or Drive file',
     label: () => t('blocks.googleDrive.title'),
     description: () => t('blocks.googleDrive.hint'),
     icon: GoogleDriveLogo,
@@ -393,7 +375,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'figma',
     title: 'Figma',
-    hint: 'A Figma design, board or prototype',
     label: () => t('blocks.figma.title'),
     description: () => t('blocks.figma.hint'),
     icon: FigmaLogo,
@@ -405,7 +386,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'miro',
     title: 'Miro',
-    hint: 'A Miro board',
     label: () => t('blocks.miro.title'),
     description: () => t('blocks.miro.hint'),
     icon: MiroLogo,
@@ -417,7 +397,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'loom',
     title: 'Loom',
-    hint: 'A Loom video',
     label: () => t('blocks.loom.title'),
     description: () => t('blocks.loom.hint'),
     icon: LoomLogo,
@@ -429,7 +408,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'airtable',
     title: 'Airtable',
-    hint: 'A shared Airtable view',
     label: () => t('blocks.airtable.title'),
     description: () => t('blocks.airtable.hint'),
     icon: AirtableLogo,
@@ -441,7 +419,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'calendly',
     title: 'Calendly',
-    hint: 'A booking page to schedule a meeting',
     label: () => t('blocks.calendly.title'),
     description: () => t('blocks.calendly.hint'),
     icon: CalendlyLogo,
@@ -466,7 +443,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'gist',
     title: 'GitHub Gist',
-    hint: 'A gist, styled like the page',
     label: () => t('blocks.gist.title'),
     description: () => t('blocks.gist.hint'),
     icon: GitHubLogo,
@@ -478,7 +454,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'codesandbox',
     title: 'CodeSandbox',
-    hint: 'A sandbox, running',
     label: () => t('blocks.codesandbox.title'),
     description: () => t('blocks.codesandbox.hint'),
     icon: CodeSandboxLogo,
@@ -490,7 +465,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'drawio',
     title: 'draw.io',
-    hint: 'A diagram from draw.io (diagrams.net)',
     label: () => t('blocks.drawio.title'),
     description: () => t('blocks.drawio.hint'),
     icon: DrawioLogo,
@@ -512,7 +486,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'excalidraw',
     title: 'Excalidraw',
-    hint: 'An Excalidraw drawing',
     label: () => t('blocks.excalidraw.title'),
     description: () => t('blocks.excalidraw.hint'),
     icon: ExcalidrawLogo,
@@ -526,7 +499,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'blockquote',
     title: 'Quote',
-    hint: 'Capture a quote',
     label: () => t('blocks.blockquote.title'),
     description: () => t('blocks.blockquote.hint'),
     icon: QuotesIcon,
@@ -540,7 +512,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'callout',
     title: 'Callout',
-    hint: 'Make writing stand out',
     label: () => t('blocks.callout.title'),
     description: () => t('blocks.callout.hint'),
     icon: InfoIcon,
@@ -553,7 +524,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'codeBlock',
     title: 'Code',
-    hint: 'Code block',
     label: () => t('blocks.codeBlock.title'),
     description: () => t('blocks.codeBlock.hint'),
     icon: CodeIcon,
@@ -567,7 +537,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'divider',
     title: 'Divider',
-    hint: 'Visual separator',
     label: () => t('blocks.divider.title'),
     description: () => t('blocks.divider.hint'),
     icon: MinusIcon,
@@ -579,7 +548,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'table',
     title: 'Table',
-    hint: 'Rows and columns',
     label: () => t('blocks.table.title'),
     description: () => t('blocks.table.hint'),
     icon: TableIcon,
@@ -590,7 +558,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'columns2',
     title: '2 columns',
-    hint: '2 side-by-side columns',
     label: () => t('blocks.columns2.title'),
     description: () => t('blocks.columns2.hint'),
     icon: ColumnsIcon,
@@ -601,7 +568,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'columns3',
     title: '3 columns',
-    hint: '3 side-by-side columns',
     label: () => t('blocks.columns3.title'),
     description: () => t('blocks.columns3.hint'),
     icon: ColumnsIcon,
@@ -612,7 +578,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'columns4',
     title: '4 columns',
-    hint: '4 side-by-side columns',
     label: () => t('blocks.columns4.title'),
     description: () => t('blocks.columns4.hint'),
     icon: ColumnsIcon,
@@ -623,7 +588,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'tableOfContents',
     title: 'Table of contents',
-    hint: 'Links to the headings on this page',
     label: () => t('blocks.tableOfContents.title'),
     description: () => t('blocks.tableOfContents.hint'),
     icon: ListMagnifyingGlassIcon,
@@ -634,7 +598,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'blockMath',
     title: 'Block equation',
-    hint: 'Display a formula (LaTeX)',
     label: () => t('blocks.blockMath.title'),
     description: () => t('blocks.blockMath.hint'),
     icon: SigmaIcon,
@@ -650,7 +613,6 @@ export const BLOCK_TYPES: BlockType[] = [
   {
     id: 'inlineMath',
     title: 'Inline equation',
-    hint: 'A formula within text (LaTeX)',
     label: () => t('blocks.inlineMath.title'),
     description: () => t('blocks.inlineMath.hint'),
     icon: FunctionIcon,

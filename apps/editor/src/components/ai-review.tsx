@@ -11,6 +11,7 @@ import { Kbd } from '@/components/ui/kbd'
 
 import { aiErrorText } from '../core/ai-errors'
 import { t } from '../core/i18n'
+import { keyLabel } from '../core/shortcuts'
 import type { AIReviewStyle } from '../extensions/ai-review'
 import {
   ArrowClockwiseIcon,
@@ -321,11 +322,13 @@ export function AIReview({
             </Button>
             <Button variant="outline" size="sm" onClick={onDiscard} data-testid="ai-discard">
               {t('ai.discard')}
-              <Kbd>esc</Kbd>
+              <Kbd>{keyLabel('escape')}</Kbd>
             </Button>
             <Button size="sm" onClick={onAccept} data-testid="ai-accept">
               {t('ai.accept')}
-              <Kbd className="bg-primary-foreground/15 text-primary-foreground">↵</Kbd>
+              <Kbd className="bg-primary-foreground/15 text-primary-foreground">
+                {keyLabel('return')}
+              </Kbd>
             </Button>
           </div>
         </>
@@ -351,7 +354,7 @@ export function AIReview({
               )}
               <Button variant="outline" size="sm" onClick={onDiscard} data-testid="ai-close">
                 {t('ai.close')}
-                <Kbd>esc</Kbd>
+                <Kbd>{keyLabel('escape')}</Kbd>
               </Button>
             </div>
           )}

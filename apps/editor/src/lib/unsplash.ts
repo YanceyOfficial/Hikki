@@ -38,6 +38,9 @@ import { bffURL } from './bff'
 
 export { bffURL }
 
+/** How long a request to the BFF may take before it counts as failed (a hung upstream: no endless spinner). */
+export const BFF_TIMEOUT_MS = 10_000
+
 export async function searchUnsplash(
   query: string,
   page = 1,
@@ -48,7 +51,13 @@ export async function searchUnsplash(
   const url = new URL(`${base}/api/unsplash/photos`)
   url.searchParams.set('query', query.trim())
   url.searchParams.set('page', String(page))
-  const response = await fetcher(url)
+  let response: Response
+  try {
+    response = await fetcher(url, { signal: AbortSignal.timeout(BFF_TIMEOUT_MS) })
+  } catch {
+    // Offline, refused, or no answer in time.
+    throw new UnsplashError('unsplash_error', 0, 'offline')
+  }
   if (!response.ok) {
     // `{ error: { code, … }, requestId }` from the BFF; an older one answered 403 for Unsplash's hourly limit.
     const body = (await response.json().catch(() => null)) as { error?: { code?: number } } | null
@@ -75,6 +84,7 @@ export function trackUnsplashDownload(
   fetcher(`${base}/api/unsplash/download`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ downloadLocation: photo.downloadLocation })
+    body: JSON.stringify({ downloadLocation: photo.downloadLocation }),
+    signal: AbortSignal.timeout(BFF_TIMEOUT_MS)
   }).catch((error: unknown) => console.warn('[hikki] unsplash download tracking failed', error))
 }

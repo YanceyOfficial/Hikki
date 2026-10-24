@@ -6,6 +6,7 @@ import type { NodeView } from '@tiptap/pm/view'
 import { FloatingLayer } from '../components/floating'
 import { renderRubyPanel } from '../components/ruby-panel'
 import { tiptapShortcut } from '../core/shortcuts'
+import { changedRanges, visitChanged } from '../lib/changed-ranges'
 import { followNode, followPosition } from './block-units'
 
 /** A run of the selection: kanji with their reading, or kana/punctuation left bare. */
@@ -242,7 +243,8 @@ function rubyMarksInside(): Plugin {
     appendTransaction: (transactions, _old, state) => {
       if (!transactions.some((tr) => tr.docChanged)) return null
       const tr = state.tr
-      state.doc.descendants((node, pos) => {
+      // Only where the page changed: a mark only lands on a ruby there.
+      visitChanged(state.doc, changedRanges(transactions, state.doc), (node, pos) => {
         if (node.type.name !== 'ruby') return true
         for (const mark of node.marks) {
           tr.removeNodeMark(tr.mapping.map(pos), mark)

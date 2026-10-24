@@ -1,5 +1,4 @@
 @import 'tailwindcss';
-@import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 @import './theme.css';
 
@@ -360,7 +359,7 @@
     @apply pointer-events-auto absolute top-0 bottom-0 w-3 -translate-x-1/2 cursor-col-resize;
   }
   .tiptap .hk-col-gutter::after {
-    @apply absolute top-0 bottom-0 left-1/2 w-0.5 -translate-x-1/2 rounded-full bg-transparent transition-colors duration-(--motion-pop-in);
+    @apply absolute top-0 bottom-0 left-1/2 w-0.5 -translate-x-1/2 rounded-full bg-transparent transition-colors duration-(--motion-pop-in) ease-out;
     content: '';
   }
   .tiptap .hk-col-gutter:hover::after {
@@ -556,7 +555,7 @@
     @apply pointer-events-none;
   }
   .tiptap .hk-embed-bar {
-    @apply absolute top-2 right-2 opacity-0 transition-opacity group-hover/embed:opacity-100 focus-within:opacity-100 touch:opacity-100;
+    @apply absolute top-2 right-2 opacity-0 transition-opacity duration-(--motion-pop-in) ease-out group-hover/embed:opacity-100 focus-within:opacity-100 touch:opacity-100;
   }
   .tiptap .hk-embed-open {
     @apply cursor-pointer rounded-md bg-popover px-2 py-1 text-xs text-popover-foreground shadow-sm ring-1 ring-foreground/10 hover:bg-muted;
@@ -566,7 +565,7 @@
   }
   /* The height handle sits inside the card's bottom edge (the card clips what overflows its corners). */
   .tiptap .hk-embed-resize {
-    @apply absolute bottom-1 left-1/2 h-1.5 w-12 -translate-x-1/2 cursor-row-resize touch-none rounded-full bg-muted-foreground/30 opacity-0 transition-opacity group-hover/embed:opacity-100 hover:bg-muted-foreground/60 touch:opacity-100;
+    @apply absolute bottom-1 left-1/2 h-1.5 w-12 -translate-x-1/2 cursor-row-resize touch-none rounded-full bg-muted-foreground/30 opacity-0 transition-opacity duration-(--motion-pop-in) ease-out group-hover/embed:opacity-100 hover:bg-muted-foreground/60 touch:opacity-100;
   }
   .tiptap .hk-upload {
     @apply my-2 flex flex-col gap-2 rounded-md border border-dashed border-border px-3 py-2.5 text-sm text-muted-foreground;

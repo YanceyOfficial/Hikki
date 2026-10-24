@@ -65,7 +65,8 @@ These rules are mandatory. Automated ones are noted.
   `Hikki/Sources/Generated/Shortcuts.swift` (`Shortcut.x.keyboardShortcut` / `.display`) and
   `apps/editor/src/generated/shortcuts.ts` (`matchesShortcut`, `shortcutLabel`, `tiptapShortcut` in
   `apps/editor/src/core/shortcuts.ts`). Each entry says who binds it: `app` (native menu), `editor` (the page; menus only
-  display it) or `both`. No literal key equivalents or "⌘X" labels in code; the generator refuses two shortcuts on
+  display it) or `both`. No literal key equivalents or "⌘X" labels in code (a panel's fixed keys —
+  Enter, Escape, ⌘Enter — are `keyLabel` in `apps/editor/src/core/shortcuts.ts`, the registry's glyphs); the generator refuses two shortcuts on
   the same keys. _Checked by `make lint-design`._ Users rebind any of them in Settings → Shortcuts: the overrides
   (`HikkiCore/Sources/Shortcuts/KeyCombo.swift` — what may be bound, conflicts) live in
   `Hikki/Sources/ShortcutStore.swift` (UserDefaults; `Shortcut.keyboardShortcut` / `.display` read it, observed by the

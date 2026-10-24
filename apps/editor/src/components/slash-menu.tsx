@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 
 import { BLOCK_GROUPS, type BlockGroup, type BlockType } from '../core/blocks'
 import { t } from '../core/i18n'
+import { keyLabel } from '../core/shortcuts'
 import { BlockPreview } from './block-preview'
 import type { FloatingAnchor, FloatingLayer } from './floating'
 import { GlidingHighlight } from './gliding-highlight'
@@ -136,7 +137,7 @@ export function SlashMenu({ items, query, selectedIndex, onSelect, onHover, onCl
           onClick={onClose}
         >
           <span>{t('slash.close')}</span>
-          <span className="text-xs text-muted-foreground">esc</span>
+          <span className="text-xs text-muted-foreground">{keyLabel('escape')}</span>
         </Button>
       </div>
       {selected && previewReady && (

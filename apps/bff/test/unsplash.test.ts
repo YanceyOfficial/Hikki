@@ -1,6 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 
-import { coverURL, listPhotos, toPhoto, triggerDownload } from '../src/unsplash.js'
+import {
+  coverURL,
+  listPhotos,
+  toPhoto,
+  triggerDownload,
+  UPSTREAM_TIMEOUT_MS
+} from '../src/unsplash.js'
 
 const raw = {
   id: 'abc',
@@ -120,6 +126,18 @@ describe('listPhotos', () => {
     expect(JSON.stringify(result)).not.toContain('KEY')
     const broken = await listPhotos('KEY', 'x', 1, fakeFetch({}, 500))
     expect(broken).toMatchObject({ status: 502, error: 'upstreamFailed' })
+  })
+  test('gives up on an Unsplash that never answers: upstreamFailed, not a hung function', async () => {
+    let signal: AbortSignal | null | undefined
+    const hung = (async (_input: string | URL, init?: RequestInit) => {
+      signal = init?.signal
+      throw new DOMException(`no answer in ${UPSTREAM_TIMEOUT_MS} ms`, 'TimeoutError')
+    }) as unknown as typeof fetch
+    expect(await listPhotos('KEY', 'x', 1, hung)).toMatchObject({
+      status: 502,
+      error: 'upstreamFailed'
+    })
+    expect(signal).toBeInstanceOf(AbortSignal)
   })
 })
 

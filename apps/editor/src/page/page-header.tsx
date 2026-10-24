@@ -135,7 +135,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
             // Visible on hover (or while open). Touch screens have no hover: a long press opens the cover's sheet.
             !frozen &&
             !touch && (
-              <CoverActions className="opacity-0 transition-opacity group-focus-within/cover:opacity-100 group-hover/cover:opacity-100 has-aria-expanded:opacity-100">
+              <CoverActions className="opacity-0 transition-opacity duration-(--motion-pop-in) ease-out group-focus-within/cover:opacity-100 group-hover/cover:opacity-100 has-aria-expanded:opacity-100">
                 <Popover>
                   <PopoverTrigger render={<CoverAction />}>{t('page.changeCover')}</PopoverTrigger>
                   <PopoverContent
@@ -227,7 +227,7 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
               </PopoverContent>
             </Popover>
           ))}
-        <div className="mt-2 mb-1 -ml-1.5 flex min-h-7 gap-1 opacity-0 transition-opacity group-hover/header:opacity-100 focus-within:opacity-100 touch:opacity-100">
+        <div className="mt-2 mb-1 -ml-1.5 flex min-h-7 gap-1 opacity-0 transition-opacity duration-(--motion-pop-in) ease-out group-hover/header:opacity-100 focus-within:opacity-100 touch:opacity-100">
           {!page.icon && !frozen && (
             <Button
               variant="ghost"

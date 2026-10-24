@@ -3,6 +3,7 @@ import { Kbd } from '@/components/ui/kbd'
 
 import { t } from '../core/i18n'
 import type { AIChangeInput } from '../core/protocol'
+import { keyLabel } from '../core/shortcuts'
 import type { FloatingAnchor, FloatingLayer } from './floating'
 
 export type AIChangeBarProps = {
@@ -56,11 +57,13 @@ export function AIChangeBar({
         </Button>
         <Button variant="outline" size="sm" onClick={onSkip} data-testid="ai-change-skip">
           {t('ai.change.skip')}
-          <Kbd>⌫</Kbd>
+          <Kbd>{keyLabel('delete')}</Kbd>
         </Button>
         <Button size="sm" onClick={onApprove} data-testid="ai-change-approve">
           {t('ai.change.approve')}
-          <Kbd className="bg-primary-foreground/15 text-primary-foreground">↵</Kbd>
+          <Kbd className="bg-primary-foreground/15 text-primary-foreground">
+            {keyLabel('return')}
+          </Kbd>
         </Button>
       </div>
     </div>

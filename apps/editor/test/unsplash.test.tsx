@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  BFF_TIMEOUT_MS,
   coverURL,
   searchUnsplash,
   trackUnsplashDownload,
@@ -70,6 +71,20 @@ describe('unsplash client', () => {
     )
     const init = fetcher.mock.calls[0]?.[1]
     expect(JSON.parse(String(init?.body))).toEqual({ downloadLocation: photo.downloadLocation })
+    expect(init?.signal).toBeInstanceOf(AbortSignal)
+  })
+
+  it('gives up on a BFF that never answers, as a failure the picker shows', async () => {
+    // The request carries a timeout; when it fires, fetch rejects with a TimeoutError.
+    const hung = vi.fn<typeof fetch>(async (_url, init) => {
+      expect(init?.signal).toBeInstanceOf(AbortSignal)
+      throw new DOMException(`no answer in ${BFF_TIMEOUT_MS} ms`, 'TimeoutError')
+    })
+    await expect(searchUnsplash('sea', 1, 'https://bff.example', hung)).rejects.toMatchObject({
+      message: 'unsplash_error',
+      code: 'offline'
+    })
+    expect(hung).toHaveBeenCalledOnce()
   })
 })
 

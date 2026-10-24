@@ -3,6 +3,8 @@ import type { Node as PMNode, ResolvedPos } from '@tiptap/pm/model'
 import { Plugin, PluginKey, TextSelection, type Transaction } from '@tiptap/pm/state'
 import type { EditorView, NodeView } from '@tiptap/pm/view'
 
+import { changedRanges, visitChanged } from '../lib/changed-ranges'
+
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     columns: {
@@ -121,7 +123,8 @@ export const Columns = Node.create({
         appendTransaction: (transactions, _old, state) => {
           if (!transactions.some((t) => t.docChanged)) return null
           let tr: Transaction | null = null
-          state.doc.descendants((node, pos) => {
+          // Only where the page changed: a row only loses a column there.
+          visitChanged(state.doc, changedRanges(transactions, state.doc), (node, pos) => {
             // Rows sit among blocks: text blocks and atoms hold none (not looking into them skips every text node).
             if (node.isTextblock || node.isAtom) return false
             if (node.type.name !== 'columns' || node.childCount !== 1) return true

@@ -3,7 +3,8 @@ import { undo } from '@tiptap/pm/history'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createEditor } from '../src/core/editor'
-import type { AIStreamEvent } from '../src/core/protocol'
+import { installErrorForwarding } from '../src/core/errors'
+import type { AIStreamEvent, ToNativeMessage } from '../src/core/protocol'
 import {
   aiReviewOpen,
   revealBelow,
@@ -434,6 +435,24 @@ describe('AI review (style A)', () => {
     expect(copied).toEqual(['Correct: *fine*.'])
     await tick()
     expect(button('Copied')).toBeDefined()
+  })
+
+  it('a copy the clipboard refuses is reported, not swallowed', async () => {
+    const reports: ToNativeMessage[] = []
+    const quiet = Object.assign(new EventTarget(), {
+      console: { ...console, warn: () => {}, error: () => {} }
+    }) as unknown as Window & typeof globalThis
+    installErrorForwarding({ post: (m) => Promise.resolve(void reports.push(m)) }, quiet)
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: () => Promise.reject(new Error('denied')) }
+    })
+    editor.commands.aiRun({ id: 'custom', instruction: 'Check it' })
+    send({ type: 'text', delta: reply({ 'p1:0': 'the quick fox' }, ['Correct: *fine*.']) })
+    send({ type: 'done' })
+    button('Copy')!.click()
+    await tick()
+    expect(reports).toContainEqual(expect.objectContaining({ type: 'reportError', code: 3004 }))
   })
 
   it('hands a request in the user’s words to the chat when the model says so', () => {

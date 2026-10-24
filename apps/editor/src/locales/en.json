@@ -281,7 +281,7 @@
   "math": {
     "placeholder": "E = mc^2",
     "label": "Formula (LaTeX)",
-    "hint": "⌘Enter to finish · Esc to cancel",
+    "hint": "{{confirm}} to finish · {{cancel}} to cancel",
     "done": "Done"
   },
   "toggle": {
@@ -372,7 +372,7 @@
     "baseLabel": "Reading for",
     "placeholder": "かな",
     "suggesting": "Looking up…",
-    "hint": "Enter to save · Esc to cancel",
+    "hint": "{{confirm}} to save · {{cancel}} to cancel",
     "done": "Done",
     "remove": "Remove",
     "mode": "Reading mode",
@@ -399,8 +399,8 @@
       "link": "Link to embed",
       "html": "HTML to embed"
     },
-    "hintLink": "Enter to embed · Esc to cancel",
-    "hintHtml": "⌘Enter to embed · Esc to cancel",
+    "hintLink": "{{confirm}} to embed · {{cancel}} to cancel",
+    "hintHtml": "{{confirm}} to embed · {{cancel}} to cancel",
     "invalid": "That link can’t be embedded.",
     "insert": "Embed",
     "open": "Open",
