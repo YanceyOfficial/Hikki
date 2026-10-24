@@ -497,6 +497,11 @@ final class Navigator {
         syncSelection()
     }
 
+    /// A tab dragged along the strip, dropped in the gap before the tab at `index` (a split moves whole).
+    func moveTab(_ id: UUID, to index: Int) {
+        tabs.move(id, to: index)
+    }
+
     func duplicateTab(_ id: UUID) {
         tabs.duplicate(id)
         syncSelection()

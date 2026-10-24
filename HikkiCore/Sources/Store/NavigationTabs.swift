@@ -340,6 +340,22 @@ public struct NavigationTabs<Route: Hashable & Codable & Sendable>: Codable, Equ
         recordVisit()
     }
 
+    /// Moves the tab `id` — with the other side when it is in a split, the two staying together — into the gap before
+    /// the tab at `index` (`tabs.count`: after the last one), as dragging a tab along the strip does. A gap between the
+    /// two sides of another split means after them; a gap at either edge of the moving tabs moves nothing. The focus
+    /// and the histories don't change.
+    public mutating func move(_ id: UUID, to index: Int) {
+        guard let at = tabs.firstIndex(where: { $0.id == id }) else { return }
+        let first = split(of: id).flatMap { pair in tabs.firstIndex { $0.id == pair.leading } } ?? at
+        let count = split(of: id) == nil ? 1 : 2
+        let gap = min(max(index, 0), tabs.count)
+        guard gap < first || gap > first + count else { return }
+        let moving = Array(tabs[first..<(first + count)])
+        tabs.removeSubrange(first..<(first + count))
+        tabs.insert(contentsOf: moving, at: insertionIndex(gap > first ? gap - count : gap))
+        tidySplits()
+    }
+
     /// A link in the page of the tab `id` followed to another page (Chrome's ⌘-click, made the default): the tab already
     /// showing it gets focus; otherwise it opens in a new tab right after `id` (after its split, when `id` is a side of
     /// one), focused, so the page the link was in stays where it was. Past `limit` tabs the least recently focused one

@@ -606,4 +606,36 @@ struct NavigationTabsTests {
         #expect(tabs.activeID == focused)
         #expect(tabs.splits.count == 1)
     }
+
+    @Test func movingATabPutsItInTheGapAndKeepsTheFocus() {
+        var tabs = Tabs(initial: "a")
+        tabs.openTab("b")
+        tabs.openTab("c")
+        let focused = tabs.openTab("d")
+        let a = tabs.tabs[0].id
+        tabs.move(a, to: 3)
+        #expect(tabs.tabs.map(\.route) == ["b", "c", "a", "d"])
+        tabs.move(focused, to: 0)
+        #expect(tabs.tabs.map(\.route) == ["d", "b", "c", "a"])
+        #expect(tabs.activeID == focused)
+        tabs.move(focused, to: 1)
+        #expect(tabs.tabs.map(\.route) == ["d", "b", "c", "a"], "its own edges move nothing")
+        tabs.move(focused, to: 99)
+        #expect(tabs.tabs.map(\.route) == ["b", "c", "a", "d"])
+    }
+
+    @Test func aSplitMovesWholeAndNoTabLandsBetweenItsSides() throws {
+        var tabs = Tabs(initial: "a")
+        let left = tabs.activeID
+        let opened = tabs.openSplit("b", beside: left)
+        let right = try #require(opened)
+        tabs.openTab("c")
+        let d = tabs.openTab("d")
+        tabs.move(right, to: 4)
+        #expect(tabs.tabs.map(\.route) == ["c", "d", "a", "b"])
+        #expect(tabs.split(of: left) == .init(leading: left, trailing: right))
+        tabs.move(d, to: 3)
+        #expect(tabs.tabs.map(\.route) == ["c", "a", "b", "d"], "a gap inside the split means after it")
+        #expect(tabs.splits.count == 1)
+    }
 }

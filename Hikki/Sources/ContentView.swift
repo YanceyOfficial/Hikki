@@ -916,7 +916,9 @@ private struct NativeDetailToolbar: ToolbarContent {
                 dragItem: { id in
                     navigator.tabs.tabs.first { $0.id == id }?.route.pageID.map(PageLink.dragItem)
                 },
-                menu: TabStripMenu(commands: tabMenuCommands, perform: performTabCommand)
+                menu: TabStripMenu(commands: tabMenuCommands, perform: performTabCommand),
+                // A tab dragged along the strip moves there, Chrome's way.
+                onMove: { id, index in withAnimation(Motion.easeOut()) { navigator.moveTab(id, to: index) } }
             )
             .frame(minWidth: 240, idealWidth: 480, maxWidth: 640)  // design-lint: allow (toolbar item width)
             // Its own glass (the toolbar's shared capsule is hidden below), so the capsule moves with it.

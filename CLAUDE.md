@@ -494,7 +494,10 @@ HikkiUITests/                 XCUITest flows
   exception; Open in Split View joins a page's own tab; separating a split on one page leaves one tab; tabs saved with
   repeats keep one each when restored (`closeDuplicates`). Back / forward (the toolbar's arrows, ⌘[ ⌘]) walk the
   window's history of pages shown, across tabs (`NavigationTabs.visits`): back returns to the page shown before, focusing
-  its tab — a page opened from the sidebar goes back to where the reader was; closed tabs and gone pages are passed over. A tab's context menu is
+  its tab — a page opened from the sidebar goes back to where the reader was; closed tabs and gone pages are passed over. A tab dragged along the strip moves
+  there, Chrome's way (`TabStrip`'s `onMove` → `NavigationTabs.move`: a split's two tabs move together, a gap between
+  them means after them); the drag carries the page's link as before plus the tab's id as `app.yancey.hikki.tab`
+  (in-process only, declared in Project.swift's Info.plist), which is how the strip tells a reorder from a page drop. A tab's context menu is
   Chrome's (`TabStripMenu` / `TabStripCommand` in `HikkiUI/Sources/TabStrip.swift`, the commands chosen by
   `NativeDetailToolbar` in ContentView): New Tab to the Right (Home), Open in Split View (where the window splits),
   Duplicate (the whole history), Move to New Window (Mac, a page: the "page" window group, then the tab closes — iPad
