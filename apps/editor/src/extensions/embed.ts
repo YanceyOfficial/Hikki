@@ -5,11 +5,11 @@ import type { NodeView } from '@tiptap/pm/view'
 import { renderEmbedPanel } from '../components/embed-panel'
 import { FloatingLayer } from '../components/floating'
 import { t } from '../core/i18n'
+import { isWebURL } from '../core/links'
 import {
   clampEmbedHeight,
   frameSrc,
   htmlEmbedDocument,
-  isWebURL,
   safeFrameSrc,
   reloadsOnSchemeChange,
   themedEmbedSrc,

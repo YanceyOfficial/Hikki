@@ -11,7 +11,8 @@ import { Decoration, DecorationSet } from '@tiptap/pm/view'
 
 import { renderAIReview, type AIReviewProps } from '../components/ai-review'
 import { FloatingLayer } from '../components/floating'
-import { markdownBlocks } from '../core/convert'
+import { answerBlocks, answerDOM } from '../core/answer-markdown'
+import { isWebURL } from '../core/links'
 import type { AIMediaRef, AIStreamEvent } from '../core/protocol'
 import {
   type AddedType,
@@ -355,7 +356,7 @@ export function handleAIEvent(editor: Editor, host: AIHost, event: AIStreamEvent
       break
     case 'citation':
       // Only web pages, once each (the URL comes from the model's search).
-      if (webURL(event.url) && !session.citations.some((c) => c.url === event.url))
+      if (isWebURL(event.url) && !session.citations.some((c) => c.url === event.url))
         session.citations.push({ url: event.url, title: event.title })
       break
     case 'done':
@@ -403,16 +404,6 @@ const pendingRedraws = new WeakMap<AISession, number>()
 function redraw(editor: Editor, host: AIHost): void {
   editor.view.dispatch(editor.state.tr.setMeta(AIReviewKey, true).setMeta('addToHistory', false))
   draw(editor, host)
-}
-
-function webURL(url: unknown): boolean {
-  if (typeof url !== 'string') return false
-  try {
-    const { protocol } = new URL(url)
-    return protocol === 'https:' || protocol === 'http:'
-  } catch {
-    return false
-  }
 }
 
 /** Whether the model may hand this request to the chat: the user's own words about text, and a host that can. */
@@ -701,7 +692,7 @@ function insertBelow(editor: Editor, host: AIHost, text: string): void {
   if (!session) return
   const after = belowSelection(editor, session)
   // The answer's Markdown as real blocks (lists, headings, emphasis), media and non-web links left out.
-  const blocks = text.trim() ? markdownBlocks(text) : []
+  const blocks = text.trim() ? answerBlocks(editor, text) : []
   close(editor, host)
   if (blocks.length > 0) editor.chain().focus().insertContentAt(after, blocks).run()
 }
@@ -715,7 +706,7 @@ function insertNote(editor: Editor, host: AIHost, index: number): void {
   const session = storage(editor).session
   const note = session?.notes[index]
   if (!session || !note || session.inserted.includes(index)) return
-  const blocks = markdownBlocks(note)
+  const blocks = answerBlocks(editor, note)
   if (blocks.length === 0) return
   const at = session.insertAt ?? belowSelection(editor, session)
   let next = at
@@ -736,6 +727,17 @@ function insertNote(editor: Editor, host: AIHost, index: number): void {
   session.insertAt = next
   session.inserted = [...session.inserted, index]
   draw(editor, host)
+}
+
+/** One drawing function per editor, so the card redraws an answer only when its text changes. */
+const renderers = new WeakMap<Editor, (text: string) => DocumentFragment>()
+function markdownRenderer(editor: Editor): (text: string) => DocumentFragment {
+  let render = renderers.get(editor)
+  if (!render) {
+    render = (text) => answerDOM(editor, text)
+    renderers.set(editor, render)
+  }
+  return render
 }
 
 /** The bar or card under the selection, redrawn on every change of the session. */
@@ -785,6 +787,7 @@ function draw(editor: Editor, host: AIHost): void {
       ),
     onInsertBelow: () => insertBelow(editor, host, session.reply),
     onInsertNote: (index) => insertNote(editor, host, index),
+    renderMarkdown: markdownRenderer(editor),
     onCopy: (text) => void navigator.clipboard?.writeText(text ?? session.reply).catch(() => {})
   }
   // The bar hangs under a picture's block, or under the last ghost of the blocks to add (not over them).

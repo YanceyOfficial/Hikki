@@ -157,7 +157,9 @@ HikkiAI/Sources/              framework: AI — one streaming client over OpenAI
                               (swift-markdown) and code colouring (HighlightSwift); tests in HikkiAI/Tests/
 HikkiUI/Sources/              framework: reusable SwiftUI components + Theme
 apps/editor/src/                   web editor: main.tsx + style.css; each folder below holds only .tsx or only .ts
-apps/editor/src/core/              bridge, protocol, transport, editor setup, block catalog, i18n, shortcuts, links, page store
+apps/editor/src/core/              bridge, protocol, transport, editor setup, block catalog, i18n, shortcuts, links, page store;
+                              never imports from components/ (its data — AI actions, block kinds, transaction metas — lives
+                              here; the extension ↔ panel pairs are the only import cycles left)
 apps/editor/src/extensions/        Tiptap extensions (.ts; React panels are drawn through the components' render* helpers)
 apps/editor/src/components/        editor UI (.tsx): menus, panels, the floating layer, icons (kebab-case files)
 apps/editor/src/components/ui/     shadcn components (generated via `bun run ui:add`)
@@ -412,7 +414,7 @@ HikkiUITests/                 XCUITest flows
   name/icon on activation, and one arriving from iCloud is adopted as it comes (a second device joining takes the
   workspace's name and icon).
 - **Popups close one way**: every `FloatingLayer` opened with `onDismiss` (`apps/editor/src/components/floating.tsx`) joins
-  one dismiss bus — a single pair of document listeners: Escape and a press outside every open layer dismiss the newest
+  one dismiss bus (`apps/editor/src/lib/dismiss-bus.ts`) — a single pair of document listeners: Escape and a press outside every open layer dismiss the newest
   one, and the opener says what that means (the slash and block menus exit, the math and ruby panels cancel; it gets
   the reason and may answer `'keep'` — Escape in the block menu closes its submenu first). No popup installs its own
   outside-click or Escape listener. `dismissAllLayers` runs as `loadDocument` starts, so nothing outlives its page, and a
@@ -532,7 +534,7 @@ HikkiUITests/                 XCUITest flows
   the "/" menu's Embeds group — a short list of work services: Embed, HTML, Google Drive, Figma, Miro, Loom, Airtable,
   Calendly, GitHub Gist, CodeSandbox, draw.io, Excalidraw (that row inserts a drawing block — a pasted
   excalidraw.com link still embeds), each by its Simple Icons mark (`simple-icons`, one named
-  import per logo, `apps/editor/src/components/brand-logos.tsx`), in its brand colour (near-black ones in the row's text colour) at the icons' size.
+  import per logo, `apps/editor/src/lib/brand-logos.ts`), in its brand colour (near-black ones in the row's text colour) at the icons' size.
   `embedFromURL` turns a pasted link into the provider's embeddable URL (YouTube, Vimeo, Figma's embed.figma.com, Maps,
   Drive/Docs, gists as a script snippet, tweets via platform.twitter.com, CodePen, draw.io's viewer, Loom, Excalidraw,
   Miro's live embed, Airtable views, Spotify, CodeSandbox, Calendly, Typeform) — services without a row still embed
@@ -756,7 +758,7 @@ HikkiUITests/                 XCUITest flows
   `window.hikki.setComments`. A block without text (an image, an embed, a file, a formula) gets a thread on the whole
   block instead — the block menu's Comment, or ⇧⌘M on a selected block: the thread carries `blockId` (an optional
   key in the file and in `commentCreate`; its `quote` is the block's name, "Image · photo.png"), nothing is marked,
-  the block is outlined (`hk-comment-block`), and its card / badge / sheet are the passage threads' own. A draft is only a highlight until it is sent; adding or removing the mark is kept out of undo but saved (`SAVE_META`
+  the block is outlined (`hk-comment-block`), and its card / badge / sheet are the passage threads' own. A draft is only a highlight until it is sent; adding or removing the mark is kept out of undo but saved (`SAVE_META`, `apps/editor/src/core/meta.ts`
   — `isUserEdit` in `apps/editor/src/core/bridge.ts` otherwise skips non-undo transactions), and an open thread whose mark is
   missing is marked again where its quote occurs once (`findQuote`). `apps/editor/src/components/comments.tsx` draws
   cards in the right margin when the window is wide (`#page[data-comments]` shifts the page left at ≥ 1240 px), count
@@ -870,7 +872,8 @@ HikkiUITests/                 XCUITest flows
   chat by `AIHandoff.placement` (HikkiCore) — the inspector in AI mode (opened, or switched from outline / comments) on
   Mac and a wide iPad — in a split window, the panel of the side that handed off — the Ask AI sheet on iPhone — then sets the passage as the chat's selection and sends the
   instruction as the next turn of that page's conversation. Answers get a card (Insert below, Copy) that draws their
-  Markdown as page blocks (`markdownBlocks` / `markdownDOM` in `apps/editor/src/core/convert.ts`: no media, web links only)
+  Markdown as page blocks (`answerBlocks` / `answerDOM` in `apps/editor/src/core/answer-markdown.ts`, read with the open editor's
+  schema: no media, web links only)
   and inserts it as blocks; answers and reasons are written in the app's language (`AIPrompts.languageLine`). The chat's
   answers (`Hikki/Sources/AIAnswerText.swift`) are full GitHub-flavoured Markdown: `AIMarkdown`
   (`HikkiAI/Sources/AIMarkdown.swift`, swift-markdown's cmark-gfm tree, ported from exodus-ios's MarkdownKit) gives

@@ -11,6 +11,7 @@ import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
 
 import { renderComments } from '../components/comments'
 import { blockKindLabel } from '../core/block-kinds'
+import { SAVE_META } from '../core/meta'
 import { tiptapShortcut } from '../core/shortcuts'
 import type { PageIndexEntry } from './page-links'
 import { SelectionMenuKey } from './selection-menu'
@@ -81,10 +82,6 @@ type Meta =
   | { type: 'draft'; draft: CommentsState['draft'] }
 
 export const CommentsKey = new PluginKey<CommentsState>('comments')
-
-/** On a transaction kept out of undo that must still be saved: a comment's mark added or removed (undoing it would
- * leave a thread with no passage), so the page counts as edited. */
-export const SAVE_META = 'hikkiSave'
 
 /** The passage a thread is about: a mark with the thread's id (marks of different threads may overlap). */
 export const CommentMark = Mark.create({

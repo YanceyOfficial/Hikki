@@ -10,7 +10,7 @@ import {
   tiptapShortcut,
   type ShortcutId
 } from '../core/shortcuts'
-import { BLOCK_UNIT_ACTIONS } from './block-controls'
+import { BLOCK_UNIT_ACTIONS } from './block-units'
 
 /** Notion's block shortcuts (⌥⌘0–9): which catalog block each one turns the current block into. */
 const BLOCK_SHORTCUTS: [ShortcutId, string][] = [

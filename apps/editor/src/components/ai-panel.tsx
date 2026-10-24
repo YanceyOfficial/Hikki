@@ -8,44 +8,13 @@ import {
   InputGroupTextarea
 } from '@/components/ui/input-group'
 
+import { AI_GROUPS, type AIGroup } from '../core/ai-actions'
 import { t } from '../core/i18n'
 import type { AIModelMenu } from '../core/protocol'
 import type { AIAction } from '../extensions/ai-review'
 import { ArrowUpIcon, CaretDownIcon, CheckIcon } from '../generated/icons'
 import { aiModels, modelName } from '../lib/ai-models'
 import { MenuRow, MenuTitle } from './menu-row'
-
-type AIGroup = { label: () => string; actions: { id: string; label: () => string }[] }
-
-/** The AI actions: what the user types, then presets (edits replace the selection after review; Ask explains it). */
-export const AI_GROUPS: AIGroup[] = [
-  {
-    label: () => t('ai.group.edit'),
-    actions: [
-      { id: 'improve', label: () => t('ai.action.improve') },
-      { id: 'fix', label: () => t('ai.action.fix') },
-      { id: 'shorter', label: () => t('ai.action.shorter') },
-      { id: 'longer', label: () => t('ai.action.longer') },
-      { id: 'simplify', label: () => t('ai.action.simplify') }
-    ]
-  },
-  {
-    label: () => t('ai.group.tone'),
-    actions: [
-      { id: 'tone:professional', label: () => t('ai.action.tone.professional') },
-      { id: 'tone:casual', label: () => t('ai.action.tone.casual') },
-      { id: 'tone:friendly', label: () => t('ai.action.tone.friendly') },
-      { id: 'tone:confident', label: () => t('ai.action.tone.confident') }
-    ]
-  },
-  {
-    label: () => t('ai.group.ask'),
-    actions: [
-      { id: 'explain', label: () => t('ai.action.explain') },
-      { id: 'summarize', label: () => t('ai.action.summarize') }
-    ]
-  }
-]
 
 /** About a picture or a PDF (the block menu on an image or a file): nothing to edit, only answers. */
 const MEDIA_GROUPS: AIGroup[] = [

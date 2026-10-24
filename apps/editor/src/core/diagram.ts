@@ -1,7 +1,7 @@
 import { mermaidFromAnswer } from '@hikki/excalidraw'
 
-import { aiErrorText } from '../components/ai-review'
 import type { ErrorId } from '../generated/errors'
+import { aiErrorText } from './ai-errors'
 import type { AIStreamEvent, ToNativeMessage } from './protocol'
 
 /** A diagram that didn't come, with its message and the code it is reported under. */

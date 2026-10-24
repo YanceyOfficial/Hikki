@@ -1,6 +1,9 @@
+import type { Editor } from '@tiptap/core'
 import type { Node as PMNode, ResolvedPos } from '@tiptap/pm/model'
 
+import type { BlockUnit } from '../extensions/block-units'
 import { BLOCK_TYPES } from './blocks'
+import { wordCount } from './extract'
 import { t } from './i18n'
 
 /** Catalog ids (`blocks.ts`) of node types that are one kind whatever their attributes. */
@@ -54,4 +57,39 @@ export function blockKindLabel(node: PMNode, $pos?: ResolvedPos): string {
   if (other) return other()
   const type = id ? BLOCK_TYPES.find((b) => b.id === id) : undefined
   return type ? type.label() : t('blockMenu.kind.block')
+}
+
+/** The block's words and characters, as the page's counts reckon them (CJK characters a word each); null without
+ * text. */
+export function blockCounts(node: PMNode): { words: number; characters: number } | null {
+  const text = node.textBetween(0, node.content.size, ' ', ' ')
+  if (!text.trim()) return null
+  return { words: wordCount(text), characters: text.length }
+}
+
+/** The catalog id of the unit's kind (read from the document, no selection needed). */
+export function unitTypeId(editor: Editor, unit: BlockUnit): string | null {
+  const { node } = unit
+  switch (node.type.name) {
+    case 'paragraph':
+      return 'paragraph'
+    case 'heading':
+      return `heading${node.attrs.level as number}`
+    case 'listItem':
+      return editor.state.doc.resolve(unit.pos).parent.type.name === 'orderedList'
+        ? 'orderedList'
+        : 'bulletList'
+    case 'taskItem':
+      return 'taskList'
+    case 'blockquote':
+      return 'blockquote'
+    case 'codeBlock':
+      return 'codeBlock'
+    case 'details':
+      return 'toggle'
+    case 'callout':
+      return 'callout'
+    default:
+      return null
+  }
 }

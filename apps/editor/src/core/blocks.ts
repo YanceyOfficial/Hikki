@@ -2,19 +2,6 @@ import { type Icon } from '@phosphor-icons/react'
 import type { ChainedCommands, Editor } from '@tiptap/core'
 import type { ComponentType } from 'react'
 
-import {
-  AirtableLogo,
-  CalendlyLogo,
-  CodeSandboxLogo,
-  DrawioLogo,
-  ExcalidrawLogo,
-  FigmaLogo,
-  GitHubLogo,
-  GoogleDriveLogo,
-  LoomLogo,
-  MiroLogo,
-  type LogoProps
-} from '../components/brand-logos'
 import { lastCodeLanguage } from '../extensions/code-languages'
 import { openEmbedPanel } from '../extensions/embed'
 import { openMathEditor } from '../extensions/math'
@@ -47,6 +34,19 @@ import {
   TextHTwoIcon,
   TextTIcon
 } from '../generated/icons'
+import {
+  AirtableLogo,
+  CalendlyLogo,
+  CodeSandboxLogo,
+  DrawioLogo,
+  ExcalidrawLogo,
+  FigmaLogo,
+  GitHubLogo,
+  GoogleDriveLogo,
+  LoomLogo,
+  MiroLogo,
+  type LogoProps
+} from '../lib/brand-logos'
 import { drawingsReadOnly } from '../lib/drawing-mode'
 import { t } from './i18n'
 
@@ -713,3 +713,6 @@ export function filterBlockTypes(
     .toSorted((a, b) => b.s - a.s || a.index - b.index)
     .map((x) => x.type)
 }
+
+/** The kinds a block can be turned into (the catalog's `turnInto` entries). */
+export const TURN_INTO = BLOCK_TYPES.filter((b) => b.turnInto)

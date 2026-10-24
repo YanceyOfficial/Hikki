@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { aiErrorText } from '../src/components/ai-review'
+import { aiErrorText } from '../src/core/ai-errors'
 import { setLocale } from '../src/core/i18n'
 
 describe('aiErrorText', () => {

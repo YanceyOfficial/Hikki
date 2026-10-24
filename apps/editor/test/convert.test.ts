@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import { exportPage, importDocument, markdownBlocks } from '../src/core/convert'
+import { answerBlocks } from '../src/core/answer-markdown'
+import { exportPage, importDocument } from '../src/core/convert'
+import { createEditor } from '../src/core/editor'
 import { stripIds } from './helpers'
 
 const text = (value: string, marks?: { type: string; attrs?: object }[]) => ({
@@ -149,8 +151,10 @@ describe('import', () => {
   })
 
   it('an AI answer with code inside bold keeps its list', () => {
-    const blocks = markdownBlocks('- **`a`** first\n- second')
+    const editor = createEditor(document.createElement('div'), null)
+    const blocks = answerBlocks(editor, '- **`a`** first\n- second')
     expect(blocks.map((b) => b.type)).toEqual(['bulletList'])
+    editor.destroy()
   })
 
   it('falls back to the file name without a leading H1', () => {

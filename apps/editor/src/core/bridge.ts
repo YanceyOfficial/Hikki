@@ -2,9 +2,6 @@ import type { Editor, JSONContent } from '@tiptap/core'
 import type { Node as PMNode } from '@tiptap/pm/model'
 import type { Transaction } from '@tiptap/pm/state'
 
-import { AI_GROUPS } from '../components/ai-panel'
-import { setBlockLinkBuilder } from '../components/block-menu'
-import { dismissAllLayers } from '../components/floating'
 import type { AIChangesHost } from '../extensions/ai-changes'
 import {
   handleAIEvent,
@@ -17,7 +14,6 @@ import { PALETTE, type PaletteColor } from '../extensions/colors'
 import {
   commentsState,
   threadRange,
-  SAVE_META,
   setThreads,
   type CommentsHost,
   type ThreadItem
@@ -41,6 +37,7 @@ import { pageBlocks, type AIPageBlock } from '../lib/ai-content'
 import { bffURL } from '../lib/bff'
 import { setDateSheetOpener, type DateSheetChange } from '../lib/date-sheet'
 import { localMoment } from '../lib/dates'
+import { dismissAllLayers } from '../lib/dismiss-bus'
 import { setDrawingsReadOnly } from '../lib/drawing-mode'
 import { linkCardFrom } from '../lib/embeds'
 import {
@@ -49,7 +46,9 @@ import {
   type IconSheetRequest
 } from '../lib/icon-sheet'
 import { sheetPresence } from '../lib/sheet-presence'
+import { AI_GROUPS } from './ai-actions'
 import { withBlockIds } from './block-ids'
+import { setBlockLinkBuilder } from './block-link'
 import { DiagramRequests } from './diagram'
 import { activeCommands, createEditor, runCommand } from './editor'
 import { reportError } from './errors'
@@ -62,6 +61,7 @@ import {
   type OutlineItem
 } from './headings'
 import { t } from './i18n'
+import { SAVE_META } from './meta'
 import { normalizeBody } from './normalize'
 import { insertPictures, type PictureItem, type PicturePlace } from './pictures'
 import {

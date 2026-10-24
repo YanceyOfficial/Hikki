@@ -11,7 +11,7 @@ import { tiptapShortcut, type ShortcutId } from '../core/shortcuts'
 import { FINE_POINTER, matches } from '../lib/device'
 import { BlockHighlight, BlockHighlightKey, setBlockHighlight } from './block-highlight'
 import {
-  duplicateUnit,
+  BLOCK_UNIT_ACTIONS,
   firstTextPos,
   handleUnitAtPos,
   moveUnit,
@@ -21,26 +21,6 @@ import {
 import { dropBeside, MAX_COLUMNS } from './columns'
 
 export const BlockControlsKey = new PluginKey('blockControls')
-
-const atCaret = (editor: Editor) => unitAtPos(editor.state, editor.state.selection.from)
-
-/** Moves the block at the caret one place up or down among its siblings. */
-const moveAtCaret = (editor: Editor, dir: -1 | 1) => {
-  const unit = atCaret(editor)
-  if (!unit) return false
-  const $pos = editor.state.doc.resolve(unit.pos)
-  const index = $pos.index()
-  const parent = $pos.parent
-  if (dir === -1 && index === 0) return true
-  if (dir === 1 && index >= parent.childCount - 1) return true
-  const target =
-    dir === -1
-      ? unit.pos - parent.child(index - 1).nodeSize
-      : unit.pos + unit.node.nodeSize + parent.child(index + 1).nodeSize
-  const tr = moveUnit(editor.state, unit, target)
-  if (tr) editor.view.dispatch(tr)
-  return true
-}
 
 /** Pixels the pointer must travel before a press on the grip becomes a drag (otherwise it's a click). */
 const DRAG_THRESHOLD = 4
@@ -139,18 +119,6 @@ const icon = (svg: string) =>
  * ghost follows the pointer and a line marks the gap; near another block's side edge the drop makes
  * columns. Click the grip for the block menu. Fine pointers only (touch would fight text selection).
  */
-/** Duplicate the block (Notion ⌘D), move it up/down (⌘⇧↑ / ⌘⇧↓) — by shortcut id, for rebound keys too. */
-export const BLOCK_UNIT_ACTIONS: Partial<Record<ShortcutId, (editor: Editor) => boolean>> = {
-  duplicateBlock: (editor) => {
-    const unit = atCaret(editor)
-    if (!unit) return false
-    editor.view.dispatch(duplicateUnit(editor.state, unit))
-    return true
-  },
-  moveBlockUp: (editor) => moveAtCaret(editor, -1),
-  moveBlockDown: (editor) => moveAtCaret(editor, 1)
-}
-
 export const BlockControls = Extension.create<{ enabled: boolean | null }>({
   name: 'blockControls',
 

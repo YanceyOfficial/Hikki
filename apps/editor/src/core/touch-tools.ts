@@ -2,16 +2,21 @@ import type { Editor } from '@tiptap/core'
 import type { Node as PMNode, ResolvedPos } from '@tiptap/pm/model'
 import { TextSelection, type Transaction } from '@tiptap/pm/state'
 
-import { blockCounts, unitTypeId } from '../components/block-menu'
-import { TURN_INTO } from '../components/block-type-list'
-import { BLOCK_UNIT_ACTIONS } from '../extensions/block-controls'
+import { BLOCK_UNIT_ACTIONS } from '../extensions/block-units'
 import { deleteUnit, duplicateUnit, unitAtPos, unitTextRange } from '../extensions/block-units'
 import { BLOCK_COLOR_TYPES, PALETTE, type PaletteColor } from '../extensions/colors'
 import { blockQuote } from '../extensions/comments'
 import { mediaKindOf, safeMediaSrc, storedFileNode } from '../extensions/media'
 import { moveUnitTo } from '../extensions/move-block'
-import { blockKindLabel } from './block-kinds'
-import { BLOCK_GROUPS, BLOCK_TYPES, isAvailable, type BlockGroup, type BlockType } from './blocks'
+import { blockCounts, blockKindLabel, unitTypeId } from './block-kinds'
+import {
+  BLOCK_GROUPS,
+  BLOCK_TYPES,
+  isAvailable,
+  TURN_INTO,
+  type BlockGroup,
+  type BlockType
+} from './blocks'
 import { t } from './i18n'
 
 /**
