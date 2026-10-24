@@ -490,7 +490,7 @@ function BlockMenu({
                 {item.icon}
               </span>
               <span className="flex-1 truncate">{item.label}</span>
-              {item.keys && <span className="text-xs text-placeholder">{item.keys}</span>}
+              {item.keys && <span className="text-xs text-muted-foreground">{item.keys}</span>}
               {item.submenu && <CaretRightIcon size={14} aria-hidden />}
             </MenuRow>
           ])}

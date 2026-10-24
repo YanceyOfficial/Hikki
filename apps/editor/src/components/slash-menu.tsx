@@ -91,7 +91,7 @@ export function SlashMenu({ items, query, selectedIndex, onSelect, onHover, onCl
         <Icon size={18} className="flex-none text-subtle-foreground" aria-hidden />
         <span className="min-w-0 flex-1 truncate text-foreground">{item.label()}</span>
         {item.shortcut && (
-          <span className="flex-none font-mono text-xs text-placeholder">{item.shortcut}</span>
+          <span className="flex-none font-mono text-xs text-muted-foreground">{item.shortcut}</span>
         )}
       </MenuRow>
     )
@@ -136,7 +136,7 @@ export function SlashMenu({ items, query, selectedIndex, onSelect, onHover, onCl
           onClick={onClose}
         >
           <span>{t('slash.close')}</span>
-          <span className="text-xs text-placeholder">esc</span>
+          <span className="text-xs text-muted-foreground">esc</span>
         </Button>
       </div>
       {selected && previewReady && (

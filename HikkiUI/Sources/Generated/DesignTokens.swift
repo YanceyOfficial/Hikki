@@ -16,7 +16,8 @@ public nonisolated extension Theme {
     static let secondary = dynamic(light: 0x37352F, lightAlpha: 0.06, dark: 0xFFFFFF, darkAlpha: 0.055)
     static let secondaryForeground = dynamic(light: 0x37352F, lightAlpha: 1, dark: 0xFFFFFF, darkAlpha: 0.81)
     static let muted = dynamic(light: 0x37352F, lightAlpha: 0.06, dark: 0xFFFFFF, darkAlpha: 0.055)
-    static let mutedForeground = dynamic(light: 0x37352F, lightAlpha: 0.45, dark: 0xFFFFFF, darkAlpha: 0.443)
+    /// Secondary text (descriptions, hints, counts, shortcut keys): at least 4.5:1 on background, card and popover, and on a muted / accent hover under it — light 4.84 on white, 4.59 on muted; dark 5.21 on popover, 4.75 on its hover.
+    static let mutedForeground = dynamic(light: 0x37352F, lightAlpha: 0.7, dark: 0xFFFFFF, darkAlpha: 0.52)
     static let accent = dynamic(light: 0x37352F, lightAlpha: 0.06, dark: 0xFFFFFF, darkAlpha: 0.055)
     static let accentForeground = dynamic(light: 0x37352F, lightAlpha: 1, dark: 0xFFFFFF, darkAlpha: 0.81)
     static let destructive = dynamic(light: 0xE03E3E, lightAlpha: 1, dark: 0xFF7369, darkAlpha: 1)
@@ -33,9 +34,9 @@ public nonisolated extension Theme {
     static let sidebarAccentForeground = dynamic(light: 0x37352F, lightAlpha: 1, dark: 0xFFFFFF, darkAlpha: 0.81)
     static let sidebarBorder = dynamic(light: 0x37352F, lightAlpha: 0.09, dark: 0xFFFFFF, darkAlpha: 0.094)
     /// Hikki: secondary text between foreground and muted
-    static let subtleForeground = dynamic(light: 0x37352F, lightAlpha: 0.65, dark: 0xFFFFFF, darkAlpha: 0.6)
-    /// Hikki
-    static let placeholder = dynamic(light: 0x37352F, lightAlpha: 0.3, dark: 0xFFFFFF, darkAlpha: 0.28)
+    static let subtleForeground = dynamic(light: 0x37352F, lightAlpha: 0.82, dark: 0xFFFFFF, darkAlpha: 0.66)
+    /// Hikki: placeholder text in empty fields and blocks, and quiet icons — at least 3:1 (WCAG's non-text contrast; a placeholder repeats what its field's label or the empty block already says, and must read as unfilled beside entered text): light 3.2 on white, dark 3.26 on popover. Anything that carries information of its own (shortcut keys, hints) is muted-foreground.
+    static let placeholder = dynamic(light: 0x37352F, lightAlpha: 0.55, dark: 0xFFFFFF, darkAlpha: 0.36)
     /// Hikki: pressed / selected surface
     static let accentStrong = dynamic(light: 0x37352F, lightAlpha: 0.1, dark: 0xFFFFFF, darkAlpha: 0.1)
     static let selection = dynamic(light: 0x1C1C1C, lightAlpha: 0.12, dark: 0xE6E4DF, darkAlpha: 0.2)

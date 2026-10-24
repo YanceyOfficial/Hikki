@@ -403,7 +403,7 @@
     @apply cursor-pointer truncate rounded-sm py-1 text-left text-muted-foreground underline decoration-border underline-offset-4 hover:bg-accent hover:text-foreground;
   }
   .tiptap .hk-toc-empty {
-    @apply text-placeholder;
+    @apply text-muted-foreground;
   }
 
   /* Media (extensions/media.ts). */

@@ -148,7 +148,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
         >
           <ChatTeardropTextIcon size={18} className="text-subtle-foreground" aria-hidden />
           <span className="flex-1 truncate">{t('comments.menu')}</span>
-          <span className="text-xs text-placeholder">{shortcutLabel('comment')}</span>
+          <span className="text-xs text-muted-foreground">{shortcutLabel('comment')}</span>
         </MenuRow>
         <MenuRow
           aria-haspopup="menu"
@@ -286,7 +286,9 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
               >
                 <TextSuperscriptIcon size={18} className="text-subtle-foreground" aria-hidden />
                 <span className="flex-1 truncate">{t('format.superscript')}</span>
-                <span className="text-xs text-placeholder">{shortcutLabel('superscript')}</span>
+                <span className="text-xs text-muted-foreground">
+                  {shortcutLabel('superscript')}
+                </span>
               </MenuRow>
               <MenuRow
                 role="menuitemcheckbox"
@@ -295,7 +297,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
               >
                 <TextSubscriptIcon size={18} className="text-subtle-foreground" aria-hidden />
                 <span className="flex-1 truncate">{t('format.subscript')}</span>
-                <span className="text-xs text-placeholder">{shortcutLabel('subscript')}</span>
+                <span className="text-xs text-muted-foreground">{shortcutLabel('subscript')}</span>
               </MenuRow>
               <MenuRow
                 role="menuitem"
@@ -306,7 +308,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
               >
                 <TextAaIcon size={18} className="text-subtle-foreground" aria-hidden />
                 <span className="flex-1 truncate">{t('format.ruby')}</span>
-                <span className="text-xs text-placeholder">{shortcutLabel('ruby')}</span>
+                <span className="text-xs text-muted-foreground">{shortcutLabel('ruby')}</span>
               </MenuRow>
             </div>
           )}
