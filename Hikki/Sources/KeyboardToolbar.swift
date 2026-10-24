@@ -139,6 +139,12 @@
             webView?.reloadKeyboardViews()
         }
 
+        /// The selection a panel was opened on collapsed — a tap elsewhere in the text put the caret there: the
+        /// keyboard comes back in the panel's place, as in Notion (the panel stayed, acting on nothing).
+        func selectionCollapsed() {
+            closePanel()
+        }
+
         /// The keyboard (or panel) goes away altogether.
         func dismiss() {
             closePanel()
@@ -347,6 +353,9 @@
             }
             // A selection made or cleared: the marks the panel shows follow.
             .task(id: bar.controller?.selection) { await bar.refresh() }
+            .onChange(of: bar.controller?.selection) { old, new in
+                if old != nil, new == nil { bar.selectionCollapsed() }
+            }
             .onAppear { bar.shown = true }
             .onDisappear { bar.shown = false }
         }
