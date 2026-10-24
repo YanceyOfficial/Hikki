@@ -309,6 +309,11 @@ function showSideIndicator(target: SideTarget | null) {
 
 // MARK: - Resizing
 
+/** The left column's new share after the pointer moved `delta` (percent of the row), both of the pair kept usable. */
+export function resizedShare(start: number, pair: number, delta: number): number {
+  return Math.min(pair - MIN_SHARE, Math.max(MIN_SHARE, start + delta))
+}
+
 class ColumnsView implements NodeView {
   dom: HTMLElement
   contentDOM: HTMLElement
@@ -365,39 +370,60 @@ class ColumnsView implements NodeView {
     })
   }
 
+  /**
+   * Dragging a gutter: the shares go into CSS variables on the row's wrapper (ours), read by the columns while the
+   * wrapper is `is-resizing` (style.css), at most once a frame, and one transaction stores them on release. Never a
+   * style on a column's own element: ProseMirror owns those, sees the mutation as a DOM change and redraws the
+   * columns — the drag then went on moving elements no longer in the page, and the row jumped only at the release.
+   */
   private startResize(event: PointerEvent, handle: HTMLElement) {
     if (!this.view.editable) return
     event.preventDefault()
     const index = Number(handle.dataset.index)
-    const children = Array.from(this.contentDOM.children) as HTMLElement[]
-    const widths = children.map((c) => c.getBoundingClientRect().width)
+    const widths = Array.from(this.contentDOM.children, (c) => c.getBoundingClientRect().width)
     const total = widths.reduce((a, b) => a + b, 0)
+    if (!(total > 0) || index + 1 >= widths.length) return
     const shares = widths.map((w) => (w / total) * 100)
+    const start = shares[index]
     const pair = shares[index] + shares[index + 1]
     const startX = event.clientX
+    let pointerX = startX
+    let frame = 0
+    let moved = false
     handle.setPointerCapture(event.pointerId)
     handle.classList.add('is-dragging')
 
-    const apply = () => children.forEach((c, i) => (c.style.flex = `${shares[i]} 1 0%`))
-    const onMove = (e: PointerEvent) => {
-      const delta = ((e.clientX - startX) / total) * 100
-      const left = Math.min(
-        pair - MIN_SHARE,
-        Math.max(MIN_SHARE, (widths[index] / total) * 100 + delta)
-      )
+    const apply = () => {
+      frame = 0
+      const left = resizedShare(start, pair, ((pointerX - startX) / total) * 100)
       shares[index] = left
       shares[index + 1] = pair - left
-      apply()
+      shares.forEach((share, i) => this.dom.style.setProperty(`--hk-col-${i}`, String(share)))
+      this.dom.classList.add('is-resizing')
       this.placeGutters()
+    }
+    const onMove = (e: PointerEvent) => {
+      pointerX = e.clientX
+      moved ||= pointerX !== startX
+      if (moved && !frame) frame = requestAnimationFrame(apply)
     }
     const onUp = () => {
       handle.removeEventListener('pointermove', onMove)
+      handle.removeEventListener('pointerup', onUp)
+      handle.removeEventListener('pointercancel', onUp)
       handle.classList.remove('is-dragging')
-      this.commit(shares)
+      if (frame) cancelAnimationFrame(frame)
+      if (moved) {
+        apply()
+        this.commit(shares)
+      }
+      // The columns draw their stored widths again (the transaction above, in the same task: no frame between).
+      this.dom.classList.remove('is-resizing')
+      shares.forEach((_, i) => this.dom.style.removeProperty(`--hk-col-${i}`))
     }
     handle.addEventListener('pointermove', onMove)
-    handle.addEventListener('pointerup', onUp, { once: true })
-    handle.addEventListener('pointercancel', onUp, { once: true })
+    handle.addEventListener('pointerup', onUp)
+    handle.addEventListener('pointercancel', onUp)
   }
 
   private commit(shares: number[]) {
@@ -416,9 +442,9 @@ class ColumnsView implements NodeView {
   }
 
   ignoreMutation(mutation: MutationRecord | { type: 'selection'; target: globalThis.Node }) {
-    // Gutters are ours; so are the flex styles set on the columns while dragging.
+    // Gutters are ours; so are the wrapper's class and the shares set on it while dragging.
     if (this.gutters.contains(mutation.target)) return true
-    return mutation.type === 'attributes' && mutation.target.parentNode === this.contentDOM
+    return mutation.type === 'attributes' && mutation.target === this.dom
   }
 
   stopEvent(event: Event) {

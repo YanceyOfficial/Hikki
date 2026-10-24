@@ -336,6 +336,23 @@
   .tiptap .hk-col {
     @apply min-w-0;
   }
+  /* While a gutter is dragged the shares live on the wrapper (columns.ts: never a style on a column, which
+     ProseMirror would redraw); the release stores them. */
+  .tiptap .hk-cols-wrapper.is-resizing > .hk-cols > .hk-col:nth-child(1) {
+    flex: var(--hk-col-0) 1 0% !important;
+  }
+  .tiptap .hk-cols-wrapper.is-resizing > .hk-cols > .hk-col:nth-child(2) {
+    flex: var(--hk-col-1) 1 0% !important;
+  }
+  .tiptap .hk-cols-wrapper.is-resizing > .hk-cols > .hk-col:nth-child(3) {
+    flex: var(--hk-col-2) 1 0% !important;
+  }
+  .tiptap .hk-cols-wrapper.is-resizing > .hk-cols > .hk-col:nth-child(4) {
+    flex: var(--hk-col-3) 1 0% !important;
+  }
+  .tiptap .hk-cols-wrapper.is-resizing > .hk-cols > .hk-col:nth-child(5) {
+    flex: var(--hk-col-4) 1 0% !important;
+  }
   .tiptap .hk-col-gutters {
     @apply pointer-events-none absolute inset-0;
   }

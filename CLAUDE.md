@@ -417,7 +417,7 @@ HikkiUITests/                 XCUITest flows
   (`apps/editor/src/extensions/table.ts` + `apps/editor/src/extensions/table-ops.ts`, controls drawn by
   `apps/editor/src/components/table-overlay.tsx`) and columns (`apps/editor/src/extensions/columns.ts`: schema needs 2–5 columns, so
   removing one of two replaces the row; dragging a block onto another's side edge makes a row; Notion's 64 px gap holds
-  the next column's block handle, the resize line in its middle shown only on hover; a row narrower than
+  the next column's block handle, the resize line in its middle shown only on hover — a drag sets the shares as CSS variables on the row's wrapper once a frame (never a style on a column: ProseMirror redraws it, and the drag lost the row) and stores them in one transaction on release; a row narrower than
   480 px — an iPhone's page — stacks its columns, a container query in style.css).
 - **Network images** load like exodus's (`apps/editor/src/components/lazy-load-image.tsx`: skeleton, fade in, an icon on
   failure) — covers and the Unsplash grid use the component; body images get the same through
