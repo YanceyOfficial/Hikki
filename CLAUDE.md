@@ -317,7 +317,10 @@ HikkiUITests/                 XCUITest flows
   development schema (or leave it out) before deploying.
 - **Storage (option C)**: the workspace folder is the source of truth — one JSON file per page
   (`HikkiCore/Sources/Store/PageFile.swift`: `pages/<id>.json`, format-versioned, content as JSON); SQLite is a
-  rebuildable cache/index. `HikkiCore/Sources/Store/WorkspaceSync.swift` reconciles on launch and app activation
+  rebuildable cache/index: a database that won't open at launch (corrupt) is set aside as `<name>.broken-<stamp>`
+  with its -wal / -shm (`DocumentStore.onDiskRecovering`) and a fresh one is filled from `pages/` by the first pass,
+  said in a toast (`databaseRebuilt`) — never a crash at every launch; should not even a fresh file open, the run
+  keeps its pages in memory (`databaseOpenFailed`). `HikkiCore/Sources/Store/WorkspaceSync.swift` reconciles on launch and app activation
   (newer side wins; a missing file deletes the page only if it was synced before — `pageFileState`) and writes every
   committed page change through (a GRDB transaction observer). "Newer" is `changedAt` (`lastChange`): every write
   method sets it — moves, reorders, trash, restore and favorites too, which leave `updatedAt` (the "Edited" date)

@@ -1169,9 +1169,21 @@ final class EditorController {
             if let detail { fields["detail"] = String(detail.prefix(500)) }
             Toasts.report(ErrorCode(number: number) ?? .unknown, category: "editor", context: fields)
         case .setIcon(let docId, let icon):
-            try store?.setIcon(icon, for: docId)
+            // The page already shows the new icon / cover; a store that refuses it is said in a toast (and the page,
+            // told by the reply, puts the old one back).
+            do {
+                try store?.setIcon(icon, for: docId)
+            } catch {
+                Toasts.report(.pageUpdateFailed, error, category: "store", context: ["docId": docId, "field": "icon"])
+                throw error
+            }
         case .setCover(let docId, let cover):
-            try store?.setCover(cover, for: docId)
+            do {
+                try store?.setCover(cover, for: docId)
+            } catch {
+                Toasts.report(.pageUpdateFailed, error, category: "store", context: ["docId": docId, "field": "cover"])
+                throw error
+            }
         case .saveAsset(let fileExtension, let data):
             guard let assets else { throw BridgeError.invalidPayload("asset store not attached") }
             let url = try assets.save(data, fileExtension: fileExtension)

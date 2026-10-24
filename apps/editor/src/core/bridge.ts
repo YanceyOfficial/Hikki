@@ -466,17 +466,22 @@ export class EditorBridge {
   }
 
   setIcon(icon: string | null): void {
-    const { docId } = this.page.get()
+    const { docId, icon: previous } = this.page.get()
     if (!docId || this.frozen) return
     this.page.set({ icon })
-    void this.send({ type: 'setIcon', docId, icon })
+    // The native side says why in a toast; the page only puts the old one back (while it still shows the page).
+    void this.send({ type: 'setIcon', docId, icon }).then((stored) => {
+      if (!stored && this.page.get().docId === docId && this.page.get().icon === icon) this.page.set({ icon: previous })
+    })
   }
 
   setCover(cover: string | null): void {
-    const { docId } = this.page.get()
+    const { docId, cover: previous } = this.page.get()
     if (!docId || this.frozen) return
     this.page.set({ cover })
-    void this.send({ type: 'setCover', docId, cover })
+    void this.send({ type: 'setCover', docId, cover }).then((stored) => {
+      if (!stored && this.page.get().docId === docId && this.page.get().cover === cover) this.page.set({ cover: previous })
+    })
   }
 
   /** The sidebar's pages (`window.hikki.setPages`): how links to other pages get their titles. */
@@ -1334,12 +1339,15 @@ export class EditorBridge {
     this.pendingSince = null
   }
 
-  private async send(message: ToNativeMessage): Promise<void> {
+  /** Posts a message; false when the native side refused it (logged here: nothing can be routed through the
+   * transport that just failed). */
+  private async send(message: ToNativeMessage): Promise<boolean> {
     try {
       await this.transport.post(message)
+      return true
     } catch (error) {
-      // Can't route through the transport that just failed.
       console.error('[hikki] bridge post failed', message.type, error)
+      return false
     }
   }
 }

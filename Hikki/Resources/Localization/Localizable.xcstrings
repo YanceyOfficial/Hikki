@@ -4404,6 +4404,40 @@
         }
       }
     },
+    "app:error.aiChatClearFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't clear the AI conversation."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法清空 AI 对话。"
+          }
+        }
+      }
+    },
+    "app:error.aiChatSaveFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't keep the AI conversation."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法保存 AI 对话。"
+          }
+        }
+      }
+    },
     "app:error.aiInvalidResponse": {
       "extractionState": "manual",
       "localizations": {
@@ -4706,6 +4740,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法打开本地数据库。"
+          }
+        }
+      }
+    },
+    "app:error.databaseRebuilt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The page index couldn't be opened and was rebuilt from your pages."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "页面索引无法打开，已根据页面文件重建。"
           }
         }
       }
@@ -5165,6 +5216,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "请求太频繁，请稍后再试。"
+          }
+        }
+      }
+    },
+    "app:error.reminderNotificationsOff": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reminders won't ring: notifications are off for Hikki."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提醒不会响起：Hikki 的通知已关闭。"
+          }
+        }
+      }
+    },
+    "app:error.reminderScheduleFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't set the reminder."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法设置提醒。"
           }
         }
       }
@@ -9160,6 +9245,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "标记为完成"
+          }
+        }
+      }
+    },
+    "app:reminder.openSettings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Settings"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开设置"
           }
         }
       }

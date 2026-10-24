@@ -95,6 +95,30 @@ public final class DocumentStore: Sendable {
         try DocumentStore(writer: DatabaseQueue(configuration: configuration))
     }
 
+    /// Opens the database at `url`; one that can't be opened — corrupt, or left by a build whose schema this one
+    /// can't migrate — is moved aside (`<name>.broken-<stamp>` beside it, its -wal / -shm with it) and a fresh one
+    /// opened in its place: SQLite is a rebuildable cache of the workspace folder (`WorkspaceSync` fills it from
+    /// `pages/` again, and a fresh database holds no sync state, so no page is taken for deleted). `recovered` is what
+    /// failed when that happened, nil when the database opened as it was.
+    public static func onDiskRecovering(at url: URL) throws -> (store: DocumentStore, recovered: (any Error)?) {
+        do {
+            return (try onDisk(at: url), nil)
+        } catch {
+            try setAside(url)
+            return (try onDisk(at: url), error)
+        }
+    }
+
+    /// Renames the database file and the write-ahead log beside it to `<name>.broken-<stamp>`; a missing file is skipped.
+    static func setAside(_ url: URL) throws {
+        let stamp = Int(Date.now.timeIntervalSince1970)
+        for suffix in ["", "-wal", "-shm"] {
+            let file = URL(filePath: url.path + suffix)
+            guard FileManager.default.fileExists(atPath: file.path) else { continue }
+            try FileManager.default.moveItem(at: file, to: URL(filePath: url.path + ".broken-\(stamp)" + suffix))
+        }
+    }
+
     private static var configuration: Configuration {
         var config = Configuration()
         config.foreignKeysEnabled = true

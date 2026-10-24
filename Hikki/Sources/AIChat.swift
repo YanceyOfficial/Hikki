@@ -144,7 +144,8 @@ final class AIChat {
         do {
             try chats.save(kept.map(\.turn), pageId: id)
         } catch {
-            Log.warn("AI chat not kept: \(error)", category: "ai", context: ["docId": id])
+            // The turns stay on screen; what isn't kept is gone with the page switch, so the user hears of it.
+            Toasts.report(.aiChatSaveFailed, error, category: "ai", context: ["docId": id, "turns": "\(kept.count)"])
         }
     }
 
@@ -274,7 +275,13 @@ final class AIChat {
         let compacted = ChatSummary(text: text, through: last.id, createdAt: .now)
         summary = compacted
         Log.info("AI chat compacted", category: "ai", context: ["turns": "\(older.count)"])
-        if let id = openPageID, let chats = chatStore() { try? chats.setSummary(compacted, pageId: id) }
+        if let id = openPageID, let chats = chatStore() {
+            do {
+                try chats.setSummary(compacted, pageId: id)
+            } catch {
+                Toasts.report(.aiChatSaveFailed, error, category: "ai", context: ["docId": id, "step": "summary"])
+            }
+        }
     }
 
     private func ask(
@@ -360,12 +367,19 @@ final class AIChat {
             do {
                 previous = try chats.clear(pageId: page)
             } catch {
-                Log.warn("AI chat not cleared: \(error)", category: "ai", context: ["docId": page])
+                // The screen is empty but the file still holds the turns: they come back on the next load.
+                Toasts.report(.aiChatClearFailed, error, category: "ai", context: ["docId": page])
             }
         }
         Toasts.shared.show(.info, String(localized: "app:ai.chatCleared"), actionTitle: "app:format.undo") { [weak self] in
             guard let self else { return }
-            if let page, let previous, let chats = self.chatStore() { try? chats.restore(previous, pageId: page) }
+            if let page, let previous, let chats = self.chatStore() {
+                do {
+                    try chats.restore(previous, pageId: page)
+                } catch {
+                    Toasts.report(.aiChatSaveFailed, error, category: "ai", context: ["docId": page, "step": "undo"])
+                }
+            }
             guard self.openPageID == page else { return }
             if page != nil, previous != nil {
                 self.load()

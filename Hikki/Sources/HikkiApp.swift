@@ -30,18 +30,32 @@ struct HikkiApp: App {
         Purchases.shared.start()
         // AI keys from before settings synced move into iCloud Keychain (once; a key that can't move stays put).
         Task.detached(priority: .utility) { Keychain.migrateToSynchronizable() }
+        let store = HikkiApp.documentStore(paths)
+        #if DEBUG
+            DemoPages.seed(store)
+        #endif
+        _model = State(
+            initialValue: AppModel(
+                store: store, searchIndex: HikkiApp.searchIndex(paths), assets: AssetStore(directory: paths.assets),
+                crashReporter: crashReporter, workspaceStore: HikkiApp.workspaceStore(paths)))
+    }
+
+    /// The page database. SQLite is a rebuildable cache of the workspace folder: one that can't be opened (corrupt)
+    /// is set aside and a fresh one opened, which `WorkspaceSync` fills from `pages/` again — said in a toast, never
+    /// a crash at every launch. Should not even a fresh file open, this run keeps its pages in memory (the folder still
+    /// holds them all, and the write-through still writes it).
+    private static func documentStore(_ paths: AppPaths) -> DocumentStore {
         do {
-            let store = try DocumentStore.onDisk(at: paths.database)
-            #if DEBUG
-                DemoPages.seed(store)
-            #endif
-            _model = State(
-                initialValue: AppModel(
-                    store: store, searchIndex: HikkiApp.searchIndex(paths), assets: AssetStore(directory: paths.assets),
-                    crashReporter: crashReporter, workspaceStore: HikkiApp.workspaceStore(paths)))
+            let (store, recovered) = try DocumentStore.onDiskRecovering(at: paths.database)
+            if let recovered { Toasts.report(.databaseRebuilt, recovered, category: "store") }
+            return store
         } catch {
             Toasts.report(.databaseOpenFailed, error, category: "store")
-            fatalError("Cannot open database: \(error)")
+            do {
+                return try DocumentStore.inMemory()
+            } catch {
+                fatalError("Cannot open database: \(error)")
+            }
         }
     }
 

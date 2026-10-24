@@ -116,6 +116,18 @@
       "en": "The page this link points to no longer exists.",
       "zh": "这个链接指向的页面已不存在。"
     },
+    "reminderScheduleFailed": {
+      "code": 2015,
+      "severity": "error",
+      "en": "Couldn't set the reminder.",
+      "zh": "无法设置提醒。"
+    },
+    "reminderNotificationsOff": {
+      "code": 2016,
+      "severity": "warning",
+      "en": "Reminders won't ring: notifications are off for Hikki.",
+      "zh": "提醒不会响起：Hikki 的通知已关闭。"
+    },
     "workspaceUnavailable": {
       "code": 2101,
       "severity": "error",
@@ -133,6 +145,12 @@
       "severity": "error",
       "en": "Couldn't move the workspace from its folder into iCloud. The folder is unchanged.",
       "zh": "无法把工作区从文件夹移到 iCloud，文件夹未作改动。"
+    },
+    "databaseRebuilt": {
+      "code": 2108,
+      "severity": "warning",
+      "en": "The page index couldn't be opened and was rebuilt from your pages.",
+      "zh": "页面索引无法打开，已根据页面文件重建。"
     },
     "workspaceSyncFailed": {
       "code": 2102,
@@ -322,6 +340,18 @@
       "severity": "error",
       "en": "Couldn't save the API key in iCloud Keychain.",
       "zh": "无法将 API 密钥保存到 iCloud 钥匙串。"
+    },
+    "aiChatSaveFailed": {
+      "code": 5013,
+      "severity": "error",
+      "en": "Couldn't keep the AI conversation.",
+      "zh": "无法保存 AI 对话。"
+    },
+    "aiChatClearFailed": {
+      "code": 5014,
+      "severity": "error",
+      "en": "Couldn't clear the AI conversation.",
+      "zh": "无法清空 AI 对话。"
     },
 
     "searchFailed": {

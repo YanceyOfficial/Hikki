@@ -187,6 +187,25 @@ describe('EditorBridge', () => {
     expect(changed()).toHaveLength(0)
   })
 
+  it('an icon or cover the native side refuses to store goes back to what it was', async () => {
+    vi.useRealTimers()
+    const refusing: Transport = {
+      post: async (m) => {
+        if (m.type === 'setIcon' || m.type === 'setCover') throw new Error('locked')
+        return null
+      }
+    }
+    const refused = new EditorBridge(host, refusing, { debounceMs: 400 })
+    refused.loadDocument(page('a', { icon: '🌊', cover: 'gradient:ocean' }))
+    refused.setIcon('👋')
+    refused.setCover('gradient:dusk')
+    expect(refused.page.get().icon).toBe('👋')
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(refused.page.get().icon).toBe('🌊')
+    expect(refused.page.get().cover).toBe('gradient:ocean')
+  })
+
   it('saveAsset base64-encodes the file and resolves to the URL the native side returns', async () => {
     vi.useRealTimers()
     bridge.loadDocument(page('a'))

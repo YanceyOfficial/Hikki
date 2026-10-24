@@ -189,6 +189,24 @@ struct DocumentStoreTests {
         }
     }
 
+    /// A database that can't be opened is set aside and a fresh one opened (the folder's page files rebuild it);
+    /// one that opens is left alone.
+    @Test func anUnopenableDatabaseIsSetAsideAndAFreshOneOpened() throws {
+        let folder = try makeTempDirectory()
+        let url = folder.appending(path: "hikki.sqlite")
+        try Data("not a database".utf8).write(to: url)
+        let (store, recovered) = try DocumentStore.onDiskRecovering(at: url)
+        #expect(recovered != nil)
+        try store.create(id: "a", now: t0)
+        #expect(try store.pages().map(\.id) == ["a"])
+        let names = try FileManager.default.contentsOfDirectory(atPath: folder.path)
+        #expect(names.contains { $0.hasPrefix("hikki.sqlite.broken-") && !$0.hasSuffix("-wal") && !$0.hasSuffix("-shm") })
+        // Opened as it is the next time: nothing is set aside.
+        let again = try DocumentStore.onDiskRecovering(at: url)
+        #expect(again.recovered == nil)
+        #expect(try again.store.pages().map(\.id) == ["a"])
+    }
+
     @Test func onDiskStorePersistsAcrossReopen() throws {
         let url = try makeTempDirectory().appending(path: "hikki.sqlite")
         try DocumentStore.onDisk(at: url).create(id: "a", now: t0)
