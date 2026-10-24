@@ -34,6 +34,21 @@ struct AIPromptsTests {
         #expect(text.contains("Task: Draw the description as a Mermaid diagram."))
     }
 
+    @Test func anEditMayAddBlocksAfterTheSelectionOnlyForTheUsersOwnInstruction() {
+        let task = AITask(action: "custom", instruction: "Add an explanation and examples at the end", answer: false, units: [unit])
+        let request = AIPrompts.request(for: task, model: AIModelCatalog.sonnet)
+        #expect(request.instructions.contains(#""added":[]"#))
+        #expect(request.instructions.contains(#""type":"paragraph"|"heading1"|"heading2"|"heading3"|"bullet"|"numbered"|"quote""#))
+        #expect(request.instructions.contains("Never pack new paragraphs into an existing block with <br>"))
+        #expect(request.instructions.contains("only ever edit the selected text"))
+        #expect(request.instructions.contains("never put a new block among them"))
+        // A follow-up asks for the added blocks again.
+        let followUp = AITask(
+            action: "custom", instruction: "Shorter examples", answer: false, units: [unit], previous: "{}")
+        let text = AIPrompts.request(for: followUp, model: AIModelCatalog.sonnet).messages.last?.text ?? ""
+        #expect(text.contains(#""added" with every block to add"#))
+    }
+
     @Test func anEditKeepsWhatItSaysToTheUserInNotesApartFromThePage() {
         let request = AIPrompts.request(for: AITask(action: "fix", answer: false, units: [unit]), model: AIModelCatalog.sonnet)
         #expect(request.instructions.contains(#""notes":[]"#))

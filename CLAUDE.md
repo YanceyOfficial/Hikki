@@ -832,8 +832,13 @@ HikkiUITests/                 XCUITest flows
   only ever goes to the address it was entered for — never in the key-value store with the other settings. The editor asks through `aiRequest` / `aiCancel` (selected parts of blocks as inline HTML + nearby
   text) and gets `window.hikki.aiEvent`s back. `Hikki/Sources/AIService.swift` runs them (one per window, both
   editors) with the prompts in `HikkiAI/Sources/AIPrompts.swift`: an edit asks for JSON
-  `{"blocks":[{id, html}],"notes":["…"]}` — the blocks hold only what belongs in the page (same ids, inline tags only:
-  the edited text, a translation added after each sentence), `notes` everything said to the user (Markdown: answers, a
+  `{"blocks":[{id, html}],"added":[{type, html}],"notes":["…"]}` — the blocks hold only what belongs in the page (same ids, inline tags only:
+  the edited text, a translation added after each sentence), `added` the new blocks the user's own instruction asked
+  for (`custom` only — a preset never adds, an answer goes to notes; `paragraph` / `heading1-3` / `bullet` /
+  `numbered` / `quote` with inline HTML, parsed by `parseEditAdded` in `apps/editor/src/lib/ai-content.ts`, at most
+  20; green ghosts after the selection's last block in the `inline` style, `+` lines in `diff`; Accept inserts them
+  after the selection in the same undo step as the edit, a run of items as one list, and a note inserted afterwards
+  lands below them), `notes` everything said to the user (Markdown: answers, a
   check's verdict, why — reasons too, when asked; the per-change `explain` of the retired card style is gone) — an
   answer for short Markdown with web search; page text is wrapped in tags as data. In the page: the selection menu's
   "Ask AI" (`apps/editor/src/components/ai-panel.tsx`) runs a preset or the user's words, on the default model or

@@ -994,6 +994,16 @@
 .tiptap .hk-ai-ghost[data-level='3'] {
   font-size: 1.25em;
 }
+/* A block the selection's Ask AI adds after it (extensions/ai-review.ts, `added`): the same ghost, drawn with its
+   inline marks; a list item carries its marker, a quote its rule. */
+.tiptap .hk-ai-ghost[data-marker]::before {
+  content: attr(data-marker) ' ';
+  color: var(--color-muted-foreground);
+}
+.tiptap .hk-ai-ghost[data-kind='quote'] {
+  border-left: 3px solid var(--color-border);
+  padding-left: 0.75em;
+}
 /* AI at work: three dots rising in turn, over one --motion-loop. */
 /* Commented passages (comments.ts): a warm underline on a faint wash; the open thread's passage darker. Resolved
    threads are not marked. */

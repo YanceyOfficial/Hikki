@@ -276,6 +276,49 @@ export function parseEditReply(reply: string, keys: string[]): Map<string, strin
   return out.size > 0 ? out : null
 }
 
+/** The kinds of block a model may add after the selection (`"added"`); anything else reads as a paragraph. */
+export const ADDED_TYPES = [
+  'paragraph',
+  'heading1',
+  'heading2',
+  'heading3',
+  'bullet',
+  'numbered',
+  'quote'
+] as const
+export type AddedType = (typeof ADDED_TYPES)[number]
+
+/** A block the model adds after the selection: its kind in a word and its inline HTML (not yet sanitized). */
+export type AIAddedBlock = { type: AddedType; html: string }
+
+/** Most added blocks read; the rest of a runaway reply is dropped. */
+const MAX_ADDED = 20
+
+/**
+ * The new blocks an edit's reply puts after the selection (`"added": [{"type": …, "html": …}]`, in reading order),
+ * read tolerantly: unknown keys dropped, an unknown or missing type is a paragraph, blank ones left out, capped. None
+ * when absent or unreadable. The HTML is sanitized later, as the blocks' is (`parseInline`).
+ */
+export function parseEditAdded(reply: string): AIAddedBlock[] {
+  const added = replyObject(reply)?.added
+  if (!Array.isArray(added)) return []
+  const out: AIAddedBlock[] = []
+  for (const block of added) {
+    if (out.length >= MAX_ADDED) break
+    if (!block || typeof block !== 'object' || Array.isArray(block)) continue
+    const html = (block as { html?: unknown }).html
+    if (typeof html !== 'string' || html.trim() === '') continue
+    const type = (block as { type?: unknown }).type
+    out.push({
+      type: (ADDED_TYPES as readonly string[]).includes(type as string)
+        ? (type as AddedType)
+        : 'paragraph',
+      html
+    })
+  }
+  return out
+}
+
 const ASSET = /^hikki-editor:\/\/assets\/[^/\\?#]+$/u
 
 /**

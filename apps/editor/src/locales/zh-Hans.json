@@ -464,6 +464,8 @@
     "noChanges": "这里没有需要修改的地方。",
     "changes_one": "{{count}} 处修改",
     "changes_other": "{{count}} 处修改",
+    "addedBlocks_one": "下方新增 {{count}} 个块",
+    "addedBlocks_other": "下方新增 {{count}} 个块",
     "sources": "来源",
     "error": {
       "missingKey": "请在“设置 → AI”中填写 {{provider}} 的 API 密钥后再使用这个模型。",

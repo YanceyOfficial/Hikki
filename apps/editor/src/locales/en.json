@@ -464,6 +464,8 @@
     "noChanges": "Nothing to change here.",
     "changes_one": "{{count}} change",
     "changes_other": "{{count}} changes",
+    "addedBlocks_one": "{{count}} new block below",
+    "addedBlocks_other": "{{count}} new blocks below",
     "sources": "Sources",
     "error": {
       "missingKey": "Add your {{provider}} API key in Settings → AI to use this model.",

@@ -6,6 +6,7 @@ import {
   fragmentText,
   isHandoff,
   OBJECT_CHAR,
+  parseEditAdded,
   parseEditNotes,
   parseEditReply,
   parseInline,
@@ -96,6 +97,48 @@ describe('parseEditReply', () => {
     expect(parseEditReply('{"blocks": [', ['a'])).toBeNull()
     expect(parseEditReply('{"text":"hi"}', ['a'])).toBeNull()
     expect(parseEditReply('x'.repeat(300_000), ['a'])).toBeNull()
+  })
+})
+
+describe('parseEditAdded', () => {
+  it('reads the added blocks in order, unknown types as paragraphs, blanks and junk dropped, capped', () => {
+    const reply = JSON.stringify({
+      blocks: [],
+      added: [
+        { type: 'heading2', html: 'て形＋いるところです', extra: 1 },
+        { type: 'paragraph', html: 'A <strong>b</strong><br>c' },
+        { type: 'bullet', html: 'one' },
+        { type: 'numbered', html: 'two' },
+        { type: 'quote', html: 'said' },
+        { type: 'table', html: 'as a paragraph' },
+        { html: 'no type' },
+        { type: 'paragraph', html: '   ' },
+        { type: 'paragraph' },
+        'text',
+        null,
+        { type: 'paragraph', html: 7 }
+      ]
+    })
+    expect(parseEditAdded(reply)).toEqual([
+      { type: 'heading2', html: 'て形＋いるところです' },
+      { type: 'paragraph', html: 'A <strong>b</strong><br>c' },
+      { type: 'bullet', html: 'one' },
+      { type: 'numbered', html: 'two' },
+      { type: 'quote', html: 'said' },
+      { type: 'paragraph', html: 'as a paragraph' },
+      { type: 'paragraph', html: 'no type' }
+    ])
+    const many = JSON.stringify({
+      added: Array.from({ length: 30 }, (_, i) => ({ type: 'paragraph', html: `p${i}` }))
+    })
+    expect(parseEditAdded(many)).toHaveLength(20)
+  })
+
+  it('gives nothing when there is no list, or no JSON', () => {
+    expect(parseEditAdded('{"blocks":[]}')).toEqual([])
+    expect(parseEditAdded('{"added":"a paragraph"}')).toEqual([])
+    expect(parseEditAdded('{"added":{"html":"x"}}')).toEqual([])
+    expect(parseEditAdded('nothing here')).toEqual([])
   })
 })
 
