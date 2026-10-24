@@ -275,6 +275,21 @@ describe('block handle', () => {
     expect(handle.dataset.hidden).toBe('false')
   })
 
+  it('its + and ⋮⋮ are never in the tab order, and out of reach entirely while hidden', () => {
+    editor = createEditor(host, doc('first line'))
+    const handle = document.querySelector('.hk-block-handle') as HTMLElement
+    const buttons = [...handle.querySelectorAll('button')]
+    expect(buttons).toHaveLength(2)
+    expect(buttons.every((b) => b.tabIndex === -1)).toBe(true)
+    expect(handle.dataset.hidden).toBe('true')
+    expect(handle.inert).toBe(true)
+    // Typing hides a handle that was showing: inert again.
+    handle.dataset.hidden = 'false'
+    handle.inert = false
+    editor.view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: 'x' }))
+    expect(handle.inert).toBe(true)
+  })
+
   it('stays hidden while typing, and when the page scrolls meanwhile', () => {
     editor = createEditor(host, doc('first line', 'second line'))
     const handle = document.querySelector('.hk-block-handle') as HTMLElement

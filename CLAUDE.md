@@ -437,7 +437,7 @@ HikkiUITests/                 XCUITest flows
   anything inside a toggle, quote or callout shows the outermost container's handle (`handleUnitAtPos`; drops and caret
   commands still reach the blocks inside; list items keep one each; a columns row has none of its own — each
   column's blocks do, wherever in the column the pointer is: `unitAt`, the gap before a column hit-testing in that column (`columnHitX` — WebKit's hit test there finds the column before) — in its own column's gutter, the gap between columns, never over the column before: `handleLeft` / `columnFloor`, and it steps aside while the pointer is on the column divider); drag shows a ghost and a drop line (side edges make columns); a click opens `apps/editor/src/components/block-menu.tsx`. Fine
-  pointers only. The block menu is Notion's: a search field over the actions (and Turn-into targets), the block's kind
+  pointers only: the + / ⋮⋮ are never in the tab order (`tabIndex -1`) and the hidden handle is `inert`. The block menu is Notion's: a search field over the actions (and Turn-into targets), the block's kind
   as its section title (`apps/editor/src/core/block-kinds.ts`: catalog labels, an embed's service), then an embed's own
   actions (Replace — the embed panel on its link, same block; Caption — `apps/editor/src/extensions/embed-caption.ts`, a
   `caption` attribute drawn under the frame or card; Open in browser; Copy link to original), Turn into / Color, Copy

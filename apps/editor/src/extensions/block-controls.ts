@@ -202,9 +202,11 @@ class BlockControlsView {
   ) {
     this.handle = document.createElement('div')
     this.handle.className = 'hk-block-handle'
-    this.handle.dataset.hidden = 'true'
+    this.setHandleHidden(true)
     const plus = document.createElement('button')
     plus.type = 'button'
+    // Pointer-only, as Notion's: the keyboard has "/" and the block shortcuts; never a stop in the tab order.
+    plus.tabIndex = -1
     plus.className = 'hk-block-plus'
     plus.setAttribute('aria-label', t('blockMenu.add'))
     plus.innerHTML = icon(plusSvg)
@@ -212,6 +214,7 @@ class BlockControlsView {
     plus.addEventListener('click', () => this.addBelow())
     const grip = document.createElement('button')
     grip.type = 'button'
+    grip.tabIndex = -1
     grip.className = 'hk-block-grip'
     grip.setAttribute('aria-label', t('editor.dragBlock'))
     grip.innerHTML = icon(gripSvg)
@@ -312,9 +315,15 @@ class BlockControlsView {
     this.reposition()
   }
 
+  /** Hidden is gone for everyone: invisible (data-hidden), and inert — out of reach of focus and screen readers. */
+  private setHandleHidden(hidden: boolean): void {
+    this.handle.dataset.hidden = String(hidden)
+    this.handle.inert = hidden
+  }
+
   private hide = () => {
     if (this.press) return
-    this.handle.dataset.hidden = 'true'
+    this.setHandleHidden(true)
   }
 
   /** A handle already showing keeps up with its block (the page scrolled, the block moved). A hidden one stays
@@ -330,7 +339,7 @@ class BlockControlsView {
     const place = this.placement(unit)
     if (!place) return this.hide()
     Object.assign(this.handle.style, { left: `${place.left}px`, top: `${place.top}px` })
-    this.handle.dataset.hidden = 'false'
+    this.setHandleHidden(false)
   }
 
   /** Where the handle's top-left corner goes for `unit`; null when the block isn't drawn. */
@@ -418,7 +427,7 @@ class BlockControlsView {
     this.ghostOffset = { x: event.clientX - rect.left, y: event.clientY - rect.top }
     document.body.classList.add('hk-block-dragging')
     setBlockHighlight(this.view, { source: { from: unit.pos, to: unit.pos + unit.node.nodeSize } })
-    this.handle.dataset.hidden = 'true'
+    this.setHandleHidden(true)
   }
 
   private moveGhost(x: number, y: number) {
