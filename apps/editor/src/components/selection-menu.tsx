@@ -104,6 +104,16 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
   const panelShown = usePresence(panel !== null, panelRef)
   const [shownPanel, setShownPanel] = useState(panel)
   if (panel && panel !== shownPanel) setShownPanel(panel)
+  // A short window: the panel would run past its foot (and be cut off), so it moves up as far as it must — never
+  // under the toolbar.
+  const [panelShift, setPanelShift] = useState(0)
+  useLayoutEffect(() => {
+    const element = panelRef.current
+    if (!panelShown || !shownPanel || !element) return
+    setPanelShift(
+      panelShiftFor(element, window.visualViewport?.height ?? window.innerHeight, insetTop())
+    )
+  }, [panelShown, shownPanel])
   const current = TURN_INTO.find((b) => b.id === state.block) ?? TURN_INTO[0]
   const CurrentIcon = current.icon
 
@@ -235,9 +245,10 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
           ref={panelRef}
           className={cn(
             // Scrolls on its own (wheel and trackpad stay inside, the page doesn't move).
-            'hk-pop absolute top-0 max-h-[min(440px,calc(100vh-96px))] w-[224px] overflow-y-auto overscroll-contain rounded-xl bg-popover p-1 text-popover-foreground shadow-popover',
+            'hk-pop absolute max-h-[min(440px,calc(100vh-96px))] w-[224px] overflow-y-auto overscroll-contain rounded-xl bg-popover p-1 text-popover-foreground shadow-popover',
             panelLeft ? 'right-full mr-1.5 [--hk-pop-origin:top_right]' : 'left-full ml-1.5'
           )}
+          style={{ top: panelShift }}
           data-testid={`selection-menu-${shownPanel}`}
         >
           {shownPanel === 'ai' && (
@@ -489,4 +500,21 @@ export function renderSelectionMenu(root: Root, editor: Editor): void {
       </TooltipProvider>
     </IconProvider>
   )
+}
+
+/** The toolbar's height over the page (`setInsets`). */
+const insetTop = () =>
+  Number.parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue('--hk-inset-top')
+  ) || 0
+
+/**
+ * How far up a side panel moves so its foot stays 8 px inside a window `height` tall, its top at least 8 px under
+ * the toolbar (`top`). Measured from its menu's top and its own height (not its box: `hk-pop` scales it in).
+ */
+export function panelShiftFor(element: HTMLElement, height: number, top: number): number {
+  const menuTop = element.offsetParent?.getBoundingClientRect().top ?? 0
+  const overflow = menuTop + element.offsetHeight - (height - 8)
+  if (overflow <= 0) return 0
+  return -Math.min(overflow, Math.max(0, menuTop - (top + 8)))
 }
