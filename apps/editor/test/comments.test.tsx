@@ -79,6 +79,10 @@ function stubPhone() {
   }))
 }
 
+/** The thread's card in the margin, or its badge in a narrow window. */
+const drawn = () =>
+  document.querySelector('.hk-comments-layer [data-thread], [data-testid="comment-badge"]')
+
 /** A thread on "quick", known to the store. */
 function commentOnQuick(): string {
   act(() => {
@@ -102,6 +106,26 @@ describe('comments', () => {
       editor.commands.setTextSelection(3)
     })
     expect(measured).not.toHaveBeenCalled()
+  })
+
+  it('typing beside open threads measures nothing as it happens, then once a frame', async () => {
+    commentOnQuick()
+    // Typing in "the", before the passage: its block moves in the document, not on screen.
+    act(() => editor.commands.setTextSelection(3))
+    const measured = vi.spyOn(editor.view, 'coordsAtPos')
+    const badge = drawn()
+    expect(badge).not.toBeNull()
+    act(() => {
+      for (const char of 'typing') editor.commands.insertContent(char)
+      editor.commands.setTextSelection(3)
+    })
+    // Keystrokes and caret moves measure nothing as they happen…
+    expect(measured).not.toHaveBeenCalled()
+    // …the frame after them measures once (a passage's start, end and block: three positions).
+    await act(() => new Promise((resolve) => requestAnimationFrame(() => resolve(undefined))))
+    expect(measured.mock.calls.length).toBeLessThanOrEqual(3)
+    // The thread's block moved in the document, not on screen: the same card, not a new one.
+    expect(drawn()).toBe(badge)
   })
 
   it('moving the caret does not walk the page for comment passages again', () => {

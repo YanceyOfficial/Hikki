@@ -1,7 +1,8 @@
 import type { Editor } from '@tiptap/core'
+import type { Transaction } from '@tiptap/pm/state'
 import { cn } from 'cn'
 import i18n from 'i18next'
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import { Button } from '@/components/ui/button'
@@ -68,7 +69,10 @@ type Anchor = {
   top: number
   bottom: number
   left: number
-  /** The top-level block holding it (threads in one block share a badge). */
+  /**
+   * Which top-level block holds it, by index (threads in one block share a badge) — not its position, which every
+   * keystroke before it moves: a layout that is the same as the last one draws nothing.
+   */
   block: number
   blockTop: number
 }
@@ -102,34 +106,78 @@ export function renderComments(editor: Editor, host: CommentsHost): () => void {
   }
 }
 
-/** The layout's inputs change with every transaction and with the window's size. */
+/**
+ * The layout, measured only when it may have changed: at once when the threads, the open one or the draft change
+ * (or the window resizes, or the page moved — `hk-relayout`), and once a frame, after the browser's own layout,
+ * while the document changes (typing). A selection that changes nothing of comments measures nothing.
+ */
 function useLayout(editor: Editor, column: HTMLElement): Layout {
-  const cache = useRef<{ key: string; layout: Layout } | null>(null)
-  const subscribe = useCallback(
-    (notify: () => void) => {
-      editor.on('transaction', notify)
-      window.addEventListener('resize', notify)
-      column.addEventListener('hk-relayout', notify)
-      return () => {
-        editor.off('transaction', notify)
-        window.removeEventListener('resize', notify)
-        column.removeEventListener('hk-relayout', notify)
-      }
-    },
-    [editor, column]
-  )
-  const get = () => {
+  const store = useMemo(() => layoutStore(editor, column), [editor, column])
+  return useSyncExternalStore(store.subscribe, store.get, store.get)
+}
+
+/** What of the comments plugin's state the layout depends on, besides positions. */
+function commentsKey(editor: Editor): unknown[] {
+  const plugin = editor.isDestroyed ? undefined : commentsState(editor.state)
+  return [plugin?.threads, plugin?.active, plugin?.draft?.id]
+}
+
+function layoutStore(editor: Editor, column: HTMLElement) {
+  let layout: Layout | null = null
+  let key = ''
+  let frame = 0
+  let seen = commentsKey(editor)
+  const listeners = new Set<() => void>()
+  const compute = (): Layout => {
     // Nothing to place (most pages): no layout is read at all.
     if (!hasPassages(editor)) return EMPTY_LAYOUT
-    const layout = measure(editor, column)
-    const key = JSON.stringify(layout, (k, v) =>
+    return measure(editor, column)
+  }
+  const update = () => {
+    if (frame) cancelAnimationFrame(frame)
+    frame = 0
+    const next = compute()
+    const nextKey = JSON.stringify(next, (k, v) =>
       k === 'thread' ? `${v.id}:${v.comments.length}:${v.resolved}` : v
     )
-    if (cache.current?.key === key) return cache.current.layout
-    cache.current = { key, layout }
-    return layout
+    if (nextKey === key) return
+    key = nextKey
+    layout = next
+    for (const notify of listeners) notify()
   }
-  return useSyncExternalStore(subscribe, get, get)
+  const later = () => {
+    frame ||= requestAnimationFrame(update)
+  }
+  const onTransaction = ({ transaction }: { transaction: Transaction }) => {
+    const now = commentsKey(editor)
+    if (now.some((value, i) => value !== seen[i])) {
+      seen = now
+      update()
+    } else if (transaction.docChanged) later()
+  }
+  return {
+    get: (): Layout => {
+      if (!layout) update()
+      return layout ?? EMPTY_LAYOUT
+    },
+    subscribe: (notify: () => void) => {
+      listeners.add(notify)
+      if (listeners.size === 1) {
+        editor.on('transaction', onTransaction)
+        window.addEventListener('resize', update)
+        column.addEventListener('hk-relayout', update)
+      }
+      return () => {
+        listeners.delete(notify)
+        if (listeners.size > 0) return
+        editor.off('transaction', onTransaction)
+        window.removeEventListener('resize', update)
+        column.removeEventListener('hk-relayout', update)
+        if (frame) cancelAnimationFrame(frame)
+        frame = 0
+      }
+    }
+  }
 }
 
 /**
@@ -209,7 +257,7 @@ function measure(editor: Editor, column: HTMLElement): Layout {
       top: start.top - columnRect.top,
       bottom: end.bottom - columnRect.top,
       left: start.left - columnRect.left,
-      block,
+      block: $pos.index(0),
       blockTop: blockStart.top - columnRect.top
     })
   }
@@ -226,7 +274,7 @@ function measure(editor: Editor, column: HTMLElement): Layout {
       top: rect.top - columnRect.top,
       bottom: rect.bottom - columnRect.top,
       left: rect.left - columnRect.left,
-      block,
+      block: editor.state.doc.resolve(range.from).index(0),
       blockTop: outer.top - columnRect.top
     })
   }
