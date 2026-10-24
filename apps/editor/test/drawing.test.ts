@@ -1,5 +1,6 @@
 import type { Editor } from '@tiptap/core'
 import { undoDepth } from '@tiptap/pm/history'
+import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { blockKindLabel } from '../src/core/block-kinds'
@@ -18,15 +19,24 @@ import { setDrawingsReadOnly } from '../src/lib/drawing-mode'
 import { settle } from './helpers'
 
 // The overlay itself is Excalidraw (a canvas happy-dom can't draw): the test plays its part.
+type Frame = { x: number; y: number; width: number; height: number }
+type Preview = { blob: Blob; frame: Frame; before: Frame | null }
+const square: Frame = { x: -16, y: -16, width: 132, height: 132 }
+/** A preview as Done hands it over: what it shows, and what the stored one showed as the drawing opened. */
+const png = (frame: Frame = square, before: Frame | null = square): Preview => ({
+  blob: new Blob(['png']),
+  frame,
+  before
+})
 type OverlayProps = {
   data: { elements: unknown[]; files: object }
   onChange: (data: { elements: unknown[]; files: object }) => void
-  onDone: (data: { elements: unknown[]; files: object }, preview: Blob | null) => Promise<void>
+  onDone: (data: { elements: unknown[]; files: object }, preview: Preview | null) => Promise<void>
   onFail: () => void
   readOnly?: boolean
   mermaid?: string
 }
-type Done = { data: { elements: unknown[]; files: object }; preview: Blob | null }
+type Done = { data: { elements: unknown[]; files: object }; preview: Preview | null }
 const overlays: {
   props: OverlayProps
   destroyed: boolean
@@ -240,7 +250,7 @@ describe('editing a drawing', () => {
     overlays[0].props.onChange({ elements: [moved], files: {} })
     expect(drawingAttrs().elements).toEqual([moved])
     expect(saved).toHaveBeenCalled()
-    await overlays[0].props.onDone({ elements: [moved, label], files: {} }, new Blob(['png']))
+    await overlays[0].props.onDone({ elements: [moved, label], files: {} }, png())
     expect(host.upload).toHaveBeenCalledWith(expect.any(Blob), 'png')
     expect(drawingAttrs().preview).toBe('hikki-editor://assets/new.png')
     expect(drawingAttrs().elements).toEqual([moved, label])
@@ -265,7 +275,7 @@ describe('editing a drawing', () => {
     )
     host.upload.mockRejectedValueOnce(new Error('disk full'))
     openDrawing(editor, host, drawingPos())
-    await overlays[0].props.onDone({ elements: [rect, label], files: {} }, new Blob(['png']))
+    await overlays[0].props.onDone({ elements: [rect, label], files: {} }, png())
     expect(drawingAttrs().preview).toBe('hikki-editor://assets/old.png')
     expect(drawingAttrs().elements).toEqual([rect, label])
   })
@@ -294,7 +304,7 @@ describe('editing a drawing', () => {
     openDrawing(editor, host, drawingPos())
     overlays[0].done = async () => ({
       data: { elements: [rect, label], files: {} },
-      preview: new Blob(['png'])
+      preview: png()
     })
     await finishDrawing()
     expect(host.upload).toHaveBeenCalledWith(expect.any(Blob), 'png')
@@ -312,7 +322,7 @@ describe('editing a drawing', () => {
       if (transaction.getMeta('hikkiSave')) writes()
     })
     await Promise.all([
-      overlays[0].props.onDone({ elements: [rect], files: {} }, new Blob(['png'])),
+      overlays[0].props.onDone({ elements: [rect], files: {} }, png()),
       finishDrawing()
     ])
     expect(writes).toHaveBeenCalledTimes(1)
@@ -340,7 +350,7 @@ describe('editing a drawing', () => {
     overlays[0].live = [label]
     overlays[0].done = async () => ({
       data: { elements: [label], files: {} },
-      preview: new Blob(['png'])
+      preview: png()
     })
     await finishDrawing()
     expect(overlays[0].destroyed).toBe(true)
@@ -387,6 +397,239 @@ describe('editing a drawing', () => {
     expect(editor.state.doc.firstChild?.type.name).toBe('drawing')
     expect(overlays).toHaveLength(1)
     expect(overlays[0].props.data.elements).toEqual([])
+  })
+})
+
+const block = () => element.querySelector<HTMLElement>('.hk-drawing')!
+const frame = () => element.querySelector<HTMLElement>('.hk-drawing-frame')!
+const img = () => element.querySelector<HTMLImageElement>('.hk-drawing-preview')!
+const saves = () => {
+  const saved = vi.fn()
+  editor.on('transaction', ({ transaction }) => {
+    if (transaction.getMeta('hikkiSave')) saved()
+  })
+  return saved
+}
+
+const gesture = (type: string, scale: number) => {
+  const event = new Event(type, { bubbles: true, cancelable: true })
+  Object.assign(event, { scale, clientX: 200, clientY: 100 })
+  frame().dispatchEvent(event)
+  return event
+}
+
+const PREVIEW = 'hikki-editor://assets/preview.png'
+const zoomed = (view: unknown = null) =>
+  editor.commands.setContent(drawingDoc({ elements: [rect, label], preview: PREVIEW, view }))
+/** The preview's box on screen (happy-dom lays nothing out). */
+const layOut = () => {
+  frame().getBoundingClientRect = () =>
+    ({ left: 0, top: 0, width: 400, height: 200, right: 400, bottom: 200 }) as DOMRect
+}
+const wheel = (init: WheelEventInit) => {
+  const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, ...init })
+  // happy-dom's WheelEvent drops the modifier keys and the pointer's place.
+  for (const key of ['ctrlKey', 'clientX', 'clientY'] as const)
+    Object.defineProperty(event, key, { value: init[key] ?? (key === 'ctrlKey' ? false : 0) })
+  frame().dispatchEvent(event)
+  return event
+}
+const pointer = (type: string, x: number, y: number) =>
+  frame().dispatchEvent(
+    new PointerEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      pointerId: 1,
+      pointerType: 'mouse',
+      button: 0,
+      clientX: x,
+      clientY: y
+    })
+  )
+const touch = (type: string, points: [number, number][]) => {
+  const event = new Event(type, { bubbles: true, cancelable: true })
+  const touches = points.map(([clientX, clientY]) => ({ clientX, clientY }))
+  Object.defineProperty(event, 'touches', { value: touches })
+  frame().dispatchEvent(event)
+  return event
+}
+const zoomOf = () => Number(/scale\(([\d.]+)\)/u.exec(img().style.transform)?.[1] ?? 1)
+describe('zooming into a drawing in the page', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('keeps the spot it shows in the block, through HTML, and shows it', () => {
+    zoomed({ x: 0.25, y: 0.25, zoom: 2 })
+    expect(img().style.transform).toBe('translate(0%, 0%) scale(2)')
+    expect(block().dataset.zoomed).toBe('true')
+    const html = editor.getHTML()
+    expect(html).toContain('data-view=')
+    editor.commands.setContent(html)
+    expect(drawingAttrs().view).toEqual({ x: 0.25, y: 0.25, zoom: 2 })
+    // A stored view that isn't one shows the whole drawing; an older drawing without one does too.
+    zoomed({ x: 'a', y: 0.2, zoom: 3 })
+    expect(img().style.transform).toBe('')
+    expect(editor.getHTML()).not.toContain('data-view')
+    zoomed()
+    expect(block().dataset.zoomed).toBe('false')
+  })
+
+  it('zooms with ⌘/Ctrl and the wheel (a pinch), stored once it rests: out of undo, saved', () => {
+    vi.useFakeTimers()
+    zoomed()
+    layOut()
+    const depth = undoDepth(editor.state)
+    const saved = saves()
+    const event = wheel({ deltaY: -50, ctrlKey: true, clientX: 100, clientY: 50 })
+    expect(event.defaultPrevented).toBe(true)
+    expect(zoomOf()).toBeGreaterThan(1.5)
+    expect(drawingAttrs().view).toBeNull()
+    vi.advanceTimersByTime(500)
+    const view = drawingAttrs().view as { x: number; y: number; zoom: number }
+    expect(view.zoom).toBeCloseTo(zoomOf(), 3)
+    // Around the pointer (left of and above the middle).
+    expect(view.x).toBeLessThan(0.5)
+    expect(view.y).toBeLessThan(0.5)
+    expect(saved).toHaveBeenCalledTimes(1)
+    expect(undoDepth(editor.state)).toBe(depth)
+  })
+
+  it('leaves a plain wheel to the page', () => {
+    zoomed()
+    const event = wheel({ deltaY: 100 })
+    expect(event.defaultPrevented).toBe(false)
+    expect(block().dataset.zoomed).toBe('false')
+  })
+
+  it('pans a zoomed preview with a drag, whose click opens nothing; a click alone opens it', () => {
+    zoomed({ x: 0.5, y: 0.5, zoom: 2 })
+    layOut()
+    pointer('pointerdown', 200, 100)
+    pointer('pointermove', 202, 101)
+    // Under the threshold: still a click.
+    expect(img().style.transform).toBe('translate(-50%, -50%) scale(2)')
+    pointer('pointermove', 280, 100)
+    pointer('pointerup', 280, 100)
+    block().click()
+    expect(overlays).toHaveLength(0)
+    // Dragged right by a fifth of the box at 2×: the spot shown moves left by a tenth.
+    expect(drawingAttrs().view).toEqual({ x: 0.4, y: 0.5, zoom: 2 })
+    pointer('pointerdown', 200, 100)
+    pointer('pointerup', 200, 100)
+    block().click()
+    expect(overlays).toHaveLength(1)
+  })
+
+  it("doesn't pan the whole drawing: the block drags as before", () => {
+    zoomed()
+    layOut()
+    pointer('pointerdown', 200, 100)
+    pointer('pointermove', 280, 100)
+    pointer('pointerup', 280, 100)
+    expect(drawingAttrs().view).toBeNull()
+    const drag = new Event('dragstart', { bubbles: true, cancelable: true })
+    block().dispatchEvent(drag)
+    expect(drag.defaultPrevented).toBe(false)
+  })
+
+  it('pinches and pans with two fingers; one finger is left to scroll the page', () => {
+    zoomed()
+    layOut()
+    touch('touchstart', [[200, 100]])
+    expect(touch('touchmove', [[200, 160]]).defaultPrevented).toBe(false)
+    touch('touchend', [])
+    touch('touchstart', [
+      [150, 100],
+      [250, 100]
+    ])
+    const move = touch('touchmove', [
+      [100, 100],
+      [300, 100]
+    ])
+    expect(move.defaultPrevented).toBe(true)
+    expect(zoomOf()).toBeCloseTo(2)
+    touch('touchend', [[100, 100]])
+    expect((drawingAttrs().view as { zoom: number }).zoom).toBeCloseTo(2)
+  })
+
+  it('takes the Mac trackpad’s pinch as WebKit sends it (gesture events)', () => {
+    zoomed()
+    layOut()
+    expect(gesture('gesturestart', 1).defaultPrevented).toBe(true)
+    gesture('gesturechange', 3)
+    expect(zoomOf()).toBeCloseTo(3)
+    // A Ctrl-wheel meanwhile is the same pinch: not zoomed twice.
+    wheel({ deltaY: -50, ctrlKey: true, clientX: 200, clientY: 100 })
+    expect(zoomOf()).toBeCloseTo(3)
+    gesture('gestureend', 3)
+    expect(drawingAttrs().view).toEqual({ x: 0.5, y: 0.5, zoom: 3 })
+  })
+
+  it('has zoom controls: in, out and the whole drawing, each stored', () => {
+    act(() => zoomed())
+    const button = (name: string) =>
+      element.querySelector<HTMLButtonElement>(`.hk-drawing-zoom [aria-label="${name}"]`)!
+    expect(button('Zoom out').disabled).toBe(true)
+    act(() => button('Zoom in').click())
+    expect(overlays).toHaveLength(0)
+    expect(drawingAttrs().view).toEqual({ x: 0.5, y: 0.5, zoom: 1.5 })
+    expect(element.querySelector('.hk-drawing-zoom')?.textContent).toContain('150%')
+    act(() => button('Show the whole drawing').click())
+    expect(drawingAttrs().view).toBeNull()
+  })
+
+  it('zooms on a locked page, or where drawings are only looked at, without storing it', () => {
+    vi.useFakeTimers()
+    for (const lock of [() => editor.setEditable(false), () => setDrawingsReadOnly(true)]) {
+      editor.setEditable(true)
+      setDrawingsReadOnly(false)
+      zoomed()
+      layOut()
+      lock()
+      const before = editor.state.doc
+      wheel({ deltaY: -50, ctrlKey: true, clientX: 200, clientY: 100 })
+      vi.advanceTimersByTime(500)
+      expect(zoomOf()).toBeGreaterThan(1.5)
+      expect(editor.state.doc.eq(before)).toBe(true)
+    }
+  })
+
+  it('shows a view stored elsewhere (another device) as it arrives', () => {
+    zoomed()
+    editor.commands.command(({ tr }) => {
+      tr.setNodeMarkup(drawingPos(), undefined, {
+        ...drawingAttrs(),
+        view: { x: 0.5, y: 0.5, zoom: 3 }
+      })
+      return true
+    })
+    expect(zoomOf()).toBe(3)
+  })
+
+  it('Done keeps the spot shown on the new preview, wherever the drawing grew', async () => {
+    zoomed({ x: 0.5, y: 0.5, zoom: 2 })
+    openDrawing(editor, host, drawingPos())
+    const before = { x: 0, y: 0, width: 100, height: 100 }
+    await overlays[0].props.onDone(
+      { elements: [rect, label], files: {} },
+      png({ x: -100, y: 0, width: 200, height: 100 }, before)
+    )
+    expect(drawingAttrs().view).toEqual({ x: 0.75, y: 0.5, zoom: 4 })
+  })
+
+  it('Done on an emptied drawing drops the view; a preview not stored keeps it', async () => {
+    zoomed({ x: 0.5, y: 0.5, zoom: 2 })
+    openDrawing(editor, host, drawingPos())
+    host.upload.mockRejectedValueOnce(new Error('disk full'))
+    await overlays[0].props.onDone(
+      { elements: [rect], files: {} },
+      png({ x: -100, y: 0, width: 200, height: 100 })
+    )
+    expect(drawingAttrs().view).toEqual({ x: 0.5, y: 0.5, zoom: 2 })
+    openDrawing(editor, host, drawingPos())
+    await overlays[1].props.onDone({ elements: [], files: {} }, null)
+    expect(drawingAttrs().view).toBeNull()
   })
 })
 

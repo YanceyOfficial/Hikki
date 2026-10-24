@@ -599,7 +599,11 @@
     "noPreview": "Drawing — click to open",
     "loading": "Opening the drawing…",
     "done": "Done",
-    "close": "Close"
+    "close": "Close",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "zoomFit": "Show the whole drawing",
+    "zoomLevel": "{{percent}}%"
   },
   "date": {
     "today": "Today",

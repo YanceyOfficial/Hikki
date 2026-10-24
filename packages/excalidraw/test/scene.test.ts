@@ -11,6 +11,7 @@ import {
   inlineFiles,
   isSafeLiveElement,
   mermaidFromAnswer,
+  previewScale,
   safeDrawingLink,
   safeMermaid,
   storedElements,
@@ -94,6 +95,25 @@ describe("Excalidraw's language", () => {
     expect(excalidrawLanguage('zh-Hant-TW')).toBe('zh-TW')
     expect(excalidrawLanguage('en')).toBe('en')
     expect(excalidrawLanguage('fr')).toBe('en')
+  })
+})
+
+describe("a drawing's preview", () => {
+  it('has a pixel per unit of the drawing (shown at half in the page)', () => {
+    expect(previewScale(422, 232)).toBe(1)
+    expect(previewScale(4096, 4096)).toBe(1)
+  })
+
+  it('stays within a canvas WebKit draws on a phone: a whole whiteboard still gets one', () => {
+    // 40 × 25 cards, about 8000 × 5000 units: drawn at 1:1 it was a 40-megapixel canvas, past iOS’s 16 (the
+    // canvas is the floored size).
+    const scale = previewScale(7966, 4966)
+    expect(scale).toBeLessThan(1)
+    expect(Math.floor(7966 * scale) * Math.floor(4966 * scale)).toBeLessThanOrEqual(4096 * 4096)
+    expect(Math.floor(7966 * scale) * Math.floor(4966 * scale)).toBeGreaterThan(4096 * 4096 * 0.99)
+    // A long strip: held to the longest side a canvas has anywhere.
+    expect(40_000 * previewScale(40_000, 100)).toBeLessThanOrEqual(16_384)
+    expect(previewScale(0, 10)).toBe(1)
   })
 })
 

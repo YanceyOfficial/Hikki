@@ -3,6 +3,7 @@ import {
   excalidrawLanguage,
   setDrawingAssetPath,
   type DrawingData,
+  type DrawingPreview,
   type StoredElement
 } from '@hikki/excalidraw'
 import type { DrawingHandle, DrawingHost } from '@hikki/excalidraw/canvas'
@@ -65,7 +66,7 @@ type Props = {
   title: string
   handleRef: { current: DrawingHandle | null }
   onChange: (data: DrawingData) => void
-  onDone: (data: DrawingData, preview: Blob | null) => Promise<void>
+  onDone: (data: DrawingData, preview: DrawingPreview | null) => Promise<void>
   /** Excalidraw couldn't load: close without writing anything. */
   onFail: () => void
   /** Opened to look at only (a phone-sized screen): Excalidraw's view mode, and Close in place of Done, which writes nothing. */
@@ -187,7 +188,7 @@ export type DrawingOverlay = {
   elements: () => StoredElement[] | null
   /** What Done hands over — the drawing, its pictures stored, and its preview — or null before Excalidraw has
    * loaded. Rejects when a picture can't be stored. */
-  done: () => Promise<{ data: DrawingData; preview: Blob | null } | null>
+  done: () => Promise<{ data: DrawingData; preview: DrawingPreview | null } | null>
   destroy: () => void
 }
 

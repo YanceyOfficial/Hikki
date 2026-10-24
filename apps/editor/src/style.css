@@ -456,8 +456,25 @@
   .tiptap .hk-drawing[data-empty='true'] {
     @apply min-h-32 items-center border border-dashed border-border;
   }
+  /* The preview's box: it clips the picture zoomed in place (`view`), one finger still scrolls the page through it
+     (`touch-action`; two fingers pinch and pan it), and a zoomed one pans on a drag. */
+  .tiptap .hk-drawing {
+    @apply relative;
+  }
+  .tiptap .hk-drawing-frame {
+    @apply relative max-w-full min-w-0 touch-pan-x touch-pan-y overflow-hidden rounded-md;
+  }
+  .tiptap .hk-drawing[data-zoomed='true'] .hk-drawing-frame {
+    @apply cursor-grab;
+  }
+  .tiptap .hk-drawing[data-panning='true'] .hk-drawing-frame {
+    @apply cursor-grabbing;
+  }
   .tiptap .hk-drawing-preview {
-    @apply block h-auto max-h-[80vh] max-w-full;
+    @apply block h-auto max-h-[80vh] max-w-full origin-top-left;
+  }
+  .tiptap .hk-drawing-zoom {
+    @apply absolute top-2 right-2 z-10 [--hk-pop-origin:top_right];
   }
   .tiptap .hk-drawing-empty {
     @apply text-md text-muted-foreground;

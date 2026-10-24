@@ -4,6 +4,7 @@ import {
   storedFiles,
   usedFileIds,
   type DrawingData,
+  type DrawingPreview,
   type StoredElement,
   type StoredLibraryItem
 } from '@hikki/excalidraw'
@@ -15,8 +16,10 @@ import { renderDrawingOverlay, type DrawingOverlay } from '../components/drawing
 import { reportError } from '../core/errors'
 import { t } from '../core/i18n'
 import { drawingsReadOnly } from '../lib/drawing-mode'
+import { remapView, storedView, type DrawingView as ZoomView } from '../lib/drawing-view'
 import { followNode, type Followed, type BlockUnit } from './block-units'
 import { SAVE_META } from './comments'
+import { PreviewZoom } from './drawing-zoom'
 import { localAssetSrc } from './media'
 
 /** What a drawing needs from the editor's host: storing files and Text to diagram (AI). */
@@ -114,7 +117,12 @@ export function openDrawing(
   const lookOnly = drawingsReadOnly()
   let followed: Followed<BlockUnit> | null = null
   const write = (
-    attrs: Partial<{ elements: StoredElement[]; files: object; preview: string | null }>
+    attrs: Partial<{
+      elements: StoredElement[]
+      files: object
+      preview: string | null
+      view: ZoomView | null
+    }>
   ) => {
     const unit = followed?.current
     if (!unit || editor.isDestroyed) return
@@ -136,18 +144,24 @@ export function openDrawing(
   // The drawing and its preview into the block, then closed (Done, or the page about to change) — once: whichever
   // asks second waits for the first.
   let saving: Promise<void> | null = null
-  const store = async (data: DrawingData, preview: Blob | null) => {
-    let src: string | null = (followed?.current?.node.attrs.preview as string | null) ?? null
+  const store = async (data: DrawingData, preview: DrawingPreview | null) => {
+    const attrs = followed?.current?.node.attrs
+    let src: string | null = (attrs?.preview as string | null) ?? null
+    // The spot the page shows follows the drawing into its new preview (it may have grown on any side); a drawing
+    // left empty has none. A preview that couldn't be stored keeps the old one, and the view chosen on it.
+    let view = storedView(attrs?.view)
     try {
-      src = preview ? await host.upload(preview, 'png') : null
+      src = preview ? await host.upload(preview.blob, 'png') : null
+      view = preview ? remapView(view, preview.before, preview.frame) : null
     } catch (error) {
       reportError('drawingPreviewFailed', error)
     }
     if (closed) return
-    write({ elements: data.elements, files: data.files, preview: src })
+    write({ elements: data.elements, files: data.files, preview: src, view })
     finish()
   }
-  const save = (data: DrawingData, preview: Blob | null) => (saving ??= store(data, preview))
+  const save = (data: DrawingData, preview: DrawingPreview | null) =>
+    (saving ??= store(data, preview))
   const overlay = renderDrawingOverlay({
     data: drawingData(node),
     host,
@@ -188,10 +202,15 @@ export function openDrawing(
   }
 }
 
-/** The block in the page: the drawing's preview (a PNG), or a prompt to draw when it is empty; a click opens it. */
+/**
+ * The block in the page: the drawing's preview (a PNG), or a prompt to draw when it is empty; a click opens it. The
+ * preview zooms and pans in place (`PreviewZoom`); the spot it shows is the drawing's (`view`), kept in the block
+ * where the drawing can be edited, the reader's own elsewhere.
+ */
 class DrawingView implements NodeView {
   dom: HTMLElement
   private node: PMNode
+  private readonly zoom: PreviewZoom
 
   constructor(
     node: PMNode,
@@ -205,12 +224,22 @@ class DrawingView implements NodeView {
     this.dom.contentEditable = 'false'
     this.dom.setAttribute('role', 'button')
     this.dom.tabIndex = 0
-    this.dom.addEventListener('click', this.open)
+    this.zoom = new PreviewZoom(this.dom, storedView(node.attrs.view), {
+      canStore: () => this.editor.isEditable && !drawingsReadOnly(),
+      store: (view) => this.storeView(view)
+    })
+    this.dom.addEventListener('click', (event) => {
+      if (this.zoom.inControls(event.target) || this.zoom.takeClick()) return
+      this.open()
+    })
     this.dom.addEventListener('keydown', (event) => {
+      if (event.target !== this.dom) return
       if (event.key === 'Enter') {
         event.preventDefault()
         this.open()
+        return
       }
+      this.zoom.keydown(event)
     })
     this.render()
   }
@@ -220,9 +249,22 @@ class DrawingView implements NodeView {
     if (pos !== undefined && this.host) openDrawing(this.editor, this.host, pos)
   }
 
+  /** The spot shown, into the block: out of the page's undo (as the drawing's own changes are), saved. */
+  private storeView(view: ZoomView | null) {
+    const pos = this.getPos()
+    if (pos === undefined || this.editor.isDestroyed) return
+    this.editor.view.dispatch(
+      this.editor.state.tr
+        .setNodeMarkup(pos, undefined, { ...this.node.attrs, view })
+        .setMeta('addToHistory', false)
+        .setMeta(SAVE_META, true)
+    )
+  }
+
   private render() {
     const preview = localAssetSrc(this.node.attrs.preview)
     const empty = storedElements(this.node.attrs.elements).length === 0
+    this.zoom.detach()
     this.dom.replaceChildren()
     this.dom.dataset.empty = String(empty || !preview)
     const text = drawingText(this.node.attrs.elements as unknown[])
@@ -231,6 +273,9 @@ class DrawingView implements NodeView {
     const name = shows ? t('drawing.title') : empty ? t('drawing.empty') : t('drawing.noPreview')
     this.dom.setAttribute('aria-label', text ? `${name}: ${text}` : name)
     if (shows) {
+      // The box clips the picture zoomed in it; the controls sit over the block.
+      const frame = document.createElement('div')
+      frame.className = 'hk-drawing-frame'
       const img = document.createElement('img')
       img.className = 'hk-drawing-preview'
       img.alt = text || t('drawing.title')
@@ -240,7 +285,11 @@ class DrawingView implements NodeView {
         img.style.width = `${img.naturalWidth / 2}px`
       })
       img.src = preview
-      this.dom.append(img)
+      frame.append(img)
+      const controls = document.createElement('div')
+      controls.className = 'hk-drawing-zoom hk-pop-toggle'
+      this.dom.append(frame, controls)
+      this.zoom.attach(frame, img, controls)
       return
     }
     const label = document.createElement('span')
@@ -256,16 +305,22 @@ class DrawingView implements NodeView {
       node.attrs.elements !== this.node.attrs.elements
     this.node = node
     if (changed) this.render()
+    this.zoom.storedChanged(storedView(node.attrs.view))
     return true
   }
 
   stopEvent(event: Event) {
-    // A click opens the drawing; dragging the block still goes to ProseMirror.
-    return event.type === 'click' || event.type === 'keydown'
+    // A click opens the drawing; the preview's zoom takes its own gestures. Dragging the block still goes to
+    // ProseMirror.
+    return event.type === 'click' || event.type === 'keydown' || this.zoom.stopsEvent(event)
   }
 
   ignoreMutation() {
     return true
+  }
+
+  destroy() {
+    this.zoom.destroy()
   }
 }
 
@@ -290,6 +345,21 @@ export const Drawing = Node.create<{ host: DrawingEditorHost | null }>({
         default: null,
         parseHTML: (el) => localAssetSrc(el.querySelector('img')?.getAttribute('src')),
         renderHTML: () => ({})
+      },
+      // The spot of the drawing the page shows (`lib/drawing-view.ts`); null: the whole drawing.
+      view: {
+        default: null,
+        parseHTML: (el) => {
+          try {
+            return storedView(JSON.parse(el.dataset.view ?? ''))
+          } catch {
+            return null
+          }
+        },
+        renderHTML: (attrs) => {
+          const view = storedView(attrs.view)
+          return view ? { 'data-view': JSON.stringify(view) } : {}
+        }
       }
     }
   },

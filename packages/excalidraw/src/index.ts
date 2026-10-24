@@ -9,6 +9,8 @@ export {
   LIBRARY_LIMIT,
   looksLikeMermaid,
   mermaidFromAnswer,
+  PREVIEW_PADDING,
+  previewScale,
   safeDrawingLink,
   safeMermaid,
   setDrawingAssetPath,
@@ -18,6 +20,8 @@ export {
   usedFileIds,
   type DrawingData,
   type DrawingFileRef,
+  type DrawingFrame,
+  type DrawingPreview,
   type StoredLibraryItem,
   type StoredElement
 } from './scene'

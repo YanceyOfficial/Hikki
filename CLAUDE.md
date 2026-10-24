@@ -395,7 +395,19 @@ HikkiUITests/                 XCUITest flows
   never classes on the node's DOM, which ProseMirror drops on redraw.
 - **Drawings** (`apps/editor/src/extensions/drawing.ts`, "/" Drawing): an atom `drawing` block storing Excalidraw's
   live elements and its pictures as asset references (`files`: id → `{src, mimeType}`, never data URLs), shown in the
-  page as a PNG preview asset (`preview`, twice the size; dark mode inverts it as Excalidraw does). A click opens the
+  page as a PNG preview asset (`preview`: a pixel per scene unit, shown at half — twice as sharp as drawn; fewer for
+  a drawing past an iOS canvas, 4096² pixels, `previewScale` in `packages/excalidraw/src/scene.ts`, so a whole
+  whiteboard still gets one; dark mode inverts it as Excalidraw does). The preview zooms and pans in place
+  (`apps/editor/src/extensions/drawing-zoom.ts`, arithmetic in `apps/editor/src/lib/drawing-view.ts`, controls
+  `apps/editor/src/components/drawing-zoom-controls.tsx`): ⌘/Ctrl + wheel and a trackpad pinch (Chromium's Ctrl-wheel,
+  WebKit's `gesture*` events) zoom around the pointer, a mouse drag pans once zoomed (a press that moves under 4 px is
+  still the click that opens it), two fingers pinch and pan on a touch screen (`touch-action: pan-x pan-y`; one finger
+  and a plain wheel still scroll the page), the hover controls (and + / − / 0 on the focused block) zoom in, out and
+  back; at most as far as the preview has pixels, 4–8×. The spot shown is the drawing's: `view` `{x, y, zoom}` (the
+  middle as fractions of the preview, null = the whole drawing, checked like everything stored — `storedView`), stored
+  once a gesture ends, out of undo with `SAVE_META`, only where the drawing can be edited (a locked page or a phone
+  zooms for the reader alone); Done carries it onto the new preview by the part of the plane each shows
+  (`DrawingPreview.frame` / `before`, `remapView`). A click opens the
   full-screen editor (`apps/editor/src/components/drawing-overlay.tsx` over `@hikki/excalidraw/canvas`, loaded on
   first open — Excalidraw and Mermaid are their own chunks, never in the page's start-up): changes go into the block
   as they rest (out of the page's undo, saved with `SAVE_META`), Done stores the preview. On a phone-sized screen

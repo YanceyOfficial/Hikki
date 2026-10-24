@@ -3,8 +3,10 @@ import {
   convertToExcalidrawElements,
   Excalidraw,
   exportToBlob,
+  getCommonBounds,
   getSceneVersion,
   MainMenu,
+  restoreElements,
   TTDDialog,
   TTDDialogTrigger,
   WelcomeScreen
@@ -29,12 +31,16 @@ import {
   inlineFiles,
   isDrawableType,
   isSafeLiveElement,
+  PREVIEW_PADDING,
+  previewScale,
   safeDrawingLink,
   safeMermaid,
   storedElements,
   usedFileIds,
   type DrawingData,
-  type DrawingFileRef
+  type DrawingFileRef,
+  type DrawingFrame,
+  type DrawingPreview
 } from '../scene'
 
 export type { DrawingLibraryHost } from '../library'
@@ -60,8 +66,9 @@ export type DrawingHost = {
 export type DrawingHandle = {
   /** The drawing as it stands: elements, and pictures stored through the host (new ones uploaded now). */
   data: () => Promise<DrawingData>
-  /** A PNG of the drawing (transparent, twice the size), or null when it is empty. */
-  preview: () => Promise<Blob | null>
+  /** A PNG of the drawing (transparent; shown in the page at half its size) and the part of the plane it shows, or
+   * null when it is empty. */
+  preview: () => Promise<DrawingPreview | null>
   /** The live elements as they stand, at once (no pictures stored): for closing in a hurry. */
   elements: () => DrawingData['elements']
 }
@@ -127,6 +134,28 @@ async function mermaidScene(
   }
 }
 
+type SceneElement = Parameters<typeof getCommonBounds>[0][number]
+
+/**
+ * The part of the plane a preview of these elements shows, as Excalidraw's export lays it out: the bounds of the
+ * elements not clipped by a frame, with the padding. Null when there is nothing to show.
+ */
+function previewFrame(elements: readonly SceneElement[]): DrawingFrame | null {
+  const live = elements.filter((element) => !element.isDeleted)
+  const frames = new Set(
+    live.filter((e) => e.type === 'frame' || e.type === 'magicframe').map((e) => e.id)
+  )
+  const roots = live.filter((element) => !element.frameId || !frames.has(element.frameId))
+  if (roots.length === 0) return null
+  const [minX, minY, maxX, maxY] = getCommonBounds(roots)
+  return {
+    x: minX - PREVIEW_PADDING,
+    y: minY - PREVIEW_PADDING,
+    width: maxX - minX + PREVIEW_PADDING * 2,
+    height: maxY - minY + PREVIEW_PADDING * 2
+  }
+}
+
 /** In place of a web page in a frame (Excalidraw draws one only when this returns nothing). */
 const blockedEmbed = () => <span hidden />
 
@@ -148,6 +177,14 @@ export function DrawingCanvas({
   const stored = useRef<Record<string, DrawingFileRef>>({ ...initial.files })
   const lastVersion = useRef(-1)
   const [library] = useState(() => (host.library ? libraryKeeper(host.library) : null))
+  // What the stored preview shows (it was drawn from these elements), for a view chosen on it to follow the new one.
+  const [openedFrame] = useState(() => {
+    try {
+      return previewFrame(restoreElements(storedElements(initial.elements) as never, null))
+    } catch {
+      return null
+    }
+  })
 
   // The drawing loads once per opening, the Library with it.
   const [initialData] = useState(() => async () => {
@@ -191,14 +228,25 @@ export function DrawingCanvas({
       const editor = api.current
       if (!editor) return null
       const elements = editor.getSceneElements()
-      if (elements.length === 0) return null
-      return exportToBlob({
+      const frame = previewFrame(elements)
+      if (!frame) return null
+      const blob = await exportToBlob({
         elements,
         files: editor.getFiles(),
         mimeType: 'image/png',
-        exportPadding: 16,
-        appState: { exportBackground: false, exportWithDarkMode: false, exportScale: 2 }
+        exportPadding: PREVIEW_PADDING,
+        appState: { exportBackground: false, exportWithDarkMode: false },
+        // One pixel per unit, less for a drawing too large for a canvas (`previewScale`).
+        getDimensions: (width: number, height: number) => {
+          const scale = previewScale(width, height)
+          return {
+            width: Math.max(1, Math.floor(width * scale)),
+            height: Math.max(1, Math.floor(height * scale)),
+            scale
+          }
+        }
       })
+      return { blob, frame, before: openedFrame }
     }
   }))
 

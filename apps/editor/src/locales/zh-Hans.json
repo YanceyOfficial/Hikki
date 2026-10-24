@@ -599,7 +599,11 @@
     "noPreview": "绘图——点按打开",
     "loading": "正在打开绘图…",
     "done": "完成",
-    "close": "关闭"
+    "close": "关闭",
+    "zoomIn": "放大",
+    "zoomOut": "缩小",
+    "zoomFit": "显示整幅绘图",
+    "zoomLevel": "{{percent}}%"
   },
   "date": {
     "today": "今天",
