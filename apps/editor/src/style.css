@@ -967,6 +967,14 @@
 .tiptap .hk-comment-active {
   background: var(--color-wash-yellow);
 }
+/* A selection over a commented passage shows as a selection: the wash would cover the page's own selection paint
+   (selection-paint.ts) — the decoration on the same span, and the drag layer behind the text. */
+.tiptap .hk-comment.hk-selection {
+  background: var(--color-selection);
+}
+.hk-column:has(> .hk-selection-layer:not(:empty)) .hk-comment {
+  background: transparent;
+}
 /* A thread on a whole block without text (an image, an embed, a file): the block is outlined in the comment colour. */
 .tiptap .hk-comment-block {
   border-radius: var(--radius-md);

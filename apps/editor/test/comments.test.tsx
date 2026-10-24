@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { act, cleanup, fireEvent, screen, within } from '@testing-library/react'
 import type { Editor } from '@tiptap/core'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -164,6 +167,25 @@ describe('comments', () => {
     act(() => setThreads(editor, [thread(id, true)]))
     expect(host.querySelector('.hk-comment')).toBeNull()
     expect(screen.queryByTestId('comment-thread')).toBeNull()
+  })
+
+  it('a selection over a commented passage is painted over its wash, not under it', () => {
+    commentOnQuick()
+    act(() => editor.commands.setTextSelection({ from: 5, to: 10 }))
+    // One span carries both: the later rule in the stylesheet decides which background shows.
+    const span = host.querySelector('.hk-comment.hk-selection')
+    expect(span?.textContent).toBe('quick')
+    const styles = readFileSync(join(process.cwd(), 'src/style.css'), 'utf8')
+    const wash = styles.indexOf('.tiptap .hk-comment {')
+    const selected = styles.search(
+      /\.tiptap \.hk-comment\.hk-selection\s*\{\s*background: var\(--color-selection\)/u
+    )
+    expect(wash).toBeGreaterThan(-1)
+    expect(selected).toBeGreaterThan(wash)
+    // While a drag paints its own layer behind the text, the wash steps aside.
+    expect(styles).toMatch(
+      /\.hk-column:has\(> \.hk-selection-layer:not\(:empty\)\) \.hk-comment\s*\{\s*background: transparent/u
+    )
   })
 
   it('replies, resolves and deletes through the host; deleting takes the mark away', async () => {
