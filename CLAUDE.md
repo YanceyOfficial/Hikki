@@ -973,8 +973,11 @@ HikkiUITests/                 XCUITest flows
   put): HikkiUI's `KeyboardBlockPanel` (the "/" catalog as flat two-column rows; turn into marks the current kind) and
   `KeyboardFormatPanel` (marks, Turn into, text colour and background — `Content`: the marks row only while the bar
   doesn't show those marks itself, and the bar's colour tool opens the colours alone, `Panel.color`); the bar's end
-  button brings the keyboard back, and so does a tap elsewhere in the text that collapses the selection a panel was
-  opened on (`selectionCollapsed`); a swipe down on a panel is only ever its scroll, never a close. The bar's tools are `ToolbarIconButton`'s `quiet` style
+  button brings the keyboard back, and so does a tap elsewhere in the text — the selection a panel was opened on
+  collapsing (`selectionCollapsed`), or the caret moving (`caretMoved`: the `selection` message carries `caret`; a
+  move the panel's own action caused, within half a second, doesn't count); a swipe down on a panel is only ever its
+  scroll, never a close. The tool set swapping between caret and selection cross-fades, and a panel eases in from
+  below (`Motion.easeOut()`). The bar's tools are `ToolbarIconButton`'s `quiet` style
   (muted glyphs, the open tool's glyph in the tone, no box — Notion's), each a full `Size.touchTarget` (44 pt) square,
   as are the panels' rows. The page's floating bar steps aside while the keyboard bar is on screen (`KeyboardBar.shown`,
   set by the bar's own view: a hardware keyboard shows the bar alone at the screen's foot without the keyboard

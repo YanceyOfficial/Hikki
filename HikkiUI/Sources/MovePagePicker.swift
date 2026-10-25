@@ -156,11 +156,11 @@ public struct MovePagePicker<Badge: View>: View {
             #if os(iOS)
                 Button("app:common.cancel", action: onCancel).foregroundStyle(Theme.subtleForeground)
             #else
-                // A sheet on the Mac can't be clicked away: Escape or this.
+                // A sheet on the Mac can't be clicked away: Escape or this — the search palette's close button.
                 Button(action: onCancel) {
                     IconView(.x, size: TextSize.sm.rawValue)
                         .foregroundStyle(Theme.mutedForeground)
-                        .frame(width: Size.iconButtonSm, height: Size.iconButtonSm)
+                        .frame(width: Size.iconButton, height: Size.iconButton)
                         .contentShape(.rect)
                 }
                 .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.full))

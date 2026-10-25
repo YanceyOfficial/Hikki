@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of apps/editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 39
+    public static let version = 40
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -54,8 +54,9 @@ public enum BridgeMessage: Sendable, Equatable {
     case pageInfo(docId: String, headings: [OutlineHeading], words: Int, characters: Int)
     /// The heading the reader is in changed (the page's scroll-spy); nil above the first heading.
     case activeHeading(docId: String, id: String?)
-    /// The selected text ("" when nothing is): Ask AI offers it as context.
-    case selection(docId: String, text: String)
+    /// The selected text ("" when nothing is): Ask AI offers it as context. `caret` is where the caret stands when
+    /// nothing is selected (nil with a selection): the keyboard bar closes its panel when it moves.
+    case selection(docId: String, text: String, caret: Int?)
     /// A bottom sheet of the page's opened or closed (a touch screen's cover, icon or comment sheet): the native bars
     /// beside it step aside meanwhile (an iPhone Duo's vertical bar), so the sheet has the whole width.
     case sheet(open: Bool)
@@ -203,7 +204,7 @@ extension BridgeMessage: Decodable {
         case type, protocolVersion, snapshot, active, level, message, context, docId, icon, cover, fileExtension, dataBase64
         case size, id, url, block, text, headings, words, characters, name, top
         case threadId, quote, body, resolved, commentId, kind, code, detail, open, status, before, after, blockId
-        case instruction, selection, mode, bff, color, items, target, blocks, date, time, remind, done
+        case instruction, selection, mode, bff, color, items, target, blocks, date, time, remind, done, caret
     }
 
     public init(from decoder: Decoder) throws {
@@ -256,7 +257,9 @@ extension BridgeMessage: Decodable {
                 docId: try c.decode(String.self, forKey: .docId), threadId: try c.decode(String.self, forKey: .threadId),
                 commentId: try c.decode(String.self, forKey: .commentId), body: try c.decode(String.self, forKey: .body))
         case "selection":
-            self = .selection(docId: try c.decode(String.self, forKey: .docId), text: try c.decode(String.self, forKey: .text))
+            self = .selection(
+                docId: try c.decode(String.self, forKey: .docId), text: try c.decode(String.self, forKey: .text),
+                caret: try c.decodeIfPresent(Int.self, forKey: .caret))
         case "sheet":
             self = .sheet(open: try c.decode(Bool.self, forKey: .open))
         case "commentThread":

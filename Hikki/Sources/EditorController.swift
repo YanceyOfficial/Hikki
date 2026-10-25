@@ -31,6 +31,8 @@ final class EditorController {
     private(set) var activeHeading: (docId: String, id: String?)?
     /// The text selected in the page (Ask AI offers it as context); nil when nothing is.
     private(set) var selection: EditorSelection?
+    /// Where the caret stands while nothing is selected (nil with a selection): a change is a tap elsewhere.
+    private(set) var caret: Int?
     /// One of the page's bottom sheets is open (cover, icon, comment on a touch screen): the page's bars step aside.
     private(set) var sheetOpen = false
     /// The thread open in the page, where this side draws it (`nativeComments`: the iPhone's sheet).
@@ -1167,8 +1169,9 @@ final class EditorController {
             applyComment(pageId: docId) { try $0.delete(pageId: docId, threadId: threadId, commentId: commentId) }
         case .commentEdit(let docId, let threadId, let commentId, let body):
             applyComment(pageId: docId) { try $0.edit(pageId: docId, threadId: threadId, commentId: commentId, body: body) }
-        case .selection(let docId, let text):
+        case .selection(let docId, let text, let caret):
             selection = text.isEmpty ? nil : EditorSelection(docId: docId, text: text)
+            self.caret = caret
         case .sheet(let open):
             sheetOpen = open
         case .commentThread(let docId, let threadId):
