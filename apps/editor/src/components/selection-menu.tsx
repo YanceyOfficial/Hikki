@@ -94,7 +94,10 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
   const toggle = (name: Panel) => setPanel((current) => (current === name ? null : name))
   // The rows with a caret open their panel on hover (a menu's submenu); a click also puts the caret in its field.
   const [clicked, setClicked] = useState(false)
+  // A panel the user opened with a click and is working in (the link field, the colours, More) is never taken
+  // away by the pointer passing over a row: only another hover-opened panel gives way.
   const hover = (name: Panel) => {
+    if (panel !== null && panel !== 'ai' && panel !== 'turnInto') return
     if (panel !== name) {
       setClicked(false)
       setPanel(name)

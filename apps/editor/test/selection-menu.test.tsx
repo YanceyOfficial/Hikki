@@ -135,6 +135,25 @@ describe('SelectionMenu', () => {
     expect(firstText()?.marks?.[0].attrs?.textColor).toBe('red')
   })
 
+  it('a link being edited is not taken away by the pointer passing over Ask AI or Text', () => {
+    show()
+    selectHello()
+    fireEvent.click(screen.getByRole('button', { name: 'Link' }))
+    const input = screen.getByPlaceholderText('Paste or type a link')
+    fireEvent.change(input, { target: { value: 'example.com' } })
+    fireEvent.mouseEnter(screen.getByTestId('selection-menu-ask-ai'))
+    fireEvent.mouseEnter(screen.getByRole('button', { name: /Text/u }))
+    expect(screen.queryByRole('menu', { name: 'Ask AI' })).toBeNull()
+    expect(screen.queryByRole('menu', { name: 'Turn into' })).toBeNull()
+    expect((screen.getByPlaceholderText('Paste or type a link') as HTMLInputElement).value).toBe(
+      'example.com'
+    )
+    // The panel still gives way once the link is done with.
+    fireEvent.keyDown(screen.getByPlaceholderText('Paste or type a link'), { key: 'Enter' })
+    fireEvent.mouseEnter(screen.getByTestId('selection-menu-ask-ai'))
+    expect(screen.getByRole('menu', { name: 'Ask AI' })).toBeTruthy()
+  })
+
   it('adds, then removes, a link', () => {
     show()
     selectHello()
