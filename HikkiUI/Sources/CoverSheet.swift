@@ -305,16 +305,18 @@ private struct CoverUnsplashPane: View {
     var body: some View {
         if let search {
             VStack(spacing: Spacing.s2) {
-                HStack(spacing: Spacing.s2) {
-                    IconView(.magnifyingGlass, size: TextSize.base.rawValue).foregroundStyle(Theme.mutedForeground)
+                // A touch screen's field: a full touch target tall, the page's base text size.
+                HStack(spacing: Spacing.s2_5) {
+                    IconView(.magnifyingGlass, size: TextSize.lg.rawValue).foregroundStyle(Theme.mutedForeground)
                     TextField(text: $query) { Text("app:cover.unsplashSearch") }
+                        .font(.hk(.base))
                         .autocorrectionDisabled()
                         .submitLabel(.search)
                         .accessibilityIdentifier("cover-unsplash-search")
                 }
-                .padding(.horizontal, Spacing.s3)
-                .frame(height: Size.searchField)
-                .background(Theme.muted, in: .rect(cornerRadius: Radius.lg))
+                .padding(.horizontal, Spacing.s3_5)
+                .frame(height: Size.touchTarget)
+                .background(Theme.muted, in: .rect(cornerRadius: Radius.xl))
                 .padding(.horizontal, Spacing.s4)
                 ScrollView { grid.padding(Spacing.s4) }
             }
@@ -388,9 +390,12 @@ private struct CoverPhotoCell: View {
             .buttonStyle(.plain)
             .accessibilityLabel(Text(verbatim: photo.alt ?? photo.author))
             .accessibilityIdentifier("cover-unsplash-photo")
+            // The names are links, but in the text's own colours, not the tone: a dozen credits in the tint under
+            // a dark grid shouted. The photographer reads a step up from the rest, underlined.
             Text(credit)
                 .font(.hk(.xs))
                 .foregroundStyle(Theme.mutedForeground)
+                .tint(Theme.foreground)
                 .lineLimit(2)
         }
     }
