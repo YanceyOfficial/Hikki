@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { t } from '../core/i18n'
 import type { PageIndexEntry } from '../extensions/page-links'
 import { pageMentionItems } from '../extensions/page-mention'
+import { isImeKey } from '../lib/ime'
 import { listStep } from './command-list'
 import { GlidingHighlight } from './gliding-highlight'
 import { MenuRow, MenuTitle } from './menu-row'
@@ -27,7 +28,7 @@ export function PagePicker({
   return (
     <div
       onKeyDown={(e) => {
-        if (e.nativeEvent.isComposing) return
+        if (isImeKey(e.nativeEvent)) return
         const step = listStep(e.key, shown.length, selected)
         if (step !== null) {
           e.preventDefault()

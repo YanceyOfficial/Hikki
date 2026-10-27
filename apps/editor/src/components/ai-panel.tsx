@@ -14,6 +14,7 @@ import type { AIModelMenu } from '../core/protocol'
 import type { AIAction } from '../extensions/ai-review'
 import { ArrowUpIcon, CaretDownIcon, CheckIcon } from '../generated/icons'
 import { aiModels, modelName } from '../lib/ai-models'
+import { isImeKey } from '../lib/ime'
 import { MenuRow, MenuTitle } from './menu-row'
 
 /** About a picture or a PDF (the block menu on an image or a file): nothing to edit, only answers. */
@@ -78,7 +79,7 @@ export function AIPanel({
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => {
-              if (e.nativeEvent.isComposing) return
+              if (isImeKey(e.nativeEvent)) return
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
                 submit()

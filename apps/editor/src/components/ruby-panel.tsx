@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { t } from '../core/i18n'
 import { keyLabel } from '../core/shortcuts'
 import { wholeReading, type RubySegment } from '../extensions/ruby'
+import { isImeKey } from '../lib/ime'
 import type { FloatingAnchor, FloatingLayer } from './floating'
 import { IconProvider } from './icons'
 
@@ -25,7 +26,7 @@ type Props = {
 
 /** Enter saves; Escape is the layers' bus (onDismiss cancels), it never reaches the fields. */
 function keys(e: React.KeyboardEvent, save: () => void) {
-  if (e.nativeEvent.isComposing) return
+  if (isImeKey(e.nativeEvent)) return
   if (e.key === 'Enter') {
     e.preventDefault()
     save()

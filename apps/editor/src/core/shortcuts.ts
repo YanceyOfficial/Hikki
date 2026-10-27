@@ -1,4 +1,5 @@
 import { SHORTCUTS as REGISTRY, type Shortcut, type ShortcutId } from '../generated/shortcuts'
+import { isImeKey } from '../lib/ime'
 
 export type { Shortcut, ShortcutId }
 
@@ -82,7 +83,7 @@ export function codeFor(key: string): string {
  * and "¡" for 1. "command" accepts Ctrl too (the editor in a browser on another platform).
  */
 export function matchesKeys(event: KeyboardEvent, s: Shortcut): boolean {
-  if (event.isComposing || event.code !== codeFor(s.key)) return false
+  if (isImeKey(event) || event.code !== codeFor(s.key)) return false
   const command = event.metaKey || (event.ctrlKey && !s.control)
   return (
     command === s.command &&

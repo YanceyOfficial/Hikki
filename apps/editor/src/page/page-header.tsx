@@ -34,6 +34,7 @@ import {
 } from '../lib/covers'
 import { ANY_TOUCH, matches, TOUCH } from '../lib/device'
 import { openNativeIconSheet } from '../lib/icon-sheet'
+import { isImeKey } from '../lib/ime'
 import { CoverPicker } from './cover-picker'
 import { CoverSheet, type CoverSheetMode } from './cover-sheet'
 
@@ -349,7 +350,7 @@ function TitleField({
       }}
       onKeyDown={(e) => {
         // Never act on Enter while an IME (pinyin) is composing — that Enter commits the candidate.
-        if (composing.current || e.nativeEvent.isComposing) return
+        if (composing.current || isImeKey(e.nativeEvent)) return
         const el = e.currentTarget
         const atEnd = el.selectionStart === el.value.length && el.selectionEnd === el.value.length
         if (e.key === 'Enter') {

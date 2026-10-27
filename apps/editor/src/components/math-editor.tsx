@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 
 import { t } from '../core/i18n'
 import { keyLabel } from '../core/shortcuts'
+import { isImeKey } from '../lib/ime'
 import type { FloatingAnchor, FloatingLayer } from './floating'
 import { IconProvider } from './icons'
 
@@ -45,7 +46,7 @@ export function MathEditor({ initial, multiline, onDone }: Props) {
           value={latex}
           onChange={(e) => setLatex(e.target.value)}
           onKeyDown={(e) => {
-            if (e.nativeEvent.isComposing) return
+            if (isImeKey(e.nativeEvent)) return
             // Escape is the layers' bus (onDismiss cancels): it never reaches the field.
             if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
               e.preventDefault()

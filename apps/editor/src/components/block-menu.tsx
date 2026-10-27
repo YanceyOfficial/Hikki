@@ -45,6 +45,7 @@ import {
   TrashIcon
 } from '../generated/icons'
 import { mediaRef } from '../lib/ai-content'
+import { isImeKey } from '../lib/ime'
 import { AIPanel } from './ai-panel'
 import { BlockTypeList } from './block-type-list'
 import { ColorList } from './color-list'
@@ -402,7 +403,7 @@ function BlockMenu({
     <div
       className="relative"
       onKeyDown={(e) => {
-        if (e.nativeEvent.isComposing) return
+        if (isImeKey(e.nativeEvent)) return
         // Escape is the layers' bus (onDismiss in openBlockMenu): it never reaches here.
         const step = listStep(e.key, visible.length, selected)
         if (step !== null) {

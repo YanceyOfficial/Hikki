@@ -15,6 +15,7 @@ import { FloatingLayer } from '../components/floating'
 import type { AIChangeInput, AIChangeStatus } from '../core/protocol'
 import { fragmentText, parseInline, textBetween } from '../lib/ai-content'
 import { diffText } from '../lib/ai-diff'
+import { isImeKey } from '../lib/ime'
 
 /**
  * Changes Ask AI proposes to the page (the chat's cards), reviewed one at a time in place: the change being looked at
@@ -110,7 +111,7 @@ export function AIChanges(host: AIChangesHost) {
             decorations: (state) => AIChangesKey.getState(state),
             handleKeyDown: (_view, event) => {
               const store = storage(editor)
-              if (!store.focused || !store.armed || event.isComposing) return false
+              if (!store.focused || !store.armed || isImeKey(event)) return false
               if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return false
               if (event.key === 'Enter') return resolve(editor, host, store.focused, 'approve')
               if (event.key === 'Backspace') return resolve(editor, host, store.focused, 'skip')

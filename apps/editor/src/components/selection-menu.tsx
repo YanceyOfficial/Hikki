@@ -33,6 +33,7 @@ import {
   TextUnderlineIcon
 } from '../generated/icons'
 import { useEditorSnapshot } from '../hooks/use-editor-snapshot'
+import { isImeKey } from '../lib/ime'
 import { AIPanel } from './ai-panel'
 import { BlockTypeList } from './block-type-list'
 import { ColorList, ColorSwatch } from './color-list'
@@ -459,7 +460,7 @@ export function LinkPanel({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
-            if (e.nativeEvent.isComposing) return
+            if (isImeKey(e.nativeEvent)) return
             if (e.key === 'Enter') {
               e.preventDefault()
               apply()

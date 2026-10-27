@@ -21,6 +21,7 @@ import {
   GlobeIcon,
   TextAlignLeftIcon
 } from '../generated/icons'
+import { isImeKey } from '../lib/ime'
 import { DiffReview, type AIReviewLine } from './ai-review-styles'
 import type { FloatingAnchor, FloatingLayer } from './floating'
 
@@ -186,7 +187,7 @@ function FollowUp({
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {
-          if (e.nativeEvent.isComposing) return
+          if (isImeKey(e.nativeEvent)) return
           e.stopPropagation()
           if (e.key === 'Enter') {
             e.preventDefault()

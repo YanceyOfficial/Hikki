@@ -47,6 +47,19 @@ describe('the AI panel’s field', () => {
     fireEvent.keyDown(field, { key: 'Enter' })
     expect(onRun).not.toHaveBeenCalled()
   })
+
+  it("the Enter that commits an input method's candidate never sends (ISSUE-258)", () => {
+    const onRun = panel()
+    const field = screen.getByTestId('selection-menu-ai-input')
+    fireEvent.change(field, { target: { value: '改写成' } })
+    // Chromium: the keydown comes while composing.
+    fireEvent.keyDown(field, { key: 'Enter', isComposing: true })
+    // WebKit: compositionend first, then the keydown with keyCode 229 and isComposing false.
+    fireEvent.keyDown(field, { key: 'Enter', keyCode: 229 })
+    expect(onRun).not.toHaveBeenCalled()
+    fireEvent.keyDown(field, { key: 'Enter' })
+    expect(onRun).toHaveBeenCalledWith({ id: 'custom', instruction: '改写成' })
+  })
 })
 
 describe('the AI panel’s model', () => {

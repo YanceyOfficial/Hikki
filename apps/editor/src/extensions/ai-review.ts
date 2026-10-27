@@ -30,6 +30,7 @@ import {
   textBetween
 } from '../lib/ai-content'
 import { changeCount, diffText, type DiffSegment } from '../lib/ai-diff'
+import { isImeKey } from '../lib/ime'
 import { SelectionMenuKey } from './selection-menu'
 
 /** A preset or the user's own instruction. Edits replace the selection after review; answers explain it. */
@@ -203,7 +204,7 @@ export function AIReview(host: AIHost) {
             // While a review is open, Enter accepts and Escape discards (typing would close it anyway).
             handleKeyDown: (_view, event) => {
               const session = storage(editor).session
-              if (!session || event.isComposing) return false
+              if (!session || isImeKey(event)) return false
               if (event.key === 'Escape') {
                 close(editor, host)
                 return true

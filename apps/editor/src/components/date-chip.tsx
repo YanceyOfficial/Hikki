@@ -29,6 +29,7 @@ import {
   remindLabel,
   type DateMentionAttrs
 } from '../lib/dates'
+import { isImeKey } from '../lib/ime'
 import type { FloatingAnchor, FloatingLayer } from './floating'
 import { IconProvider } from './icons'
 import { MenuRow, MenuTitle } from './menu-row'
@@ -122,7 +123,7 @@ export function DatePopover({ attrs, onChange, onRemove }: PopoverProps) {
         value={typed}
         onChange={(e) => setTyped(e.target.value)}
         onKeyDown={(e) => {
-          if (e.nativeEvent.isComposing || e.key !== 'Enter') return
+          if (isImeKey(e.nativeEvent) || e.key !== 'Enter') return
           e.preventDefault()
           const parsed = parseDateQuery(typed)
           if (!parsed) return

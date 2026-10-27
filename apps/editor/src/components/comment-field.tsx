@@ -13,6 +13,7 @@ import { type CommentsHost } from '../extensions/comments'
 import { pageMentionItems } from '../extensions/page-mention'
 import { ArrowUpIcon, AtIcon, CheckIcon, XIcon } from '../generated/icons'
 import { bodyFromDraft, draftFromBody, mentionQuery, type DraftMention } from '../lib/comment-text'
+import { isImeKey } from '../lib/ime'
 import { CommandList, handleListKey } from './command-list'
 
 /**
@@ -120,7 +121,7 @@ export function CommentField({
           }}
           onBlur={() => setQuery(null)}
           onKeyDown={(e) => {
-            if (e.nativeEvent.isComposing) return
+            if (isImeKey(e.nativeEvent)) return
             e.stopPropagation()
             if (
               query &&

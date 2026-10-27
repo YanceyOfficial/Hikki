@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { t } from '../core/i18n'
 import { keyLabel } from '../core/shortcuts'
 import { embedFromHTML, embedFromURL, type EmbedProvider, type EmbedSource } from '../lib/embeds'
+import { isImeKey } from '../lib/ime'
 import type { FloatingAnchor, FloatingLayer } from './floating'
 import { IconProvider } from './icons'
 
@@ -51,7 +52,7 @@ export function EmbedPanel({ provider, onDone, initial = '', replacing = false }
     else setInvalid(true)
   }
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.nativeEvent.isComposing) return
+    if (isImeKey(e.nativeEvent)) return
     // Escape is the layers' bus (onDismiss cancels): it never reaches the field.
     if (e.key === 'Enter' && (!html || e.metaKey || e.ctrlKey)) {
       e.preventDefault()

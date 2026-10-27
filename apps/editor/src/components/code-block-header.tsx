@@ -10,6 +10,7 @@ import { reportError } from '../core/errors'
 import { t } from '../core/i18n'
 import { filterLanguages, findLanguage } from '../extensions/code-languages'
 import { CaretDownIcon, CheckIcon, CopyIcon } from '../generated/icons'
+import { isImeKey } from '../lib/ime'
 import { handleListKey } from './command-list'
 import { GlidingHighlight } from './gliding-highlight'
 import { IconProvider } from './icons'
@@ -140,7 +141,7 @@ function LanguageList({ current, onPick }: { current: string; onPick: (id: strin
           setSelected(0)
         }}
         onKeyDown={(e) => {
-          if (e.nativeEvent.isComposing) return
+          if (isImeKey(e.nativeEvent)) return
           const handled = handleListKey(e.key, items.length, selected, setSelected, (i) =>
             onPick(items[i].id)
           )

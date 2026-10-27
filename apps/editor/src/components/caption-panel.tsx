@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 import { t } from '../core/i18n'
+import { isImeKey } from '../lib/ime'
 import type { FloatingAnchor, FloatingLayer } from './floating'
 
 type Props = {
@@ -26,7 +27,7 @@ export function CaptionPanel({ initial, onSave }: Props) {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {
-          if (e.nativeEvent.isComposing) return
+          if (isImeKey(e.nativeEvent)) return
           if (e.key === 'Enter') {
             e.preventDefault()
             onSave(value)
