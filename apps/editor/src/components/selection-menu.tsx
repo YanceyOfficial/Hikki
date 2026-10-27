@@ -252,7 +252,9 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
           ref={panelRef}
           className={cn(
             // Scrolls on its own (wheel and trackpad stay inside, the page doesn't move).
-            'hk-pop absolute max-h-(--layout-panel-height-side) w-(--layout-panel-menu) overflow-y-auto overscroll-contain rounded-xl bg-popover p-(--layout-popover-padding) text-popover-foreground shadow-popover',
+            'hk-pop absolute max-h-(--layout-panel-height-side) overflow-y-auto overscroll-contain rounded-xl bg-popover p-(--layout-popover-padding) text-popover-foreground shadow-popover',
+            // The link panel's row (Open · Remove · Apply) needs the hover card's width (ISSUE-241).
+            shownPanel === 'link' ? 'w-80' : 'w-(--layout-panel-menu)',
             panelLeft ? 'right-full mr-1.5 [--hk-pop-origin:top_right]' : 'left-full ml-1.5'
           )}
           style={{ top: panelShift }}
