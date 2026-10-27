@@ -38,7 +38,7 @@ export function CommandList({ items, selectedIndex, emptyText, onSelect, onHover
 
   return (
     <div
-      className="hk-command-list relative flex flex-col gap-px p-1.5"
+      className="hk-command-list relative flex flex-col gap-px p-(--layout-popover-padding)"
       role="listbox"
       ref={listRef}
     >

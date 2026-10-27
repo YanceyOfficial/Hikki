@@ -108,7 +108,7 @@ export function SlashMenu({ items, query, selectedIndex, onSelect, onHover, onCl
         <div
           ref={listRef}
           role="listbox"
-          className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain p-1"
+          className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain p-(--layout-popover-padding)"
         >
           <GlidingHighlight listRef={listRef} index={selectedIndex} />
           {items.length === 0 ? (

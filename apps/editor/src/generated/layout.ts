@@ -9,6 +9,7 @@ export const LAYOUT = {
   commentCard: 300,
   commentGap: 40,
   outlineRail: 64,
+  popoverPadding: 6,
   panel: {
     menu: 224,
     date: 272,

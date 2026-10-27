@@ -127,7 +127,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
         ref={cardRef}
         role="toolbar"
         aria-label={t('format.menu')}
-        className="hk-pop w-(--layout-panel-menu) rounded-xl bg-popover p-1 text-popover-foreground shadow-popover"
+        className="hk-pop w-(--layout-panel-menu) rounded-xl bg-popover p-(--layout-popover-padding) text-popover-foreground shadow-popover"
       >
         <MenuRow
           aria-haspopup="menu"
@@ -249,7 +249,7 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
           ref={panelRef}
           className={cn(
             // Scrolls on its own (wheel and trackpad stay inside, the page doesn't move).
-            'hk-pop absolute max-h-(--layout-panel-height-side) w-(--layout-panel-menu) overflow-y-auto overscroll-contain rounded-xl bg-popover p-1 text-popover-foreground shadow-popover',
+            'hk-pop absolute max-h-(--layout-panel-height-side) w-(--layout-panel-menu) overflow-y-auto overscroll-contain rounded-xl bg-popover p-(--layout-popover-padding) text-popover-foreground shadow-popover',
             panelLeft ? 'right-full mr-1.5 [--hk-pop-origin:top_right]' : 'left-full ml-1.5'
           )}
           style={{ top: panelShift }}

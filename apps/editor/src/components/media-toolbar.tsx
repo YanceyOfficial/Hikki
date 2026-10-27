@@ -45,7 +45,7 @@ export function MediaToolbar({ editor, host }: Props) {
     <div
       role="toolbar"
       aria-label={t('media.imageToolbar')}
-      className="hk-pop flex items-center gap-0.5 rounded-lg bg-popover p-1 shadow-popover"
+      className="hk-pop flex items-center gap-0.5 rounded-lg bg-popover p-(--layout-popover-padding) shadow-popover"
       onMouseDown={(e) => e.preventDefault()}
     >
       <Toggle

@@ -451,7 +451,7 @@ function CellBar({ editor, selection }: { editor: Editor; selection: CellSelecti
   const { left, top } = rect as DOMRect
   return (
     <div
-      className="hk-pop fixed z-30 flex items-center gap-0.5 rounded-lg bg-popover p-1 shadow-popover"
+      className="hk-pop fixed z-30 flex items-center gap-0.5 rounded-lg bg-popover p-(--layout-popover-padding) shadow-popover"
       // Clear of the column grip that sits on the table's top edge.
       style={{ left, top: Math.max(8, top - 50) }}
       data-testid="table-cell-bar"

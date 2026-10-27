@@ -419,7 +419,7 @@ function BlockMenu({
       <div
         role="menu"
         aria-label={t('blockMenu.label')}
-        className="flex w-64 flex-col rounded-xl bg-popover p-1 text-popover-foreground shadow-popover"
+        className="flex w-64 flex-col rounded-xl bg-popover p-(--layout-popover-padding) text-popover-foreground shadow-popover"
       >
         <Input
           ref={inputRef}
@@ -495,7 +495,7 @@ function BlockMenu({
         <div
           ref={submenuRef}
           role="menu"
-          className="hk-pop absolute top-0 left-full ml-1.5 flex max-h-(--layout-panel-height-submenu) w-56 flex-col overflow-y-auto overscroll-contain rounded-xl bg-popover p-1 text-popover-foreground shadow-popover"
+          className="hk-pop absolute top-0 left-full ml-1.5 flex max-h-(--layout-panel-height-submenu) w-56 flex-col overflow-y-auto overscroll-contain rounded-xl bg-popover p-(--layout-popover-padding) text-popover-foreground shadow-popover"
         >
           {shownSubmenu === 'ai' && (
             // Its field keeps its own keys (the menu's arrows and Escape stay out of the typing).
