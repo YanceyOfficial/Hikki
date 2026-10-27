@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { BLOCK_TYPES } from '../src/core/blocks'
 import { createEditor } from '../src/core/editor'
+import { deleteUnit, moveUnit, unitAtPos } from '../src/extensions/block-units'
 import { dropBeside, resizedShare } from '../src/extensions/columns'
 import { doc, stripIds } from './helpers'
 
@@ -64,6 +65,30 @@ async function twoColumns() {
   gutter.setPointerCapture = () => {}
   return { cols, gutter, wrapper: host.querySelector<HTMLElement>('.hk-cols-wrapper')! }
 }
+
+const p = (text: string) => ({ type: 'paragraph', content: [{ type: 'text', text }] })
+const column = (...blocks: JSONContent[]) => ({ type: 'column', content: blocks })
+const columnsRow = (...columns: JSONContent[]) => ({ type: 'columns', content: columns })
+/** The page's top-level blocks as "type:text" (a row as its columns' texts joined by |). */
+const outline = () => {
+  const out: string[] = []
+  editor.state.doc.forEach((node) => {
+    if (node.type.name !== 'columns') return out.push(`${node.type.name}:${node.textContent}`)
+    const cols: string[] = []
+    node.forEach((c) => cols.push(c.textContent))
+    out.push(`columns:${cols.join('|')}`)
+  })
+  return out
+}
+const posOf = (text: string) => {
+  let found = -1
+  editor.state.doc.descendants((node, pos) => {
+    if (found < 0 && node.isTextblock && node.textContent === text) found = pos
+    return found < 0
+  })
+  return found
+}
+const unitOf = (text: string) => unitAtPos(editor.state, posOf(text))!
 
 describe('columns', () => {
   it('"/3 columns" replaces the empty line with three columns, caret in the first', () => {
@@ -215,6 +240,97 @@ describe('columns', () => {
       pointer(gutter, 'pointerdown', 354)
       pointer(gutter, 'pointerup', 354)
       expect(transactions).toBe(0)
+    })
+  })
+
+  // ISSUE-205: a block dragged out of a column, or deleted from ⋮⋮, left its column behind with an empty line, so
+  // a two-column row never went back to one column.
+  describe('a column emptied by a move or a deletion', () => {
+    it('deleting the only block of a column removes the column, and the last pair unwraps', () => {
+      editor = createEditor(host, {
+        type: 'doc',
+        content: [columnsRow(column(p('left')), column(p('right'))), p('below')]
+      })
+      editor.view.dispatch(deleteUnit(editor.state, unitOf('right')))
+      expect(outline()).toEqual(['paragraph:left', 'paragraph:below'])
+    })
+
+    it('a three-column row only loses the emptied column', () => {
+      editor = createEditor(host, {
+        type: 'doc',
+        content: [columnsRow(column(p('a')), column(p('b')), column(p('c')))]
+      })
+      editor.view.dispatch(deleteUnit(editor.state, unitOf('b')))
+      // (The empty line at the end is the one Tiptap keeps after a row that ends the page.)
+      expect(outline()).toEqual(['columns:a|c', 'paragraph:'])
+      // A column with more than the one block keeps the rest.
+      editor = createEditor(host, {
+        type: 'doc',
+        content: [columnsRow(column(p('a')), column(p('b'), p('b2')))]
+      })
+      editor.view.dispatch(deleteUnit(editor.state, unitOf('b')))
+      expect(outline()).toEqual(['columns:a|b2', 'paragraph:'])
+    })
+
+    it('dragging the only block of a column out unwraps the row around what is left', () => {
+      editor = createEditor(host, {
+        type: 'doc',
+        content: [columnsRow(column(p('left')), column(p('right'))), p('below')]
+      })
+      const tr = moveUnit(editor.state, unitOf('right'), editor.state.doc.content.size)!
+      editor.view.dispatch(tr)
+      expect(outline()).toEqual(['paragraph:left', 'paragraph:below', 'paragraph:right'])
+      // The moved block is selected, where it landed.
+      expect(editor.state.selection.$from.parent.textContent).toBe('right')
+    })
+
+    it('dragging it into the other column lands it at its gap, the row gone', () => {
+      editor = createEditor(host, {
+        type: 'doc',
+        content: [columnsRow(column(p('l1'), p('l2')), column(p('right')))]
+      })
+      // The gap between l1 and l2.
+      const tr = moveUnit(editor.state, unitOf('right'), posOf('l2'))!
+      editor.view.dispatch(tr)
+      expect(outline()).toEqual(['paragraph:l1', 'paragraph:right', 'paragraph:l2'])
+      expect(editor.state.selection.$from.parent.textContent).toBe('right')
+    })
+
+    it('dropping the only block of a column beside another block takes the column along', () => {
+      editor = createEditor(host, {
+        type: 'doc',
+        content: [columnsRow(column(p('left')), column(p('right'))), p('below')]
+      })
+      const from = posOf('right')
+      const below = posOf('below')
+      const node = editor.state.doc.nodeAt(below)!
+      dropBeside(
+        editor.view,
+        { pos: below, node, side: 'right', rect },
+        {
+          from,
+          to: from + editor.state.doc.nodeAt(from)!.nodeSize
+        }
+      )
+      expect(outline()).toEqual(['paragraph:left', 'columns:below|right', 'paragraph:'])
+    })
+
+    it('dropped at the far side of its own row, the block crosses the row', () => {
+      editor = createEditor(host, {
+        type: 'doc',
+        content: [columnsRow(column(p('left')), column(p('right'))), p('below')]
+      })
+      const from = posOf('right')
+      const rowNode = editor.state.doc.nodeAt(0)!
+      dropBeside(
+        editor.view,
+        { pos: 0, node: rowNode, side: 'left', rect },
+        {
+          from,
+          to: from + editor.state.doc.nodeAt(from)!.nodeSize
+        }
+      )
+      expect(outline()).toEqual(['columns:right|left', 'paragraph:below'])
     })
   })
 })

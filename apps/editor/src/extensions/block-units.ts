@@ -3,6 +3,7 @@ import type { Node as PMNode, ResolvedPos } from '@tiptap/pm/model'
 import { NodeSelection, TextSelection, type EditorState, type Transaction } from '@tiptap/pm/state'
 
 import type { ShortcutId } from '../core/shortcuts'
+import { emptiedColumn, pruneEmptiedColumn } from './columns'
 
 /**
  * Blocks as the user sees them (Notion): the unit the handle grabs, moves, duplicates and deletes. A
@@ -104,16 +105,30 @@ export function moveUnit(state: EditorState, from: BlockUnit, to: number): Trans
     from.node.forEach((child) => content.push(child))
     if (!content.every((child) => fits(state, to, child))) return null
   }
+  // The column the unit was the whole content of goes with it (a pair goes back to one column).
+  const emptied = emptiedColumn(state.doc, { from: from.pos, to: end })
   const tr = state.tr.delete(from.pos, end)
   const at = tr.mapping.map(to, -1)
   tr.insert(at, content)
-  selectMoved(tr, at, content[0])
+  if (emptied !== null) pruneEmptiedColumn(tr, tr.mapping.map(emptied))
+  selectMoved(tr, positionOf(tr.doc, content[0]) ?? at, content[0])
   return tr.scrollIntoView()
 }
 
 function selectMoved(tr: Transaction, at: number, node: PMNode) {
   if (node.isAtom || !node.isBlock) tr.setSelection(NodeSelection.create(tr.doc, at))
   else tr.setSelection(TextSelection.near(tr.doc.resolve(at + 1)))
+}
+
+/** Where `node` (the very instance) sits in `doc` — the moved block after the row around it was rebuilt. */
+function positionOf(doc: PMNode, node: PMNode): number | null {
+  let found: number | null = null
+  doc.descendants((child, pos) => {
+    if (child === node) found = pos
+    // Looks on (and down) only until it is found.
+    return found === null
+  })
+  return found
 }
 
 /** Copies the unit right below itself (new block ids are stamped by UniqueID). */
@@ -130,7 +145,11 @@ export function duplicateUnit(state: EditorState, unit: BlockUnit): Transaction 
 }
 
 export function deleteUnit(state: EditorState, unit: BlockUnit): Transaction {
-  const tr = state.tr.delete(unit.pos, unit.pos + unit.node.nodeSize)
+  const end = unit.pos + unit.node.nodeSize
+  const emptied = emptiedColumn(state.doc, { from: unit.pos, to: end })
+  const tr = state.tr.delete(unit.pos, end)
+  // A column's only block: the column goes too (a pair goes back to one column).
+  if (emptied !== null) pruneEmptiedColumn(tr, emptied)
   const near = Math.min(unit.pos, tr.doc.content.size)
   tr.setSelection(TextSelection.near(tr.doc.resolve(near), -1))
   // The page always keeps a line to type on.

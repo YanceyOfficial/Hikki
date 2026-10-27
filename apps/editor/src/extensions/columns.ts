@@ -191,14 +191,12 @@ function removeEmptyColumn(view: EditorView): boolean {
   const row = $from.node(-2)
   const rowPos = $from.before(-2)
   const tr = state.tr
+  removeColumn(tr, columnPos)
   if (row.childCount > MIN_COLUMNS) {
-    tr.delete(columnPos, columnPos + column.nodeSize)
     // Caret to the end of the column before (or the start of the one after).
     tr.setSelection(TextSelection.near(tr.doc.resolve(Math.max(0, columnPos - 1)), -1))
   } else {
-    // A row can't have one column (the schema refuses the step): the other column's blocks replace it.
     const other = row.child($from.index(-2) === 0 ? 1 : 0)
-    tr.replaceWith(rowPos, rowPos + row.nodeSize, other.content)
     tr.setSelection(
       TextSelection.near(
         tr.doc.resolve(Math.min(rowPos + other.content.size, tr.doc.content.size)),
@@ -208,6 +206,45 @@ function removeEmptyColumn(view: EditorView): boolean {
   }
   view.dispatch(tr.scrollIntoView())
   return true
+}
+
+/**
+ * Takes the column at `columnPos` (in `tr.doc`) out of its row: deleted from a row of three or more; the last
+ * pair's other column's blocks replace the row (a row can't have one column — the schema refuses the step).
+ */
+export function removeColumn(tr: Transaction, columnPos: number): void {
+  const $column = tr.doc.resolve(columnPos)
+  const column = $column.nodeAfter
+  const row = $column.parent
+  if (column?.type.name !== 'column' || row.type.name !== 'columns') return
+  if (row.childCount > MIN_COLUMNS) {
+    tr.delete(columnPos, columnPos + column.nodeSize)
+    return
+  }
+  const other = row.child($column.index() === 0 ? 1 : 0)
+  const rowPos = $column.before()
+  tr.replaceWith(rowPos, rowPos + row.nodeSize, other.content)
+}
+
+/**
+ * A column whose only block was taken out — moved, dropped beside another block, deleted from ⋮⋮ — is left with
+ * the empty line ProseMirror fills it with; it goes too (Notion's), so a pair goes back to one column (ISSUE-205).
+ * `columnPos` is the column's position in `tr.doc`, after the block left.
+ */
+export function pruneEmptiedColumn(tr: Transaction, columnPos: number): void {
+  const column = tr.doc.nodeAt(columnPos)
+  if (column?.type.name !== 'column' || column.childCount !== 1) return
+  const line = column.firstChild!
+  if (line.type.name !== 'paragraph' || line.content.size > 0) return
+  removeColumn(tr, columnPos)
+}
+
+/** The column `range` takes whole (its position), when it is a column's entire content. */
+export function emptiedColumn(doc: PMNode, range: { from: number; to: number }): number | null {
+  const $from = doc.resolve(range.from)
+  const column = $from.parent
+  if (column.type.name !== 'column' || column.content.size !== range.to - range.from) return null
+  return $from.before()
 }
 
 // MARK: - Drag a block beside another
@@ -270,20 +307,27 @@ export function dropBeside(
   })
   if (hasRow || content.childCount === 0) return false
   const newColumn = column.create(null, content)
+  // The blocks were a column's whole content: that column goes with them.
+  const emptied = emptiedColumn(state.doc, { from, to })
   const tr = state.tr.delete(from, to)
   const pos = tr.mapping.map(target.pos)
   const node = tr.doc.nodeAt(pos)
   if (!node) return false
   if (node.type.name === 'columns') {
-    // Another column on that side of an existing row; widths reset to equal shares.
+    // Another column on that side of an existing row; widths reset to equal shares. The emptied column, when it is
+    // one of this row's, is left out of it.
     const cols: PMNode[] = []
-    node.forEach((c) => cols.push(c.type.create({ ...c.attrs, width: null }, c.content)))
+    node.forEach((c, offset) => {
+      if (pos + 1 + offset === emptied) return
+      cols.push(c.type.create({ ...c.attrs, width: null }, c.content))
+    })
     const next = target.side === 'left' ? [newColumn, ...cols] : [...cols, newColumn]
     tr.replaceWith(pos, pos + node.nodeSize, columns.create(node.attrs, next))
   } else {
     const existing = column.create(null, node)
     const pair = target.side === 'left' ? [newColumn, existing] : [existing, newColumn]
     tr.replaceWith(pos, pos + node.nodeSize, columns.create(null, pair))
+    if (emptied !== null) pruneEmptiedColumn(tr, tr.mapping.map(emptied))
   }
   view.dispatch(tr.scrollIntoView())
   return true
