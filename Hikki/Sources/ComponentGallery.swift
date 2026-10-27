@@ -353,8 +353,12 @@
                                     runs: [.init("Leave on ", .same), .init("Friday", .removed), .init("Saturday", .added)]),
                                 .init(id: 2, style: .bullet, change: .added, runs: [.init("Book the ryokan", .added)]),
                                 .init(id: 3, style: .paragraph, change: .removed, runs: [.init("An old note", .removed)]),
+                                .init(id: 4, style: .table, runs: [.init("文型 | 示例", .same)]),
+                                .init(id: 5, style: .table, runs: [.init("～は～です。 | 僕は日本人です。", .same)]),
+                                .init(id: 6, style: .table, change: .added, runs: [.init("～も～です。 | ミラーさんも会社員です。", .added)]),
                             ])
                         }
+                        .id("VersionDiffView")
                         Section("AIChangeReview") {
                             AIChangeReview(
                                 items: [
@@ -551,12 +555,14 @@
                         }
                         Section("MovePagePicker") {
                             MovePagePicker(
-                                query: $moveQuery, items: galleryMoveItems, workspaceName: "Yancey's Notes", isAtTopLevel: false, focusesField: false,
+                                query: $moveQuery, items: galleryMoveItems, workspaceName: "Yancey's Notes", isAtTopLevel: false,
+                                focusesField: false,
                                 badge: { WorkspaceBadge(initial: "Y") },
                                 onToggle: { id in
                                     if moveExpanded.contains(id) { moveExpanded.remove(id) } else { moveExpanded.insert(id) }
                                 },
-                                onPick: { _ in }, onCancel: {})
+                                onPick: { _ in }, onCancel: {}
+                            )
                             .frame(height: Size.movePickerHeight)
                         }
                         Section("SearchMatchRow · SearchMatchesToggleRow") {

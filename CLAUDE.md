@@ -389,7 +389,9 @@ HikkiUITests/                 XCUITest flows
   takes its history along (`onDeleted`). UI: page ⋯ → Page History… (`Hikki/Sources/PageHistoryView.swift`) lists
   versions beside a native preview — `TextBlock`/`PageDiff` (`HikkiCore/Sources/Store/PageDiff.swift`) flatten both
   versions to blocks and diff them block by block, then word by word (CJK by character), drawn by HikkiUI's
-  `VersionDiffView`; a title that differs from the page's now is marked the same way above the body
+  `VersionDiffView` (headings, list markers, code; a table's rows as one grid, its first row the header); on the
+  Mac and iPad the sheet has Settings' own header (title + ✕, `SidebarDialog`'s), the versions on the sidebar
+  surface; a title that differs from the page's now is marked the same way above the body
   (`PageDiff.title`, `VersionTitleView`, "Title changed"). Restore writes through `saveContent` + `setIcon`/`setCover` and reloads open editors.
   DEBUG: `HIKKI_HISTORY_INTERVAL=<s>` shortens the session (UI tests).
 - **Import / export** (`Hikki/Sources/PageTransfer.swift`): the editor converts, in its own schema

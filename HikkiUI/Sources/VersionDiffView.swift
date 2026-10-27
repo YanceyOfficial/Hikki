@@ -50,12 +50,77 @@ public struct VersionDiffView: View {
 
     public var body: some View {
         LazyVStack(alignment: .leading, spacing: Spacing.s2) {
-            ForEach(blocks.filter { showsChanges || $0.change != .removed }) { block in
-                row(block)
+            ForEach(pieces) { piece in
+                switch piece {
+                case .block(let block): row(block)
+                case .table(let rows): table(rows)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .textSelection(.enabled)
+    }
+
+    /// A block on its own, or a table's rows together (consecutive `.table` blocks, each a row with its cells
+    /// joined by " | " — `TextBlock`'s flattening), drawn as one grid (ISSUE-230: they read as lines of text).
+    private enum Piece: Identifiable {
+        case block(Block)
+        case table([Block])
+
+        var id: Int {
+            switch self {
+            case .block(let block): block.id
+            case .table(let rows): rows[0].id
+            }
+        }
+    }
+
+    private var pieces: [Piece] {
+        var out: [Piece] = []
+        for block in blocks where showsChanges || block.change != .removed {
+            if block.style == .table, case .table(let rows)? = out.last {
+                out[out.count - 1] = .table(rows + [block])
+            } else {
+                out.append(block.style == .table ? .table([block]) : .block(block))
+            }
+        }
+        return out
+    }
+
+    /// A table: its rows' cells in columns, the first row as the header, a hairline under each row; a row added
+    /// or removed is tinted whole, an edited one in its words, as any block.
+    private func table(_ rows: [Block]) -> some View {
+        Grid(alignment: .leading, horizontalSpacing: Spacing.s4, verticalSpacing: Spacing.s0) {
+            ForEach(rows) { row in
+                GridRow {
+                    ForEach(Array(cells(row).enumerated()), id: \.offset) { _, cell in
+                        Text(cell)
+                            .font(.hk(.sm, row.id == rows[0].id ? .medium : .regular))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, Spacing.s1_5)
+                            .padding(.horizontal, Spacing.s2)
+                            .background(background(row))
+                            .overlay(alignment: .bottom) { Rectangle().fill(Theme.border).frame(height: Spacing.px) }
+                    }
+                }
+            }
+        }
+        .padding(.leading, CGFloat(rows[0].depth) * Spacing.s5)
+        .overlay(alignment: .top) { Rectangle().fill(Theme.border).frame(height: Spacing.px) }
+    }
+
+    private func cells(_ row: Block) -> [AttributedString] { Self.splitCells(text(row)) }
+
+    /// A row's cells, split at the " | " the flattening joined them with, each keeping its marks.
+    public static func splitCells(_ row: AttributedString) -> [AttributedString] {
+        var rest = row
+        var out: [AttributedString] = []
+        while let gap = rest.range(of: " | ") {
+            out.append(AttributedString(rest[rest.startIndex..<gap.lowerBound]))
+            rest = AttributedString(rest[gap.upperBound...])
+        }
+        out.append(rest)
+        return out
     }
 
     private func row(_ block: Block) -> some View {
@@ -222,6 +287,9 @@ public struct VersionTitleView: View {
             .init(id: 3, style: .taskDone, depth: 1, runs: [.init("Passport", .same)]),
             .init(id: 4, style: .paragraph, change: .removed, runs: [.init("An old note", .removed)]),
             .init(id: 5, style: .code, runs: [.init("let x = 1", .same)]),
+            .init(id: 6, style: .table, runs: [.init("文型 | 示例", .same)]),
+            .init(id: 7, style: .table, runs: [.init("～は～です。 | 僕は日本人です。", .same)]),
+            .init(id: 8, style: .table, change: .added, runs: [.init("～も～です。 | ミラーさんも会社員です。", .added)]),
         ])
         .padding()
     }

@@ -28,50 +28,32 @@ struct PageHistoryView: View {
     }
 
     @ViewBuilder private var screen: some View {
-        NavigationStack {
-            Group {
-                if !loaded {
-                    HistorySkeleton(compact: compact)
-                } else if versions.isEmpty {
-                    ContentUnavailableView {
-                        IconLabel("app:history.empty", icon: .clockCounterClockwise)
-                    } description: {
-                        Text("app:history.emptyHint")
-                    }
-                } else if compact {
-                    List(versions) { version in
-                        NavigationLink(value: version.id) { VersionRow(version: version) }
-                            .accessibilityIdentifier("history-version-\(index(of: version))")
-                    }
-                    .navigationDestination(for: PageVersion.ID.self) { id in
-                        if let version = versions.first(where: { $0.id == id }) { detail(version) }
-                    }
-                } else {
-                    HStack(spacing: Spacing.s0) {
-                        List(versions, selection: $selection) { version in
-                            VersionRow(version: version)
-                                .tag(version.id)
-                                .accessibilityIdentifier("history-version-\(index(of: version))")
+        Group {
+            if compact {
+                // A phone: the system's stack, the versions pushing their preview.
+                NavigationStack {
+                    content
+                        .navigationTitle("app:history.title")
+                        #if os(iOS)
+                            .navigationBarTitleDisplayMode(.inline)
+                        #endif
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("app:common.close") { dismiss() }
+                                    .accessibilityIdentifier("history-close")
+                            }
                         }
-                        .frame(width: Size.historyList)
-                        Divider()
-                        if let version = selected {
-                            detail(version)
-                        } else {
-                            Color.clear.frame(maxWidth: .infinity, maxHeight: .infinity)
-                        }
-                    }
                 }
-            }
-            .navigationTitle("app:history.title")
-            #if os(iOS)
-                .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("app:common.close") { dismiss() }
-                        .accessibilityIdentifier("history-close")
+            } else {
+                // Settings' dialog shape (`SidebarDialog`): the title and a close button in a header of our own,
+                // the versions on the sidebar's surface, the preview beside (ISSUE-230: the system title bar read
+                // as another app's).
+                VStack(spacing: Spacing.s0) {
+                    header
+                    Rectangle().fill(Theme.border).frame(height: Spacing.px)
+                    content
                 }
+                .background(Theme.background)
             }
         }
         #if os(macOS)
@@ -91,6 +73,66 @@ struct PageHistoryView: View {
         .onReceive(NotificationCenter.default.publisher(for: .pageHistoryChanged)) { note in
             if note.userInfo?["id"] as? String == pageID { arrivals += 1 }
         }
+    }
+
+    @ViewBuilder private var content: some View {
+        if !loaded {
+            HistorySkeleton(compact: compact)
+        } else if versions.isEmpty {
+            ContentUnavailableView {
+                IconLabel("app:history.empty", icon: .clockCounterClockwise)
+            } description: {
+                Text("app:history.emptyHint")
+            }
+        } else if compact {
+            List(versions) { version in
+                NavigationLink(value: version.id) { VersionRow(version: version) }
+                    .accessibilityIdentifier("history-version-\(index(of: version))")
+            }
+            .navigationDestination(for: PageVersion.ID.self) { id in
+                if let version = versions.first(where: { $0.id == id }) { detail(version) }
+            }
+        } else {
+            HStack(spacing: Spacing.s0) {
+                List(versions, selection: $selection) { version in
+                    VersionRow(version: version)
+                        .tag(version.id)
+                        .accessibilityIdentifier("history-version-\(index(of: version))")
+                }
+                .scrollContentBackground(.hidden)
+                .background(Theme.sidebar)
+                .frame(width: Size.historyList)
+                Rectangle().fill(Theme.border).frame(width: Spacing.px)
+                if let version = selected {
+                    detail(version)
+                } else {
+                    Color.clear.frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+        }
+    }
+
+    /// The dialog's own title row (Mac, iPad): the title and ✕, as Settings has them.
+    private var header: some View {
+        HStack(spacing: Spacing.s2) {
+            Text("app:history.title").font(.hk(.lg, .semibold)).foregroundStyle(Theme.foreground)
+            Spacer(minLength: Spacing.s0)
+            Button {
+                dismiss()
+            } label: {
+                IconLabel("app:common.close", icon: .x, size: TextSize.base.rawValue)
+                    .labelStyle(.iconOnly)
+                    .foregroundStyle(Theme.mutedForeground)
+                    .frame(width: Size.iconButton, height: Size.iconButton)
+                    .contentShape(.rect)
+            }
+            .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.md))
+            .keyboardShortcut(.cancelAction)
+            .help(Text("app:common.close"))
+            .accessibilityIdentifier("history-close")
+        }
+        .padding(.horizontal, Spacing.s5)
+        .padding(.vertical, Spacing.s3)
     }
 
     private var compact: Bool {
