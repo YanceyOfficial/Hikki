@@ -8,6 +8,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { panelShiftFor, SelectionMenu } from '../src/components/selection-menu'
 import { createEditor } from '../src/core/editor'
 import { isSafeHref, normalizeHref } from '../src/core/links'
+import { SelectionMenuContextKey } from '../src/extensions/selection-menu'
 import { doc } from './helpers'
 
 let host: HTMLElement
@@ -103,6 +104,23 @@ describe('SelectionMenu', () => {
     expect(screen.getByRole('button', { name: /Text/u }).getAttribute('aria-expanded')).toBe(
       'false'
     )
+  })
+
+  it('stays away from the word a right-click selects, until the next left press or key (ISSUE-241)', () => {
+    const dom = editor.view.dom
+    const suppressed = () => SelectionMenuContextKey.getState(editor.state)?.suppressed
+    expect(suppressed()).toBe(false)
+    // WebKit selects the word under a right-click and opens the system's menu: the formatting menu must not.
+    dom.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, button: 2 }))
+    expect(suppressed()).toBe(true)
+    // A right press changes nothing; a left press lets the menu come back.
+    dom.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 2 }))
+    expect(suppressed()).toBe(true)
+    dom.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }))
+    expect(suppressed()).toBe(false)
+    dom.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, button: 2 }))
+    dom.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowRight' }))
+    expect(suppressed()).toBe(false)
   })
 
   it('a press on Ask AI’s field focuses it, while a press on a button keeps the page’s caret', () => {

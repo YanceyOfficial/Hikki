@@ -1,6 +1,6 @@
 import { Extension, isTextSelection } from '@tiptap/core'
 import { BubbleMenuPlugin } from '@tiptap/extension-bubble-menu'
-import { PluginKey } from '@tiptap/pm/state'
+import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { createRoot, type Root } from 'react-dom/client'
 
 import { renderSelectionMenu } from '../components/selection-menu'
@@ -10,6 +10,14 @@ import { commentsState } from './comments'
 import { SlashCommandKey } from './slash-command'
 
 export const SelectionMenuKey = new PluginKey('selectionMenu')
+
+/**
+ * A right-click selects the word under the pointer (WebKit) and opens the system's context menu; the formatting
+ * menu must not come up over it (ISSUE-241). `suppressed` from the right-click until the next left press or key.
+ */
+export const SelectionMenuContextKey = new PluginKey<{ suppressed: boolean }>(
+  'selectionMenuContext'
+)
 
 const coarsePointer = () => matches(TOUCH)
 
@@ -43,6 +51,39 @@ export const SelectionMenuExtension = Extension.create<
     element.style.setProperty('--hk-pop-origin', below ? 'top left' : 'bottom left')
     element.style.setProperty('--hk-pop-dy', below ? '-4px' : '4px')
     return [
+      new Plugin<{ suppressed: boolean }>({
+        key: SelectionMenuContextKey,
+        state: {
+          init: () => ({ suppressed: false }),
+          apply: (tr, value) => {
+            const suppressed = tr.getMeta(SelectionMenuContextKey) as boolean | undefined
+            return suppressed === undefined ? value : { suppressed }
+          }
+        },
+        props: {
+          handleDOMEvents: {
+            contextmenu: (view) => {
+              // The word the right-click selects arrives as a later selection change; a menu already up goes now.
+              view.dispatch(
+                view.state.tr
+                  .setMeta(SelectionMenuContextKey, true)
+                  .setMeta(SelectionMenuKey, 'hide')
+              )
+              return false
+            },
+            mousedown: (view, event) => {
+              if (event.button === 0 && SelectionMenuContextKey.getState(view.state)?.suppressed)
+                view.dispatch(view.state.tr.setMeta(SelectionMenuContextKey, false))
+              return false
+            },
+            keydown: (view) => {
+              if (SelectionMenuContextKey.getState(view.state)?.suppressed)
+                view.dispatch(view.state.tr.setMeta(SelectionMenuContextKey, false))
+              return false
+            }
+          }
+        }
+      }),
       BubbleMenuPlugin({
         pluginKey: SelectionMenuKey,
         editor: this.editor,
@@ -61,6 +102,8 @@ export const SelectionMenuExtension = Extension.create<
           if (editor.isDestroyed) return false
           if (keyboardBar) return false
           if (!editor.isEditable || from === to || !isTextSelection(state.selection)) return false
+          // Not over the system's context menu (a right-click's word selection).
+          if (SelectionMenuContextKey.getState(state)?.suppressed) return false
           // Keep showing while the menu itself has focus (link input).
           if (!view.hasFocus() && !element.contains(document.activeElement)) return false
           if (state.doc.textBetween(from, to, ' ').trim() === '') return false

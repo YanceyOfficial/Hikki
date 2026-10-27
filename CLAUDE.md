@@ -434,7 +434,9 @@ HikkiUITests/                 XCUITest flows
   the reason and may answer `'keep'` — Escape in the block menu closes its submenu first). No popup installs its own
   outside-click or Escape listener. `dismissAllLayers` runs as `loadDocument` starts, so nothing outlives its page, and a
   menu or panel acting on a block later follows it through edits meanwhile (`followNode` / `followPosition` in
-  `apps/editor/src/extensions/block-units.ts`: by block id, else mapped; gone → it closes). Base UI popups (shadcn) bring their own. A layer follows its
+  `apps/editor/src/extensions/block-units.ts`: by block id, else mapped; gone → it closes). Base UI popups (shadcn) bring their own. The
+  selection menu stays away from the word a right-click selects (WebKit's, under the system's context menu) until the
+  next left press or key (`SelectionMenuContextKey` in `apps/editor/src/extensions/selection-menu.ts`). A layer follows its
   anchor when the page scrolls, and a scroll over any popup (`hk-pop`) never reaches the page behind it
   (`apps/editor/src/lib/scroll-containment.ts`, one set of document listeners).
 - **Editor menus**: `apps/editor/src/core/blocks.ts` is the one block catalog (groups, Markdown shortcuts, `turnInto`, `isActive`)
@@ -627,7 +629,9 @@ HikkiUITests/                 XCUITest flows
   through the navigator; its titles come from `FocusedValues.lockedPage` / `favoritePage`, set by `TreeFollower`.
 - **Page links** (`apps/editor/src/extensions/page-links.ts`): `hikki://page/<id>#<block>`. The native side feeds the editor
   the page index (`window.hikki.setPages`) so pasted links get titles; "Copy link to block" puts a ready `<a>` plus the
-  URL on the clipboard; a plain-text paste of a link becomes a labelled hyperlink, and so does a dropped one: a
+  URL on the clipboard; a page's link pasted as plain text, dropped, or pasted as our own copied `<a>`
+  (`transformPastedHTML`) lands as the page's mention chip, which follows the page's title and icon (a labelled
+  hyperlink's words went stale — ISSUE-241); a block's link lands as a labelled hyperlink. A dropped one: a
   sidebar row's drag carries the page's link (`PageLink.dragItem`), the editor's `handleDrop` inserts it where it
   lands, and the toolbar's `TabStrip` (`TabStripDrop`, `HikkiUI/Sources/TabStrip.swift`) opens it — between tabs
   as a new tab (or that page's tab is focused), onto a tab in that tab. Clicks go through the bridge
