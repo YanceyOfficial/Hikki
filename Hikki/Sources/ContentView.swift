@@ -918,6 +918,9 @@ private struct NativeDetailToolbar: ToolbarContent {
     /// The (unsplit) page's panel is open beside it.
     private var inspectorOpen: Bool { !navigator.isSplit && navigator.isShowingInspector && navigator.route.pageID != nil }
 
+    /// What the tab strip leaves free at its trailing end for the open inspector (see `tabStrip`).
+    private var inspectorRoom: CGFloat { inspectorOpen ? CGFloat(inspectorWidth) : 0 }
+
     // Photos' toolbar: each group is its own Liquid Glass capsule — back/forward, the tabs, the page's
     // actions. (Search lives in the sidebar's glass field.)
     var body: some ToolbarContent {
@@ -942,46 +945,51 @@ private struct NativeDetailToolbar: ToolbarContent {
     /// (`Navigator.usesTabs`), their sidebar picks open in place.
     @ToolbarContentBuilder private var tabStrip: some ToolbarContent {
         ToolbarItem(placement: .principal) {
-            TabStrip(
-                // The two tabs of a split are one joined item; its focused half is the active one.
-                items: navigator.tabs.tabs.map { tab in tabItem(tab.id, tab.route) },
-                activeID: navigator.tabs.activeID,
-                canGoBack: navigator.tabs.canGoBack,
-                canGoForward: navigator.tabs.canGoForward,
-                onSelect: navigator.selectTab,
-                onClose: { navigator.closeTab($0) },
-                onNew: { navigator.openInNewTab(.home) },
-                onBack: navigator.goBack,
-                onForward: navigator.goForward,
-                showsHistory: false,
-                // A sidebar page dragged here opens as a tab (between tabs) or in a tab (onto one).
-                drop: TabStripDrop(
-                    types: [.plainText],
-                    accepts: { navigator.draggingPageID != nil },
-                    perform: { target in
-                        guard let id = navigator.draggingPageID else { return false }
-                        navigator.draggingPageID = nil
-                        navigator.dropPage(id, target)
-                        return true
-                    }),
-                // A page's tab drags its link: onto the split pane, the page's right edge, or into a page.
-                dragItem: { id in
-                    navigator.tabs.tabs.first { $0.id == id }?.route.pageID.map(PageLink.dragItem)
-                },
-                menu: TabStripMenu(commands: tabMenuCommands, perform: performTabCommand),
-                // A tab dragged along the strip moves there, Chrome's way.
-                onMove: { id, index in withAnimation(Motion.easeOut()) { navigator.moveTab(id, to: index) } }
-            )
-            .frame(minWidth: 240, idealWidth: 480, maxWidth: 640)  // design-lint: allow (toolbar item width)
-            // Its own glass (the toolbar's shared capsule is hidden below), so the capsule moves with it.
-            .glassEffect(.regular, in: .capsule)
-            #if os(macOS)
-                // The Mac toolbar centres it over the whole detail column; with the inspector open that is page +
-                // panel, so it moves left by half the panel to sit over the page. iPad's toolbar already lays it out
-                // between back/forward and the page's buttons, and the shift slid it under back/forward.
-                .offset(x: inspectorOpen ? -CGFloat(inspectorWidth) / 2 : 0)
-                .animation(Motion.easeOut(), value: inspectorOpen)
-            #endif
+            HStack(spacing: Spacing.s0) {
+                TabStrip(
+                    // The two tabs of a split are one joined item; its focused half is the active one.
+                    items: navigator.tabs.tabs.map { tab in tabItem(tab.id, tab.route) },
+                    activeID: navigator.tabs.activeID,
+                    canGoBack: navigator.tabs.canGoBack,
+                    canGoForward: navigator.tabs.canGoForward,
+                    onSelect: navigator.selectTab,
+                    onClose: { navigator.closeTab($0) },
+                    onNew: { navigator.openInNewTab(.home) },
+                    onBack: navigator.goBack,
+                    onForward: navigator.goForward,
+                    showsHistory: false,
+                    // A sidebar page dragged here opens as a tab (between tabs) or in a tab (onto one).
+                    drop: TabStripDrop(
+                        types: [.plainText],
+                        accepts: { navigator.draggingPageID != nil },
+                        perform: { target in
+                            guard let id = navigator.draggingPageID else { return false }
+                            navigator.draggingPageID = nil
+                            navigator.dropPage(id, target)
+                            return true
+                        }),
+                    // A page's tab drags its link: onto the split pane, the page's right edge, or into a page.
+                    dragItem: { id in
+                        navigator.tabs.tabs.first { $0.id == id }?.route.pageID.map(PageLink.dragItem)
+                    },
+                    menu: TabStripMenu(commands: tabMenuCommands, perform: performTabCommand),
+                    // A tab dragged along the strip moves there, Chrome's way.
+                    onMove: { id, index in withAnimation(Motion.easeOut()) { navigator.moveTab(id, to: index) } }
+                )
+                .frame(minWidth: 240, idealWidth: 480, maxWidth: 640)  // design-lint: allow (toolbar item width)
+                // Its own glass (the toolbar's shared capsule is hidden below), so the capsule moves with it.
+                .glassEffect(.regular, in: .capsule)
+                #if os(macOS)
+                    // The Mac toolbar centres the item over the whole detail column; with the inspector open that is
+                    // page + panel, so a clear spacer as wide as the panel follows the strip, which then sits over the
+                    // page. An offset drew it there but left it outside the item's own frame, where the toolbar
+                    // hit-tests nothing — the first tab couldn't be clicked (ISSUE-256); the spacer gives way before
+                    // the strip when the toolbar is short of room. iPad's toolbar already lays the strip out between
+                    // back/forward and the page's buttons.
+                    Color.clear.frame(minWidth: 0, idealWidth: inspectorRoom, maxWidth: inspectorRoom)
+                #endif
+            }
+            .animation(Motion.easeOut(), value: inspectorOpen)
         }
         .sharedBackgroundVisibility(.hidden)
     }
