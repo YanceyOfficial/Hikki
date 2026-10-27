@@ -932,6 +932,10 @@ struct AIChatView: View {
     @State private var pickingFiles = false
     @State private var dropTargeted = false
     @State private var layerTargeted = false
+    @State private var panelTargeted = false
+    /// Something is being dragged over the conversation or the card: the layer that takes the drop is up (ISSUE-197).
+    @State private var dragOver = false
+    @State private var dragEnd: Task<Void, Never>?
     #if os(iOS)
         @State private var pickingPhotos = false
         @State private var photoItems: [PhotosPickerItem] = []
@@ -960,6 +964,12 @@ struct AIChatView: View {
                 .padding(.vertical, Spacing.s3)
             }
             .scrollDismissesKeyboard(.interactively)
+            // A file dragged in anywhere over the conversation attaches, and raises the card's layer before the
+            // pointer reaches the field.
+            .onDrop(of: [.fileURL, .image, .pdf], isTargeted: $panelTargeted) { providers in
+                receive(providers)
+                return true
+            }
             .onChange(of: chat.messages.last?.text) {
                 if let id = chat.messages.last?.id { proxy.scrollTo(id, anchor: .bottom) }
             }
@@ -1082,16 +1092,29 @@ struct AIChatView: View {
                 return true
             }
             // The field is a native text view that takes drops itself (it would type the file's path): while
-            // something is dragged over the card, a clear layer on top of everything takes the drop instead. It
-            // exists only during the drag, so clicks and typing never meet it.
+            // something is dragged over the conversation or the card, a clear layer on top of everything takes the
+            // drop instead. It exists only during the drag, so clicks and typing never meet it — and it outlives the
+            // hand-over to itself: the card reads as left before the layer reads as entered, which took the layer
+            // down under the pointer and let the field have the drop (ISSUE-197).
             .overlay {
-                if dropTargeted || layerTargeted {
+                if dragOver {
                     Color.clear
                         .contentShape(.rect(cornerRadius: Radius.xl + Spacing.s1))
                         .onDrop(of: [.fileURL, .image, .pdf], isTargeted: $layerTargeted) { providers in
                             receive(providers)
                             return true
                         }
+                }
+            }
+            .onChange(of: dropTargeted || layerTargeted || panelTargeted) { _, over in
+                dragEnd?.cancel()
+                if over {
+                    dragOver = true
+                } else {
+                    dragEnd = Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(300))
+                        if !Task.isCancelled { dragOver = false }
+                    }
                 }
             }
             if let error = chat.attachError {
