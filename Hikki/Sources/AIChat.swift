@@ -944,11 +944,6 @@ struct AIChatView: View {
     @State private var mentionIndex = 0
     @State private var pickingFiles = false
     @State private var dropTargeted = false
-    @State private var layerTargeted = false
-    @State private var panelTargeted = false
-    /// Something is being dragged over the conversation or the card: the layer that takes the drop is up (ISSUE-197).
-    @State private var dragOver = false
-    @State private var dragEnd: Task<Void, Never>?
     #if os(iOS)
         @State private var pickingPhotos = false
         @State private var photoItems: [PhotosPickerItem] = []
@@ -977,9 +972,8 @@ struct AIChatView: View {
                 .padding(.vertical, Spacing.s3)
             }
             .scrollDismissesKeyboard(.interactively)
-            // A file dragged in anywhere over the conversation attaches, and raises the card's layer before the
-            // pointer reaches the field.
-            .onDrop(of: [.fileURL, .image, .pdf], isTargeted: $panelTargeted) { providers in
+            // A file dragged in anywhere over the conversation attaches.
+            .onDrop(of: [.fileURL, .image, .pdf], isTargeted: nil) { providers in
                 receive(providers)
                 return true
             }
@@ -1095,41 +1089,25 @@ struct AIChatView: View {
             .background(Theme.background, in: .rect(cornerRadius: Radius.xl + Spacing.s1))
             .overlay(
                 RoundedRectangle(cornerRadius: Radius.xl + Spacing.s1)
-                    .strokeBorder(
-                        dropTargeted || layerTargeted ? ColorTone.standard.fill : Theme.border,
-                        lineWidth: dropTargeted || layerTargeted ? 2 : 1)
+                    .strokeBorder(dropTargeted ? ColorTone.standard.fill : Theme.border, lineWidth: dropTargeted ? 2 : 1)
             )
             .shadow(color: Theme.border, radius: Spacing.s2, y: Spacing.s0_5)
             .onDrop(of: [.fileURL, .image, .pdf], isTargeted: $dropTargeted) { providers in
                 receive(providers)
                 return true
             }
-            // The field is a native text view that takes drops itself (it would type the file's path): while
-            // something is dragged over the conversation or the card, a clear layer on top of everything takes the
-            // drop instead. It exists only during the drag, so clicks and typing never meet it — and it outlives the
-            // hand-over to itself: the card reads as left before the layer reads as entered, which took the layer
-            // down under the pointer and let the field have the drop (ISSUE-197).
-            .overlay {
-                if dragOver {
-                    Color.clear
-                        .contentShape(.rect(cornerRadius: Radius.xl + Spacing.s1))
-                        .onDrop(of: [.fileURL, .image, .pdf], isTargeted: $layerTargeted) { providers in
-                            receive(providers)
-                            return true
-                        }
+            #if os(macOS)
+                // The field is a native text view that takes drops itself (it would type the file's path), and no
+                // SwiftUI drop target over it ever sees them — AppKit gives a drag to the deepest view registered for
+                // its types, and SwiftUI's targets aren't views. An AppKit view over the card is that view for files,
+                // pictures and PDFs (ISSUE-197); text drops still reach the field.
+                .overlay {
+                    FileDropCatcher(
+                        types: Self.dropTypes, accepts: { Self.dropped(on: $0) != .text },
+                        onTargeted: { dropTargeted = $0 },
+                        onDrop: { pasteboard in receive(Self.dropped(on: pasteboard), from: pasteboard) })
                 }
-            }
-            .onChange(of: dropTargeted || layerTargeted || panelTargeted) { _, over in
-                dragEnd?.cancel()
-                if over {
-                    dragOver = true
-                } else {
-                    dragEnd = Task { @MainActor in
-                        try? await Task.sleep(for: .milliseconds(300))
-                        if !Task.isCancelled { dragOver = false }
-                    }
-                }
-            }
+            #endif
             if let error = chat.attachError {
                 Text(verbatim: error).font(.hk(.xs)).foregroundStyle(Theme.destructive).padding(.horizontal, Spacing.s1)
             }
@@ -1264,7 +1242,22 @@ struct AIChatView: View {
     }
 
     #if os(macOS)
-        /// A paste the field was kept from (`PasteAttachments`): the copied files, or the pasteboard's picture or PDF.
+        /// What a drag may bring to the card: files, or a picture / PDF as data (a browser's picture, a screenshot).
+        private static let dropTypes: [NSPasteboard.PasteboardType] = [
+            .fileURL, .png, .tiff, .pdf, NSPasteboard.PasteboardType(UTType.image.identifier),
+            NSPasteboard.PasteboardType(UTType.jpeg.identifier),
+        ]
+
+        /// What a drop attaches, decided as a paste is — the files first, else the pasteboard's picture or PDF. The
+        /// words that come with a dragged picture (its address) don't make it a text drop.
+        private static func dropped(on pasteboard: NSPasteboard) -> AIPaste {
+            let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
+            return AIPaste.decide(
+                fileURLs: urls, hasText: false, types: (pasteboard.types ?? []).compactMap { UTType($0.rawValue) })
+        }
+
+        /// A paste the field was kept from (`PasteAttachments`), or a drop the card took (`FileDropCatcher`): the
+        /// copied files, or the pasteboard's picture or PDF.
         private func receive(_ paste: AIPaste, from pasteboard: NSPasteboard) {
             switch paste {
             case .files(let urls):

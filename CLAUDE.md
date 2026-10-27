@@ -819,7 +819,9 @@ HikkiUITests/                 XCUITest flows
   `Hikki/Sources/InspectorView.swift`, one mode at a time (`InspectorMode`): the outline, the page's comments (open /
   resolved threads, Reopen) or the AI chat (`AIChatView`, the same conversation as the iPhone sheet, about the page beside it — and the passage selected
   in it, reported by the `selection` bridge message; Notion's composer: attached pictures / PDFs (+, drop, paste; sent as
-  base64 — `HikkiAI/Sources/AIAttachments.swift` scales pictures to 1568 px), context chips, @ to add other pages, the
+  base64 — `HikkiAI/Sources/AIAttachments.swift` scales pictures to 1568 px; on the Mac a drop on the card lands
+  through HikkiUI's `FileDropCatcher`, an AppKit view over it — the field's text view takes any drop a SwiftUI target
+  above it would, since AppKit hands a drag to the deepest view registered for its types), context chips, @ to add other pages, the
   field, attach · web · model · send). The toolbar's trailing
   end, as Xcode's: [star · ⋯] [outline · comments] [AI in its own circle, `AIGlyph`], the open view marked; View →
   Show Outline (⌥⌘I); no tab bar. The page's facts (location, created, edited, words and
