@@ -124,6 +124,8 @@ public struct TabStrip<Leading: View>: View {
     @State private var dropTarget: TabStripDropTarget?
     /// The tab whose drag started last (its drag carries `UTType.hikkiTab`, which says a drop is one).
     @State private var movingTab: UUID?
+    /// Where along the moving tab it was grabbed (from the drag's first update), so its box follows the pointer.
+    @State private var grabOffset: CGFloat?
     @Environment(\.colorTone) private var colorTone
 
     public init(
@@ -217,7 +219,8 @@ public struct TabStrip<Leading: View>: View {
                         movingTab = nil
                         onMove(id, index)
                     }
-                }))
+                })
+        )
         // In a window toolbar macOS lifts the first `.help` inside the item up to the whole item, so hovering any tab
         // showed that one. The strip says nothing itself; each tab carries an AppKit tooltip of its own (`toolTip`).
         .help(Text(verbatim: ""))
@@ -244,8 +247,7 @@ public struct TabStrip<Leading: View>: View {
             isDropTarget: dropTarget == .onto(item.id),
             dragItem: dragItem != nil || onMove != nil ? { () -> NSItemProvider? in tabDragItem(item.id) } : nil,
             onSelect: { onSelect(item.id) }, onClose: { onClose(item.id) }
-        )
-        .contextMenu {
+        ) {
             if let menu { menuContent(menu, for: item.id) }
         }
         .onGeometryChange(for: CGRect.self) {
@@ -261,6 +263,7 @@ public struct TabStrip<Leading: View>: View {
         let provider = dragItem?(id) ?? NSItemProvider()
         if onMove != nil {
             movingTab = id
+            grabOffset = nil
             provider.registerDataRepresentation(forTypeIdentifier: UTType.hikkiTab.identifier, visibility: .ownProcess) {
                 completion in
                 completion(Data(id.uuidString.utf8), nil)
@@ -270,22 +273,26 @@ public struct TabStrip<Leading: View>: View {
         return provider
     }
 
-    /// Where the tab being dragged would go: the gap nearest the pointer (a tab's left half is the gap before it), a
-    /// gap between a split's two sides meaning after them. Nil at either edge of the tab itself (with its split
-    /// partner), where nothing would move.
+    /// Where the tab being dragged would go, Chrome's way (`TabReorder`): its own box — the tab (or its split pair) as
+    /// wide as it is, carried where it was grabbed — swaps with a neighbour once more than half of it lies over that
+    /// neighbour. Nil where nothing would move. The grab point is read from the first update of the drag.
     private func moveTarget(at point: CGPoint) -> TabStripDropTarget? {
         guard let moving = movingTab, let at = items.firstIndex(where: { $0.id == moving }) else { return nil }
-        var gap = items.count
-        for (index, item) in items.enumerated() {
-            if let frame = frames[item.id], point.x < frame.midX {
-                gap = index
-                break
-            }
-        }
-        if gap > 0, gap < items.count, items[gap - 1].joinedToNext { gap += 1 }
         let first = at > 0 && items[at - 1].joinedToNext ? at - 1 : at
         let last = items[first].joinedToNext ? first + 1 : first
-        return (first...(last + 1)).contains(gap) ? nil : .between(gap)
+        guard let start = frames[items[first].id]?.minX, let end = frames[items[last].id]?.maxX else { return nil }
+        let offset = grabOffset ?? min(max(point.x - start, 0), end - start)
+        if grabOffset == nil { grabOffset = offset }
+        var tabs: [ClosedRange<Double>] = []
+        var joined: [Bool] = []
+        for item in items {
+            guard let frame = frames[item.id] else { return nil }
+            tabs.append(Double(frame.minX)...Double(frame.maxX))
+            joined.append(item.joinedToNext)
+        }
+        let left = Double(point.x - offset)
+        return TabReorder.gap(tabs: tabs, joined: joined, moving: at, box: left...(left + Double(end - start)))
+            .map { .between($0) }
     }
 
     /// The tab's menu, its sections divided; Close / Close Other Tabs / Close All need another tab, Close Tabs to the
@@ -405,7 +412,7 @@ private struct TabStripDropDelegate: DropDelegate {
     }
 }
 
-private struct TabButton: View {
+private struct TabButton<Menu: View>: View {
     let item: TabStripItem
     let isActive: Bool
     let canClose: Bool
@@ -414,6 +421,9 @@ private struct TabButton: View {
     var dragItem: (() -> NSItemProvider?)?
     let onSelect: () -> Void
     let onClose: () -> Void
+    /// The tab's context menu. It goes on before the drag: on macOS a `.contextMenu` outside an `.onDrag` never
+    /// shows — the drag takes the press (ISSUE-191, ISSUE-231).
+    @ViewBuilder let menu: () -> Menu
     @State private var hovering = false
     @Environment(\.colorTone) private var colorTone
 
@@ -441,7 +451,9 @@ private struct TabButton: View {
             }
         }
         .padding(.horizontal, Spacing.s3)
-        .frame(minWidth: Size.tabMin, idealWidth: Size.tabIdeal, maxWidth: Size.tabMax, minHeight: Size.tabHeight, maxHeight: Size.tabHeight)
+        .frame(
+            minWidth: Size.tabMin, idealWidth: Size.tabIdeal, maxWidth: Size.tabMax, minHeight: Size.tabHeight, maxHeight: Size.tabHeight
+        )
         // Capsules inside the toolbar's glass capsule, like a segmented control (App Store's sidebar).
         .background(
             Capsule()
@@ -450,6 +462,7 @@ private struct TabButton: View {
         )
         .animation(Motion.easeOut(), value: isDropTarget)
         .contentShape(.capsule)
+        .contextMenu { menu() }
         .onTapGesture(perform: onSelect)
         .onHover { hovering = $0 }
         .modifier(TabDrag(item: dragItem))

@@ -169,7 +169,8 @@ HikkiSearch/Sources/          framework: the search engine — its own SQLite in
 HikkiAI/Sources/              framework: AI — one streaming client over OpenAI (Responses) and Anthropic (Messages) with
                               their own web search + citations, the fixed model catalog, answers as Markdown blocks
                               (swift-markdown) and code colouring (HighlightSwift); tests in HikkiAI/Tests/
-HikkiUI/Sources/              framework: reusable SwiftUI components + Theme
+HikkiUI/Sources/              framework: reusable SwiftUI components + Theme; its plain logic is tested in HikkiUI/Tests/
+                              (`HikkiUIUnitTests` — `HikkiUITests` is the XCUITest target)
 apps/editor/src/                   web editor: main.tsx + style.css; each folder below holds only .tsx or only .ts
 apps/editor/src/core/              bridge, protocol, transport, editor setup, block catalog, i18n, shortcuts, links, page store;
                               never imports from components/ (its data — AI actions, block kinds, transaction metas — lives
@@ -608,7 +609,9 @@ HikkiUITests/                 XCUITest flows
   window's history of pages shown, across tabs (`NavigationTabs.visits`): back returns to the page shown before, focusing
   its tab — a page opened from the sidebar goes back to where the reader was; closed tabs and gone pages are passed over. A tab dragged along the strip moves
   there, Chrome's way (`TabStrip`'s `onMove` → `NavigationTabs.move`: a split's two tabs move together, a gap between
-  them means after them); the drag carries the page's link as before plus the tab's id as `app.yancey.hikki.tab`
+  them means after them; it swaps with a neighbour once more than half of it lies over that neighbour — `TabReorder`
+  in `HikkiUI/Sources/TabReorder.swift` judges the dragged tab's own box, carried where it was grabbed, against the
+  neighbours' middles, a split pair as one); the drag carries the page's link as before plus the tab's id as `app.yancey.hikki.tab`
   (in-process only, declared in Project.swift's Info.plist), which is how the strip tells a reorder from a page drop. A tab's context menu is
   Chrome's (`TabStripMenu` / `TabStripCommand` in `HikkiUI/Sources/TabStrip.swift`, the commands chosen by
   `NativeDetailToolbar` in ContentView): New Tab to the Right (Home), Open in Split View (where the window splits),

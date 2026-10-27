@@ -179,6 +179,18 @@ let project = Project(
             sources: ["HikkiSearch/Tests/**"],
             dependencies: [.target(name: "HikkiSearch")]
         ),
+        // HikkiUI's plain logic (what a drag decides, what a list shows); the views themselves are seen in the gallery
+        // and the UI tests. Not "HikkiUITests": that name is the XCUITest target's.
+        .target(
+            name: "HikkiUIUnitTests",
+            destinations: destinations,
+            product: .unitTests,
+            bundleId: "app.yancey.hikki.ui.tests",
+            deploymentTargets: deploymentTargets,
+            sources: ["HikkiUI/Tests/**"],
+            dependencies: [.target(name: "HikkiUI")],
+            settings: .settings(base: ["SWIFT_DEFAULT_ACTOR_ISOLATION": "MainActor"])
+        ),
         .target(
             name: "HikkiUITests",
             destinations: destinations,

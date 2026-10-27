@@ -74,6 +74,7 @@ test-core:
 	tuist test HikkiCore --platform macos
 	tuist test HikkiSearch --platform macos
 	tuist test HikkiAI --platform macos
+	tuist test HikkiUIUnitTests --platform macos
 	tuist generate --no-open
 
 test-core-ios:
