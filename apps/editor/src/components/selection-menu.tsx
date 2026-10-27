@@ -352,10 +352,10 @@ export function SelectionMenu({ editor }: { editor: Editor }) {
   )
 }
 
-/** Buttons keep the editor's selection: no focus change on press (inputs are exempt). */
+/** Buttons keep the editor's selection: no focus change on press (fields — the link's input, Ask AI's textarea — are exempt). */
 function keepEditorFocus(event: React.MouseEvent) {
   const target = event.target as HTMLElement
-  if (!target.closest('input')) event.preventDefault()
+  if (!target.closest('input, textarea')) event.preventDefault()
 }
 
 function MarkButton({

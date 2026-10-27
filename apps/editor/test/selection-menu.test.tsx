@@ -105,6 +105,16 @@ describe('SelectionMenu', () => {
     )
   })
 
+  it('a press on Ask AI’s field focuses it, while a press on a button keeps the page’s caret', () => {
+    show()
+    selectHello()
+    fireEvent.mouseEnter(screen.getByTestId('selection-menu-ask-ai'))
+    // Opened by hover the field isn't focused yet; a click must be able to focus it (ISSUE-216: the menu
+    // swallowed the mousedown once the field became a textarea, so nothing could be typed).
+    expect(fireEvent.mouseDown(screen.getByTestId('selection-menu-ai-input'))).toBe(true)
+    expect(fireEvent.mouseDown(screen.getByRole('button', { name: 'Bold' }))).toBe(false)
+  })
+
   it('Ask AI offers edits and questions: no Translate, no Make', () => {
     show()
     selectHello()
