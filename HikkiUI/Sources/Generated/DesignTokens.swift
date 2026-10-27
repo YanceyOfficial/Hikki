@@ -140,7 +140,7 @@ public nonisolated enum ColorTone: String, CaseIterable, Sendable, Identifiable 
         case .kurenai: Theme.dynamic(light: 0xCB1B45, lightAlpha: 1, dark: 0xCC2049, darkAlpha: 1)
         case .terigaki: Theme.dynamic(light: 0xC46243, lightAlpha: 1, dark: 0xC46243, darkAlpha: 1)
         case .kohaku: Theme.dynamic(light: 0xCA7A2C, lightAlpha: 1, dark: 0xCA7A2C, darkAlpha: 1)
-        case .wakatake: Theme.dynamic(light: 0x569E77, lightAlpha: 1, dark: 0x58A37B, darkAlpha: 1)
+        case .wakatake: Theme.dynamic(light: 0x559D75, lightAlpha: 1, dark: 0x58A37B, darkAlpha: 1)
         case .seiheki: Theme.dynamic(light: 0x268785, lightAlpha: 1, dark: 0x268785, darkAlpha: 1)
         case .edomurasaki: Theme.dynamic(light: 0x77428D, lightAlpha: 1, dark: 0x87599B, darkAlpha: 1)
         }
@@ -152,7 +152,7 @@ public nonisolated enum ColorTone: String, CaseIterable, Sendable, Identifiable 
         case .kurenai: Theme.dynamic(light: 0xCB1B45, lightAlpha: 1, dark: 0xDB617E, darkAlpha: 1)
         case .terigaki: Theme.dynamic(light: 0xAE573C, lightAlpha: 1, dark: 0xC97054, darkAlpha: 1)
         case .kohaku: Theme.dynamic(light: 0xA06023, lightAlpha: 1, dark: 0xCA7A2C, darkAlpha: 1)
-        case .wakatake: Theme.dynamic(light: 0x437B5D, lightAlpha: 1, dark: 0x58A37B, darkAlpha: 1)
+        case .wakatake: Theme.dynamic(light: 0x427A5B, lightAlpha: 1, dark: 0x58A37B, darkAlpha: 1)
         case .seiheki: Theme.dynamic(light: 0x237C7A, lightAlpha: 1, dark: 0x409594, darkAlpha: 1)
         case .edomurasaki: Theme.dynamic(light: 0x77428D, lightAlpha: 1, dark: 0xA07CB0, darkAlpha: 1)
         }
@@ -176,7 +176,7 @@ public nonisolated enum ColorTone: String, CaseIterable, Sendable, Identifiable 
         case .kurenai: Theme.dynamic(light: 0xCB1B45, lightAlpha: 0.16, dark: 0xCC2049, darkAlpha: 0.3)
         case .terigaki: Theme.dynamic(light: 0xC46243, lightAlpha: 0.16, dark: 0xC46243, darkAlpha: 0.3)
         case .kohaku: Theme.dynamic(light: 0xCA7A2C, lightAlpha: 0.16, dark: 0xCA7A2C, darkAlpha: 0.3)
-        case .wakatake: Theme.dynamic(light: 0x569E77, lightAlpha: 0.16, dark: 0x58A37B, darkAlpha: 0.3)
+        case .wakatake: Theme.dynamic(light: 0x559D75, lightAlpha: 0.16, dark: 0x58A37B, darkAlpha: 0.3)
         case .seiheki: Theme.dynamic(light: 0x268785, lightAlpha: 0.16, dark: 0x268785, darkAlpha: 0.3)
         case .edomurasaki: Theme.dynamic(light: 0x77428D, lightAlpha: 0.16, dark: 0x87599B, darkAlpha: 0.3)
         }

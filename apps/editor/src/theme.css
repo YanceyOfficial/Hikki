@@ -278,12 +278,12 @@
   --selection: rgba(202, 122, 44, 0.16);
 }
 :root[data-tone='wakatake'] {
-  --primary: #569e77;
+  --primary: #559d75;
   --primary-foreground: #ffffff;
-  --sidebar-primary: #569e77;
-  --ring: rgba(86, 158, 119, 0.35);
-  --tone-ink: #437b5d;
-  --selection: rgba(86, 158, 119, 0.16);
+  --sidebar-primary: #559d75;
+  --ring: rgba(85, 157, 117, 0.35);
+  --tone-ink: #427a5b;
+  --selection: rgba(85, 157, 117, 0.16);
 }
 :root[data-tone='seiheki'] {
   --primary: #268785;
