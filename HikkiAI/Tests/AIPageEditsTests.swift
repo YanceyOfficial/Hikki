@@ -88,6 +88,15 @@ struct AIPageEditsTests {
         #expect(AIPageEdits.instructions.contains("\"omitted\""))
     }
 
+    /// A check of the page ("compare my notes with this answer key") proposes the corrections as changes in the same
+    /// reply — not a list in the chat waiting for "now fix them" (ISSUE-254).
+    @Test func aCheckOfThePageProposesItsCorrections() {
+        let instructions = AIPageEdits.instructions
+        #expect(instructions.contains("proofread"))
+        #expect(instructions.contains("compare"))
+        #expect(instructions.contains("never only list corrections"))
+    }
+
     @Test func blocksMakeTheChatAbleToEdit() {
         let model = AIModelCatalog.sonnet
         let plain = AIPrompts.chat([.user("hi")], pages: [(title: "T", text: "body")], model: model, webSearch: false)

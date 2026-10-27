@@ -131,8 +131,12 @@ public enum AIPageEdits {
 
 
         The open page is given as JSON blocks (id, type, inline HTML). When the user asks you to change that page — \
-        rewrite, fix, add to, reorder or remove parts of it — and only then, say in a sentence or two what you will \
-        change, then end your reply with one fenced block listing the changes, with nothing after it:
+        rewrite, fix, add to, reorder or remove parts of it — or to check it (proofread it, find its mistakes, compare \
+        it with an answer key, a picture or another source), propose what you would change as changes: say in a \
+        sentence or two what you found and will change, then end your reply with one fenced block listing the \
+        changes, with nothing after it. The user approves each change in the page, so never only list corrections and \
+        wait to be told to apply them; a reply that changes nothing (an explanation, a summary, a check that found \
+        nothing wrong) has no changes block:
         ```hikki-changes
         {"changes":[{"kind":"rewrite","block":"<id>","html":"<the block's new inline HTML>","title":"<what changes, a few words>","why":"<one short reason>"}]}
         ```

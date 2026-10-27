@@ -20,6 +20,31 @@
   ::selection {
     background: var(--color-selection);
   }
+  /* The scrollbars are ours, Notion's: a thin thumb in the input colour with no track, shown while the pointer is
+     over the scroller and darker under it; the page's starts under the toolbar it scrolls beneath. WebKit's own
+     overlay bar read as a web page's beside the app's chrome (ISSUE-254). Pointer devices only: a touch screen keeps
+     the system's bar, which this styling would pin on screen. */
+  @media (hover: hover) and (pointer: fine) {
+    ::-webkit-scrollbar {
+      @apply size-2.5;
+    }
+    ::-webkit-scrollbar-track {
+      @apply bg-transparent;
+    }
+    html::-webkit-scrollbar-track:vertical,
+    body::-webkit-scrollbar-track:vertical {
+      margin-top: var(--hk-inset-top, 0px);
+    }
+    ::-webkit-scrollbar-thumb {
+      @apply rounded-full border-2 border-transparent bg-transparent bg-clip-padding;
+    }
+    :hover::-webkit-scrollbar-thumb {
+      @apply bg-input;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      @apply bg-muted-foreground;
+    }
+  }
   button {
     font: inherit;
     color: inherit;
