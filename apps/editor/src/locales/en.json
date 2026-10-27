@@ -264,7 +264,9 @@
     "placeholder": "Paste or type a link",
     "apply": "Apply",
     "remove": "Remove link",
-    "open": "Open link"
+    "open": "Open link",
+    "edit": "Edit",
+    "copy": "Copy link"
   },
   "code": {
     "plainText": "Plain text",

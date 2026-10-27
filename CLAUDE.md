@@ -631,7 +631,10 @@ HikkiUITests/                 XCUITest flows
   the page index (`window.hikki.setPages`) so pasted links get titles; "Copy link to block" puts a ready `<a>` plus the
   URL on the clipboard; a page's link pasted as plain text, dropped, or pasted as our own copied `<a>`
   (`transformPastedHTML`) lands as the page's mention chip, which follows the page's title and icon (a labelled
-  hyperlink's words went stale — ISSUE-241); a block's link lands as a labelled hyperlink. A dropped one: a
+  hyperlink's words went stale — ISSUE-241); a block's link lands as a labelled hyperlink. The pointer resting on a
+  link shows Notion's card (`apps/editor/src/extensions/link-hover.ts`, drawn by `apps/editor/src/components/link-card.tsx`:
+  where it goes — a page link by its page's title —, Copy, and Edit, which turns the card into the link field with
+  Remove link; fine pointers only, never on a mention chip). A dropped one: a
   sidebar row's drag carries the page's link (`PageLink.dragItem`), the editor's `handleDrop` inserts it where it
   lands, and the toolbar's `TabStrip` (`TabStripDrop`, `HikkiUI/Sources/TabStrip.swift`) opens it — between tabs
   as a new tab (or that page's tab is focused), onto a tab in that tab. Clicks go through the bridge

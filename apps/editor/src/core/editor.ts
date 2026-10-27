@@ -22,6 +22,7 @@ import { Embed } from '../extensions/embed'
 import { EmojiSuggestion } from '../extensions/emoji-suggestion'
 import { Find } from '../extensions/find'
 import { ImageLoading } from '../extensions/image-loading'
+import { LinkHover } from '../extensions/link-hover'
 import { mathExtension } from '../extensions/math'
 import { mediaExtensions, type MediaHost } from '../extensions/media'
 import { PageLinks, type PageLinksHost } from '../extensions/page-links'
@@ -151,6 +152,8 @@ export function editorExtensions(options: EditorOptions = {}): AnyExtension[] {
     ...mediaExtensions(options.media ?? null),
     Drawing.configure({ host: options.drawing ?? null }),
     PageLinks(options.pageLinks ?? noPageLinks),
+    // Notion's card over a hovered link: where it goes, Copy, Edit.
+    LinkHover(options.pageLinks ?? noPageLinks),
     // "@" mentions a page or puts a date (a chip, optionally a reminder); ":" suggests emoji.
     PageMention(options.pageLinks ?? noPageLinks),
     DateMention,

@@ -264,7 +264,9 @@
     "placeholder": "粘贴或输入链接",
     "apply": "应用",
     "remove": "移除链接",
-    "open": "打开链接"
+    "open": "打开链接",
+    "edit": "编辑",
+    "copy": "复制链接"
   },
   "code": {
     "plainText": "纯文本",
