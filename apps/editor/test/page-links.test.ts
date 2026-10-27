@@ -3,6 +3,7 @@ import UniqueID from '@tiptap/extension-unique-id'
 import StarterKit from '@tiptap/starter-kit'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { createEditor } from '../src/core/editor'
 import { isSafeHref } from '../src/core/links'
 import { BlockControls } from '../src/extensions/block-controls'
 import {
@@ -17,6 +18,7 @@ import {
   parsePageLink,
   type PageLinksHost
 } from '../src/extensions/page-links'
+import { doc as pageDoc } from './helpers'
 
 let host: HTMLElement
 let editor: Editor
@@ -130,7 +132,7 @@ describe('page links', () => {
     expect(droppedPageLink(null)).toBeNull()
   })
 
-  it('a page dragged from the sidebar drops as a labelled hyperlink where it lands', () => {
+  it('a page dragged from the sidebar drops as a labelled hyperlink where it lands (no mention in this schema)', () => {
     const { handled, prevented } = drop({ 'text/uri-list': 'hikki://page/notes' })
     expect(handled).toBe(true)
     expect(prevented).toBe(true)
@@ -187,6 +189,82 @@ describe('page links', () => {
     expect(paste('hikki://page/notes', '<a href="hikki://page/notes">Meeting notes</a>')).toBe(
       false
     )
+  })
+
+  // ISSUE-241: a labelled hyperlink's words never followed the page's title or icon.
+  describe('in the page schema, a page link is the page’s mention, which follows the page', () => {
+    let full: Editor
+    let home: HTMLElement
+    beforeEach(() => {
+      home = document.createElement('div')
+      document.body.append(home)
+      full = createEditor(home, pageDoc('start'), { pageLinks: links })
+      full.commands.setTextSelection(full.state.doc.content.size - 1)
+    })
+    afterEach(() => {
+      full.destroy()
+      home.remove()
+    })
+    const pasteInto = (text: string, html = '') => {
+      const plugin = PageLinksKey.get(full.state)!
+      const event = {
+        clipboardData: { getData: (type: string) => (type === 'text/html' ? html : text) }
+      }
+      return plugin.props.handlePaste!.call(
+        plugin,
+        full.view,
+        event as unknown as ClipboardEvent,
+        full.state.doc.slice(0, 0)
+      )
+    }
+    const lastInline = () => full.getJSON().content?.at(-1)?.content?.at(-1)
+
+    it('pasted as plain text', () => {
+      expect(pasteInto('hikki://page/notes')).toBe(true)
+      expect(lastInline()).toMatchObject({
+        type: 'mention',
+        attrs: { id: 'notes', label: 'Meeting notes' }
+      })
+      expect(full.isActive('link')).toBe(false)
+    })
+
+    it('pasted as one of our own copied links (a ready <a>), while a block link stays a hyperlink', () => {
+      full.view.pasteHTML('<a href="hikki://page/notes">📓 Meeting notes</a>')
+      expect(lastInline()).toMatchObject({
+        type: 'mention',
+        attrs: { id: 'notes', label: 'Meeting notes' }
+      })
+      full.view.pasteHTML('<a href="hikki://page/here#h1">名词句基本文型</a>')
+      expect(lastInline()).toMatchObject({
+        type: 'text',
+        text: '名词句基本文型',
+        marks: [{ type: 'link', attrs: { href: 'hikki://page/here#h1' } }]
+      })
+    })
+
+    it('dropped from the sidebar', () => {
+      const plugin = PageLinksKey.get(full.state)!
+      const inside = full.state.doc.content.size - 1
+      vi.spyOn(full.view, 'posAtCoords').mockReturnValue({ pos: inside, inside })
+      const event = {
+        clientX: 10,
+        clientY: 10,
+        preventDefault: vi.fn(),
+        dataTransfer: {
+          getData: (t: string) => (t === 'text/uri-list' ? 'hikki://page/notes' : '')
+        }
+      }
+      expect(
+        plugin.props.handleDrop!.call(
+          plugin,
+          full.view,
+          event as unknown as DragEvent,
+          full.state.doc.slice(0, 0),
+          false
+        )
+      ).toBe(true)
+      expect(lastInline()).toMatchObject({ type: 'mention', attrs: { id: 'notes' } })
+    })
   })
 
   it('clicking a page link opens it (with its block); other links go to the system', () => {

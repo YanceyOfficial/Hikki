@@ -201,10 +201,12 @@ export function droppedPageLink(data: DataTransfer | null): PageLinkTarget | nul
 }
 
 /**
- * Page links (`hikki://page/<id>#<block>`): pasting one as plain text inserts a labelled hyperlink
- * (Notion's "Copy link to block" → paste), and so does dropping one (a sidebar page dragged into the page);
- * clicking a link opens the page, or hands other links to the system. Tiptap's own `linkOnPaste` still
- * links a non-empty selection with the pasted URL.
+ * Page links (`hikki://page/<id>#<block>`): a page's link pasted as plain text, dropped (a sidebar page dragged into
+ * the page) or pasted as one of our own copied `<a>`s lands as the page's mention chip, which follows the page's
+ * title and icon from then on (ISSUE-241: a labelled hyperlink's words went stale); a block's link lands as a
+ * labelled hyperlink (Notion's "Copy link to block" → paste), its words the block's. Clicking a link opens the page,
+ * or hands other links to the system. Tiptap's own `linkOnPaste` still links a non-empty selection with the pasted
+ * URL.
  */
 export function PageLinks(host: PageLinksHost) {
   return Extension.create({
@@ -215,6 +217,16 @@ export function PageLinks(host: PageLinksHost) {
         insertPageLink:
           (target) =>
           ({ editor, chain }) => {
+            // A page's link is its mention (where the schema has one), kept in step with the page.
+            if (!target.blockId && editor.schema.nodes.mention) {
+              const page = host.pages().find((p) => p.id === target.pageId)
+              return chain()
+                .insertContent({
+                  type: 'mention',
+                  attrs: { id: target.pageId, label: page?.title.trim() || host.untitled() }
+                })
+                .run()
+            }
             const href = pageLinkHref(target.pageId, target.blockId)
             const label = linkLabel(editor, target, host)
             return chain()
@@ -275,6 +287,25 @@ export function PageLinks(host: PageLinksHost) {
         new Plugin({
           key: PageLinksKey,
           props: {
+            // A copied page link (`copyLink`: a ready <a> around the title) pastes as the page's mention, so its
+            // words don't go stale; block links keep their <a>. Tiptap's Mention reads `data-id` / `data-label`,
+            // and its `a[data-type="mention"]` rule comes ahead of the link mark's.
+            transformPastedHTML(html) {
+              if (!editor.schema.nodes.mention || !html.includes('hikki://page/')) return html
+              const parsed = new DOMParser().parseFromString(html, 'text/html')
+              let changed = false
+              for (const anchor of parsed.querySelectorAll<HTMLAnchorElement>('a[href]')) {
+                const target = parsePageLink(anchor.getAttribute('href') ?? '')
+                if (!target || target.blockId || anchor.dataset.type) continue
+                const page = host.pages().find((p) => p.id === target.pageId)
+                anchor.dataset.type = 'mention'
+                anchor.dataset.id = target.pageId
+                anchor.dataset.label =
+                  page?.title.trim() || anchor.textContent?.trim() || host.untitled()
+                changed = true
+              }
+              return changed ? parsed.body.innerHTML : html
+            },
             handlePaste(view, event) {
               const text = event.clipboardData?.getData('text/plain') ?? ''
               const html = event.clipboardData?.getData('text/html') ?? ''
