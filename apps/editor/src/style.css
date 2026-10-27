@@ -912,8 +912,11 @@
 .tiptap .hk-selection {
   background: var(--color-selection);
 }
-/* The drag layer (selection-paint.ts): the selected characters' boxes, behind the page's text, while a mouse drag is
-   still selecting. Its parent becomes a stacking context so the layer sits between its background and the text. */
+/* The drag layer (selection-paint.ts): the selected characters' boxes while a mouse drag is still selecting. Over the
+   page (the selection colour is a translucent wash, so the words read through it as they do under the settled
+   decoration): behind the text, a block with a background of its own — a callout, a code block — covered it, and a
+   drag inside one showed nothing until the button was let go (ISSUE-222). Its parent becomes a stacking context so
+   the layer stays within the page column. */
 .hk-column:has(> .hk-selection-layer) {
   position: relative;
   isolation: isolate;
@@ -921,7 +924,7 @@
 .hk-selection-layer {
   position: absolute;
   inset: 0;
-  z-index: -1;
+  z-index: 1;
   pointer-events: none;
 }
 .hk-selection-layer > div {
