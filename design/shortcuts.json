@@ -92,8 +92,8 @@
       "group": "find"
     },
     "findReplace": {
-      "key": "f",
-      "modifiers": ["command", "option"],
+      "key": "r",
+      "modifiers": ["command"],
       "bound": "both",
       "group": "find"
     },

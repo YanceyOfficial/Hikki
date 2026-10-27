@@ -28,8 +28,9 @@ describe('shortcut registry', () => {
 
   it('matches by physical key, so ⌥ changing the character does not matter', () => {
     expect(matchesShortcut(key({ metaKey: true, code: 'KeyF', key: 'f' }), 'find')).toBe(true)
+    // ⌥⌘C (Copy Link): ⌥ makes the key "ç", the code stays KeyC.
     expect(
-      matchesShortcut(key({ metaKey: true, altKey: true, code: 'KeyF', key: 'ƒ' }), 'findReplace')
+      matchesShortcut(key({ metaKey: true, altKey: true, code: 'KeyC', key: 'ç' }), 'copyPageLink')
     ).toBe(true)
     expect(
       matchesShortcut(key({ metaKey: true, altKey: true, code: 'KeyF', key: 'ƒ' }), 'find')

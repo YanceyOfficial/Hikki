@@ -23,11 +23,11 @@ afterEach(() => {
 const key = (init: KeyboardEventInit) => new KeyboardEvent('keydown', init)
 
 describe('find shortcuts', () => {
-  it('map ⌘F, ⌥⌘F, ⌘G and ⇧⌘G by key code (⌥ changes the key on macOS)', () => {
+  it('map ⌘F, ⌘R, ⌘G and ⇧⌘G by key code (a modifier may change the key on macOS)', () => {
     expect(findShortcut(key({ metaKey: true, code: 'KeyF', key: 'f' }))).toBe('find')
-    expect(findShortcut(key({ metaKey: true, altKey: true, code: 'KeyF', key: 'ƒ' }))).toBe(
-      'replace'
-    )
+    // Replace is ⌘R (ISSUE-229; it was ⌥⌘F, which is nobody's habit here).
+    expect(findShortcut(key({ metaKey: true, code: 'KeyR', key: 'r' }))).toBe('replace')
+    expect(findShortcut(key({ metaKey: true, altKey: true, code: 'KeyF', key: 'ƒ' }))).toBeNull()
     expect(findShortcut(key({ metaKey: true, code: 'KeyG', key: 'g' }))).toBe('next')
     expect(findShortcut(key({ metaKey: true, shiftKey: true, code: 'KeyG', key: 'G' }))).toBe(
       'previous'

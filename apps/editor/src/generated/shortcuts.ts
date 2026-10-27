@@ -87,7 +87,7 @@ export const SHORTCUTS: Record<ShortcutId, Shortcut> = {
   lockPage: { key: 'l', command: true, shift: true, option: false, control: false, bound: 'app', display: '⇧⌘L' },
   copyPageLink: { key: 'c', command: true, shift: false, option: true, control: false, bound: 'app', display: '⌥⌘C' },
   find: { key: 'f', command: true, shift: false, option: false, control: false, bound: 'both', display: '⌘F' },
-  findReplace: { key: 'f', command: true, shift: false, option: true, control: false, bound: 'both', display: '⌥⌘F' },
+  findReplace: { key: 'r', command: true, shift: false, option: false, control: false, bound: 'both', display: '⌘R' },
   findNext: { key: 'g', command: true, shift: false, option: false, control: false, bound: 'both', display: '⌘G' },
   findPrevious: { key: 'g', command: true, shift: true, option: false, control: false, bound: 'both', display: '⇧⌘G' },
   bold: { key: 'b', command: true, shift: false, option: false, control: false, bound: 'editor', display: '⌘B' },

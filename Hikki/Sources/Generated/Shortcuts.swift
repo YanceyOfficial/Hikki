@@ -215,7 +215,7 @@ enum Shortcut: String, CaseIterable {
         case .lockPage: KeyCombo("l", [.shift, .command])
         case .copyPageLink: KeyCombo("c", [.option, .command])
         case .find: KeyCombo("f", [.command])
-        case .findReplace: KeyCombo("f", [.option, .command])
+        case .findReplace: KeyCombo("r", [.command])
         case .findNext: KeyCombo("g", [.command])
         case .findPrevious: KeyCombo("g", [.shift, .command])
         case .bold: KeyCombo("b", [.command])

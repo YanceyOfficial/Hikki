@@ -179,6 +179,7 @@ export function FindPanel({ editor, open, replace, initialText, onReplaceToggle,
           <Separator orientation="vertical" className="mx-1 data-[orientation=vertical]:h-4" />
           <Option
             label={t('find.replaceToggle')}
+            keys={shortcutLabel('findReplace')}
             pressed={replace}
             onChange={onReplaceToggle}
             className="aria-pressed:bg-primary/10 aria-pressed:text-primary"
@@ -260,12 +261,14 @@ function Action({
 /** A search option (match case, whole word, regex) or the replace switch: a toggle inside the field. */
 function Option({
   label,
+  keys,
   pressed,
   onChange,
   className,
   children
 }: {
   label: string
+  keys?: string
   pressed: boolean
   onChange: (pressed: boolean) => void
   className?: string
@@ -290,7 +293,10 @@ function Option({
       >
         {children}
       </TooltipTrigger>
-      <TooltipContent side="bottom">{label}</TooltipContent>
+      <TooltipContent side="bottom">
+        {label}
+        {keys && <Kbd>{keys}</Kbd>}
+      </TooltipContent>
     </Tooltip>
   )
 }

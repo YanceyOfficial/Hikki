@@ -964,7 +964,7 @@ HikkiUITests/                 XCUITest flows
   `aiChange` (with the block's text before and after); an approval is one undo step, Approve all one step for all;
   editing a block makes only the changes naming it stale.
 - **Find, spelling, insets**: find and replace is `apps/editor/src/extensions/find.ts` (Tiptap's extension, RE2 regex) with
-  `apps/editor/src/components/find-panel.tsx`; the page handles ⌘F/⌥⌘F/⌘G itself, the native Edit menu and the page ⋯ menu ("Find
+  `apps/editor/src/components/find-panel.tsx`; the page handles ⌘F/⌘R/⌘G itself, the native Edit menu and the page ⋯ menu ("Find
   in Page", the only way on a phone) call `window.hikki.find`. Spellcheck is WebKit's (Settings → Editor,
   `window.hikki.setSpellcheck`). `window.hikki.setInsets` gives the page the toolbar height for fixed panels and, on
   iPhone, the floating bar's room at the foot (`--hk-inset-bottom`, 0 while the keyboard is up).
