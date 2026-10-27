@@ -176,23 +176,19 @@ public struct TabStrip<Leading: View>: View {
     /// The tabs and "+", one drop area: a page lands between tabs or on one.
     private var tabs: some View {
         HStack(spacing: Spacing.s1) {
-            HStack(spacing: Spacing.s0_5) {
-                ForEach(groups, id: \.first!.id) { group in
-                    if group.count > 1 {
-                        // A split: its two tabs in one outlined capsule, a hairline between them.
-                        HStack(spacing: Spacing.s0) {
-                            ForEach(group.indices, id: \.self) { index in
-                                if index > 0 {
-                                    Theme.border.frame(width: Spacing.px, height: Spacing.s4)
-                                }
-                                tab(group[index])
-                            }
+            // Every tab is an item of this one stack, a split's two included: nested in a stack of their own the pair
+            // was one item, squeezed to half a tab each while the single tabs kept theirs (ISSUE-231). A hairline
+            // stands between a split's two instead of the gap; their shared capsule is drawn over the strip from
+            // their frames.
+            HStack(spacing: Spacing.s0) {
+                ForEach(items, id: \.id) { item in
+                    tab(item)
+                    if item.id != items.last?.id {
+                        if item.joinedToNext {
+                            Theme.border.frame(width: Spacing.px, height: Spacing.s4)
+                        } else {
+                            Color.clear.frame(width: Spacing.s0_5)
                         }
-                        .background(Capsule().strokeBorder(Theme.border, lineWidth: Spacing.px))
-                        .accessibilityElement(children: .contain)
-                        .accessibilityIdentifier("tab-split")
-                    } else {
-                        tab(group[0])
                     }
                 }
             }
@@ -204,6 +200,16 @@ public struct TabStrip<Leading: View>: View {
         .overlay {
             // The line sits on the strip's own middle (the toolbar bar is taller than the tabs).
             GeometryReader { strip in
+                // A split's two tabs in one outlined capsule.
+                ForEach(splitPairs, id: \.leading) { pair in
+                    if let a = frames[pair.leading], let b = frames[pair.trailing] {
+                        Capsule().strokeBorder(Theme.border, lineWidth: Spacing.px)
+                            .frame(width: b.maxX - a.minX, height: a.height)
+                            .position(x: (a.minX + b.maxX) / 2, y: a.midY)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityIdentifier("tab-split")
+                    }
+                }
                 if case .between(let index) = dropTarget, let x = gapX(before: index) {
                     colorTone.fill.frame(width: Spacing.s0_5, height: Size.iconButtonSm).clipShape(.capsule)
                         .position(x: x, y: strip.size.height / 2)
@@ -228,17 +234,9 @@ public struct TabStrip<Leading: View>: View {
         .onChange(of: items) { _, _ in dropTarget = nil }
     }
 
-    /// The tabs as the strip draws them: one each, a split's two together.
-    private var groups: [[TabStripItem]] {
-        var out: [[TabStripItem]] = []
-        for item in items {
-            if let last = out.last?.last, last.joinedToNext, out[out.count - 1].count == 1 {
-                out[out.count - 1].append(item)
-            } else {
-                out.append([item])
-            }
-        }
-        return out
+    /// The splits: each pair's leading and trailing tab.
+    private var splitPairs: [(leading: UUID, trailing: UUID)] {
+        zip(items, items.dropFirst()).compactMap { a, b in a.joinedToNext ? (leading: a.id, trailing: b.id) : nil }
     }
 
     private func tab(_ item: TabStripItem) -> some View {
@@ -440,13 +438,14 @@ private struct TabButton<Menu: View>: View {
                 .lineLimit(1)
             Spacer(minLength: 0)
             if canClose && (hovering || isActive) {
+                // The same quiet hover as every other icon button (a rounded square, not a disc — ISSUE-231).
                 Button(action: onClose) {
                     IconView(.x, size: TextSize.xs.rawValue)
                         .foregroundStyle(Theme.mutedForeground)
                         .frame(width: Size.sidebarIcon, height: Size.sidebarIcon)
-                        .contentShape(.circle)
+                        .contentShape(.rect(cornerRadius: Radius.sm))
                 }
-                .buttonStyle(HoverHighlightStyle(cornerRadius: Radius.full))
+                .buttonStyle(HoverHighlightStyle())
                 .accessibilityLabel("app:tabs.close")
             }
         }
