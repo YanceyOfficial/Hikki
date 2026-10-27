@@ -82,6 +82,26 @@ describe('find and replace', () => {
     expect(host.querySelectorAll('.find-and-replace-result')).toHaveLength(0)
   })
 
+  it('⌘F after closing opens find alone, whatever Replace was toggled to (ISSUE-229)', async () => {
+    editor = createEditor(host, doc('find me'))
+    act(() => runFind(editor, 'replace'))
+    expect(await screen.findByPlaceholderText('Replace by…')).toBeTruthy()
+    act(() => runFind(editor, 'close'))
+    act(() => runFind(editor, 'find'))
+    await screen.findByPlaceholderText('Find')
+    expect(screen.queryByPlaceholderText('Replace by…')).toBeNull()
+    // Toggled on by hand, Replace stays while the panel is open — a second ⌘F only refocuses — and is gone after
+    // the panel closes.
+    act(() => void screen.getByRole('button', { name: 'Replace' }).click())
+    expect(await screen.findByPlaceholderText('Replace by…')).toBeTruthy()
+    act(() => runFind(editor, 'find'))
+    expect(screen.queryByPlaceholderText('Replace by…')).toBeTruthy()
+    act(() => runFind(editor, 'close'))
+    act(() => runFind(editor, 'find'))
+    await screen.findByPlaceholderText('Find')
+    expect(screen.queryByPlaceholderText('Replace by…')).toBeNull()
+  })
+
   it('regular expressions use RE2 (no catastrophic backtracking)', async () => {
     editor = createEditor(host, doc(`${'a'.repeat(40)}!`))
     act(() => runFind(editor, 'find'))

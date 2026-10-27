@@ -118,8 +118,10 @@ export function runFind(editor: Editor, mode: FindMode): void {
       } else {
         storage.prefill = null
       }
+      // ⌘F opens find alone, ⌘R with Replace; once open, ⌘F only refocuses and keeps the Replace row the reader
+      // toggled on (ISSUE-229: a toggled-on row came back with the next ⌘F after closing).
+      storage.replace = mode === 'replace' || (storage.open && storage.replace)
       storage.open = true
-      if (mode === 'replace') storage.replace = true
       storage.focusRequest += 1
       break
     }
@@ -134,6 +136,7 @@ export function runFind(editor: Editor, mode: FindMode): void {
     case 'close':
       if (!storage.open) return
       storage.open = false
+      storage.replace = false
       editor.commands.clearSearch()
       editor.commands.focus()
       break
