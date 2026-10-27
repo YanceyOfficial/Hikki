@@ -115,7 +115,17 @@ public struct AIChangeReview: View {
                     .font(.hk(.sm, .medium))
                     .foregroundStyle(Theme.foreground)
                     .lineLimit(2)
-                Text(item.kind.label).font(.hk(.xs)).foregroundStyle(Theme.subtleForeground)
+                if item.runs.isEmpty {
+                    Text(item.kind.label).font(.hk(.xs)).foregroundStyle(Theme.subtleForeground)
+                } else {
+                    // What the change says: its new words marked, a deletion struck through (ISSUE-255 — a card
+                    // that read "Insert / Insert" said nothing); the icon names the kind.
+                    Text(quote(item))
+                        .font(.hk(.sm))
+                        .foregroundStyle(Theme.foreground)
+                        .lineLimit(3)
+                        .padding(.top, Spacing.s1)
+                }
                 if let why = item.why {
                     Text(verbatim: why).font(.hk(.xs)).foregroundStyle(Theme.mutedForeground).lineLimit(3)
                 }

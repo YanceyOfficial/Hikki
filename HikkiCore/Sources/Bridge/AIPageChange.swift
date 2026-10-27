@@ -62,6 +62,21 @@ public struct AIPageChange: Codable, Sendable, Equatable, Identifiable {
         self.reviewedAt = reviewedAt
     }
 
+    /// What a card shows of the change before it is reviewed: an insert's new text (added), a rewrite's words as a
+    /// diff of the block's text against the new one (removals struck, additions marked), a block to delete struck
+    /// through, a moved block as it reads — from `beforeText` / `afterText`, filled when the change is proposed from
+    /// the blocks the model was given (ISSUE-255: a card said only "Insert"). Empty without them.
+    public var preview: [DiffRun] {
+        let before = beforeText ?? ""
+        let after = afterText ?? ""
+        switch kind {
+        case .insert: return after.isEmpty ? [] : [DiffRun(after, .added)]
+        case .delete: return before.isEmpty ? [] : [DiffRun(before, .removed)]
+        case .move: return before.isEmpty ? [] : [DiffRun(before, .same)]
+        case .rewrite: return before.isEmpty && after.isEmpty ? [] : PageDiff.words(old: before, new: after)
+        }
+    }
+
     /// The change as `window.hikki.aiChanges` takes it.
     public var bridgeValue: [String: Any] {
         var value: [String: Any] = ["id": id, "kind": kind.rawValue, "title": title, "status": status.rawValue]

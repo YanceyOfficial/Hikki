@@ -374,7 +374,7 @@ public enum AIPrompts {
     }
 
     /// The text of inline HTML (tags dropped, the common entities read).
-    static func plainText(_ html: String) -> String {
+    public static func plainText(_ html: String) -> String {
         var text = html.replacingOccurrences(of: "<br>", with: "\n")
         text = text.replacingOccurrences(of: "<[^>]*>", with: "", options: .regularExpression)
         for (entity, char) in [("&lt;", "<"), ("&gt;", ">"), ("&quot;", "\""), ("&#39;", "'"), ("&nbsp;", " "), ("&amp;", "&")] {

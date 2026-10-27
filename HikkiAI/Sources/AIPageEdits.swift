@@ -138,7 +138,7 @@ public enum AIPageEdits {
         wait to be told to apply them; a reply that changes nothing (an explanation, a summary, a check that found \
         nothing wrong) has no changes block:
         ```hikki-changes
-        {"changes":[{"kind":"rewrite","block":"<id>","html":"<the block's new inline HTML>","title":"<what changes, a few words>","why":"<one short reason>"}]}
+        {"changes":[{"kind":"rewrite","block":"<id>","html":"<the block's new inline HTML>","title":"<the gist of the new text, a few words>","why":"<one short reason>"}]}
         ```
         Kinds:
         - rewrite: one block's text is replaced — "block", "html".
@@ -154,7 +154,9 @@ public enum AIPageEdits {
         Rules: use the page's block ids exactly as given; at most one change per existing block; each change touches \
         one block, so prefer several small changes to one large one; in html use only inline tags (strong, em, u, s, \
         code, a with href, br) and keep the formatting the text already has; keep the page's language unless asked to \
-        translate; write titles and reasons in the user's language. Never put a hikki-changes block in a reply that \
-        doesn't change the page.
+        translate; write titles and reasons in the user's language. A title says what the block will say (its gist \
+        in a few words, or the correction itself: "He know → He knows"), never the kind of change — the card shows \
+        the kind itself, so "Insert" or "Rewrite" as a title says nothing. Never put a hikki-changes block in a reply \
+        that doesn't change the page.
         """
 }

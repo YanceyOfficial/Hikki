@@ -85,6 +85,8 @@ final class AIChat {
     /// The page blocks the answer being written was given (its changes may name only these).
     /// The ids of the blocks the question went with, in reading order (`end` names the last).
     @ObservationIgnored private var askedBlocks: [String]?
+    /// Those blocks' text by id, for the cards of the changes the answer proposes (ISSUE-255).
+    @ObservationIgnored private var askedTexts: [String: String] = [:]
     var draft = ""
     var webSearch = true
     /// "auto" or a catalog id; starts from Settings → AI's default.
@@ -312,6 +314,9 @@ final class AIChat {
         // Stopped (or moved to another page) while compacting.
         guard isStreaming else { return }
         askedBlocks = blocks.map { $0.compactMap { $0["id"] } }
+        askedTexts = Dictionary(
+            (blocks ?? []).compactMap { block in block["id"].map { ($0, AIPrompts.plainText(block["html"] ?? "")) } },
+            uniquingKeysWith: { first, _ in first })
         let turns: [AIMessage] = turnsToSend.map { message in
             // An answer's pictures are named by id, so a later answer can change one.
             guard message.role == .user else {
@@ -742,13 +747,18 @@ final class AIChat {
 
     // MARK: - Changes to the page
 
-    /// The changes a finished answer proposes, checked against the blocks it was given.
-    private func proposedChanges(in message: Message, blocks: [String]) -> [AIPageChange] {
+    /// The changes a finished answer proposes, checked against the blocks it was given — each with the text it
+    /// touches (the block's as sent, the new one as plain text), so its card can show what it says before it is
+    /// reviewed (`AIPageChange.preview`, ISSUE-255).
+    private func proposedChanges(in message: Message, blocks: [String], texts: [String: String]) -> [AIPageChange] {
         AIPageEdits.changes(in: message.text, blocks: blocks).enumerated().compactMap { index, change in
             guard let kind = AIPageChange.Kind(rawValue: change.kind) else { return nil }
+            let before = change.block.flatMap { texts[$0] }
+            let after = change.html.map(AIPrompts.plainText)
             return AIPageChange(
                 id: "\(message.id)-\(index)", kind: kind, block: change.block, after: change.after, html: change.html,
-                blockType: change.type, title: change.title, why: change.why)
+                blockType: change.type, title: change.title, why: change.why,
+                beforeText: kind == .insert ? nil : before, afterText: kind == .move ? before : after)
         }
     }
 
@@ -829,11 +839,14 @@ final class AIChat {
         stopTools()
         if messages[last].role == .assistant, messages[last].hasContent {
             messages[last].sentAt = .now
-            if error == nil, let blocks = askedBlocks { messages[last].changes = proposedChanges(in: messages[last], blocks: blocks) }
+            if error == nil, let blocks = askedBlocks {
+                messages[last].changes = proposedChanges(in: messages[last], blocks: blocks, texts: askedTexts)
+            }
             keep([messages[last]])
             if !messages[last].changes.isEmpty { offerChanges(focusFirst: true) }
         }
         askedBlocks = nil
+        askedTexts = [:]
         if let error {
             messages[last].error = AIService.message(for: error)
             if let code = error.errorCode { Incident.report(code, error, category: "ai") }
@@ -1847,13 +1860,21 @@ enum ChangeReviewItem {
         }
     }
 
-    /// Approved: the new words green in the block as it reads now (a deleted block struck through); skipped: what
+    /// Pending: what the change says (`AIPageChange.preview` — new words marked, removed ones struck through);
+    /// approved: the new words green in the block as it reads now (a deleted block struck through); skipped: what
     /// was proposed, unmarked.
     static func runs(_ change: AIPageChange) -> [VersionDiffView.Run] {
         let before = change.beforeText ?? ""
         let after = change.afterText ?? ""
         switch change.status {
-        case .pending, .stale: return []
+        case .pending, .stale:
+            return change.preview.map { run in
+                switch run.change {
+                case .same: .init(run.text, .same)
+                case .added: .init(run.text, .added)
+                case .removed: .init(run.text, .removed)
+                }
+            }
         case .skipped: return after.isEmpty ? (before.isEmpty ? [] : [.init(before, .same)]) : [.init(after, .same)]
         case .approved, .edited:
             switch change.kind {
