@@ -2,10 +2,12 @@
     import AppKit
     import SwiftUI
 
-    /// A context menu for a view SwiftUI's `.contextMenu` never shows — a tab in the window toolbar, where the press
-    /// never reached SwiftUI's menu, with the tab's drag on it or without (ISSUE-191): an AppKit view laid over the
-    /// content that is hit by a right click or a control-click alone — every other event falls through to what is
-    /// under it — and pops the menu built from `sections` at that moment, so its items say what the tab can do now.
+    /// A context menu for a view SwiftUI's `.contextMenu` never shows — a tab in the window toolbar (ISSUE-191,
+    /// ISSUE-264). The toolbar hands no right click down to an item's views: neither SwiftUI's menu nor an AppKit
+    /// view's own `menu(for:)` under the tab ever saw one. So this view watches the window's presses itself: a local
+    /// event monitor sees a right click or a control-click before the toolbar does and, where it lands on this view,
+    /// pops the menu built from `sections` at that moment — its items say what the tab can do now. Every other event
+    /// passes the view by (nothing is ever hit here).
     struct ContextMenuOverlay: NSViewRepresentable {
         struct Item {
             var title: String
@@ -30,23 +32,40 @@
             view.sections = sections
         }
 
+        static func dismantleNSView(_ view: MenuView, coordinator: ()) { view.stop() }
+
         final class MenuView: NSView {
             var sections: () -> [[Item]] = { [] }
+            private var monitor: Any?
 
-            /// Only a press that opens a menu lands here; clicks, drags and hovers reach the view below.
-            override func hitTest(_ point: NSPoint) -> NSView? {
-                guard let event = NSApp.currentEvent, Self.opensMenu(event) else { return nil }
-                return super.hitTest(point)
+            /// Clicks, drags and hovers reach the view below; the menu press is taken by the monitor.
+            override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+            override func viewDidMoveToWindow() {
+                super.viewDidMoveToWindow()
+                stop()
+                guard window != nil else { return }
+                monitor = NSEvent.addLocalMonitorForEvents(matching: [.rightMouseDown, .leftMouseDown]) { [weak self] event in
+                    let taken = MainActor.assumeIsolated { self?.take(event) ?? false }
+                    return taken ? nil : event
+                }
             }
 
-            override func menu(for event: NSEvent) -> NSMenu? { Self.menu(sections()) }
+            func stop() {
+                if let monitor { NSEvent.removeMonitor(monitor) }
+                monitor = nil
+            }
 
-            /// A control-click arrives as a left press; AppKit pops a menu only for a right one.
-            override func mouseDown(with event: NSEvent) {
-                guard event.modifierFlags.contains(.control), let menu = menu(for: event) else {
-                    return super.mouseDown(with: event)
-                }
+            /// Whether the press is this view's menu: a right click or control-click in its window, on it, with
+            /// something to show — then the menu pops and the press goes no further.
+            private func take(_ event: NSEvent) -> Bool {
+                guard Self.opensMenu(event), let window, event.window === window, !isHiddenOrHasHiddenAncestor,
+                    bounds.contains(convert(event.locationInWindow, from: nil))
+                else { return false }
+                let menu = Self.menu(sections())
+                guard !menu.items.isEmpty else { return false }
                 NSMenu.popUpContextMenu(menu, with: event, for: self)
+                return true
             }
 
             /// A right click, or a control-click.
