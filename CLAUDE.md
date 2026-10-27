@@ -1061,7 +1061,11 @@ HikkiUITests/                 XCUITest flows
   (`Hikki/Sources/LogsView.swift`, newest entries with a level filter). A toast's "Copy details" gives the code, the
   incident id (grep it in the logs) and the app summary.
 - **Demos and screenshots** on the Mac: launch the built binary with `HIKKI_DATA_DIR` and
-  `-ApplePersistenceIgnoreState YES` (otherwise saved-state restoration can leave no window), capture by window id. Never
+  `-ApplePersistenceIgnoreState YES` (otherwise saved-state restoration can leave no window), capture by window id. A
+  Debug build launched outside Xcode also needs `DYLD_FRAMEWORK_PATH` pointing at the build's Products folder (what
+  Xcode's Run sets): the debug dylib reexports our frameworks from the bundle's ReexportedBinaries folder, but its rpath
+  looks for that folder beside the executable (where it isn't), so dyld falls through to the stub frameworks the bundle
+  embeds and the app dies at load on a missing symbol. Never
   `pkill -f Hikki` — the developer runs their own instance of the same binary (shared DerivedData).
 - **BFF on Vercel** (project root `apps/bff/`) compiles `src/` per file and runs it as Node ESM: relative imports need
   `.js` extensions (enforced by `NodeNext` in `apps/bff/tsconfig.json`), and `src/` must not rely on Bun/Node ambient
