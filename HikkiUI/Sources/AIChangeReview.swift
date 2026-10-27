@@ -165,9 +165,16 @@ public struct AIChangeReview: View {
 
     /// Cards behind the top one that still peek out.
     private static let peeking = 3
+    /// The reviewed cards' heights by id, measured as they draw (`ReviewStackLayout` places them by these).
+    @State private var heights: [String: CGFloat] = [:]
 
     private var stack: some View {
-        VStack(alignment: .leading, spacing: Spacing.s2) {
+        // Newest first: the top of the pile, the first of the spread list.
+        let ordered = Array(reviewed.reversed())
+        let placed = ReviewStackLayout.place(
+            heights: ordered.map { heights[$0.id] ?? 0 }, spread: spread, spacing: Spacing.s2, peek: Spacing.s2_5,
+            peeking: Self.peeking)
+        return VStack(alignment: .leading, spacing: Spacing.s2) {
             HStack {
                 Text("app:ai.changes.reviewed \(String(reviewed.count))")
                     .font(.hk(.xs, .medium))
@@ -181,30 +188,32 @@ public struct AIChangeReview: View {
                         .accessibilityIdentifier("ai-changes-stack-toggle")
                 }
             }
-            if spread {
-                VStack(spacing: Spacing.s2) {
-                    ForEach(reviewed.reversed()) { item in
-                        reviewedCard(item).matchedGeometryEffect(id: item.id, in: cards)
-                            .onTapGesture { if item.state != .stale { onFocus(item.id) } }
-                    }
+            // One pile in both states: a card keeps its place in the view tree and only moves, scales and fades
+            // between the pile and the list, so Show all glides. (Two containers — each card a matched pair of an
+            // insertion and a removal, its lines re-wrapped on the way — jittered, ISSUE-257.)
+            ZStack(alignment: .top) {
+                ForEach(Array(ordered.enumerated()), id: \.element.id) { index, item in
+                    reviewedCard(item)
+                        .matchedGeometryEffect(id: item.id, in: cards)
+                        .onGeometryChange(for: CGFloat.self) {
+                            $0.size.height
+                        } action: {
+                            heights[item.id] = $0
+                        }
+                        .scaleEffect(placed.scales[index], anchor: .top)
+                        .offset(y: placed.offsets[index])
+                        .opacity(placed.opacities[index])
+                        .zIndex(Double(ordered.count - index))
+                        .onTapGesture {
+                            if !spread, reviewed.count > 1 {
+                                spread = true
+                            } else if item.state != .stale {
+                                onFocus(item.id)
+                            }
+                        }
                 }
-            } else {
-                ZStack(alignment: .bottom) {
-                    ForEach(Array(reviewed.enumerated()), id: \.element.id) { index, item in
-                        let depth = reviewed.count - 1 - index
-                        reviewedCard(item)
-                            .matchedGeometryEffect(id: item.id, in: cards)
-                            .scaleEffect(1 - CGFloat(depth) * 0.06, anchor: .top)
-                            .offset(y: -CGFloat(depth) * Spacing.s2_5)
-                            .opacity(depth < Self.peeking ? 1 : 0)
-                            .zIndex(Double(index))
-                    }
-                }
-                // Room for the cards peeking above the top one.
-                .padding(.top, CGFloat(min(reviewed.count - 1, Self.peeking - 1)) * Spacing.s2_5)
-                .contentShape(.rect)
-                .onTapGesture { if reviewed.count > 1 { spread = true } }
             }
+            .frame(height: placed.height, alignment: .top)
         }
         .accessibilityIdentifier("ai-changes-stack")
     }
@@ -215,7 +224,7 @@ public struct AIChangeReview: View {
                 Text(quote(item))
                     .font(.hk(.sm))
                     .foregroundStyle(item.state == .skipped ? Theme.mutedForeground : Theme.foreground)
-                    .lineLimit(spread ? nil : 4)
+                    .lineLimit(4)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             VStack(alignment: .leading, spacing: Spacing.s0_5) {
@@ -257,6 +266,44 @@ public struct AIChangeReview: View {
             result += piece
         }
         return result
+    }
+}
+
+/// Where the reviewed cards go, in one pile for both of the stack's states (ISSUE-257). Collapsed: the newest card
+/// on top and the older ones behind it, bottoms aligned, each a step up and a little smaller, only `peeking` of them
+/// shown — a taller card behind shows above the top one, and the pile grows upward to hold it. Spread: a list,
+/// newest first. `heights` are the cards' measured heights, newest first; offsets run from the pile's top.
+enum ReviewStackLayout {
+    struct Placement: Equatable {
+        var offsets: [CGFloat]
+        var scales: [CGFloat]
+        var opacities: [Double]
+        /// The pile's height: the list's, or the top card's plus what rises above it.
+        var height: CGFloat
+    }
+
+    /// How much smaller each card behind the top one is drawn.
+    static let shrink: CGFloat = 0.06
+
+    static func place(heights: [CGFloat], spread: Bool, spacing: CGFloat, peek: CGFloat, peeking: Int) -> Placement {
+        guard let top = heights.first else { return Placement(offsets: [], scales: [], opacities: [], height: 0) }
+        if spread {
+            var offsets: [CGFloat] = []
+            var y: CGFloat = 0
+            for height in heights {
+                offsets.append(y)
+                y += height + spacing
+            }
+            return Placement(
+                offsets: offsets, scales: heights.map { _ in 1 }, opacities: heights.map { _ in 1 }, height: y - spacing)
+        }
+        let shown = min(heights.count, peeking)
+        let rise = (0..<shown).map { heights[$0] + CGFloat($0) * peek - top }.max() ?? 0
+        let room = max(0, rise)
+        return Placement(
+            offsets: heights.indices.map { room + top - heights[$0] - CGFloat($0) * peek },
+            scales: heights.indices.map { max(0.5, 1 - CGFloat($0) * shrink) },
+            opacities: heights.indices.map { $0 < peeking ? 1 : 0 }, height: room + top)
     }
 }
 
