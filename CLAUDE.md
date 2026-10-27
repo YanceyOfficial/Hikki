@@ -618,7 +618,9 @@ HikkiUITests/                 XCUITest flows
   neighbours' middles, a split pair as one); the drag carries the page's link as before plus the tab's id as `app.yancey.hikki.tab`
   (in-process only, declared in Project.swift's Info.plist), which is how the strip tells a reorder from a page drop. A tab's context menu is
   Chrome's (`TabStripMenu` / `TabStripCommand` in `HikkiUI/Sources/TabStrip.swift`, the commands chosen by
-  `NativeDetailToolbar` in ContentView): New Tab to the Right (Home), Open in Split View (where the window splits),
+  `NativeDetailToolbar` in ContentView; on the Mac an AppKit menu over the tab — HikkiUI's `ContextMenuOverlay`, hit
+  by a right click or control-click alone — since SwiftUI's `.contextMenu` never showed in the window toolbar):
+  New Tab to the Right (Home), Open in Split View (where the window splits),
   Duplicate (the whole history), Move to New Window (Mac, a page: the "page" window group, then the tab closes — iPad
   has no such scene yet); for a page VS Code's Copy Link (`PageLink`) and Reveal in Sidebar (`Navigator.sidebarReveal`:
   parents expanded, the sidebar shown and scrolled to the row); then Close, Close Other Tabs, Close Tabs to the Right,

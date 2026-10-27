@@ -52,7 +52,8 @@ public enum TabStripCommand: String, CaseIterable, Hashable, Sendable {
     case newToRight, openInSplit, swapSides, separate, duplicate, moveToNewWindow, copyLink, revealInSidebar, close,
         closeOthers, closeToRight, closeAll
 
-    var title: LocalizedStringKey {
+    /// The command's string key: its title for SwiftUI, and as words for an AppKit menu.
+    var key: String {
         switch self {
         case .newToRight: "app:tabs.newToRight"
         case .openInSplit: "app:split.openPage"
@@ -68,6 +69,10 @@ public enum TabStripCommand: String, CaseIterable, Hashable, Sendable {
         case .closeAll: "app:tabs.closeAll"
         }
     }
+
+    var title: LocalizedStringKey { LocalizedStringKey(key) }
+
+    var localizedTitle: String { String(localized: String.LocalizationValue(key)) }
 
     var icon: Icon {
         switch self {
@@ -244,10 +249,9 @@ public struct TabStrip<Leading: View>: View {
             item: item, isActive: item.id == activeID, canClose: items.count > 1,
             isDropTarget: dropTarget == .onto(item.id),
             dragItem: dragItem != nil || onMove != nil ? { () -> NSItemProvider? in tabDragItem(item.id) } : nil,
-            onSelect: { onSelect(item.id) }, onClose: { onClose(item.id) }
-        ) {
-            if let menu { menuContent(menu, for: item.id) }
-        }
+            onSelect: { onSelect(item.id) }, onClose: { onClose(item.id) },
+            menu: menu.map { menu in { entries(menu, for: item.id) } }
+        )
         .onGeometryChange(for: CGRect.self) {
             $0.frame(in: .named(tabStripSpace))
         } action: {
@@ -295,19 +299,10 @@ public struct TabStrip<Leading: View>: View {
 
     /// The tab's menu, its sections divided; Close / Close Other Tabs / Close All need another tab, Close Tabs to the
     /// Right one after this.
-    @ViewBuilder
-    private func menuContent(_ menu: TabStripMenu, for id: UUID) -> some View {
-        let sections = menu.commands(id)
-        ForEach(sections.indices, id: \.self) { index in
-            if index > 0 { Divider() }
-            ForEach(sections[index], id: \.self) { command in
-                Button {
-                    menu.perform(command, id)
-                } label: {
-                    IconLabel(command.title, icon: command.icon)
-                }
-                .disabled(!isAvailable(command, for: id))
-                .accessibilityIdentifier("tab-menu-\(command.rawValue)")
+    private func entries(_ menu: TabStripMenu, for id: UUID) -> [[TabMenuEntry]] {
+        menu.commands(id).map { section in
+            section.map { command in
+                TabMenuEntry(command: command, enabled: isAvailable(command, for: id)) { menu.perform(command, id) }
             }
         }
     }
@@ -410,7 +405,14 @@ private struct TabStripDropDelegate: DropDelegate {
     }
 }
 
-private struct TabButton<Menu: View>: View {
+/// One command of a tab's context menu, as the tab can run it now.
+private struct TabMenuEntry {
+    let command: TabStripCommand
+    let enabled: Bool
+    let perform: () -> Void
+}
+
+private struct TabButton: View {
     let item: TabStripItem
     let isActive: Bool
     let canClose: Bool
@@ -419,9 +421,8 @@ private struct TabButton<Menu: View>: View {
     var dragItem: (() -> NSItemProvider?)?
     let onSelect: () -> Void
     let onClose: () -> Void
-    /// The tab's context menu. It goes on before the drag: on macOS a `.contextMenu` outside an `.onDrag` never
-    /// shows — the drag takes the press (ISSUE-191, ISSUE-231).
-    @ViewBuilder let menu: () -> Menu
+    /// The tab's context menu, asked for as it opens; nil: none.
+    var menu: (() -> [[TabMenuEntry]])?
     @State private var hovering = false
     @Environment(\.colorTone) private var colorTone
 
@@ -461,7 +462,7 @@ private struct TabButton<Menu: View>: View {
         )
         .animation(Motion.easeOut(), value: isDropTarget)
         .contentShape(.capsule)
-        .contextMenu { menu() }
+        .modifier(TabMenu(entries: menu))
         .onTapGesture(perform: onSelect)
         .onHover { hovering = $0 }
         .modifier(TabDrag(item: dragItem))
@@ -471,6 +472,46 @@ private struct TabButton<Menu: View>: View {
         .accessibilityAddTraits(isActive ? [.isButton, .isSelected] : .isButton)
         .accessibilityAction(named: "app:tabs.close", onClose)
         .accessibilityIdentifier("tab-\(item.title)")
+    }
+}
+
+/// The tab's context menu. On the Mac an AppKit menu over the tab (`ContextMenuOverlay`): in the window toolbar
+/// SwiftUI's `.contextMenu` never showed, before the tab's drag or without one (ISSUE-191, ISSUE-231). Elsewhere
+/// SwiftUI's own.
+private struct TabMenu: ViewModifier {
+    let entries: (() -> [[TabMenuEntry]])?
+
+    func body(content: Content) -> some View {
+        if let entries {
+            #if os(macOS)
+                content.overlay {
+                    ContextMenuOverlay {
+                        entries().map { section in
+                            section.map { entry in
+                                ContextMenuOverlay.Item(
+                                    title: entry.command.localizedTitle, symbol: entry.command.icon.systemName,
+                                    enabled: entry.enabled, identifier: "tab-menu-\(entry.command.rawValue)",
+                                    action: entry.perform)
+                            }
+                        }
+                    }
+                }
+            #else
+                content.contextMenu {
+                    let sections = entries()
+                    ForEach(sections.indices, id: \.self) { index in
+                        if index > 0 { Divider() }
+                        ForEach(sections[index], id: \.command) { entry in
+                            Button(action: entry.perform) { IconLabel(entry.command.title, icon: entry.command.icon) }
+                                .disabled(!entry.enabled)
+                                .accessibilityIdentifier("tab-menu-\(entry.command.rawValue)")
+                        }
+                    }
+                }
+            #endif
+        } else {
+            content
+        }
     }
 }
 
