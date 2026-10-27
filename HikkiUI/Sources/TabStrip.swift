@@ -41,12 +41,6 @@ public struct TabStripDrop {
     }
 }
 
-extension UTType {
-    /// What a tab dragged along a `TabStrip` carries besides its page's link: its id, to this process only — the strip
-    /// reorders by it (declared in the app's Info.plist, `UTExportedTypeDeclarations`).
-    nonisolated static let hikkiTab = UTType(exportedAs: "app.yancey.hikki.tab", conformingTo: .data)
-}
-
 /// A command in a tab's context menu (Chrome's tab menu).
 public enum TabStripCommand: String, CaseIterable, Hashable, Sendable {
     case newToRight, openInSplit, swapSides, separate, duplicate, moveToNewWindow, copyLink, revealInSidebar, close,
@@ -127,7 +121,8 @@ public struct TabStrip<Leading: View>: View {
     private let onMove: ((UUID, Int) -> Void)?
     @State private var frames: [UUID: CGRect] = [:]
     @State private var dropTarget: TabStripDropTarget?
-    /// The tab whose drag started last (its drag carries `UTType.hikkiTab`, which says a drop is one).
+    /// The tab whose drag started last: a drag over the strip while it is set, and no sidebar page is being dragged,
+    /// is that tab being reordered (the drag itself carries only the page's link — see `tabDragItem`).
     @State private var movingTab: UUID?
     /// Where along the moving tab it was grabbed (from the drag's first update), so its box follows the pointer.
     @State private var grabOffset: CGFloat?
@@ -260,22 +255,17 @@ public struct TabStrip<Leading: View>: View {
         }
     }
 
-    /// What dragging the tab `id` carries: its page's link (the caller's `dragItem`), and — where tabs reorder — its id
-    /// as `UTType.hikkiTab`, which only this app understands. Visible to every process like the link: registered for
-    /// this process alone, it kept the page's web view from seeing the drag as one that carries a link, so a tab
-    /// dragged to the page's right edge did nothing (ISSUE-227).
+    /// What dragging the tab `id` carries: its page's link (the caller's `dragItem`; a tab without a page an empty
+    /// text, so the strip is still asked), and nothing of the strip's own. A type of its own on the drag — the tab's
+    /// id for reordering, as `app.yancey.hikki.tab` — made WebKit read the drag as one of files (`types: ["Files"]`,
+    /// every other type hidden), so the page's right edge never saw the link (ISSUE-227); the strip knows a reorder
+    /// by the tab it saw start instead (`movingTab`).
     private func tabDragItem(_ id: UUID) -> NSItemProvider {
-        let provider = dragItem?(id) ?? NSItemProvider()
         if onMove != nil {
             movingTab = id
             grabOffset = nil
-            provider.registerDataRepresentation(forTypeIdentifier: UTType.hikkiTab.identifier, visibility: .all) {
-                completion in
-                completion(Data(id.uuidString.utf8), nil)
-                return nil
-            }
         }
-        return provider
+        return dragItem?(id) ?? NSItemProvider(object: "" as NSString)
     }
 
     /// Where the tab being dragged would go, Chrome's way (`TabReorder`): its own box — the tab (or its split pair) as
@@ -360,8 +350,9 @@ private struct DropArea: ViewModifier {
 
     func body(content: Content) -> some View {
         if drop != nil || move != nil {
+            // A tab's drag carries its page's link as text (an empty text for a tab without a page).
             content.onDrop(
-                of: (drop?.types ?? []) + (move != nil ? [.hikkiTab] : []),
+                of: (drop?.types ?? []) + (move != nil ? [.plainText] : []),
                 delegate: TabStripDropDelegate(drop: drop, target: target, move: move, indicator: $indicator))
         } else {
             content
@@ -375,9 +366,11 @@ private struct TabStripDropDelegate: DropDelegate {
     let move: TabMove?
     @Binding var indicator: TabStripDropTarget?
 
-    /// A tab of this strip being dragged along it (a tab's drag also carries its page's link, so this comes first).
+    /// A tab of this strip being dragged along it: the strip saw a tab's drag start and no sidebar page is being
+    /// dragged (`accepts`, which a sidebar row's drag sets). The drag itself says nothing — a type of the strip's
+    /// own on it hid the page's link from the web view (ISSUE-227).
     private func isMove(_ info: DropInfo) -> Bool {
-        move?.moving() != nil && info.hasItemsConforming(to: [.hikkiTab])
+        move?.moving() != nil && drop?.accepts() != true
     }
 
     func validateDrop(info: DropInfo) -> Bool { isMove(info) || drop?.accepts() == true }

@@ -617,10 +617,10 @@ HikkiUITests/                 XCUITest flows
   there, Chrome's way (`TabStrip`'s `onMove` → `NavigationTabs.move`: a split's two tabs move together, a gap between
   them means after them; it swaps with a neighbour once more than half of it lies over that neighbour — `TabReorder`
   in `HikkiUI/Sources/TabReorder.swift` judges the dragged tab's own box, carried where it was grabbed, against the
-  neighbours' middles, a split pair as one); the drag carries the page's link as before plus the tab's id as `app.yancey.hikki.tab`
-  (declared in Project.swift's Info.plist; registered for every process like the link — a representation visible to
-  this process alone kept the page's web view from seeing the drag's link, ISSUE-227), which is how the strip tells a
-  reorder from a page drop. A tab's context menu is
+  neighbours' middles, a split pair as one); the drag carries the page's link alone (a tab without a page an empty text), and the strip tells a reorder
+  from a page drop by the tab it saw start (`movingTab`) while no sidebar page is being dragged — never by a type of
+  its own on the drag: a custom data type there made WebKit read the drag as files (`types: ["Files"]`, the link
+  hidden), so the page's right edge ignored a dragged tab (ISSUE-227). A tab's context menu is
   Chrome's (`TabStripMenu` / `TabStripCommand` in `HikkiUI/Sources/TabStrip.swift`, the commands chosen by
   `NativeDetailToolbar` in ContentView; on the Mac an AppKit menu over the tab — HikkiUI's `ContextMenuOverlay`, hit
   by a right click or control-click alone — since SwiftUI's `.contextMenu` never showed in the window toolbar):

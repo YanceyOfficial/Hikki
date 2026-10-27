@@ -52,14 +52,6 @@ let project = Project(
                 ],
                 // hikki://page/<id> — "Copy link" (HikkiCore/Sources/Store/PageLink.swift).
                 "CFBundleURLTypes": [["CFBundleURLName": "app.yancey.hikki", "CFBundleURLSchemes": ["hikki"]]],
-                // A tab dragged along the tab strip carries its id as this type, inside the app only (HikkiUI's TabStrip).
-                "UTExportedTypeDeclarations": [
-                    [
-                        "UTTypeIdentifier": "app.yancey.hikki.tab",
-                        "UTTypeDescription": "Hikki tab",
-                        "UTTypeConformsTo": ["public.data"],
-                    ]
-                ],
                 "UIApplicationSceneManifest": ["UIApplicationSupportsMultipleScenes": true],
                 // Pages picked in Spotlight arrive as this activity (SpotlightIndex.swift).
                 "NSUserActivityTypes": ["com.apple.corespotlightitem", "app.yancey.hikki.viewing"],
