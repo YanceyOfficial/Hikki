@@ -70,6 +70,31 @@ struct BridgeMessageTests {
                 == .dateSheet(docId: "a", id: "r2", mention: DateMention(id: nil, date: "2026-10-23", done: true)))
     }
 
+    @Test func decodesTheFindState() throws {
+        let open: NSDictionary = [
+            "type": "findState", "docId": "a", "open": true, "replace": true, "term": "apple", "replaceTerm": "pear",
+            "caseSensitive": true, "wholeWord": false, "regex": false, "count": 2, "current": 1,
+        ]
+        #expect(
+            try BridgeMessage.decode(scriptMessageBody: open)
+                == .findState(
+                    docId: "a",
+                    state: FindState(
+                        open: true, replace: true, term: "apple", replaceTerm: "pear", caseSensitive: true, count: 2, current: 1)))
+        let closed: NSDictionary = [
+            "type": "findState", "docId": "a", "open": false, "replace": false, "term": "", "replaceTerm": "",
+            "caseSensitive": false, "wholeWord": false, "regex": false, "count": 0, "current": NSNull(),
+        ]
+        #expect(try BridgeMessage.decode(scriptMessageBody: closed) == .findState(docId: "a", state: FindState(open: false)))
+    }
+
+    @Test func decodesTheMathSheetRequest() throws {
+        let body: NSDictionary = ["type": "mathSheet", "docId": "a", "id": "m1", "latex": "x^2", "kind": "inline"]
+        #expect(try BridgeMessage.decode(scriptMessageBody: body) == .mathSheet(docId: "a", id: "m1", latex: "x^2", kind: .inline))
+        let block: NSDictionary = ["type": "mathSheet", "docId": "a", "id": "m2", "latex": "", "kind": "block"]
+        #expect(try BridgeMessage.decode(scriptMessageBody: block) == .mathSheet(docId: "a", id: "m2", latex: "", kind: .block))
+    }
+
     @Test func decodesPageInfoWithOptionalBlockIds() throws {
         let body: NSDictionary = [
             "type": "pageInfo", "docId": "a",

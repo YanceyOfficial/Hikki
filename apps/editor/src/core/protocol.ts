@@ -3,7 +3,7 @@
 // on both sides together whenever a message shape changes.
 import type { JSONContent } from '@tiptap/core'
 
-export const PROTOCOL_VERSION = 40
+export const PROTOCOL_VERSION = 41
 
 /** What the native side sends to open a page. The title is a page property, not part of `content`. */
 export type PagePayload = {
@@ -166,6 +166,26 @@ export type ToNativeMessage =
       remind: number | null
       done: boolean
     }
+  /** Find in page where the native side draws its bar (`setNativeFind`, a phone): the search as it stands — sent as
+   * it opens, closes or changes (a term, an option, the count, the match stepped to). The bar drives it with
+   * `window.hikki.findSet` / `findStep` / `findReplace` and `find('close')`. */
+  | {
+      type: 'findState'
+      docId: string
+      open: boolean
+      replace: boolean
+      term: string
+      replaceTerm: string
+      caseSensitive: boolean
+      wholeWord: boolean
+      regex: boolean
+      count: number
+      current: number | null
+    }
+  /** A formula opened for editing, where the native side draws its sheet (`setNativeMath`, a phone). The sheet's
+   * typing comes back as `window.hikki.previewMath(id, latex)` (shown in the page, not yet an edit), its end as
+   * `applyMath(id, latex)` (null: cancelled; "": the formula removed). */
+  | { type: 'mathSheet'; docId: string; id: string; latex: string; kind: 'inline' | 'block' }
   /** The selected text (debounced; "" when nothing is): Ask AI offers it as context. Capped at 4000 characters.
    * `caret` is where the caret stands when nothing is selected (null with a selection): the keyboard bar closes
    * its panel when it moves — a tap elsewhere in the text. */

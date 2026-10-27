@@ -519,7 +519,13 @@ HikkiUITests/                 XCUITest flows
   the package's vite plugin, its test fails if an Excalidraw update moves them).
 - **Rich blocks**: toggles (`apps/editor/src/extensions/toggle.ts`; open/closed is not stored, so opening never saves; a
   summary may be a heading — `level` 1–3, set by `# `…`### ` at its start, cleared by Backspace there),
-  callouts, KaTeX formulas (`apps/editor/src/extensions/math.ts`; our panel replaces Tiptap's `prompt()`), tables
+  callouts, KaTeX formulas (`apps/editor/src/extensions/math.ts`; our panel replaces Tiptap's `prompt()` — in the
+  iPhone layout HikkiUI's `MathComposer` instead, a glass card over the keyboard like the link composer (a sheet grew
+  to the whole screen over the keyboard and hid the page): `setNativeMath`, the `mathSheet` request through
+  `apps/editor/src/lib/math-sheet.ts`, the card's typing shown in the page as a preview outside undo
+  (`window.hikki.previewMath`), its end `applyMath` — Done and Remove keep or take the formula, Cancel puts it back;
+  `Hikki/Sources/MathComposerHost.swift`. Done puts the formula back as it was before its edit, since the preview
+  already holds the text and the update would otherwise be a no-op that nothing saves), tables
   (`apps/editor/src/extensions/table.ts` + `apps/editor/src/extensions/table-ops.ts`, controls drawn by
   `apps/editor/src/components/table-overlay.tsx`) and columns (`apps/editor/src/extensions/columns.ts`: schema needs 2–5 columns, so
   removing one of two replaces the row; dragging a block onto another's side edge makes a row; Notion's 64 px gap holds
@@ -667,7 +673,8 @@ HikkiUITests/                 XCUITest flows
   `apps/editor/src/components/date-chip.tsx`, blue with a reminder, red once it has rung until Mark done. A click
   opens its popover (typed words, shadcn `Calendar`, Include time, Remind, Mark done, Remove); in the iPhone layout
   HikkiUI's `DateSheet` instead (`setNativeDates`, the `dateSheet` request, `window.hikki.applyDate` — one answer per
-  opening, sent when the sheet closes; `Hikki/Sources/DateSheetHost.swift`). As text (search, Markdown) a chip is
+  opening, sent when the sheet closes; `Hikki/Sources/DateSheetHost.swift` — find and formulas go native the same
+  way, see Find and Rich blocks). As text (search, Markdown) a chip is
   "2026-10-22 09:30" (`dateText` / `DateMention.text`, held together by `design/fixtures/content-text.json`); as HTML a
   `<time datetime>`. Natively `HikkiCore/Sources/Store/DateMentions.swift` reads chips out of content (`DateEntry`:
   the line's words and block id), works out when each rings (`fireComponents`, the editor's `fireMoment`) and what
@@ -982,7 +989,12 @@ HikkiUITests/                 XCUITest flows
   editing a block makes only the changes naming it stale.
 - **Find, spelling, insets**: find and replace is `apps/editor/src/extensions/find.ts` (Tiptap's extension, RE2 regex) with
   `apps/editor/src/components/find-panel.tsx`; the page handles ⌘F/⌘R/⌘G itself, the native Edit menu and the page ⋯ menu ("Find
-  in Page", the only way on a phone) call `window.hikki.find`. Spellcheck is WebKit's (Settings → Editor,
+  in Page", the only way on a phone) call `window.hikki.find`. In the iPhone layout the bar is native (Safari's, over
+  the page's foot and its keyboard): `setNativeFind` keeps the panel shut and the page reports the search as it
+  changes (`findState`: open, Replace, term, options, count, current — only changes are sent), HikkiUI's `FindBar`
+  (`Hikki/Sources/FindBarHost.swift`, hidden with the floating bar) drives it with `window.hikki.findSet` (the term is
+  the bar's typing; the page's first match is brought into view), `findStep`, `findReplace` (refused on a locked page)
+  and `find('close')`, which must not bring the page's keyboard up; a page switch closes it. Spellcheck is WebKit's (Settings → Editor,
   `window.hikki.setSpellcheck`). `window.hikki.setInsets` gives the page the toolbar height for fixed panels and, on
   iPhone, the floating bar's room at the foot (`--hk-inset-bottom`, 0 while the keyboard is up).
 - **Keyboard bar (iOS)**, Notion's (`Hikki/Sources/KeyboardToolbar.swift`): native SwiftUI over the software keyboard

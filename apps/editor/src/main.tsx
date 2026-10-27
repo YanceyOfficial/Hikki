@@ -22,7 +22,7 @@ import type { TouchBlockAction, TouchCommentScope, TouchMedia, TouchTool } from 
 import { devTransport, webkitTransport } from './core/transport'
 import type { AIAction } from './extensions/ai-review'
 import type { ThreadItem } from './extensions/comments'
-import { findShortcut, type FindMode } from './extensions/find'
+import { findShortcut, type FindMode, type FindOptions } from './extensions/find'
 import type { PageIndexEntry } from './extensions/page-links'
 import type { SplitDropMode } from './extensions/split-drop'
 import { setAIModels } from './lib/ai-models'
@@ -135,6 +135,15 @@ window.hikki = {
   applyIconColor: (id: string, color: string | null) => bridge.applyIconColor(id, color),
   setNativeDates: (on: boolean) => bridge.setNativeDates(on),
   applyDate: (id: string, change: DateSheetChange) => bridge.applyDate(id, change),
+  // Find with a native bar (the iPhone): the bar's term and options, its ‹ ›, its Replace / Replace All.
+  setNativeFind: (on: boolean) => bridge.setNativeFind(on),
+  findSet: (options: FindOptions) => bridge.findSet(options),
+  findStep: (direction: number) => bridge.findStep(direction),
+  findReplace: (all: boolean) => bridge.findReplace(all),
+  // Formulas in a native sheet (the iPhone): what is typed shows in the page; Done or Cancel ends the edit.
+  setNativeMath: (on: boolean) => bridge.setNativeMath(on),
+  previewMath: (id: string, latex: string) => bridge.previewMath(id, latex),
+  applyMath: (id: string, latex: string | null) => bridge.applyMath(id, latex),
   // Settings → Editor → Check spelling.
   setSpellcheck: (on: boolean) => bridge.setSpellcheck(on),
   // Comments: the open page's threads (native store), and a thread picked in the side panel.

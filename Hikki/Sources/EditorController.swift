@@ -73,6 +73,21 @@ final class EditorController {
         let mention: DateMention
     }
 
+    /// Find in page as the page reports it, where this side draws the bar (`nativeFind`: the iPhone's); nil while
+    /// closed.
+    private(set) var findState: FindState?
+
+    /// The formula the page asked to edit, where this side draws the sheet (`nativeMath`: the iPhone's).
+    private(set) var mathRequest: MathRequest?
+
+    struct MathRequest: Equatable, Identifiable {
+        let docId: String
+        /// The page's name for this opening; the typing and the answer go back under it.
+        let id: String
+        let latex: String
+        let kind: MathKind
+    }
+
     struct OpenThread: Equatable, Identifiable {
         let docId: String
         let threadId: String
@@ -255,6 +270,73 @@ final class EditorController {
 
     func closeDateSheet() {
         dateRequest = nil
+    }
+
+    /// Find in page is a bar drawn here (HikkiUI's `FindBar`), not the page's panel: the page reports the search and
+    /// the bar drives it.
+    @ObservationIgnored private var nativeFind = false
+
+    func setNativeFind(_ on: Bool) {
+        guard on != nativeFind else { return }
+        nativeFind = on
+        if !on { findState = nil }
+        send("window.hikki.setNativeFind(on)", ["on": on], label: "setNativeFind")
+    }
+
+    /// The bar's term, replacement and options — only what is given changes.
+    func findSet(
+        term: String? = nil, replaceTerm: String? = nil, caseSensitive: Bool? = nil, wholeWord: Bool? = nil, regex: Bool? = nil,
+        replace: Bool? = nil
+    ) {
+        var options: [String: Any] = [:]
+        if let term { options["term"] = term }
+        if let replaceTerm { options["replaceTerm"] = replaceTerm }
+        if let caseSensitive { options["caseSensitive"] = caseSensitive }
+        if let wholeWord { options["wholeWord"] = wholeWord }
+        if let regex { options["regex"] = regex }
+        if let replace { options["replace"] = replace }
+        send("window.hikki.findSet(options)", ["options": options], label: "findSet")
+    }
+
+    /// The bar's ‹ › : the next (1) or previous (-1) match.
+    func findStep(_ direction: Int) {
+        send("window.hikki.findStep(direction)", ["direction": direction], label: "findStep")
+    }
+
+    /// The bar's Replace / Replace All (an edit; the page refuses it on a locked page).
+    func findReplace(all: Bool) {
+        send("window.hikki.findReplace(all)", ["all": all], label: "findReplace")
+    }
+
+    /// The bar's Done: the bar leaves at once, the page clears its matches.
+    func closeFind() {
+        findState = nil
+        find(.close)
+    }
+
+    /// Formulas are edited here (HikkiUI's `MathComposer`, a card over the keyboard), not in the page's panel.
+    @ObservationIgnored private var nativeMath = false
+
+    func setNativeMath(_ on: Bool) {
+        guard on != nativeMath else { return }
+        nativeMath = on
+        if !on { mathRequest = nil }
+        send("window.hikki.setNativeMath(on)", ["on": on], label: "setNativeMath")
+    }
+
+    func closeMathSheet() {
+        mathRequest = nil
+    }
+
+    /// The formula as typed in the sheet, shown in the page meanwhile (outside its undo history).
+    func previewMath(_ latex: String, id: String) {
+        send("window.hikki.previewMath(id, latex)", ["id": id, "latex": latex], label: "previewMath")
+    }
+
+    /// The sheet's end for the opening `id` names — the formula's text (empty: removed), or nil for Cancel, which puts
+    /// it back as it was; refused once the page has moved on or is locked.
+    func applyMath(_ latex: String?, id: String) async {
+        await call("window.hikki.applyMath(id, latex)", ["id": id, "latex": latex ?? NSNull()], label: "applyMath")
     }
 
     /// The date sheet's answer for the opening `id` names — the chip's day, time, reminder and done, or nil to remove
@@ -936,8 +1018,9 @@ final class EditorController {
         }
     }
 
-    /// Edit → Find… / Find and Replace… / Find Next / Find Previous (mirrors FindMode in the editor).
-    enum FindMode: String { case find, replace, next, previous }
+    /// Edit → Find… / Find and Replace… / Find Next / Find Previous, and the native bar's Done (mirrors FindMode in the
+    /// editor).
+    enum FindMode: String { case find, replace, next, previous, close }
 
     /// The page ⋯ menu's Cover…: the editor's cover sheet (the cover's actions, or the picker for a page without one).
     func editCover() {
@@ -1041,6 +1124,8 @@ final class EditorController {
             if nativeCover { await call("window.hikki.setNativeCover(on)", ["on": true], label: "setNativeCover") }
             if nativeIcons { await call("window.hikki.setNativeIcons(on)", ["on": true], label: "setNativeIcons") }
             if nativeDates { await call("window.hikki.setNativeDates(on)", ["on": true], label: "setNativeDates") }
+            if nativeFind { await call("window.hikki.setNativeFind(on)", ["on": true], label: "setNativeFind") }
+            if nativeMath { await call("window.hikki.setNativeMath(on)", ["on": true], label: "setNativeMath") }
         #endif
     }
 
@@ -1055,6 +1140,9 @@ final class EditorController {
         _ = await call("return window.hikki.finishDrawing()", label: "finishDrawing")
         await flush(reason: "switch")
         currentDocumentID = id
+        // The native find bar and formula sheet belong to the page leaving.
+        findState = nil
+        mathRequest = nil
         guard let id else {
             pageState.loaded(nil, locked: false)
             return
@@ -1185,6 +1273,11 @@ final class EditorController {
             iconRequest = IconRequest(docId: docId, id: id, kind: kind, icon: icon, color: color)
         case .dateSheet(let docId, let id, let mention):
             dateRequest = DateRequest(docId: docId, id: id, mention: mention)
+        case .findState(let docId, let state):
+            // A closed state (the page left, Done) takes the bar down; another page's is stale.
+            if docId == currentDocumentID { findState = state.open ? state : nil }
+        case .mathSheet(let docId, let id, let latex, let kind):
+            mathRequest = MathRequest(docId: docId, id: id, latex: latex, kind: kind)
         case .fullScreen(let open):
             fullScreen = open
             #if os(iOS)

@@ -117,6 +117,21 @@ struct PageScreen: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
+            // Find in page: a native bar over the page's foot (and its keyboard), in the iPhone layout.
+            .overlay(alignment: .bottom) {
+                if phoneToolbar, let state = editor.findState, state.open {
+                    FindBarHost(state: state, editor: editor, canReplace: !(page?.isLocked ?? false) && !editor.readOnly)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            // A formula's source: a native card over the keyboard, in the iPhone layout; the page above shows it as typed.
+            .overlay(alignment: .bottom) {
+                if phoneToolbar, let request = editor.mathRequest {
+                    MathComposerHost(request: request, editor: editor)
+                    .id(request.id)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
             .sheet(isPresented: blockActionsShown) {
                 if let bar = editor.webView.keyboardBar, let info = bar.blockActions {
                     BlockActionsSheet(
@@ -158,18 +173,24 @@ struct PageScreen: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
             }
-            // Comments and dates are native in the iPhone layout only (the iPad keeps the page's cards and popover);
-            // the cover's sheet and the icon pickers on every touch screen (`EditorController.init`).
+            // Comments, dates, find and formulas are native in the iPhone layout only (the iPad keeps the page's cards,
+            // popover and panels); the cover's sheet and the icon pickers on every touch screen (`EditorController.init`).
             .onAppear {
                 guard phoneToolbar else { return }
                 editor.setNativeComments(true)
                 editor.setNativeDates(true)
+                editor.setNativeFind(true)
+                editor.setNativeMath(true)
             }
             .onDisappear {
                 guard phoneToolbar else { return }
                 editor.setNativeComments(false)
                 editor.setNativeDates(false)
+                editor.setNativeFind(false)
+                editor.setNativeMath(false)
             }
+            .animation(Motion.easeOut(), value: editor.findState?.open)
+            .animation(Motion.easeOut(), value: editor.mathRequest)
             .animation(Motion.easeOut(), value: editor.webView.keyboardBar?.composer)
             .animation(Motion.easeOut(), value: keyboardShown)
             .animation(Motion.easeOut(), value: editor.webView.keyboardBar?.shown)
@@ -207,9 +228,10 @@ struct PageScreen: View {
 
     #if os(iOS)
         /// iPhone with the keyboard down — and no keyboard bar up (a hardware keyboard shows the bar alone, with no
-        /// keyboard notification), and no vertical bar to hold its buttons.
+        /// keyboard notification), no find bar or formula card, and no vertical bar to hold its buttons.
         private var showsFloatingBar: Bool {
             phoneToolbar && !keyboardShown && editor.webView.keyboardBar?.shown != true && verticalBar == nil && !editor.fullScreen
+                && editor.findState?.open != true && editor.mathRequest == nil
         }
 
         /// The keyboard bar's photo / file sheet.

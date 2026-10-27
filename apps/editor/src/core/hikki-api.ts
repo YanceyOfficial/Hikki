@@ -1,6 +1,6 @@
 import type { AIAction } from '../extensions/ai-review'
 import type { ThreadItem } from '../extensions/comments'
-import type { FindMode } from '../extensions/find'
+import type { FindMode, FindOptions } from '../extensions/find'
 import type { PageIndexEntry } from '../extensions/page-links'
 import type { SplitDropMode } from '../extensions/split-drop'
 import type { AIPageBlock } from '../lib/ai-content'
@@ -109,6 +109,15 @@ export interface HikkiAPI {
   applyIconColor(id: string, color: string | null): boolean
   setNativeDates(on: boolean): void
   applyDate(id: string, change: DateSheetChange): boolean
+  /** Find in page with a native bar: the page reports `findState`; the bar sets, steps and replaces. */
+  setNativeFind(on: boolean): void
+  findSet(options: FindOptions): boolean
+  findStep(direction: number): boolean
+  findReplace(all: boolean): boolean
+  /** Formulas edited in a native sheet (`mathSheet`): its typing previewed, its end applied (null: cancelled). */
+  setNativeMath(on: boolean): void
+  previewMath(id: string, latex: string): boolean
+  applyMath(id: string, latex: string | null): boolean
 
   // Comments
   setComments(docId: string, threads: ThreadItem[], device: string | null): void

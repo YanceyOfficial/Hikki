@@ -17,6 +17,9 @@
         @State private var dialogPage = "general"
         @State private var moveQuery = ""
         @State private var moveExpanded: Set<String> = ["work"]
+        @State private var findTerm = "apple"
+        @State private var findReplaceTerm = ""
+        @State private var findOptions = FindBarOptions()
         private let galleryTabs = [UUID(), UUID()]
         private let galleryToasts = [GalleryToast(message: "Page duplicated"), GalleryToast(message: "Link copied")]
 
@@ -174,6 +177,20 @@
                                 onPick: { _ in }, onRandom: {}, color: (selected: "blue", onPick: { _ in })
                             )
                             .frame(height: 420)
+                            .listRowInsets(EdgeInsets())
+                        }
+                        Section("FindBar") {
+                            FindBar(
+                                term: $findTerm, replaceTerm: $findReplaceTerm, options: $findOptions,
+                                status: FindBarStatus(count: 3, current: 0), canReplace: true, onStep: { _ in }, onReplace: { _ in },
+                                onClose: {}
+                            )
+                            .listRowInsets(EdgeInsets())
+                        }
+                        Section("MathComposer") {
+                            MathComposer(
+                                latex: "\\frac{a}{b}", kind: .inline, onChange: { _ in }, onDone: { _ in }, onCancel: {}, onRemove: {}
+                            )
                             .listRowInsets(EdgeInsets())
                         }
                         Section("MediaSourceSheet") {

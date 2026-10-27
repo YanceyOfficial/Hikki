@@ -1213,8 +1213,9 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertFalse(app.webViews.descendants(matching: .any)["To-do list"].exists, "menu should close after choosing")
     }
 
-    /// The page's ⋯ menu opens the in-page find panel (⌘F does too, with a keyboard: covered by the
-    /// editor's unit tests — the simulator's software keyboard doesn't deliver ⌘ shortcuts).
+    /// The page's ⋯ menu opens find in page (⌘F does too, with a keyboard: covered by the editor's unit tests — the
+    /// simulator's software keyboard doesn't deliver ⌘ shortcuts). On the Mac the page's panel; on the iPhone a native
+    /// bar (ISSUE-225) whose typing searches the page, whose ‹ › step the matches and whose Done closes it.
     func testFindInPageFromPageMenu() throws {
         continueAfterFailure = false
         let app = launch()
@@ -1224,7 +1225,10 @@ final class EditorFlowTests: XCTestCase {
         let title = app.webViews.textViews["Page title"].firstMatch
         XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
         title.tap()
-        title.typeText("Find me")
+        title.typeText("Find me\n")
+        let body = app.webViews.textViews["Page content"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(body, in: app), "body missing")
+        body.typeText("find me twice: me")
 
         let more = app.buttons["page-more"].firstMatch
         XCTAssertTrue(waitOrDumpTree(more, in: app))
@@ -1232,15 +1236,118 @@ final class EditorFlowTests: XCTestCase {
         let item = app.buttons["find-in-page"].firstMatch
         XCTAssertTrue(waitOrDumpTree(item, in: app), "no Find in Page item")
         item.tap()
-        let field = app.webViews.textFields["Find"].firstMatch
-        XCTAssertTrue(waitOrDumpTree(field, in: app), "find panel did not open")
-        // The panel sits below the toolbar (window.hikki.setInsets), not under its glass.
-        XCTAssertGreaterThan(field.frame.minY, app.navigationBars.firstMatch.frame.maxY - 1, "find panel under the toolbar")
-        let shot = XCTAttachment(screenshot: app.screenshot())
-        shot.name = "find-panel"
-        shot.lifetime = .keepAlways
-        add(shot)
+        #if os(iOS)
+            let field = app.textFields["find-bar-field"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(field, in: app), "the native find bar did not open")
+            XCTAssertFalse(app.webViews.textFields["Find"].firstMatch.exists, "the page's own find panel opened too")
+            // The bar takes the keyboard; the floating bar steps aside.
+            XCTAssertFalse(app.buttons["edit-page"].firstMatch.exists, "the floating bar stayed under the find bar")
+            field.typeText("me")
+            let count = app.staticTexts["find-bar-count"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(count, in: app), "no count beside the term")
+            let twoMatches = NSPredicate(format: "label == '1 / 2'")
+            wait(for: [expectation(for: twoMatches, evaluatedWith: count)], timeout: 10)
+            attach(app, "find-bar")
+            app.buttons["find-bar-next"].firstMatch.tap()
+            wait(for: [expectation(for: NSPredicate(format: "label == '2 / 2'"), evaluatedWith: count)], timeout: 10)
+            app.buttons["find-bar-previous"].firstMatch.tap()
+            wait(for: [expectation(for: twoMatches, evaluatedWith: count)], timeout: 10)
+            app.buttons["find-bar-done"].firstMatch.tap()
+            wait(for: [expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: field)], timeout: 10)
+            XCTAssertTrue(waitOrDumpTree(app.buttons["edit-page"].firstMatch, in: app), "the floating bar did not come back")
+        #else
+            let field = app.webViews.textFields["Find"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(field, in: app), "find panel did not open")
+            // The panel sits below the toolbar (window.hikki.setInsets), not under its glass.
+            XCTAssertGreaterThan(field.frame.minY, app.navigationBars.firstMatch.frame.maxY - 1, "find panel under the toolbar")
+            let shot = XCTAttachment(screenshot: app.screenshot())
+            shot.name = "find-panel"
+            shot.lifetime = .keepAlways
+            add(shot)
+        #endif
     }
+
+    #if os(iOS)
+        /// A formula is edited in a native card over the keyboard on the iPhone (ISSUE-225): "+" → Block equation
+        /// opens it for the new block, Done keeps what was typed (the page file carries it); a second one cancelled goes
+        /// away again.
+        func testFormulaOpensANativeComposer() throws {
+            continueAfterFailure = false
+            let app = launch()
+            let newPage = app.buttons["new-page"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(newPage, in: app))
+            newPage.tap()
+            let title = app.webViews.textViews["Page title"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(title, in: app), "editor never became editable")
+            title.tap()
+            title.typeText("Math\n")
+            let body = app.webViews.textViews["Page content"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(body, in: app), "body missing")
+            // A line of words first, so the caret has a line to come back to beside the equations.
+            body.tap()
+            body.typeText("Area\n")
+
+            let addBlock = app.buttons["Add block"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(addBlock, in: app))
+            addBlock.tap()
+            let blocks = app.descendants(matching: .any)["keyboard-block-panel"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(blocks, in: app), "+ panel did not open")
+            let equation = app.buttons["keyboard-block-blockMath"].firstMatch
+            if !equation.exists { blocks.swipeUp() }
+            XCTAssertTrue(waitOrDumpTree(equation, in: app), "no Block equation in the + panel")
+            equation.tap()
+
+            let card = app.descendants(matching: .any)["math-composer"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(card, in: app), "the formula card did not open")
+            XCTAssertFalse(app.webViews.textViews["Formula (LaTeX)"].firstMatch.exists, "the page's own formula panel opened too")
+            let field = app.descendants(matching: .any)["math-composer-field"].firstMatch
+            XCTAssertTrue(waitOrDumpTree(field, in: app), "no source field")
+            field.tap()
+            field.typeText("x^2")
+            attach(app, "math-composer")
+            app.buttons["math-composer-done"].firstMatch.tap()
+            let gone = NSPredicate(format: "exists == false")
+            wait(for: [expectation(for: gone, evaluatedWith: card)], timeout: 10)
+            XCTAssertTrue(waitForPageFile(containing: "\"latex\":\"x^2\""), "the formula never reached the page file")
+
+            // A second equation, cancelled: nothing of it stays. The caret goes back to the words (a tap on the
+            // equation would open its card again); the page scrolled for the card, so it comes back up first.
+            app.webViews.firstMatch.swipeDown()
+            body.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 40, dy: 14)).tap()
+            XCTAssertTrue(waitOrDumpTree(addBlock, in: app), "the keyboard bar did not come back")
+            addBlock.tap()
+            XCTAssertTrue(waitOrDumpTree(blocks, in: app), "+ panel did not open again")
+            if !equation.exists { blocks.swipeUp() }
+            XCTAssertTrue(waitOrDumpTree(equation, in: app))
+            equation.tap()
+            XCTAssertTrue(waitOrDumpTree(card, in: app), "the formula card did not open again")
+            app.buttons["math-composer-cancel"].firstMatch.tap()
+            wait(for: [expectation(for: gone, evaluatedWith: card)], timeout: 10)
+            sleep(3)
+            XCTAssertEqual(pageFileOccurrences(of: "\"type\":\"blockMath\""), 1, "the cancelled equation stayed")
+        }
+
+        /// Whether any page file under the test's data directory holds `needle` within the autosave's time.
+        private func waitForPageFile(containing needle: String, timeout: TimeInterval = 15) -> Bool {
+            let deadline = Date().addingTimeInterval(timeout)
+            while Date() < deadline {
+                if pageFileOccurrences(of: needle) > 0 { return true }
+                sleep(1)
+            }
+            return false
+        }
+
+        /// How often `needle` occurs across the page files under the test's data directory.
+        private func pageFileOccurrences(of needle: String) -> Int {
+            let pages = URL(fileURLWithPath: dataDir).appending(path: "Workspace/pages")
+            guard let names = try? FileManager.default.contentsOfDirectory(atPath: pages.path) else { return 0 }
+            return names.reduce(0) { total, name in
+                guard let text = try? String(contentsOf: pages.appending(path: name), encoding: .utf8) else { return total }
+                // The file is pretty-printed; the needle is written without spaces.
+                return total + text.filter { !$0.isWhitespace }.components(separatedBy: needle).count - 1
+            }
+        }
+    #endif
 
     /// Page ⋯ → Lock page: a lock appears in the toolbar and the page is read-only; the lock unlocks it again.
     func testLockPageFromPageMenu() throws {

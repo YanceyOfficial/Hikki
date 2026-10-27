@@ -4,7 +4,7 @@ import type { Transaction } from '@tiptap/pm/state'
 
 import { threadRange, type ThreadItem } from '../extensions/comments'
 import { closeDrawing, finishDrawing, type DrawingEditorHost } from '../extensions/drawing'
-import { runFind, type FindMode } from '../extensions/find'
+import { runFind, type FindMode, type FindOptions } from '../extensions/find'
 import { localAssetSrc, UploadsKey, type MediaHost } from '../extensions/media'
 import { setMoveBlockHost } from '../extensions/move-block'
 import { pageLinkHref, type PageIndexEntry, type PageLinksHost } from '../extensions/page-links'
@@ -543,6 +543,34 @@ export class EditorBridge {
 
   applyDate(id: string, change: DateSheetChange): boolean {
     return this.sheets.applyDate(id, change)
+  }
+
+  setNativeFind(on: boolean): void {
+    this.sheets.setNativeFind(on)
+  }
+
+  findSet(options: FindOptions): boolean {
+    return this.sheets.findSet(options)
+  }
+
+  findStep(direction: number): boolean {
+    return this.sheets.findStep(direction)
+  }
+
+  findReplace(all: boolean): boolean {
+    return this.sheets.findReplace(all)
+  }
+
+  setNativeMath(on: boolean): void {
+    this.sheets.setNativeMath(on)
+  }
+
+  previewMath(id: string, latex: string): boolean {
+    return this.sheets.previewMath(id, latex)
+  }
+
+  applyMath(id: string, latex: string | null): boolean {
+    return this.sheets.applyMath(id, latex)
   }
 
   /** `window.hikki.applyCover`: the native sheet's pick (null: Remove), on the page it was opened for — as the page

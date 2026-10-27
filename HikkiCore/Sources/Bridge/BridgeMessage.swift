@@ -2,7 +2,7 @@ import Foundation
 
 /// Mirror of apps/editor/src/protocol.ts. Bump both versions together.
 public enum BridgeProtocol {
-    public static let version = 40
+    public static let version = 41
 
     /// Whether a script message may reach the shell. WebKit gives every frame of the web view the message
     /// handlers, embedded third-party pages included, so only the main frame, loaded from the editor's own
@@ -31,6 +31,40 @@ public struct Snapshot: Codable, Sendable, Equatable {
 
 /// A heading of the open page, for the inspector's outline (`id` is the block to scroll to; nil before the
 /// editor stamped ids).
+/// Find in page as the editor reports it (`findState`), where the native side draws the bar (`setNativeFind`, the
+/// iPhone): open or not, the Replace row, the term and options, the matches and the one stepped to (0-based).
+public struct FindState: Codable, Sendable, Equatable {
+    public var open: Bool
+    public var replace: Bool
+    public var term: String
+    public var replaceTerm: String
+    public var caseSensitive: Bool
+    public var wholeWord: Bool
+    public var regex: Bool
+    public var count: Int
+    public var current: Int?
+
+    public init(
+        open: Bool, replace: Bool = false, term: String = "", replaceTerm: String = "", caseSensitive: Bool = false,
+        wholeWord: Bool = false, regex: Bool = false, count: Int = 0, current: Int? = nil
+    ) {
+        self.open = open
+        self.replace = replace
+        self.term = term
+        self.replaceTerm = replaceTerm
+        self.caseSensitive = caseSensitive
+        self.wholeWord = wholeWord
+        self.regex = regex
+        self.count = count
+        self.current = current
+    }
+}
+
+/// A formula's place in the page: in a line, or a block of its own.
+public enum MathKind: String, Codable, Sendable {
+    case inline, block
+}
+
 public struct OutlineHeading: Codable, Sendable, Equatable {
     public var id: String?
     public var level: Int
@@ -86,6 +120,14 @@ public enum BridgeMessage: Sendable, Equatable {
     /// layout). The answer goes back under `id` as `window.hikki.applyDate` (the chip's new day, time, reminder and
     /// done — or null to remove it).
     case dateSheet(docId: String, id: String, mention: DateMention)
+    /// Find in page as it stands, sent only where the native side draws the bar (`setNativeFind`, the iPhone layout):
+    /// as it opens, closes or changes. The bar drives it with `window.hikki.findSet` / `findStep` / `findReplace` and
+    /// `find("close")`.
+    case findState(docId: String, state: FindState)
+    /// A formula opened for editing, sent only where the native side draws its sheet (`setNativeMath`, the iPhone
+    /// layout). The sheet's typing goes back under `id` as `window.hikki.previewMath` (shown in the page, not yet an
+    /// edit), its end as `applyMath` (the formula's text — empty: removed — or null for Cancel).
+    case mathSheet(docId: String, id: String, latex: String, kind: MathKind)
     /// Where the page is scrolled (throttled), so a tab shown again gets its place back.
     case scroll(docId: String, top: Double)
     /// AI on the selection (see `AIRequestPayload`); replies go back through `window.hikki.aiEvent`.
@@ -204,7 +246,7 @@ extension BridgeMessage: Decodable {
         case type, protocolVersion, snapshot, active, level, message, context, docId, icon, cover, fileExtension, dataBase64
         case size, id, url, block, text, headings, words, characters, name, top
         case threadId, quote, body, resolved, commentId, kind, code, detail, open, status, before, after, blockId
-        case instruction, selection, mode, bff, color, items, target, blocks, date, time, remind, done, caret
+        case instruction, selection, mode, bff, color, items, target, blocks, date, time, remind, done, caret, latex
     }
 
     public init(from decoder: Decoder) throws {
@@ -283,6 +325,12 @@ extension BridgeMessage: Decodable {
                     time: try c.decodeIfPresent(String.self, forKey: .time),
                     remind: try c.decodeIfPresent(Int.self, forKey: .remind),
                     done: try c.decodeIfPresent(Bool.self, forKey: .done) ?? false))
+        case "findState":
+            self = .findState(docId: try c.decode(String.self, forKey: .docId), state: try FindState(from: decoder))
+        case "mathSheet":
+            self = .mathSheet(
+                docId: try c.decode(String.self, forKey: .docId), id: try c.decode(String.self, forKey: .id),
+                latex: try c.decode(String.self, forKey: .latex), kind: try c.decode(MathKind.self, forKey: .kind))
         case "fullScreen":
             self = .fullScreen(open: try c.decode(Bool.self, forKey: .open))
         case "activeHeading":

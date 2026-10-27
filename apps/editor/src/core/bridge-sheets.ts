@@ -1,4 +1,11 @@
 import { PALETTE, type PaletteColor } from '../extensions/colors'
+import {
+  findReplace,
+  findSet,
+  findStep,
+  setNativeFindReporter,
+  type FindOptions
+} from '../extensions/find'
 import { bffURL } from '../lib/bff'
 import { setDateSheetOpener, type DateSheetChange } from '../lib/date-sheet'
 import { localMoment } from '../lib/dates'
@@ -7,6 +14,11 @@ import {
   type IconSheetHandlers,
   type IconSheetRequest
 } from '../lib/icon-sheet'
+import {
+  setMathSheetOpener,
+  type MathSheetHandlers,
+  type MathSheetRequest
+} from '../lib/math-sheet'
 import type { BridgeContext } from './bridge-types'
 
 /**
@@ -23,6 +35,8 @@ export class SheetsBridge {
   private iconSheet: { id: string; handlers: IconSheetHandlers } | null = null
   /** The date chip whose native sheet is open (`dateSheet`) and what its answer does; a newer one replaces it. */
   private dateSheet: { id: string; onChange: (change: DateSheetChange) => void } | null = null
+  /** The formula whose native sheet is open (`mathSheet`) and what its typing and answer do. */
+  private mathSheet: { id: string; handlers: MathSheetHandlers } | null = null
 
   constructor(private readonly context: BridgeContext) {}
 
@@ -129,6 +143,86 @@ export class SheetsBridge {
     const { onChange } = this.dateSheet
     this.dateSheet = null
     onChange(change)
+    return true
+  }
+
+  // MARK: Find (a native bar)
+
+  /** `window.hikki.setNativeFind`: the native side draws the find bar itself and gets the search's state
+   * (`findState`) as it changes; the page's own panel stays shut. */
+  setNativeFind(on: boolean): void {
+    setNativeFindReporter(
+      on
+        ? (state) => {
+            const { docId } = this.context.page.get()
+            if (docId) void this.context.send({ type: 'findState', docId, ...state })
+          }
+        : null
+    )
+  }
+
+  /** `window.hikki.findSet`: the bar's term, replacement and options. */
+  findSet(options: FindOptions): boolean {
+    const editor = this.context.editor()
+    if (!editor) return false
+    findSet(editor, options)
+    return true
+  }
+
+  /** `window.hikki.findStep`: the next (1) or previous (-1) match. */
+  findStep(direction: number): boolean {
+    const editor = this.context.editor()
+    if (!editor) return false
+    findStep(editor, direction < 0 ? -1 : 1)
+    return true
+  }
+
+  /** `window.hikki.findReplace`: the current match replaced, or all of them (an edit; refused on a locked page). */
+  findReplace(all: boolean): boolean {
+    const editor = this.context.editor()
+    if (!editor || this.context.frozen()) return false
+    findReplace(editor, all)
+    return true
+  }
+
+  // MARK: Formulas (a native sheet)
+
+  /** `window.hikki.setNativeMath`: the native side edits formulas in a sheet of its own. */
+  setNativeMath(on: boolean): void {
+    setMathSheetOpener(on ? (request, handlers) => this.requestMathSheet(request, handlers) : null)
+    if (!on) this.mathSheet = null
+  }
+
+  private requestMathSheet(request: MathSheetRequest, handlers: MathSheetHandlers): boolean {
+    const { docId } = this.context.page.get()
+    if (!docId || this.context.frozen()) return true
+    const id = crypto.randomUUID()
+    this.mathSheet = { id, handlers }
+    void this.context.send({
+      type: 'mathSheet',
+      docId,
+      id,
+      latex: request.latex,
+      kind: request.kind
+    })
+    return true
+  }
+
+  /** `window.hikki.previewMath`: the formula as typed in the sheet, shown in the page meanwhile. */
+  previewMath(id: string, latex: string): boolean {
+    if (this.mathSheet?.id !== id || this.context.frozen()) return false
+    this.mathSheet.handlers.onPreview(latex)
+    return true
+  }
+
+  /** `window.hikki.applyMath`: the sheet's end for the opening `id` names — the formula's text (empty: removed), or
+   * null for Cancel. Returns whether it was taken (still that opening, the page not locked). */
+  applyMath(id: string, latex: string | null): boolean {
+    if (this.mathSheet?.id !== id || this.context.frozen()) return false
+    const { handlers } = this.mathSheet
+    this.mathSheet = null
+    if (latex === null) handlers.onCancel()
+    else handlers.onDone(latex)
     return true
   }
 }
