@@ -30,6 +30,14 @@ public enum ChatTimeline {
         return thinking
     }
 
+    /// The answer's first words end its thinking: the timeline keeps how long it took, from `startedAt` (the question's
+    /// moment) to `now` — once; nothing without a timeline, nothing more once it is timed.
+    public static func ended(_ thinking: ChatThinking?, startedAt: Date, now: Date = .now) -> ChatThinking? {
+        guard var thinking, thinking.seconds == nil else { return thinking }
+        thinking.seconds = now.timeIntervalSince(startedAt)
+        return thinking
+    }
+
     /// As it is kept: thinking steps with nothing in them left out; nil when nothing is left.
     public static func kept(_ thinking: ChatThinking) -> ChatThinking? {
         var kept = thinking

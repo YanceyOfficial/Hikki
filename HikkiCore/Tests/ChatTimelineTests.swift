@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 
 @testable import HikkiCore
@@ -14,6 +15,16 @@ struct ChatTimelineTests {
         t = ChatTimeline.thought("Mild.", in: t)
         #expect(t.steps.map(\.kind) == [.thinking, .search, .thinking])
         #expect(t.steps.map(\.text) == ["**Reading** the page", "kyoto weather may", "Mild."])
+    }
+
+    @Test func theFirstWordsTimeTheThinkingOnce() {
+        let asked = Date(timeIntervalSince1970: 1000)
+        #expect(ChatTimeline.ended(nil, startedAt: asked, now: asked.addingTimeInterval(12)) == nil)
+        var t = ChatTimeline.thought("Reading", in: nil)
+        t = ChatTimeline.ended(t, startedAt: asked, now: asked.addingTimeInterval(12))!
+        #expect(t.seconds == 12)
+        // Later words leave the time as it was.
+        #expect(ChatTimeline.ended(t, startedAt: asked, now: asked.addingTimeInterval(30))?.seconds == 12)
     }
 
     @Test func emptyStepsArentKept() {

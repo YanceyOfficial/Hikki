@@ -789,9 +789,12 @@ final class AIChat {
         let last = messages.count - 1
         switch event {
         case .text(let delta):
-            // The first words end the thinking: the timeline keeps how long it took.
-            if messages[last].text.isEmpty, messages[last].thinking != nil, messages[last].thinking?.seconds == nil {
-                messages[last].thinking?.seconds = Date.now.timeIntervalSince(messages[last].sentAt)
+            // The first words end the thinking: the timeline keeps how long it took. Worked out whole before the write,
+            // like the other branches: `messages[last].thinking?.seconds = …messages[last].sentAt` opened `messages`'
+            // modify access for the optional chain and then read `messages` on its right — an exclusivity trap on the
+            // first words after a thinking model's thinking (ISSUE-196).
+            if messages[last].text.isEmpty {
+                messages[last].thinking = ChatTimeline.ended(messages[last].thinking, startedAt: messages[last].sentAt)
             }
             messages[last].text += delta
             messages[last].searching = nil
