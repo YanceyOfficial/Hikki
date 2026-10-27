@@ -2,7 +2,7 @@ import type { Editor } from '@tiptap/core'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createEditor } from '../src/core/editor'
-import { selectedTextRects } from '../src/extensions/selection-paint'
+import { PAINT_LIMIT, selectedTextRects } from '../src/extensions/selection-paint'
 
 let host: HTMLElement
 let editor: Editor
@@ -37,6 +37,22 @@ describe('selection paint', () => {
     expect(painted()).toBe('田さん|ワットさん|タワポンさ')
     // Nothing outside the text: no list item or list carries the mark.
     expect(host.querySelector('li.hk-selection, ol.hk-selection')).toBeNull()
+  })
+
+  it('leaves a selection longer than the limit to the browser (ISSUE-261: ⌘A on a long page hung)', () => {
+    editor.destroy()
+    const line = { type: 'paragraph', content: [{ type: 'text', text: 'x'.repeat(1000) }] }
+    editor = createEditor(host, {
+      type: 'doc',
+      content: Array.from({ length: Math.ceil(PAINT_LIMIT / 1000) + 2 }, () => line)
+    })
+    editor.commands.selectAll()
+    expect(host.querySelectorAll('.hk-selection')).toHaveLength(0)
+    expect(editor.view.dom.classList.contains('hk-own-selection')).toBe(false)
+    // A selection within the limit is painted by the page again.
+    editor.commands.setTextSelection({ from: 1, to: 500 })
+    expect(host.querySelectorAll('.hk-selection')).toHaveLength(1)
+    expect(editor.view.dom.classList.contains('hk-own-selection')).toBe(true)
   })
 
   it('paints select-all, and nothing for a caret', () => {

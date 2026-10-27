@@ -1,5 +1,5 @@
 import { Extension } from '@tiptap/core'
-import { AllSelection, Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
+import { AllSelection, Plugin, PluginKey, TextSelection, type EditorState } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 
@@ -37,10 +37,13 @@ export const SelectionPaint = Extension.create({
               return false
             }
           },
-          attributes: { class: 'hk-own-selection' },
+          // Past the limit the browser paints (the class that hides its paint goes with the decoration).
+          attributes: (state): Record<string, string> =>
+            paintsItself(state) ? { class: 'hk-own-selection' } : {},
           decorations: (state) => {
             const { selection } = state
             if (selection.empty || SelectionPaintKey.getState(state)?.dragging) return null
+            if (!paintsItself(state)) return null
             if (!(selection instanceof TextSelection) && !(selection instanceof AllSelection))
               return null
             return DecorationSet.create(state.doc, [
@@ -52,6 +55,20 @@ export const SelectionPaint = Extension.create({
     ]
   }
 })
+
+/**
+ * The longest selection (in document positions, about characters) the page paints itself. Beyond it the browser's
+ * own paint is good enough and far cheaper: our decoration wraps every selected text node, and a ⌘A over a long
+ * page took WebKit the better part of a second per 3000 blocks — seconds on a long one, read as a hang (ISSUE-261);
+ * the drag layer measures every selected text node on each change of the selection.
+ */
+export const PAINT_LIMIT = 20_000
+
+/** Whether the page paints this state's selection itself (see `PAINT_LIMIT`). */
+export function paintsItself(state: EditorState): boolean {
+  const { from, to } = state.selection
+  return to - from <= PAINT_LIMIT
+}
 
 /** Boxes of the selected characters, relative to `origin` — text nodes only, so list numbers and gaps never count. */
 export function selectedTextRects(range: Range, root: Node, origin: DOMRect): DOMRect[] {
@@ -118,6 +135,7 @@ class DragLayer {
     const parent = this.layer.parentElement
     if (
       !this.dragging ||
+      !paintsItself(this.view.state) ||
       !selection ||
       selection.rangeCount === 0 ||
       selection.isCollapsed ||
