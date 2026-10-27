@@ -583,19 +583,22 @@ final class EditorController {
         ((_ docId: String, _ id: String, _ status: AIPageChange.Status, _ before: String?, _ after: String?) -> Void)?
     /// The change shown in the page now (its card is marked in the chat).
     private(set) var focusedAIChange: (docId: String, id: String)?
-    /// The changes the chat offers for a page: sent now if it's open, else when it loads.
-    @ObservationIgnored private var aiChangeOffer: (docId: String, changes: [AIPageChange])?
+    /// The changes the chat offers for a page: sent now if it's open, else when it loads. `focusFirst` once, as an
+    /// answer ends: the page shows its first pending change (ISSUE-218), not again on a later load or reload.
+    @ObservationIgnored private var aiChangeOffer: (docId: String, changes: [AIPageChange], focusFirst: Bool)?
 
-    func offerAIChanges(_ changes: [AIPageChange], for docId: String) {
-        aiChangeOffer = (docId, changes)
+    func offerAIChanges(_ changes: [AIPageChange], for docId: String, focusFirst: Bool = false) {
+        aiChangeOffer = (docId, changes, focusFirst)
         guard isReady, currentDocumentID == docId else { return }
         Task { await pushAIChanges() }
     }
 
     private func pushAIChanges() async {
         guard let offer = aiChangeOffer, offer.docId == currentDocumentID else { return }
+        aiChangeOffer?.focusFirst = false
         await call(
-            "window.hikki.aiChanges(docId, changes)", ["docId": offer.docId, "changes": offer.changes.map(\.bridgeValue)],
+            "window.hikki.aiChanges(docId, changes, focusFirst)",
+            ["docId": offer.docId, "changes": offer.changes.map(\.bridgeValue), "focusFirst": offer.focusFirst],
             label: "aiChanges")
     }
 
@@ -1463,7 +1466,9 @@ private final class EditorUIDelegate: NSObject, WKUIDelegate {
                 NSWorkspace.shared.open(url)
             #endif
         } else {
-            Log.warn("popup from a frame refused", category: "bridge", context: ["click": "\(navigationAction.navigationType == .linkActivated)"])
+            Log.warn(
+                "popup from a frame refused", category: "bridge", context: ["click": "\(navigationAction.navigationType == .linkActivated)"]
+            )
         }
         return nil
     }

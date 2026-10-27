@@ -66,10 +66,10 @@ export function AIChanges(host: AIChangesHost) {
       // Each runs its own transactions (the command's own is left undispatched).
       return {
         aiSetChanges:
-          (list: AIChangeInput[]) =>
+          (list: AIChangeInput[], options?: { focusFirst?: boolean }) =>
           ({ editor, tr }) => {
             tr.setMeta('preventDispatch', true)
-            setChanges(editor, host, list)
+            setChanges(editor, host, list, options?.focusFirst ?? false)
             return true
           },
         aiFocusChange:
@@ -143,8 +143,10 @@ type Verdict = 'approve' | 'skip' | 'edit'
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     aiChanges: {
-      /** The changes an Ask AI answer proposes (the pending ones are offered; others only remembered). */
-      aiSetChanges: (list: AIChangeInput[]) => ReturnType
+      /** The changes an Ask AI answer proposes (the pending ones are offered; others only remembered). With
+       * `focusFirst` — the answer has just ended — the first pending one is shown in the page, the keyboard left
+       * where it was. */
+      aiSetChanges: (list: AIChangeInput[], options?: { focusFirst?: boolean }) => ReturnType
       /** Show a change in the page: its block in view, the bar under it. */
       aiFocusChange: (id: string) => ReturnType
       /** Approve (one undo step), skip, or approve and put the caret there to change it further. */
@@ -231,7 +233,12 @@ function basisOf(doc: PMNode, change: AIChangeInput): Map<string, string> | null
   return basis
 }
 
-function setChanges(editor: Editor, host: AIChangesHost, list: AIChangeInput[]): void {
+function setChanges(
+  editor: Editor,
+  host: AIChangesHost,
+  list: AIChangeInput[],
+  focusFirst: boolean
+): void {
   const store = storage(editor)
   const doc = editor.state.doc
   store.changes = []
@@ -246,6 +253,9 @@ function setChanges(editor: Editor, host: AIChangesHost, list: AIChangeInput[]):
   }
   if (store.focused && !pending(store).some((c) => c.id === store.focused)) unfocus(editor, host)
   redraw(editor, host)
+  // The answer has just ended: its first change comes into view (ISSUE-218), the keyboard staying with the chat.
+  const first = pending(store)[0]
+  if (focusFirst && !store.focused && first) focus(editor, host, first.id, { keyboard: false })
 }
 
 function canRewrite(doc: PMNode, id: string | undefined): boolean {
@@ -272,7 +282,14 @@ function checkStale(editor: Editor, host: AIChangesHost): void {
   if (changed) redraw(editor, host)
 }
 
-function focus(editor: Editor, host: AIChangesHost, id: string): boolean {
+/** Shows change `id` in the page: its block in view with the bar under it, the caret at the block — and, unless
+ * `keyboard` is off (the answer's end bringing its first change into view), the page takes the keyboard for ↵ / ⌫. */
+function focus(
+  editor: Editor,
+  host: AIChangesHost,
+  id: string,
+  { keyboard = true }: { keyboard?: boolean } = {}
+): boolean {
   const store = storage(editor)
   const change = pending(store).find((c) => c.id === id)
   if (!change) return false
@@ -289,7 +306,7 @@ function focus(editor: Editor, host: AIChangesHost, id: string): boolean {
       .setMeta(AIChangesKey, true)
       .setMeta('addToHistory', false)
   )
-  editor.view.focus()
+  if (keyboard) editor.view.focus()
   const dom = target ? editor.view.nodeDOM(target.pos) : editor.view.dom.firstElementChild
   const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
   if (dom instanceof Element)

@@ -55,11 +55,12 @@ export class AIBridge {
     return this.diagrams.request(prompt, this.context.page.get().title)
   }
 
-  /** `window.hikki.aiChanges`: the changes an Ask AI answer proposes to this page (ignored for another page). */
-  aiChanges(docId: string, changes: AIChangeInput[]): boolean {
+  /** `window.hikki.aiChanges`: the changes an Ask AI answer proposes to this page (ignored for another page);
+   * `focusFirst` once the answer has ended, so the first pending change comes into view. */
+  aiChanges(docId: string, changes: AIChangeInput[], focusFirst = false): boolean {
     const editor = this.context.editor()
     if (!editor || docId !== this.context.page.get().docId) return false
-    return editor.commands.aiSetChanges(changes)
+    return editor.commands.aiSetChanges(changes, { focusFirst })
   }
 
   /** `window.hikki.aiFocusChange`: a card picked in the chat — its change shown in the page. */

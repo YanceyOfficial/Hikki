@@ -70,7 +70,7 @@ export interface HikkiAPI {
   // AI
   demoAI(terms: string[], action: string): boolean
   aiEvent(event: AIStreamEvent): void
-  aiChanges(docId: string, changes: AIChangeInput[]): boolean
+  aiChanges(docId: string, changes: AIChangeInput[], focusFirst?: boolean): boolean
   aiFocusChange(id: string): boolean
   aiResolveChange(id: string, verdict: 'approve' | 'skip'): boolean
   aiApproveAll(): boolean

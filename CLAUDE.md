@@ -947,12 +947,14 @@ HikkiUITests/                 XCUITest flows
   reads or transcribes them on the device). **Ask AI edits the page** (Notion's review cards): the chat
   sends the open page as blocks with their ids (`window.hikki.aiPageBlocks`, `AIPageEdits.pageJSON`) and an answer
   that changes it ends with a fenced `hikki-changes` JSON block — rewrite / insert / move / delete, one block each;
-  `"after": "end"` (or the last id) is the end of the page; several inserts with the same `after`, in reading order,
+  `"after": "end"` (or the last id) is the end of the page — a page longer than `AIPrompts.maxPageText` goes cut, with
+  `omitted` saying how many blocks follow, so "end" stays its real end; several inserts with the same `after`, in reading order,
   add a passage of several blocks, each kept after the one before it however they are approved (`inserted` in
   `apps/editor/src/extensions/ai-changes.ts`) — hidden from the chat and checked against those ids, given in reading order
   (`HikkiAI/Sources/AIPageEdits.swift`). The changes
   (`AIPageChange`, kept on the answer's `ChatTurn`) are HikkiUI's `AIChangeReview` under it: a card per pending change
-  (a tap shows it in the page — `window.hikki.aiFocusChange`; ✓ / ✕ decide there), Approve all, and the reviewed ones
+  (a tap shows it in the page — `window.hikki.aiFocusChange`; ✓ / ✕ decide there; as the answer ends the page shows
+  the first pending one on its own, `aiChanges(…, focusFirst)`, the keyboard left where it was), Approve all, and the reviewed ones
   in a stack of cards (newest on top, the AI's words green, a tap spreads it). In the page
   (`apps/editor/src/extensions/ai-changes.ts`, bar `apps/editor/src/components/ai-change-bar.tsx`) the focused change
   is drawn as tracked changes with Edit · Skip ⌫ · Approve ↵; each verdict moves to the next and goes back as

@@ -121,6 +121,32 @@ describe('Ask AI changes to the page', () => {
     expect(texts()[1]).toBe('He know it.')
   })
 
+  it('an answer that has ended brings its first change into view without taking the keyboard', () => {
+    const scrolled: Element[] = []
+    Element.prototype.scrollIntoView = function () {
+      scrolled.push(this)
+    }
+    const other = document.createElement('input')
+    document.body.append(other)
+    other.focus()
+    editor.commands.aiSetChanges(
+      [
+        change({ id: 'c1', kind: 'delete', block: 'b' }),
+        change({ id: 'c2', kind: 'rewrite', block: 'a', html: 'He knows it.' })
+      ],
+      { focusFirst: true }
+    )
+    // The first pending one is shown and scrolled to; the chat's field keeps the keyboard.
+    expect(focused.at(-1)).toBe('c1')
+    expect(scrolled.at(-1)?.textContent).toBe('Second line.')
+    expect(document.activeElement).toBe(other)
+    // Offered again (a reload, a verdict reported back), the view stays where it is.
+    editor.commands.aiSetChanges([change({ id: 'c3', kind: 'delete', block: 'b' })])
+    expect(focused.at(-1)).toBe(null)
+    expect(scrolled).toHaveLength(1)
+    other.remove()
+  })
+
   it('↵ approves and ⌫ skips the focused change while the caret stays put', () => {
     editor.commands.aiSetChanges([
       change({ id: 'c1', kind: 'delete', block: 'b' }),

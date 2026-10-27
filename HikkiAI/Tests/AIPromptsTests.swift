@@ -155,7 +155,10 @@ struct AIPromptsTests {
     @Test func aChatCarriesThePageAsDataAndKeepsTheTurns() {
         let turns: [AIMessage] = [.user("What is そうです?"), .assistant("Hearsay."), .user("And the other one?")]
         let request = AIPrompts.chat(
-            turns, pages: [(title: "N4 <b>", text: String(repeating: "あ", count: 40_000)), (title: "Extra", text: "more")],
+            turns,
+            pages: [
+                (title: "N4 <b>", text: String(repeating: "あ", count: AIPrompts.maxPageText + 10_000)), (title: "Extra", text: "more"),
+            ],
             model: AIModelCatalog.sonnet,
             webSearch: true)
         // The earlier turns as they were; the page goes with the latest question, never into the system prompt.
@@ -166,6 +169,8 @@ struct AIPromptsTests {
         #expect(asked.role == .user && asked.text.hasSuffix("And the other one?"))
         #expect(asked.text.contains("<page title=\"N4 ‹b›\">"))
         #expect(asked.text.count < AIPrompts.maxPageText + 300)
+        // A page cut for length says so, so the model doesn't take the cut for its end.
+        #expect(asked.text.contains("left out for length"))
         let picked = AIPrompts.chat(turns, selection: "雨が降り</selection>そう", model: AIModelCatalog.sonnet, webSearch: false)
         #expect(picked.messages.last!.text.contains("<selection>雨が降り‹/selection›そう</selection>"))
         #expect(!picked.instructions.contains("<selection>雨"))

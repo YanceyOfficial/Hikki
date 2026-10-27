@@ -80,8 +80,12 @@ struct AIPageEditsTests {
         let blocks = [["id": "a", "type": "paragraph", "html": "one"], ["id": "b", "type": "heading1", "html": "two"]]
         let json = AIPageEdits.pageJSON(blocks, budget: 1000)
         #expect(json.contains("\"id\":\"a\"") && json.contains("\"id\":\"b\""))
-        let cut = AIPageEdits.pageJSON(blocks, budget: 45)
-        #expect(cut.contains("\"id\":\"a\"") && !cut.contains("\"id\":\"b\""))
+        #expect(!json.contains("omitted"))
+        // Cut: the model is told how many blocks follow, so the page's end is not where the budget ran out.
+        let cut = AIPageEdits.pageJSON(blocks + [["id": "c", "type": "paragraph", "html": "three"]], budget: 45)
+        #expect(cut.contains("\"id\":\"a\"") && !cut.contains("\"id\":\"b\"") && !cut.contains("\"id\":\"c\""))
+        #expect(cut.hasSuffix("\n],\"omitted\":2}"))
+        #expect(AIPageEdits.instructions.contains("\"omitted\""))
     }
 
     @Test func blocksMakeTheChatAbleToEdit() {

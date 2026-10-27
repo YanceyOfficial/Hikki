@@ -105,20 +105,26 @@ public enum AIPageEdits {
     }
 
     /// The open page's blocks (`id`, `type`, `html` each, in order) as the JSON the model gets, up to `budget`
-    /// characters (later blocks left out).
+    /// characters: later blocks are left out, and `omitted` says how many, so the model knows the page goes on past
+    /// what it sees (a long page "ended" where the budget ran out, and "at the end" landed in its middle, ISSUE-218).
     public static func pageJSON(_ blocks: [[String: String]], budget: Int = AIPrompts.maxPageText) -> String {
         let options: JSONSerialization.WritingOptions = [.sortedKeys, .withoutEscapingSlashes]
         var kept: [String] = []
         var used = 0
+        var omitted = 0
         for block in blocks {
             guard let data = try? JSONSerialization.data(withJSONObject: block, options: options),
                 let line = String(data: data, encoding: .utf8)
             else { continue }
-            if used + line.count > budget { break }
+            if used + line.count > budget || omitted > 0 {
+                omitted += 1
+                continue
+            }
             used += line.count
             kept.append(line)
         }
-        return "{\"blocks\":[\n" + kept.joined(separator: ",\n") + "\n]}"
+        let tail = omitted > 0 ? "\n],\"omitted\":\(omitted)}" : "\n]}"
+        return "{\"blocks\":[\n" + kept.joined(separator: ",\n") + tail
     }
 
     static let instructions = """
@@ -139,6 +145,8 @@ public enum AIPageEdits {
         inside one block.
         - move: "block" goes after "after" (an id, "end" for the end of the page, or null for the top).
         - delete: "block" is removed.
+        When the page JSON has "omitted", that many more blocks follow the ones shown and were left out for length: \
+        they are part of the page, "end" means after them, and say so when asked about what you can't see.
         Rules: use the page's block ids exactly as given; at most one change per existing block; each change touches \
         one block, so prefer several small changes to one large one; in html use only inline tags (strong, em, u, s, \
         code, a with href, br) and keep the formatting the text already has; keep the page's language unless asked to \

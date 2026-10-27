@@ -753,9 +753,10 @@ final class AIChat {
     }
 
     /// Every change of the open page's conversation goes to its editor (the pending ones are shown there).
-    private func offerChanges() {
+    /// `focusFirst` as an answer ends: the page brings its first pending change into view.
+    private func offerChanges(focusFirst: Bool = false) {
         guard let page = openPageID else { return }
-        editor?.offerAIChanges(messages.flatMap(\.changes), for: page)
+        editor?.offerAIChanges(messages.flatMap(\.changes), for: page, focusFirst: focusFirst)
     }
 
     /// The change shown in the page now (its card is marked).
@@ -830,7 +831,7 @@ final class AIChat {
             messages[last].sentAt = .now
             if error == nil, let blocks = askedBlocks { messages[last].changes = proposedChanges(in: messages[last], blocks: blocks) }
             keep([messages[last]])
-            if !messages[last].changes.isEmpty { offerChanges() }
+            if !messages[last].changes.isEmpty { offerChanges(focusFirst: true) }
         }
         askedBlocks = nil
         if let error {
