@@ -82,6 +82,17 @@ export function SplitDrop(host: SplitDropHost) {
             document.body.append(hint)
 
             let hovering = false
+            // Once per drag, what it carries — evidence in the native log for a drag the zone ignores (ISSUE-227:
+            // a tab dragged to the edge showed nothing while a sidebar row, the same link, did).
+            let described = false
+            const describe = (event: DragEvent) => {
+              if (described || host.mode() === 'off') return
+              described = true
+              console.warn(
+                '[split-drop] drag types:',
+                Array.from(event.dataTransfer?.types ?? []).join(' ') || '(none)'
+              )
+            }
             const show = (open: boolean) => {
               const mode = host.mode()
               const outlined = mode === 'replace' || mode === 'here'
@@ -96,6 +107,7 @@ export function SplitDrop(host: SplitDropHost) {
             }
 
             const onOver = (event: DragEvent) => {
+              describe(event)
               const open = inZone(event)
               show(open)
               if (!open) return
@@ -105,6 +117,7 @@ export function SplitDrop(host: SplitDropHost) {
               if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'
             }
             const onDrop = (event: DragEvent) => {
+              described = false
               const open = inZone(event)
               show(false)
               if (!open) return
@@ -116,9 +129,15 @@ export function SplitDrop(host: SplitDropHost) {
             }
             const onLeave = (event: DragEvent) => {
               // Left the window (no element entered next).
-              if (!event.relatedTarget) show(false)
+              if (!event.relatedTarget) {
+                described = false
+                show(false)
+              }
             }
-            const onEnd = () => show(false)
+            const onEnd = () => {
+              described = false
+              show(false)
+            }
 
             document.addEventListener('dragover', onOver, true)
             document.addEventListener('drop', onDrop, true)
