@@ -197,6 +197,16 @@ describe('Ask AI changes to the page', () => {
     expect(texts()).toEqual(['Verbs', 'He know it.', 'Second line.', 'one', 'two'])
   })
 
+  it('an insert with no html is a blank line (ISSUE-259)', () => {
+    editor.commands.aiSetChanges([change({ id: 'gap', kind: 'insert', after: 'a', html: '' })])
+    expect(editor.commands.aiApproveAllChanges()).toBe(true)
+    const content = editor.getJSON().content ?? []
+    const at = content.findIndex((node) => node.attrs?.id === 'a')
+    expect(content[at + 1]).toMatchObject({ type: 'paragraph' })
+    expect(content[at + 1].content).toBeUndefined()
+    expect(reports).toEqual([{ id: 'gap', status: 'approved', before: '', after: '' }])
+  })
+
   it('several inserts after one block keep their reading order, approved in order', () => {
     editor.commands.aiSetChanges([
       change({ id: 'p1', kind: 'insert', after: 'b', type: 'heading3', html: 'Difference' }),

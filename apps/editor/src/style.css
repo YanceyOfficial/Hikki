@@ -996,6 +996,8 @@
   margin-block: 0.25em;
   border-radius: var(--radius-sm);
   padding: 0.125em 0.25em;
+  /* A blank line inserted (ISSUE-259) is still a line. */
+  min-height: 1lh;
   color: var(--color-ink-green);
   background: var(--color-wash-green);
   white-space: pre-wrap;

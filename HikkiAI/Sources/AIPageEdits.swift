@@ -85,7 +85,8 @@ public enum AIPageEdits {
             if let after, !known.contains(after) { continue }
             switch kind {
             case "insert":
-                guard let html, !html.isEmpty else { continue }
+                // An empty html is a blank line (ISSUE-259).
+                guard html != nil else { continue }
             default:
                 guard let block, known.contains(block), !touched.contains(block) else { continue }
                 if kind == "rewrite", html == nil { continue }
@@ -144,9 +145,11 @@ public enum AIPageEdits {
         - rewrite: one block's text is replaced — "block", "html".
         - insert: a new block — "after" (the id it follows: the last id in the list puts it at the end of the page, \
         and "end" means the same; null for the top of the page), "type" (paragraph, heading1, heading2 or heading3; \
-        after a list item it becomes the next item), "html". To add several blocks in one place, list several inserts \
-        with the same "after", in reading order, one block each: a paragraph break is a new insert, never <br><br> \
-        inside one block.
+        after a list item it becomes the next item), "html" ("" is a blank line). To add several blocks in one \
+        place, list several inserts with the same "after", in reading order, one block each: a paragraph break is a \
+        new insert, never <br><br> inside one block. Keep the page's spacing: where it sets its paragraphs or groups \
+        apart with blank lines, set what you add apart the same way (a blank-line insert between groups, and one \
+        before or after yours where the page would have one); where it doesn't, add none.
         - move: "block" goes after "after" (an id, "end" for the end of the page, or null for the top).
         - delete: "block" is removed.
         When the page JSON has "omitted", that many more blocks follow the ones shown and were left out for length: \

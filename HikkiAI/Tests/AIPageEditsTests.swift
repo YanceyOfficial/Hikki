@@ -33,14 +33,17 @@ struct AIPageEditsTests {
 
     @Test func onlyChangesThatFitThePageAreKept() {
         let changes = AIPageEdits.changes(in: answer, blocks: ["b3", "b5", "b6", "b7"])
-        #expect(changes.map(\.kind) == ["rewrite", "insert", "move", "delete", "insert"])
+        #expect(changes.map(\.kind) == ["rewrite", "insert", "move", "delete", "insert", "insert"])
         #expect(
             changes[0]
                 == ProposedPageChange(
                     kind: "rewrite", block: "b3", html: "系动词可表<strong>状态</strong>或变化", title: "系动词不都是静态", why: "turn 表示变化"))
         #expect(changes[1].after == "b5" && changes[1].type == "heading2" && changes[1].block == nil)
         #expect(changes[2].block == "b6" && changes[2].after == nil && changes[2].html == nil)
-        #expect(changes[4].type == "paragraph")
+        // An insert with empty html is a blank line (ISSUE-259); an odd type reads as a paragraph.
+        #expect(changes[4].html == "" && changes[4].type == "paragraph" && changes[4].after == "b5")
+        #expect(changes[5].type == "paragraph")
+        #expect(AIPageEdits.instructions.contains("blank line"))
     }
 
     @Test func anUnreadableBlockProposesNothing() {
