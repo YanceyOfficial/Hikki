@@ -2,7 +2,7 @@ import type { Editor } from '@tiptap/core'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createEditor } from '../src/core/editor'
-import { PAINT_LIMIT, selectedTextRects } from '../src/extensions/selection-paint'
+import { PAINT_LIMIT, selectedTextRects, visibleBlocks } from '../src/extensions/selection-paint'
 
 let host: HTMLElement
 let editor: Editor
@@ -47,12 +47,25 @@ describe('selection paint', () => {
       content: Array.from({ length: Math.ceil(PAINT_LIMIT / 1000) + 2 }, () => line)
     })
     editor.commands.selectAll()
+    // Nothing in the page's DOM changes: no text wrapped, the root's class as it was (a class change on the root
+    // of a long page restyled every element under it). The layer draws the blocks in view instead.
     expect(host.querySelectorAll('.hk-selection')).toHaveLength(0)
-    expect(editor.view.dom.classList.contains('hk-own-selection')).toBe(false)
-    // A selection within the limit is painted by the page again.
+    expect(editor.view.dom.classList.contains('hk-own-selection')).toBe(true)
+    expect(host.querySelector('.hk-selection-layer')).not.toBeNull()
+    // A selection within the limit is painted on the text again.
     editor.commands.setTextSelection({ from: 1, to: 500 })
     expect(host.querySelectorAll('.hk-selection')).toHaveLength(1)
-    expect(editor.view.dom.classList.contains('hk-own-selection')).toBe(true)
+  })
+
+  it('draws only the blocks in view of a long selection, found without walking the page', () => {
+    const blocks = Array.from({ length: 1000 }, (_, i) => ({
+      top: i * 30 - 600,
+      bottom: i * 30 - 570
+    }))
+    // The first block whose foot is in view, through the last whose top is.
+    expect(visibleBlocks(blocks, 700)).toEqual([19, 44])
+    expect(visibleBlocks(blocks.slice(0, 10), 700)).toEqual([10, 10])
+    expect(visibleBlocks([], 700)).toEqual([0, 0])
   })
 
   it('paints select-all, and nothing for a caret', () => {

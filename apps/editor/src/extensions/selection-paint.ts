@@ -12,7 +12,8 @@ export const SelectionPaintKey = new PluginKey<{ dragging: boolean }>('selection
  *
  * Settled selections are a decoration. While the mouse is still dragging, re-drawing the text under the pointer
  * would cut the browser's drag-selection short, so a layer behind the page draws the selected characters' boxes
- * instead (nothing in the text changes) until the button is released. Fields inside the page keep the browser's
+ * instead (nothing in the text changes) until the button is released. A selection longer than `PAINT_LIMIT` is drawn
+ * by that layer too, block by block and only where the viewport is. Fields inside the page keep the browser's
  * selection; table cell selections keep their own style.
  */
 export const SelectionPaint = Extension.create({
@@ -37,15 +38,13 @@ export const SelectionPaint = Extension.create({
               return false
             }
           },
-          // Past the limit the browser paints (the class that hides its paint goes with the decoration).
-          attributes: (state): Record<string, string> =>
-            paintsItself(state) ? { class: 'hk-own-selection' } : {},
+          // The class never changes: a class (or custom property) change on the root of a long page made WebKit
+          // restyle every element under it — most of what ⌘A and the click after it cost (ISSUE-261).
+          attributes: { class: 'hk-own-selection' },
           decorations: (state) => {
             const { selection } = state
             if (selection.empty || SelectionPaintKey.getState(state)?.dragging) return null
-            if (!paintsItself(state)) return null
-            if (!(selection instanceof TextSelection) && !(selection instanceof AllSelection))
-              return null
+            if (!paintsText(state)) return null
             return DecorationSet.create(state.doc, [
               Decoration.inline(selection.from, selection.to, { class: 'hk-selection' })
             ])
@@ -57,17 +56,47 @@ export const SelectionPaint = Extension.create({
 })
 
 /**
- * The longest selection (in document positions, about characters) the page paints itself. Beyond it the browser's
- * own paint is good enough and far cheaper: our decoration wraps every selected text node, and a ⌘A over a long
- * page took WebKit the better part of a second per 3000 blocks — seconds on a long one, read as a hang (ISSUE-261);
- * the drag layer measures every selected text node on each change of the selection.
+ * The longest selection (in document positions, about characters) painted on the text. Beyond it the text
+ * decoration — a span around every selected text node — took WebKit the better part of a second per 3000 blocks on
+ * ⌘A, and as long again on the click that followed (ISSUE-261); such a selection is drawn block by block by the
+ * layer, for the blocks in view only, and nothing in the page's DOM changes.
  */
 export const PAINT_LIMIT = 20_000
 
-/** Whether the page paints this state's selection itself (see `PAINT_LIMIT`). */
-export function paintsItself(state: EditorState): boolean {
+/** Whether the page paints this state's selection on the text (see `PAINT_LIMIT`). */
+export function paintsText(state: EditorState): boolean {
   const { from, to } = state.selection
   return to - from <= PAINT_LIMIT
+}
+
+/** A selection the layer draws block by block: longer than the limit, and one of text. */
+function paintsBlocks(state: EditorState): boolean {
+  const { selection } = state
+  return (
+    !selection.empty &&
+    !paintsText(state) &&
+    (selection instanceof TextSelection || selection instanceof AllSelection)
+  )
+}
+
+/**
+ * Which of `blocks` (their tops and bottoms, in order down the page) are within a viewport `height` tall: the first by
+ * binary search, then on until one starts below it. Only those get a box, however long the page.
+ */
+export function visibleBlocks(
+  blocks: { top: number; bottom: number }[],
+  height: number
+): [number, number] {
+  let low = 0
+  let high = blocks.length
+  while (low < high) {
+    const mid = (low + high) >> 1
+    if (blocks[mid].bottom < 0) low = mid + 1
+    else high = mid
+  }
+  let end = low
+  while (end < blocks.length && blocks[end].top <= height) end += 1
+  return [low, end]
 }
 
 /** Boxes of the selected characters, relative to `origin` — text nodes only, so list numbers and gaps never count. */
@@ -97,7 +126,7 @@ export function selectedTextRects(range: Range, root: Node, origin: DOMRect): DO
   return rects
 }
 
-/** The layer that paints a selection while it is being dragged (see `SelectionPaint`). */
+/** The layer that paints a selection while it is being dragged, and a long one by block (see `SelectionPaint`). */
 class DragLayer {
   private readonly layer: HTMLDivElement
   private frame = 0
@@ -109,6 +138,7 @@ class DragLayer {
     view.dom.parentElement?.prepend(this.layer)
     document.addEventListener('selectionchange', this.schedule)
     window.addEventListener('scroll', this.schedule, true)
+    window.addEventListener('resize', this.schedule)
     window.addEventListener('mouseup', this.release, true)
   }
 
@@ -118,37 +148,55 @@ class DragLayer {
 
   private readonly release = () => {
     if (this.dragging) this.view.dispatch(this.view.state.tr.setMeta(SelectionPaintKey, false))
-    this.layer.replaceChildren()
+    else if (!paintsBlocks(this.view.state)) this.layer.replaceChildren()
   }
 
   private readonly schedule = () => {
-    if (!this.dragging || this.frame) return
+    if (!(this.dragging || paintsBlocks(this.view.state)) || this.frame) return
     this.frame = requestAnimationFrame(() => {
       this.frame = 0
       this.paint()
     })
   }
 
-  /** Draws the selected characters' boxes (the layer sits behind the page's text). */
+  /** Draws the selection's boxes (the layer sits behind the page's text): the blocks in view of a long selection,
+   * else the characters of one being dragged. */
   paint(): void {
-    const selection = this.view.dom.ownerDocument.getSelection()
     const parent = this.layer.parentElement
-    if (
-      !this.dragging ||
-      !paintsItself(this.view.state) ||
-      !selection ||
-      selection.rangeCount === 0 ||
-      selection.isCollapsed ||
-      !parent
-    ) {
+    if (!parent) return
+    if (paintsBlocks(this.view.state)) {
+      this.draw(this.blockRects(parent.getBoundingClientRect()))
+      return
+    }
+    const selection = this.view.dom.ownerDocument.getSelection()
+    if (!this.dragging || !selection || selection.rangeCount === 0 || selection.isCollapsed) {
       this.layer.replaceChildren()
       return
     }
-    const rects = selectedTextRects(
-      selection.getRangeAt(0),
-      this.view.dom,
-      parent.getBoundingClientRect()
+    this.draw(
+      selectedTextRects(selection.getRangeAt(0), this.view.dom, parent.getBoundingClientRect())
     )
+  }
+
+  /** The boxes of the top-level blocks the selection reaches, within the viewport. */
+  private blockRects(origin: DOMRect): DOMRect[] {
+    const { from, to } = this.view.state.selection
+    const children = Array.from(this.view.dom.children) as HTMLElement[]
+    const rects = children.map((child) => child.getBoundingClientRect())
+    const [start, end] = visibleBlocks(rects, window.innerHeight)
+    const out: DOMRect[] = []
+    for (let index = start; index < end; index += 1) {
+      const pos = this.view.posAtDOM(children[index], 0)
+      const node = this.view.state.doc.resolve(pos).node(1)
+      const before = this.view.state.doc.resolve(pos).before(1)
+      if (before >= to || before + node.nodeSize <= from) continue
+      const rect = rects[index]
+      out.push(new DOMRect(rect.left - origin.left, rect.top - origin.top, rect.width, rect.height))
+    }
+    return out
+  }
+
+  private draw(rects: DOMRect[]): void {
     this.layer.replaceChildren(
       ...rects.map((rect) => {
         const box = document.createElement('div')
@@ -159,13 +207,15 @@ class DragLayer {
   }
 
   update(): void {
-    if (!this.dragging) this.layer.replaceChildren()
+    if (paintsBlocks(this.view.state)) this.schedule()
+    else if (!this.dragging) this.layer.replaceChildren()
   }
 
   destroy(): void {
     cancelAnimationFrame(this.frame)
     document.removeEventListener('selectionchange', this.schedule)
     window.removeEventListener('scroll', this.schedule, true)
+    window.removeEventListener('resize', this.schedule)
     window.removeEventListener('mouseup', this.release, true)
     this.layer.remove()
   }
