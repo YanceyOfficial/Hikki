@@ -190,7 +190,8 @@ public struct TabStrip<Leading: View>: View {
                     tab(item)
                     if item.id != items.last?.id {
                         if item.joinedToNext {
-                            Theme.border.frame(width: Spacing.px, height: Spacing.s4)
+                            // A little air on both sides, so the tab's close button never touches it (ISSUE-231).
+                            Theme.border.frame(width: Spacing.px, height: Spacing.s4).padding(.horizontal, Spacing.s1)
                         } else {
                             Color.clear.frame(width: Spacing.s0_5)
                         }
