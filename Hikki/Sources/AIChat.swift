@@ -974,7 +974,7 @@ struct AIChatView: View {
             .scrollDismissesKeyboard(.interactively)
             // A file dragged in anywhere over the conversation attaches.
             .onDrop(of: [.fileURL, .image, .pdf], isTargeted: nil) { providers in
-                receive(providers)
+                receive(providers, from: "conversation")
                 return true
             }
             .onChange(of: chat.messages.last?.text) {
@@ -1093,7 +1093,7 @@ struct AIChatView: View {
             )
             .shadow(color: Theme.border, radius: Spacing.s2, y: Spacing.s0_5)
             .onDrop(of: [.fileURL, .image, .pdf], isTargeted: $dropTargeted) { providers in
-                receive(providers)
+                receive(providers, from: "card")
                 return true
             }
             #if os(macOS)
@@ -1145,6 +1145,12 @@ struct AIChatView: View {
         .font(.hk(.sm))
         .lineLimit(2...8)
         .focused($composing)
+        // The field's own drop target: a file dragged onto the field lands here before the field's text view can
+        // take it as text (ISSUE-263), the outer targets never being asked over a platform view.
+        .onDrop(of: [.fileURL, .image, .pdf], isTargeted: nil) { providers in
+            receive(providers, from: "field")
+            return true
+        }
         .submitLabel(.send)
         .onSubmit { mentionQuery == nil ? chat.send(store: model.store) : pickHighlighted() }
         // While an input method is composing, its candidates own these keys.
@@ -1275,8 +1281,10 @@ struct AIChatView: View {
         }
     #endif
 
-    /// Dropped files: file URLs read from disk, pictures and PDFs as data.
-    private func receive(_ providers: [NSItemProvider]) {
+    /// Dropped files: file URLs read from disk, pictures and PDFs as data. `from` names the drop target for the log
+    /// (the conversation, the card, the field — ISSUE-263: which of them a drop reaches).
+    private func receive(_ providers: [NSItemProvider], from: String) {
+        Log.info("drop: SwiftUI target \(from) took \(providers.count) item(s)", category: "drop")
         for provider in providers {
             if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
                 _ = provider.loadObject(ofClass: URL.self) { url, _ in

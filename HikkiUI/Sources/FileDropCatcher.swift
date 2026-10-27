@@ -53,6 +53,11 @@
 
         public static func dismantleNSView(_ view: CatcherView, coordinator: ()) { view.stopObserving() }
 
+        /// The whole of what it is laid over, never an intrinsic size of its own.
+        public func sizeThatFits(_ proposal: ProposedViewSize, nsView: CatcherView, context: Context) -> CGSize? {
+            CGSize(width: proposal.width ?? 0, height: proposal.height ?? 0)
+        }
+
         public final class CatcherView: NSView {
             var accepts: (NSPasteboard) -> Bool = { _ in false }
             var onTargeted: (Bool) -> Void = { _ in }
@@ -121,7 +126,11 @@
                 if !reported {
                     reported = true
                     let index = superview?.subviews.firstIndex { $0 === self } ?? -1
-                    trace?("drop: catcher over \(found.count) text view(s), sibling \(index + 1) of \(superview?.subviews.count ?? 0)")
+                    let chain = sequence(first: superview) { $0?.superview }.prefix(5).compactMap { $0 }
+                        .map { String(describing: type(of: $0)) }.joined(separator: " < ")
+                    trace?(
+                        "drop: catcher \(Int(mine.width))×\(Int(mine.height)) over \(found.count) text view(s), sibling "
+                            + "\(index + 1) of \(superview?.subviews.count ?? 0), under \(chain)")
                 }
             }
 
