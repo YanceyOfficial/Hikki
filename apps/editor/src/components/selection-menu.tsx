@@ -19,8 +19,10 @@ import {
   CaretRightIcon,
   ChatTeardropTextIcon,
   CodeIcon,
+  ArrowSquareOutIcon,
   DotsThreeIcon,
   EraserIcon,
+  LinkBreakIcon,
   LinkSimpleIcon,
   MathOperationsIcon,
   SparkleIcon,
@@ -471,7 +473,9 @@ export function LinkPanel({
           }}
         />
       </InputGroup>
-      <div className="flex justify-end gap-1">
+      {/* Open and Remove as two quiet buttons with their icons on the left, Apply alone on the right (ISSUE-241:
+          three looks in one row — grey words, red words, a red button — read as noise). */}
+      <div className="flex items-center gap-1">
         {href && (
           <>
             {isSafeHref(href) && (
@@ -482,15 +486,17 @@ export function LinkPanel({
                 nativeButton={false}
                 render={<a href={href} target="_blank" rel="noreferrer" />}
               >
+                <ArrowSquareOutIcon data-icon="inline-start" aria-hidden />
                 {t('link.open')}
               </Button>
             )}
-            <Button variant="ghost" size="xs" className="text-destructive" onClick={onRemove}>
+            <Button variant="ghost" size="xs" className="text-muted-foreground" onClick={onRemove}>
+              <LinkBreakIcon data-icon="inline-start" aria-hidden />
               {t('link.remove')}
             </Button>
           </>
         )}
-        <Button size="xs" onClick={apply}>
+        <Button size="xs" className="ml-auto" onClick={apply}>
           {t('link.apply')}
         </Button>
       </div>

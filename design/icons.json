@@ -353,6 +353,9 @@
       "sf": "arrow.up.right.square",
       "native": false
     },
+    "link-break": {
+      "native": false
+    },
     "arrows-in": {
       "sf": "arrow.down.right.and.arrow.up.left",
       "native": false
