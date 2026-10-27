@@ -261,13 +261,15 @@ public struct TabStrip<Leading: View>: View {
     }
 
     /// What dragging the tab `id` carries: its page's link (the caller's `dragItem`), and — where tabs reorder — its id
-    /// as `UTType.hikkiTab`, which only this app reads.
+    /// as `UTType.hikkiTab`, which only this app understands. Visible to every process like the link: registered for
+    /// this process alone, it kept the page's web view from seeing the drag as one that carries a link, so a tab
+    /// dragged to the page's right edge did nothing (ISSUE-227).
     private func tabDragItem(_ id: UUID) -> NSItemProvider {
         let provider = dragItem?(id) ?? NSItemProvider()
         if onMove != nil {
             movingTab = id
             grabOffset = nil
-            provider.registerDataRepresentation(forTypeIdentifier: UTType.hikkiTab.identifier, visibility: .ownProcess) {
+            provider.registerDataRepresentation(forTypeIdentifier: UTType.hikkiTab.identifier, visibility: .all) {
                 completion in
                 completion(Data(id.uuidString.utf8), nil)
                 return nil

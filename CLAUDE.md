@@ -616,7 +616,9 @@ HikkiUITests/                 XCUITest flows
   them means after them; it swaps with a neighbour once more than half of it lies over that neighbour — `TabReorder`
   in `HikkiUI/Sources/TabReorder.swift` judges the dragged tab's own box, carried where it was grabbed, against the
   neighbours' middles, a split pair as one); the drag carries the page's link as before plus the tab's id as `app.yancey.hikki.tab`
-  (in-process only, declared in Project.swift's Info.plist), which is how the strip tells a reorder from a page drop. A tab's context menu is
+  (declared in Project.swift's Info.plist; registered for every process like the link — a representation visible to
+  this process alone kept the page's web view from seeing the drag's link, ISSUE-227), which is how the strip tells a
+  reorder from a page drop. A tab's context menu is
   Chrome's (`TabStripMenu` / `TabStripCommand` in `HikkiUI/Sources/TabStrip.swift`, the commands chosen by
   `NativeDetailToolbar` in ContentView; on the Mac an AppKit menu over the tab — HikkiUI's `ContextMenuOverlay`, hit
   by a right click or control-click alone — since SwiftUI's `.contextMenu` never showed in the window toolbar):
