@@ -108,11 +108,11 @@ struct ContentView: View {
         return NavigationSplitView(columnVisibility: $columns, preferredCompactColumn: $navigator.compactColumn) {
             SidebarView(navigator: navigator, wide: wide)
                 .navigationSplitViewColumnWidth(min: Size.sidebarMin, ideal: Size.sidebarIdeal, max: Size.sidebarMax)
-                #if os(iOS)
-                    // The sidebar's own surface, a step off the page (actovia's docked sidebar): the system's glass
-                    // column took the white page's colour and the two read as one sheet. The Mac keeps its vibrancy.
-                    .background(Theme.sidebar.ignoresSafeArea())
-                #endif
+                // The sidebar's own surface, a step off the page (actovia's docked sidebar; Notion's warm grey):
+                // on iOS the system's glass column took the white page's colour and the two read as one sheet; on
+                // the Mac its vibrancy blended the desktop into a cool grey (ISSUE-260). Resolved, so the Mac's
+                // vibrancy can't tint it either.
+                .background(SidebarSurface().ignoresSafeArea())
         } detail: {
             // The inspector takes its room from the page, never from the screen: a panel inside the detail column
             // (SwiftUI's `.inspector` widened the window instead). A sheet on iPhone.
@@ -1134,6 +1134,17 @@ private struct DocumentPane: View {
             }
         }
         .navigationTitle(label)
+    }
+}
+
+/// The sidebar column's surface: `Theme.sidebar` resolved to a plain colour here, where only this view reads the
+/// environment — the Mac's sidebar vibrancy tints a dynamic colour with the desktop (ISSUE-260), a resolved one it
+/// leaves alone (as the rows' pill, see `SidebarView`).
+private struct SidebarSurface: View {
+    @Environment(\.self) private var environment
+
+    var body: some View {
+        Color(Theme.sidebar.resolve(in: environment))
     }
 }
 

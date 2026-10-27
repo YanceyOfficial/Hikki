@@ -219,7 +219,9 @@ HikkiUITests/                 XCUITest flows
   `obscuredContentInsets` on macOS, an explicit scroll inset on iOS).
 - **Sidebar**: Mac/iPad draw our own rows in a `LazyVStack` (`Hikki/Sources/SidebarView.swift`) — a native `List`
   paints selection in the system accent (not the colour tone) and swallowed row drops on iPad. Fills on the sidebar use
-  resolved colours (dynamic ones picked up the active window's vibrancy). The tree is one flat list of plain
+  resolved colours (dynamic ones picked up the active window's vibrancy), and the column itself is painted
+  `Theme.sidebar` on every platform (`SidebarSurface` in ContentView, resolved for the same reason — the Mac's
+  material alone read as a cool grey beside the page, ISSUE-260). The tree is one flat list of plain
   `SidebarRow`s (`PageTree.visibleRows(expanded:)`: id, title, icon, depth, expansion — no edited time) drawn by an
   `Equatable` `PageTreeRow` with its selection, drop line and pill colour passed in as values: no row reads the
   navigator, the model or `\.self` in its body (menus read the page by id when built, `PageActionsFor`), so a save,

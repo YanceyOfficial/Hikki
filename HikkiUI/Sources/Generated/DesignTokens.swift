@@ -26,7 +26,7 @@ public nonisolated extension Theme {
     static let tableBorder = dynamic(light: 0xEDEDEC, lightAlpha: 1, dark: 0x2F2F2F, darkAlpha: 1)
     static let input = dynamic(light: 0x37352F, lightAlpha: 0.16, dark: 0xFFFFFF, darkAlpha: 0.14)
     static let ring = dynamic(light: 0x1C1C1C, lightAlpha: 0.3, dark: 0xE6E4DF, darkAlpha: 0.4)
-    static let sidebar = dynamic(light: 0xF8F8F7, lightAlpha: 1, dark: 0x202020, darkAlpha: 1)
+    static let sidebar = dynamic(light: 0xF7F7F5, lightAlpha: 1, dark: 0x202020, darkAlpha: 1)
     static let sidebarForeground = dynamic(light: 0x37352F, lightAlpha: 0.82, dark: 0xFFFFFF, darkAlpha: 0.78)
     static let sidebarPrimary = dynamic(light: 0x1C1C1C, lightAlpha: 1, dark: 0xE6E4DF, darkAlpha: 1)
     /// The sidebar's selected row (and, lighter, its hover). Dark needs more than light's 8%: on #202020 that pill all but vanished.
