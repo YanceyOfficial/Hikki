@@ -73,7 +73,8 @@ window.hikki = {
   aiEvent: (event: AIStreamEvent) => bridge.ai.aiEvent(event),
   // Ask AI's changes to the page (the chat's cards): offered in the page, one picked, approved / skipped, all approved;
   // and the page's blocks with their ids for the chat to propose them by.
-  aiChanges: (docId: string, changes: AIChangeInput[]) => bridge.ai.aiChanges(docId, changes),
+  aiChanges: (docId: string, changes: AIChangeInput[], focusFirst?: boolean) =>
+    bridge.ai.aiChanges(docId, changes, focusFirst),
   aiFocusChange: (id: string) => bridge.ai.aiFocusChange(id),
   aiResolveChange: (id: string, verdict: 'approve' | 'skip') =>
     bridge.ai.aiResolveChange(id, verdict),
