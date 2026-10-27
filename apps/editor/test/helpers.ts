@@ -19,6 +19,12 @@ export const page = (id: string, patch: Partial<PagePayload> = {}): PagePayload 
 /** Suggestion and React effects resolve asynchronously. */
 export const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
 
+/** The next animation frame: what a node view defers its measuring to (the columns' gutters). */
+export const frame = () =>
+  new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve())
+  })
+
 /** Tiptap JSON without UniqueID's block ids (random) or null (default) attributes, for structural comparisons. */
 export const stripIds = (node: any): any => {
   if (Array.isArray(node)) return node.map(stripIds)

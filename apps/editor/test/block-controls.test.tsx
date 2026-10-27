@@ -15,7 +15,7 @@ import {
   unitTextRange,
   type BlockUnit
 } from '../src/extensions/block-units'
-import { doc, settle, stripIds } from './helpers'
+import { doc, frame, settle, stripIds } from './helpers'
 
 let host: HTMLElement
 let editor: Editor
@@ -457,6 +457,8 @@ describe('block handle in columns', () => {
   it('steps aside while the pointer is on the divider between two columns', async () => {
     editor = createEditor(host, twoColumns())
     await settle()
+    // The gutters are placed in the next frame (a zero timeout raced it: the gutter was sometimes not there yet).
+    await frame()
     const gutter = editor.view.dom.parentElement!.querySelector('.hk-col-gutter')!
     expect(gutter).not.toBeNull()
     const handle = [...document.querySelectorAll<HTMLElement>('.hk-block-handle')].at(-1)!
