@@ -602,7 +602,7 @@
     @apply my-1 cursor-pointer overflow-x-auto rounded-md px-2 py-3 text-center hover:bg-accent;
   }
   /* An inline box, so its hover tint covers a formula taller than the line (a brace over several rows) — inline,
-     it painted one line through the middle. */
+     it painted one line through the middle. (Its no-wrap is an unlayered rule below.) */
   .tiptap [data-type='inline-math'] {
     @apply inline-block max-w-full cursor-pointer overflow-x-auto overflow-y-hidden rounded-sm px-0.5 align-bottom hover:bg-accent;
   }
@@ -1263,4 +1263,12 @@ body:has(.hk-find [data-testid='find-panel']) #outline {
    words visibly larger than the heading's own. Unlayered: KaTeX's own stylesheet is, and would win over a layer. */
 .tiptap :is(h1, h2, h3, h4) .katex {
   font-size: 1em;
+}
+/* An inline formula is one piece: KaTeX lays it out as breakable runs, so a long one wrapped through its middle
+   (ISSUE-232). Unwrapped, it moves to the next line whole when it doesn't fit after the words, and scrolls sideways
+   inside its box when it is wider than the column (a phone). Unlayered, and a notch more specific: ProseMirror's own
+   stylesheet — unlayered, and added to the page after ours — puts `white-space: normal` on every
+   contenteditable="false" node with a selector of the same weight as `.tiptap [data-type]`. */
+.tiptap span[data-type='inline-math'] {
+  white-space: nowrap;
 }
