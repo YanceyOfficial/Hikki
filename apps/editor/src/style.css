@@ -627,9 +627,11 @@
     @apply my-1 cursor-pointer overflow-x-auto rounded-md px-2 py-3 text-center hover:bg-accent;
   }
   /* An inline box, so its hover tint covers a formula taller than the line (a brace over several rows) — inline,
-     it painted one line through the middle. (Its no-wrap is an unlayered rule below.) */
+     it painted one line through the middle. (Its no-wrap is an unlayered rule below.) Only a phone-wide window
+     makes it a scroller for a formula wider than the column: as a scroller it clipped a tall formula's foot and
+     showed a bar for a hair of overflow where the width was ample (ISSUE-232). */
   .tiptap [data-type='inline-math'] {
-    @apply inline-block max-w-full cursor-pointer overflow-x-auto overflow-y-hidden rounded-sm px-0.5 align-bottom hover:bg-accent;
+    @apply inline-block max-w-full cursor-pointer rounded-sm px-0.5 align-bottom hover:bg-accent max-phone:overflow-x-auto max-phone:overflow-y-hidden;
   }
   .tiptap [data-type='block-math']:empty::before,
   .tiptap .block-math-inner:empty::before {

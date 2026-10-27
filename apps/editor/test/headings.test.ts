@@ -46,11 +46,13 @@ describe('a formula as a heading', () => {
     // vitest runs from editor/ (happy-dom rewrites import.meta.url, so resolve from the cwd).
     const styles = readFileSync(join(process.cwd(), 'src/style.css'), 'utf8')
     expect(styles).toMatch(/\[data-type='inline-math'\]\s*\{\s*@apply inline-block /u)
-    // Wider than the column (a phone), it scrolls inside itself; the page never scrolls sideways (ISSUE-192).
+    // Wider than a phone's column, it scrolls inside itself; the page never scrolls sideways (ISSUE-192). Only
+    // there: as a scroller on the Mac it clipped a tall formula and showed a bar for a hair of overflow (ISSUE-232).
     const inline = /\[data-type='inline-math'\]\s*\{\s*@apply ([^;]+);/u.exec(styles)![1].split(' ')
     expect(inline).toEqual(
-      expect.arrayContaining(['max-w-full', 'overflow-x-auto', 'align-bottom'])
+      expect.arrayContaining(['max-w-full', 'max-phone:overflow-x-auto', 'align-bottom'])
     )
+    expect(inline).not.toContain('overflow-x-auto')
     // Unlayered (after the last layer closes), or KaTeX's own stylesheet wins.
     const rule = styles.lastIndexOf('.tiptap :is(h1, h2, h3, h4) .katex {')
     expect(rule).toBeGreaterThan(styles.lastIndexOf('@layer'))
