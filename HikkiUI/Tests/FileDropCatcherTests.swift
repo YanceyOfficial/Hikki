@@ -69,6 +69,26 @@
             #expect(targeted == [true, false])
         }
 
+        /// The field under the catcher stops taking files and pictures (ISSUE-263: it still typed a dropped file's path).
+        @Test func theTextViewsUnderItTakeOnlyText() {
+            let container = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 100))
+            let text = NSTextView(frame: NSRect(x: 0, y: 0, width: 300, height: 40))
+            let elsewhere = NSTextView(frame: NSRect(x: 0, y: 200, width: 300, height: 40))
+            container.addSubview(text)
+            container.addSubview(elsewhere)
+            // What AppKit registers for an editing text view (once it is in a window): files and pictures too.
+            for field in [text, elsewhere] { field.registerForDraggedTypes([.fileURL, .tiff, .png, .string]) }
+            let view = catcher()
+            view.frame = container.bounds
+            container.addSubview(view)
+            view.quietTextViews()
+            #expect(text.registeredDraggedTypes == [.string])
+            // A text view the catcher doesn't cover keeps its own.
+            #expect(elsewhere.registeredDraggedTypes.count == 4)
+            // Last among its siblings, so AppKit asks it first.
+            #expect(container.subviews.last === view)
+        }
+
         @Test func textIsLeftToTheField() {
             var dropped = 0
             let view = catcher(onDrop: { _ in dropped += 1 })

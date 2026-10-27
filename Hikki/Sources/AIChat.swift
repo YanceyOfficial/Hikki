@@ -1105,7 +1105,8 @@ struct AIChatView: View {
                     FileDropCatcher(
                         types: Self.dropTypes, accepts: { Self.dropped(on: $0) != .text },
                         onTargeted: { dropTargeted = $0 },
-                        onDrop: { pasteboard in receive(Self.dropped(on: pasteboard), from: pasteboard) })
+                        onDrop: { pasteboard in receive(Self.dropped(on: pasteboard), from: pasteboard) },
+                        trace: { Log.info($0, category: "drop") })
                 }
             #endif
             if let error = chat.attachError {
