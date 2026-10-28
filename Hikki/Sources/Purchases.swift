@@ -20,8 +20,22 @@ final class Purchases {
     /// reached.
     private(set) var product: Product?
     private(set) var isPurchasing = false
+    /// The product is being asked for (the sheet's Try Again).
+    private(set) var isLoadingProduct = false
+    /// What the last Restore Purchases or Try Again found, shown in the unlock sheet (a toast would sit under it).
+    private(set) var notice: String?
     /// The unlock sheet is up (Settings, the read-only bar, or something that would write).
-    var isShowingUnlock = false
+    var isShowingUnlock = false {
+        didSet { if !isShowingUnlock { notice = nil } }
+    }
+    /// Where this build came from, as About marks it: nothing for the App Store's own.
+    private(set) var distribution: Distribution = {
+        #if DEBUG
+            .debug
+        #else
+            .appStore
+        #endif
+    }()
 
     private var downloaded: Date?
     private var unlocked = false
@@ -64,16 +78,30 @@ final class Purchases {
     /// Asks again: the download date, whether the unlock is owned, the product.
     func refresh() async {
         guard !forced else { return }
-        downloaded = await Self.downloadDate()
+        downloaded = await downloadDate()
         unlocked = await Self.ownsUnlock()
-        if product == nil {
-            do {
-                product = try await Product.products(for: [Self.unlockID]).first
-            } catch {
-                Log.warn("store products unavailable: \(error)", category: "store")
-            }
-        }
+        if product == nil { await loadProduct() }
         update()
+    }
+
+    /// Asks the store for the unlock. An empty answer (no error) means the store doesn't offer it to this build —
+    /// in TestFlight, an in-app purchase not yet cleared for sale or the Paid Apps agreement not in effect.
+    private func loadProduct() async {
+        isLoadingProduct = true
+        defer { isLoadingProduct = false }
+        do {
+            product = try await Product.products(for: [Self.unlockID]).first
+            if product == nil { Log.warn("store offers no product \(Self.unlockID)", category: "store") }
+        } catch {
+            Log.warn("store products unavailable: \(error)", category: "store")
+        }
+    }
+
+    /// The sheet's Try Again, when the store couldn't be reached or offered nothing.
+    func retryProduct() async {
+        notice = nil
+        await loadProduct()
+        if product == nil { notice = String(localized: "app:unlock.stillUnavailable") }
     }
 
     /// Whether something may be written now; when not, the unlock sheet comes up instead.
@@ -104,13 +132,26 @@ final class Purchases {
 
     /// Restore Purchases: the App Store sends this Apple Account's purchases again.
     func restore() async {
+        notice = nil
         do {
             try await AppStore.sync()
             await refresh()
-            if !unlocked { Toasts.shared.show(.info, String(localized: "app:unlock.nothingToRestore")) }
+            if !unlocked { say(String(localized: "app:unlock.nothingToRestore")) }
+        } catch StoreKitError.userCancelled {
+            // The Apple Account sign-in was dismissed: nothing to say.
         } catch {
-            Toasts.report(.restoreFailed, error, category: "store")
+            if isShowingUnlock {
+                Log.warn("restore failed: \(error)", category: "store")
+                notice = ErrorCode.restoreFailed.message
+            } else {
+                Toasts.report(.restoreFailed, error, category: "store")
+            }
         }
+    }
+
+    /// A word about a restore: in the unlock sheet while it is up (a toast would sit under it), else a toast.
+    private func say(_ text: String) {
+        if isShowingUnlock { notice = text } else { Toasts.shared.show(.info, text) }
     }
 
     private func handle(_ result: VerificationResult<StoreKit.Transaction>) async {
@@ -130,16 +171,20 @@ final class Purchases {
         access = Access.on(.now, downloaded: downloaded ?? Self.firstLaunch(), unlocked: unlocked)
     }
 
-    /// When this Apple Account first got the app; this install's first launch where the App Store can't say.
-    private static func downloadDate() async -> Date {
+    /// When this Apple Account first got the app; this install's first launch where the App Store can't say. Reads
+    /// where the build came from on the way (TestFlight's builds are the store's sandbox).
+    private func downloadDate() async -> Date {
         do {
             if case .verified(let transaction) = try await AppTransaction.shared {
+                #if !DEBUG
+                    distribution = Distribution(transaction.environment)
+                #endif
                 return transaction.originalPurchaseDate
             }
         } catch {
             Log.warn("app transaction unavailable: \(error)", category: "store")
         }
-        return firstLaunch()
+        return Self.firstLaunch()
     }
 
     private static func firstLaunch() -> Date {
@@ -168,12 +213,38 @@ struct UnlockHost: View {
     var body: some View {
         UnlockSheet(
             status: purchases.access.unlockStatus, price: purchases.product?.displayPrice, isPurchasing: purchases.isPurchasing,
+            isLoading: purchases.isLoadingProduct, notice: purchases.notice,
             onUnlock: { Task { await purchases.buy(with: purchase) } },
+            onRetry: { Task { await purchases.retryProduct() } },
             onRestore: { Task { await purchases.restore() } },
             onClose: { purchases.isShowingUnlock = false }
         )
         // The price, if it couldn't be read at launch (offline then).
         .task { if purchases.product == nil { await purchases.refresh() } }
+    }
+}
+
+/// Where a build came from: the App Store, TestFlight (the store's sandbox), Xcode's StoreKit testing, or a Debug
+/// build.
+enum Distribution: Equatable {
+    case appStore, testFlight, xcode, debug
+
+    init(_ environment: AppStore.Environment) {
+        switch environment {
+        case .sandbox: self = .testFlight
+        case .xcode: self = .xcode
+        default: self = .appStore
+        }
+    }
+
+    /// The mark About shows; none for the App Store's own build.
+    var label: String? {
+        switch self {
+        case .appStore: nil
+        case .testFlight: String(localized: "app:about.build.testFlight")
+        case .xcode: String(localized: "app:about.build.xcode")
+        case .debug: String(localized: "app:about.build.debug")
+        }
     }
 }
 

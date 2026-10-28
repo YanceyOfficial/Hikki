@@ -20,10 +20,13 @@ public struct AboutLink: Identifiable {
 /// Plain values — the app passes the version and the addresses.
 public struct AboutHeader: View {
     let version: String
+    /// Where this build came from (TestFlight, a Debug build); nil for the App Store's own, which shows nothing.
+    let build: String?
     let links: [AboutLink]
 
-    public init(version: String, links: [AboutLink]) {
+    public init(version: String, build: String? = nil, links: [AboutLink]) {
         self.version = version
+        self.build = build
         self.links = links
     }
 
@@ -49,6 +52,15 @@ public struct AboutHeader: View {
                     .textSelection(.enabled)
                     .padding(.top, Spacing.s1)
                     .accessibilityIdentifier("about-version")
+                if let build {
+                    Text(build)
+                        .font(.hk(.xs, .medium))
+                        .foregroundStyle(Theme.mutedForeground)
+                        .padding(.horizontal, Spacing.s2)
+                        .padding(.vertical, Spacing.s0_5)
+                        .background(Theme.muted, in: .capsule)
+                        .accessibilityIdentifier("about-build")
+                }
             }
             if !links.isEmpty {
                 ViewThatFits(in: .horizontal) {
@@ -79,7 +91,7 @@ public struct AboutHeader: View {
     Form {
         Section {
             AboutHeader(
-                version: "0.1.0 (1)",
+                version: "0.1.0 (1)", build: "TestFlight",
                 links: [
                     AboutLink(
                         id: "website", title: "app:about.website", icon: .globe,

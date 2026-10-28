@@ -58,7 +58,15 @@ final class EditorFlowTests: XCTestCase {
         newPage.tap()
         XCTAssertTrue(app.descendants(matching: .any)["unlock-sheet"].firstMatch.waitForExistence(timeout: 5))
         attachScreenshot(app, "unlock-sheet")
-        XCTAssertFalse(app.buttons["unlock-buy"].firstMatch.isEnabled, "a Debug run has no store product to sell")
+        // A Debug run has no store product to sell: the sheet says the store can't be reached and Try Again asks once
+        // more, answering in the sheet itself (a toast would sit under it, unseen).
+        XCTAssertTrue(app.descendants(matching: .any)["unlock-unavailable"].firstMatch.exists)
+        let retry = app.buttons["unlock-buy"].firstMatch
+        XCTAssertTrue(retry.isEnabled, "Try Again is disabled")
+        retry.tap()
+        XCTAssertTrue(
+            waitOrDumpTree(app.descendants(matching: .any)["unlock-notice"].firstMatch, in: app, timeout: 15),
+            "Try Again said nothing")
     }
 
     /// Ask AI's model menu (iPhone sheet): starring a model lists it first under Favorites, the star stays when the

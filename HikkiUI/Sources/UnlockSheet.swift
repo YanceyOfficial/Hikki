@@ -12,22 +12,31 @@ public enum UnlockStatus: Equatable, Sendable {
 /// `Purchases` drives it.
 public struct UnlockSheet: View {
     let status: UnlockStatus
-    /// The store's localized price; nil while it loads or when the store can't be reached (Unlock is then disabled).
+    /// The store's localized price; nil while it loads or when the store can't be reached (Unlock is then Try Again).
     let price: String?
     let isPurchasing: Bool
+    /// The product is being asked for.
+    let isLoading: Bool
+    /// What Restore Purchases (or Try Again) found, said here: a toast would sit under this sheet, unseen.
+    let notice: String?
     let onUnlock: () -> Void
+    let onRetry: () -> Void
     let onRestore: () -> Void
     let onClose: () -> Void
     @Environment(\.colorTone) private var tone
 
     public init(
-        status: UnlockStatus, price: String?, isPurchasing: Bool = false, onUnlock: @escaping () -> Void,
+        status: UnlockStatus, price: String?, isPurchasing: Bool = false, isLoading: Bool = false,
+        notice: String? = nil, onUnlock: @escaping () -> Void, onRetry: @escaping () -> Void = {},
         onRestore: @escaping () -> Void, onClose: @escaping () -> Void
     ) {
         self.status = status
         self.price = price
         self.isPurchasing = isPurchasing
+        self.isLoading = isLoading
+        self.notice = notice
         self.onUnlock = onUnlock
+        self.onRetry = onRetry
         self.onRestore = onRestore
         self.onClose = onClose
     }
@@ -59,22 +68,31 @@ public struct UnlockSheet: View {
             }
             if status != .unlocked {
                 VStack(spacing: Spacing.s2) {
-                    Button(action: onUnlock) {
-                        if isPurchasing {
+                    if price == nil && !isLoading {
+                        Text("app:unlock.unavailable").font(.hk(.sm)).foregroundStyle(Theme.mutedForeground)
+                            .accessibilityIdentifier("unlock-unavailable")
+                    }
+                    Button(action: price == nil ? onRetry : onUnlock) {
+                        if isPurchasing || isLoading {
                             ProgressView().controlSize(.small)
                         } else if let price {
                             Text("app:unlock.buy \(price)")
                         } else {
-                            Text("app:unlock.unavailable")
+                            Text("app:unlock.retry")
                         }
                     }
                     .buttonStyle(HikkiButtonStyle(.primary, fullWidth: true))
-                    .disabled(price == nil || isPurchasing)
+                    .disabled(isPurchasing || isLoading)
                     .accessibilityIdentifier("unlock-buy")
                     Button("app:unlock.restore", action: onRestore)
                         .buttonStyle(HikkiButtonStyle(.ghost, fullWidth: true))
-                        .disabled(isPurchasing)
+                        .disabled(isPurchasing || isLoading)
                         .accessibilityIdentifier("unlock-restore")
+                    if let notice {
+                        Text(notice).font(.hk(.sm)).foregroundStyle(Theme.mutedForeground)
+                            .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("unlock-notice")
+                    }
                 }
             }
         }
@@ -140,6 +158,12 @@ public struct ReadOnlyBar: View {
 
 #Preview("Expired") {
     UnlockSheet(status: .expired, price: "$19.99", onUnlock: {}, onRestore: {}, onClose: {})
+}
+
+#Preview("Store unreachable") {
+    UnlockSheet(
+        status: .expired, price: nil, notice: "There’s no purchase to restore on this Apple Account.", onUnlock: {},
+        onRestore: {}, onClose: {})
 }
 
 #Preview("Unlocked") {

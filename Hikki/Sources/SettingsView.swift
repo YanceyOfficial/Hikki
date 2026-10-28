@@ -727,7 +727,7 @@ private struct AboutSection: View {
 
     var body: some View {
         Section {
-            AboutHeader(version: Self.version, links: linksAsRows ? [] : Self.links)
+            AboutHeader(version: Self.version, build: Purchases.shared.distribution.label, links: linksAsRows ? [] : Self.links)
                 .listRowBackground(Color.clear)
         }
         if linksAsRows {

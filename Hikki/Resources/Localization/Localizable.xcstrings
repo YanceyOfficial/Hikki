@@ -1,6 +1,57 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "app:about.build.debug": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Debug build"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "调试版本"
+          }
+        }
+      }
+    },
+    "app:about.build.testFlight": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TestFlight"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TestFlight"
+          }
+        }
+      }
+    },
+    "app:about.build.xcode": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xcode StoreKit"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xcode StoreKit"
+          }
+        }
+      }
+    },
     "app:about.contact": {
       "extractionState": "manual",
       "localizations": {
@@ -15386,6 +15437,23 @@
         }
       }
     },
+    "app:unlock.retry": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try Again"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重试"
+          }
+        }
+      }
+    },
     "app:unlock.short": {
       "extractionState": "manual",
       "localizations": {
@@ -15484,6 +15552,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "已解锁"
+          }
+        }
+      }
+    },
+    "app:unlock.stillUnavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The App Store still doesn’t offer the unlock here. Try again later."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App Store 暂时仍未提供解锁，请稍后再试。"
           }
         }
       }
