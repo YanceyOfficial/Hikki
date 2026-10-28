@@ -156,7 +156,9 @@ public enum AIPageEdits {
         they are part of the page, "end" means after them, and say so when asked about what you can't see.
         Rules: use the page's block ids exactly as given; at most one change per existing block; each change touches \
         one block, so prefer several small changes to one large one; in html use only inline tags (strong, em, u, s, \
-        code, a with href, br) and keep the formatting the text already has; keep the page's language unless asked to \
+        code, a with href, br) and keep the formatting the text already has — the page's mentions (<a data-type="mention">), \
+        dates (<time>), formulas (<span data-type="inline-math">) and readings (<ruby>) copied exactly as given, \
+        attributes included; keep the page's language unless asked to \
         translate; write titles and reasons in the user's language. A title says what the block will say (its gist \
         in a few words, or the correction itself: "He know → He knows"), never the kind of change — the card shows \
         the kind itself, so "Insert" or "Rewrite" as a title says nothing. Never put a hikki-changes block in a reply \

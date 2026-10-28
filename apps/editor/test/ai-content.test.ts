@@ -6,6 +6,7 @@ import {
   fragmentText,
   isHandoff,
   OBJECT_CHAR,
+  pageBlocks,
   parseEditAdded,
   parseEditNotes,
   parseEditReply,
@@ -179,5 +180,59 @@ describe('isHandoff', () => {
     expect(isHandoff('{"handoff":[]}')).toBe(false)
     expect(isHandoff('The word "handoff" in prose.')).toBe(false)
     expect(isHandoff('{"blocks":[]}')).toBe(false)
+  })
+})
+
+describe('inline atoms through a model', () => {
+  it('keeps mentions, dates, formulas and readings as they were when the reply hands them back', () => {
+    editor.commands.setContent({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          attrs: { id: 'atoms' },
+          content: [
+            { type: 'text', text: 'Plan in ' },
+            { type: 'mention', attrs: { id: 'page-1', label: 'Product launch' } },
+            { type: 'text', text: ' on ' },
+            {
+              type: 'dateMention',
+              attrs: { id: 'd1', date: '2026-11-20', time: '09:30', remind: 15, done: false }
+            },
+            { type: 'text', text: ', costs ' },
+            { type: 'inlineMath', attrs: { latex: '4 \\times 1200' } },
+            { type: 'text', text: ' — ' },
+            {
+              type: 'ruby',
+              attrs: { reading: 'ひっき' },
+              content: [{ type: 'text', text: '筆記' }]
+            }
+          ]
+        }
+      ]
+    })
+    const [block] = pageBlocks(editor.state)
+    const fragment = parseInline(editor.schema, block.html)!
+    const atoms: unknown[] = []
+    fragment.forEach((node) => {
+      if (!node.isText)
+        atoms.push({ type: node.type.name, attrs: node.attrs, text: node.textContent })
+    })
+    const original: unknown[] = []
+    editor.state.doc.firstChild!.forEach((node) => {
+      if (!node.isText)
+        original.push({ type: node.type.name, attrs: node.attrs, text: node.textContent })
+    })
+    expect(atoms).toEqual(original)
+    expect(atoms).toHaveLength(4)
+  })
+
+  it('keeps no attribute but the atoms own: a made-up one on a mention, a style anywhere, goes', () => {
+    const out = sanitizeInlineHTML(
+      '<a data-type="mention" data-id="p" data-label="P" onclick="x()" style="color:red" href="hikki://page/p">@P</a><span data-type="x" data-latex="y">z</span>'
+    )
+    expect(out.innerHTML).toBe(
+      '<a href="hikki://page/p" data-type="mention" data-id="p" data-label="P">@P</a><span>z</span>'
+    )
   })
 })

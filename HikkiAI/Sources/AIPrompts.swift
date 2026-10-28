@@ -139,7 +139,9 @@ public enum AIPrompts {
         translate) only ever edit the selected text: their result goes into "blocks", and "added" stays []. An \
         answer, a verdict or an explanation is never an added block either: it goes in "notes".
         - Use only these inline tags: strong, em, u, s, code, a (with href), sub, sup, br. No block tags, no attributes \
-        other than href, no Markdown.
+        other than href, no Markdown — except the page's own mentions (<a data-type="mention">), dates (<time>), \
+        formulas (<span data-type="inline-math">) and readings (<ruby>): copy those exactly as given, attributes \
+        included, wherever they stay.
         - Keep the formatting and links the text already has where the words stay.
         - Write in the language of the text unless the task is to translate.
         - Change only what the task asks for. If nothing needs changing, return the blocks unchanged.

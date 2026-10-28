@@ -144,8 +144,42 @@ const ALLOWED = new Set([
   'SUB',
   'SUP',
   'BR',
-  'SPAN'
+  'SPAN',
+  'TIME',
+  'RUBY',
+  'RB',
+  'RT',
+  'RP'
 ])
+
+/**
+ * The page's inline atoms as the page sends them (`pageBlocks`, a selection's HTML): a page mention, a date, an
+ * inline formula and a reading keep the attributes they are read back by, so a rewrite hands them back as they were
+ * rather than as their text. Keyed by tag, then by `data-type` (`*`: any); other attributes are dropped as ever.
+ */
+const ATOM_ATTRIBUTES: Record<string, Record<string, string[]>> = {
+  A: { mention: ['data-type', 'data-id', 'data-label', 'data-mention-suggestion-char'] },
+  TIME: {
+    date: [
+      'data-type',
+      'data-id',
+      'data-date',
+      'data-time',
+      'data-remind',
+      'data-done',
+      'data-snoozed',
+      'datetime'
+    ]
+  },
+  SPAN: { 'inline-math': ['data-type', 'data-latex'] },
+  RUBY: { '*': ['data-reading'] }
+}
+
+function atomAttributes(element: Element): string[] {
+  const kinds = ATOM_ATTRIBUTES[element.tagName]
+  if (!kinds) return []
+  return kinds[element.getAttribute('data-type') ?? ''] ?? kinds['*'] ?? []
+}
 /** Dropped with their content. */
 const DROPPED = new Set([
   'SCRIPT',
@@ -160,7 +194,8 @@ const DROPPED = new Set([
 ])
 
 /**
- * A model's HTML made safe and inline: allowed tags kept without attributes (a link keeps a safe `href`), block tags
+ * A model's HTML made safe and inline: allowed tags kept without attributes (a link keeps a safe `href`, an inline
+ * atom the attributes it is read by — `ATOM_ATTRIBUTES`), block tags
  * and unknown ones unwrapped, scripts and the like dropped. Parsed by the browser into an inert document (nothing
  * runs), never inserted as HTML.
  */
@@ -191,6 +226,10 @@ function copyAllowed(source: Node, target: Element): void {
           continue
         }
         clean.setAttribute('href', href)
+      }
+      for (const name of atomAttributes(child)) {
+        const value = child.getAttribute(name)
+        if (value !== null) clean.setAttribute(name, value)
       }
       copyAllowed(child, clean)
       target.append(clean)
