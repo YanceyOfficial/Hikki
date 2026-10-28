@@ -329,6 +329,23 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(waitOrDumpTree(app.staticTexts["Atlas"].firstMatch, in: app), "renamed workspace not shown")
     }
 
+    /// Settings → Import & Export is a page of its own (ISSUE-226): a drop zone, the three ways in — documents, a
+    /// Hikki export, a Notion export — and the export below.
+    func testImportExportPageShowsItsSources() throws {
+        continueAfterFailure = false
+        let app = launch()
+        openSettings(app)
+        let page = app.descendants(matching: .any)["settings-page-transfer"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(page, in: app), "no Import & Export page")
+        page.tap()
+        XCTAssertTrue(waitOrDumpTree(app.descendants(matching: .any)["drop-zone"].firstMatch, in: app), "no drop zone")
+        for source in ["settings-import", "settings-import-hikki", "settings-import-notion", "settings-export"] {
+            XCTAssertTrue(app.buttons[source].firstMatch.exists, "no \(source)")
+        }
+        attachScreenshot(app, "import-export")
+        app.buttons["settings-close"].firstMatch.tap()
+    }
+
     /// Settings on Mac/iPad is a dialog over the window: its pages in a sidebar, the close button dismisses it, and
     /// it opens again on the page last shown. (iPhone keeps its hub list.)
     func testSettingsDialogRemembersItsPage() throws {

@@ -114,6 +114,11 @@ final class BulkTransfer {
                 await Task.yield()
             }
             finish(result)
+            // The folders chosen zips were unpacked into.
+            let folders = plan.temporaryFolders
+            if !folders.isEmpty {
+                Task.detached(priority: .utility) { for folder in folders { try? FileManager.default.removeItem(at: folder) } }
+            }
         }
     }
 

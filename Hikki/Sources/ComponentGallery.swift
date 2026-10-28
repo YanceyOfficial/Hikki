@@ -193,6 +193,12 @@
                             )
                             .listRowInsets(EdgeInsets())
                         }
+                        Section("FileDropZone") {
+                            FileDropZone(
+                                title: "Drop files or folders here", detail: "Markdown, HTML, text, Hikki JSON, or a Notion export (.zip)",
+                                icon: .trayArrowDown, isTargeted: false
+                            ) {}
+                        }
                         Section("MediaSourceSheet") {
                             MediaSourceSheet { _ in }
                                 .listRowInsets(EdgeInsets())

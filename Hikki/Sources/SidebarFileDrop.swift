@@ -27,10 +27,7 @@ enum SidebarFileDrop {
         let providers = importable(info.itemProviders(for: types))
         guard !providers.isEmpty else { return false }
         Task {
-            var urls: [URL] = []
-            for provider in providers {
-                if let url = await load(provider) { urls.append(url) }
-            }
+            let urls = await load(providers)
             let files = PageImport.importable(urls)
             Log.info(
                 "files dropped on the sidebar", category: "import",
@@ -40,6 +37,15 @@ enum SidebarFileDrop {
             navigator.importDrop = ImportDrop(urls: files, parentID: parent)
         }
         return true
+    }
+
+    /// The dropped items as files: file URLs as they are, typed documents (iPad) as temporary copies.
+    static func load(_ providers: [NSItemProvider]) async -> [URL] {
+        var urls: [URL] = []
+        for provider in providers {
+            if let url = await load(provider) { urls.append(url) }
+        }
+        return urls
     }
 
     private static func load(_ provider: NSItemProvider) async -> URL? {

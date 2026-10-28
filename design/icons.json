@@ -421,8 +421,7 @@
       "native": false
     },
     "file-zip": {
-      "sf": "doc.zipper",
-      "native": false
+      "sf": "doc.zipper"
     },
     "image-broken": {
       "sf": "photo.badge.exclamationmark",
@@ -491,6 +490,9 @@
     "text-superscript": {
       "sf": "textformat.superscript",
       "native": false
+    },
+    "arrows-down-up": {
+      "sf": "arrow.up.arrow.down"
     }
   }
 }

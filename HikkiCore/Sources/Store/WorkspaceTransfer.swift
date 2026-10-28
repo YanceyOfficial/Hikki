@@ -205,6 +205,8 @@ public enum WorkspaceImport {
         case failed
         /// A symbolic link: it may point anywhere on the disk, so it never comes in.
         case symbolicLink
+        /// A zip that couldn't be unpacked (not a zip, or too large).
+        case badArchive
     }
 
     /// A file left out, by name (shown in the summary; never logged — it may be a title).
@@ -221,6 +223,9 @@ public enum WorkspaceImport {
     public struct Plan: Equatable, Sendable {
         public var items: [Item]
         public var skipped: [Skipped]
+        /// Where chosen zips were unpacked (`NotionExport.unpack`): the items read from them; removed once the import
+        /// is done.
+        public var temporaryFolders: [URL] = []
     }
 
     /// What a page file says about its place, read before importing.
@@ -258,12 +263,22 @@ public enum WorkspaceImport {
     }
 
     /// The pages the chosen files and folders make, parents first. A chosen folder's contents go to the top level
-    /// (the folder itself is only the container, like an export's); a chosen file is one page.
+    /// (the folder itself is only the container, like an export's); a chosen file is one page; a chosen zip (a Notion
+    /// export) is unpacked into a folder of its own and read as a chosen folder.
     public static func plan(_ urls: [URL]) -> Plan {
         var skipped: [Skipped] = []
         var roots: [Node] = []
+        var temporary: [URL] = []
         for url in urls {
-            if isFolder(url) {
+            if NotionExport.isArchive(url) {
+                do {
+                    let folder = try NotionExport.unpack(url, into: FileManager.default.temporaryDirectory)
+                    temporary.append(folder)
+                    roots += contents(of: folder, root: folder, skipped: &skipped)
+                } catch {
+                    skipped.append(Skipped(name: url.lastPathComponent, reason: .badArchive))
+                }
+            } else if isFolder(url) {
                 roots += contents(of: url, root: url, skipped: &skipped)
             } else if let node = node(for: url, root: url.deletingLastPathComponent(), skipped: &skipped, reportUnsupported: true) {
                 roots.append(node)
@@ -278,7 +293,7 @@ public enum WorkspaceImport {
             }
         }
         flatten(roots, parent: nil)
-        return Plan(items: items, skipped: skipped)
+        return Plan(items: items, skipped: skipped, temporaryFolders: temporary)
     }
 
     private static func isFolder(_ url: URL) -> Bool {

@@ -11136,6 +11136,23 @@
         }
       }
     },
+    "app:settings.transfer.choose": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择…"
+          }
+        }
+      }
+    },
     "app:settings.transfer.clear": {
       "extractionState": "manual",
       "localizations": {
@@ -11153,19 +11170,36 @@
         }
       }
     },
-    "app:settings.transfer.detail": {
+    "app:settings.transfer.drop": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bring in many Markdown, HTML, text or Hikki JSON files at once: a folder becomes a page with its files as subpages, and pictures they link come along. Export writes every page into a new folder that mirrors the page tree, attachments in assets/. A single page exports from its ⋯ menu."
+            "value": "Drop files or folders here"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "一次导入多个 Markdown、HTML、文本或 Hikki JSON 文件：文件夹会成为页面，其中的文件成为子页面，链接的图片一并导入。导出会把所有页面写入一个按页面树组织的新文件夹，附件放在 assets/ 中。单个页面可从它的 ⋯ 菜单导出。"
+            "value": "将文件或文件夹拖到这里"
+          }
+        }
+      }
+    },
+    "app:settings.transfer.drop.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markdown, HTML, text, Hikki JSON, or a Notion export (.zip) — or choose below"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markdown、HTML、文本、Hikki JSON，或 Notion 导出（.zip）——也可在下方选择"
           }
         }
       }
@@ -11183,6 +11217,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "导出工作区"
+          }
+        }
+      }
+    },
+    "app:settings.transfer.export.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Writes every page into a new folder that mirrors the page tree, attachments in assets/. JSON is the complete copy and imports back as it was. A single page exports from its ⋯ menu."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "把每个页面写进一个按页面树组织的新文件夹，附件放在 assets/。JSON 是完整副本，可原样导回。单个页面从它的 ⋯ 菜单导出。"
           }
         }
       }
@@ -11234,6 +11285,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法导出：文件夹不可写入，或编辑器尚未就绪。"
+          }
+        }
+      }
+    },
+    "app:settings.transfer.exportSection": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出"
           }
         }
       }
@@ -11306,6 +11374,23 @@
         }
       }
     },
+    "app:settings.transfer.import.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Imported pages go to the top level. Nothing is overwritten: a page imported twice is a second page."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入的页面放在顶层。不会覆盖任何内容：同一页面导入两次会得到两个页面。"
+          }
+        }
+      }
+    },
     "app:settings.transfer.importCancelled %@": {
       "extractionState": "manual",
       "localizations": {
@@ -11370,6 +11455,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在读取文件…"
+          }
+        }
+      }
+    },
+    "app:settings.transfer.reason.badArchive": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't be unpacked (not a zip, or too large)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法解压（不是 zip，或太大）"
           }
         }
       }
@@ -11523,6 +11625,108 @@
           "stringUnit": {
             "state": "translated",
             "value": "跳过 %@ 项"
+          }
+        }
+      }
+    },
+    "app:settings.transfer.source.documents": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markdown, HTML or text"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Markdown、HTML 或文本"
+          }
+        }
+      }
+    },
+    "app:settings.transfer.source.documents.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Files, or a folder: it becomes a page with its files as subpages, and pictures they link come along."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文件或文件夹：文件夹成为页面、其中的文件成为子页面，链接的图片一并带入。"
+          }
+        }
+      }
+    },
+    "app:settings.transfer.source.hikki": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hikki export (JSON)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hikki 导出（JSON）"
+          }
+        }
+      }
+    },
+    "app:settings.transfer.source.hikki.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pages come back as they were, with their ids and their places in the tree."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "页面原样恢复，保留 id 和在页面树中的位置。"
+          }
+        }
+      }
+    },
+    "app:settings.transfer.source.notion": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notion export (.zip)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notion 导出（.zip）"
+          }
+        }
+      }
+    },
+    "app:settings.transfer.source.notion.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In Notion: Settings → Export → Markdown & CSV. Subpages, pictures and databases (as tables) come along."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在 Notion 里：Settings → Export → Markdown & CSV。子页面、图片和数据库（作为表格）一并带入。"
           }
         }
       }

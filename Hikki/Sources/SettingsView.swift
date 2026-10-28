@@ -59,7 +59,7 @@ enum AppearancePreference: String, CaseIterable, Identifiable {
 
 /// The pages of Settings: the dialog's sidebar on the Mac and a regular-width iPad, the hub list on iPhone.
 enum SettingsPage: String, CaseIterable, Identifiable {
-    case general, workspace, shortcuts, search, ai, about
+    case general, workspace, transfer, shortcuts, search, ai, about
 
     /// The page Settings opens on, remembered; `HIKKI_OPEN_SETTINGS=<page>` sets it (screenshots).
     static let storageKey = "settings.page"
@@ -69,6 +69,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
     var title: LocalizedStringKey {
         switch self {
         case .workspace: "app:settings.workspace"
+        case .transfer: "app:settings.transfer"
         case .general: "app:settings.general"
         case .shortcuts: "app:settings.shortcuts"
         case .search: "app:settings.search"
@@ -80,6 +81,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
     var icon: Icon {
         switch self {
         case .workspace: .house
+        case .transfer: .arrowsDownUp
         case .general: .gearSix
         case .shortcuts: .command
         case .search: .magnifyingGlass
@@ -100,7 +102,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
     /// The groups the dialog's sidebar and the iPhone hub show: the workspace, then the app, then About on its own.
     static var groups: [(title: LocalizedStringKey?, pages: [SettingsPage])] {
         [
-            ("app:settings.group.workspace", [.workspace]),
+            ("app:settings.group.workspace", [.workspace, .transfer]),
             ("app:settings.group.app", [.general, .shortcuts, .search, .ai].filter(visible.contains)),
             (nil, [.about]),
         ]
@@ -266,7 +268,8 @@ private struct SettingsPageContent: View {
         switch page {
         case .workspace:
             WorkspaceSection()
-            TransferSection()
+        case .transfer:
+            TransferPage()
         case .general:
             AppearanceSection()
             LanguageSection()
@@ -391,158 +394,6 @@ private struct WorkspaceSection: View {
 /// Settings → Workspace → Import & Export's format (synced with the other settings, `SyncedSettings`).
 enum TransferPreferences {
     static let formatKey = "transfer.format"
-}
-
-/// Settings → Workspace → Import & Export: many files and folders in at once, or the whole workspace out to a folder
-/// (BulkTransfer). The job runs on when Settings closes; its progress and its summary show here.
-private struct TransferSection: View {
-    @Environment(AppModel.self) private var model
-    @AppStorage(TransferPreferences.formatKey) private var format = WorkspaceExport.Format.markdown
-    @State private var isPicking = false
-    @State private var picking = Picking.importFiles
-
-    private enum Picking {
-        case importFiles, exportFolder
-    }
-
-    /// Markdown, HTML, text and JSON page files, and folders of them.
-    private static let importTypes: [UTType] =
-        [UTType("net.daringfireball.markdown"), .html, .plainText, .json, .folder].compactMap { $0 }
-
-    private var transfer: BulkTransfer { model.bulkTransfer }
-
-    var body: some View {
-        Section {
-            if let progress = transfer.progress {
-                TaskProgressRow(
-                    label(progress), done: progress.done, total: progress.total, cancelTitle: "app:common.cancel",
-                    onCancel: transfer.cancel)
-            } else {
-                LabeledContent("app:settings.transfer.import") {
-                    Button("app:import.menu") { pick(.importFiles) }
-                        .accessibilityIdentifier("settings-import")
-                }
-                LabeledContent("app:settings.transfer.export") {
-                    HStack(spacing: Spacing.s2) {
-                        Picker(selection: $format) {
-                            ForEach(WorkspaceExport.Format.allCases) { Text(Self.title(of: $0)).tag($0) }
-                        } label: {
-                            Text("app:settings.transfer.format")
-                        }
-                        .labelsHidden()
-                        .fixedSize()
-                        .accessibilityIdentifier("settings-export-format")
-                        Button("app:settings.transfer.exportButton") { pick(.exportFolder) }
-                            .accessibilityIdentifier("settings-export")
-                    }
-                }
-            }
-            if let summary = transfer.summary {
-                SummaryRow(summary: summary, onDismiss: transfer.dismissSummary)
-            }
-        } header: {
-            Text("app:settings.transfer")
-        } footer: {
-            Text("app:settings.transfer.detail")
-        }
-        .fileImporter(
-            isPresented: $isPicking, allowedContentTypes: picking == .importFiles ? Self.importTypes : [.folder],
-            allowsMultipleSelection: picking == .importFiles
-        ) { result in
-            guard case .success(let urls) = result, !urls.isEmpty else { return }
-            switch picking {
-            case .importFiles: if Purchases.shared.allowsWriting() { transfer.startImport(urls, model: model) }
-            case .exportFolder: transfer.startExport(format, to: urls[0], model: model)
-            }
-        }
-    }
-
-    private func pick(_ mode: Picking) {
-        picking = mode
-        isPicking = true
-    }
-
-    private func label(_ progress: BulkTransfer.Progress) -> Text {
-        guard progress.total > 0 else { return Text("app:settings.transfer.preparing") }
-        let done = progress.done.formatted()
-        let total = progress.total.formatted()
-        return progress.kind == .importing
-            ? Text("app:settings.transfer.importing \(done) \(total)") : Text("app:settings.transfer.exporting \(done) \(total)")
-    }
-
-    private static func title(of format: WorkspaceExport.Format) -> LocalizedStringKey {
-        switch format {
-        case .markdown: "app:export.markdown"
-        case .html: "app:export.html"
-        case .json: "app:export.json"
-        }
-    }
-
-    /// How the last job ended: pages imported / exported, what was left out and why, where the export went.
-    private struct SummaryRow: View {
-        let summary: BulkTransfer.Summary
-        let onDismiss: () -> Void
-
-        var body: some View {
-            VStack(alignment: .leading, spacing: Spacing.s2) {
-                Text(headline)
-                    .font(.hk(.sm, .medium))
-                    .foregroundStyle(summary.failed ? Theme.destructive : Theme.foreground)
-                    .accessibilityIdentifier("settings-transfer-result")
-                if !summary.skipped.isEmpty {
-                    DisclosureGroup {
-                        ForEach(Array(summary.skipped.enumerated()), id: \.offset) { _, item in
-                            LabeledContent {
-                                Text(Self.reason(item.reason))
-                            } label: {
-                                Text(verbatim: item.name)  // a file's name or a page's title, as-is
-                                    .lineLimit(1)
-                                    .truncationMode(.middle)
-                            }
-                            .font(.hk(.xs))
-                        }
-                    } label: {
-                        Text("app:settings.transfer.skipped \(summary.skipped.count.formatted())")
-                            .font(.hk(.xs))
-                            .foregroundStyle(Theme.mutedForeground)
-                    }
-                }
-                HStack(spacing: Spacing.s2) {
-                    #if os(macOS)
-                        if let folder = summary.destination, !summary.failed {
-                            Button("app:settings.transfer.reveal") { NSWorkspace.shared.activateFileViewerSelecting([folder]) }
-                        }
-                    #endif
-                    Button("app:settings.transfer.clear", action: onDismiss)
-                        .accessibilityIdentifier("settings-transfer-clear")
-                }
-            }
-            .padding(.vertical, Spacing.s1)
-        }
-
-        private var headline: LocalizedStringKey {
-            let count = summary.count.formatted()
-            switch (summary.kind, summary.failed, summary.cancelled) {
-            case (.exporting, true, _): return "app:settings.transfer.exportFailed"
-            case (.importing, _, true): return "app:settings.transfer.importCancelled \(count)"
-            case (.exporting, _, true): return "app:settings.transfer.exportCancelled \(count)"
-            case (.importing, _, false): return "app:settings.transfer.imported \(count)"
-            case (.exporting, _, false): return "app:settings.transfer.exported \(count)"
-            }
-        }
-
-        private static func reason(_ reason: WorkspaceImport.Reason) -> LocalizedStringKey {
-            switch reason {
-            case .unsupported: "app:settings.transfer.reason.unsupported"
-            case .tooLarge: "app:settings.transfer.reason.tooLarge"
-            case .notAPage: "app:settings.transfer.reason.notAPage"
-            case .newerFormat: "app:settings.transfer.reason.newerFormat"
-            case .inTrash: "app:settings.transfer.reason.inTrash"
-            case .failed: "app:settings.transfer.reason.failed"
-            case .symbolicLink: "app:settings.transfer.reason.symbolicLink"
-            }
-        }
-    }
 }
 
 /// Settings → General → Icon (Notion): upload an image, pick an emoji, or go back to the initial.

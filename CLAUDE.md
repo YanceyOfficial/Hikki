@@ -414,9 +414,18 @@ HikkiUITests/                 XCUITest flows
   component before it is copied). DEBUG: `HIKKI_EXPORT_DIR=<folder>`
   skips the save panel, `HIKKI_IMPORT_FILE=<path>` imports at launch, `HIKKI_PICK_FILES=<path>|<path>` stands in
   for the picker (UI tests).
-  **Bulk** (Settings → Workspace → Import & Export, `TransferSection` → `Hikki/Sources/BulkTransfer.swift`, one job
-  per app on `AppModel.bulkTransfer`, running on when Settings closes: progress with Cancel, then a summary with the
-  skipped files and why; `onFinish` is the hook for app-wide notices). Import takes many files and folders:
+  **Bulk** (Settings → Import & Export, a page of its own — `TransferPage` in `Hikki/Sources/TransferSettings.swift`:
+  HikkiUI's `FileDropZone` (files dropped on it import, Mac and iPad; a tap opens the picker), a row per way in —
+  Markdown / HTML / text, a Hikki export (JSON), a Notion export (.zip) — and the export below; the job is
+  `Hikki/Sources/BulkTransfer.swift`, one per app on `AppModel.bulkTransfer`, running on when Settings closes:
+  progress with Cancel, then a summary with the skipped files and why; `onFinish` is the hook for app-wide notices).
+  A chosen zip is unpacked by `NotionExport` (`HikkiCore/Sources/Store/NotionExport.swift`, over our own reader
+  `HikkiCore/Sources/Store/ZipArchive.swift`: stored and deflated entries, ZIP64, nothing written outside the folder)
+  into a temporary folder the plan names (`Plan.temporaryFolders`, removed after the import) and read as a chosen
+  folder — Notion's 32-hex ids come off the names and go into each document's stamp (so the import keeps them or
+  renames the links), links between its pages become `hikki://page/<id>` links, pictures' paths follow the renames,
+  parts (zips inside) are unpacked, and a database's CSV (`_all` preferred) becomes a page with its rows as a table,
+  its rows' folder attaching to it by name; any other zip is a folder of documents. Import takes many files and folders:
   `WorkspaceImport` (`HikkiCore/Sources/Store/WorkspaceTransfer.swift`) plans the tree — a chosen folder's contents
   go to the top level, a subfolder is a page (empty, its name) unless a document beside it has its name, `assets/`
   is attachments; Markdown/HTML/text go through the editor (`AppModel.importConverted`, relative links may climb to
@@ -1100,7 +1109,8 @@ HikkiUITests/                 XCUITest flows
   `AccentColor.colorset` from it, so system menus, selection and controls take the tone (where the user's system
   accent is "Multicolor" — a chosen system accent overrides every app's).
 - **Settings** (`Hikki/Sources/SettingsView.swift`): pages (`SettingsPage`: General — appearance, language, editor,
-  menu bar — then Workspace, Shortcuts, Search, AI, About; Shortcuts only with a keyboard: `GCKeyboard`) in a modal
+  menu bar — then Workspace, Import & Export (`Hikki/Sources/TransferSettings.swift`, see Import / export), Shortcuts,
+  Search, AI, About; Shortcuts only with a keyboard: `GCKeyboard`) in a modal
   dialog over the window, Notion's: the pages in a sidebar, the open one's form beside it, a close button and Escape
   (HikkiUI's `SidebarDialog`, `Size.settings*`) — a sheet on the Mac (no separate Settings scene: the app menu's
   Settings… ⌘, and every other way in set `Navigator.isShowingSettings`; with no window in front the main window comes
