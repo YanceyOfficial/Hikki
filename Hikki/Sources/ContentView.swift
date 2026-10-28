@@ -1057,9 +1057,6 @@ private struct NativeDetailToolbar: ToolbarContent {
                     LockIndicator(page: page, toolbar: true)
                 }
             }
-            ToolbarItem(placement: .primaryAction) {
-                PublishButton(page: page, navigator: navigator, toolbar: true)
-            }
             ToolbarItemGroup(placement: .primaryAction) {
                 FavoriteButton(page: page, toolbar: true)
                 PageMoreMenu(page: page, navigator: navigator, editor: editor, toolbar: true)

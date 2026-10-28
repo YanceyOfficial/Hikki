@@ -5379,13 +5379,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn't publish the page. Check your connection and that you're signed in to iCloud."
+            "value": "Couldn't share the page. Check your connection and that you're signed in to iCloud."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法发布页面。请检查网络，并确认已登录 iCloud。"
+            "value": "无法分享页面。请检查网络，并确认已登录 iCloud。"
           }
         }
       }
@@ -5396,13 +5396,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sign in to iCloud to publish a link."
+            "value": "Sign in to iCloud to share a page."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "请登录 iCloud 后再发布链接。"
+            "value": "请登录 iCloud 后再分享页面。"
           }
         }
       }
@@ -5430,13 +5430,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "50 pages are published already, the most at once. Unpublish one first."
+            "value": "50 pages are shared already, the most at once. Stop sharing one first."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已发布 50 个页面，达到同时发布的上限。请先取消发布一个。"
+            "value": "已分享 50 个页面，达到同时分享的上限。请先停止分享一个。"
           }
         }
       }
@@ -5634,13 +5634,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This shared page isn't published any more."
+            "value": "This page isn't shared any more."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "这个分享的页面已不再发布。"
+            "value": "这个页面已不再分享。"
           }
         }
       }
@@ -5685,13 +5685,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn't take the link down. Try again."
+            "value": "Couldn't stop sharing the page. Try again."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法撤下链接，请重试。"
+            "value": "无法停止分享，请重试。"
           }
         }
       }
@@ -9442,13 +9442,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Published %@"
+            "value": "Shared %@"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已发布 %@"
+            "value": "已分享 %@"
           }
         }
       }
@@ -9465,7 +9465,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已发布到 Hikki Shared %@"
+            "value": "已列入 Hikki Shared %@"
           }
         }
       }
@@ -9901,13 +9901,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Publish…"
+            "value": "Share…"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "发布…"
+            "value": "分享…"
           }
         }
       }
@@ -9986,13 +9986,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Publish"
+            "value": "Share"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "发布"
+            "value": "分享"
           }
         }
       }
@@ -10037,13 +10037,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Published"
+            "value": "Shared"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已发布"
+            "value": "已分享"
           }
         }
       }
@@ -10094,7 +10094,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "发布到 Hikki Shared"
+            "value": "列入 Hikki Shared"
           }
         }
       }
@@ -10156,13 +10156,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The link shows the page as it is now. Later edits go up only when you choose Update Page; Unpublish takes it down."
+            "value": "The link shows the page as it is now. Later edits go up only when you choose Update Page; Stop Sharing takes it down."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "链接展示的是此刻的页面。之后的修改只有选择「更新页面」才会上传；「取消发布」会把它撤下。"
+            "value": "链接展示的是此刻的页面。之后的修改只有选择「更新页面」才会上传；「停止分享」会把它撤下。"
           }
         }
       }
@@ -10173,13 +10173,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Publishing…"
+            "value": "Sharing…"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "发布中…"
+            "value": "分享中…"
           }
         }
       }
@@ -10513,30 +10513,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Publish this page"
+            "value": "Share this page"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "发布这个页面"
-          }
-        }
-      }
-    },
-    "app:publish.toolbar": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Publish"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "发布"
+            "value": "分享这个页面"
           }
         }
       }
@@ -10547,13 +10530,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Unpublish"
+            "value": "Stop Sharing"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "取消发布"
+            "value": "停止分享"
           }
         }
       }
@@ -10581,13 +10564,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Unpublish this page?"
+            "value": "Stop sharing this page?"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "取消发布这个页面？"
+            "value": "停止分享这个页面？"
           }
         }
       }
@@ -10723,7 +10706,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已发布到 Hikki Shared，任何人都能找到。"
+            "value": "已列入 Hikki Shared，任何人都能找到。"
           }
         }
       }
@@ -10751,13 +10734,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The link shows the page as published. Edits go up when you choose Update Page."
+            "value": "The link shows the page as shared. Edits go up when you choose Update Page."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "链接展示的是发布时的页面。选择「更新页面」后才会上传之后的修改。"
+            "value": "链接展示的是分享时的页面。选择「更新页面」后才会上传之后的修改。"
           }
         }
       }
@@ -10768,13 +10751,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Page published"
+            "value": "Page shared"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "页面已发布"
+            "value": "页面已分享"
           }
         }
       }
@@ -13052,7 +13035,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存这个共享页面？"
+            "value": "保存这个分享的页面？"
           }
         }
       }

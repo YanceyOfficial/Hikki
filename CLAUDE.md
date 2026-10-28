@@ -1077,9 +1077,8 @@ HikkiUITests/                 XCUITest flows
   brings up HikkiUI's `UnlockSheet` instead (also Settings → About → Purchase, with Restore Purchases). Reading,
   search, copy and export stay open. Debug runs are unlocked unless `HIKKI_ACCESS=trial|expired|unlocked|store`;
   `store` asks StoreKit itself — the `Hikki-StoreKit` scheme runs with `Hikki/Hikki.storekit`.
-- **Publish link** (a Publish / Published ▸ button at the head of the page, Notion's Share — `PublishButton` in the
-  Mac and iPad toolbar beside the star and ⋯, in each side's bar when split; the iPhone's ⋯ sheet;
-  `Hikki/Sources/PublishLink.swift`): a
+- **Publish link** — called **Share** wherever the user reads it (page ⋯ and the sidebar menu → Share… / Shared ▸, the
+  iPhone's ⋯ sheet; Stop Sharing; the code keeps "publish"; `Hikki/Sources/PublishLink.swift`): a
   read-only copy of a page on the web, shared one of two ways (`PublishOptions`, `HikkiCore/Sources/Store/PublishListing.swift`):
   **anyone with the link** — the page as the editor exports it (HTML with its attachments as `assets/<name>`,
   `PageExport.relinkAssets`) and its attachments sealed with AES-GCM under a 256-bit key made for the link
@@ -1098,8 +1097,8 @@ HikkiUITests/                 XCUITest flows
   `published/<page id>.json` (`PublishedLinks`, observable — the menus follow a publish, an Unpublish and links arriving
   from another device, `CloudArrivals.published`), so every device sees the page is published. Publishing asks first
   (HikkiUI's `PublishSheet`: the two ways, tags, author, what goes and what stays private, a privacy check that opens
-  Publish) and ends on HikkiUI's `PublishedSheet` (the link, Copy, Open in Browser); Published ▸ (in the tone) has Show Link…, Copy
-  Link, Update Page (no second question), Sharing Settings… and Unpublish (an alert). Limits:
+  Publish) and ends on HikkiUI's `PublishedSheet` (the link, Copy, Open in Browser); Shared ▸ has Show Link…, Copy
+  Link, Update Page (no second question), Sharing Settings… and Stop Sharing (an alert). Limits:
   `PagePublisher.maxBytes` (20 MB with attachments) and `maxPages` (50); failures are `publishTooLarge`,
   `publishTooMany`, `publishNotSignedIn`, `publishFailed`, `unpublishFailed`. The menus' requests are
   `Navigator.publishRequest` (`PublishRequest`) answered by ContentView's `PublishHost`, which renders with the

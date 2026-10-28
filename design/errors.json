@@ -430,32 +430,32 @@
     "publishTooMany": {
       "code": 2110,
       "severity": "error",
-      "en": "50 pages are published already, the most at once. Unpublish one first.",
-      "zh": "已发布 50 个页面，达到同时发布的上限。请先取消发布一个。"
+      "en": "50 pages are shared already, the most at once. Stop sharing one first.",
+      "zh": "已分享 50 个页面，达到同时分享的上限。请先停止分享一个。"
     },
     "publishNotSignedIn": {
       "code": 2111,
       "severity": "error",
-      "en": "Sign in to iCloud to publish a link.",
-      "zh": "请登录 iCloud 后再发布链接。"
+      "en": "Sign in to iCloud to share a page.",
+      "zh": "请登录 iCloud 后再分享页面。"
     },
     "publishFailed": {
       "code": 7007,
       "severity": "error",
-      "en": "Couldn't publish the page. Check your connection and that you're signed in to iCloud.",
-      "zh": "无法发布页面。请检查网络，并确认已登录 iCloud。"
+      "en": "Couldn't share the page. Check your connection and that you're signed in to iCloud.",
+      "zh": "无法分享页面。请检查网络，并确认已登录 iCloud。"
     },
     "unpublishFailed": {
       "code": 7008,
       "severity": "error",
-      "en": "Couldn't take the link down. Try again.",
-      "zh": "无法撤下链接，请重试。"
+      "en": "Couldn't stop sharing the page. Try again.",
+      "zh": "无法停止分享，请重试。"
     },
     "sharedPageNotFound": {
       "code": 2112,
       "severity": "error",
-      "en": "This shared page isn't published any more.",
-      "zh": "这个分享的页面已不再发布。"
+      "en": "This page isn't shared any more.",
+      "zh": "这个页面已不再分享。"
     },
     "sharedPageCannotOpen": {
       "code": 2113,

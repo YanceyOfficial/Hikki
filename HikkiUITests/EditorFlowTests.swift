@@ -331,19 +331,15 @@ final class EditorFlowTests: XCTestCase {
 
     /// Page ⋯ → Publish… asks first (ISSUE-224): Publish closed until the privacy check is made, and Cancel publishes
     /// nothing. Hikki Shared isn't offered while the list is closed (ISSUE-284): the link is the only way, no tag needed.
-    /// On the Mac and iPad Publish sits in the page's toolbar.
     func testPublishLinkAsksFirst() throws {
         continueAfterFailure = false
         let app = launch(environment: ["HIKKI_DEMO_PAGES": "1", "HIKKI_DEBUG_NAV": "demo-46ffce8"])
         let more = app.buttons["page-more"].firstMatch
         XCTAssertTrue(waitOrDumpTree(more, in: app, timeout: 30))
-        // Publish is a button at the head of the page on the Mac and iPad (Notion's Share); on iPhone it is in the ⋯ sheet.
-        let publish = app.buttons["publish-link"].firstMatch
-        func openPublish() {
-            if !publish.exists { more.tap() }
-            XCTAssertTrue(waitOrDumpTree(publish, in: app), "no Publish entry")
-        }
-        openPublish()
+        more.tap()
+        // An iPad's ⋯ menu is a system menu that drops identifiers; its row reads "Share…" (the app speaks of sharing).
+        let publish = app.buttons.matching(NSPredicate(format: "identifier == 'publish-link' OR label == 'Share…'")).firstMatch
+        XCTAssertTrue(waitOrDumpTree(publish, in: app), "no Publish Link entry")
         publish.tap()
         let sheet = app.descendants(matching: .any)["publish-sheet"].firstMatch
         XCTAssertTrue(waitOrDumpTree(sheet, in: app), "the publish sheet did not open")
@@ -360,7 +356,8 @@ final class EditorFlowTests: XCTestCase {
         attachScreenshot(app, "publish-sheet")
         app.buttons["publish-cancel"].firstMatch.tap()
         XCTAssertTrue(sheet.waitForNonExistence(timeout: 5), "the sheet stayed")
-        openPublish()  // still "Publish", not "Published": Cancel published nothing
+        more.tap()
+        XCTAssertTrue(waitOrDumpTree(publish, in: app), "the page counts as shared after Cancel")
     }
 
     /// "Save to Hikki" asks first (ISSUE-224): any web page can open a hikki://shared link, so the link alone imports
