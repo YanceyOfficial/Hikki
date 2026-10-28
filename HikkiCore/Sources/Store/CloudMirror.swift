@@ -639,6 +639,8 @@ public struct CloudArrivals: Equatable, Sendable {
     public var comments: Set<String> = []
     public var chats: Set<String> = []
     public var history: Set<String> = []
+    /// Pages whose published link (`published/<id>.json`) came in or went.
+    public var published: Set<String> = []
 
     public init() {}
 
@@ -652,6 +654,7 @@ public struct CloudArrivals: Equatable, Sendable {
             case "comments" where parts.count == 2: comments.insert(name)
             case "ai" where parts.count == 2: chats.insert(name)
             case "history" where parts.count == 3: history.insert(parts[1])
+            case PublishedLinks.folderName where parts.count == 2: published.insert(name)
             default: break
             }
         }

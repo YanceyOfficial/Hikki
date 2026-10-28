@@ -209,11 +209,12 @@ struct CloudMirrorTests {
     @Test func arrivalsNameThePagesWhoseThreadsChatsAndHistoryChanged() {
         let arrivals = CloudArrivals(paths: [
             "comments/p1.json", "ai/p2.json", "history/p3/20261024T101010.000Z.json", "pages/p4.json", "assets/x.png",
-            "workspace.json",
+            "workspace.json", "published/p5.json",
         ])
         #expect(arrivals.comments == ["p1"])
         #expect(arrivals.chats == ["p2"])
         #expect(arrivals.history == ["p3"])
+        #expect(arrivals.published == ["p5"])
     }
 
     /// The user deleted the workspace's iCloud data: paused across launches, nothing agreed holds; turning iCloud off

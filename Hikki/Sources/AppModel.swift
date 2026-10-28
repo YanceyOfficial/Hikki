@@ -97,7 +97,8 @@ final class AppModel {
     @ObservationIgnored private var cloud: CloudSync?
     /// iCloud was just turned on: the account the device uses now may take the workspace (`CloudMirror.releaseAccount`).
     @ObservationIgnored private var adoptsCloudAccount = false
-    /// The workspace's published links (`published/<page id>.json`), made with the folder; nil until then.
+    /// The workspace's published links (`published/<page id>.json`), made with the folder; nil until then. Observed
+    /// through itself (`PublishedLinks` is observable), so the menus follow publishing and unpublishing.
     @ObservationIgnored var publishedLinks: PublishedLinks?
     /// The public database's side of publishing (`PublishLink.swift`).
     @ObservationIgnored let publisher = PagePublisher()
@@ -315,6 +316,7 @@ final class AppModel {
         for id in arrivals.comments { center.post(name: .pageCommentsChanged, object: nil, userInfo: ["id": id]) }
         for id in arrivals.chats { center.post(name: .pageChatChanged, object: nil, userInfo: ["id": id]) }
         for id in arrivals.history { center.post(name: .pageHistoryChanged, object: nil, userInfo: ["id": id]) }
+        if !arrivals.published.isEmpty { publishedLinks?.noteChanged() }
     }
 
     /// Where the workspace lives, as the sidebar, Settings and a page's facts name it.

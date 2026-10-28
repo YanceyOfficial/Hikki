@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import Observation
 
 /// A page's published link (page ⋯ → Publish Link): the public-database record that holds it (`PagePublisher`) and
 /// the key that opens it. CloudKit's public database holds only what the key encrypts; the key travels in the link's
@@ -217,21 +218,31 @@ public enum PublishedContent {
 }
 
 /// The workspace's published links, one file per page — `published/<page id>.json` in the workspace folder, so every
-/// device of the workspace sees a page is published, updates the same record and takes it down.
-public final class PublishedLinks: Sendable {
-    public static let folderName = "published"
-    static let currentFormat = 1
+/// device of the workspace sees a page is published, updates the same record and takes it down. Observable: a view
+/// that asked whether a page is published (the page menus' Publish… / Published ▸) redraws when this device publishes
+/// or unpublishes, or another device's links arrive (`noteChanged`) — the files alone told SwiftUI nothing, so the
+/// menu still offered Published ▸ after Unpublish.
+@MainActor @Observable
+public final class PublishedLinks {
+    nonisolated public static let folderName = "published"
+    nonisolated static let currentFormat = 1
+
+    /// Bumped on every change to the folder; read by `link(of:)` and `count()` so observers follow the files.
+    private var revision = 0
 
     struct File: Codable {
         var format: Int
         var link: PublishedLink
     }
 
-    public let root: URL
+    @ObservationIgnored public let root: URL
 
     public init(root: URL) {
         self.root = root
     }
+
+    /// The folder changed under us (links arriving from another device).
+    public func noteChanged() { revision += 1 }
 
     private var folder: URL { root.appending(path: Self.folderName, directoryHint: .isDirectory) }
 
@@ -242,6 +253,7 @@ public final class PublishedLinks: Sendable {
 
     /// The page's link, if it is published.
     public func link(of pageID: String) -> PublishedLink? {
+        _ = revision
         guard let file = file(for: pageID), let data = try? Data(contentsOf: file) else { return nil }
         guard let decoded = try? PublishedContent.decoder.decode(File.self, from: data), decoded.format <= Self.currentFormat
         else { return nil }
@@ -253,15 +265,18 @@ public final class PublishedLinks: Sendable {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let data = try PublishedContent.encoder.encode(File(format: Self.currentFormat, link: link))
         try FileLocks.shared.withLock(file) { try data.write(to: file, options: .atomic) }
+        revision += 1
     }
 
     public func remove(for pageID: String) throws {
         guard let file = file(for: pageID), FileManager.default.fileExists(atPath: file.path) else { return }
         try FileLocks.shared.withLock(file) { try FileManager.default.removeItem(at: file) }
+        revision += 1
     }
 
     /// How many pages are published (the publisher's limit counts these).
     public func count() -> Int {
-        ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []).filter { $0.hasSuffix(".json") }.count
+        _ = revision
+        return ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []).filter { $0.hasSuffix(".json") }.count
     }
 }

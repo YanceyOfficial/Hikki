@@ -1093,7 +1093,8 @@ HikkiUITests/                 XCUITest flows
   the page's own as an attachment). One `PublishedPage` record in the container's **public** CloudKit
   database (`PagePublisher`: `payloadFile` and `files` as `CKAsset`s, `version`, `bytes`; the world reads,
   signed-in users create, only the creator writes or deletes). The link is kept in the workspace folder,
-  `published/<page id>.json` (`PublishedLinks`), so every device sees the page is published. Publishing asks first
+  `published/<page id>.json` (`PublishedLinks`, observable — the menus follow a publish, an Unpublish and links arriving
+  from another device, `CloudArrivals.published`), so every device sees the page is published. Publishing asks first
   (HikkiUI's `PublishSheet`: the two ways, tags, author, what goes and what stays private, a privacy check that opens
   Publish) and ends on HikkiUI's `PublishedSheet` (the link, Copy, Open in Browser); Published ▸ has Show Link…, Copy
   Link, Update Page (no second question), Sharing Settings… and Unpublish (an alert). Limits:

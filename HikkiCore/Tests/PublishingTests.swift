@@ -75,7 +75,31 @@ struct PublishingTests {
         }
     }
 
-    @Test func linksAreKeptPerPageInTheWorkspaceFolder() throws {
+    /// A view that asked whether a page is published redraws when it is unpublished, published or another device's
+    /// links arrive — the menu kept offering Published ▸ after Unpublish while the link was read from the file alone.
+    @MainActor @Test func askingAboutALinkIsToldWhenTheLinksChange() throws {
+        let root = try temporary()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let links = PublishedLinks(root: root)
+        let link = PublishedLink(
+            recordName: "r1", key: "k", publishedAt: Date(timeIntervalSince1970: 1), updatedAt: Date(timeIntervalSince1970: 2))
+        final class Told: @unchecked Sendable { var value = false }
+        func changes(_ change: () throws -> Void) rethrows -> Bool {
+            let told = Told()
+            withObservationTracking {
+                _ = links.link(of: "p1")
+            } onChange: {
+                told.value = true
+            }
+            try change()
+            return told.value
+        }
+        #expect(try changes { try links.save(link, for: "p1") })
+        #expect(try changes { try links.remove(for: "p1") })
+        #expect(changes { links.noteChanged() })
+    }
+
+    @MainActor @Test func linksAreKeptPerPageInTheWorkspaceFolder() throws {
         let root = try temporary()
         defer { try? FileManager.default.removeItem(at: root) }
         let links = PublishedLinks(root: root)
