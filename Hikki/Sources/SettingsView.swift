@@ -711,11 +711,34 @@ private struct LanguageSection: View {
 private struct AboutSection: View {
     @Environment(AppModel.self) private var model
     @State private var showingLogs = false
+    #if os(iOS)
+        @Environment(\.horizontalSizeClass) private var sizeClass
+    #endif
+
+    /// A compact width (an iPhone) lists the links as menu rows under the header; wider ones keep the header's
+    /// buttons.
+    private var linksAsRows: Bool {
+        #if os(iOS)
+            sizeClass == .compact
+        #else
+            false
+        #endif
+    }
 
     var body: some View {
         Section {
-            AboutHeader(version: Self.version, links: Self.links)
+            AboutHeader(version: Self.version, links: linksAsRows ? [] : Self.links)
                 .listRowBackground(Color.clear)
+        }
+        if linksAsRows {
+            Section {
+                ForEach(Self.links) { link in
+                    Link(destination: link.url) {
+                        IconLabel(link.title, icon: link.icon)
+                    }
+                    .accessibilityIdentifier("about-link-\(link.id)")
+                }
+            }
         }
         // The trial and the unlock: where it stands, Unlock / Restore Purchases.
         Section {

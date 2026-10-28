@@ -425,9 +425,18 @@ final class EditorFlowTests: XCTestCase {
         if !version.waitForExistence(timeout: 5), row.exists { row.tap() }
         XCTAssertTrue(waitOrDumpTree(version, in: app), "no version in About")
         XCTAssertTrue(version.label.hasPrefix("Version "), "version reads \(version.label)")
-        for link in ["website", "privacy", "contact"] {
-            XCTAssertTrue(
-                app.descendants(matching: .any)["about-link-\(link)"].firstMatch.exists, "no \(link) link in About")
+        let links = ["website", "privacy", "contact"].map { app.descendants(matching: .any)["about-link-\($0)"].firstMatch }
+        for (link, button) in zip(["website", "privacy", "contact"], links) {
+            XCTAssertTrue(button.exists, "no \(link) link in About")
+        }
+        // On a phone the links are menu rows across the form, one under another: squeezed into a row of buttons
+        // they broke "Websit / e", or dropped to their icons.
+        let width = app.windows.firstMatch.frame.width
+        if width < 500 {
+            XCTAssertEqual(Set(links.map(\.frame.minY)).count, 3, "the links share a row: \(links.map(\.frame))")
+            for button in links {
+                XCTAssertGreaterThan(button.frame.width, width * 0.7, "a link isn't a row: \(button.frame)")
+            }
         }
         attachScreenshot(app, "about")
     }

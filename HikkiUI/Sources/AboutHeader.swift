@@ -16,7 +16,8 @@ public struct AboutLink: Identifiable {
 }
 
 /// The top of Settings → About: the app's icon, its name and line, the version (selectable, for a bug report) and
-/// its links as a row of outline buttons. Plain values — the app passes the version and the addresses.
+/// its links as a row of outline buttons — none when the app lists them as rows of its own (a phone's Settings).
+/// Plain values — the app passes the version and the addresses.
 public struct AboutHeader: View {
     let version: String
     let links: [AboutLink]
@@ -49,11 +50,13 @@ public struct AboutHeader: View {
                     .padding(.top, Spacing.s1)
                     .accessibilityIdentifier("about-version")
             }
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: Spacing.s2) { linkButtons }
-                VStack(spacing: Spacing.s2) { linkButtons }
+            if !links.isEmpty {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: Spacing.s2) { linkButtons }
+                    VStack(spacing: Spacing.s2) { linkButtons }
+                }
+                .padding(.top, Spacing.s1)
             }
-            .padding(.top, Spacing.s1)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, Spacing.s4)
@@ -62,7 +65,9 @@ public struct AboutHeader: View {
     private var linkButtons: some View {
         ForEach(links) { link in
             Link(destination: link.url) {
-                IconLabel(link.title, icon: link.icon)
+                // Words and icon, on one line: wrappable words (or the automatic style's icon-only fallback) let
+                // the row "fit" by breaking "Websit / e" instead of the links stacking.
+                IconLabel(link.title, icon: link.icon).labelStyle(.titleAndIcon).fixedSize()
             }
             .buttonStyle(HikkiButtonStyle(.outline))
             .accessibilityIdentifier("about-link-\(link.id)")
