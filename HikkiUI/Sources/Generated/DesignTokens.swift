@@ -257,6 +257,7 @@ public nonisolated enum Size {
     public static let tabHeight: CGFloat = 30
     public static let searchHeader: CGFloat = 52
     public static let onboardingWidth: CGFloat = 440
+    public static let aboutIcon: CGFloat = 88
 }
 
 /// Motion: one timing for everything that appears, leaves or reacts (popovers, hover states, scrims).

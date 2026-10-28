@@ -1154,7 +1154,8 @@ HikkiUITests/                 XCUITest flows
   accent is "Multicolor" — a chosen system accent overrides every app's).
 - **Settings** (`Hikki/Sources/SettingsView.swift`): pages (`SettingsPage`: General — appearance, language, editor,
   menu bar — then Workspace, Import & Export (`Hikki/Sources/TransferSettings.swift`, see Import / export), Shortcuts,
-  Search, AI, About; Shortcuts only with a keyboard: `GCKeyboard`) in a modal
+  Search, AI, About — which opens on HikkiUI's `AboutHeader`: the app icon (`HikkiUI/Resources/Marks.xcassets/AppMark.imageset`, from
+  `design/icon/hi-star`), the version, the site, privacy and contact; Shortcuts only with a keyboard: `GCKeyboard`) in a modal
   dialog over the window, Notion's: the pages in a sidebar, the open one's form beside it, a close button and Escape
   (HikkiUI's `SidebarDialog`, `Size.settings*`) — a sheet on the Mac (no separate Settings scene: the app menu's
   Settings… ⌘, and every other way in set `Navigator.isShowingSettings`; with no window in front the main window comes

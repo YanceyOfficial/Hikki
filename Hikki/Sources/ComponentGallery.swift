@@ -287,6 +287,18 @@
                                 PageCoverView(.gradient(.ember)).frame(height: Size.homeCardCover)
                             }
                         }
+                        Section("AboutHeader") {
+                            AboutHeader(
+                                version: "0.1.0 (1)",
+                                links: [
+                                    AboutLink(
+                                        id: "website", title: "app:about.website", icon: .globe,
+                                        url: URL(string: "https://hikki.yancey.app")!),
+                                    AboutLink(
+                                        id: "contact", title: "app:about.contact", icon: .at,
+                                        url: URL(string: "mailto:developer@yanceyleo.com")!),
+                                ])
+                        }
                         Section("UnlockSheet · ReadOnlyBar") {
                             UnlockSheet(status: .trial(daysLeft: 9), price: "$19.99", onUnlock: {}, onRestore: {}, onClose: {})
                             UnlockSheet(status: .expired, price: "$19.99", onUnlock: {}, onRestore: {}, onClose: {})

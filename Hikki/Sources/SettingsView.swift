@@ -713,6 +713,10 @@ private struct AboutSection: View {
     @State private var showingLogs = false
 
     var body: some View {
+        Section {
+            AboutHeader(version: Self.version, links: Self.links)
+                .listRowBackground(Color.clear)
+        }
         // The trial and the unlock: where it stands, Unlock / Restore Purchases.
         Section {
             LabeledContent("app:unlock.statusLabel") {
@@ -726,13 +730,6 @@ private struct AboutSection: View {
                 .accessibilityIdentifier("settings-restore")
         } header: {
             Text("app:unlock.header")
-        }
-        Section {
-            LabeledContent("app:settings.version") {
-                Text(verbatim: Self.version).textSelection(.enabled)
-            }
-        } header: {
-            Text("app:settings.about")
         }
         Section {
             ShareLink(item: diagnostics, preview: SharePreview(Text("app:diagnostics.export"))) {
@@ -792,6 +789,15 @@ private struct AboutSection: View {
         }
         return DiagnosticsFile(logs: Log.files, reports: model.crashReporter.reports, app: .current(), facts: facts)
     }
+
+    /// The site, its privacy policy (the App Store listing links the same page) and a mail to the developer.
+    private static let links = [
+        AboutLink(id: "website", title: "app:about.website", icon: .globe, url: URL(string: "https://hikki.yancey.app")!),
+        AboutLink(
+            id: "privacy", title: "app:about.privacy", icon: .lockSimple,
+            url: URL(string: "https://hikki.yancey.app/privacy")!),
+        AboutLink(id: "contact", title: "app:about.contact", icon: .at, url: URL(string: "mailto:developer@yanceyleo.com")!),
+    ]
 
     private static var version: String {
         let info = Bundle.main.infoDictionary

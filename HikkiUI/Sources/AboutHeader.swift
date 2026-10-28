@@ -1,0 +1,92 @@
+import SwiftUI
+
+/// One of the About page's links: the website, the privacy policy, a mail to the developer.
+public struct AboutLink: Identifiable {
+    public let id: String
+    public let title: LocalizedStringKey
+    public let icon: Icon
+    public let url: URL
+
+    public init(id: String, title: LocalizedStringKey, icon: Icon, url: URL) {
+        self.id = id
+        self.title = title
+        self.icon = icon
+        self.url = url
+    }
+}
+
+/// The top of Settings → About: the app's icon, its name and line, the version (selectable, for a bug report) and
+/// its links as a row of outline buttons. Plain values — the app passes the version and the addresses.
+public struct AboutHeader: View {
+    let version: String
+    let links: [AboutLink]
+
+    public init(version: String, links: [AboutLink]) {
+        self.version = version
+        self.links = links
+    }
+
+    public var body: some View {
+        VStack(spacing: Spacing.s4) {
+            Image("AppMark", bundle: .module)
+                .resizable()
+                .scaledToFit()
+                .frame(width: Size.aboutIcon, height: Size.aboutIcon)
+                .clipShape(.rect(cornerRadius: Size.aboutIcon * 0.225, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: Size.aboutIcon * 0.225, style: .continuous)
+                        .strokeBorder(Theme.border)
+                }
+                .accessibilityHidden(true)
+            VStack(spacing: Spacing.s1) {
+                Text(verbatim: "Hikki").font(.hk(.x2l, .semibold)).foregroundStyle(Theme.foreground)
+                Text("app:about.tagline").font(.hk(.sm)).foregroundStyle(Theme.mutedForeground)
+                    .multilineTextAlignment(.center)
+                Text("app:about.version \(version)")
+                    .font(.hk(.xs).monospacedDigit())
+                    .foregroundStyle(Theme.mutedForeground)
+                    .textSelection(.enabled)
+                    .padding(.top, Spacing.s1)
+                    .accessibilityIdentifier("about-version")
+            }
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Spacing.s2) { linkButtons }
+                VStack(spacing: Spacing.s2) { linkButtons }
+            }
+            .padding(.top, Spacing.s1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Spacing.s4)
+    }
+
+    private var linkButtons: some View {
+        ForEach(links) { link in
+            Link(destination: link.url) {
+                IconLabel(link.title, icon: link.icon)
+            }
+            .buttonStyle(HikkiButtonStyle(.outline))
+            .accessibilityIdentifier("about-link-\(link.id)")
+        }
+    }
+}
+
+#Preview {
+    Form {
+        Section {
+            AboutHeader(
+                version: "0.1.0 (1)",
+                links: [
+                    AboutLink(
+                        id: "website", title: "app:about.website", icon: .globe,
+                        url: URL(string: "https://hikki.yancey.app")!),
+                    AboutLink(
+                        id: "privacy", title: "app:about.privacy", icon: .lockSimple,
+                        url: URL(string: "https://hikki.yancey.app/privacy")!),
+                    AboutLink(
+                        id: "contact", title: "app:about.contact", icon: .at,
+                        url: URL(string: "mailto:developer@yanceyleo.com")!),
+                ])
+        }
+    }
+    .formStyle(.grouped)
+}

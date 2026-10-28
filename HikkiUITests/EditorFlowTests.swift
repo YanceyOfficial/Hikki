@@ -402,6 +402,23 @@ final class EditorFlowTests: XCTestCase {
         app.buttons["settings-close"].firstMatch.tap()
     }
 
+    /// Settings → About opens on the app's header: the version, then the website, privacy and contact links (ISSUE-277).
+    func testAboutShowsVersionAndLinks() throws {
+        continueAfterFailure = false
+        let app = launch(environment: ["HIKKI_OPEN_SETTINGS": "about"], settingsPage: "about")
+        let version = app.staticTexts["about-version"].firstMatch
+        // iPhone opens Settings on its hub list: About is a row there.
+        let row = app.descendants(matching: .any)["settings-page-about"].firstMatch
+        if !version.waitForExistence(timeout: 5), row.exists { row.tap() }
+        XCTAssertTrue(waitOrDumpTree(version, in: app), "no version in About")
+        XCTAssertTrue(version.label.hasPrefix("Version "), "version reads \(version.label)")
+        for link in ["website", "privacy", "contact"] {
+            XCTAssertTrue(
+                app.descendants(matching: .any)["about-link-\(link)"].firstMatch.exists, "no \(link) link in About")
+        }
+        attachScreenshot(app, "about")
+    }
+
     /// Settings on Mac/iPad is a dialog over the window: its pages in a sidebar, the close button dismisses it, and
     /// it opens again on the page last shown. (iPhone keeps its hub list.)
     func testSettingsDialogRemembersItsPage() throws {
