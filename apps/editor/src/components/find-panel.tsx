@@ -119,7 +119,12 @@ export function FindPanel({ editor, open, replace, initialText, onReplaceToggle,
       // The same distance from the toolbar as from the window's edge (right-4).
       style={{ top: 'calc(var(--hk-inset-top, 0px) + 16px)' }}
     >
-      <InputGroup className={cn('h-10 rounded-xl shadow-none', replace && 'rounded-b-none')}>
+      <InputGroup
+        className={cn(
+          'h-10 rounded-xl shadow-none border-none has-[[data-slot=input-group-control]:focus-visible]:ring-0',
+          replace && 'rounded-b-none'
+        )}
+      >
         <InputGroupInput
           ref={searchRef}
           placeholder={t('find.placeholder')}
@@ -176,7 +181,10 @@ export function FindPanel({ editor, open, replace, initialText, onReplaceToggle,
           >
             <ArrowDownIcon aria-hidden />
           </Action>
-          <Separator orientation="vertical" className="mx-1 data-[orientation=vertical]:h-4" />
+          <Separator
+            orientation="vertical"
+            className="relative top-1 mx-1 data-[orientation=vertical]:h-4"
+          />
           <Option
             label={t('find.replaceToggle')}
             keys={shortcutLabel('findReplace')}
@@ -192,7 +200,7 @@ export function FindPanel({ editor, open, replace, initialText, onReplaceToggle,
         </InputGroupAddon>
       </InputGroup>
       {replace && (
-        <InputGroup className="-mt-px h-10 rounded-xl rounded-t-none shadow-none">
+        <InputGroup className="-mt-px h-10 rounded-xl rounded-t-none border-x-0 border-b-0 shadow-none has-[[data-slot=input-group-control]:focus-visible]:border-input has-[[data-slot=input-group-control]:focus-visible]:ring-0">
           <InputGroupInput
             placeholder={t('find.replacePlaceholder')}
             aria-label={t('find.replacePlaceholder')}

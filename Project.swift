@@ -12,7 +12,7 @@ let baseSettings: SettingsDictionary = [
 
 let project = Project(
     name: "Hikki",
-    organizationName: "Yancey Inc.",
+    organizationName: "Yancey Leo",
     options: .options(defaultKnownRegions: ["en", "zh-Hans"], developmentRegion: "en"),
     // Version (marketing + build number) comes from one xcconfig — see Configs/Version.xcconfig.
     settings: .settings(
@@ -31,7 +31,7 @@ let project = Project(
             deploymentTargets: deploymentTargets,
             infoPlist: .extendingDefault(with: [
                 "CFBundleDisplayName": "Hikki",
-                "NSHumanReadableCopyright": "Copyright © 2026 Yancey Inc. All rights reserved.",
+                "NSHumanReadableCopyright": "Copyright © 2026 Yancey Leo. All rights reserved.",
                 "CFBundleShortVersionString": "$(MARKETING_VERSION)",
                 "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
                 "UILaunchScreen": [:],
