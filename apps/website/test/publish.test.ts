@@ -1,7 +1,14 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest'
 
-import { decrypt, keyFromFragment, lookupURL, recordFiles, sanitize } from '../src/publish'
+import {
+  decrypt,
+  keyFromFragment,
+  lookupRequest,
+  lookupURL,
+  recordFiles,
+  sanitize
+} from '../src/publish'
 
 const base64url = (bytes: Uint8Array) =>
   btoa(String.fromCodePoint(...bytes))
@@ -25,6 +32,14 @@ describe('the link', () => {
     expect(lookupURL('development', 'a/b')).toContain(
       '/development/public/records/lookup?ckAPIToken=a%2Fb'
     )
+  })
+
+  it('asks for the record as a simple request, with no header that needs a CORS preflight', () => {
+    const request = lookupRequest('abc-123')
+    expect(request.method).toBe('POST')
+    // CloudKit's preflight allows no request headers: a content-type header got the lookup blocked in the browser.
+    expect(request.headers).toBeUndefined()
+    expect(JSON.parse(String(request.body))).toEqual({ records: [{ recordName: 'abc-123' }] })
   })
 
   it('opens what the app sealed (AES-GCM, nonce first)', async () => {

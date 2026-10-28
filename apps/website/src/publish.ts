@@ -24,6 +24,16 @@ export function lookupURL(env: string, token: string): string {
   return `https://api.apple-cloudkit.com/database/1/${CLOUDKIT_CONTAINER}/${environment}/public/records/lookup?ckAPIToken=${encodeURIComponent(token)}`
 }
 
+/**
+ * The lookup's request: a POST with the record's name and no headers of its own. CloudKit's CORS preflight answers
+ * no `Access-Control-Allow-Headers`, so a `content-type: application/json` header made the browser refuse the request
+ * before it was sent; a string body goes as `text/plain`, a simple request with no preflight, and CloudKit reads the
+ * JSON all the same.
+ */
+export function lookupRequest(recordName: string): RequestInit {
+  return { method: 'POST', body: JSON.stringify({ records: [{ recordName }] }) }
+}
+
 /** The key from the link's fragment (`#<base64url>`): 32 bytes, or null when the link has none or a broken one. */
 export function keyFromFragment(hash: string): Uint8Array | null {
   const text = hash.replace(/^#/u, '').trim()

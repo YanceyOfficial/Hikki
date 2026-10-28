@@ -4,7 +4,14 @@ import { createSignal, Match, onCleanup, onMount, Switch } from 'solid-js'
 import { Footer } from '../components/footer'
 import { Header } from '../components/header'
 import { row } from '../components/row'
-import { decrypt, keyFromFragment, lookupURL, recordFiles, type PublishedPayload } from '../publish'
+import {
+  decrypt,
+  keyFromFragment,
+  lookupRequest,
+  lookupURL,
+  recordFiles,
+  type PublishedPayload
+} from '../publish'
 import { CONTACT_EMAIL } from '../site'
 
 const title = 'A page shared from Hikki'
@@ -54,11 +61,7 @@ function Published() {
     const key = keyFromFragment(window.location.hash)
     if (!key) return setState({ kind: 'missingKey' })
     try {
-      const response = await fetch(lookupURL(env, token), {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ records: [{ recordName: params().id }] })
-      })
+      const response = await fetch(lookupURL(env, token), lookupRequest(params().id))
       if (!response.ok) return setState({ kind: 'failed' })
       const body = (await response.json()) as { records?: unknown[] }
       const files = recordFiles(body.records?.[0])
