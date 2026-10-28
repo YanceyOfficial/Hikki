@@ -1,5 +1,12 @@
 import { Extension } from '@tiptap/core'
-import { AllSelection, Plugin, PluginKey, TextSelection, type EditorState } from '@tiptap/pm/state'
+import {
+  AllSelection,
+  Plugin,
+  PluginKey,
+  Selection,
+  TextSelection,
+  type EditorState
+} from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 
@@ -137,6 +144,7 @@ class DragLayer {
     this.layer.setAttribute('aria-hidden', 'true')
     view.dom.parentElement?.prepend(this.layer)
     document.addEventListener('selectionchange', this.schedule)
+    document.addEventListener('selectionchange', this.dropped)
     window.addEventListener('scroll', this.schedule, true)
     window.addEventListener('resize', this.schedule)
     window.addEventListener('mouseup', this.release, true)
@@ -149,6 +157,20 @@ class DragLayer {
   private readonly release = () => {
     if (this.dragging) this.view.dispatch(this.view.state.tr.setMeta(SelectionPaintKey, false))
     else if (!paintsBlocks(this.view.state)) this.layer.replaceChildren()
+  }
+
+  /**
+   * A read-only page (locked, or the trial over) lets go of its selection once the browser's has left it: on iOS a
+   * tap elsewhere clears the selection instead of placing a caret, which ProseMirror never reads, so the painted
+   * selection stayed with no way to clear it. An editable page keeps its own (a field in a panel takes the browser's).
+   */
+  private readonly dropped = () => {
+    const { view } = this
+    if (view.editable || view.state.selection.empty) return
+    const selection = view.dom.ownerDocument.getSelection()
+    if (selection && selection.rangeCount > 0 && view.dom.contains(selection.anchorNode)) return
+    const { doc, selection: current } = view.state
+    view.dispatch(view.state.tr.setSelection(Selection.near(doc.resolve(current.to))))
   }
 
   private readonly schedule = () => {
@@ -214,6 +236,7 @@ class DragLayer {
   destroy(): void {
     cancelAnimationFrame(this.frame)
     document.removeEventListener('selectionchange', this.schedule)
+    document.removeEventListener('selectionchange', this.dropped)
     window.removeEventListener('scroll', this.schedule, true)
     window.removeEventListener('resize', this.schedule)
     window.removeEventListener('mouseup', this.release, true)

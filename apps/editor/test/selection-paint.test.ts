@@ -1,4 +1,5 @@
 import type { Editor } from '@tiptap/core'
+import { TextSelection } from '@tiptap/pm/state'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createEditor } from '../src/core/editor'
@@ -66,6 +67,23 @@ describe('selection paint', () => {
     expect(visibleBlocks(blocks, 700)).toEqual([19, 44])
     expect(visibleBlocks(blocks.slice(0, 10), 700)).toEqual([10, 10])
     expect(visibleBlocks([], 700)).toEqual([0, 0])
+  })
+
+  it("lets go of a read-only page's selection once the browser drops it (a tap on iOS clears it, places no caret)", () => {
+    editor.setEditable(false)
+    editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, 4, 6)))
+    expect(painted()).not.toBe('')
+    document.getSelection()?.removeAllRanges()
+    document.dispatchEvent(new Event('selectionchange'))
+    expect(painted()).toBe('')
+    expect(editor.state.selection.empty).toBe(true)
+  })
+
+  it("keeps an editable page's selection when the browser's goes elsewhere (a field in a panel)", () => {
+    editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, 4, 6)))
+    document.getSelection()?.removeAllRanges()
+    document.dispatchEvent(new Event('selectionchange'))
+    expect(painted()).not.toBe('')
   })
 
   it('paints select-all, and nothing for a caret', () => {
