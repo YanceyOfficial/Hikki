@@ -73,8 +73,8 @@ function Hero() {
         <Shot
           name="mac-hero"
           alt="Hikki on Mac: a launch plan with a cover photo, a callout, a checklist, a status list and a budget in three columns, a schedule table, furigana and an outline of the page beside it."
-          width={2846}
-          height={1802}
+          width={2906}
+          height={1808}
           class="w-full rounded-[12px]"
           eager
         />
