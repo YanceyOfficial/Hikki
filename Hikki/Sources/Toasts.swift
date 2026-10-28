@@ -69,6 +69,14 @@ final class Toasts {
         show(Item(kind: kind, message: message, reference: nil, actionTitle: actionTitle, action: action, key: message))
     }
 
+    /// Work under way ("Saving the shared page…"): a spinner that stays until `dismiss(_:)` with the id this returns,
+    /// so a slow download is never silent. The outcome then shows as a toast of its own.
+    func progress(_ message: String) -> UUID {
+        let item = Item(kind: .progress, message: message, reference: nil, actionTitle: nil, action: nil, key: message)
+        show(item)
+        return item.id
+    }
+
     func dismiss(_ id: UUID) {
         timers[id]?.cancel()
         timers[id] = nil
@@ -91,6 +99,7 @@ final class Toasts {
         case .success, .info: .seconds(3)
         case .warning: .seconds(6)
         case .error: .seconds(10)
+        case .progress: .seconds(120)  // a backstop: progress toasts are dismissed when their work ends
         }
     }
 

@@ -10581,13 +10581,30 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Link taken down."
+            "value": "Stopped sharing. The link no longer opens."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "链接已撤下。"
+            "value": "已停止分享，链接已失效。"
+          }
+        }
+      }
+    },
+    "app:publish.unpublishing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stopping sharing…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在停止分享…"
           }
         }
       }
@@ -13053,6 +13070,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "已保存到你的工作区。"
+          }
+        }
+      }
+    },
+    "app:shared.saving": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saving the shared page…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在保存分享的页面…"
           }
         }
       }

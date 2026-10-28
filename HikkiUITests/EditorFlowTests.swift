@@ -377,6 +377,27 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(save.waitForNonExistence(timeout: 5), "the question stayed after Cancel")
     }
 
+    /// Saving a shared page says what is happening: "Saving the shared page…" while it downloads, then how it went —
+    /// here a record that doesn't exist, so the failure, and the spinner is gone (it gave no sign before).
+    func testSaveToHikkiShowsItsProgressAndOutcome() throws {
+        continueAfterFailure = false
+        let app = launch(environment: ["HIKKI_DEMO_PAGES": "1", "HIKKI_DEBUG_NAV": "demo-46ffce8"])
+        XCTAssertTrue(waitOrDumpTree(app.buttons["page-more"].firstMatch, in: app, timeout: 30))
+        XCUIDevice.shared.system.open(URL(string: "hikki://shared/no-such-record-\(UUID().uuidString)")!)
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let openPrompt = springboard.buttons["Open"].firstMatch
+        if openPrompt.waitForExistence(timeout: 3) { openPrompt.tap() }
+        let save = app.buttons["confirm-save-shared"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(save, in: app), "no Save to Hikki question")
+        save.tap()
+        let saving = app.staticTexts["Saving the shared page…"].firstMatch
+        XCTAssertTrue(saving.waitForExistence(timeout: 5), "no progress while the shared page downloads")
+        // The outcome: a failure toast with its code (the record doesn't exist), and no spinner left behind.
+        let failure = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'HK-'")).firstMatch
+        XCTAssertTrue(waitOrDumpTree(failure, in: app, timeout: 30), "no outcome after saving a shared page")
+        XCTAssertTrue(saving.waitForNonExistence(timeout: 5), "the progress toast stayed after the outcome")
+    }
+
     /// Settings → Import & Export is a page of its own (ISSUE-226): a drop zone, the three ways in — documents, a
     /// Hikki export, a Notion export — and the export below.
     func testImportExportPageShowsItsSources() throws {

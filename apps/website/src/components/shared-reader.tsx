@@ -21,6 +21,7 @@ import {
   tagLabel,
   type PublishedPayload
 } from '../publish'
+import { SHARED_LIST_OPEN } from '../site'
 import { GridIcon, LinkIcon, SaveIcon } from './shared-shell'
 
 type State =
@@ -185,9 +186,18 @@ function Notice(props: { title: string; children: string }) {
     <div class="shared-notice">
       <h1>{props.title}</h1>
       <p>{props.children}</p>
-      <Link to="/shared" class="shared-button mt-6">
-        Browse shared pages
-      </Link>
+      <Show
+        when={SHARED_LIST_OPEN}
+        fallback={
+          <Link to="/" class="shared-button mt-6">
+            About Hikki
+          </Link>
+        }
+      >
+        <Link to="/shared" class="shared-button mt-6">
+          Browse shared pages
+        </Link>
+      </Show>
     </div>
   )
 }
@@ -282,11 +292,13 @@ function Page(props: { id: string; ready: Ready }) {
           <LinkIcon />
           {copied() ? 'Copied' : 'Copy link'}
         </button>
-        <span class="shared-dock-divider" aria-hidden="true" />
-        <Link to="/shared" class="shared-dock-item" aria-label="Browse shared pages">
-          <GridIcon />
-          <span class="max-sm:hidden">Browse</span>
-        </Link>
+        <Show when={SHARED_LIST_OPEN}>
+          <span class="shared-dock-divider" aria-hidden="true" />
+          <Link to="/shared" class="shared-dock-item" aria-label="Browse shared pages">
+            <GridIcon />
+            <span class="max-sm:hidden">Browse</span>
+          </Link>
+        </Show>
       </nav>
     </>
   )

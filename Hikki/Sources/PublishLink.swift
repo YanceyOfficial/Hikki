@@ -74,10 +74,12 @@ extension AppModel {
     /// Takes the page's record down; the link stops working for everyone.
     func unpublish(_ pageID: String) async {
         guard let links = publishedLinks, let link = links.link(of: pageID) else { return }
+        let progress = Toasts.shared.progress(String(localized: "app:publish.unpublishing"))
+        defer { Toasts.shared.dismiss(progress) }
         do {
             try await publisher.unpublish(link)
             try links.remove(for: pageID)
-            Toasts.shared.show(.info, String(localized: "app:publish.unpublished"))
+            Toasts.shared.show(.success, String(localized: "app:publish.unpublished"))
         } catch {
             Toasts.report(.unpublishFailed, error, category: "publish")
         }

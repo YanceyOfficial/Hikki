@@ -9,6 +9,8 @@ extension AppModel {
     /// Saves a copy of the shared page and returns its id, nil after a failure (a toast).
     func saveSharedPage(_ target: SharedLink.Target, editor: EditorController) async -> String? {
         guard Purchases.shared.allowsWriting() else { return nil }
+        let progress = Toasts.shared.progress(String(localized: "app:shared.saving"))
+        defer { Toasts.shared.dismiss(progress) }
         let folder = FileManager.default.temporaryDirectory.appending(path: "hikki-shared-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: folder) }
         do {

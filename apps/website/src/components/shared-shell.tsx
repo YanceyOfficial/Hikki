@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/solid-router'
 import { For, type JSX } from 'solid-js'
 
-import { APP_STORE_URL, CONTACT_EMAIL, PRIVACY_PATH } from '../site'
+import { APP_STORE_URL, CONTACT_EMAIL, PRIVACY_PATH, SHARED_LIST_OPEN } from '../site'
 import { ThemeSwitch } from './theme-switch'
 import { Wordmark } from './wordmark'
 
@@ -27,7 +27,11 @@ export function SharedShell(props: { children: JSX.Element; report?: string }) {
       <header class="shared-bar">
         <div class="shared-bar-inner">
           {/* Hikki Shared's own mark: the app's logo with a "Shared" label at its top right — home for this frame. */}
-          <Link to="/shared" class="shared-brand" aria-label="Hikki Shared">
+          <Link
+            to={SHARED_LIST_OPEN ? '/shared' : '/'}
+            class="shared-brand"
+            aria-label="Hikki Shared"
+          >
             <img src="/icon.png" alt="" class="shared-brand-icon" />
             <span class="shared-brand-mark">
               <Wordmark class="shared-brand-word" />

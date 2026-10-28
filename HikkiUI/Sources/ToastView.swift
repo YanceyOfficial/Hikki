@@ -1,10 +1,11 @@
 import SwiftUI
 
 /// One toast (Sonner's look): an icon for its kind, the message, a small reference under it ("HK-2001 · K3F9QX" for an
-/// error, so a report can name it), an optional action and a close button, on a popover surface.
+/// error, so a report can name it), an optional action and a close button, on a popover surface. `progress` is work
+/// under way ("Saving the shared page…"): a spinner in the icon's place.
 public struct ToastView: View {
     public enum Kind: Sendable {
-        case success, info, warning, error
+        case success, info, warning, error, progress
     }
 
     let kind: Kind
@@ -28,9 +29,17 @@ public struct ToastView: View {
 
     public var body: some View {
         HStack(alignment: .top, spacing: Spacing.s2_5) {
-            IconView(icon, size: TextSize.base.rawValue)
-                .foregroundStyle(tint)
-                .padding(.top, Spacing.px)
+            Group {
+                if kind == .progress {
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(width: TextSize.base.rawValue, height: TextSize.base.rawValue)
+                } else {
+                    IconView(icon, size: TextSize.base.rawValue)
+                }
+            }
+            .foregroundStyle(tint)
+            .padding(.top, Spacing.px)
             VStack(alignment: .leading, spacing: Spacing.s0_5) {
                 Text(message)
                     .font(.hk(.sm, .medium))
@@ -85,7 +94,7 @@ public struct ToastView: View {
     private var icon: Icon {
         switch kind {
         case .success: .checkCircleFill
-        case .info: .info
+        case .info, .progress: .info
         case .warning: .warningCircle
         case .error: .xCircle
         }
@@ -94,7 +103,7 @@ public struct ToastView: View {
     private var tint: Color {
         switch kind {
         case .success: Theme.inkGreen
-        case .info: Theme.mutedForeground
+        case .info, .progress: Theme.mutedForeground
         case .warning: Theme.inkYellow
         case .error: Theme.destructive
         }
@@ -126,6 +135,7 @@ public struct ToastStack<Item: Identifiable, Row: View>: View {
     VStack(spacing: Spacing.s3) {
         ToastView(kind: .success, message: "Link copied", close: {})
         ToastView(kind: .info, message: "3 pages imported", close: {})
+        ToastView(kind: .progress, message: "Saving the shared page…", close: {})
         ToastView(
             kind: .warning, message: "Couldn't sync with the workspace folder.", reference: "HK-2102 · K3F9QX",
             actionTitle: "Retry", action: {}, close: {})

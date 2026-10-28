@@ -306,6 +306,7 @@
                         }
                         Section("ToastView") {
                             ToastView(kind: .success, message: "Link copied", close: {})
+                            ToastView(kind: .progress, message: "Saving the shared page…", close: {})
                             ToastView(
                                 kind: .error, message: "Couldn't save the page.", reference: "HK-2001 · W7RM2D",
                                 actionTitle: "app:toast.copyDetails", action: {}, close: {})

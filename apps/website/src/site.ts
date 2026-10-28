@@ -8,6 +8,14 @@ export const SITE_URL = 'https://hikki.yancey.app'
  */
 export const APP_STORE_URL: string | null = null
 
+/**
+ * Whether Hikki Shared's public list is open. Closed for v1, as in the app (`PublishOptions.listingOpen`): the list has
+ * no reporting or moderation yet, so nothing is listed and /shared says so instead of asking CloudKit for a list.
+ * Pages shared by link read at /p as ever.
+ */
+// ISSUE-284 opens it, together with the app's list.
+export const SHARED_LIST_OPEN = false
+
 /** Where a visitor writes to be told when Hikki ships, and for anything else. */
 export const CONTACT_EMAIL = 'developer@yanceyleo.com'
 

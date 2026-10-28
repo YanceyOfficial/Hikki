@@ -10,7 +10,7 @@ import {
   tagLabel,
   type ListedPage
 } from '../publish'
-import { SITE_URL } from '../site'
+import { SHARED_LIST_OPEN, SITE_URL } from '../site'
 
 const title = 'Hikki Shared'
 const description =
@@ -36,7 +36,7 @@ export const Route = createFileRoute('/shared/')({
     ],
     links: [{ rel: 'canonical', href: `${SITE_URL}/shared` }]
   }),
-  component: SharedList
+  component: () => (SHARED_LIST_OPEN ? <SharedList /> : <ListClosed />)
 })
 
 type State =
@@ -240,6 +240,27 @@ function SharedList() {
             )}
           </Match>
         </Switch>
+      </section>
+    </SharedShell>
+  )
+}
+
+/** While the list is closed (`SHARED_LIST_OPEN`): what Hikki Shared will be, and that pages go by link meanwhile. */
+function ListClosed() {
+  return (
+    <SharedShell>
+      <section class="shared-wide">
+        <header class="shared-list-head">
+          <h1>Hikki Shared</h1>
+          <p>
+            A list of pages people choose to share from Hikki is on its way. For now a page is
+            shared by its link: whoever has the link reads it here and can save it to their own
+            Hikki.
+          </p>
+        </header>
+        <Link to="/" class="shared-button mt-6">
+          About Hikki
+        </Link>
       </section>
     </SharedShell>
   )

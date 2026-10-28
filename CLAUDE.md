@@ -1121,7 +1121,9 @@ HikkiUITests/                 XCUITest flows
   schema to production in the Dashboard (indexes: `listed`, `tags`, `terms` queryable, `publishedAt` queryable and
   sortable) and set the site's token. Not yet: Report / Block records, moderation of the list — so the list is closed
   for v1 (`PublishOptions.listingOpen` false, ISSUE-284): the sheet offers the link alone (`allowsListing`) and
-  `publishLink` sends every page link-only.
+  `publishLink` sends every page link-only; the site's `SHARED_LIST_OPEN` (`apps/website/src/site.ts`) keeps /shared to a
+  note and drops its Browse links (the listing fields aren't in the CloudKit schema until a page is listed). Save to
+  Hikki and Stop Sharing show a progress toast while they run (`Toasts.progress`, ToastView's `progress` kind).
 - **Lock page** (Page menu ⇧⌘L, the page ⋯ menu, the sidebar context menu): `lockedAt` on the page
   (`DocumentStore.setLocked`; it bumps `updatedAt` like icon/cover so other devices pick it up). The load payload
   carries `locked`, `window.hikki.setLocked` flips it while open (each editor, split pane included, for the page it
