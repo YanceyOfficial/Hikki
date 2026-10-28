@@ -1117,7 +1117,9 @@ HikkiUITests/                 XCUITest flows
   wide page (`outline`), the tab titled after the page, a floating dock (Save to Hikki, Copy link, Browse); `noindex`
   on `/p`; "Report this page" is a mail. Tests in `apps/website/test/`. Before a release: deploy the `PublishedPage`
   schema to production in the Dashboard (indexes: `listed`, `tags`, `terms` queryable, `publishedAt` queryable and
-  sortable) and set the site's token. Not yet: Report / Block records, moderation of the list.
+  sortable) and set the site's token. Not yet: Report / Block records, moderation of the list — so the list is closed
+  for v1 (`PublishOptions.listingOpen` false, ISSUE-284): the sheet offers the link alone (`allowsListing`) and
+  `publishLink` sends every page link-only.
 - **Lock page** (Page menu ⇧⌘L, the page ⋯ menu, the sidebar context menu): `lockedAt` on the page
   (`DocumentStore.setLocked`; it bumps `updatedAt` like icon/cover so other devices pick it up). The load payload
   carries `locked`, `window.hikki.setLocked` flips it while open (each editor, split pane included, for the page it

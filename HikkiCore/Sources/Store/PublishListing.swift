@@ -18,6 +18,11 @@ public struct PublishOptions: Codable, Equatable, Sendable {
     /// The longest author name kept.
     public static let maxAuthorLength = 60
 
+    /// Whether a page may be listed in Hikki Shared. Off for v1: the list has no reporting, blocking or moderation yet
+    /// (ISSUE-279–283), so the publish sheet offers the link alone and every publish goes out link-only.
+    // TODO(ISSUE-284): turn on once the list is moderated.
+    public static let listingOpen = false
+
     /// Only people with the link — the default, and the only choice before tags existed.
     public static let linkOnly = PublishOptions(listed: false)
 

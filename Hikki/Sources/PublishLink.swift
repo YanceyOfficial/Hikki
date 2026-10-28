@@ -23,7 +23,9 @@ extension AppModel {
         publishingPages.insert(pageID)
         defer { publishingPages.remove(pageID) }
         let existing = links.link(of: pageID)
-        let options = (options ?? existing?.options ?? .linkOnly).normalized
+        var options = (options ?? existing?.options ?? .linkOnly).normalized
+        // Nothing goes on the list while it is closed — Update Page on a page listed before included.
+        if !PublishOptions.listingOpen { options.listed = false }
         do {
             await editor.flush(reason: "publish")
             guard let record = try store.document(id: pageID) else { return nil }
@@ -278,7 +280,8 @@ private struct PublishSettings: View {
             title: model.tree.page(pageID)?.displayTitle ?? "",
             tags: PublishTags.all.map { .init(id: $0, title: AppModel.publishTagTitle($0)) },
             maxTags: PublishTags.maxPerPage, isUpdate: published, isPublishing: model.publishingPages.contains(pageID),
-            listed: $listed, chosenTags: $chosenTags, author: $author, checked: $checked,
+            allowsListing: PublishOptions.listingOpen, listed: $listed, chosenTags: $chosenTags, author: $author,
+            checked: $checked,
             onPublish: {
                 let options = PublishOptions(listed: listed, tags: Array(chosenTags), author: author).normalized
                 savedAuthor = options.author
@@ -292,7 +295,7 @@ private struct PublishSettings: View {
             guard !loaded else { return }
             loaded = true
             let options = model.publishedLink(of: pageID)?.options ?? .linkOnly
-            listed = options.listed
+            listed = options.listed && PublishOptions.listingOpen
             chosenTags = Set(options.tags)
             author = options.author.isEmpty ? savedAuthor : options.author
         }

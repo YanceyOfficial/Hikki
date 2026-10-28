@@ -329,8 +329,8 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(waitOrDumpTree(app.staticTexts["Atlas"].firstMatch, in: app), "renamed workspace not shown")
     }
 
-    /// Page ⋯ → Publish… asks first (ISSUE-224): two ways to share, Publish closed until the privacy check is made
-    /// (and, listed in Hikki Shared, a tag picked), and Cancel publishes nothing.
+    /// Page ⋯ → Publish… asks first (ISSUE-224): Publish closed until the privacy check is made, and Cancel publishes
+    /// nothing. Hikki Shared isn't offered while the list is closed (ISSUE-284): the link is the only way, no tag needed.
     func testPublishLinkAsksFirst() throws {
         continueAfterFailure = false
         let app = launch(environment: ["HIKKI_DEMO_PAGES": "1", "HIKKI_DEBUG_NAV": "demo-46ffce8"])
@@ -342,25 +342,16 @@ final class EditorFlowTests: XCTestCase {
         publish.tap()
         let sheet = app.descendants(matching: .any)["publish-sheet"].firstMatch
         XCTAssertTrue(waitOrDumpTree(sheet, in: app), "the publish sheet did not open")
-        // Two ways to share, the link one chosen; Publish waits for the privacy check.
         XCTAssertTrue(app.buttons["publish-mode-link"].firstMatch.exists, "no link-only choice")
-        XCTAssertTrue(app.buttons["publish-mode-listed"].firstMatch.exists, "no Hikki Shared choice")
+        XCTAssertFalse(app.buttons["publish-mode-listed"].firstMatch.exists, "Hikki Shared offered while the list is closed")
         let confirm = app.buttons["publish-confirm"].firstMatch
         XCTAssertTrue(confirm.exists, "no Publish button")
         XCTAssertFalse(confirm.isEnabled, "Publish is open before the privacy check")
-        // Listed, it needs a tag too: a tag isn't enough on its own, the check still is.
-        app.buttons["publish-mode-listed"].firstMatch.tap()
-        app.buttons["publish-tag-study"].firstMatch.tap()
-        XCTAssertFalse(confirm.isEnabled, "a listed page may go up without the privacy check")
         // The check sits at the foot of the sheet's scroll, under the pinned Cancel / Publish bar on a phone.
         let check = app.descendants(matching: .any)["publish-check"].firstMatch
         sheet.swipeUp()
         check.tap()
-        XCTAssertTrue(confirm.isEnabled, "Publish stayed closed with the check and a tag")
-        app.buttons["publish-tag-study"].firstMatch.tap()
-        XCTAssertFalse(confirm.isEnabled, "a listed page may go up without a tag")
-        app.buttons["publish-tag-study"].firstMatch.tap()
-        XCTAssertTrue(confirm.isEnabled, "picking the tag again didn't open Publish")
+        XCTAssertTrue(confirm.isEnabled, "Publish stayed closed with the check made and no tag")
         attachScreenshot(app, "publish-sheet")
         app.buttons["publish-cancel"].firstMatch.tap()
         XCTAssertTrue(sheet.waitForNonExistence(timeout: 5), "the sheet stayed")

@@ -4,7 +4,8 @@ import SwiftUI
 /// people who have the link (stored encrypted, the key in the link alone) or listed in Hikki Shared, the website's
 /// public list (stored readable, found by its tags and words) — its tags (a listed page is filed under them), the name
 /// shown as its author, what goes with it and what stays private, and a check that the page holds nothing private.
-/// Publish is open once that check is made and a listed page has a tag.
+/// Publish is open once that check is made and a listed page has a tag. Without `allowsListing` (the list closed) the
+/// link is the only way, and tags are optional.
 public struct PublishSheet: View {
     public struct Tag: Identifiable, Equatable {
         public var id: String
@@ -22,6 +23,8 @@ public struct PublishSheet: View {
     /// Changing a published page's settings: the confirmation reads Save.
     let isUpdate: Bool
     let isPublishing: Bool
+    /// Whether Hikki Shared is offered beside the link.
+    let allowsListing: Bool
     @Binding var listed: Bool
     @Binding var chosenTags: Set<String>
     @Binding var author: String
@@ -31,7 +34,8 @@ public struct PublishSheet: View {
     @Environment(\.colorTone) private var tone
 
     public init(
-        title: String, tags: [Tag], maxTags: Int, isUpdate: Bool = false, isPublishing: Bool, listed: Binding<Bool>,
+        title: String, tags: [Tag], maxTags: Int, isUpdate: Bool = false, isPublishing: Bool, allowsListing: Bool = true,
+        listed: Binding<Bool>,
         chosenTags: Binding<Set<String>>, author: Binding<String>, checked: Binding<Bool>, onPublish: @escaping () -> Void,
         onCancel: @escaping () -> Void
     ) {
@@ -40,6 +44,7 @@ public struct PublishSheet: View {
         self.maxTags = maxTags
         self.isUpdate = isUpdate
         self.isPublishing = isPublishing
+        self.allowsListing = allowsListing
         _listed = listed
         _chosenTags = chosenTags
         _author = author
@@ -93,10 +98,12 @@ public struct PublishSheet: View {
                     icon: .link, title: "app:publish.mode.link", detail: "app:publish.mode.link.detail", isSelected: !listed
                 ) { listed = false }
                 .accessibilityIdentifier("publish-mode-link")
-                Choice(
-                    icon: .globe, title: "app:publish.mode.listed", detail: "app:publish.mode.listed.detail", isSelected: listed
-                ) { listed = true }
-                .accessibilityIdentifier("publish-mode-listed")
+                if allowsListing {
+                    Choice(
+                        icon: .globe, title: "app:publish.mode.listed", detail: "app:publish.mode.listed.detail", isSelected: listed
+                    ) { listed = true }
+                    .accessibilityIdentifier("publish-mode-listed")
+                }
             }
             VStack(alignment: .leading, spacing: Spacing.s2) {
                 HStack {
@@ -252,6 +259,7 @@ public struct PublishSheet: View {
 
 private struct PublishSheetPreview: View {
     var listed: Bool
+    var allowsListing = true
     @State private var isListed = false
     @State private var tags: Set<String> = ["study"]
     @State private var checked = false
@@ -262,7 +270,8 @@ private struct PublishSheetPreview: View {
             title: "Trip to Kyoto",
             tags: ["study", "language", "work", "tech", "design", "writing", "reading", "travel"].map {
                 .init(id: $0, title: $0.capitalized)
-            }, maxTags: 3, isPublishing: false, listed: $isListed, chosenTags: $tags, author: $author, checked: $checked, onPublish: {},
+            }, maxTags: 3, isPublishing: false, allowsListing: allowsListing, listed: $isListed, chosenTags: $tags, author: $author,
+            checked: $checked, onPublish: {},
             onCancel: {}
         )
         .onAppear { isListed = listed }
@@ -271,3 +280,4 @@ private struct PublishSheetPreview: View {
 
 #Preview("Link") { PublishSheetPreview(listed: false) }
 #Preview("Listed") { PublishSheetPreview(listed: true) }
+#Preview("Link only") { PublishSheetPreview(listed: false, allowsListing: false) }
