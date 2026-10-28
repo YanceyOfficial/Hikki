@@ -766,6 +766,24 @@ struct ContentView: View {
                     navigator?.pageActionsID = navigator?.route.pageID
                 }
             }
+            // HIKKI_OPEN_INSPECTOR=outline|comments|ai opens the side panel on that view, HIKKI_OPEN_HISTORY the open
+            // page's history and HIKKI_OPEN_SHARE its Share sheet (screenshots for the website).
+            if let mode = environment["HIKKI_OPEN_INSPECTOR"].flatMap(InspectorMode.init(rawValue:)) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak navigator] in
+                    navigator?.inspectorMode = mode
+                    navigator?.isShowingInspector = true
+                }
+            }
+            if environment["HIKKI_OPEN_HISTORY"] != nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak navigator] in
+                    navigator?.historyPageID = navigator?.route.pageID
+                }
+            }
+            if environment["HIKKI_OPEN_SHARE"] != nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak navigator] in
+                    if let id = navigator?.route.pageID { navigator?.publishRequest = .settings(id) }
+                }
+            }
         }
     #endif
 

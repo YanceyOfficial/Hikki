@@ -24,7 +24,7 @@ def t(s, *marks):
 def p(*inl): return {'type': 'paragraph', 'attrs': {'id': bid()}, 'content': list(inl)} if inl else {'type': 'paragraph', 'attrs': {'id': bid()}}
 def h(level, s): return {'type': 'heading', 'attrs': {'id': bid(), 'level': level}, 'content': [t(s)]}
 def bullets(*items): return {'type': 'bulletList', 'attrs': {'id': bid()}, 'content': [{'type': 'listItem', 'attrs': {'id': bid()}, 'content': [p(*(i if isinstance(i, list) else [t(i)]))]} for i in items]}
-def tasks(*items): return {'type': 'taskList', 'attrs': {'id': bid()}, 'content': [{'type': 'taskItem', 'attrs': {'id': bid(), 'checked': done}, 'content': [p(t(s))]} for s, done in items]}
+def tasks(*items): return {'type': 'taskList', 'attrs': {'id': bid()}, 'content': [{'type': 'taskItem', 'attrs': {'id': bid(), 'checked': done}, 'content': [p(t(s) if isinstance(s, str) else s)]} for s, done in items]}
 def callout(icon, *blocks): return {'type': 'callout', 'attrs': {'id': bid(), 'icon': icon}, 'content': list(blocks)}
 def toggle(summary, *blocks): return {'type': 'details', 'content': [{'type': 'detailsSummary', 'content': [t(summary)]}, {'type': 'detailsContent', 'content': list(blocks)}]}
 def quote(*blocks): return {'type': 'blockquote', 'attrs': {'id': bid()}, 'content': list(blocks)}
@@ -56,13 +56,22 @@ def c(s, color=None, bg=None, *marks):
     n.setdefault('marks', []).append({'type': 'textStyle', 'attrs': attrs})
     return n
 def mention(pid, label): return {'type': 'mention', 'attrs': {'id': pid, 'label': label}}
+def commented(s, thread):
+    n = t(s)
+    n['marks'] = [{'type': 'comment', 'attrs': {'id': thread}}]
+    return n
+def date(days, time=None, remind=None):
+    """A date chip `days` from today (local), as "@" puts it — wall-clock time, a reminder `remind` minutes before."""
+    day = (datetime.datetime.now() + datetime.timedelta(days=days)).strftime('%Y-%m-%d')
+    return {'type': 'dateMention', 'attrs': {'id': str(uuid.uuid5(uuid.NAMESPACE_URL, f'hikki-demo/date/{days}/{time}')),
+            'date': day, 'time': time, 'remind': remind, 'done': False, 'snoozed': None}}
 def imath(latex): return {'type': 'inlineMath', 'attrs': {'latex': latex}}
 def columns(*cols): return {'type': 'columns', 'content': [{'type': 'column', 'content': list(col)} for col in cols]}
 
 files = []
 COVERS = json.load(open(os.path.join(os.path.dirname(__file__), 'covers.json')))
 
-def page(title, icon, blocks, parent=None, minutes_ago=60, cover=None, favorite=False, sort=0):
+def page(title, icon, blocks, parent=None, minutes_ago=60, cover=None, favorite=False, sort=0, locked=False):
     cover = COVERS.get(title, {}).get('url', cover)
     pid = 'en-' + uuid.uuid5(uuid.NAMESPACE_URL, 'hikki-demo/' + title).hex[:12]
     doc = {'type': 'doc', 'content': blocks or [p()]}
@@ -70,14 +79,14 @@ def page(title, icon, blocks, parent=None, minutes_ago=60, cover=None, favorite=
     text = blocks_text(doc)
     f = {'format': 1, 'id': pid, 'title': title, 'icon': icon, 'cover': cover, 'parentId': parent, 'sortKey': float(sort),
          'createdAt': iso(edited - datetime.timedelta(days=3)), 'updatedAt': iso(edited), 'changedAt': iso(edited),
-         'favoritedAt': iso(edited) if favorite else None, 'deletedAt': None, 'lockedAt': None,
+         'favoritedAt': iso(edited) if favorite else None, 'deletedAt': None, 'lockedAt': iso(edited) if locked else None,
          'plainText': text, 'wordCount': len(text.split()), 'content': doc}
     files.append(f); return pid
 
 work = page('Work', '🗂️', [p(t('Projects, plans and the weekly review.'))], minutes_ago=600, sort=0)
 page('Launch week', '📣', [
     callout('🗓️', p(t('Public beta goes out '), t('Thursday, November 20', 'bold'), t('. Plan in '), mention('en-f725dda9d6d5', 'Product launch'), t(', visuals in '), mention('en-8d64ef1034cc', 'Design notes'), t('.'))),
-    p(t('The beta is for people who keep notes every day and want them to stay on their own devices.')),
+    p(t('The beta is for people that are keeping notes every day and that want them to stay on their own devices.')),
     columns(
         [h(3, 'Checklist'), tasks(('Freeze the build', True), ('Record the demo', True), ('Submit for review', False), ('Publish the site', False))],
         [h(3, 'Status'), bullets([t('Sync: '), c('testing', 'orange', 'orange')], [t('Search: '), c('done', 'green', 'green')], [t('Website: '), c('in review', 'blue', 'blue')], [t('Localization: '), c('blocked', 'red', 'red')])],
@@ -90,9 +99,9 @@ page('Launch week', '📣', [
     code('swift', 'let launch = Date(year: 2026, month: 11, day: 20)\nprint(launch.formatted(date: .complete, time: .omitted))'),
 ], parent=work, minutes_ago=3, favorite=True, sort=-1)
 page('Product launch', '🚀', [
-    callout('🎯', p(t('Ship the public beta to the App Store by '), t('November 20', 'bold'), t('.'))),
+    callout('🎯', p(commented('Ship the public beta to the App Store', 'thread-beta'), t(' by '), t('November 20', 'bold'), t('.'))),
     h(2, 'Milestones'),
-    tasks(('Freeze the feature list', True), ('Finish onboarding screens', True), ('App Store screenshots', False), ('Press kit and website', False)),
+    tasks(('Freeze the feature list', True), ('Finish onboarding screens', True), ('App Store screenshots', False), (commented('Press kit and website', 'thread-press'), False)),
     h(2, 'Owners'),
     table([['Area', 'Owner', 'Status'], ['Editor', 'Maya', 'Done'], ['Sync', 'Daniel', 'Testing'], ['Website', 'Leo', 'In progress']]),
     h(2, 'Open questions'),
@@ -114,6 +123,8 @@ page('Weekly review', '🗓️', [
     bullets('Search now finds text inside PDFs', 'Comments sync across devices'),
     h(2, 'Next week'),
     tasks(('Write the beta announcement', False), ('Review the onboarding copy', False)),
+    p(t('Press briefing '), date(1, '15:00', 15), t(', the announcement goes out '), date(3, '09:30', 0), t('.')),
+    p(t('Retro with the team '), date(5, None, 0), t('.')),
     quote(p(t('Make it work, make it right, make it fast.'))),
 ], parent=work, minutes_ago=300, sort=2)
 
@@ -135,7 +146,7 @@ page('Miso soup', '🍲', [
     bullets('4 cups dashi', '3 tbsp white miso', '1 block silken tofu', '2 scallions'),
     h(2, 'Steps'),
     {'type': 'orderedList', 'attrs': {'id': bid(), 'start': 1}, 'content': [{'type': 'listItem', 'attrs': {'id': bid()}, 'content': [p(t(s))]} for s in ['Warm the dashi; do not let it boil.', 'Whisk the miso with a ladle of broth, then stir it back in.', 'Add the tofu and scallions just before serving.']]},
-], parent=recipes, minutes_ago=1400, sort=0)
+], parent=recipes, minutes_ago=1400, sort=0, locked=True)
 
 page('Japanese, week 3', '🗾', [
     callout('📖', p(t('Readings sit above the kanji, as furigana. Select a word and press ⇧⌘R to add one.'))),
@@ -152,4 +163,39 @@ page('Ideas', '💡', [bullets('A calendar view for dated pages', 'Templates for
 for f in files:
     with open(os.path.join(pages_dir, f['id'] + '.json'), 'w') as fh:
         json.dump(f, fh, ensure_ascii=False, indent=2)
+
+def write(path, value):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w') as fh:
+        json.dump(value, fh, ensure_ascii=False, indent=2)
+
+# Comments on Product launch: the two passages marked above, as PageComments keeps them.
+launch_id = 'en-f725dda9d6d5'
+def thread(tid, quote, minutes_ago, *comments):
+    at = now - datetime.timedelta(minutes=minutes_ago)
+    return {'id': tid, 'quote': quote, 'createdAt': iso(at)[:-5] + 'Z', 'updatedAt': iso(at)[:-5] + 'Z', 'comments': [
+        {'id': f'{tid}-{i}', 'body': body, 'author': who, 'createdAt': iso(at + datetime.timedelta(minutes=i * 7))[:-5] + 'Z'}
+        for i, (who, body) in enumerate(comments)]}
+write(os.path.join(out, 'Workspace', 'comments', launch_id + '.json'), {'format': 1, 'pageId': launch_id, 'threads': [
+    thread('thread-beta', 'Ship the public beta to the App Store', 90,
+           ('Maya', 'Can we say "on iPhone, iPad and Mac" here? The beta is universal.'), ('Leo', 'Yes — I will update the press kit to match.')),
+    thread('thread-press', 'Press kit and website', 40, ('Daniel', 'Screenshots for the site come from the demo workspace; I will send them by Friday.')),
+]})
+
+# Earlier versions of Design notes, as PageHistory keeps them: what Page History lists and compares word by word.
+notes = next(f for f in files if f['title'] == 'Design notes')
+def version(hours_ago, line_length):
+    doc = json.loads(json.dumps(notes['content']))
+    for i, block in enumerate(doc['content']):
+        if block.get('type') == 'paragraph' and 'characters' in text_of(block):
+            doc['content'][i] = p(t(line_length))
+    saved = now - datetime.timedelta(hours=hours_ago)
+    text = blocks_text(doc)
+    stem = saved.strftime('%Y%m%dT%H%M%S.') + f'{saved.microsecond // 1000:03d}Z'
+    write(os.path.join(out, 'Workspace', 'history', notes['id'], stem + '.json'), {
+        'format': 1, 'pageId': notes['id'], 'savedAt': iso(saved)[:-5] + 'Z', 'device': 'MacBook Pro', 'reason': 'edit',
+        'title': notes['title'], 'icon': notes['icon'], 'cover': None, 'plainText': text, 'wordCount': len(text.split()),
+        'content': doc})
+version(30, 'Lines of body text should be short.')
+version(6, 'Body text stays under 80 characters a line, more or less.')
 print(len(files), 'pages ->', pages_dir)
