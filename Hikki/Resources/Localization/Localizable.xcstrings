@@ -2795,13 +2795,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Paused: this device uses another iCloud account. Turn iCloud off and on to sync with it."
+            "value": "Paused: this device uses another iCloud account."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已暂停：这台设备登录了另一个 iCloud 账户。关掉再打开 iCloud 即可改为与它同步。"
+            "value": "已暂停：此设备使用的是另一个 iCloud 账号。"
           }
         }
       }
@@ -2836,6 +2836,91 @@
           "stringUnit": {
             "state": "translated",
             "value": "未在同步（错误 %@）"
+          }
+        }
+      }
+    },
+    "app:cloud.handover.action": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use This Account…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "改用当前账号…"
+          }
+        }
+      }
+    },
+    "app:cloud.handover.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use This Account"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "改用当前账号"
+          }
+        }
+      }
+    },
+    "app:cloud.handover.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The workspace on this device is uploaded to the iCloud account signed in now and syncs with it from here on. The copy in the account it synced with before stays as it is."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本机的工作区会上传到当前登录的 iCloud 账号，之后与它同步。之前账号里的副本保持不变。"
+          }
+        }
+      }
+    },
+    "app:cloud.handover.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync with this iCloud account?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "改用当前 iCloud 账号同步？"
+          }
+        }
+      }
+    },
+    "app:cloud.handover.toast": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This workspace synced with another iCloud account."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此工作区之前与另一个 iCloud 账号同步。"
           }
         }
       }

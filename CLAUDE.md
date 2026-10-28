@@ -317,7 +317,9 @@ HikkiUITests/                 XCUITest flows
   once `userRecordID` is that account and stops on any change (`.CKAccountChanged`, the engine's account events; a
   `switchAccounts` drops the engine's kept state) —
   another account, or a sign-out and sign-in as someone else, sends and fetches nothing (`Status.accountChanged`)
-  until the user turns iCloud off and on, which hands the workspace to the account in use (`releaseAccount`; another
+  until the user hands the workspace to the account in use — a toast says so once each time sync pauses for it
+  (`AccountHandoverOffer`) and its "Use This Account…", like Settings → Workspace's, asks first
+  (`AccountHandoverAlert` → `AppModel.adoptCurrentAccount`); iCloud turned off and on does the same (`releaseAccount`; another
   account than the last starts from nothing — every file goes up to its zone). A zone deleted, emptied by an
   encryption reset, or not found on a save sends everything again; one the user deleted (reason `purged`, or
   `userDeletedZone`) pauses (`Status.cloudDataDeleted`, kept across launches) until they turn iCloud off and on.

@@ -97,6 +97,9 @@ final class AppModel {
     @ObservationIgnored private var cloud: CloudSync?
     /// iCloud was just turned on: the account the device uses now may take the workspace (`CloudMirror.releaseAccount`).
     @ObservationIgnored private var adoptsCloudAccount = false
+    /// Asks "Sync with this iCloud account?" (the toast's action, Settings → Workspace); ContentView shows the alert.
+    var offersAccountHandover = false
+    @ObservationIgnored private var handoverOffer = AccountHandoverOffer()
     /// Looks over the folder now and then for what `WorkspaceSync` doesn't write (history, comments, chats, assets).
     @ObservationIgnored private var cloudScan: Task<Void, Never>?
     /// Versions of pages (Page ⋯ → Page History…), in the workspace folder; nil until the folder is known.
@@ -278,6 +281,7 @@ final class AppModel {
                 Task { @MainActor in
                     self?.cloudStatus = status
                     self?.pageSync.setCloud(status.cloud)
+                    self?.offerAccountHandover(for: status)
                 }
             },
             onUploads: { [weak self] uploads in
@@ -327,6 +331,26 @@ final class AppModel {
         case .cloudDataDeleted?: String(localized: "app:cloud.dataDeleted")
         case .unavailable?: String(localized: "app:cloud.unavailable")
         }
+    }
+
+    /// The device signed in to another iCloud account than the workspace's: a toast says so, once each time sync
+    /// pauses for it, and offers the account in use (the alert, `AccountHandoverAlert`).
+    private func offerAccountHandover(for status: CloudSync.Status) {
+        guard handoverOffer.shouldAsk(accountChanged: status == .accountChanged) else { return }
+        Toasts.shared.show(
+            .warning, String(localized: "app:cloud.handover.toast"), actionTitle: "app:cloud.handover.action",
+            action: { [weak self] in self?.offersAccountHandover = true })
+    }
+
+    /// Hands the workspace to the iCloud account the device uses now (the alert's confirmation): the sync starts
+    /// again released from its old account, so every file goes up to the new one (`CloudMirror.releaseAccount`); the
+    /// old account's copy stays as it is.
+    func adoptCurrentAccount() {
+        guard workspace?.location == .cloud else { return }
+        Log.info("workspace handed to the current iCloud account", category: "cloud")
+        stopWorkspaceSync()
+        adoptsCloudAccount = true
+        startWorkspaceSync()
     }
 
     /// Settings → Storage: keep the workspace in iCloud, or on this device only. Nothing is deleted either way —

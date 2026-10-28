@@ -292,6 +292,7 @@ private struct SettingsPageContent: View {
 private struct WorkspaceSection: View {
     @Environment(AppModel.self) private var model
     @State private var name = ""
+    @State private var confirmingHandover = false
     @AppStorage(TrashPreferences.keepDaysKey) private var keepDays = TrashPreferences.defaultDays
 
     var body: some View {
@@ -316,8 +317,15 @@ private struct WorkspaceSection: View {
             if model.workspace?.location == .cloud {
                 LabeledContent("app:settings.storage.sync") {
                     Text(model.cloudStatusText)
-                        .foregroundStyle(model.cloudStatus?.isTrouble == true ? AnyShapeStyle(Theme.destructive) : AnyShapeStyle(Theme.mutedForeground))
+                        .foregroundStyle(
+                            model.cloudStatus?.isTrouble == true ? AnyShapeStyle(Theme.destructive) : AnyShapeStyle(Theme.mutedForeground)
+                        )
                         .accessibilityIdentifier("settings-sync-status")
+                }
+                // Signed in to another iCloud account than the workspace's: hand it over here (the toast offers it too).
+                if model.cloudStatus == .accountChanged {
+                    Button("app:cloud.handover.action") { confirmingHandover = true }
+                        .accessibilityIdentifier("settings-use-this-account")
                 }
             } else if case .folder(_, let displayName) = model.workspace?.location {
                 // A workspace still in its iCloud Drive folder: it moves into iCloud once the folder is all here.
@@ -335,6 +343,7 @@ private struct WorkspaceSection: View {
         } footer: {
             Text("app:settings.storage.detail")
         }
+        .modifier(AccountHandoverAlert(isPresented: $confirmingHandover))
         Section {
             Picker("app:settings.trash.keep", selection: $keepDays) {
                 ForEach(TrashPreferences.choices, id: \.self) { days in

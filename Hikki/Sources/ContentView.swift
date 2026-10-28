@@ -231,6 +231,11 @@ struct ContentView: View {
         }
         // A page menu's Move to Trash (sidebar, Home, the page's ⋯, the drawer) asks here first.
         .modifier(TrashConfirmation(pageID: $navigator.trashRequestID))
+        // The toast's "Use This Account…" (the device signed in to another iCloud account than the workspace's).
+        .modifier(
+            AccountHandoverAlert(
+                isPresented: Binding(get: { model.offersAccountHandover }, set: { model.offersAccountHandover = $0 }))
+        )
         .onChange(of: Purchases.shared.access.canWrite, initial: true) { _, canWrite in
             editors.main.readOnly = !canWrite
             editors.split?.readOnly = !canWrite
