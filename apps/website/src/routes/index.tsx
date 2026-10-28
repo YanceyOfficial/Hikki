@@ -4,6 +4,7 @@ import { For } from 'solid-js'
 
 import { AskAI } from '../components/ask-ai'
 import { Closing } from '../components/closing'
+import { DuoUnfold } from '../components/duo-unfold'
 import { Footer } from '../components/footer'
 import { Header } from '../components/header'
 import { row } from '../components/row'
@@ -20,6 +21,7 @@ function Home() {
       <Hero />
       <LocalFirst />
       <Devices />
+      <DuoUnfold />
       <SplitView />
       <AskAI />
       <Features />
@@ -214,22 +216,6 @@ function Devices() {
         />
         <p class="leading-relaxed text-muted">
           With iCloud on, what you write on one shows up on the others.
-        </p>
-      </div>
-      <figure class="cell bg-red m-0 flex flex-col items-center justify-end gap-5 p-6 md:p-10 lg:col-span-5">
-        <Shot
-          name="iphone-duo"
-          alt="Hikki on iPhone Duo, folded: a product launch page with its cover, and the page's actions in the strip beside the camera."
-          width={1398}
-          height={2034}
-          class="w-[min(72%,300px)] rounded-[28px]"
-        />
-      </figure>
-      <div class="cell flex flex-col justify-center gap-4 p-8 md:p-12 lg:col-span-7">
-        <p class="expanded text-2xl leading-tight font-[800]">iPhone Duo, folded or open.</p>
-        <p class="max-w-[34rem] text-lg leading-relaxed text-muted">
-          Folded, it is the iPhone layout, with the page's actions in the strip beside the camera.
-          Open it and Hikki lays out as on iPad: the sidebar and the page side by side.
         </p>
       </div>
     </section>

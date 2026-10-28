@@ -106,5 +106,14 @@
       "height": 1808
     },
     "width": 1600
+  },
+  "duo-open": {
+    "extract": {
+      "left": 0,
+      "top": 0,
+      "width": 2368,
+      "height": 1668
+    },
+    "width": 2000
   }
 }

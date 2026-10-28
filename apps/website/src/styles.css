@@ -1169,6 +1169,151 @@
     color: var(--color-paper);
   }
 
+  /* iPhone Duo opening as the page scrolls (DuoUnfold): `--p` 0 is folded, 1 open. The track is the scroll it takes;
+     the stage stays in view meanwhile. */
+  .duo-track[data-moving] {
+    height: 280vh;
+  }
+  .duo-track[data-moving] .duo-sticky {
+    position: sticky;
+    top: 0;
+    min-height: 100svh;
+  }
+  .duo-stage {
+    --p: 1;
+    --r: clamp(12px, 2.4vw, 30px);
+    --bezel: clamp(4px, 0.7vw, 9px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(16px, 3vw, 40px);
+    --fold-scale: 1.15;
+    perspective: 2600px;
+  }
+  @media (width < 64rem) {
+    /* Narrow, the open phone is only as tall as a third of the screen: the folded one grows more, and the stage
+       leaves it the room. */
+    .duo-track[data-moving] .duo-stage {
+      --fold-scale: 1.6;
+      min-height: min(26rem, 52svh);
+    }
+  }
+  .duo-device {
+    position: relative;
+    flex: 0 1 auto;
+    /* The inner screen on its side: 2853 × 2007, kept within the screen's height. */
+    width: min(100%, calc((100svh - 7rem) * 1.42));
+    aspect-ratio: 2853 / 2007;
+    transform-style: preserve-3d;
+    /* Folded, only the left half shows: centre it, a little larger (the folded phone is half the open one), and
+       settle to full size as it opens — scaled about that half's middle, so it stays centred. */
+    transform-origin: 25% 50%;
+    transform: translateX(calc((1 - var(--p)) * 25%))
+      scale(calc(1 + (var(--fold-scale) - 1) * (1 - var(--p))));
+  }
+  .duo-half {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 50%;
+  }
+  .duo-left,
+  .duo-front,
+  .duo-back {
+    overflow: hidden;
+    background: #0b0b0c;
+    background-clip: padding-box;
+    border: var(--bezel) solid #0b0b0c;
+  }
+  .duo-left {
+    left: 0;
+    /* Under the folded half until it starts to open (its edge would show past the outer screen). */
+    opacity: clamp(0, calc(var(--p) * 20), 1);
+    border-right: 0;
+    border-radius: var(--r) 0 0 var(--r);
+  }
+  .duo-right {
+    left: 50%;
+    transform-origin: left center;
+    transform-style: preserve-3d;
+    transform: rotateY(calc((var(--p) - 1) * 180deg));
+  }
+  .duo-front,
+  .duo-back {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+  }
+  .duo-front {
+    border-left: 0;
+    border-radius: 0 var(--r) var(--r) 0;
+  }
+  /* The outer screen, on the back of the half that swings: in front of the left half while folded. */
+  .duo-back {
+    border-radius: var(--r);
+    transform: rotateY(180deg) translateZ(1px);
+  }
+  .duo-face {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 100%;
+    max-width: none;
+    object-fit: cover;
+  }
+  .duo-face-left,
+  .duo-face-right {
+    width: 200%;
+  }
+  .duo-face-right {
+    left: -100%;
+  }
+  .duo-face.only-dark {
+    display: none;
+  }
+  :root[data-theme='dark'] .duo-face.only-dark {
+    display: block;
+  }
+  :root[data-theme='dark'] .duo-face.only-light {
+    display: none;
+  }
+  /* The inner screen darkens as it closes, and the hinge shows once it is open. */
+  .duo-shade {
+    position: absolute;
+    inset: 0;
+    background: #000000;
+    opacity: calc((1 - var(--p)) * 0.6);
+    pointer-events: none;
+  }
+  .duo-left::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 1px;
+    background: rgb(0 0 0 / 0.22);
+    opacity: var(--p);
+  }
+  /* Still (no script, or Reduce Motion): the phone open, and folded beside it. */
+  .duo-folded-still {
+    display: none;
+  }
+  .duo-stage[data-still] .duo-folded-still {
+    display: block;
+    position: relative;
+    flex: none;
+    width: 22%;
+    aspect-ratio: 1398 / 2034;
+    overflow: hidden;
+    border: var(--bezel) solid #0b0b0c;
+    border-radius: var(--r);
+    background: #0b0b0c;
+  }
+  .duo-stage[data-still] .duo-device {
+    width: 72%;
+  }
+
   .button {
     display: inline-flex;
     align-items: center;
