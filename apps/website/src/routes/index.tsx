@@ -202,7 +202,7 @@ function Devices() {
           class="w-full rounded-[18px]"
         />
         <figcaption class="text-caption">
-          <strong>iPad.</strong> Sidebar, tabs and two pages side by side.
+          <strong>iPad.</strong> The sidebar and two pages side by side.
         </figcaption>
       </figure>
       <div class="cell flex flex-col justify-between gap-8 p-8 md:p-10 lg:col-span-4">
@@ -297,7 +297,7 @@ function Features() {
         shot={{
           name: 'lock',
           width: 1400,
-          height: 740,
+          height: 761,
           alt: "A locked recipe page, the lock in the window's toolbar beside the star."
         }}
       />
