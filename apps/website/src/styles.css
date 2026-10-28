@@ -1227,6 +1227,8 @@
   }
   .duo-left {
     left: 0;
+    /* A pixel under the right half, so no seam shows between them once open. */
+    width: calc(50% + 1px);
     /* Under the folded half until it starts to open (its edge would show past the outer screen). */
     opacity: clamp(0, calc(var(--p) * 20), 1);
     border-right: 0;
@@ -1261,9 +1263,12 @@
     max-width: none;
     object-fit: cover;
   }
-  .duo-face-left,
   .duo-face-right {
     width: 200%;
+  }
+  /* The left half is a pixel wider (it runs under the right): its picture stays the open screen's width. */
+  .duo-face-left {
+    width: calc(200% - 2px);
   }
   .duo-face-right {
     left: -100%;
@@ -1277,23 +1282,13 @@
   :root[data-theme='dark'] .duo-face.only-light {
     display: none;
   }
-  /* The inner screen darkens as it closes, and the hinge shows once it is open. */
+  /* The inner screen darkens as it closes. */
   .duo-shade {
     position: absolute;
     inset: 0;
     background: #000000;
     opacity: calc((1 - var(--p)) * 0.6);
     pointer-events: none;
-  }
-  .duo-left::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    right: 0;
-    width: 1px;
-    background: rgb(0 0 0 / 0.22);
-    opacity: var(--p);
   }
   /* Still (no script, or Reduce Motion): the phone open, and folded beside it. */
   .duo-folded-still {

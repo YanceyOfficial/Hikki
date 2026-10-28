@@ -189,8 +189,8 @@ apps/website/                      the site at hikki.yancey.app (TanStack Start 
                               (`data-theme`, THEME_SCRIPT in src/theme.ts runs before paint), screenshots in public/shots/ as WebP, each with a -dark twin (`Shot`), made by
                               `bun run shots <captures>` (sharp; crops in shots.json; public/og.jpg is the link-card JPEG);
                               the iPhone Duo opens like a book as the page scrolls (src/components/duo-unfold.tsx: `--p`
-                              from the scroll, still under Reduce Motion) — its open screen is the iPad layout shot on an
-                              iPad Pro 11" (duo-open), since the simulator can't unfold a Duo;
+                              from the scroll, still under Reduce Motion) — its open screen (duo-open) is the Duo simulator's
+                              inner screen, `--display=3` once the device is unfolded by hand (simctl can't unfold it);
                               /p/<record>#<key> and /shared (src/routes/p.$id.tsx, shared.*) read published pages (see Publish link);
                               the download moment is src/components/store.tsx — until APP_STORE_URL in src/site.ts is
                               set, "Coming to the App Store" is a status line in the header and the foot offers a

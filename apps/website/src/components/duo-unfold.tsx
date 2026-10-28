@@ -55,12 +55,12 @@ export function DuoUnfold() {
           <div class="duo-sticky grid items-center gap-8 p-8 md:p-12 lg:grid-cols-12 lg:gap-12">
             <div class="lg:col-span-4">
               <h2 class="expanded text-[clamp(1.875rem,3.4vw,3rem)] leading-[1.05] font-[850] tracking-[-0.02em]">
-                iPhone Duo, folded or open.
+                Ready for iPhone Duo.
               </h2>
               <p class="mt-6 max-w-[30rem] text-lg leading-relaxed">
-                Folded, it is the iPhone layout, with the page's actions in the strip beside the
-                camera. Open it and Hikki lays out as on iPad: the sidebar and the page side by
-                side.
+                Folded, it's the iPhone you know, with your page's tools in the strip beside the
+                camera. Open it up, and the sidebar and your page spread out side by side, just like
+                on iPad.
               </p>
             </div>
             <div class="duo-stage lg:col-span-8" data-still>
