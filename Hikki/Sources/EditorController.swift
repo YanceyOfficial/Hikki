@@ -1526,7 +1526,7 @@ private final class ScriptMessageProxy: NSObject, WKScriptMessageHandlerWithRepl
                 return (reply, nil)
             }
             // Asset writes (a picture dropped on the page, a chunked upload) run off the main actor.
-            if let work = await owner?.assetWork(for: decoded) {
+            if let work = owner?.assetWork(for: decoded) {
                 return (try await Task.detached(priority: .userInitiated, operation: work).value, nil)
             }
             let reply = try owner?.handle(decoded)
