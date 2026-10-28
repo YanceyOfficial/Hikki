@@ -331,9 +331,16 @@ private struct ThreadRow: View {
                 }
                 HStack {
                     if thread.comments.count > 1 {
-                        Text("app:comments.replies \((thread.comments.count - 1).formatted())")
-                            .font(.hk(.xs))
-                            .foregroundStyle(Theme.mutedForeground)
+                        // One reply has its own words ("1 replies" read wrong); the catalog has no plural forms.
+                        Group {
+                            if thread.comments.count == 2 {
+                                Text("app:comments.oneReply")
+                            } else {
+                                Text("app:comments.replies \((thread.comments.count - 1).formatted())")
+                            }
+                        }
+                        .font(.hk(.xs))
+                        .foregroundStyle(Theme.mutedForeground)
                     }
                     Spacer(minLength: 0)
                     if thread.resolvedAt != nil {

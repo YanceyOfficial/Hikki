@@ -3520,6 +3520,23 @@
         }
       }
     },
+    "app:comments.oneReply": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 reply"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 条回复"
+          }
+        }
+      }
+    },
     "app:comments.reopen": {
       "extractionState": "manual",
       "localizations": {
