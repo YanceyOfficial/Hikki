@@ -12,7 +12,8 @@
             try XCTSkipUnless(ProcessInfo.processInfo.environment["HIKKI_RECORD"] != nil, "recording only")
             continueAfterFailure = false
             let app = XCUIApplication()
-            app.launchEnvironment["HIKKI_DATA_DIR"] = NSTemporaryDirectory() + "hikki-review-\(UUID().uuidString)"
+            // Not the runner's own temporary folder: that is inside its sandbox, where the sandboxed app can't write.
+            app.launchEnvironment["HIKKI_DATA_DIR"] = "/private/tmp/hikki-review-\(UUID().uuidString)"
             app.launchEnvironment["HIKKI_FRESH_TABS"] = "1"
             app.launchArguments += ["-ApplePersistenceIgnoreState", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
             app.launch()
@@ -62,6 +63,7 @@
             let outline = element("inspector-toggle", in: app)
             XCTAssertTrue(outline.waitForExistence(timeout: 10))
             outline.click()
+            XCTAssertTrue(element("inspector-outline", in: app).waitForExistence(timeout: 5))
             sleep(4)
             outline.click()
             sleep(2)
@@ -76,16 +78,19 @@
             app.typeKey(.escape, modifierFlags: [])
             sleep(2)
 
-            // The page's actions: history, export, share, move…
-            let more = element("page-more", in: app)
-            XCTAssertTrue(more.waitForExistence(timeout: 10))
-            more.click()
+            // The page's actions — history, export, share, move… — in the menu bar's Page menu (the toolbar's ⋯ holds
+            // the same; a synthesized click there only brought up its tooltip).
+            let pageMenu = app.menuBars.menuBarItems["Page"].firstMatch
+            XCTAssertTrue(pageMenu.waitForExistence(timeout: 10))
+            pageMenu.click()
             sleep(4)
             app.typeKey(.escape, modifierFlags: [])
             sleep(1)
 
-            // Settings, ending on About.
-            app.typeKey(",", modifierFlags: .command)
+            // Settings, ending on About (from the app menu: ⌘, typed into the page never reached it).
+            app.menuBars.menuBarItems["Hikki"].firstMatch.click()
+            sleep(1)
+            app.menuBars.menuItems.matching(NSPredicate(format: "title BEGINSWITH 'Settings'")).firstMatch.click()
             let about = element("settings-page-about", in: app)
             XCTAssertTrue(about.waitForExistence(timeout: 10))
             sleep(2)
