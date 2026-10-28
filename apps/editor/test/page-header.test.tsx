@@ -50,6 +50,15 @@ describe('PageHeader', () => {
     expect(document.activeElement).not.toBe(title)
   })
 
+  it('only the title is selectable text in the header, so a stray range never paints over the icon (ISSUE-278)', () => {
+    render(<PageHeader bridge={bridge} />)
+    load({ title: 'N4', icon: '💗', cover: 'gradient:ocean' })
+    const title = screen.getByLabelText('Page title')
+    const header = title.closest('header')
+    expect(header?.classList.contains('select-none')).toBe(true)
+    expect(title.classList.contains('select-text')).toBe(true)
+  })
+
   it('focusTitle (native Rename) focuses the title with all of it selected', () => {
     render(<PageHeader bridge={bridge} />)
     load({ title: 'Trip to Iceland' })

@@ -105,7 +105,9 @@ export function PageHeader({ bridge }: { bridge: EditorBridge }) {
   }
 
   return (
-    <header className="group/header relative">
+    // Nothing here but the title is text to select: a stray range over the header (the title's caret is a position in
+    // it) made WebKit paint its selection gaps the page's width around the icon (ISSUE-278).
+    <header className="group/header relative select-none">
       {/* iPhone: the page runs to the top of the screen (no native inset); a cover fills the room behind the
           status bar and the glass buttons, a page without one starts below them. */}
       {!background && <div aria-hidden style={{ height: 'var(--hk-bleed-top, 0px)' }} />}
@@ -334,7 +336,7 @@ function TitleField({
     <Textarea
       ref={ref}
       data-page-title
-      className="hk-title mb-2 block min-h-0 w-full resize-none overflow-hidden rounded-none border-0 bg-transparent px-0 py-0.75 leading-tight font-bold tracking-[-0.01em] text-foreground shadow-none placeholder:text-placeholder focus-visible:ring-0 dark:bg-transparent"
+      className="hk-title mb-2 block min-h-0 w-full resize-none overflow-hidden rounded-none border-0 bg-transparent px-0 py-0.75 leading-tight font-bold tracking-[-0.01em] text-foreground shadow-none select-text placeholder:text-placeholder focus-visible:ring-0 dark:bg-transparent"
       rows={1}
       value={title}
       readOnly={readOnly}

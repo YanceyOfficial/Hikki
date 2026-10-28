@@ -105,7 +105,8 @@ export const SelectionMenuExtension = Extension.create<
           // Not over the system's context menu (a right-click's word selection).
           if (SelectionMenuContextKey.getState(state)?.suppressed) return false
           // Keep showing while the menu itself has focus (link input).
-          if (!view.hasFocus() && !element.contains(document.activeElement)) return false
+          if (!view.hasFocus() && !element.contains(view.dom.ownerDocument.activeElement))
+            return false
           if (state.doc.textBetween(from, to, ' ').trim() === '') return false
           if (editor.isActive('codeBlock')) return false
           // Not while the "/" menu is open.
