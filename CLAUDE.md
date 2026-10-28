@@ -185,9 +185,8 @@ apps/editor/src/lib/               data helpers: cover catalog, Unsplash client,
 apps/editor/test/                  vitest
 apps/bff/                          backend-for-frontend (Hono, Vercel): Unsplash proxy, YouTube embed shim; tests with `bun test`
 apps/website/                      the site at hikki.yancey.app (TanStack Start + Solid, SSR on Vercel, Tailwind v4 with its
-                              own Mondrian palette — not the app's tokens): src/routes/ (/lab: an experimental
-                              photo-grid layout), light/dark/system theme (`data-theme`, THEME_SCRIPT in src/theme.ts runs
-                              before paint), screenshots in public/shots/ as WebP, each with a -dark twin (`Shot`), made by
+                              own Mondrian palette — not the app's tokens): src/routes/, light/dark/system theme
+                              (`data-theme`, THEME_SCRIPT in src/theme.ts runs before paint), screenshots in public/shots/ as WebP, each with a -dark twin (`Shot`), made by
                               `bun run shots <captures>` (sharp; crops in shots.json; public/og.jpg is the link-card JPEG);
                               /p/<record>#<key> and /shared (src/routes/p.$id.tsx, shared.*) read published pages (see Publish link);
                               the download moment is src/components/store.tsx — until APP_STORE_URL in src/site.ts is

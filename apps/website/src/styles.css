@@ -1143,6 +1143,32 @@
     color: var(--color-paper);
   }
 
+  /* Two or three words to switch between, in the theme switch's frame. */
+  .segmented {
+    display: inline-flex;
+    border: 4px solid var(--color-ink);
+  }
+  .segmented button {
+    border: 0;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    padding: 0.5rem 0.9rem;
+    font: inherit;
+    font-weight: 700;
+    font-stretch: 112%;
+    cursor: pointer;
+    transition:
+      background-color 150ms ease-out,
+      color 150ms ease-out;
+  }
+  .segmented button + button {
+    border-left: 2px solid var(--color-ink);
+  }
+  .segmented button[aria-pressed='true'] {
+    background: var(--color-ink);
+    color: var(--color-paper);
+  }
+
   .button {
     display: inline-flex;
     align-items: center;
@@ -1172,267 +1198,5 @@
   .bg-red .button:hover {
     background: #ffffff;
     color: var(--color-line);
-  }
-}
-
-/*
- * /lab: one composed screen in the manner of Skand — photographs and the app filling a grid edge to edge, a navy
- * and a forest field, Newsreader for the words. Its own palette; the Mondrian page above stays as it is.
- */
-@layer components {
-  .lab {
-    /* /lab keeps its light cells in either theme. */
-    --color-paper: #ffffff;
-    --color-ink: #000000;
-    --lab-navy: #2c3a64;
-    --lab-forest: #3a4a37;
-    --lab-ground: #171a22;
-    min-height: 100vh;
-    background: var(--lab-ground);
-    color: var(--color-paper);
-    padding: clamp(0px, 3vw, 48px);
-  }
-  .lab-serif {
-    font-family: 'Newsreader Variable', Georgia, serif;
-    font-weight: 500;
-    letter-spacing: -0.01em;
-  }
-  .lab-grid {
-    display: grid;
-    grid-template-columns: repeat(12, minmax(0, 1fr));
-    grid-template-rows: minmax(300px, 1fr) minmax(300px, 1fr);
-    height: min(calc(100vh - 6vw), 860px);
-    min-height: 620px;
-    position: relative;
-    background: var(--color-paper);
-  }
-  .lab-big {
-    grid-column: 1 / 6;
-    grid-row: 1 / 3;
-  }
-  .lab-navy {
-    grid-column: 6 / 9;
-    grid-row: 1;
-    background: var(--lab-navy);
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    padding: clamp(20px, 2.4vw, 36px);
-  }
-  .lab-side {
-    grid-column: 9 / 12;
-    grid-row: 1;
-  }
-  .lab-green {
-    grid-column: 12;
-    grid-row: 1;
-    background: var(--lab-forest);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px 0;
-  }
-  .lab-shot {
-    grid-column: 6 / 9;
-    grid-row: 2;
-    background: #ffffff;
-  }
-  .lab-forest {
-    grid-column: 9 / 12;
-    grid-row: 2;
-    background: var(--lab-forest);
-    display: flex;
-    flex-direction: column;
-    padding: clamp(20px, 2.4vw, 36px);
-  }
-  .lab-corner {
-    grid-column: 12;
-    grid-row: 2;
-    margin-top: 64px;
-  }
-  .lab-store {
-    grid-column: 12;
-    grid-row: 2;
-    align-self: start;
-    z-index: 3;
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    background: var(--color-paper);
-    color: var(--color-ink);
-    font-size: 13px;
-    font-weight: 600;
-    text-align: center;
-    text-decoration: none;
-    padding: 0 8px;
-    line-height: 1.2;
-  }
-  .lab-store[aria-disabled='true'] {
-    cursor: default;
-  }
-
-  .lab-big,
-  .lab-side,
-  .lab-shot,
-  .lab-corner {
-    position: relative;
-    overflow: hidden;
-  }
-  .lab-layer {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    visibility: hidden;
-  }
-  .lab-layer.is-previous {
-    visibility: visible;
-    z-index: 1;
-  }
-  .lab-layer.is-current {
-    visibility: visible;
-    z-index: 2;
-  }
-
-  .lab-brand {
-    position: absolute;
-    left: clamp(16px, 2vw, 28px);
-    top: clamp(16px, 2vw, 28px);
-    z-index: 4;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: var(--color-ink);
-    background: var(--color-paper);
-    padding: 8px 14px 8px 8px;
-  }
-  .lab-nav {
-    position: absolute;
-    top: 0;
-    right: calc(100% * 7 / 12);
-    z-index: 4;
-    display: flex;
-    background: var(--color-paper);
-  }
-  .lab-nav a {
-    color: var(--color-ink);
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 600;
-    padding: 18px 14px;
-    transition:
-      background-color 200ms ease-out,
-      color 200ms ease-out;
-  }
-  .lab-nav a[aria-current='true'] {
-    background: var(--lab-navy);
-    color: var(--color-paper);
-  }
-  .lab-vertical {
-    writing-mode: vertical-rl;
-    transform: rotate(180deg);
-    font-size: 12px;
-    letter-spacing: 0.02em;
-    opacity: 0.8;
-  }
-  .lab-credit {
-    font-size: 10px;
-    opacity: 0.7;
-    writing-mode: vertical-rl;
-    color: inherit;
-  }
-  .lab-arrow {
-    width: 40px;
-    height: 40px;
-    border: 1px solid rgb(255 255 255 / 0.4);
-    color: inherit;
-    background: transparent;
-    font-size: 16px;
-    cursor: pointer;
-    transition: background-color 200ms ease-out;
-  }
-  .lab-arrow:hover {
-    background: rgb(255 255 255 / 0.12);
-  }
-  .lab-credits {
-    margin-top: 16px;
-    font-size: 12px;
-    opacity: 0.6;
-    text-align: center;
-  }
-  .lab-credits a {
-    color: inherit;
-  }
-
-  @media (prefers-reduced-motion: no-preference) {
-    /* The new picture wipes in from the left over the old one; the cells start a beat apart. */
-    .lab-layer.is-current {
-      animation: lab-wipe 1100ms cubic-bezier(0.77, 0, 0.175, 1) both;
-    }
-    .lab-side .lab-layer.is-current {
-      animation-delay: 90ms;
-    }
-    .lab-shot .lab-layer.is-current {
-      animation-delay: 180ms;
-    }
-    .lab-corner .lab-layer.is-current {
-      animation-delay: 270ms;
-    }
-    .lab-swap {
-      animation: lab-rise 700ms cubic-bezier(0.25, 1, 0.5, 1) 200ms both;
-    }
-    @keyframes lab-wipe {
-      from {
-        clip-path: inset(0 100% 0 0);
-        transform: scale(1.06);
-      }
-      to {
-        clip-path: inset(0 0 0 0);
-        transform: scale(1);
-      }
-    }
-    @keyframes lab-rise {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-    }
-  }
-
-  /* Narrow screens: the cells stack, the pictures at a fixed height. */
-  @media (max-width: 900px) {
-    .lab-grid {
-      display: flex;
-      flex-direction: column;
-      height: auto;
-    }
-    .lab-big {
-      height: 62vh;
-    }
-    .lab-side,
-    .lab-shot,
-    .lab-corner {
-      height: 46vh;
-      margin: 0;
-    }
-    .lab-green {
-      display: none;
-    }
-    .lab-brand {
-      position: static;
-      order: -2;
-    }
-    .lab-nav {
-      position: static;
-      order: -1;
-      overflow-x: auto;
-    }
-    .lab-store {
-      height: 56px;
-    }
   }
 }

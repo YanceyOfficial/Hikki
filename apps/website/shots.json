@@ -18,20 +18,10 @@
     }
   },
   "review-inline": {
-    "extract": {
-      "left": 200,
-      "top": 380,
-      "width": 1080,
-      "height": 340
-    }
+    "width": 2200
   },
   "review-diff": {
-    "extract": {
-      "left": 900,
-      "top": 510,
-      "width": 1100,
-      "height": 260
-    }
+    "width": 2200
   },
   "drawing": {
     "extract": {
@@ -41,5 +31,80 @@
       "height": 980
     }
   },
-  "iphone-duo": {}
+  "iphone-duo": {},
+  "ai-changes": {
+    "width": 2200
+  },
+  "history": {
+    "extract": {
+      "left": 560,
+      "top": 90,
+      "width": 1790,
+      "height": 1650
+    },
+    "width": 1400
+  },
+  "comments": {
+    "extract": {
+      "left": 660,
+      "top": 0,
+      "width": 2246,
+      "height": 1460
+    },
+    "width": 1400
+  },
+  "lock": {
+    "extract": {
+      "left": 986,
+      "top": 0,
+      "width": 1920,
+      "height": 1015
+    },
+    "width": 1400
+  },
+  "transfer": {
+    "extract": {
+      "left": 580,
+      "top": 290,
+      "width": 1750,
+      "height": 1230
+    },
+    "width": 1400
+  },
+  "dates": {
+    "extract": {
+      "left": 940,
+      "top": 740,
+      "width": 1500,
+      "height": 850
+    },
+    "width": 1200
+  },
+  "share": {
+    "extract": {
+      "left": 1028,
+      "top": 230,
+      "width": 854,
+      "height": 1326
+    },
+    "width": 854
+  },
+  "search": {
+    "extract": {
+      "left": 680,
+      "top": 560,
+      "width": 1550,
+      "height": 648
+    },
+    "width": 1400
+  },
+  "blocks": {
+    "extract": {
+      "left": 534,
+      "top": 0,
+      "width": 2372,
+      "height": 1808
+    },
+    "width": 1600
+  }
 }

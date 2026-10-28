@@ -1,4 +1,4 @@
-import { For } from 'solid-js'
+import { createSignal, For } from 'solid-js'
 
 import { row } from './row'
 import { Shot } from './shot'
@@ -52,23 +52,19 @@ const TOOLS = [
   }
 ]
 
-/** The two ways an edit can be reviewed (Settings → AI), shown on the same sentence, each cropped to its panel. */
+/** The two ways an edit can be reviewed (Settings → AI), shown on the same sentence in the whole window. */
 const REVIEW_STYLES = [
   {
     id: 'inline',
-    title: 'In the page.',
+    label: 'In the page',
     text: 'Removed words struck through, new ones beside them; Accept, Discard or ask again.',
-    alt: 'An edit by AI in the page: the old words struck through and the new ones marked, with Accept and Discard.',
-    width: 1080,
-    height: 340
+    alt: 'Hikki on the Mac: an edit by AI in the page, the old words struck through and the new ones marked, with Accept and Discard under them.'
   },
   {
     id: 'diff',
-    title: 'As a diff.',
+    label: 'As a diff',
     text: 'The old and the new line, one above the other, the page untouched until you accept.',
-    alt: 'An edit by AI as two lines, minus and plus, with the changed words marked.',
-    width: 1100,
-    height: 260
+    alt: 'Hikki on the Mac: an edit by AI as two lines, minus and plus, with the changed words marked.'
   }
 ]
 
@@ -133,24 +129,24 @@ export function AskAI() {
           </p>
         </div>
       </div>
-      <div class="cell flex flex-col justify-center gap-6 p-6 md:p-10 lg:col-span-8">
-        <For each={REVIEW_STYLES}>
-          {(style) => (
-            <figure class="m-0">
-              <Shot
-                name={`review-${style.id}`}
-                alt={style.alt}
-                width={style.width}
-                height={style.height}
-                class="w-full"
-              />
-              <figcaption class="text-caption mt-2 text-muted">
-                <strong class="text-ink">{style.title}</strong> {style.text}
-              </figcaption>
-            </figure>
-          )}
-        </For>
+      <ReviewStyles />
+      <div class="cell flex flex-col justify-end gap-4 p-8 md:p-10 lg:col-span-4">
+        <h3 class="expanded text-2xl leading-tight font-[800]">Approve each change.</h3>
+        <p class="leading-relaxed text-muted">
+          Ask the chat to rework the page and every change it proposes waits as a card beside it.
+          Tap one to see it in the page, then approve it, skip it or edit it first. Approve all when
+          you trust the lot.
+        </p>
       </div>
+      <figure class="cell bg-yellow m-0 p-6 md:p-10 lg:col-span-8">
+        <Shot
+          name="ai-changes"
+          alt="Hikki on the Mac: the AI panel beside a page, its proposed changes as cards waiting for approval, the first one shown in the page as tracked changes."
+          width={2200}
+          height={1369}
+          class="w-full rounded-[12px]"
+        />
+      </figure>
       <div class={`${row} grid-cols-1 sm:grid-cols-2 lg:col-span-12 lg:grid-cols-4`}>
         <div class="cell bg-yellow p-6 sm:col-span-2 md:p-8 lg:col-span-1 lg:row-span-2">
           <h3 class="expanded text-2xl leading-tight font-[800]">Built-in tools.</h3>
@@ -169,5 +165,45 @@ export function AskAI() {
         </For>
       </div>
     </section>
+  )
+}
+
+/** One edit, two ways to review it: a switch between the two windows. */
+function ReviewStyles() {
+  const [style, setStyle] = createSignal(REVIEW_STYLES[0].id)
+  const current = () => REVIEW_STYLES.find((item) => item.id === style()) ?? REVIEW_STYLES[0]
+  return (
+    <figure class="cell m-0 flex flex-col gap-5 p-6 md:p-10 lg:col-span-8">
+      <div class="segmented self-start" role="group" aria-label="How an edit is reviewed">
+        <For each={REVIEW_STYLES}>
+          {(item) => (
+            <button
+              type="button"
+              aria-pressed={style() === item.id}
+              onClick={() => setStyle(item.id)}
+            >
+              {item.label}
+            </button>
+          )}
+        </For>
+      </div>
+      <For each={REVIEW_STYLES}>
+        {(item) => (
+          <div hidden={style() !== item.id}>
+            <Shot
+              name={`review-${item.id}`}
+              alt={item.alt}
+              width={2200}
+              height={1369}
+              class="w-full rounded-[12px]"
+            />
+          </div>
+        )}
+      </For>
+      <figcaption class="text-caption text-muted">
+        <strong class="text-ink">{current().label}.</strong> {current().text} Settings → AI picks
+        the style.
+      </figcaption>
+    </figure>
   )
 }

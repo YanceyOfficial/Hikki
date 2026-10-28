@@ -248,11 +248,24 @@ function Features() {
           to-dos, tables, toggles, callouts, code, math, drawings and embeds. Drag any block by its
           handle, or drop it beside another to make columns.
         </p>
+        <Shot
+          name="blocks"
+          alt="A Hikki page with a cover photo: headings, a Swift code block and a formula."
+          width={1600}
+          height={1220}
+          class="border-ink mt-8 w-full rounded-[10px] border-2"
+        />
       </div>
       <Feature
         class="bg-yellow md:col-span-3 lg:col-span-5"
         title="Search that reads everything"
         text="Titles, text, PDFs and the words in photos: in English, Chinese and Japanese, even by pinyin."
+        shot={{
+          name: 'search',
+          width: 1400,
+          height: 585,
+          alt: "Hikki's search palette finding “launch” in two pages, with the matching words in bold and two more matches folded under the first."
+        }}
       />
       <Feature
         class="md:col-span-3 lg:col-span-5"
@@ -273,16 +286,34 @@ function Features() {
         class="md:col-span-2 lg:col-span-4"
         title="Page history"
         text="Every editing session keeps the version before it. Compare them word by word."
+        shot={{
+          name: 'history',
+          width: 1400,
+          height: 1291,
+          alt: 'Page History: versions listed by date beside the page, with removed words struck through in red and added ones in green.'
+        }}
       />
       <Feature
         class="bg-red md:col-span-2 lg:col-span-4"
         title="Comments"
         text="Comment on a passage; the thread travels with the page."
+        shot={{
+          name: 'comments',
+          width: 1400,
+          height: 910,
+          alt: 'A page with commented passages underlined and their threads in the side panel, one with a reply.'
+        }}
       />
       <Feature
         class="md:col-span-2 lg:col-span-4"
         title="Lock a page"
         text="Lock a finished page and nothing in it changes by accident, on any device."
+        shot={{
+          name: 'lock',
+          width: 1400,
+          height: 740,
+          alt: "A locked recipe page, the lock in the window's toolbar beside the star."
+        }}
       />
       <Feature
         class="bg-yellow md:col-span-2 lg:col-span-4"
@@ -301,14 +332,26 @@ function Features() {
         class="md:col-span-2 lg:col-span-4"
         title="Markdown in, Markdown out"
         text="Import Markdown, HTML and text files or whole folders. Export a page or everything as Markdown, HTML, PDF or JSON."
+        shot={{
+          name: 'transfer',
+          width: 1400,
+          height: 984,
+          alt: 'Settings → Import & Export: a drop zone for files, rows for Markdown, Hikki JSON and Notion exports, and Export workspace.'
+        }}
       />
       <Feature
         class="bg-blue md:col-span-2 lg:col-span-4"
         title="Dates that remind you"
         text="Type @ and a date, like “next Friday 3pm”, and have it ring on every device."
+        shot={{
+          name: 'dates',
+          width: 1200,
+          height: 680,
+          alt: 'A weekly review page with date chips such as “Tomorrow 3:00 PM” and “Monday”, each with a bell for its reminder.'
+        }}
       />
-      <article class="cell p-6 md:col-span-6 md:p-8 lg:col-span-12 lg:grid lg:grid-cols-12 lg:items-center lg:gap-8">
-        <div class="lg:col-span-6">
+      <article class="cell p-6 md:col-span-6 md:p-8 lg:col-span-12 lg:grid lg:grid-cols-12 lg:items-center lg:gap-12">
+        <div class="lg:col-span-7">
           <h3 class="expanded text-xl font-[800]">Share a page</h3>
           <p class="mt-3 max-w-[34rem] leading-relaxed text-muted">
             Share makes a read-only link to a page. It is encrypted on your device and the key
@@ -316,24 +359,53 @@ function Features() {
             can save a copy into their own Hikki. Nobody without the link can read it, Apple
             included. Stop Sharing takes it down.
           </p>
-        </div>
-        <div class="mt-6 lg:col-span-6 lg:mt-0">
-          <p class="border-ink w-fit max-w-full border-2 px-4 py-3 font-mono text-sm break-all">
+          <p class="border-ink mt-6 w-fit max-w-full border-2 px-4 py-3 font-mono text-sm break-all">
             hikki.yancey.app/p/40e7d926…<span class="bg-yellow">#key-only-in-the-link</span>
           </p>
           <p class="mt-3 text-sm text-muted">The highlighted part never reaches a server.</p>
+          <a href="/shared" class="mt-6 inline-block font-semibold underline underline-offset-4">
+            Hikki Shared →
+          </a>
+        </div>
+        <div class="mt-8 lg:col-span-5 lg:mt-0">
+          <Shot
+            name="share"
+            alt="The Share sheet: “Anyone with the link” chosen, optional tags, the author's name, and what stays private."
+            width={854}
+            height={1326}
+            class="border-ink mx-auto w-full max-w-[22rem] rounded-[10px] border-2"
+          />
         </div>
       </article>
     </section>
   )
 }
 
-function Feature(props: { class?: string; title: string; text: string; children?: JSX.Element }) {
+type FeatureShot = { name: string; width: number; height: number; alt: string }
+
+function Feature(props: {
+  class?: string
+  title: string
+  text: string
+  shot?: FeatureShot
+  children?: JSX.Element
+}) {
   return (
-    <article class={`cell p-6 md:p-8 ${props.class ?? ''}`}>
+    <article class={`cell flex flex-col p-6 md:p-8 ${props.class ?? ''}`}>
       <h3 class="expanded text-xl font-[800]">{props.title}</h3>
       <p class="mt-3 max-w-[30rem] leading-relaxed text-muted">{props.text}</p>
       {props.children}
+      {props.shot && (
+        <div class="mt-auto pt-6">
+          <Shot
+            name={props.shot.name}
+            alt={props.shot.alt}
+            width={props.shot.width}
+            height={props.shot.height}
+            class="border-ink w-full rounded-[10px] border-2"
+          />
+        </div>
+      )}
     </article>
   )
 }
