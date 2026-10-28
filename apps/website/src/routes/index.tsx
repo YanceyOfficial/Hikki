@@ -216,6 +216,22 @@ function Devices() {
           With iCloud on, what you write on one shows up on the others.
         </p>
       </div>
+      <figure class="cell bg-red m-0 flex flex-col items-center justify-end gap-5 p-6 md:p-10 lg:col-span-5">
+        <Shot
+          name="iphone-duo"
+          alt="Hikki on iPhone Duo, folded: a product launch page with its cover, and the page's actions in the strip beside the camera."
+          width={1398}
+          height={2034}
+          class="w-[min(72%,300px)] rounded-[28px]"
+        />
+      </figure>
+      <div class="cell flex flex-col justify-center gap-4 p-8 md:p-12 lg:col-span-7">
+        <p class="expanded text-2xl leading-tight font-[800]">iPhone Duo, folded or open.</p>
+        <p class="max-w-[34rem] text-lg leading-relaxed text-muted">
+          Folded, it is the iPhone layout, with the page's actions in the strip beside the camera.
+          Open it and Hikki lays out as on iPad: the sidebar and the page side by side.
+        </p>
+      </div>
     </section>
   )
 }
@@ -272,7 +288,15 @@ function Features() {
         class="bg-yellow md:col-span-2 lg:col-span-4"
         title="Draw on the page"
         text="A drawing block opens an Excalidraw whiteboard in the page. Sketch by hand, or describe a flowchart and have AI draw it."
-      />
+      >
+        <Shot
+          name="drawing"
+          alt="A hand-drawn flowchart in Hikki's drawing editor: freeze build, App Review, launch, and a dashed loop through fix and resubmit."
+          width={1600}
+          height={980}
+          class="border-ink mt-6 w-full rounded-[10px] border-2"
+        />
+      </Feature>
       <Feature
         class="md:col-span-2 lg:col-span-4"
         title="Markdown in, Markdown out"
