@@ -160,7 +160,7 @@ export function SharedReader(props: { id: string; linked: boolean }) {
           </Notice>
         </Match>
         <Match when={state().kind === 'notFound'}>
-          <Notice title="This page isn't published any more">
+          <Notice title="This page isn't shared any more">
             Whoever shared it took it down, or the link is mistyped.
           </Notice>
         </Match>

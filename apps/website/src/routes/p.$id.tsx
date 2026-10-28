@@ -15,7 +15,7 @@ export const Route = createFileRoute('/p/$id')({
       { title },
       {
         name: 'description',
-        content: 'A page someone published from Hikki. Only people with the link can read it.'
+        content: 'A page someone shared from Hikki. Only people with the link can read it.'
       },
       // The content is opened in the browser with the link's key: nothing here for a crawler, and nothing it should keep.
       { name: 'robots', content: 'noindex, nofollow' }

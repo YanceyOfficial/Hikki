@@ -307,6 +307,23 @@ function Features() {
         title="Dates that remind you"
         text="Type @ and a date, like “next Friday 3pm”, and have it ring on every device."
       />
+      <article class="cell p-6 md:col-span-6 md:p-8 lg:col-span-12 lg:grid lg:grid-cols-12 lg:items-center lg:gap-8">
+        <div class="lg:col-span-6">
+          <h3 class="expanded text-xl font-[800]">Share a page</h3>
+          <p class="mt-3 max-w-[34rem] leading-relaxed text-muted">
+            Share makes a read-only link to a page. It is encrypted on your device and the key
+            travels only in the link, so whoever you send it to reads the page in any browser and
+            can save a copy into their own Hikki. Nobody without the link can read it, Apple
+            included. Stop Sharing takes it down.
+          </p>
+        </div>
+        <div class="mt-6 lg:col-span-6 lg:mt-0">
+          <p class="border-ink w-fit max-w-full border-2 px-4 py-3 font-mono text-sm break-all">
+            hikki.yancey.app/p/40e7d926…<span class="bg-yellow">#key-only-in-the-link</span>
+          </p>
+          <p class="mt-3 text-sm text-muted">The highlighted part never reaches a server.</p>
+        </div>
+      </article>
     </section>
   )
 }

@@ -11,7 +11,7 @@ export const Route = createFileRoute('/shared/$id')({
   head: ({ params }) => ({
     meta: [
       { title },
-      { name: 'description', content: 'A page someone published from Hikki for anyone to read.' },
+      { name: 'description', content: 'A page someone shared from Hikki for anyone to read.' },
       { property: 'og:title', content: title },
       { property: 'og:url', content: `${SITE_URL}/shared/${params.id}` }
     ],

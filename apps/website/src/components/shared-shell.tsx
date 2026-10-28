@@ -61,7 +61,7 @@ export function SharedShell(props: { children: JSX.Element; report?: string }) {
       <main class="shared-main">{props.children}</main>
       <footer class="shared-foot">
         <div class="shared-foot-inner">
-          <span>Published with Hikki. Pages here are their authors' own.</span>
+          <span>Shared with Hikki. Pages here are their authors' own.</span>
           <nav class="flex flex-wrap gap-4">
             <a href={PRIVACY_PATH}>Privacy</a>
             <a href={`mailto:${CONTACT_EMAIL}`}>Contact</a>
