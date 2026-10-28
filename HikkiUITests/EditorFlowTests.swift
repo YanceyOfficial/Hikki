@@ -1867,7 +1867,13 @@ final class EditorFlowTests: XCTestCase {
         tapWhenSettled(trashRow)
         XCTAssertTrue(waitOrDumpTree(app.staticTexts["Trash me"].firstMatch, in: app), "trashed page not listed in Trash")
         attachScreenshot(app, "trash")
-        app.buttons["Restore"].firstMatch.tap()
+        // iOS lists the page alone; Restore slides out from the row's trailing edge. The Mac's table has it on the row.
+        #if os(iOS)
+            app.staticTexts["Trash me"].firstMatch.swipeLeft()
+        #endif
+        let restore = app.buttons["Restore"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(restore, in: app), "Restore missing from the trashed page")
+        restore.tap()
         XCTAssertTrue(waitOrDumpTree(app.staticTexts["Trash is empty"].firstMatch, in: app))
     }
 

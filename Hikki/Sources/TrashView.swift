@@ -3,8 +3,9 @@ import HikkiUI
 import SwiftUI
 
 /// Trash, laid out like Home: a title with the count and Empty Trash, then a table of the trashed pages — when each was
-/// deleted, when it goes for good (Settings → Keep deleted pages), Restore and Delete on each row. iPhone keeps a list
-/// with swipe actions, iPad too.
+/// deleted, when it goes for good (Settings → Keep deleted pages), Restore and Delete on each row. iPhone and iPad keep
+/// a list whose rows hold nothing but the page: Restore and Delete slide out from the trailing edge, and a long press
+/// offers them too.
 struct TrashView: View {
     @Environment(AppModel.self) private var model
     @State private var confirmEmpty = false
@@ -158,13 +159,33 @@ struct TrashView: View {
                             .foregroundStyle(Theme.mutedForeground)
                     }
                 }
-                Spacer()
-                actions(page)
+                Spacer(minLength: Spacing.s0)
             }
             .padding(.vertical, Spacing.s0_5)
+            .contentShape(Rectangle())
             .swipeActions(edge: .trailing) {
-                Button("app:common.delete", role: .destructive) { pendingDelete = page }
-                Button("app:trash.restore") { model.restore(id: page.id) }
+                Button(role: .destructive) {
+                    pendingDelete = page
+                } label: {
+                    IconLabel("app:common.delete", icon: .trash)
+                }
+                Button {
+                    model.restore(id: page.id)
+                } label: {
+                    IconLabel("app:trash.restore", icon: .arrowCounterClockwise)
+                }
+            }
+            .contextMenu {
+                Button {
+                    model.restore(id: page.id)
+                } label: {
+                    IconLabel("app:trash.restore", icon: .arrowCounterClockwise)
+                }
+                Button(role: .destructive) {
+                    pendingDelete = page
+                } label: {
+                    IconLabel("app:trash.deletePermanently", icon: .trash)
+                }
             }
         }
         .listStyle(.plain)
