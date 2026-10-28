@@ -197,6 +197,7 @@ private struct PaneBar: View {
             Spacer(minLength: Spacing.s2)
             if let id = pane?.route.pageID, let page = model.tree.page(id) {
                 if page.isLocked { LockIndicator(page: page) }
+                PublishButton(page: page, navigator: navigator)
                 FavoriteButton(page: page)
                 PageMoreMenu(page: page, navigator: navigator, editor: editor)
                 Theme.border.frame(width: Spacing.px, height: Size.iconButton / 2).padding(.horizontal, Spacing.s1)

@@ -649,7 +649,6 @@ struct PageActions: View {
             } label: {
                 IconLabel("app:page.copyLink", icon: .link)
             }
-            PublishMenuItems(page: page, navigator: navigator)
             Button {
                 model.duplicate(id: page.id)
             } label: {

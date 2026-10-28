@@ -108,54 +108,91 @@ enum PublishPreferences {
     static let authorKey = "publish.author"
 }
 
-/// The page menus' publish entries: Publish… for a page that isn't published; for one that is, Published → Show
-/// Link…, Copy Link, Update Page, Sharing Settings…, Unpublish. The requests go through the navigator; ContentView's
-/// `PublishHost` answers them.
-struct PublishMenuItems: View {
+/// The page's publish button, at the head of the page as Notion's Share is (Mac and iPad: the window toolbar beside
+/// the star and ⋯; split, each side's bar). Not published: "Publish", which opens the publish sheet. Published: a
+/// "Published" menu in the tone — Show Link…, Copy Link, Update Page, Sharing Settings…, Unpublish. The requests go
+/// through the navigator; ContentView's `PublishHost` answers them. (The iPhone's ⋯ sheet has its own.)
+struct PublishButton: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.colorTone) private var tone
     let page: PageSummary
     let navigator: Navigator
+    /// In a window toolbar: drawn by the system in its own glass; otherwise a split side's bar button.
+    var toolbar = false
 
     var body: some View {
         if model.publishedLink(of: page.id) != nil {
             Menu {
-                Button {
-                    navigator.publishRequest = .showLink(page.id)
-                } label: {
-                    IconLabel("app:publish.show", icon: .globe)
-                }
-                Button {
-                    model.copyPublishedLink(of: page.id)
-                } label: {
-                    IconLabel("app:publish.copy", icon: .link)
-                }
-                Button {
-                    navigator.publishRequest = .update(page.id)
-                } label: {
-                    IconLabel("app:publish.update", icon: .arrowsClockwise)
-                }
-                .disabled(model.publishingPages.contains(page.id))
-                Button {
-                    navigator.publishRequest = .settings(page.id)
-                } label: {
-                    IconLabel("app:publish.settings", icon: .tag)
-                }
-                Button(role: .destructive) {
-                    navigator.publishRequest = .unpublish(page.id)
-                } label: {
-                    IconLabel("app:publish.unpublish", icon: .linkBreak)
-                }
+                publishedItems
             } label: {
-                IconLabel("app:publish.menu", icon: .globe)
+                if toolbar {
+                    IconLabel("app:publish.menu", icon: .globe).labelStyle(.titleAndIcon)
+                } else {
+                    IconLabel("app:publish.menu", icon: .globe, size: TextSize.base.rawValue)
+                        .labelStyle(.iconOnly)
+                        .frame(width: Size.iconButton, height: Size.iconButton)
+                        .contentShape(.rect)
+                }
             }
+            .foregroundStyle(tone.fill)
+            .menuIndicator(.hidden)
+            .modifier(BarMenuLook(active: !toolbar))
+            .help("app:publish.menu")
             .accessibilityIdentifier("published-link")
-        } else {
+        } else if toolbar {
             Button {
                 navigator.publishRequest = .settings(page.id)
             } label: {
-                IconLabel("app:publish.action", icon: .globe)
+                Text("app:publish.toolbar")
+            }
+            .help("app:publish.action")
+            .accessibilityIdentifier("publish-link")
+        } else {
+            BarIconButton("app:publish.action", symbol: .globe) {
+                navigator.publishRequest = .settings(page.id)
             }
             .accessibilityIdentifier("publish-link")
+        }
+    }
+
+    @ViewBuilder private var publishedItems: some View {
+        Button {
+            navigator.publishRequest = .showLink(page.id)
+        } label: {
+            IconLabel("app:publish.show", icon: .globe)
+        }
+        Button {
+            model.copyPublishedLink(of: page.id)
+        } label: {
+            IconLabel("app:publish.copy", icon: .link)
+        }
+        Button {
+            navigator.publishRequest = .update(page.id)
+        } label: {
+            IconLabel("app:publish.update", icon: .arrowsClockwise)
+        }
+        .disabled(model.publishingPages.contains(page.id))
+        Button {
+            navigator.publishRequest = .settings(page.id)
+        } label: {
+            IconLabel("app:publish.settings", icon: .tag)
+        }
+        Button(role: .destructive) {
+            navigator.publishRequest = .unpublish(page.id)
+        } label: {
+            IconLabel("app:publish.unpublish", icon: .linkBreak)
+        }
+    }
+
+    /// A split side's bar draws its menus as plain hover buttons, like the ⋯ beside it.
+    private struct BarMenuLook: ViewModifier {
+        let active: Bool
+        func body(content: Content) -> some View {
+            if active {
+                content.menuStyle(.button).buttonStyle(HoverHighlightStyle()).fixedSize()
+            } else {
+                content
+            }
         }
     }
 }

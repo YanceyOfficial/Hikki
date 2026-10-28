@@ -10524,6 +10524,23 @@
         }
       }
     },
+    "app:publish.toolbar": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publish"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发布"
+          }
+        }
+      }
+    },
     "app:publish.unpublish": {
       "extractionState": "manual",
       "localizations": {
