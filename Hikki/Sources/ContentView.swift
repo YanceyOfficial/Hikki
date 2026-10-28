@@ -61,6 +61,9 @@ struct ContentView: View {
     }
 
     var body: some View {
+        #if DEBUG
+            let _ = SidebarRenderStats.windowRendered()
+        #endif
         // Split in two so the type checker copes: the layout, then the scene's events.
         transfers(sceneEvents(layout))
             // Failures and confirmations (Toasts): at the bottom, above the iPhone's floating bar.
@@ -289,10 +292,6 @@ struct ContentView: View {
                 .presentationSizing(.page)
             }
         #endif
-        // The passage selected in a side's page rides along to that side's chat as context, as in Notion. It keeps the
-        // page it was selected in: a question about another page goes without it.
-        .onChange(of: editor.selection) { _, selection in chat.selection = selection }
-        .onChange(of: splitEditor?.selection) { _, selection in trailingChat.selection = selection }
         // "Open in Split View" wherever page actions are (sidebar, Home, ⋯): by the window's width, not a column's,
         // and only where it has room for two pages (`DeviceRules.allowsSplit`).
         .onGeometryChange(for: CGFloat.self) {
@@ -511,6 +510,9 @@ struct ContentView: View {
             // What the window does when the tree changes — on every save — lives in a view of its own, so this
             // body and its modifier chain aren't evaluated again for each (`TreeFollower`).
             .background(TreeFollower(navigator: navigator, editor: editor, splitEditor: splitEditor))
+            .background(
+                SelectionFollower(editor: editor, splitEditor: splitEditor, chat: chat, trailingChat: trailingChat)
+            )
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {
                     model.reconcileWorkspace()  // pick up other devices' changes
@@ -893,6 +895,25 @@ private struct TreeFollower: View {
                 editor.setPages(tree)
                 splitEditor?.setPages(tree)
             }
+    }
+}
+
+/// The passage selected in a side's page rides along to that side's chat as context, as in Notion; it keeps the page
+/// it was selected in, so a question about another page goes without it. A zero-size view of its own reads the
+/// selection: read in the window's body, each selection change (⌘A, the click that collapses it) re-ran the whole
+/// window's body — about a second in a Debug build on a long page (ISSUE-261).
+private struct SelectionFollower: View {
+    let editor: EditorController
+    let splitEditor: EditorController?
+    let chat: AIChat
+    let trailingChat: AIChat
+
+    var body: some View {
+        Color.clear
+            .frame(width: 0, height: 0)
+            .allowsHitTesting(false)
+            .onChange(of: editor.selection) { _, selection in chat.selection = selection }
+            .onChange(of: splitEditor?.selection) { _, selection in trailingChat.selection = selection }
     }
 }
 

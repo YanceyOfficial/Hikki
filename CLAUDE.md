@@ -228,7 +228,8 @@ HikkiUITests/                 XCUITest flows
   `Equatable` `PageTreeRow` with its selection, drop line and pill colour passed in as values: no row reads the
   navigator, the model or `\.self` in its body (menus read the page by id when built, `PageActionsFor`), so a save,
   a navigation or a drag redraws only the rows that changed. `HIKKI_DEMO_PAGES=<n>` seeds n pages and
-  `HIKKI_DEBUG_SIDEBAR_STATS=<file>` counts row bodies for `testSidebarRowsStayPutWhileTyping` (500 pages: before,
+  `HIKKI_DEBUG_SIDEBAR_STATS=<file>` counts row bodies for `testSidebarRowsStayPutWhileTyping` (and the window's
+  own, `windows`, for `testSelectingDoesNotRedrawTheWindow`: the selection reaches the chat through `SelectionFollower`) (500 pages: before,
   opening a page redrew every built row and each save several; now one and none). Markdown / HTML / text files or folders
   dragged onto it import (`Hikki/Sources/SidebarFileDrop.swift`): on a page row as its children (the row tints as for
   "inside"), elsewhere at the top level (the sidebar is outlined); ContentView runs the import through

@@ -21,18 +21,21 @@ struct SidebarView: View {
 // MARK: - Mac / iPad
 
 #if DEBUG
-    /// DEBUG hook HIKKI_DEBUG_SIDEBAR_STATS=<file>: how often the sidebar and its page rows evaluated their bodies,
-    /// written to the file as JSON a few times a second (counts only) — the sidebar performance UI test reads it.
+    /// DEBUG hook HIKKI_DEBUG_SIDEBAR_STATS=<file>: how often the sidebar, its page rows and the window's root
+    /// (`ContentView`) evaluated their bodies, written to the file as JSON a few times a second (counts only) — the
+    /// performance UI tests read it.
     enum SidebarRenderStats {
         private static let path = ProcessInfo.processInfo.environment["HIKKI_DEBUG_SIDEBAR_STATS"]
         private static var sidebar = 0
         private static var rows = 0
         private static var cells = 0
+        private static var windows = 0
         private static var writer: Task<Void, Never>?
 
         static func sidebarRendered() { count { sidebar += 1 } }
         static func rowRendered() { count { rows += 1 } }
         static func cellRendered() { count { cells += 1 } }
+        static func windowRendered() { count { windows += 1 } }
 
         private static func count(_ bump: () -> Void) {
             guard let path else { return }
@@ -41,7 +44,7 @@ struct SidebarView: View {
             writer = Task {
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .milliseconds(250))
-                    let json = #"{"sidebar":\#(sidebar),"rows":\#(rows),"cells":\#(cells)}"#
+                    let json = #"{"sidebar":\#(sidebar),"rows":\#(rows),"cells":\#(cells),"windows":\#(windows)}"#
                     try? json.write(toFile: path, atomically: true, encoding: .utf8)
                 }
             }

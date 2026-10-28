@@ -1616,6 +1616,40 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertLessThanOrEqual(opened.cells - scrolled.cells, 6, report)
     }
 
+    /// Selecting in a page and collapsing the selection again must not re-run the window's body (ISSUE-261: read there,
+    /// each selection change rebuilt the whole window — about a second on a long page in a Debug build). Counts come
+    /// from `HIKKI_DEBUG_SIDEBAR_STATS` ("windows").
+    func testSelectingDoesNotRedrawTheWindow() throws {
+        continueAfterFailure = false
+        let statsFile = dataDir + "-window-stats.json"
+        let app = launch(environment: [
+            "HIKKI_DEMO_PAGES": "1", "HIKKI_DEBUG_NAV": "demo-46ffce8", "HIKKI_DEBUG_SIDEBAR_STATS": statsFile,
+        ])
+        let body = app.webViews.textViews["Page content"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(body, in: app, timeout: 30), "editor never became editable")
+        func windows() -> Int {
+            let data = (try? Data(contentsOf: URL(filePath: statsFile))) ?? Data()
+            return ((try? JSONSerialization.jsonObject(with: data)) as? [String: Int])?["windows"] ?? 0
+        }
+        let word = body.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.08))
+        word.tap()
+        sleep(3)
+        let before = windows()
+        XCTAssertGreaterThan(before, 0, "no counts written — nothing measured")
+        for _ in 0..<3 {
+            word.doubleTap()  // a word selected
+            sleep(1)
+            word.tap()  // collapsed again
+            sleep(1)
+        }
+        let report = "window bodies while selecting: \(windows() - before)"
+        let attachment = XCTAttachment(string: report)
+        attachment.name = "window-stats"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        XCTAssertEqual(windows() - before, 0, report)
+    }
+
     /// An attachment opened from a page shows over it (a sheet / full-screen cover), not in a tab of its own; Close
     /// brings the page back (`HIKKI_SHOW_FILE` stands in for clicking the attachment; the file is missing, so the
     /// viewer says so).
