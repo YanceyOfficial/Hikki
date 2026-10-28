@@ -368,6 +368,23 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(waitOrDumpTree(app.buttons["publish-link"].firstMatch, in: app), "the page counts as published after Cancel")
     }
 
+    /// "Save to Hikki" asks first (ISSUE-224): any web page can open a hikki://shared link, so the link alone imports
+    /// nothing — an alert names what happens, and Cancel leaves the workspace as it was.
+    func testSaveToHikkiLinkAsksFirst() throws {
+        continueAfterFailure = false
+        let app = launch(environment: ["HIKKI_DEMO_PAGES": "1", "HIKKI_DEBUG_NAV": "demo-46ffce8"])
+        XCTAssertTrue(waitOrDumpTree(app.buttons["page-more"].firstMatch, in: app, timeout: 30))
+        // Through the system, as a link from Safari arrives (XCUIApplication.open relaunched the app blank).
+        XCUIDevice.shared.system.open(URL(string: "hikki://shared/test-record-1#key")!)
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let openPrompt = springboard.buttons["Open"].firstMatch
+        if openPrompt.waitForExistence(timeout: 3) { openPrompt.tap() }
+        let save = app.buttons["confirm-save-shared"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(save, in: app), "a Save to Hikki link imported without asking")
+        app.buttons["cancel-save-shared"].firstMatch.tap()
+        XCTAssertTrue(save.waitForNonExistence(timeout: 5), "the question stayed after Cancel")
+    }
+
     /// Settings → Import & Export is a page of its own (ISSUE-226): a drop zone, the three ways in — documents, a
     /// Hikki export, a Notion export — and the export below.
     func testImportExportPageShowsItsSources() throws {

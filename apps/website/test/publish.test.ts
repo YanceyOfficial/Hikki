@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import fixture from '../../../design/fixtures/publish.json'
 import {
+  blobType,
   coverView,
   hasLinks,
   outline,
@@ -280,6 +281,9 @@ describe('coverView', () => {
     expect(coverView({ image: 'assets/missing.png' }, asset)).toBeNull()
     expect(coverView({ image: 'http://example.com/a.png' }, asset)).toBeNull()
     expect(coverView({ image: 'javascript:alert(1)' }, asset)).toBeNull()
+    // Any other host would learn who reads the page.
+    expect(coverView({ image: 'https://tracker.example/pixel.png' }, asset)).toBeNull()
+    expect(coverView({ image: 'https://images.unsplash.com.evil.example/a.png' }, asset)).toBeNull()
     expect(coverView(null, asset)).toBeNull()
   })
 })
@@ -312,5 +316,16 @@ describe('links that may not open', () => {
     expect(hasLinks(html)).toBe(true)
     expect(hasLinks('<p><span data-type="mention" data-id="a">@A</span></p>')).toBe(true)
     expect(hasLinks('<p>No links</p>')).toBe(false)
+  })
+})
+
+describe('blobType', () => {
+  it('keeps media types and turns anything the browser would run into a download', () => {
+    expect(blobType('image/png')).toBe('image/png')
+    expect(blobType('Video/MP4; codecs=avc1')).toBe('video/mp4')
+    expect(blobType('image/svg+xml')).toBe('application/octet-stream')
+    expect(blobType('text/html')).toBe('application/octet-stream')
+    expect(blobType('application/javascript')).toBe('application/octet-stream')
+    expect(blobType(undefined)).toBe('application/octet-stream')
   })
 })

@@ -155,6 +155,9 @@ struct PublishingTests {
         #expect(uploaded?.cover.image == "assets/abc.png")
         #expect(uploaded?.asset == "abc.png")
         #expect(PublishedCover.from(PageCover("data:image/png;base64,AAAA")) == nil)
+        // Any other host would learn who reads the page.
+        #expect(PublishedCover.from(PageCover("https://tracker.example/pixel.png")) == nil)
+        #expect(PublishedCover.from(PageCover("https://images.unsplash.com.evil.example/a.png")) == nil)
         #expect(PublishedCover.from(nil) == nil)
     }
 

@@ -1087,8 +1087,9 @@ HikkiUITests/                 XCUITest flows
   `LIST_CONTAINS`; the site's `searchTerms` / `queryTerms` agree through `design/fixtures/publish.json`) and
   `publishedAt` — all emptied when a page goes back to link-only. Tags (`PublishTags`, 12 preset ids, up to 3; a listed
   page needs one) and the author's name (optional, remembered in the synced `publish.author`; never the Apple Account)
-  go in the payload either way, with the cover (`PublishedCover`: a gradient id, an https picture — Unsplash's
-  hotlinked — or the page's own as an attachment). One `PublishedPage` record in the container's **public** CloudKit
+  go in the payload either way, with the cover (`PublishedCover`: a gradient id, an Unsplash picture — hotlinked,
+  and the only web host a cover goes up from or the site draws, since any other would learn who reads the page — or
+  the page's own as an attachment). One `PublishedPage` record in the container's **public** CloudKit
   database (`PagePublisher`: `payloadFile` and `files` as `CKAsset`s, `version`, `bytes`; the world reads,
   signed-in users create, only the creator writes or deletes). The link is kept in the workspace folder,
   `published/<page id>.json` (`PublishedLinks`), so every device sees the page is published. Publishing asks first
@@ -1099,7 +1100,8 @@ HikkiUITests/                 XCUITest flows
   `publishTooMany`, `publishNotSignedIn`, `publishFailed`, `unpublishFailed`. The menus' requests are
   `Navigator.publishRequest` (`PublishRequest`) answered by ContentView's `PublishHost`, which renders with the
   window's editor. **Save to Hikki** on the site opens `hikki://shared/<record>[#<key>]` (`SharedLink`): ContentView's
-  `onOpenURL` → `AppModel.saveSharedPage` (`Hikki/Sources/SharedImport.swift`: `PagePublisher.fetchShared`, the HTML
+  `onOpenURL`, which asks first (any web page can open the link: `pendingShared`, `confirm-save-shared`) →
+  `AppModel.saveSharedPage` (`Hikki/Sources/SharedImport.swift`: `PagePublisher.fetchShared`, the HTML
   and its attachments into a temporary folder, File → Import's path, then the cover; `sharedPageNotFound`,
   `sharedPageCannotOpen`, `sharedImportFailed`). The site's frame for all of it is its own, not the marketing
   site's (`apps/website/src/components/shared-shell.tsx`: the logo labelled Shared, the main site's sections, Apple's
@@ -1108,7 +1110,7 @@ HikkiUITests/                 XCUITest flows
   `apps/website/src/components/shared-reader.tsx` — the record read by name through CloudKit's web service
   (`VITE_CLOUDKIT_TOKEN`, a read-only API token; `VITE_CLOUDKIT_ENV` = development until the schema is deployed;
   requests are simple POSTs with no headers, which CloudKit's CORS lets through), opened in the browser (WebCrypto
-  for a link's page), the attachments as blobs, the HTML sanitized (`apps/website/src/publish.ts`: links to the web
+  for a link's page), the attachments as blobs (media types only — `blobType`; anything else a download, since a blob is the site's origin), the HTML sanitized (`apps/website/src/publish.ts`: links to the web
   only — a `hikki://` link is kept as marked text, and a note says some links may not open —, pictures from the
   page's attachments only, a frame becomes a link), KaTeX for formulas (loaded only then), a contents rail beside a
   wide page (`outline`), the tab titled after the page, a floating dock (Save to Hikki, Copy link, Browse); `noindex`

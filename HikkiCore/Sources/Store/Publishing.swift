@@ -117,12 +117,16 @@ public struct PublishedCover: Codable, Equatable, Sendable {
 
     /// The cover as it can go with a published page, and the attachment it needs (an uploaded picture); nil for a
     /// cover no reader could load (another page's blob, the editor's data).
+    /// The one host a web cover goes up from — Unsplash's, which covers hotlink. A picture from anywhere else would tell
+    /// its host who reads the page, so the site draws no other (`COVER_HOST` in the website's publish.ts).
+    public static let coverHost = "images.unsplash.com"
+
     public static func from(_ cover: PageCover?) -> (cover: PublishedCover, asset: String?)? {
         switch cover {
         case .gradient(let id): return (PublishedCover(gradient: id), nil)
         case .image(_, let position):
             if let name = cover?.assetName { return (PublishedCover(image: "assets/\(name)", position: position), name) }
-            if let url = cover?.webURL, url.scheme == "https" {
+            if let url = cover?.webURL, url.scheme == "https", url.host() == coverHost {
                 return (PublishedCover(image: url.absoluteString, position: position), nil)
             }
             return nil

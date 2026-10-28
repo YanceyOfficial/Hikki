@@ -12921,6 +12921,57 @@
         }
       }
     },
+    "app:shared.confirm.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A copy of the page from Hikki Shared goes into your workspace as a new page."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "页面的副本会作为新页面放进你的工作区。"
+          }
+        }
+      }
+    },
+    "app:shared.confirm.save": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save to Hikki"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存到 Hikki"
+          }
+        }
+      }
+    },
+    "app:shared.confirm.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save this shared page?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存这个共享页面？"
+          }
+        }
+      }
+    },
     "app:shared.saved": {
       "extractionState": "manual",
       "localizations": {

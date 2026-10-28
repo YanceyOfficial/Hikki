@@ -17,6 +17,7 @@ import {
   renderMath,
   sanitize,
   saveToHikkiURL,
+  blobType,
   tagLabel,
   type PublishedPayload
 } from '../publish'
@@ -99,7 +100,7 @@ export function SharedReader(props: { id: string; linked: boolean }) {
           if (!url) return
           try {
             const bytes = await open(await (await fetch(url)).arrayBuffer())
-            const blob = URL.createObjectURL(new Blob([bytes], { type: asset.type }))
+            const blob = URL.createObjectURL(new Blob([bytes], { type: blobType(asset.type) }))
             blobs.push(blob)
             urls.set(asset.name, blob)
           } catch {
@@ -222,6 +223,7 @@ function Page(props: { id: string; ready: Ready }) {
               <img
                 src={shown.image}
                 alt=""
+                referrerpolicy="no-referrer"
                 style={{ 'object-position': `50% ${shown.position}%` }}
               />
             </div>

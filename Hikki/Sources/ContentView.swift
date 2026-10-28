@@ -23,6 +23,9 @@ struct ContentView: View {
     /// The window's width, kept current as it resizes (an iPhone Duo folding or unfolding, Stage Manager): split view
     /// follows it.
     @State private var windowWidth: CGFloat = 0
+    /// A "Save to Hikki" link waiting for the user's yes: any web page can open a hikki:// link, so nothing is
+    /// imported on the link alone.
+    @State private var pendingShared: SharedLink.Target?
     private var editor: EditorController { editors.main }
     private var splitEditor: EditorController? { editors.split }
     /// Where each tab's page was scrolled when another tab took over (session only).
@@ -466,14 +469,29 @@ struct ContentView: View {
             .onOpenURL { url in
                 // "Save to Hikki" on the website: a copy of the shared page, opened once it is in (SharedImport.swift).
                 if let shared = SharedLink.parse(url) {
-                    Task {
-                        if let id = await model.saveSharedPage(shared, editor: editor) { navigator.open(id) }
-                    }
+                    pendingShared = shared
                     return
                 }
                 guard let id = PageLink.pageID(from: url), model.tree.page(id) != nil else { return }
                 navigator.open(id)
                 if let block = PageLink.blockID(from: url) { editor(for: navigator.focusedSide)?.scrollToBlock(block, in: id) }
+            }
+            .alert(
+                "app:shared.confirm.title",
+                isPresented: Binding(get: { pendingShared != nil }, set: { if !$0 { pendingShared = nil } })
+            ) {
+                Button("app:shared.confirm.save") {
+                    guard let shared = pendingShared else { return }
+                    pendingShared = nil
+                    Task {
+                        if let id = await model.saveSharedPage(shared, editor: editor) { navigator.open(id) }
+                    }
+                }
+                .accessibilityIdentifier("confirm-save-shared")
+                Button("app:common.cancel", role: .cancel) {}
+                    .accessibilityIdentifier("cancel-save-shared")
+            } message: {
+                Text("app:shared.confirm.message")
             }
             #if os(iOS)
                 // A reminder's notification tapped (Reminders.swift) — also the one that launched the app. The Mac's

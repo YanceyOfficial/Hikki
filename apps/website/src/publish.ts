@@ -41,6 +41,35 @@ const GRADIENTS = Object.fromEntries(
  * rules ask) or one of the page's own attachments (`assets/<name>`, through `assetURL`) — with its vertical position;
  * null for anything else.
  */
+/** The one host a cover may be drawn from (Unsplash's pictures); the app sends no other — `PublishedCover.from`. */
+export const COVER_HOST = 'images.unsplash.com'
+
+/**
+ * The media types an attachment's blob may carry. A blob is the site's own origin, so a type the browser would run —
+ * HTML, SVG, scripts — becomes a plain download instead, whatever the payload says.
+ */
+const BLOB_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'image/avif',
+  'image/heic',
+  'video/mp4',
+  'video/quicktime',
+  'video/webm',
+  'audio/mpeg',
+  'audio/mp4',
+  'audio/aac',
+  'audio/wav',
+  'audio/ogg'
+])
+
+export function blobType(type: string | null | undefined): string {
+  const plain = (type ?? '').split(';')[0].trim().toLowerCase()
+  return BLOB_TYPES.has(plain) ? plain : 'application/octet-stream'
+}
+
 export function coverView(
   cover: PublishedCover | null | undefined,
   assetURL: (name: string) => string | null
@@ -57,8 +86,11 @@ export function coverView(
     return url ? { image: url, position } : null
   }
   try {
+    // A picture from anywhere would tell its host who reads the page: only Unsplash's, which covers hotlink.
     const url = new URL(image)
-    return url.protocol === 'https:' ? { image: url.href, position } : null
+    return url.protocol === 'https:' && url.hostname === COVER_HOST
+      ? { image: url.href, position }
+      : null
   } catch {
     return null
   }
