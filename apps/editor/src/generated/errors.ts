@@ -74,7 +74,12 @@ export const ERRORS = {
   upstreamFailed: { code: 7005, severity: 'warning' },
   rateLimited: { code: 7006, severity: 'warning' },
   unsplashNotConfigured: { code: 7101, severity: 'warning' },
-  linkPreviewFailed: { code: 7102, severity: 'info' }
+  linkPreviewFailed: { code: 7102, severity: 'info' },
+  publishTooLarge: { code: 2109, severity: 'error' },
+  publishTooMany: { code: 2110, severity: 'error' },
+  publishNotSignedIn: { code: 2111, severity: 'error' },
+  publishFailed: { code: 7007, severity: 'error' },
+  unpublishFailed: { code: 7008, severity: 'error' }
 } as const satisfies Record<string, { code: number; severity: ErrorSeverity }>
 
 export type ErrorId = keyof typeof ERRORS
@@ -229,5 +234,15 @@ export function errorMessage(id: ErrorId): string {
       return t('error.unsplashNotConfigured')
     case 'linkPreviewFailed':
       return t('error.linkPreviewFailed')
+    case 'publishTooLarge':
+      return t('error.publishTooLarge')
+    case 'publishTooMany':
+      return t('error.publishTooMany')
+    case 'publishNotSignedIn':
+      return t('error.publishNotSignedIn')
+    case 'publishFailed':
+      return t('error.publishFailed')
+    case 'unpublishFailed':
+      return t('error.unpublishFailed')
   }
 }

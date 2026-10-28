@@ -31,7 +31,6 @@
       "en": "Couldn't restore purchases.",
       "zh": "无法恢复购买。"
     },
-
     "pageSaveFailed": {
       "code": 2001,
       "severity": "error",
@@ -176,7 +175,6 @@
       "en": "Couldn't save the workspace's settings.",
       "zh": "无法保存工作区设置。"
     },
-
     "editorCrashed": {
       "code": 3001,
       "severity": "warning",
@@ -225,7 +223,6 @@
       "en": "Couldn't open the drawing editor.",
       "zh": "无法打开绘图编辑器。"
     },
-
     "importFailed": {
       "code": 4001,
       "severity": "error",
@@ -274,7 +271,6 @@
       "en": "Couldn't download this picture.",
       "zh": "无法下载这张图片。"
     },
-
     "aiMissingKey": {
       "code": 5001,
       "severity": "warning",
@@ -359,7 +355,6 @@
       "en": "Couldn't clear the AI conversation.",
       "zh": "无法清空 AI 对话。"
     },
-
     "searchFailed": {
       "code": 6001,
       "severity": "warning",
@@ -372,7 +367,6 @@
       "en": "Couldn't update the search index.",
       "zh": "无法更新搜索索引。"
     },
-
     "offline": {
       "code": 7001,
       "severity": "warning",
@@ -426,6 +420,36 @@
       "severity": "info",
       "en": "Couldn't read the link's details.",
       "zh": "无法读取链接信息。"
+    },
+    "publishTooLarge": {
+      "code": 2109,
+      "severity": "error",
+      "en": "This page with its attachments is over 20 MB, the most a link can hold.",
+      "zh": "此页面连同附件超过 20 MB，超出链接可承载的上限。"
+    },
+    "publishTooMany": {
+      "code": 2110,
+      "severity": "error",
+      "en": "50 pages are published already, the most at once. Unpublish one first.",
+      "zh": "已发布 50 个页面，达到同时发布的上限。请先取消发布一个。"
+    },
+    "publishNotSignedIn": {
+      "code": 2111,
+      "severity": "error",
+      "en": "Sign in to iCloud to publish a link.",
+      "zh": "请登录 iCloud 后再发布链接。"
+    },
+    "publishFailed": {
+      "code": 7007,
+      "severity": "error",
+      "en": "Couldn't publish the page. Check your connection and that you're signed in to iCloud.",
+      "zh": "无法发布页面。请检查网络，并确认已登录 iCloud。"
+    },
+    "unpublishFailed": {
+      "code": 7008,
+      "severity": "error",
+      "en": "Couldn't take the link down. Try again.",
+      "zh": "无法撤下链接，请重试。"
     }
   }
 }

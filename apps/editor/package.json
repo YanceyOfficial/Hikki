@@ -9,6 +9,7 @@
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:website": "vitest run --dir ../website/test",
     "ui:add": "sh scripts/ui-add.sh"
   },
   "dependencies": {

@@ -5288,6 +5288,74 @@
         }
       }
     },
+    "app:error.publishFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't publish the page. Check your connection and that you're signed in to iCloud."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法发布页面。请检查网络，并确认已登录 iCloud。"
+          }
+        }
+      }
+    },
+    "app:error.publishNotSignedIn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in to iCloud to publish a link."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请登录 iCloud 后再发布链接。"
+          }
+        }
+      }
+    },
+    "app:error.publishTooLarge": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This page with its attachments is over 20 MB, the most a link can hold."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此页面连同附件超过 20 MB，超出链接可承载的上限。"
+          }
+        }
+      }
+    },
+    "app:error.publishTooMany": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "50 pages are published already, the most at once. Unpublish one first."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已发布 50 个页面，达到同时发布的上限。请先取消发布一个。"
+          }
+        }
+      }
+    },
     "app:error.purchaseFailed": {
       "extractionState": "manual",
       "localizations": {
@@ -5471,6 +5539,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "出了点问题。"
+          }
+        }
+      }
+    },
+    "app:error.unpublishFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't take the link down. Try again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法撤下链接，请重试。"
           }
         }
       }
@@ -9215,6 +9300,23 @@
         }
       }
     },
+    "app:page.published %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Published %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已发布 %@"
+          }
+        }
+      }
+    },
     "app:page.rename": {
       "extractionState": "manual",
       "localizations": {
@@ -9636,6 +9738,295 @@
           "stringUnit": {
             "state": "translated",
             "value": "缩小"
+          }
+        }
+      }
+    },
+    "app:publish.action": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publish Link…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发布链接…"
+          }
+        }
+      }
+    },
+    "app:publish.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publish and Copy Link"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发布并复制链接"
+          }
+        }
+      }
+    },
+    "app:publish.copied": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Link copied. Anyone with it can read the page."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "链接已复制。拿到链接的人都能阅读该页面。"
+          }
+        }
+      }
+    },
+    "app:publish.copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy Link"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制链接"
+          }
+        }
+      }
+    },
+    "app:publish.menu": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Published Link"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已发布的链接"
+          }
+        }
+      }
+    },
+    "app:publish.point.anyone": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anyone with the link can read this page, its pictures and attachments. Share it only with people you would hand the page to."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拿到链接的任何人都能阅读这个页面及其图片和附件。只分享给你愿意把页面交给的人。"
+          }
+        }
+      }
+    },
+    "app:publish.point.encrypted": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It is stored encrypted in iCloud's public database. The key lives only in the link, so nobody without the link can read it, Apple included."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "页面加密后存放在 iCloud 公共数据库里。密钥只在链接中，没有链接的人（包括 Apple）都读不了。"
+          }
+        }
+      }
+    },
+    "app:publish.point.private": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comments, page history and AI chats stay private."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "评论、页面历史和 AI 对话不会公开。"
+          }
+        }
+      }
+    },
+    "app:publish.point.snapshot": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The link shows the page as it is now. Later edits go up only when you choose Update Link; Unpublish takes it down."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "链接展示的是此刻的页面。之后的修改只有选择「更新链接」才会上传；「取消发布」会把它撤下。"
+          }
+        }
+      }
+    },
+    "app:publish.publishing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publishing…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发布中…"
+          }
+        }
+      }
+    },
+    "app:publish.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publish a read-only link?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发布只读链接？"
+          }
+        }
+      }
+    },
+    "app:publish.unpublish": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unpublish"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消发布"
+          }
+        }
+      }
+    },
+    "app:publish.unpublish.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The link stops working for everyone who has it."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "链接对所有拿到它的人失效。"
+          }
+        }
+      }
+    },
+    "app:publish.unpublish.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unpublish this page?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消发布这个页面？"
+          }
+        }
+      }
+    },
+    "app:publish.unpublished": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Link taken down."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "链接已撤下。"
+          }
+        }
+      }
+    },
+    "app:publish.update": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update Link"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新链接"
+          }
+        }
+      }
+    },
+    "app:publish.updated": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Link updated with the page as it is now."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "链接已更新为当前页面。"
           }
         }
       }

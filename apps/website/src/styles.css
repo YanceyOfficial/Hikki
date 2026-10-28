@@ -130,6 +130,106 @@
     color: var(--color-ink);
   }
 
+  /* A published page (/p/<record>): the editor's HTML export at a reading measure, in the site's ink and lines. */
+  .published-body {
+    line-height: 1.65;
+    overflow-wrap: anywhere;
+  }
+  .published-body > * + * {
+    margin-top: 0.75rem;
+  }
+  .published-body h1,
+  .published-body h2,
+  .published-body h3,
+  .published-body h4 {
+    font-weight: 750;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin-top: 1.75rem;
+  }
+  .published-body h1 {
+    font-size: 1.75rem;
+  }
+  .published-body h2 {
+    font-size: 1.4rem;
+  }
+  .published-body h3 {
+    font-size: 1.15rem;
+  }
+  .published-body ul,
+  .published-body ol {
+    padding-left: 1.5rem;
+  }
+  .published-body ul {
+    list-style: disc;
+  }
+  .published-body ol {
+    list-style: decimal;
+  }
+  .published-body li + li {
+    margin-top: 0.25rem;
+  }
+  .published-body blockquote {
+    border-left: 3px solid var(--color-line);
+    padding-left: 1rem;
+    color: var(--color-muted);
+  }
+  .published-body pre {
+    border: 1px solid var(--color-frame);
+    padding: 0.75rem 1rem;
+    overflow-x: auto;
+    font-size: 0.9em;
+  }
+  .published-body code {
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 0.92em;
+  }
+  .published-body :not(pre) > code {
+    border: 1px solid var(--color-frame);
+    padding: 0.05em 0.3em;
+  }
+  .published-body img,
+  .published-body video {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid var(--color-frame);
+  }
+  .published-body table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.95em;
+  }
+  .published-body th,
+  .published-body td {
+    border: 1px solid var(--color-frame);
+    padding: 0.4rem 0.6rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  .published-body th {
+    font-weight: 700;
+  }
+  .published-body hr {
+    border: 0;
+    border-top: 1px solid var(--color-line);
+    margin: 1.5rem 0;
+  }
+  .published-body a {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+  .published-body details > summary {
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .published-body [data-type='callout'] {
+    border: 1px solid var(--color-frame);
+    padding: 0.75rem 1rem;
+  }
+  .published-body input[type='checkbox'] {
+    margin-right: 0.4rem;
+  }
+
   /* The first screen's facts: one cell of the canvas, ruled inside by thinner lines. */
   .hero-facts {
     gap: 4px;

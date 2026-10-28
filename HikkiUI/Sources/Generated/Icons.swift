@@ -122,6 +122,7 @@ public nonisolated enum Icon: String, CaseIterable, Sendable {
     case paintBrush = "paint-brush"
     case file = "file"
     case shuffle = "shuffle"
+    case linkBreak = "link-break"
     case fileZip = "file-zip"
     case arrowsDownUp = "arrows-down-up"
 

@@ -329,6 +329,26 @@ final class EditorFlowTests: XCTestCase {
         XCTAssertTrue(waitOrDumpTree(app.staticTexts["Atlas"].firstMatch, in: app), "renamed workspace not shown")
     }
 
+    /// Page ⋯ → Publish Link… asks first (ISSUE-224): the sheet says what anyone with the link can do, and Cancel
+    /// publishes nothing (the page's facts show no link).
+    func testPublishLinkAsksFirst() throws {
+        continueAfterFailure = false
+        let app = launch(environment: ["HIKKI_DEMO_PAGES": "1", "HIKKI_DEBUG_NAV": "demo-46ffce8"])
+        let more = app.buttons["page-more"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(more, in: app, timeout: 30))
+        more.tap()
+        let publish = app.buttons["publish-link"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(publish, in: app), "no Publish Link entry")
+        publish.tap()
+        let sheet = app.descendants(matching: .any)["publish-sheet"].firstMatch
+        XCTAssertTrue(waitOrDumpTree(sheet, in: app), "the publish sheet did not open")
+        attachScreenshot(app, "publish-sheet")
+        app.buttons["publish-cancel"].firstMatch.tap()
+        XCTAssertTrue(sheet.waitForNonExistence(timeout: 5), "the sheet stayed")
+        more.tap()
+        XCTAssertTrue(waitOrDumpTree(app.buttons["publish-link"].firstMatch, in: app), "the page counts as published after Cancel")
+    }
+
     /// Settings → Import & Export is a page of its own (ISSUE-226): a drop zone, the three ways in — documents, a
     /// Hikki export, a Notion export — and the export below.
     func testImportExportPageShowsItsSources() throws {

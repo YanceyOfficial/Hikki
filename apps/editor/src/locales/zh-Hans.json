@@ -602,7 +602,12 @@
     "upstreamFailed": "Hikki 依赖的服务出错了。",
     "rateLimited": "请求太频繁，请稍后再试。",
     "unsplashNotConfigured": "服务器未配置 Unsplash。",
-    "linkPreviewFailed": "无法读取链接信息。"
+    "linkPreviewFailed": "无法读取链接信息。",
+    "publishTooLarge": "此页面连同附件超过 20 MB，超出链接可承载的上限。",
+    "publishTooMany": "已发布 50 个页面，达到同时发布的上限。请先取消发布一个。",
+    "publishNotSignedIn": "请登录 iCloud 后再发布链接。",
+    "publishFailed": "无法发布页面。请检查网络，并确认已登录 iCloud。",
+    "unpublishFailed": "无法撤下链接，请重试。"
   },
   "drawing": {
     "title": "绘图",

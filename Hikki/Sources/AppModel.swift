@@ -97,6 +97,12 @@ final class AppModel {
     @ObservationIgnored private var cloud: CloudSync?
     /// iCloud was just turned on: the account the device uses now may take the workspace (`CloudMirror.releaseAccount`).
     @ObservationIgnored private var adoptsCloudAccount = false
+    /// The workspace's published links (`published/<page id>.json`), made with the folder; nil until then.
+    @ObservationIgnored var publishedLinks: PublishedLinks?
+    /// The public database's side of publishing (`PublishLink.swift`).
+    @ObservationIgnored let publisher = PagePublisher()
+    /// Pages whose link is going up now (the menus and the sheet show it).
+    var publishingPages: Set<String> = []
     /// Asks "Sync with this iCloud account?" (the toast's action, Settings → Workspace); ContentView shows the alert.
     var offersAccountHandover = false
     @ObservationIgnored private var handoverOffer = AccountHandoverOffer()
@@ -165,6 +171,7 @@ final class AppModel {
             self.comments = comments
             let chats = PageChats(root: folder)
             self.chats = chats
+            publishedLinks = PublishedLinks(root: folder)
             drawingLibrary = DrawingLibrary(root: folder)
             let retention = AIPreferences.chatRetention
             Task.detached(priority: .utility) { chats.prune(retention) }

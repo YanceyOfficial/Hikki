@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LabRouteImport } from './routes/lab'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as PIdRouteImport } from './routes/p.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,35 +29,44 @@ const PrivacyRoute = PrivacyRouteImport.update({
   path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PIdRoute = PIdRouteImport.update({
+  id: '/p/$id',
+  path: '/p/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/lab': typeof LabRoute
   '/privacy': typeof PrivacyRoute
+  '/p/$id': typeof PIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/lab': typeof LabRoute
   '/privacy': typeof PrivacyRoute
+  '/p/$id': typeof PIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/lab': typeof LabRoute
   '/privacy': typeof PrivacyRoute
+  '/p/$id': typeof PIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/lab' | '/privacy'
+  fullPaths: '/' | '/lab' | '/privacy' | '/p/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/lab' | '/privacy'
-  id: '__root__' | '/' | '/lab' | '/privacy'
+  to: '/' | '/lab' | '/privacy' | '/p/$id'
+  id: '__root__' | '/' | '/lab' | '/privacy' | '/p/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LabRoute: typeof LabRoute
   PrivacyRoute: typeof PrivacyRoute
+  PIdRoute: typeof PIdRoute
 }
 
 declare module '@tanstack/solid-router' {
@@ -82,6 +92,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/p/$id': {
+      id: '/p/$id'
+      path: '/p/$id'
+      fullPath: '/p/$id'
+      preLoaderRoute: typeof PIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LabRoute: LabRoute,
   PrivacyRoute: PrivacyRoute,
+  PIdRoute: PIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

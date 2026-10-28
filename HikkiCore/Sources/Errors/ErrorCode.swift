@@ -77,6 +77,11 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
     case rateLimited
     case unsplashNotConfigured
     case linkPreviewFailed
+    case publishTooLarge
+    case publishTooMany
+    case publishNotSignedIn
+    case publishFailed
+    case unpublishFailed
 
     public var number: Int {
         switch self {
@@ -149,6 +154,11 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .rateLimited: 7006
         case .unsplashNotConfigured: 7101
         case .linkPreviewFailed: 7102
+        case .publishTooLarge: 2109
+        case .publishTooMany: 2110
+        case .publishNotSignedIn: 2111
+        case .publishFailed: 7007
+        case .unpublishFailed: 7008
         }
     }
 
@@ -241,6 +251,11 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .rateLimited: .warning
         case .unsplashNotConfigured: .warning
         case .linkPreviewFailed: .info
+        case .publishTooLarge: .error
+        case .publishTooMany: .error
+        case .publishNotSignedIn: .error
+        case .publishFailed: .error
+        case .unpublishFailed: .error
         }
     }
 

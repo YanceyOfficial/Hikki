@@ -107,6 +107,10 @@ final class Navigator {
     var pageActionsID: String?
     /// A page's "Move to Trash" waiting for its confirmation (`TrashConfirmation`, presented by ContentView).
     var trashRequestID: String?
+    /// Page ⋯ → Publish Link… / Update Link: the page to publish (ContentView's `PublishHost` asks first for a new link).
+    var publishRequestID: String?
+    /// Page ⋯ → Published Link → Unpublish: the page waiting for its confirmation.
+    var unpublishRequestID: String?
     /// iPhone: which column of the collapsed split view shows — the home screen (sidebar) or the page (detail).
     /// Opening anything shows the detail; the system's back sets it back.
     var compactColumn: NavigationSplitViewColumn = .sidebar

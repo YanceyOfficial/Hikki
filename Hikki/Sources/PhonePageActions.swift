@@ -101,6 +101,28 @@
                     ActionRowLabel(title: "app:export.menu", icon: .export, chevron: true)
                 }
                 .accessibilityIdentifier("page-export")
+                // A read-only link (`PublishHost` asks or updates once this sheet has gone).
+                if model.publishedLink(of: page.id) != nil {
+                    ActionRow(title: "app:publish.copy", icon: .link) {
+                        model.copyPublishedLink(of: page.id)
+                        dismiss()
+                    }
+                    ActionRow(title: "app:publish.update", icon: .arrowsClockwise) {
+                        dismiss()
+                        navigator.publishRequestID = page.id
+                    }
+                    ActionRow(title: "app:publish.unpublish", icon: .linkBreak, destructive: true) {
+                        dismiss()
+                        navigator.unpublishRequestID = page.id
+                    }
+                    .accessibilityIdentifier("unpublish-link")
+                } else {
+                    ActionRow(title: "app:publish.action", icon: .globe) {
+                        dismiss()
+                        navigator.publishRequestID = page.id
+                    }
+                    .accessibilityIdentifier("publish-link")
+                }
                 // The move picker (`MovePageSheet`), which the window presents once this sheet has gone.
                 ActionRow(title: "app:page.moveTo", icon: .arrowBendUpRight) {
                     dismiss()

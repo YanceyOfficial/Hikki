@@ -139,6 +139,7 @@ make test-ui-mac    # XCUITest on macOS — takes over the screen; don't run whi
 make check          # test + macOS and iOS builds
 cd apps/editor && bun run dev   # the editor alone in a browser (console-logging bridge)
 cd apps/website && bun run dev  # the website locally (TanStack/Solid docs: bunx @tanstack/intent@latest list)
+cd apps/editor && bun run test:website  # the website's unit tests (vitest + happy-dom are the editor's; the site has none of its own)
 cd apps/bff && bun run dev      # the BFF locally (needs UNSPLASH_ACCESS_KEY); the editor reads VITE_HIKKI_BFF_URL (apps/editor/.env.*; prod: unsplash.yancey.app)
 ```
 
@@ -188,6 +189,7 @@ apps/website/                      the site at hikki.yancey.app (TanStack Start 
                               photo-grid layout), light/dark/system theme (`data-theme`, THEME_SCRIPT in src/theme.ts runs
                               before paint), screenshots in public/shots/ as WebP, each with a -dark twin (`Shot`), made by
                               `bun run shots <captures>` (sharp; crops in shots.json; public/og.jpg is the link-card JPEG);
+                              /p/<record>#<key> (src/routes/p.$id.tsx) reads a published page (see Publish link);
                               the download moment is src/components/store.tsx — until APP_STORE_URL in src/site.ts is
                               set, "Coming to the App Store" is a status line in the header and the foot offers a
                               mailto (CONTACT_EMAIL) and the GitHub releases; set, both become the download link;
@@ -420,7 +422,7 @@ HikkiUITests/                 XCUITest flows
   `Hikki/Sources/BulkTransfer.swift`, one per app on `AppModel.bulkTransfer`, running on when Settings closes:
   progress with Cancel, then a summary with the skipped files and why; `onFinish` is the hook for app-wide notices).
   A chosen zip is unpacked by `NotionExport` (`HikkiCore/Sources/Store/NotionExport.swift`, over our own reader
-  `HikkiCore/Sources/Store/ZipArchive.swift`: stored and deflated entries, ZIP64, nothing written outside the folder)
+  `HikkiCore/Sources/Store/ZipArchive.swift`: stored and deflated entries, ZIP64, every offset checked against the file, an entry stopped where its header's size ends, nothing written outside the folder; the size cap — 4 GB — runs across an export's parts, and a refused unpack leaves no folder)
   into a temporary folder the plan names (`Plan.temporaryFolders`, removed after the import) and read as a chosen
   folder — Notion's 32-hex ids come off the names and go into each document's stamp (so the import keeps them or
   renames the links), links between its pages become `hikki://page/<id>` links, pictures' paths follow the renames,
@@ -1074,6 +1076,29 @@ HikkiUITests/                 XCUITest flows
   brings up HikkiUI's `UnlockSheet` instead (also Settings → About → Purchase, with Restore Purchases). Reading,
   search, copy and export stay open. Debug runs are unlocked unless `HIKKI_ACCESS=trial|expired|unlocked|store`;
   `store` asks StoreKit itself — the `Hikki-StoreKit` scheme runs with `Hikki/Hikki.storekit`.
+- **Publish link** (page ⋯ → Publish Link…, the iPhone's ⋯ sheet; `Hikki/Sources/PublishLink.swift`): a read-only
+  link to a page for anyone who has it. The page as the editor exports it (HTML with its attachments as
+  `assets/<name>`, `PageExport.relinkAssets`) and its attachments are sealed with AES-GCM under a 256-bit key made
+  for the link (`PublishedContent`, CryptoKit) and put in the container's **public** CloudKit database as one
+  `PublishedPage` record (`PagePublisher`: `payloadFile` and `files` as `CKAsset`s, `version`, `bytes`; the
+  public database's default roles — the world reads, signed-in users create, only the creator writes or deletes);
+  the key travels in the link's fragment, `https://hikki.yancey.app/p/<record>#<key>`, which browsers never send,
+  so iCloud and the site hold only ciphertext. The link is kept in the workspace folder,
+  `published/<page id>.json` (`PublishedLinks`), so every device sees the page is published, updates the same
+  record (Published Link → Update Link, no second question) and takes it down (Unpublish, an alert). A first
+  publish asks (HikkiUI's `PublishSheet`: anyone with the link reads it, encrypted with the key in the link alone,
+  shows the page as it is now, comments / history / chats stay private) and copies the link; limits:
+  `PagePublisher.maxBytes` (20 MB with attachments) and `maxPages` (50); failures are `publishTooLarge`,
+  `publishTooMany`, `publishNotSignedIn`, `publishFailed`, `unpublishFailed`. The menus' requests go through
+  `Navigator.publishRequestID` / `unpublishRequestID` to ContentView's `PublishHost`, which renders with the window's
+  editor. The reader is the website's `/p/$id` route (`apps/website/src/routes/p.$id.tsx`, helpers and the HTML
+  allowlist in `apps/website/src/publish.ts`, tests in `apps/website/test/`): the record read by name through
+  CloudKit's web service (`VITE_CLOUDKIT_TOKEN`, a read-only API token from the CloudKit Dashboard;
+  `VITE_CLOUDKIT_ENV` = development until the schema is deployed), opened in the browser with WebCrypto, the
+  attachments as blobs, the HTML sanitized (links to the web only, pictures from the page's attachments only, a
+  frame becomes a link); `noindex`; "Report this page" is a mail. Before a release: deploy the `PublishedPage`
+  schema to production in the Dashboard and set the site's token. Not yet: opening a link in the app, saving a copy,
+  Report / Block records.
 - **Lock page** (Page menu ⇧⌘L, the page ⋯ menu, the sidebar context menu): `lockedAt` on the page
   (`DocumentStore.setLocked`; it bumps `updatedAt` like icon/cover so other devices pick it up). The load payload
   carries `locked`, `window.hikki.setLocked` flips it while open (each editor, split pane included, for the page it

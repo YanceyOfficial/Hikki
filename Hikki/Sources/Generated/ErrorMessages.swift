@@ -75,6 +75,11 @@ extension ErrorCode {
         case .rateLimited: String(localized: "app:error.rateLimited")
         case .unsplashNotConfigured: String(localized: "app:error.unsplashNotConfigured")
         case .linkPreviewFailed: String(localized: "app:error.linkPreviewFailed")
+        case .publishTooLarge: String(localized: "app:error.publishTooLarge")
+        case .publishTooMany: String(localized: "app:error.publishTooMany")
+        case .publishNotSignedIn: String(localized: "app:error.publishNotSignedIn")
+        case .publishFailed: String(localized: "app:error.publishFailed")
+        case .unpublishFailed: String(localized: "app:error.unpublishFailed")
         }
     }
 }

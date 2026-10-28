@@ -470,6 +470,9 @@ struct PageFacts: View {
         if let info = editor?.pageInfo, info.docId == page.id {
             Text("app:page.stats \(info.words.formatted()) \(info.characters.formatted())")
         }
+        if let link = model.publishedLink(of: page.id) {
+            Text("app:page.published \(link.updatedAt, format: .relative(presentation: .named))")
+        }
         Text("app:page.storedIn \(Self.storageText(model))")
         Text("app:page.aiOn \(Self.aiText())")
     }

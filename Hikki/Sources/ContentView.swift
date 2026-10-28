@@ -231,6 +231,8 @@ struct ContentView: View {
         }
         // A page menu's Move to Trash (sidebar, Home, the page's ⋯, the drawer) asks here first.
         .modifier(TrashConfirmation(pageID: $navigator.trashRequestID))
+        // Publish Link… (the sheet), Update Link and Unpublish (the alert), with this window's editor rendering the page.
+        .modifier(PublishHost(navigator: navigator, editor: editors.main))
         // The toast's "Use This Account…" (the device signed in to another iCloud account than the workspace's).
         .modifier(
             AccountHandoverAlert(

@@ -193,6 +193,10 @@
                             )
                             .listRowInsets(EdgeInsets())
                         }
+                        Section("PublishSheet") {
+                            PublishSheet(title: "Trip to Kyoto", isPublishing: false, onPublish: {}, onCancel: {})
+                                .listRowInsets(EdgeInsets())
+                        }
                         Section("FileDropZone") {
                             FileDropZone(
                                 title: "Drop files or folders here", detail: "Markdown, HTML, text, Hikki JSON, or a Notion export (.zip)",

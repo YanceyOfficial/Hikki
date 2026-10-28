@@ -602,7 +602,12 @@
     "upstreamFailed": "A service Hikki relies on failed.",
     "rateLimited": "Too many requests — try again in a moment.",
     "unsplashNotConfigured": "Unsplash isn't set up on the server.",
-    "linkPreviewFailed": "Couldn't read the link's details."
+    "linkPreviewFailed": "Couldn't read the link's details.",
+    "publishTooLarge": "This page with its attachments is over 20 MB, the most a link can hold.",
+    "publishTooMany": "50 pages are published already, the most at once. Unpublish one first.",
+    "publishNotSignedIn": "Sign in to iCloud to publish a link.",
+    "publishFailed": "Couldn't publish the page. Check your connection and that you're signed in to iCloud.",
+    "unpublishFailed": "Couldn't take the link down. Try again."
   },
   "drawing": {
     "title": "Drawing",

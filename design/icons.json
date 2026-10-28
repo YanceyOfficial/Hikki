@@ -353,9 +353,7 @@
       "sf": "arrow.up.right.square",
       "native": false
     },
-    "link-break": {
-      "native": false
-    },
+    "link-break": {},
     "arrows-in": {
       "sf": "arrow.down.right.and.arrow.up.left",
       "native": false
