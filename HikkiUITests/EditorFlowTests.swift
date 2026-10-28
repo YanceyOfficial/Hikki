@@ -204,7 +204,9 @@ final class EditorFlowTests: XCTestCase {
         app.typeText("x")
         sleep(3)
         attachScreenshot(app, "typing")
-        XCUIDevice.shared.press(.home)
+        #if os(iOS)
+            XCUIDevice.shared.press(.home)  // iOS only: the Mac's test target must still build
+        #endif
         sleep(2)
         app.activate()
         sleep(3)
