@@ -121,6 +121,23 @@ struct NotionExportTests {
         #expect(!FileManager.default.fileExists(atPath: folder.appending(path: "Part-1.zip").path))
     }
 
+    /// The size limit counts the export and its parts together, and a refused unpack leaves no folder behind.
+    @Test func theSizeLimitRunsAcrossTheParts() throws {
+        let root = try temporary()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let text = Data(String(repeating: "x", count: 600).utf8)
+        let part1 = ZipArchive.stored([("a.md", text)])
+        let part2 = ZipArchive.stored([("b.md", text)])
+        let zip = root.appending(path: "parts.zip")
+        try ZipArchive.stored([("Part-1.zip", part1), ("Part-2.zip", part2)]).write(to: zip)
+        // Each part alone fits; together they don't.
+        #expect(throws: NotionExport.UnpackError.tooLarge) { try NotionExport.unpack(zip, into: root, sizeLimit: 2000) }
+        #expect(try FileManager.default.contentsOfDirectory(atPath: root.path).filter { $0.hasPrefix("hikki-import-") }.isEmpty)
+        let folder = try NotionExport.unpack(zip, into: root, sizeLimit: 10_000)
+        #expect(FileManager.default.fileExists(atPath: folder.appending(path: "a.md").path))
+        #expect(FileManager.default.fileExists(atPath: folder.appending(path: "b.md").path))
+    }
+
     @Test func aPlainZipUnpacksAsItIs() throws {
         let root = try temporary()
         defer { try? FileManager.default.removeItem(at: root) }

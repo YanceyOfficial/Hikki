@@ -36,7 +36,11 @@ public struct ZipArchive: Sendable {
         let tailLength = min(length, 65_557)
         try handle.seek(toOffset: length - tailLength)
         let tail = try handle.read(upToCount: Int(tailLength)) ?? Data()
-        guard let eocd = Self.lastIndex(of: [0x50, 0x4B, 0x05, 0x06], in: tail) else { throw ReadError.notAZip }
+        // The record is 22 bytes; one cut short is no record. Every offset below is checked against the file's
+        // length before it is used — an archive is untrusted input (a download, a mail attachment).
+        guard let eocd = Self.lastIndex(of: [0x50, 0x4B, 0x05, 0x06], in: tail), eocd + 22 <= tail.count else {
+            throw ReadError.notAZip
+        }
         var count = UInt64(tail.u16(eocd + 10))
         var directorySize = UInt64(tail.u32(eocd + 12))
         var directoryOffset = UInt64(tail.u32(eocd + 16))
@@ -45,6 +49,7 @@ public struct ZipArchive: Sendable {
             tail.u32(eocd - 20) == 0x0706_4B50
         {
             let zip64Offset = tail.u64(eocd - 20 + 8)
+            guard zip64Offset <= length, length - zip64Offset >= 56 else { throw ReadError.corrupt }
             try handle.seek(toOffset: zip64Offset)
             let record = try handle.read(upToCount: 56) ?? Data()
             guard record.count == 56, record.u32(0) == 0x0606_4B50 else { throw ReadError.corrupt }
@@ -52,7 +57,9 @@ public struct ZipArchive: Sendable {
             directorySize = record.u64(40)
             directoryOffset = record.u64(48)
         }
-        guard directoryOffset + directorySize <= length, directorySize < 256 * 1024 * 1024 else { throw ReadError.corrupt }
+        guard directorySize < 256 * 1024 * 1024, directoryOffset <= length, directorySize <= length - directoryOffset else {
+            throw ReadError.corrupt
+        }
         try handle.seek(toOffset: directoryOffset)
         let directory = try handle.read(upToCount: Int(directorySize)) ?? Data()
         var entries: [Entry] = []
@@ -113,10 +120,13 @@ public struct ZipArchive: Sendable {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
         // The local header before the data repeats the name and may carry its own extra field.
+        guard entry.headerOffset <= (try handle.seekToEnd()) else { throw ReadError.corrupt }
         try handle.seek(toOffset: entry.headerOffset)
         let header = try handle.read(upToCount: 30) ?? Data()
         guard header.count == 30, header.u32(0) == 0x0403_4B50 else { throw ReadError.corrupt }
+        let length = try handle.seekToEnd()
         let dataOffset = entry.headerOffset + 30 + UInt64(header.u16(26)) + UInt64(header.u16(28))
+        guard dataOffset <= length, entry.compressedSize <= length - dataOffset else { throw ReadError.corrupt }
         try handle.seek(toOffset: dataOffset)
         try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
         FileManager.default.createFile(atPath: destination.path, contents: nil)
@@ -142,8 +152,11 @@ public struct ZipArchive: Sendable {
         }
         while let page = try filter.readData(ofLength: chunk) {
             guard !page.isEmpty else { break }
-            try output.write(contentsOf: page)
+            // An entry that inflates past what its header said is stopped there: the header is what the caller's
+            // size limit was checked against (a zip bomb lies in it).
             written += UInt64(page.count)
+            guard written <= entry.uncompressedSize else { throw ReadError.corrupt }
+            try output.write(contentsOf: page)
         }
         guard written == entry.uncompressedSize else { throw ReadError.corrupt }
     }

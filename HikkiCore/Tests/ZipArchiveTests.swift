@@ -63,6 +63,48 @@ struct ZipArchiveTests {
         #expect(throws: ZipArchive.ReadError.notAZip) { try ZipArchive(url: file) }
     }
 
+    /// A zip bomb lies about its size: the entry stops inflating where its header said, and nothing of the rest is
+    /// written.
+    @Test func anEntryInflatingPastItsHeaderIsRefused() throws {
+        let root = try temporary()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let file = root.appending(path: "liar.zip")
+        var data = try #require(Data(base64Encoded: deflated))
+        // The first entry's uncompressed size, in its central directory record (offset 24 from the record's start),
+        // cut from 110 to 10.
+        let record = try #require(data.range(of: Data([0x50, 0x4B, 0x01, 0x02]))?.lowerBound)
+        data.replaceSubrange(record + 24..<record + 28, with: [10, 0, 0, 0])
+        try data.write(to: file)
+        let zip = try ZipArchive(url: file)
+        #expect(zip.entries[0].uncompressedSize == 10)
+        #expect(throws: ZipArchive.ReadError.corrupt) { try zip.extract(zip.entries[0], to: root.appending(path: "out.md")) }
+    }
+
+    /// Offsets past the file never read out of bounds: a directory offset beyond the end, a header offset beyond it.
+    @Test func offsetsBeyondTheFileAreCorruptNotCrashes() throws {
+        let root = try temporary()
+        defer { try? FileManager.default.removeItem(at: root) }
+        var data = ZipArchive.stored([("a.md", Data("x".utf8))])
+        // The end record's directory offset (offset 16 in the record) pointed far past the file.
+        let eocd = try #require(data.range(of: Data([0x50, 0x4B, 0x05, 0x06]))?.lowerBound)
+        var broken = data
+        broken.replaceSubrange(eocd + 16..<eocd + 20, with: [0xFF, 0xFF, 0xFF, 0x7F])
+        let far = root.appending(path: "far.zip")
+        try broken.write(to: far)
+        #expect(throws: ZipArchive.ReadError.corrupt) { try ZipArchive(url: far) }
+        // A record cut short of its 22 bytes is no record.
+        let short = root.appending(path: "short.zip")
+        try data.dropLast(4).write(to: short)
+        #expect(throws: ZipArchive.ReadError.notAZip) { try ZipArchive(url: short) }
+        // The entry's local header offset pointed past the file.
+        let directory = try #require(data.range(of: Data([0x50, 0x4B, 0x01, 0x02]))?.lowerBound)
+        data.replaceSubrange(directory + 42..<directory + 46, with: [0xFF, 0xFF, 0x00, 0x00])
+        let header = root.appending(path: "header.zip")
+        try data.write(to: header)
+        let zip = try ZipArchive(url: header)
+        #expect(throws: ZipArchive.ReadError.corrupt) { try zip.extract(zip.entries[0], to: root.appending(path: "a.md")) }
+    }
+
     @Test func crc32MatchesTheStandard() {
         #expect(ZipArchive.crc32(Data("123456789".utf8)) == 0xCBF4_3926)
         #expect(ZipArchive.crc32(Data()) == 0)

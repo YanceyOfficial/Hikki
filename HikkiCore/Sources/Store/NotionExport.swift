@@ -23,35 +23,47 @@ public enum NotionExport {
     /// The most an archive may hold once unpacked.
     public static let sizeLimit: Int64 = 4 * 1024 * 1024 * 1024
 
+    /// How many parts (zips inside the zip) an export may have.
+    public static let partLimit = 64
+
     /// Unpacks `archive` into a new folder under `parent` and returns it; the caller removes it once the import is
-    /// done (`WorkspaceImport.Plan.temporaryFolders`).
-    public static func unpack(_ archive: URL, into parent: URL) throws -> URL {
+    /// done (`WorkspaceImport.Plan.temporaryFolders`). Nothing is left behind when it fails. `sizeLimit` is the most
+    /// the archive and its parts may hold together.
+    public static func unpack(_ archive: URL, into parent: URL, sizeLimit: Int64 = sizeLimit) throws -> URL {
         let folder = parent.appending(path: "hikki-import-\(UUID().uuidString)", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        try extract(archive, into: folder)
-        // A large export comes as parts — zips inside the zip, each a part of the same tree.
-        for part in (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
-        where isArchive(part) {
-            try extract(part, into: folder)
-            try FileManager.default.removeItem(at: part)
+        do {
+            var total: UInt64 = 0
+            try extract(archive, into: folder, total: &total, limit: UInt64(max(0, sizeLimit)))
+            // A large export comes as parts — zips inside the zip, each a part of the same tree, counted together.
+            let parts = ((try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? [])
+                .filter(isArchive)
+            guard parts.count <= partLimit else { throw UnpackError.tooLarge }
+            for part in parts {
+                try extract(part, into: folder, total: &total, limit: UInt64(max(0, sizeLimit)))
+                try FileManager.default.removeItem(at: part)
+            }
+            try normalize(folder)
+        } catch {
+            try? FileManager.default.removeItem(at: folder)
+            throw error
         }
-        try normalize(folder)
         return folder
     }
 
     /// Every entry of the archive written under `folder` — never outside it (an entry's path is checked against the
-    /// folder; `__MACOSX` and hidden entries are left out).
-    static func extract(_ archive: URL, into folder: URL) throws {
+    /// folder; `__MACOSX` and hidden entries are left out). `total` runs across the archive and its parts; past
+    /// `limit`, nothing more is written.
+    static func extract(_ archive: URL, into folder: URL, total: inout UInt64, limit: UInt64) throws {
         let zip: ZipArchive
         do {
             zip = try ZipArchive(url: archive)
         } catch {
             throw UnpackError.unreadable
         }
-        var total: UInt64 = 0
         for entry in zip.entries {
+            guard entry.uncompressedSize <= limit - total else { throw UnpackError.tooLarge }
             total += entry.uncompressedSize
-            guard total <= UInt64(sizeLimit) else { throw UnpackError.tooLarge }
         }
         let root = folder.standardizedFileURL.path
         for entry in zip.entries {
