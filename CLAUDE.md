@@ -1154,6 +1154,8 @@ HikkiUITests/                 XCUITest flows
 - **Demo recordings** (macOS): `HikkiUITests/UnsplashDemoRecording.swift` drives a flow at a watchable pace when run
   with `TEST_RUNNER_HIKKI_RECORD=1`; record with `screencapture -v -V <s>` meanwhile. UI tests paste text rather than
   type it on macOS when spaces matter — synthesized keys go through the active input method (a Chinese IME eats them).
+  App Review's walk-through (iOS) is `HikkiUITests/ReviewDemoRecording.swift`, the same way, filmed with
+  `xcrun simctl io <udid> recordVideo --codec=h264`.
 - **Colour tone**: one for now — `ColorTone.standard` (Kurenai, `design/tokens.json` `tone.default`); the other
   palettes stay in the tokens and `[data-tone]` CSS for when a picker returns. `make tokens` also writes the app's
   `AccentColor.colorset` from it, so system menus, selection and controls take the tone (where the user's system

@@ -8660,13 +8660,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "iCloud Drive"
+            "value": "iCloud"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "iCloud 云盘"
+            "value": "iCloud"
           }
         }
       }
