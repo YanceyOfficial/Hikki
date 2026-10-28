@@ -194,8 +194,27 @@
                             .listRowInsets(EdgeInsets())
                         }
                         Section("PublishSheet") {
-                            PublishSheet(title: "Trip to Kyoto", isPublishing: false, onPublish: {}, onCancel: {})
-                                .listRowInsets(EdgeInsets())
+                            PublishSheet(
+                                title: "Trip to Kyoto",
+                                tags: ["study", "language", "travel", "food"].map { .init(id: $0, title: $0.capitalized) },
+                                maxTags: 3, isPublishing: false, listed: .constant(true), chosenTags: .constant(["travel"]),
+                                author: .constant("Yancey"), checked: .constant(false), onPublish: {}, onCancel: {}
+                            )
+                            .listRowInsets(EdgeInsets())
+                        }
+                        Section("PublishedSheet") {
+                            PublishedSheet(
+                                link: "https://hikki.yancey.app/shared/2164cc13", listed: true, tags: ["Travel"], author: "Yancey",
+                                onCopy: {}, onOpen: {}, onDone: {}
+                            )
+                            .listRowInsets(EdgeInsets())
+                        }
+                        Section("FlowRow") {
+                            FlowRow {
+                                ForEach(["Study", "Languages", "Work", "Tech", "Design", "Writing"], id: \.self) {
+                                    FilterChip(LocalizedStringKey($0), isSelected: $0 == "Tech", look: .filled) {}
+                                }
+                            }
                         }
                         Section("FileDropZone") {
                             FileDropZone(

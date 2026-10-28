@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as LabRouteImport } from './routes/lab'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PIdRouteImport } from './routes/p.$id'
+import { Route as SharedIndexRouteImport } from './routes/shared.index'
+import { Route as SharedIdRouteImport } from './routes/shared.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,18 +36,32 @@ const PIdRoute = PIdRouteImport.update({
   path: '/p/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SharedIndexRoute = SharedIndexRouteImport.update({
+  id: '/shared/',
+  path: '/shared/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SharedIdRoute = SharedIdRouteImport.update({
+  id: '/shared/$id',
+  path: '/shared/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/lab': typeof LabRoute
   '/privacy': typeof PrivacyRoute
   '/p/$id': typeof PIdRoute
+  '/shared/$id': typeof SharedIdRoute
+  '/shared/': typeof SharedIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/lab': typeof LabRoute
   '/privacy': typeof PrivacyRoute
   '/p/$id': typeof PIdRoute
+  '/shared/$id': typeof SharedIdRoute
+  '/shared': typeof SharedIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +69,22 @@ export interface FileRoutesById {
   '/lab': typeof LabRoute
   '/privacy': typeof PrivacyRoute
   '/p/$id': typeof PIdRoute
+  '/shared/$id': typeof SharedIdRoute
+  '/shared/': typeof SharedIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/lab' | '/privacy' | '/p/$id'
+  fullPaths: '/' | '/lab' | '/privacy' | '/p/$id' | '/shared/$id' | '/shared/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/lab' | '/privacy' | '/p/$id'
-  id: '__root__' | '/' | '/lab' | '/privacy' | '/p/$id'
+  to: '/' | '/lab' | '/privacy' | '/p/$id' | '/shared/$id' | '/shared'
+  id:
+    | '__root__'
+    | '/'
+    | '/lab'
+    | '/privacy'
+    | '/p/$id'
+    | '/shared/$id'
+    | '/shared/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +92,8 @@ export interface RootRouteChildren {
   LabRoute: typeof LabRoute
   PrivacyRoute: typeof PrivacyRoute
   PIdRoute: typeof PIdRoute
+  SharedIdRoute: typeof SharedIdRoute
+  SharedIndexRoute: typeof SharedIndexRoute
 }
 
 declare module '@tanstack/solid-router' {
@@ -99,6 +126,20 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof PIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/shared/': {
+      id: '/shared/'
+      path: '/shared'
+      fullPath: '/shared/'
+      preLoaderRoute: typeof SharedIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shared/$id': {
+      id: '/shared/$id'
+      path: '/shared/$id'
+      fullPath: '/shared/$id'
+      preLoaderRoute: typeof SharedIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,6 +148,8 @@ const rootRouteChildren: RootRouteChildren = {
   LabRoute: LabRoute,
   PrivacyRoute: PrivacyRoute,
   PIdRoute: PIdRoute,
+  SharedIdRoute: SharedIdRoute,
+  SharedIndexRoute: SharedIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

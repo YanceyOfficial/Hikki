@@ -189,7 +189,7 @@ apps/website/                      the site at hikki.yancey.app (TanStack Start 
                               photo-grid layout), light/dark/system theme (`data-theme`, THEME_SCRIPT in src/theme.ts runs
                               before paint), screenshots in public/shots/ as WebP, each with a -dark twin (`Shot`), made by
                               `bun run shots <captures>` (sharp; crops in shots.json; public/og.jpg is the link-card JPEG);
-                              /p/<record>#<key> (src/routes/p.$id.tsx) reads a published page (see Publish link);
+                              /p/<record>#<key> and /shared (src/routes/p.$id.tsx, shared.*) read published pages (see Publish link);
                               the download moment is src/components/store.tsx — until APP_STORE_URL in src/site.ts is
                               set, "Coming to the App Store" is a status line in the header and the foot offers a
                               mailto (CONTACT_EMAIL) and the GitHub releases; set, both become the download link;
@@ -1076,29 +1076,45 @@ HikkiUITests/                 XCUITest flows
   brings up HikkiUI's `UnlockSheet` instead (also Settings → About → Purchase, with Restore Purchases). Reading,
   search, copy and export stay open. Debug runs are unlocked unless `HIKKI_ACCESS=trial|expired|unlocked|store`;
   `store` asks StoreKit itself — the `Hikki-StoreKit` scheme runs with `Hikki/Hikki.storekit`.
-- **Publish link** (page ⋯ → Publish Link…, the iPhone's ⋯ sheet; `Hikki/Sources/PublishLink.swift`): a read-only
-  link to a page for anyone who has it. The page as the editor exports it (HTML with its attachments as
-  `assets/<name>`, `PageExport.relinkAssets`) and its attachments are sealed with AES-GCM under a 256-bit key made
-  for the link (`PublishedContent`, CryptoKit) and put in the container's **public** CloudKit database as one
-  `PublishedPage` record (`PagePublisher`: `payloadFile` and `files` as `CKAsset`s, `version`, `bytes`; the
-  public database's default roles — the world reads, signed-in users create, only the creator writes or deletes);
-  the key travels in the link's fragment, `https://hikki.yancey.app/p/<record>#<key>`, which browsers never send,
-  so iCloud and the site hold only ciphertext. The link is kept in the workspace folder,
-  `published/<page id>.json` (`PublishedLinks`), so every device sees the page is published, updates the same
-  record (Published Link → Update Link, no second question) and takes it down (Unpublish, an alert). A first
-  publish asks (HikkiUI's `PublishSheet`: anyone with the link reads it, encrypted with the key in the link alone,
-  shows the page as it is now, comments / history / chats stay private) and copies the link; limits:
+- **Publish link** (page ⋯ → Publish… / Published ▸, the iPhone's ⋯ sheet; `Hikki/Sources/PublishLink.swift`): a
+  read-only copy of a page on the web, shared one of two ways (`PublishOptions`, `HikkiCore/Sources/Store/PublishListing.swift`):
+  **anyone with the link** — the page as the editor exports it (HTML with its attachments as `assets/<name>`,
+  `PageExport.relinkAssets`) and its attachments sealed with AES-GCM under a 256-bit key made for the link
+  (`PublishedContent`, CryptoKit), the key in the link's fragment, `https://hikki.yancey.app/p/<record>#<key>`, which
+  browsers never send, so iCloud and the site hold only ciphertext — or **listed in Hikki Shared**, the site's public
+  list (`/shared/<record>`): stored readable, with the fields the list queries — `listed` = 1, `title`, `icon`,
+  `excerpt`, `tags`, `author`, `terms` (`PublishSearch`: folded words, CJK characters and pairs, matched with
+  `LIST_CONTAINS`; the site's `searchTerms` / `queryTerms` agree through `design/fixtures/publish.json`) and
+  `publishedAt` — all emptied when a page goes back to link-only. Tags (`PublishTags`, 12 preset ids, up to 3; a listed
+  page needs one) and the author's name (optional, remembered in the synced `publish.author`; never the Apple Account)
+  go in the payload either way, with the cover (`PublishedCover`: a gradient id, an https picture — Unsplash's
+  hotlinked — or the page's own as an attachment). One `PublishedPage` record in the container's **public** CloudKit
+  database (`PagePublisher`: `payloadFile` and `files` as `CKAsset`s, `version`, `bytes`; the world reads,
+  signed-in users create, only the creator writes or deletes). The link is kept in the workspace folder,
+  `published/<page id>.json` (`PublishedLinks`), so every device sees the page is published. Publishing asks first
+  (HikkiUI's `PublishSheet`: the two ways, tags, author, what goes and what stays private, a privacy check that opens
+  Publish) and ends on HikkiUI's `PublishedSheet` (the link, Copy, Open in Browser); Published ▸ has Show Link…, Copy
+  Link, Update Page (no second question), Sharing Settings… and Unpublish (an alert). Limits:
   `PagePublisher.maxBytes` (20 MB with attachments) and `maxPages` (50); failures are `publishTooLarge`,
-  `publishTooMany`, `publishNotSignedIn`, `publishFailed`, `unpublishFailed`. The menus' requests go through
-  `Navigator.publishRequestID` / `unpublishRequestID` to ContentView's `PublishHost`, which renders with the window's
-  editor. The reader is the website's `/p/$id` route (`apps/website/src/routes/p.$id.tsx`, helpers and the HTML
-  allowlist in `apps/website/src/publish.ts`, tests in `apps/website/test/`): the record read by name through
-  CloudKit's web service (`VITE_CLOUDKIT_TOKEN`, a read-only API token from the CloudKit Dashboard;
-  `VITE_CLOUDKIT_ENV` = development until the schema is deployed), opened in the browser with WebCrypto, the
-  attachments as blobs, the HTML sanitized (links to the web only, pictures from the page's attachments only, a
-  frame becomes a link); `noindex`; "Report this page" is a mail. Before a release: deploy the `PublishedPage`
-  schema to production in the Dashboard and set the site's token. Not yet: opening a link in the app, saving a copy,
-  Report / Block records.
+  `publishTooMany`, `publishNotSignedIn`, `publishFailed`, `unpublishFailed`. The menus' requests are
+  `Navigator.publishRequest` (`PublishRequest`) answered by ContentView's `PublishHost`, which renders with the
+  window's editor. **Save to Hikki** on the site opens `hikki://shared/<record>[#<key>]` (`SharedLink`): ContentView's
+  `onOpenURL` → `AppModel.saveSharedPage` (`Hikki/Sources/SharedImport.swift`: `PagePublisher.fetchShared`, the HTML
+  and its attachments into a temporary folder, File → Import's path, then the cover; `sharedPageNotFound`,
+  `sharedPageCannotOpen`, `sharedImportFailed`). The site's frame for all of it is its own, not the marketing
+  site's (`apps/website/src/components/shared-shell.tsx`: the logo labelled Shared, the main site's sections, Apple's
+  App Store badge from `apps/website/public/badges/`, the theme switch): `/shared` (`apps/website/src/routes/shared.index.tsx`:
+  search, tag chips, cards, Show more by CloudKit's continuation marker), `/shared/$id` and `/p/$id`, both
+  `apps/website/src/components/shared-reader.tsx` — the record read by name through CloudKit's web service
+  (`VITE_CLOUDKIT_TOKEN`, a read-only API token; `VITE_CLOUDKIT_ENV` = development until the schema is deployed;
+  requests are simple POSTs with no headers, which CloudKit's CORS lets through), opened in the browser (WebCrypto
+  for a link's page), the attachments as blobs, the HTML sanitized (`apps/website/src/publish.ts`: links to the web
+  only — a `hikki://` link is kept as marked text, and a note says some links may not open —, pictures from the
+  page's attachments only, a frame becomes a link), KaTeX for formulas (loaded only then), a contents rail beside a
+  wide page (`outline`), the tab titled after the page, a floating dock (Save to Hikki, Copy link, Browse); `noindex`
+  on `/p`; "Report this page" is a mail. Tests in `apps/website/test/`. Before a release: deploy the `PublishedPage`
+  schema to production in the Dashboard (indexes: `listed`, `tags`, `terms` queryable, `publishedAt` queryable and
+  sortable) and set the site's token. Not yet: Report / Block records, moderation of the list.
 - **Lock page** (Page menu ⇧⌘L, the page ⋯ menu, the sidebar context menu): `lockedAt` on the page
   (`DocumentStore.setLocked`; it bumps `updatedAt` like icon/cover so other devices pick it up). The load payload
   carries `locked`, `window.hikki.setLocked` flips it while open (each editor, split pane included, for the page it

@@ -26,6 +26,15 @@ nonisolated enum Route: Hashable, Codable, Sendable {
 }
 
 /// A page to export in a format.
+/// A page menu's publish entry, for ContentView's `PublishHost`: the settings sheet (a first publish, or Sharing
+/// Settings… for a published page), Update Page (goes up at once), Show Link… (the published dialog), Unpublish (asks).
+enum PublishRequest: Equatable {
+    case settings(String)
+    case update(String)
+    case showLink(String)
+    case unpublish(String)
+}
+
 struct ExportRequest: Equatable, Identifiable {
     let pageID: String
     let format: PageExport.Format
@@ -107,10 +116,8 @@ final class Navigator {
     var pageActionsID: String?
     /// A page's "Move to Trash" waiting for its confirmation (`TrashConfirmation`, presented by ContentView).
     var trashRequestID: String?
-    /// Page ⋯ → Publish Link… / Update Link: the page to publish (ContentView's `PublishHost` asks first for a new link).
-    var publishRequestID: String?
-    /// Page ⋯ → Published Link → Unpublish: the page waiting for its confirmation.
-    var unpublishRequestID: String?
+    /// Page ⋯ → Publish… / Published → …: what a page menu asked of ContentView's `PublishHost`.
+    var publishRequest: PublishRequest?
     /// iPhone: which column of the collapsed split view shows — the home screen (sidebar) or the page (detail).
     /// Opening anything shows the detail; the system's back sets it back.
     var compactColumn: NavigationSplitViewColumn = .sidebar

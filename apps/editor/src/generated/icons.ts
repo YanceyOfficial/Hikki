@@ -158,3 +158,5 @@ export const TextAlignRightIcon: Icon = sfIcon(Phosphor.TextAlignRightIcon, "tex
 export const TextSubscriptIcon: Icon = sfIcon(Phosphor.TextSubscriptIcon, "textformat.subscript")
 export const TextSuperscriptIcon: Icon = sfIcon(Phosphor.TextSuperscriptIcon, "textformat.superscript")
 export const ArrowsDownUpIcon: Icon = sfIcon(Phosphor.ArrowsDownUpIcon, "arrow.up.arrow.down")
+export const CircleIcon: Icon = sfIcon(Phosphor.CircleIcon, "circle")
+export const TagIcon: Icon = sfIcon(Phosphor.TagIcon, "tag")

@@ -101,25 +101,34 @@
                     ActionRowLabel(title: "app:export.menu", icon: .export, chevron: true)
                 }
                 .accessibilityIdentifier("page-export")
-                // A read-only link (`PublishHost` asks or updates once this sheet has gone).
+                // Publishing (`PublishHost` asks, updates or shows the link once this sheet has gone).
                 if model.publishedLink(of: page.id) != nil {
+                    ActionRow(title: "app:publish.show", icon: .globe) {
+                        dismiss()
+                        navigator.publishRequest = .showLink(page.id)
+                    }
+                    .accessibilityIdentifier("show-published-link")
                     ActionRow(title: "app:publish.copy", icon: .link) {
                         model.copyPublishedLink(of: page.id)
                         dismiss()
                     }
                     ActionRow(title: "app:publish.update", icon: .arrowsClockwise) {
                         dismiss()
-                        navigator.publishRequestID = page.id
+                        navigator.publishRequest = .update(page.id)
+                    }
+                    ActionRow(title: "app:publish.settings", icon: .tag) {
+                        dismiss()
+                        navigator.publishRequest = .settings(page.id)
                     }
                     ActionRow(title: "app:publish.unpublish", icon: .linkBreak, destructive: true) {
                         dismiss()
-                        navigator.unpublishRequestID = page.id
+                        navigator.publishRequest = .unpublish(page.id)
                     }
                     .accessibilityIdentifier("unpublish-link")
                 } else {
                     ActionRow(title: "app:publish.action", icon: .globe) {
                         dismiss()
-                        navigator.publishRequestID = page.id
+                        navigator.publishRequest = .settings(page.id)
                     }
                     .accessibilityIdentifier("publish-link")
                 }

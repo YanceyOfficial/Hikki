@@ -12,16 +12,47 @@ public struct PublishedLink: Codable, Equatable, Sendable {
     public var publishedAt: Date
     /// When the record was last written (an update).
     public var updatedAt: Date
+    /// Listed in Hikki Shared (stored readable, with its tags) rather than only for people with the link.
+    public var listed: Bool
+    public var tags: [String]
+    /// The name shown as the page's author; empty for none.
+    public var author: String
 
-    public init(recordName: String, key: String, publishedAt: Date, updatedAt: Date) {
+    public init(
+        recordName: String, key: String, publishedAt: Date, updatedAt: Date, listed: Bool = false, tags: [String] = [],
+        author: String = ""
+    ) {
         self.recordName = recordName
         self.key = key
         self.publishedAt = publishedAt
         self.updatedAt = updatedAt
+        self.listed = listed
+        self.tags = tags
+        self.author = author
     }
 
-    /// The link itself: the site's reader with the record's name, the key as the fragment.
+    enum CodingKeys: String, CodingKey {
+        case recordName, key, publishedAt, updatedAt, listed, tags, author
+    }
+
+    /// Links kept before pages could be listed have neither key: they are links only.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        recordName = try container.decode(String.self, forKey: .recordName)
+        key = try container.decode(String.self, forKey: .key)
+        publishedAt = try container.decode(Date.self, forKey: .publishedAt)
+        updatedAt = try container.decode(Date.self, forKey: .updatedAt)
+        listed = try container.decodeIfPresent(Bool.self, forKey: .listed) ?? false
+        tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
+        author = try container.decodeIfPresent(String.self, forKey: .author) ?? ""
+    }
+
+    public var options: PublishOptions { PublishOptions(listed: listed, tags: tags, author: author) }
+
+    /// The link itself: a listed page at `/shared/<record>`; otherwise the private reader with the record's name and
+    /// the key as the fragment.
     public func url(site: URL) -> URL {
+        if listed { return site.appending(path: "shared/\(recordName)") }
         let page = site.appending(path: "p/\(recordName)")
         var components = URLComponents(url: page, resolvingAgainstBaseURL: false)
         components?.fragment = key
@@ -51,14 +82,52 @@ public struct PublishedPayload: Codable, Equatable, Sendable {
     public var html: String
     public var assets: [Asset]
     public var publishedAt: Date
+    /// The page's cover, if it has one the reader can draw (absent in pages published before covers went along).
+    public var cover: PublishedCover?
+    /// The tags and the author's name, as published (`PublishOptions`; stamped by `PagePublisher.prepare`).
+    public var tags: [String]?
+    public var author: String?
 
-    public init(title: String, icon: String?, html: String, assets: [Asset], publishedAt: Date) {
+    public init(
+        title: String, icon: String?, html: String, assets: [Asset], publishedAt: Date, cover: PublishedCover? = nil
+    ) {
         format = Self.currentFormat
         self.title = title
         self.icon = icon
         self.html = html
         self.assets = assets
         self.publishedAt = publishedAt
+        self.cover = cover
+    }
+}
+
+/// A published page's cover: a built-in gradient by its id (the website draws it from `design/tokens.json`'s
+/// `cover`), or a picture — an Unsplash or other https picture by its address, the workspace's own as
+/// `assets/<name>` among the payload's attachments — with its vertical position (0–100).
+public struct PublishedCover: Codable, Equatable, Sendable {
+    public var gradient: String?
+    public var image: String?
+    public var position: Double
+
+    public init(gradient: String? = nil, image: String? = nil, position: Double = 50) {
+        self.gradient = gradient
+        self.image = image
+        self.position = position
+    }
+
+    /// The cover as it can go with a published page, and the attachment it needs (an uploaded picture); nil for a
+    /// cover no reader could load (another page's blob, the editor's data).
+    public static func from(_ cover: PageCover?) -> (cover: PublishedCover, asset: String?)? {
+        switch cover {
+        case .gradient(let id): return (PublishedCover(gradient: id), nil)
+        case .image(_, let position):
+            if let name = cover?.assetName { return (PublishedCover(image: "assets/\(name)", position: position), name) }
+            if let url = cover?.webURL, url.scheme == "https" {
+                return (PublishedCover(image: url.absoluteString, position: position), nil)
+            }
+            return nil
+        case nil: return nil
+        }
     }
 }
 

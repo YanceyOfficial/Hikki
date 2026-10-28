@@ -350,8 +350,7 @@
       "native": false
     },
     "arrow-square-out": {
-      "sf": "arrow.up.right.square",
-      "native": false
+      "sf": "arrow.up.right.square"
     },
     "link-break": {},
     "arrows-in": {
@@ -491,6 +490,12 @@
     },
     "arrows-down-up": {
       "sf": "arrow.up.arrow.down"
+    },
+    "circle": {
+      "sf": "circle"
+    },
+    "tag": {
+      "sf": "tag"
     }
   }
 }

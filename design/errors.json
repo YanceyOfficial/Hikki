@@ -450,6 +450,24 @@
       "severity": "error",
       "en": "Couldn't take the link down. Try again.",
       "zh": "无法撤下链接，请重试。"
+    },
+    "sharedPageNotFound": {
+      "code": 2112,
+      "severity": "error",
+      "en": "This shared page isn't published any more.",
+      "zh": "这个分享的页面已不再发布。"
+    },
+    "sharedPageCannotOpen": {
+      "code": 2113,
+      "severity": "error",
+      "en": "This link doesn't open the shared page. Ask for the whole link again.",
+      "zh": "这个链接无法打开分享的页面。请重新索取完整链接。"
+    },
+    "sharedImportFailed": {
+      "code": 7009,
+      "severity": "error",
+      "en": "Couldn't save the shared page. Check your connection and try again.",
+      "zh": "无法保存分享的页面。请检查网络后重试。"
     }
   }
 }

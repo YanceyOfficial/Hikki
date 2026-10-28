@@ -80,6 +80,9 @@ extension ErrorCode {
         case .publishNotSignedIn: String(localized: "app:error.publishNotSignedIn")
         case .publishFailed: String(localized: "app:error.publishFailed")
         case .unpublishFailed: String(localized: "app:error.unpublishFailed")
+        case .sharedPageNotFound: String(localized: "app:error.sharedPageNotFound")
+        case .sharedPageCannotOpen: String(localized: "app:error.sharedPageCannotOpen")
+        case .sharedImportFailed: String(localized: "app:error.sharedImportFailed")
         }
     }
 }

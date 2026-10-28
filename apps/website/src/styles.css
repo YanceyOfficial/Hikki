@@ -130,35 +130,771 @@
     color: var(--color-ink);
   }
 
-  /* A published page (/p/<record>): the editor's HTML export at a reading measure, in the site's ink and lines. */
+  /*
+   * Hikki Shared (/shared, /shared/<record>, /p/<record>): its own frame, not the canvas — a page someone published
+   * reads like a page in Hikki, on the app's paper and ink (DESIGN.md: "The Study Desk") with its red seal.
+   */
+  .shared {
+    --s-paper: #ffffff;
+    --s-ink: #37352f;
+    --s-subtle: rgb(55 53 47 / 0.65);
+    --s-muted: rgb(55 53 47 / 0.45);
+    --s-wash: rgb(55 53 47 / 0.06);
+    --s-wash-strong: rgb(55 53 47 / 0.1);
+    --s-line: rgb(55 53 47 / 0.09);
+    --s-field: rgb(55 53 47 / 0.16);
+    --s-card: #ffffff;
+    --s-seal: #cb1b45;
+    --s-seal-ink: #cb1b45;
+    --s-seal-wash: rgb(203 27 69 / 0.1);
+    --s-selection: rgb(28 28 28 / 0.12);
+    --s-code-ink: #eb5757;
+    --s-focus: rgb(55 53 47 / 0.3);
+    --s-popover:
+      0 0 0 1px rgb(15 15 15 / 0.05), 0 3px 6px rgb(15 15 15 / 0.1), 0 9px 24px rgb(15 15 15 / 0.2);
+    --s-code: rgb(135 131 120 / 0.15);
+    min-height: 100vh;
+    overflow-x: clip;
+    display: flex;
+    flex-direction: column;
+    background: var(--s-paper);
+    color: var(--s-ink);
+    font-family:
+      ui-sans-serif, -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans', 'Segoe UI',
+      Helvetica, sans-serif;
+  }
+  :root[data-theme='dark'] .shared {
+    --s-paper: #191919;
+    --s-ink: rgb(255 255 255 / 0.81);
+    --s-subtle: rgb(255 255 255 / 0.6);
+    --s-muted: rgb(255 255 255 / 0.42);
+    --s-wash: rgb(255 255 255 / 0.06);
+    --s-wash-strong: rgb(255 255 255 / 0.1);
+    --s-line: rgb(255 255 255 / 0.09);
+    --s-field: rgb(255 255 255 / 0.16);
+    --s-card: #202020;
+    --s-seal: #cc2049;
+    --s-seal-ink: #db617e;
+    --s-seal-wash: rgb(219 97 126 / 0.14);
+    --s-selection: rgb(230 228 223 / 0.2);
+    --s-code-ink: #ff7369;
+    --s-focus: rgb(255 255 255 / 0.3);
+    --s-popover:
+      0 0 0 1px rgb(255 255 255 / 0.094), 0 3px 6px rgb(0 0 0 / 0.2), 0 9px 24px rgb(0 0 0 / 0.4);
+    --s-code: rgb(255 255 255 / 0.08);
+  }
+  /* Overscroll past the frame shows its paper, not the canvas's black lines. */
+  html:has(.shared) {
+    background: var(--s-paper, #ffffff);
+  }
+  :root[data-theme='dark']:has(.shared) {
+    background: #191919;
+  }
+  .shared :focus-visible {
+    outline: 2px solid var(--s-subtle);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  /* The app's own selection, not the marketing canvas's reversed ink. */
+  .shared ::selection {
+    background: var(--s-selection);
+    color: inherit;
+  }
+
+  .shared-bar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: color-mix(in srgb, var(--s-paper) 88%, transparent);
+    backdrop-filter: saturate(1.4) blur(12px);
+    border-bottom: 1px solid var(--s-line);
+  }
+  .shared-bar-inner,
+  .shared-foot-inner {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 0 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .shared-bar-inner {
+    height: 4rem;
+    gap: 1rem;
+  }
+  .shared-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    color: var(--s-ink);
+  }
+  .shared-brand-icon {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 0 0 1px var(--s-line);
+  }
+  /* The wordmark's box keeps the sparkle's room around the letters; the letters stand about 1.1rem tall. */
+  .shared-brand-word {
+    height: 2.75rem;
+    width: auto;
+    margin-left: -0.375rem;
+  }
+  .shared-brand-mark {
+    display: flex;
+    align-items: flex-start;
+  }
+  /* The label sits where a superscript would, just past the sparkle: the mark reads "hikki Shared". */
+  .shared-brand-label {
+    margin: 0.45rem 0 0 0.1rem;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1;
+    color: var(--s-seal-ink);
+    background: var(--s-seal-wash);
+    padding: 0.2rem 0.35rem;
+    border-radius: 0.3rem;
+  }
+  .shared-site {
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
+    margin-left: 0.5rem;
+    padding-left: 1rem;
+    border-left: 1px solid var(--s-line);
+  }
+  .shared-site a {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--s-subtle);
+    padding: 0.375rem 0.625rem;
+    border-radius: 0.5rem;
+    transition:
+      background-color 150ms ease-out,
+      color 150ms ease-out;
+  }
+  .shared-site a:hover {
+    background: var(--s-wash);
+    color: var(--s-ink);
+  }
+  .shared-bar-end {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  /* Apple's minimum on screen is 40 px tall; the badge keeps its own clear space. */
+  .shared-badge {
+    display: block;
+    flex: none;
+    transition: opacity 150ms ease-out;
+  }
+  .shared-badge:hover {
+    opacity: 0.85;
+  }
+  .shared-badge img {
+    height: 2.5rem;
+    width: auto;
+  }
+  .shared-badge-dark {
+    display: none;
+  }
+  :root[data-theme='dark'] .shared-badge-light {
+    display: none;
+  }
+  :root[data-theme='dark'] .shared-badge-dark {
+    display: block;
+  }
+  @media (max-width: 40rem) {
+    .shared-site {
+      margin-left: 0;
+      padding-left: 0;
+      border-left: 0;
+    }
+    .shared-brand-icon,
+    .shared-theme.theme-switch {
+      display: none;
+    }
+  }
+  /* The site's switch, made quiet for this frame. */
+  .shared-theme.theme-switch {
+    border: 1px solid var(--s-line);
+    border-radius: 8px;
+    background: transparent;
+    padding: 2px;
+    gap: 2px;
+  }
+  .shared-theme.theme-switch button {
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 0;
+    border-radius: 6px;
+    color: var(--s-muted);
+    background: transparent;
+  }
+  .shared-theme.theme-switch button[aria-checked='true'] {
+    background: var(--s-wash-strong);
+    color: var(--s-ink);
+  }
+  .shared-theme.theme-switch svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .shared-main {
+    flex: 1;
+  }
+  .shared-column {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: 3.5rem 1rem 5rem;
+  }
+  .shared-wide {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 3rem 1rem 5rem;
+  }
+  .shared-foot {
+    border-top: 1px solid var(--s-line);
+    font-size: 0.8125rem;
+    color: var(--s-muted);
+  }
+  .shared-foot-inner {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    padding-top: 1.25rem;
+    padding-bottom: 1.25rem;
+  }
+  .shared-foot a:hover {
+    color: var(--s-ink);
+  }
+
+  /* Buttons, chips, tags: the app's controls (6 px radius, washes, the seal for the one main action). */
+  .shared-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 2.25rem;
+    padding: 0 0.875rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--s-ink);
+    background: var(--s-wash);
+    border: 0;
+    cursor: pointer;
+    transition:
+      background-color 150ms ease-out,
+      transform 150ms ease-out;
+  }
+  .shared-button:hover {
+    background: var(--s-wash-strong);
+  }
+  .shared-button:active {
+    transform: scale(0.97);
+  }
+  .shared-button:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+  .shared-button-primary {
+    background: var(--s-seal);
+    color: #ffffff;
+  }
+  .shared-button-primary:hover {
+    background: color-mix(in srgb, var(--s-seal) 88%, #000000);
+  }
+  .shared-chip {
+    height: 2rem;
+    padding: 0 0.75rem;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--s-subtle);
+    background: transparent;
+    border: 1px solid var(--s-line);
+    cursor: pointer;
+    transition:
+      background-color 150ms ease-out,
+      color 150ms ease-out,
+      border-color 150ms ease-out;
+  }
+  .shared-chip:hover {
+    background: var(--s-wash);
+    color: var(--s-ink);
+  }
+  /* Selected as the app selects a chip: the ink at a stronger wash (the seal is kept for the one action). */
+  .shared-chip[aria-pressed='true'] {
+    background: var(--s-wash-strong);
+    border-color: transparent;
+    color: var(--s-ink);
+  }
+  .shared-tag {
+    display: inline-flex;
+    align-items: center;
+    height: 1.375rem;
+    padding: 0 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: var(--s-wash);
+    color: var(--s-subtle);
+  }
+  a.shared-tag {
+    transition:
+      background-color 150ms ease-out,
+      color 150ms ease-out;
+  }
+  a.shared-tag:hover {
+    background: var(--s-wash-strong);
+    color: var(--s-ink);
+  }
+
+  /* The list. */
+  .shared-list-head h1 {
+    font-size: clamp(1.875rem, 3.2vw, 2.5rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+  }
+  .shared-list-head p {
+    margin-top: 0.5rem;
+    color: var(--s-subtle);
+    max-width: 40rem;
+  }
+  .shared-search {
+    margin-top: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 2.75rem;
+    padding: 0 0.875rem;
+    border-radius: 8px;
+    border: 1px solid var(--s-field);
+    color: var(--s-muted);
+    background: var(--s-card);
+    max-width: 36rem;
+    transition:
+      border-color 150ms ease-out,
+      box-shadow 150ms ease-out;
+  }
+  .shared-search:focus-within {
+    border-color: var(--s-focus);
+    box-shadow: 0 0 0 1px var(--s-focus);
+  }
+  .shared-search input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--s-ink);
+    font-size: 1rem;
+  }
+  /* The field's frame shows the focus; the input inside draws none of its own. */
+  .shared-search input:focus-visible {
+    outline: none;
+  }
+  /* The browser's own clear button is replaced by ours, in the ink. */
+  .shared-search input::-webkit-search-cancel-button {
+    appearance: none;
+  }
+  .shared-search-clear {
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    margin-right: -0.375rem;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--s-muted);
+    cursor: pointer;
+    transition:
+      background-color 150ms ease-out,
+      color 150ms ease-out;
+  }
+  .shared-search-clear:hover {
+    background: var(--s-wash);
+    color: var(--s-ink);
+  }
+  .shared-search input::placeholder {
+    color: var(--s-muted);
+  }
+  .shared-tags {
+    margin-top: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .shared-grid {
+    margin-top: 2rem;
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  }
+  .shared-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 11rem;
+    padding: 1.125rem 1.25rem;
+    border-radius: 10px;
+    border: 1px solid var(--s-line);
+    background: var(--s-card);
+    transition:
+      background-color 150ms ease-out,
+      border-color 150ms ease-out,
+      transform 150ms ease-out;
+  }
+  .shared-card:hover {
+    background: color-mix(in srgb, var(--s-card) 96%, var(--s-ink));
+    border-color: var(--s-field);
+  }
+  .shared-card:active {
+    transform: scale(0.99);
+  }
+  .shared-card-icon {
+    font-size: 1.75rem;
+    line-height: 1;
+  }
+  .shared-card h2 {
+    margin-top: 0.75rem;
+    font-size: 1.0625rem;
+    font-weight: 600;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .shared-card p {
+    margin-top: 0.375rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--s-subtle);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .shared-card-foot {
+    margin-top: auto;
+    padding-top: 0.875rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+    color: var(--s-muted);
+  }
+  .shared-card-skeleton {
+    background: var(--s-wash);
+    border-color: transparent;
+    animation: shared-pulse 1.4s ease-in-out infinite;
+  }
+  .shared-skeleton span {
+    display: block;
+    border-radius: 6px;
+    background: var(--s-wash);
+    animation: shared-pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes shared-pulse {
+    50% {
+      opacity: 0.5;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .shared-card-skeleton,
+    .shared-skeleton span {
+      animation: none;
+    }
+  }
+  .shared-empty {
+    margin-top: 3rem;
+    color: var(--s-subtle);
+  }
+  .shared-notice h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+  .shared-notice p {
+    margin-top: 0.5rem;
+    color: var(--s-subtle);
+  }
+
+  /* A page: the editor's measure and type (40 px title, 16 px body at 1.5, headings 1.875 / 1.5 / 1.25 em). */
+  .shared-page-head {
+    margin-bottom: 2.5rem;
+  }
+  .shared-page-icon {
+    font-size: 4.5rem;
+    line-height: 1;
+    margin-bottom: 1rem;
+  }
+  .shared-page-title {
+    font-size: clamp(2rem, 5vw, 2.5rem);
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+  }
+  .shared-meta {
+    margin-top: 0.875rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--s-muted);
+  }
+  /* A cover runs the column's whole width at the page's top, as in the app. */
+  .shared-cover {
+    height: clamp(10rem, 28vw, 17.5rem);
+    margin: -3.5rem calc(50% - 50vw) 0;
+    overflow: hidden;
+    background: var(--s-wash);
+  }
+  .shared-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .shared-page-head.has-cover {
+    margin-top: -2.5rem;
+    position: relative;
+  }
+  .shared-page-head.has-cover:not(:has(.shared-page-icon)) {
+    margin-top: 2.5rem;
+  }
+  .shared-author {
+    color: var(--s-subtle);
+    font-weight: 500;
+  }
+  .shared-page-tags {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+  .shared-card-author {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--s-muted);
+  }
+
+  /* The floating dock: the page's actions in one pill at the foot of the window. */
+  .shared-dock {
+    position: fixed;
+    left: 50%;
+    bottom: max(1.25rem, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.375rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--s-paper) 82%, transparent);
+    backdrop-filter: saturate(1.6) blur(16px);
+    box-shadow: var(--s-popover);
+    animation: shared-dock-in 320ms cubic-bezier(0.25, 1, 0.5, 1) both;
+  }
+  .shared-dock-primary,
+  .shared-dock-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 2.5rem;
+    padding: 0 1rem;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+    transition:
+      background-color 150ms ease-out,
+      transform 150ms ease-out;
+  }
+  .shared-dock :focus-visible {
+    border-radius: 999px;
+  }
+  .shared-dock-primary:active,
+  .shared-dock-item:active {
+    transform: scale(0.97);
+  }
+  .shared-dock-primary {
+    background: var(--s-seal);
+    color: #ffffff;
+  }
+  .shared-dock-primary:hover {
+    background: color-mix(in srgb, var(--s-seal) 88%, #000000);
+  }
+  .shared-dock-item {
+    color: var(--s-ink);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+  }
+  .shared-dock-item:hover {
+    background: var(--s-wash);
+  }
+  .shared-dock-divider {
+    width: 1px;
+    height: 1.25rem;
+    background: var(--s-line);
+    margin: 0 0.125rem;
+  }
+  @keyframes shared-dock-in {
+    from {
+      opacity: 0;
+      transform: translate(-50%, 0.75rem);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .shared-dock {
+      animation: none;
+    }
+  }
+  /* Room under the page for the dock. */
+  .shared-column:has(.shared-dock) {
+    padding-bottom: 8rem;
+  }
+
+  /* The note that some links won't open, quiet above the words. */
+  .shared-link-note {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+    margin: -1rem 0 2rem;
+    padding: 0.625rem 0.875rem;
+    border-radius: 0.5rem;
+    background: var(--s-wash);
+    color: var(--s-subtle);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+  .shared-link-note svg {
+    flex: none;
+    width: 15px;
+    height: 15px;
+    margin-top: 0.15rem;
+  }
+  /* A link into the author's Hikki, or a mention of one of their pages: it reads as a link that goes nowhere here. */
+  .published-body a[data-link='private'],
+  .published-body [data-type='mention'] {
+    color: var(--s-subtle);
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+    cursor: help;
+  }
+
+  /* The contents rail: beside the column on a window wide enough for both, never over the words. */
+  .shared-toc {
+    display: none;
+  }
+  @media (min-width: 82rem) {
+    .shared-toc {
+      display: block;
+      position: fixed;
+      top: 6.5rem;
+      left: calc(50% + 23rem + 2.5rem);
+      width: 14rem;
+      max-height: calc(100vh - 12rem);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      transition: opacity 200ms cubic-bezier(0.25, 1, 0.5, 1);
+    }
+    /* Out of the way while the cover is still under the bar's height. */
+    .shared-toc[data-hidden] {
+      opacity: 0;
+      pointer-events: none;
+    }
+  }
+  .shared-toc-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--s-muted);
+    margin: 0 0 0.5rem 0.625rem;
+  }
+  .shared-toc ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .shared-toc a {
+    display: block;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: var(--s-muted);
+    padding: 0.3rem 0.625rem;
+    border-radius: 0.375rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition:
+      background-color 150ms ease-out,
+      color 150ms ease-out;
+  }
+  .shared-toc a:hover {
+    color: var(--s-ink);
+    background: var(--s-wash);
+  }
+  .shared-toc a[aria-current='location'] {
+    color: var(--s-ink);
+    font-weight: 500;
+    background: var(--s-wash);
+  }
+  .published-body :is(h1, h2, h3) {
+    scroll-margin-top: 5.5rem;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .shared-toc {
+      transition: none;
+    }
+  }
+
   .published-body {
-    line-height: 1.65;
+    font-size: 1rem;
+    line-height: 1.6;
     overflow-wrap: anywhere;
   }
   .published-body > * + * {
-    margin-top: 0.75rem;
+    margin-top: 0.5rem;
+  }
+  .published-body p:empty {
+    min-height: 1.6em;
   }
   .published-body h1,
   .published-body h2,
   .published-body h3,
   .published-body h4 {
-    font-weight: 750;
-    line-height: 1.2;
-    letter-spacing: -0.01em;
-    margin-top: 1.75rem;
+    font-weight: 600;
+    line-height: 1.3;
+    margin-top: 2rem;
+    margin-bottom: 0.25rem;
   }
   .published-body h1 {
-    font-size: 1.75rem;
+    font-size: 1.875em;
   }
   .published-body h2 {
-    font-size: 1.4rem;
+    font-size: 1.5em;
   }
   .published-body h3 {
-    font-size: 1.15rem;
+    font-size: 1.25em;
+  }
+  .published-body h4 {
+    font-size: 1.0625em;
+  }
+  .published-body > :first-child {
+    margin-top: 0;
   }
   .published-body ul,
   .published-body ol {
-    padding-left: 1.5rem;
+    padding-left: 1.625rem;
   }
   .published-body ul {
     list-style: disc;
@@ -166,68 +902,141 @@
   .published-body ol {
     list-style: decimal;
   }
-  .published-body li + li {
+  .published-body li + li,
+  .published-body li > * + * {
     margin-top: 0.25rem;
   }
+  .published-body ul[data-type='taskList'] {
+    list-style: none;
+    padding-left: 0.25rem;
+  }
+  .published-body ul[data-type='taskList'] li {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .published-body input[type='checkbox'] {
+    accent-color: var(--s-seal);
+    margin-top: 0.35em;
+  }
   .published-body blockquote {
-    border-left: 3px solid var(--color-line);
-    padding-left: 1rem;
-    color: var(--color-muted);
+    border-left: 3px solid currentColor;
+    padding: 0.125rem 0 0.125rem 0.875rem;
+  }
+  .published-body blockquote > * + * {
+    margin-top: 0.25rem;
+  }
+  .published-body [data-type='callout'] {
+    display: flex;
+    gap: 0.625rem;
+    padding: 1rem 1rem 1rem 0.875rem;
+    border-radius: 6px;
+    background: var(--s-wash);
+  }
+  .published-body [data-type='callout'][data-icon]::before {
+    content: attr(data-icon);
+    font-size: 1.25rem;
+    line-height: 1.3;
+  }
+  .published-body [data-type='callout'] > * + * {
+    margin-top: 0.25rem;
   }
   .published-body pre {
-    border: 1px solid var(--color-frame);
-    padding: 0.75rem 1rem;
+    padding: 1rem 1.125rem;
+    border-radius: 6px;
+    background: var(--s-wash);
     overflow-x: auto;
-    font-size: 0.9em;
+    font-size: 0.875rem;
+    line-height: 1.55;
   }
   .published-body code {
     font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-    font-size: 0.92em;
+    font-size: 0.875em;
   }
   .published-body :not(pre) > code {
-    border: 1px solid var(--color-frame);
-    padding: 0.05em 0.3em;
+    padding: 0.15em 0.35em;
+    border-radius: 4px;
+    background: var(--s-code);
+    color: var(--s-code-ink);
   }
   .published-body img,
   .published-body video {
     max-width: 100%;
     height: auto;
-    border: 1px solid var(--color-frame);
+    border-radius: 6px;
+  }
+  .published-body [data-align='center'] {
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .published-body [data-align='right'] {
+    margin-left: auto;
   }
   .published-body table {
     border-collapse: collapse;
     width: 100%;
-    font-size: 0.95em;
+    font-size: 0.9375em;
+    display: block;
+    overflow-x: auto;
   }
   .published-body th,
   .published-body td {
-    border: 1px solid var(--color-frame);
-    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--s-field);
+    padding: 0.5rem 0.625rem;
     text-align: left;
     vertical-align: top;
+    min-width: 6rem;
   }
   .published-body th {
-    font-weight: 700;
+    font-weight: 600;
+    background: var(--s-wash);
+  }
+  .published-body td > * + *,
+  .published-body th > * + * {
+    margin-top: 0.25rem;
   }
   .published-body hr {
     border: 0;
-    border-top: 1px solid var(--color-line);
+    border-top: 1px solid var(--s-field);
     margin: 1.5rem 0;
   }
   .published-body a {
+    color: inherit;
     text-decoration: underline;
-    text-underline-offset: 4px;
+    text-decoration-color: var(--s-field);
+    text-underline-offset: 3px;
+  }
+  .published-body a:hover {
+    text-decoration-color: currentColor;
+  }
+  .published-body mark {
+    background: rgb(251 243 219);
+    color: inherit;
+  }
+  :root[data-theme='dark'] .published-body mark {
+    background: rgb(137 99 42 / 0.5);
   }
   .published-body details > summary {
     cursor: pointer;
-    font-weight: 600;
+    font-weight: 500;
   }
-  .published-body [data-type='callout'] {
-    border: 1px solid var(--color-frame);
-    padding: 0.75rem 1rem;
+  .published-body details > * + * {
+    margin-top: 0.25rem;
+    padding-left: 1.5rem;
   }
-  .published-body input[type='checkbox'] {
-    margin-right: 0.4rem;
+  .published-body ruby rt {
+    font-size: 0.55em;
+    color: var(--s-subtle);
+  }
+  .published-body [data-type='columns'] {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 2rem;
+  }
+  @media (max-width: 40rem) {
+    .published-body [data-type='columns'] {
+      grid-auto-flow: row;
+    }
   }
 
   /* The first screen's facts: one cell of the canvas, ruled inside by thinner lines. */

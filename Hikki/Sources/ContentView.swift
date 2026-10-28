@@ -464,6 +464,13 @@ struct ContentView: View {
             }
             // hikki://page/<id> (Copy link).
             .onOpenURL { url in
+                // "Save to Hikki" on the website: a copy of the shared page, opened once it is in (SharedImport.swift).
+                if let shared = SharedLink.parse(url) {
+                    Task {
+                        if let id = await model.saveSharedPage(shared, editor: editor) { navigator.open(id) }
+                    }
+                    return
+                }
                 guard let id = PageLink.pageID(from: url), model.tree.page(id) != nil else { return }
                 navigator.open(id)
                 if let block = PageLink.blockID(from: url) { editor(for: navigator.focusedSide)?.scrollToBlock(block, in: id) }

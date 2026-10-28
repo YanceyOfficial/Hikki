@@ -16,7 +16,7 @@ final class SyncedSettings {
             AppearancePreference.storageKey, EditorPreferences.spellcheckKey, MenuBarPreferences.showKey,
             SpotlightPreferences.enabledKey, TrashPreferences.keepDaysKey, TransferPreferences.formatKey,
             ShortcutStore.storageKey, AIPreferences.modelKey, AIPreferences.favoritesKey, AIPreferences.reviewStyleKey,
-            AIPreferences.chatRetentionKey, AIPreferences.filesKey,
+            AIPreferences.chatRetentionKey, AIPreferences.filesKey, PublishPreferences.authorKey,
         ] + AIProvider.allCases.map(AIPreferences.baseURLKey)
     }
 
@@ -51,7 +51,8 @@ final class SyncedSettings {
     private static func apply(_ keys: [String], to model: AppModel) {
         if keys.contains(ShortcutStore.storageKey) { ShortcutStore.shared.reload() }
         if keys.contains(SpotlightPreferences.enabledKey) {
-            model.searchIndexer.setSpotlight(enabled: UserDefaults.standard.object(forKey: SpotlightPreferences.enabledKey) as? Bool ?? true)
+            model.searchIndexer.setSpotlight(
+                enabled: UserDefaults.standard.object(forKey: SpotlightPreferences.enabledKey) as? Bool ?? true)
         }
         if keys.contains(TrashPreferences.keepDaysKey) { model.purgeTrash() }
         if keys.contains(AIPreferences.chatRetentionKey), let chats = model.chats {

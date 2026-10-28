@@ -122,9 +122,12 @@ public nonisolated enum Icon: String, CaseIterable, Sendable {
     case paintBrush = "paint-brush"
     case file = "file"
     case shuffle = "shuffle"
+    case arrowSquareOut = "arrow-square-out"
     case linkBreak = "link-break"
     case fileZip = "file-zip"
     case arrowsDownUp = "arrows-down-up"
+    case circle = "circle"
+    case tag = "tag"
 
     /// The SF Symbol drawn for this icon, if any.
     public var systemName: String? {
@@ -239,8 +242,11 @@ public nonisolated enum Icon: String, CaseIterable, Sendable {
         case .paintBrush: "paintbrush"
         case .file: "doc"
         case .shuffle: "shuffle"
+        case .arrowSquareOut: "arrow.up.right.square"
         case .fileZip: "doc.zipper"
         case .arrowsDownUp: "arrow.up.arrow.down"
+        case .circle: "circle"
+        case .tag: "tag"
         default: nil
         }
     }

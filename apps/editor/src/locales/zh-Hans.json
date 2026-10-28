@@ -607,7 +607,10 @@
     "publishTooMany": "已发布 50 个页面，达到同时发布的上限。请先取消发布一个。",
     "publishNotSignedIn": "请登录 iCloud 后再发布链接。",
     "publishFailed": "无法发布页面。请检查网络，并确认已登录 iCloud。",
-    "unpublishFailed": "无法撤下链接，请重试。"
+    "unpublishFailed": "无法撤下链接，请重试。",
+    "sharedPageNotFound": "这个分享的页面已不再发布。",
+    "sharedPageCannotOpen": "这个链接无法打开分享的页面。请重新索取完整链接。",
+    "sharedImportFailed": "无法保存分享的页面。请检查网络后重试。"
   },
   "drawing": {
     "title": "绘图",

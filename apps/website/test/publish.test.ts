@@ -1,13 +1,29 @@
+import katex from 'katex'
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest'
 
+import fixture from '../../../design/fixtures/publish.json'
 import {
+  coverView,
+  hasLinks,
+  outline,
   decrypt,
+  hasMath,
+  isListed,
   keyFromFragment,
+  listRequest,
+  listURL,
   lookupRequest,
   lookupURL,
+  parseList,
+  PUBLISH_TAGS,
+  queryTerms,
   recordFiles,
-  sanitize
+  renderMath,
+  sanitize,
+  saveToHikkiURL,
+  searchTerms,
+  sharedTitle
 } from '../src/publish'
 
 const base64url = (bytes: Uint8Array) =>
@@ -124,5 +140,177 @@ describe('the HTML', () => {
     )
     expect(out).toContain('<input type="checkbox" checked="" disabled="">')
     expect(out).not.toContain('type="text"')
+  })
+})
+
+describe('Hikki Shared', () => {
+  it("files pages under the app's preset tags", () => {
+    expect(PUBLISH_TAGS.map((tag) => tag.id)).toEqual(fixture.tags)
+  })
+
+  it('finds a page by the terms the app gave it', () => {
+    for (const item of fixture.terms) expect(searchTerms(item.text), item.text).toEqual(item.terms)
+    for (const item of fixture.queries)
+      expect(queryTerms(item.query), item.query).toEqual(item.terms)
+  })
+
+  it('asks for listed pages, newest first, under a tag and holding every term', () => {
+    expect(listURL('production', 't')).toContain('/production/public/records/query?ckAPIToken=t')
+    const request = listRequest({ query: 'N5 文法', tag: 'study', marker: 'next' })
+    expect(request.headers).toBeUndefined()
+    const body = JSON.parse(String(request.body))
+    expect(body.query.recordType).toBe('PublishedPage')
+    expect(body.query.sortBy).toEqual([{ fieldName: 'publishedAt', ascending: false }])
+    expect(
+      body.query.filterBy.map((f: { fieldName: string; fieldValue: { value: unknown } }) => [
+        f.fieldName,
+        f.fieldValue.value
+      ])
+    ).toEqual([
+      ['listed', 1],
+      ['tags', 'study'],
+      ['terms', 'n5'],
+      ['terms', '文法']
+    ])
+    expect(body.continuationMarker).toBe('next')
+    expect(JSON.parse(String(listRequest({}).body)).query.filterBy).toHaveLength(1)
+  })
+
+  it('reads the list, leaving out a record without its title', () => {
+    const list = parseList({
+      records: [
+        {
+          recordName: 'a',
+          fields: {
+            title: { value: 'Grammar' },
+            icon: { value: '🚀' },
+            excerpt: { value: 'Words' },
+            tags: { value: ['study', 7] },
+            author: { value: ' Yancey ' },
+            publishedAt: { value: 1793158373564 }
+          }
+        },
+        { recordName: 'b', fields: {} }
+      ],
+      continuationMarker: 'm'
+    })
+    expect(list).toEqual({
+      pages: [
+        {
+          id: 'a',
+          title: 'Grammar',
+          icon: '🚀',
+          excerpt: 'Words',
+          tags: ['study'],
+          author: 'Yancey',
+          publishedAt: 1793158373564
+        }
+      ],
+      marker: 'm'
+    })
+    expect(parseList({ serverErrorCode: 'BAD_REQUEST' })).toBeNull()
+    expect(isListed({ fields: { listed: { value: 1 } } })).toBe(true)
+    expect(isListed({ fields: { listed: { value: 0 } } })).toBe(false)
+  })
+
+  it('hands the app its own link to save a copy', () => {
+    expect(saveToHikkiURL('abc')).toBe('hikki://shared/abc')
+    expect(saveToHikkiURL('abc', 'k_1')).toBe('hikki://shared/abc#k_1')
+  })
+
+  it("reads the export's body only, without its head or the title heading", () => {
+    const html =
+      '<!doctype html><html><head><title>N5</title><style>body{max-width:46rem}</style></head><body><h1>N5</h1><h2>Nouns</h2><p>Text</p></body></html>'
+    const out = sanitize(html, () => null, 'N5')
+    expect(out).toBe('<h2>Nouns</h2><p>Text</p>')
+    // Another first heading stays.
+    expect(sanitize('<h1>Other</h1>', () => null, 'N5')).toBe('<h1>Other</h1>')
+  })
+})
+
+describe('formulas', () => {
+  it('draws the formulas the export keeps as their source, inline and as blocks', () => {
+    const html = sanitize(
+      '<p>Area <span data-type="inline-math" data-latex="\\pi r^2"></span></p><div data-type="block-math" data-latex="e^{i\\pi}+1=0"></div>',
+      () => null
+    )
+    expect(hasMath(html)).toBe(true)
+    const out = renderMath(html, katex)
+    expect(out).toContain('class="katex"')
+    expect(out).toContain('katex-display')
+    expect(hasMath('<p>none</p>')).toBe(false)
+  })
+
+  it('shows a formula KaTeX cannot read as an error, and never makes a link of one', () => {
+    for (const latex of ['\\frac{', '\\href{javascript:alert(1)}{x}']) {
+      const out = renderMath(`<span data-type="inline-math" data-latex="${latex}"></span>`, katex)
+      expect(out).not.toMatch(/<a\b|href=/u)
+    }
+    expect(
+      renderMath('<span data-type="inline-math" data-latex="\\frac{"></span>', katex)
+    ).toContain('katex-error')
+  })
+})
+
+describe('sharedTitle', () => {
+  it('names the tab after the page, untitled when blank', () => {
+    expect(sharedTitle('N5 文法')).toBe('N5 文法 · Hikki Shared')
+    expect(sharedTitle('  ')).toBe('Untitled · Hikki Shared')
+  })
+})
+
+const asset = (name: string) => (name === 'c.png' ? 'blob:c' : null)
+
+describe('coverView', () => {
+  it('draws a built-in gradient from the tokens', () => {
+    expect(coverView({ gradient: 'ocean' }, asset)).toEqual({
+      gradient: 'linear-gradient(135deg, #c2e9fb 0%, #a1c4fd 100%)'
+    })
+    expect(coverView({ gradient: 'nope' }, asset)).toBeNull()
+  })
+  it('takes https pictures and the page’s own, with their position', () => {
+    expect(coverView({ image: 'https://images.unsplash.com/p?w=1', position: 30 }, asset)).toEqual({
+      image: 'https://images.unsplash.com/p?w=1',
+      position: 30
+    })
+    expect(coverView({ image: 'assets/c.png', position: 140 }, asset)).toEqual({
+      image: 'blob:c',
+      position: 100
+    })
+    expect(coverView({ image: 'assets/missing.png' }, asset)).toBeNull()
+    expect(coverView({ image: 'http://example.com/a.png' }, asset)).toBeNull()
+    expect(coverView({ image: 'javascript:alert(1)' }, asset)).toBeNull()
+    expect(coverView(null, asset)).toBeNull()
+  })
+})
+
+describe('outline', () => {
+  it('lists the headings and gives each an id of its own', () => {
+    const { html, items } = outline(
+      '<h1 id="x">One</h1><p>a</p><h2>Two  <b>bold</b></h2><h3> </h3><h4>Four</h4>'
+    )
+    expect(items).toEqual([
+      { id: 'toc-1', level: 1, text: 'One' },
+      { id: 'toc-2', level: 2, text: 'Two bold' }
+    ])
+    expect(html).toContain('<h1 id="toc-1">One</h1>')
+    expect(html).toContain('<h2 id="toc-2">')
+  })
+  it('leaves a page without headings as it was', () => {
+    expect(outline('<p>a</p>')).toEqual({ html: '<p>a</p>', items: [] })
+  })
+})
+
+describe('links that may not open', () => {
+  it('marks a link into the author’s Hikki and says the page has links', () => {
+    const html = sanitize(
+      '<p><a href="hikki://page/abc#b">Other</a> <a href="https://example.com">Web</a></p>',
+      () => null
+    )
+    expect(html).toContain('<a data-link="private" title=')
+    expect(html).not.toContain('hikki://')
+    expect(hasLinks(html)).toBe(true)
+    expect(hasLinks('<p><span data-type="mention" data-id="a">@A</span></p>')).toBe(true)
+    expect(hasLinks('<p>No links</p>')).toBe(false)
   })
 })

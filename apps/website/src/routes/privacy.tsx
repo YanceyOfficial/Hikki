@@ -26,7 +26,7 @@ export const Route = createFileRoute('/privacy')({
 })
 
 /** The date the text below last changed. */
-const EFFECTIVE = '24 October 2026'
+const EFFECTIVE = '28 October 2026'
 
 /** The short version, in the yellow cell. */
 const IN_SHORT = [
@@ -142,6 +142,19 @@ function Privacy() {
                   is reported to Unsplash as a download, as its guidelines ask.
                 </li>
                 <li>
+                  <strong>Publishing a page</strong>, only when you choose Publish on it. A copy of
+                  the page as it is then (its words, pictures and attachments, its icon and cover,
+                  the tags you pick and the name you give as its author, if any) goes into the
+                  public database of Hikki’s iCloud container, where anyone can read records. Shared
+                  with <em>anyone with the link</em>, the copy is encrypted on your device first
+                  with a key that exists only in the link, so nobody without the link can read it,
+                  Apple and Hikki’s maker included. <em>Listed in Hikki Shared</em>, it is stored as
+                  it is, not encrypted, so the site can list it and anyone can find and read it
+                  there. Your Apple Account and email are never shown on it. Comments, history and
+                  AI chats never go along. Unpublish deletes the copy. Saving a shared page into
+                  Hikki reads it from the same place and adds it to your workspace.
+                </li>
+                <li>
                   <strong>Links and embeds.</strong> Pasting a web link makes the device fetch that
                   page once to show its title and description (public addresses only). An embedded
                   page or video loads from its own service when you view the page that holds it; a
@@ -174,7 +187,9 @@ function Privacy() {
               <p>
                 hikki.yancey.app sets no cookies and runs no analytics. Your light or dark choice is
                 kept in your browser’s own storage. The site is served by Vercel, which keeps
-                ordinary request logs for a short time, as any host does.
+                ordinary request logs for a short time, as any host does. Shared pages are read from
+                iCloud by your browser; a page shared by link is decrypted in your browser with the
+                key from the link, which never reaches a server.
               </p>
             </Part>
 

@@ -1,0 +1,33 @@
+{
+  "$comment": "Publish link (ISSUE-224): the preset tags a listed page is filed under and the search terms a listed page carries and a query asks for. HikkiCore's PublishTags / PublishSearch (PublishingTests) and the website's PUBLISH_TAGS / searchTerms / queryTerms (apps/website/test/publish.test.ts) are both held to these answers.",
+  "tags": [
+    "study",
+    "language",
+    "work",
+    "tech",
+    "design",
+    "writing",
+    "reading",
+    "travel",
+    "food",
+    "health",
+    "life",
+    "templates"
+  ],
+  "terms": [
+    { "text": "Hello, World! hello", "terms": ["hello", "world"] },
+    { "text": "Café CAFE ｆｕｌｌ", "terms": ["cafe", "full"] },
+    { "text": "N5 文法", "terms": ["n5", "文", "文法", "法"] },
+    { "text": "ガイド a b c 2026", "terms": ["ガ", "ガイ", "イ", "イド", "ド", "2026"] },
+    { "text": "iPhone版", "terms": ["iphone", "版"] },
+    { "text": "한국어", "terms": ["한", "한국", "국", "국어", "어"] },
+    { "text": "  — … ! ", "terms": [] }
+  ],
+  "queries": [
+    { "query": "文法", "terms": ["文法"] },
+    { "query": "文", "terms": ["文"] },
+    { "query": "N5 文法 Grammar", "terms": ["n5", "文法", "grammar"] },
+    { "query": "a", "terms": [] },
+    { "query": "one two three four five six", "terms": ["one", "two", "three", "four", "five"] }
+  ]
+}

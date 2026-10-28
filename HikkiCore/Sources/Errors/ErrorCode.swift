@@ -82,6 +82,9 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
     case publishNotSignedIn
     case publishFailed
     case unpublishFailed
+    case sharedPageNotFound
+    case sharedPageCannotOpen
+    case sharedImportFailed
 
     public var number: Int {
         switch self {
@@ -159,6 +162,9 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .publishNotSignedIn: 2111
         case .publishFailed: 7007
         case .unpublishFailed: 7008
+        case .sharedPageNotFound: 2112
+        case .sharedPageCannotOpen: 2113
+        case .sharedImportFailed: 7009
         }
     }
 
@@ -256,6 +262,9 @@ public enum ErrorCode: String, CaseIterable, Sendable, Codable {
         case .publishNotSignedIn: .error
         case .publishFailed: .error
         case .unpublishFailed: .error
+        case .sharedPageNotFound: .error
+        case .sharedPageCannotOpen: .error
+        case .sharedImportFailed: .error
         }
     }
 

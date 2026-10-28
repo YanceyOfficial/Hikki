@@ -607,7 +607,10 @@
     "publishTooMany": "50 pages are published already, the most at once. Unpublish one first.",
     "publishNotSignedIn": "Sign in to iCloud to publish a link.",
     "publishFailed": "Couldn't publish the page. Check your connection and that you're signed in to iCloud.",
-    "unpublishFailed": "Couldn't take the link down. Try again."
+    "unpublishFailed": "Couldn't take the link down. Try again.",
+    "sharedPageNotFound": "This shared page isn't published any more.",
+    "sharedPageCannotOpen": "This link doesn't open the shared page. Ask for the whole link again.",
+    "sharedImportFailed": "Couldn't save the shared page. Check your connection and try again."
   },
   "drawing": {
     "title": "Drawing",

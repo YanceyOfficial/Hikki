@@ -79,7 +79,10 @@ export const ERRORS = {
   publishTooMany: { code: 2110, severity: 'error' },
   publishNotSignedIn: { code: 2111, severity: 'error' },
   publishFailed: { code: 7007, severity: 'error' },
-  unpublishFailed: { code: 7008, severity: 'error' }
+  unpublishFailed: { code: 7008, severity: 'error' },
+  sharedPageNotFound: { code: 2112, severity: 'error' },
+  sharedPageCannotOpen: { code: 2113, severity: 'error' },
+  sharedImportFailed: { code: 7009, severity: 'error' }
 } as const satisfies Record<string, { code: number; severity: ErrorSeverity }>
 
 export type ErrorId = keyof typeof ERRORS
@@ -244,5 +247,11 @@ export function errorMessage(id: ErrorId): string {
       return t('error.publishFailed')
     case 'unpublishFailed':
       return t('error.unpublishFailed')
+    case 'sharedPageNotFound':
+      return t('error.sharedPageNotFound')
+    case 'sharedPageCannotOpen':
+      return t('error.sharedPageCannotOpen')
+    case 'sharedImportFailed':
+      return t('error.sharedImportFailed')
   }
 }

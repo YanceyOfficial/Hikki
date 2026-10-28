@@ -471,7 +471,11 @@ struct PageFacts: View {
             Text("app:page.stats \(info.words.formatted()) \(info.characters.formatted())")
         }
         if let link = model.publishedLink(of: page.id) {
-            Text("app:page.published \(link.updatedAt, format: .relative(presentation: .named))")
+            if link.listed {
+                Text("app:page.published.listed \(link.updatedAt, format: .relative(presentation: .named))")
+            } else {
+                Text("app:page.published \(link.updatedAt, format: .relative(presentation: .named))")
+            }
         }
         Text("app:page.storedIn \(Self.storageText(model))")
         Text("app:page.aiOn \(Self.aiText())")

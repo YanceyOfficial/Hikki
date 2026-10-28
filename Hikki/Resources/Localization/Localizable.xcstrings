@@ -5509,6 +5509,57 @@
         }
       }
     },
+    "app:error.sharedImportFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't save the shared page. Check your connection and try again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法保存分享的页面。请检查网络后重试。"
+          }
+        }
+      }
+    },
+    "app:error.sharedPageCannotOpen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This link doesn't open the shared page. Ask for the whole link again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个链接无法打开分享的页面。请重新索取完整链接。"
+          }
+        }
+      }
+    },
+    "app:error.sharedPageNotFound": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This shared page isn't published any more."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个分享的页面已不再发布。"
+          }
+        }
+      }
+    },
     "app:error.trashEmptyFailed": {
       "extractionState": "manual",
       "localizations": {
@@ -9317,6 +9368,23 @@
         }
       }
     },
+    "app:page.published.listed %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listed in Hikki Shared %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已发布到 Hikki Shared %@"
+          }
+        }
+      }
+    },
     "app:page.rename": {
       "extractionState": "manual",
       "localizations": {
@@ -9748,13 +9816,81 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Publish Link…"
+            "value": "Publish…"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "发布链接…"
+            "value": "发布…"
+          }
+        }
+      }
+    },
+    "app:publish.author": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shown as"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "署名"
+          }
+        }
+      }
+    },
+    "app:publish.author.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shown on the page as its author. Your Apple Account and email are never shown."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "作为作者显示在页面上。不会显示你的 Apple 账户或邮箱。"
+          }
+        }
+      }
+    },
+    "app:publish.author.placeholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your name (optional)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的名字（可选）"
+          }
+        }
+      }
+    },
+    "app:publish.check": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This page holds nothing private: no passwords, addresses or anyone else's personal details."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个页面不含隐私内容：没有密码、地址或他人的个人信息。"
           }
         }
       }
@@ -9765,13 +9901,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Publish and Copy Link"
+            "value": "Publish"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "发布并复制链接"
+            "value": "发布"
           }
         }
       }
@@ -9782,13 +9918,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Link copied. Anyone with it can read the page."
+            "value": "Link copied."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "链接已复制。拿到链接的人都能阅读该页面。"
+            "value": "链接已复制。"
           }
         }
       }
@@ -9816,47 +9952,81 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Published Link"
+            "value": "Published"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已发布的链接"
+            "value": "已发布"
           }
         }
       }
     },
-    "app:publish.point.anyone": {
+    "app:publish.mode.link": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Anyone with the link can read this page, its pictures and attachments. Share it only with people you would hand the page to."
+            "value": "Anyone with the link"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "拿到链接的任何人都能阅读这个页面及其图片和附件。只分享给你愿意把页面交给的人。"
+            "value": "拿到链接的人"
           }
         }
       }
     },
-    "app:publish.point.encrypted": {
+    "app:publish.mode.link.detail": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "It is stored encrypted in iCloud's public database. The key lives only in the link, so nobody without the link can read it, Apple included."
+            "value": "Encrypted, the key only in the link. Nobody without the link can read it, Apple included."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "页面加密后存放在 iCloud 公共数据库里。密钥只在链接中，没有链接的人（包括 Apple）都读不了。"
+            "value": "加密存放，密钥只在链接里。没有链接的人（包括 Apple）都读不了。"
+          }
+        }
+      }
+    },
+    "app:publish.mode.listed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "List in Hikki Shared"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发布到 Hikki Shared"
+          }
+        }
+      }
+    },
+    "app:publish.mode.listed.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Public on the Hikki Shared list, found by its tags and words. Stored readable, not encrypted."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "公开在 Hikki Shared 列表中，可按标签和内容搜到。以明文存放，不加密。"
           }
         }
       }
@@ -9878,19 +10048,36 @@
         }
       }
     },
+    "app:publish.point.readable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anyone can find and read this page, its pictures and attachments on the website."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "任何人都能在网站上找到并阅读这个页面及其图片和附件。"
+          }
+        }
+      }
+    },
     "app:publish.point.snapshot": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The link shows the page as it is now. Later edits go up only when you choose Update Link; Unpublish takes it down."
+            "value": "The link shows the page as it is now. Later edits go up only when you choose Update Page; Unpublish takes it down."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "链接展示的是此刻的页面。之后的修改只有选择「更新链接」才会上传；「取消发布」会把它撤下。"
+            "value": "链接展示的是此刻的页面。之后的修改只有选择「更新页面」才会上传；「取消发布」会把它撤下。"
           }
         }
       }
@@ -9912,19 +10099,342 @@
         }
       }
     },
+    "app:publish.save": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save and Update"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存并更新"
+          }
+        }
+      }
+    },
+    "app:publish.settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sharing Settings…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分享设置…"
+          }
+        }
+      }
+    },
+    "app:publish.settings.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sharing settings"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分享设置"
+          }
+        }
+      }
+    },
+    "app:publish.show": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Link…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看链接…"
+          }
+        }
+      }
+    },
+    "app:publish.tag.design": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Design"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设计"
+          }
+        }
+      }
+    },
+    "app:publish.tag.food": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Food"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "美食"
+          }
+        }
+      }
+    },
+    "app:publish.tag.health": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Health"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "健康"
+          }
+        }
+      }
+    },
+    "app:publish.tag.language": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Languages"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "语言"
+          }
+        }
+      }
+    },
+    "app:publish.tag.life": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Life"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生活"
+          }
+        }
+      }
+    },
+    "app:publish.tag.reading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reading"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "阅读"
+          }
+        }
+      }
+    },
+    "app:publish.tag.study": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Study"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "学习"
+          }
+        }
+      }
+    },
+    "app:publish.tag.tech": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tech"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "技术"
+          }
+        }
+      }
+    },
+    "app:publish.tag.templates": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Templates"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "模板"
+          }
+        }
+      }
+    },
+    "app:publish.tag.travel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Travel"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "旅行"
+          }
+        }
+      }
+    },
+    "app:publish.tag.work": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Work"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "工作"
+          }
+        }
+      }
+    },
+    "app:publish.tag.writing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Writing"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "写作"
+          }
+        }
+      }
+    },
+    "app:publish.tags": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tags"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签"
+          }
+        }
+      }
+    },
+    "app:publish.tags.limit %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Up to %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最多 %@ 个"
+          }
+        }
+      }
+    },
+    "app:publish.tags.optional": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tags (optional)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "标签（可选）"
+          }
+        }
+      }
+    },
     "app:publish.title": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Publish a read-only link?"
+            "value": "Publish this page"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "发布只读链接？"
+            "value": "发布这个页面"
           }
         }
       }
@@ -10003,30 +10513,183 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Update Link"
+            "value": "Update Page"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "更新链接"
+            "value": "更新页面"
           }
         }
       }
     },
-    "app:publish.updated": {
+    "app:published.author %@": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Link updated with the page as it is now."
+            "value": "By %@"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "链接已更新为当前页面。"
+            "value": "作者：%@"
+          }
+        }
+      }
+    },
+    "app:published.copied": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copied"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已复制"
+          }
+        }
+      }
+    },
+    "app:published.copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制"
+          }
+        }
+      }
+    },
+    "app:published.done": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成"
+          }
+        }
+      }
+    },
+    "app:published.link": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only people with the link can read it."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只有拿到链接的人能阅读。"
+          }
+        }
+      }
+    },
+    "app:published.listed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listed in Hikki Shared. Anyone can find it."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已发布到 Hikki Shared，任何人都能找到。"
+          }
+        }
+      }
+    },
+    "app:published.open": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open in Browser"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在浏览器中打开"
+          }
+        }
+      }
+    },
+    "app:published.snapshot": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The link shows the page as published. Edits go up when you choose Update Page."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "链接展示的是发布时的页面。选择「更新页面」后才会上传之后的修改。"
+          }
+        }
+      }
+    },
+    "app:published.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Page published"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "页面已发布"
+          }
+        }
+      }
+    },
+    "app:published.updated": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Page updated"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "页面已更新"
           }
         }
       }
@@ -12254,6 +12917,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@ · %2$@ 个页面"
+          }
+        }
+      }
+    },
+    "app:shared.saved": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved to your workspace."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已保存到你的工作区。"
           }
         }
       }
