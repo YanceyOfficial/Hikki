@@ -1314,6 +1314,102 @@
     width: 72%;
   }
 
+  /* Split view opening as the page scrolls (SplitView): `--p` 0 is one page, 1 two. The section is the scroll it
+     takes; both cells' content stays in view meanwhile. Positions are fractions of the capture: the sidebar's
+     "Japanese, week 3" row, the split's hairline at 59.19 %, the window toolbar's foot at 6 %. */
+  .split-scene[data-moving] .split-figure {
+    height: 240vh;
+  }
+  .split-scene[data-moving] .split-figure > .split-sticky {
+    position: sticky;
+    top: 0;
+    min-height: 100svh;
+  }
+  @media (width >= 64rem) {
+    .split-scene[data-moving] .split-text > .split-sticky {
+      position: sticky;
+      top: 0;
+      min-height: 100svh;
+    }
+  }
+  .split-stage {
+    --p: 1;
+    /* The phases: the drag, the outline, the pane sliding in, the page beside it settling. */
+    --drag: clamp(0, var(--p) / 0.35, 1);
+    --zone: calc(clamp(0, (var(--p) - 0.27) / 0.08, 1) * (1 - clamp(0, (var(--p) - 0.6) / 0.1, 1)));
+    --slide: clamp(0, (var(--p) - 0.35) / 0.35, 1);
+    --settle: clamp(0, (var(--p) - 0.76) / 0.07, 1);
+    position: relative;
+    overflow: hidden;
+    container-type: inline-size;
+    border: 4px solid var(--color-frame);
+    border-radius: 12px;
+    background: var(--color-paper);
+  }
+  .split-img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .split-img.only-dark {
+    display: none;
+  }
+  :root[data-theme='dark'] .split-img.only-dark {
+    display: block;
+  }
+  :root[data-theme='dark'] .split-img.only-light {
+    display: none;
+  }
+  .split-pane,
+  .split-final {
+    position: absolute;
+    inset: 0;
+  }
+  /* The trailing pane alone, eased in from beyond the window's right edge (its own width away). */
+  .split-pane {
+    --s: calc(var(--slide) * var(--slide) * (3 - 2 * var(--slide)));
+    clip-path: inset(6% 0 0 59.19%);
+    transform: translateX(calc((1 - var(--s)) * 40.81%));
+    opacity: clamp(0, var(--slide) * 8, 1);
+  }
+  /* The whole split window: the leading page taking its half. */
+  .split-final {
+    opacity: var(--settle);
+  }
+  .split-zone {
+    position: absolute;
+    top: 6%;
+    right: 0.6%;
+    bottom: 1%;
+    left: 59.6%;
+    border: 0.3cqi solid var(--color-red);
+    border-radius: 0.6cqi;
+    background: color-mix(in srgb, var(--color-red) 8%, transparent);
+    opacity: var(--zone);
+  }
+  /* The page being dragged, as macOS draws a dragged row. */
+  .split-chip {
+    --d: calc(var(--drag) * var(--drag) * (3 - 2 * var(--drag)));
+    position: absolute;
+    left: calc(3% + var(--d) * 72%);
+    top: calc(51% - var(--d) * 10%);
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.45em 0.8em;
+    border-radius: 0.5em;
+    background: rgb(255 255 255 / 0.94);
+    box-shadow:
+      0 0 0 1px rgb(0 0 0 / 0.08),
+      0 0.4em 1.2em rgb(0 0 0 / 0.18);
+    color: #1d1d1f;
+    font-size: 1.6cqi;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: calc(clamp(0, var(--p) / 0.04, 1) * (1 - clamp(0, (var(--p) - 0.36) / 0.06, 1)));
+    pointer-events: none;
+  }
+
   .button {
     display: inline-flex;
     align-items: center;

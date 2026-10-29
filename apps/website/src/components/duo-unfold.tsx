@@ -1,52 +1,16 @@
-import { onCleanup, onMount } from 'solid-js'
-
 import { row } from './row'
+import { scrollScene } from './scroll-scene'
 
 /**
  * iPhone Duo opening as the page scrolls, like a book: folded, the outer screen (the iPhone layout); open, the inner
  * screen on its side (the iPad layout), twice the outer screen's size, its right half swinging out on the hinge in the
- * middle. The track's scroll sets `--p` (0 folded … 1 open) on the stage, and CSS turns that into the fold.
+ * middle — `--p` 0 folded … 1 open, from the scroll (`scrollScene`).
  *
  * Without the script, or with Reduce Motion, nothing moves: the stage shows the open phone with the folded one
  * beside it (`data-still`).
  */
 export function DuoUnfold() {
-  onMount(() => {
-    const track = document.querySelector<HTMLElement>('#duo .duo-track')
-    const stage = document.querySelector<HTMLElement>('#duo .duo-stage')
-    if (!track || !stage) return
-    const still = window.matchMedia('(prefers-reduced-motion: reduce)')
-    let frame = 0
-    const measure = () => {
-      frame = 0
-      const box = track.getBoundingClientRect()
-      const run = box.height - window.innerHeight
-      const raw = run > 0 ? -box.top / run : 1
-      // Held folded for the first stretch and open for the last, so each state can be looked at.
-      const p = Math.min(1, Math.max(0, (raw - 0.12) / 0.7))
-      stage.style.setProperty('--p', p.toFixed(4))
-    }
-    const schedule = () => {
-      if (!frame) frame = requestAnimationFrame(measure)
-    }
-    const apply = () => {
-      const moving = !still.matches
-      track.toggleAttribute('data-moving', moving)
-      stage.toggleAttribute('data-still', !moving)
-      if (moving) measure()
-      else stage.style.removeProperty('--p')
-    }
-    apply()
-    window.addEventListener('scroll', schedule, { passive: true })
-    window.addEventListener('resize', schedule)
-    still.addEventListener('change', apply)
-    onCleanup(() => {
-      cancelAnimationFrame(frame)
-      window.removeEventListener('scroll', schedule)
-      window.removeEventListener('resize', schedule)
-      still.removeEventListener('change', apply)
-    })
-  })
+  scrollScene('#duo .duo-track', '#duo .duo-stage')
 
   return (
     <section id="duo" class={`${row} grid-cols-1`}>

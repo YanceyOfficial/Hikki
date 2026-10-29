@@ -188,9 +188,12 @@ apps/website/                      the site at hikki.yancey.app (TanStack Start 
                               own Mondrian palette — not the app's tokens): src/routes/, light/dark/system theme
                               (`data-theme`, THEME_SCRIPT in src/theme.ts runs before paint), screenshots in public/shots/ as WebP, each with a -dark twin (`Shot`), made by
                               `bun run shots <captures>` (sharp; crops in shots.json; public/og.jpg is the link-card JPEG);
-                              the iPhone Duo opens like a book as the page scrolls (src/components/duo-unfold.tsx: `--p`
-                              from the scroll, still under Reduce Motion) — its open screen (duo-open) is the Duo simulator's
-                              inner screen, `--display=3` once the device is unfolded by hand (simctl can't unfold it);
+                              scroll scenes (src/components/scroll-scene.ts: `--p` from the section's scroll, CSS does
+                              the motion, the end state still under Reduce Motion): the iPhone Duo opening like a book
+                              (duo-unfold.tsx; its open screen, duo-open, is the Duo simulator's inner screen, `--display=3`
+                              once the device is unfolded by hand — simctl can't unfold it) and split view opening from a
+                              page dragged to the window's edge (split-view.tsx: two captures of one window, mac-split-solo
+                              and mac-split, HIKKI_DEBUG_NAV + HIKKI_OPEN_SPLIT);
                               /p/<record>#<key> and /shared (src/routes/p.$id.tsx, shared.*) read published pages (see Publish link);
                               the download moment is src/components/store.tsx — until APP_STORE_URL in src/site.ts is
                               set, "Coming to the App Store" is a status line in the header and the foot offers a
