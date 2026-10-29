@@ -51,7 +51,7 @@ export function Price(props: { id?: string; class?: string }) {
         <span class="expanded text-[clamp(2.5rem,4vw,3.5rem)] leading-none font-[850] tracking-[-0.02em]">
           {LAUNCH_PRICE}
         </span>
-        <s class="text-xl font-bold text-muted">
+        <s class="reveal strike-draw text-xl font-bold text-muted">
           <span class="sr-only">regular price </span>
           {PRICE}
         </s>

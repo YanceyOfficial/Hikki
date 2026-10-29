@@ -1098,6 +1098,29 @@
     }
   }
 
+  /* One-time moments (src/reveal.ts): held in their start state under `data-reveal` until `data-shown`. */
+  /* The regular price struck through: the line drawn across it, after the reading has settled in the hero. */
+  .strike-draw {
+    text-decoration: none;
+    background: linear-gradient(currentColor, currentColor) no-repeat 0 55% / 100% 0.09em;
+    transition: background-size 420ms cubic-bezier(0.22, 1, 0.36, 1) 700ms;
+  }
+  :root[data-reveal] .strike-draw:not([data-shown]) {
+    background-size: 0% 0.09em;
+  }
+  /* The link's key, the part that never reaches a server, marked as a highlighter would. */
+  .key-sweep {
+    background: linear-gradient(var(--color-yellow), var(--color-yellow)) no-repeat 0 0 / 100% 100%;
+    color: #000000;
+    transition:
+      background-size 600ms cubic-bezier(0.22, 1, 0.36, 1) 200ms,
+      color 600ms cubic-bezier(0.22, 1, 0.36, 1) 200ms;
+  }
+  :root[data-reveal] .key-sweep:not([data-shown]) {
+    background-size: 0% 100%;
+    color: inherit;
+  }
+
   /* A device screenshot sitting in its cell. */
   .shot {
     display: block;

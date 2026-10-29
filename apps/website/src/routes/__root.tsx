@@ -4,6 +4,7 @@ import type { JSX } from 'solid-js'
 import { Suspense } from 'solid-js'
 import { HydrationScript } from 'solid-js/web'
 
+import { REVEAL_SCRIPT } from '../reveal'
 import { SITE_URL } from '../site'
 import { THEME_SCRIPT } from '../theme'
 
@@ -48,6 +49,8 @@ function RootDocument(props: { children: JSX.Element }) {
       <head>
         {/* Before anything paints: the stored light/dark choice, so the page never flashes the other one. */}
         <script innerHTML={THEME_SCRIPT} />
+        {/* And the one-time moments' start state (src/reveal.ts), for the same reason. */}
+        <script innerHTML={REVEAL_SCRIPT} />
         <HydrationScript />
       </head>
       <body>

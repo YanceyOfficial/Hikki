@@ -11,10 +11,12 @@ import { row } from '../components/row'
 import { Shot } from '../components/shot'
 import { SplitView } from '../components/split-view'
 import { Price, StoreActions } from '../components/store'
+import { revealOnView } from '../reveal'
 
 export const Route = createFileRoute('/')({ component: Home })
 
 function Home() {
+  revealOnView()
   return (
     <main class="canvas">
       <Header />
@@ -346,7 +348,7 @@ function Features() {
             included. Stop Sharing takes it down.
           </p>
           <p class="border-ink mt-6 w-fit max-w-full border-2 px-4 py-3 font-mono text-sm break-all">
-            hikki.yancey.app/p/40e7d926…<span class="bg-yellow">#key-only-in-the-link</span>
+            hikki.yancey.app/p/40e7d926…<span class="reveal key-sweep">#key-only-in-the-link</span>
           </p>
           <p class="mt-3 text-sm text-muted">The highlighted part never reaches a server.</p>
           <a href="/shared" class="mt-6 inline-block font-semibold underline underline-offset-4">
