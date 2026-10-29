@@ -1,0 +1,449 @@
+/*
+ * /lab — an experiment: Hikki as a dark product page. Linked only from src/routes/lab.tsx, so nothing here reaches
+ * the rest of the site. The platform's own font, tracking that tightens as type grows, greys tuned for black, the
+ * tone (Kurenai) for the one action per screen.
+ */
+html:has(.lab) {
+  background: #000;
+  color-scheme: dark;
+}
+
+.lab {
+  --lab-ink: #f5f5f7;
+  --lab-muted: #86868b;
+  --lab-card: #1d1d1f;
+  --lab-line: #424245;
+  --lab-tone: #d7003a;
+  --lab-tone-hover: #ec1a50;
+  --lab-ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --lab-gutter: max(1rem, calc((100vw - 980px) / 2));
+
+  min-height: 100vh;
+  background: #000;
+  color: var(--lab-ink);
+  font-family:
+    -apple-system, BlinkMacSystemFont, system-ui, 'PingFang SC', 'Hiragino Sans', sans-serif;
+  font-size: 17px;
+  line-height: 1.47;
+  letter-spacing: -0.022em;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+.lab a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* The local bar: translucent, the page scrolling under it, a hairline only where it meets content. */
+.lab-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgb(22 22 23 / 0.72);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid rgb(255 255 255 / 0.12);
+}
+.lab-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  padding-inline: var(--lab-gutter);
+}
+.lab-nav-title {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: 0.011em;
+}
+.lab-nav-title span {
+  margin-left: 0.35em;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--lab-muted);
+  letter-spacing: 0;
+}
+.lab-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  font-size: 12px;
+  letter-spacing: -0.01em;
+  color: rgb(255 255 255 / 0.8);
+}
+.lab-nav-links a:not(.lab-pill):hover {
+  color: #fff;
+}
+@media (width < 34rem) {
+  .lab-nav-links a:not(.lab-pill) {
+    display: none;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .lab-nav {
+    background: #161617;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+.lab-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 980px;
+  background: var(--lab-tone);
+  color: #fff !important;
+  padding: 12px 22px;
+  font-size: 17px;
+  transition:
+    background-color 200ms var(--lab-ease),
+    transform 120ms var(--lab-ease);
+}
+.lab-pill-small {
+  padding: 4px 11px;
+  font-size: 12px;
+}
+.lab-pill:hover {
+  background: var(--lab-tone-hover);
+}
+.lab-pill:active,
+.lab-round:active,
+.lab-tab:active {
+  transform: scale(0.97);
+}
+.lab-link {
+  color: #2997ff !important;
+  font-size: 17px;
+}
+.lab-link:hover {
+  text-decoration: underline !important;
+}
+
+/* Type: tracking tightens as it grows, leading too. */
+.lab-eyebrow {
+  margin: 0 0 0.5rem;
+  font-size: clamp(17px, 1.6vw, 21px);
+  font-weight: 600;
+  letter-spacing: 0.011em;
+  color: var(--lab-ink);
+}
+.lab-display {
+  margin: 0;
+  font-size: clamp(48px, 9vw, 96px);
+  font-weight: 700;
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+}
+.lab-title {
+  margin: 0;
+  font-size: clamp(32px, 5.2vw, 56px);
+  font-weight: 700;
+  line-height: 1.07;
+  letter-spacing: -0.025em;
+}
+.lab-body {
+  margin: 1.25rem auto 0;
+  max-width: 40rem;
+  font-size: clamp(17px, 1.6vw, 21px);
+  line-height: 1.38;
+  letter-spacing: 0.011em;
+  color: var(--lab-muted);
+}
+.lab-caption {
+  margin: 1.25rem auto 0;
+  max-width: 36rem;
+  text-align: center;
+  font-size: 14px;
+  color: var(--lab-muted);
+  letter-spacing: -0.016em;
+}
+
+/* Hero: the headline over the window, which grows to its full width as the page scrolls on (`--p`). */
+.lab-hero {
+  text-align: center;
+}
+.lab-hero[data-moving] {
+  height: 190vh;
+}
+.lab-hero-sticky {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(3rem, 9vh, 6rem) var(--lab-gutter) 3rem;
+}
+.lab-hero[data-moving] .lab-hero-sticky {
+  position: sticky;
+  top: 52px;
+  height: calc(100vh - 52px);
+  box-sizing: border-box;
+  justify-content: flex-start;
+}
+.lab-hero-sub {
+  margin: 1rem 0 0;
+  font-size: clamp(17px, 1.6vw, 21px);
+  color: var(--lab-muted);
+  letter-spacing: 0.011em;
+}
+.lab-hero-stage {
+  --p: 1;
+  width: min(100%, 1200px);
+  margin-top: clamp(2rem, 6vh, 4rem);
+}
+.lab-hero-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  transform-origin: 50% 0;
+  transform: scale(calc(0.72 + 0.28 * var(--p)));
+  box-shadow: 0 40px 120px rgb(215 0 58 / calc(0.08 + 0.14 * var(--p)));
+}
+.lab-hero[data-moving] .lab-hero-img {
+  will-change: transform;
+}
+.lab-hero-stage[data-still] .lab-hero-img {
+  transform: none;
+}
+
+/* Sections: one idea per screen, centred. */
+.lab-section {
+  padding: clamp(5rem, 14vh, 10rem) var(--lab-gutter) 0;
+}
+.lab-head {
+  text-align: center;
+  margin-bottom: clamp(2.5rem, 6vh, 4rem);
+}
+
+/* Highlights: a rail of cards to swipe or step through, its edge running off the page. */
+.lab-rail {
+  display: flex;
+  gap: 20px;
+  margin: 0 calc(-1 * var(--lab-gutter));
+  padding: 0 var(--lab-gutter) 1rem;
+  list-style: none;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--lab-gutter);
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+.lab-rail::-webkit-scrollbar {
+  display: none;
+}
+.lab-card {
+  flex: 0 0 min(82vw, 400px);
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  border-radius: 28px;
+  background: var(--lab-card);
+  overflow: hidden;
+}
+.lab-card-shot {
+  aspect-ratio: 4 / 3;
+  display: grid;
+  place-items: center;
+  padding: 28px 28px 0;
+  overflow: hidden;
+}
+.lab-card-shot img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.5);
+}
+.lab-card-text {
+  margin: 0;
+  padding: 24px 28px 30px;
+  font-size: 19px;
+  line-height: 1.32;
+  color: var(--lab-muted);
+}
+.lab-card-text strong {
+  color: var(--lab-ink);
+  font-weight: 600;
+}
+.lab-rail-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 18px;
+  margin-top: 1rem;
+}
+.lab-round {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: #333336;
+  color: var(--lab-ink);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 200ms var(--lab-ease),
+    transform 120ms var(--lab-ease);
+}
+.lab-round:hover {
+  background: #424245;
+}
+
+/* The facts as figures: the value large, what it counts small above it. */
+.lab-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(14rem, 40%), 1fr));
+  gap: clamp(2.5rem, 6vw, 4rem) 2rem;
+  margin: 0;
+  text-align: center;
+}
+.lab-figure {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.35rem;
+}
+.lab-figure dt {
+  font-size: 14px;
+  color: var(--lab-muted);
+  letter-spacing: -0.016em;
+}
+.lab-figure dd {
+  margin: 0;
+  font-size: clamp(40px, 5vw, 56px);
+  font-weight: 700;
+  line-height: 1.07;
+  letter-spacing: -0.03em;
+  background: linear-gradient(180deg, #fff 30%, #a1a1a6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Words on one side, the phone on the other. */
+.lab-split {
+  display: grid;
+  gap: 3rem;
+  align-items: center;
+}
+@media (width >= 48rem) {
+  .lab-split {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.lab-split .lab-body {
+  margin-inline: 0;
+}
+.lab-split-shot {
+  justify-self: center;
+  width: min(100%, 340px);
+}
+.lab-split-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 44px;
+  border: 10px solid #1d1d1f;
+  box-shadow: 0 0 0 1px #424245;
+}
+
+/* Tabs as a segmented control, the frame showing one shot at a time. */
+.lab-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  width: fit-content;
+  margin: 0 auto 2rem;
+  padding: 4px;
+  border-radius: 980px;
+  background: var(--lab-card);
+}
+.lab-tab {
+  border: 0;
+  border-radius: 980px;
+  background: transparent;
+  color: var(--lab-muted);
+  padding: 8px 22px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    background-color 200ms var(--lab-ease),
+    color 200ms var(--lab-ease),
+    transform 120ms var(--lab-ease);
+}
+.lab-tab[aria-selected='true'] {
+  background: #f5f5f7;
+  color: #1d1d1f;
+}
+.lab-frame {
+  display: grid;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.lab-frame-img {
+  grid-area: 1 / 1;
+  width: 100%;
+  height: auto;
+  border-radius: 14px;
+  opacity: 0;
+  transition: opacity 300ms var(--lab-ease);
+}
+.lab-frame-img[data-active] {
+  opacity: 1;
+}
+.lab-wide {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.lab-wide img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 14px;
+}
+
+/* The close: the name, the price, the way out. */
+.lab-end {
+  text-align: center;
+  padding-bottom: 6rem;
+}
+.lab-end-price {
+  margin: 1rem 0 0;
+  font-size: clamp(19px, 2vw, 24px);
+  color: var(--lab-muted);
+}
+.lab-end-price s {
+  color: #6e6e73;
+}
+.lab-end-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.75rem;
+  margin-top: 2rem;
+}
+.lab-fine {
+  max-width: 40rem;
+  margin: 5rem auto 0;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--lab-line);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--lab-muted);
+  letter-spacing: -0.01em;
+}
+
+/* Sections rise into place as they arrive — once, from just below; already there under Reduce Motion. */
+.lab-reveal[data-waiting] {
+  opacity: 0;
+  transform: translateY(32px);
+  transition:
+    opacity 900ms var(--lab-ease),
+    transform 900ms var(--lab-ease);
+}
+.lab-reveal[data-waiting][data-shown] {
+  opacity: 1;
+  transform: none;
+}

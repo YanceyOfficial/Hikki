@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LabRouteImport } from './routes/lab'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as CommunityIndexRouteImport } from './routes/community.index'
 import { Route as CommunityIdRouteImport } from './routes/community.$id'
@@ -20,6 +21,11 @@ import { Route as SharedIdRouteImport } from './routes/shared.$id'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabRoute = LabRouteImport.update({
+  id: '/lab',
+  path: '/lab',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -55,6 +61,7 @@ const SharedIdRoute = SharedIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/lab': typeof LabRoute
   '/privacy': typeof PrivacyRoute
   '/community/$id': typeof CommunityIdRoute
   '/p/$id': typeof PIdRoute
@@ -64,6 +71,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/lab': typeof LabRoute
   '/privacy': typeof PrivacyRoute
   '/community/$id': typeof CommunityIdRoute
   '/p/$id': typeof PIdRoute
@@ -74,6 +82,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/lab': typeof LabRoute
   '/privacy': typeof PrivacyRoute
   '/community/$id': typeof CommunityIdRoute
   '/p/$id': typeof PIdRoute
@@ -85,6 +94,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/lab'
     | '/privacy'
     | '/community/$id'
     | '/p/$id'
@@ -94,6 +104,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/lab'
     | '/privacy'
     | '/community/$id'
     | '/p/$id'
@@ -103,6 +114,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/lab'
     | '/privacy'
     | '/community/$id'
     | '/p/$id'
@@ -113,6 +125,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LabRoute: typeof LabRoute
   PrivacyRoute: typeof PrivacyRoute
   CommunityIdRoute: typeof CommunityIdRoute
   PIdRoute: typeof PIdRoute
@@ -128,6 +141,13 @@ declare module '@tanstack/solid-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lab': {
+      id: '/lab'
+      path: '/lab'
+      fullPath: '/lab'
+      preLoaderRoute: typeof LabRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -177,6 +197,7 @@ declare module '@tanstack/solid-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LabRoute: LabRoute,
   PrivacyRoute: PrivacyRoute,
   CommunityIdRoute: CommunityIdRoute,
   PIdRoute: PIdRoute,

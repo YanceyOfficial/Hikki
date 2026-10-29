@@ -199,7 +199,9 @@ apps/website/                      the site at hikki.yancey.app (TanStack Start 
                               set, "Coming to the App Store" is a status line in the header and the foot offers a
                               mailto (CONTACT_EMAIL) and the GitHub releases; set, both become the download link;
                               /privacy (src/routes/privacy.tsx) is the privacy policy, written from what the app
-                              does — change it when storage, AI, the BFF or embeds change what leaves the device
+                              does — change it when storage, AI, the BFF or embeds change what leaves the device;
+                              /lab (src/routes/lab.tsx, its own src/lab.css) is an experiment — a dark product-page take,
+                              unlinked and noindex
 packages/                     shared web packages (bun workspaces `apps/*`, `packages/*`): editor extensions and code
                               more than one app uses, each its own package.json, consumed from source
 packages/excalidraw/          @hikki/excalidraw: Excalidraw 0.18.1 (pinned) for drawings — src/scene.ts (stored data,
