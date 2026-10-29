@@ -1170,7 +1170,12 @@
   }
 
   /* iPhone Duo opening as the page scrolls (DuoUnfold): `--p` 0 is folded, 1 open. The track is the scroll it takes;
-     the stage stays in view meanwhile. */
+     the stage stays in view meanwhile. Folded, the device's transformed box (scaled, moved right) runs past the
+     screen's edge — only its empty half does — so the track clips it; `clip` makes no scroll container, so the
+     sticky stage still sticks. */
+  .duo-track {
+    overflow-x: clip;
+  }
   .duo-track[data-moving] {
     height: 280vh;
   }
