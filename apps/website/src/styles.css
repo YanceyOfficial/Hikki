@@ -1098,6 +1098,19 @@
     }
   }
 
+  /* The AI section's two review windows in one place: the chosen one fades in over the other. */
+  .review-stack {
+    display: grid;
+  }
+  .review-stack > * {
+    grid-area: 1 / 1;
+    opacity: 0;
+    transition: opacity 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .review-stack > [data-active] {
+    opacity: 1;
+  }
+
   /* One-time moments (src/reveal.ts): held in their start state under `data-reveal` until `data-shown`. */
   /* The regular price struck through: the line drawn across it, after the reading has settled in the hero. */
   .strike-draw {

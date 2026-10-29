@@ -168,7 +168,7 @@ export function AskAI() {
   )
 }
 
-/** One edit, two ways to review it: a switch between the two windows. */
+/** One edit, two ways to review it: a switch between the two windows, stacked and crossfaded. */
 function ReviewStyles() {
   const [style, setStyle] = createSignal(REVIEW_STYLES[0].id)
   const current = () => REVIEW_STYLES.find((item) => item.id === style()) ?? REVIEW_STYLES[0]
@@ -187,19 +187,25 @@ function ReviewStyles() {
           )}
         </For>
       </div>
-      <For each={REVIEW_STYLES}>
-        {(item) => (
-          <div hidden={style() !== item.id}>
-            <Shot
-              name={`review-${item.id}`}
-              alt={item.alt}
-              width={2200}
-              height={1369}
-              class="w-full rounded-[12px]"
-            />
-          </div>
-        )}
-      </For>
+      <div class="review-stack">
+        <For each={REVIEW_STYLES}>
+          {(item) => (
+            <div
+              data-active={style() === item.id ? '' : undefined}
+              aria-hidden={style() !== item.id}
+              inert={style() !== item.id}
+            >
+              <Shot
+                name={`review-${item.id}`}
+                alt={item.alt}
+                width={2200}
+                height={1369}
+                class="w-full rounded-[12px]"
+              />
+            </div>
+          )}
+        </For>
+      </div>
       <figcaption class="text-caption text-muted">
         <strong class="text-ink">{current().label}.</strong> {current().text} Settings → AI picks
         the style.
