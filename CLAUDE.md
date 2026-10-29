@@ -148,7 +148,7 @@ cd apps/bff && bun run dev      # the BFF locally (needs UNSPLASH_ACCESS_KEY); t
 ```
 design/tokens.json            design tokens (single source)
 PRODUCT.md, DESIGN.md         impeccable's records: product truth (platform ios; apps/website/PRODUCT.md is the site's) and the
-                              visual system in words ("The Study Desk"); .impeccable/ holds its sidecar and critique snapshots
+                              visual system in words ("The Study Desk")
 design/icon/                  app icon (Hi✦): layered SVGs for Icon Composer (generate.mjs → hi-star/, --all for alternatives)
 design/logo/                  wordmark + lockups (generate.mjs: text → outlines with fontkit, sparkle i-dot)
 scripts/gen-tokens.mjs        tokens → Swift + Tailwind theme
