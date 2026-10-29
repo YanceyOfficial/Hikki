@@ -13,7 +13,7 @@ public struct PublishedLink: Codable, Equatable, Sendable {
     public var publishedAt: Date
     /// When the record was last written (an update).
     public var updatedAt: Date
-    /// Listed in Hikki Shared (stored readable, with its tags) rather than only for people with the link.
+    /// Listed in Hikki Community (stored readable, with its tags) rather than only for people with the link.
     public var listed: Bool
     public var tags: [String]
     /// The name shown as the page's author; empty for none.
@@ -50,10 +50,10 @@ public struct PublishedLink: Codable, Equatable, Sendable {
 
     public var options: PublishOptions { PublishOptions(listed: listed, tags: tags, author: author) }
 
-    /// The link itself: a listed page at `/shared/<record>`; otherwise the private reader with the record's name and
+    /// The link itself: a listed page at `/community/<record>`; otherwise the private reader with the record's name and
     /// the key as the fragment.
     public func url(site: URL) -> URL {
-        if listed { return site.appending(path: "shared/\(recordName)") }
+        if listed { return site.appending(path: "community/\(recordName)") }
         let page = site.appending(path: "p/\(recordName)")
         var components = URLComponents(url: page, resolvingAgainstBaseURL: false)
         components?.fragment = key

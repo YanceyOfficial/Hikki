@@ -194,7 +194,7 @@ apps/website/                      the site at hikki.yancey.app (TanStack Start 
                               once the device is unfolded by hand — simctl can't unfold it) and split view opening from a
                               page dragged to the window's edge (split-view.tsx: two captures of one window, mac-split-solo
                               and mac-split, HIKKI_DEBUG_NAV + HIKKI_OPEN_SPLIT);
-                              /p/<record>#<key> and /shared (src/routes/p.$id.tsx, shared.*) read published pages (see Publish link);
+                              /p/<record>#<key> and /community (src/routes/p.$id.tsx, community.*; /shared/* redirects there) read published pages (see Publish link);
                               the download moment is src/components/store.tsx — until APP_STORE_URL in src/site.ts is
                               set, "Coming to the App Store" is a status line in the header and the foot offers a
                               mailto (CONTACT_EMAIL) and the GitHub releases; set, both become the download link;
@@ -1088,8 +1088,8 @@ HikkiUITests/                 XCUITest flows
   **anyone with the link** — the page as the editor exports it (HTML with its attachments as `assets/<name>`,
   `PageExport.relinkAssets`) and its attachments sealed with AES-GCM under a 256-bit key made for the link
   (`PublishedContent`, CryptoKit), the key in the link's fragment, `https://hikki.yancey.app/p/<record>#<key>`, which
-  browsers never send, so iCloud and the site hold only ciphertext — or **listed in Hikki Shared**, the site's public
-  list (`/shared/<record>`): stored readable, with the fields the list queries — `listed` = 1, `title`, `icon`,
+  browsers never send, so iCloud and the site hold only ciphertext — or **listed in Hikki Community** (Hikki Shared until
+  2026-10-29; the code keeps `shared`), the site's public list (`/community/<record>`): stored readable, with the fields the list queries — `listed` = 1, `title`, `icon`,
   `excerpt`, `tags`, `author`, `terms` (`PublishSearch`: folded words, CJK characters and pairs, matched with
   `LIST_CONTAINS`; the site's `searchTerms` / `queryTerms` agree through `design/fixtures/publish.json`) and
   `publishedAt` — all emptied when a page goes back to link-only. Tags (`PublishTags`, 12 preset ids, up to 3; a listed
@@ -1112,9 +1112,9 @@ HikkiUITests/                 XCUITest flows
   `AppModel.saveSharedPage` (`Hikki/Sources/SharedImport.swift`: `PagePublisher.fetchShared`, the HTML
   and its attachments into a temporary folder, File → Import's path, then the cover; `sharedPageNotFound`,
   `sharedPageCannotOpen`, `sharedImportFailed`). The site's frame for all of it is its own, not the marketing
-  site's (`apps/website/src/components/shared-shell.tsx`: the logo labelled Shared, the main site's sections, Apple's
-  App Store badge from `apps/website/public/badges/`, the theme switch): `/shared` (`apps/website/src/routes/shared.index.tsx`:
-  search, tag chips, cards, Show more by CloudKit's continuation marker), `/shared/$id` and `/p/$id`, both
+  site's (`apps/website/src/components/shared-shell.tsx`: the logo labelled Community, the main site's sections, Apple's
+  App Store badge from `apps/website/public/badges/`, the theme switch): `/community` (`apps/website/src/routes/community.index.tsx`:
+  search, tag chips, cards, Show more by CloudKit's continuation marker), `/community/$id` and `/p/$id`, both
   `apps/website/src/components/shared-reader.tsx` — the record read by name through CloudKit's web service
   (`VITE_CLOUDKIT_TOKEN`, a read-only API token; `VITE_CLOUDKIT_ENV` = development until the schema is deployed;
   requests are simple POSTs with no headers, which CloudKit's CORS lets through), opened in the browser (WebCrypto
@@ -1126,7 +1126,7 @@ HikkiUITests/                 XCUITest flows
   schema to production in the Dashboard (indexes: `listed`, `tags`, `terms` queryable, `publishedAt` queryable and
   sortable) and set the site's token. Not yet: Report / Block records, moderation of the list — so the list is closed
   for v1 (`PublishOptions.listingOpen` false, ISSUE-284): the sheet offers the link alone (`allowsListing`) and
-  `publishLink` sends every page link-only; the site's `SHARED_LIST_OPEN` (`apps/website/src/site.ts`) keeps /shared to a
+  `publishLink` sends every page link-only; the site's `SHARED_LIST_OPEN` (`apps/website/src/site.ts`) keeps /community to a
   note and drops its Browse links (the listing fields aren't in the CloudKit schema until a page is listed). Save to
   Hikki and Stop Sharing show a progress toast while they run (`Toasts.progress`, ToastView's `progress` kind).
 - **Lock page** (Page menu ⇧⌘L, the page ⋯ menu, the sidebar context menu): `lockedAt` on the page

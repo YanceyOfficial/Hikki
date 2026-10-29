@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// "Publish this page" (page ⋯ → Publish…, and Sharing Settings… for a published one): how it is shared — only with
-/// people who have the link (stored encrypted, the key in the link alone) or listed in Hikki Shared, the website's
+/// people who have the link (stored encrypted, the key in the link alone) or listed in Hikki Community, the website's
 /// public list (stored readable, found by its tags and words) — its tags (a listed page is filed under them), the name
 /// shown as its author, what goes with it and what stays private, and a check that the page holds nothing private.
 /// Publish is open once that check is made and a listed page has a tag. Without `allowsListing` (the list closed) the
@@ -23,7 +23,7 @@ public struct PublishSheet: View {
     /// Changing a published page's settings: the confirmation reads Save.
     let isUpdate: Bool
     let isPublishing: Bool
-    /// Whether Hikki Shared is offered beside the link.
+    /// Whether Hikki Community is offered beside the link.
     let allowsListing: Bool
     @Binding var listed: Bool
     @Binding var chosenTags: Set<String>

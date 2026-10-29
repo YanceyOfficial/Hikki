@@ -255,8 +255,8 @@ describe('formulas', () => {
 
 describe('sharedTitle', () => {
   it('names the tab after the page, untitled when blank', () => {
-    expect(sharedTitle('N5 文法')).toBe('N5 文法 · Hikki Shared')
-    expect(sharedTitle('  ')).toBe('Untitled · Hikki Shared')
+    expect(sharedTitle('N5 文法')).toBe('N5 文法 · Hikki Community')
+    expect(sharedTitle('  ')).toBe('Untitled · Hikki Community')
   })
 })
 

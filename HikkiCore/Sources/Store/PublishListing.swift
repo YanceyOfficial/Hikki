@@ -1,7 +1,7 @@
 import Foundation
 
 /// How a page is published (the `PublishSheet`'s choice): only to people with the link — sealed, the key in the link
-/// — or listed in Hikki Shared, the website's public list (`/shared`): stored readable, found by its tags and words.
+/// — or listed in Hikki Community, the website's public list (`/community`): stored readable, found by its tags and words.
 public struct PublishOptions: Codable, Equatable, Sendable {
     public var listed: Bool
     /// `PublishTags.all` ids, at most `PublishTags.maxPerPage`; a listed page has at least one.
@@ -18,7 +18,7 @@ public struct PublishOptions: Codable, Equatable, Sendable {
     /// The longest author name kept.
     public static let maxAuthorLength = 60
 
-    /// Whether a page may be listed in Hikki Shared. Off for v1: the list has no reporting, blocking or moderation yet
+    /// Whether a page may be listed in Hikki Community. Off for v1: the list has no reporting, blocking or moderation yet
     /// (ISSUE-279–283), so the publish sheet offers the link alone and every publish goes out link-only.
     // TODO(ISSUE-284): turn on once the list is moderated.
     public static let listingOpen = false

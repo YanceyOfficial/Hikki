@@ -3,7 +3,7 @@ import { createFileRoute } from '@tanstack/solid-router'
 import { SharedReader } from '../components/shared-reader'
 import { reportLink, SharedShell } from '../components/shared-shell'
 
-const title = 'Hikki Shared'
+const title = 'Hikki Community'
 
 /**
  * A page shared by link: the record named in the address, opened in the browser with the key from its fragment

@@ -16,9 +16,9 @@ const SITE_LINKS = [
 ]
 
 /**
- * Hikki Shared's own frame (`/shared`, `/shared/<record>`, `/p/<record>`) — not the marketing site's canvas: a page
+ * Hikki Community's own frame (`/community`, `/community/<record>`, `/p/<record>`) — not the marketing site's canvas: a page
  * someone published reads like a page in Hikki, on the app's paper and ink (`.shared` in styles.css), under a quiet
- * bar — Hikki Shared's mark (the logo labelled Shared, to the list), the main site's sections, Apple's App Store
+ * bar — Hikki Community's mark (the logo labelled Community, to the list), the main site's sections, Apple's App Store
  * badge, the appearance switch — and a short foot.
  */
 export function SharedShell(props: { children: JSX.Element; report?: string }) {
@@ -26,16 +26,16 @@ export function SharedShell(props: { children: JSX.Element; report?: string }) {
     <div class="shared">
       <header class="shared-bar">
         <div class="shared-bar-inner">
-          {/* Hikki Shared's own mark: the app's logo with a "Shared" label at its top right — home for this frame. */}
+          {/* Hikki Community's own mark: the app's logo with a "Community" label at its top right — home for this frame. */}
           <Link
             to={SHARED_LIST_OPEN ? '/shared' : '/'}
             class="shared-brand"
-            aria-label="Hikki Shared"
+            aria-label="Hikki Community"
           >
             <img src="/icon.png" alt="" class="shared-brand-icon" />
             <span class="shared-brand-mark">
               <Wordmark class="shared-brand-word" />
-              <span class="shared-brand-label">Shared</span>
+              <span class="shared-brand-label">Community</span>
             </span>
           </Link>
           {/* Hikki's own site, a section at a time — the way out of this frame. */}

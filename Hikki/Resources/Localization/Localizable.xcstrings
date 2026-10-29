@@ -9527,13 +9527,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Listed in Hikki Shared %@"
+            "value": "Listed in Hikki Community %@"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已列入 Hikki Shared %@"
+            "value": "已列入 Hikki 社区 %@"
           }
         }
       }
@@ -10156,13 +10156,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "List in Hikki Shared"
+            "value": "List in Hikki Community"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "列入 Hikki Shared"
+            "value": "列入 Hikki 社区"
           }
         }
       }
@@ -10173,13 +10173,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Public on the Hikki Shared list, found by its tags and words. Stored readable, not encrypted."
+            "value": "Public on the Hikki Community list, found by its tags and words. Stored readable, not encrypted."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "公开在 Hikki Shared 列表中，可按标签和内容搜到。以明文存放，不加密。"
+            "value": "公开在 Hikki 社区列表中，可按标签和内容搜到。以明文存放，不加密。"
           }
         }
       }
@@ -10785,13 +10785,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Listed in Hikki Shared. Anyone can find it."
+            "value": "Listed in Hikki Community. Anyone can find it."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已列入 Hikki Shared，任何人都能找到。"
+            "value": "已列入 Hikki 社区，任何人都能找到。"
           }
         }
       }
@@ -13080,7 +13080,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "A copy of the page from Hikki Shared goes into your workspace as a new page."
+            "value": "A copy of the page from Hikki Community goes into your workspace as a new page."
           }
         },
         "zh-Hans": {

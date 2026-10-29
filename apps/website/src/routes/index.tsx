@@ -338,36 +338,79 @@ function Features() {
           alt: 'A weekly review page with date chips such as “Tomorrow 3:00 PM” and “Monday”, each with a bell for its reminder.'
         }}
       />
-      <article class="cell p-6 md:col-span-6 md:p-8 lg:col-span-12 lg:grid lg:grid-cols-12 lg:items-center lg:gap-12">
-        <div class="lg:col-span-7">
-          <h3 class="expanded text-xl font-[800]">Share a page</h3>
-          <p class="mt-3 max-w-[34rem] leading-relaxed text-muted">
-            Share makes a read-only link to a page. It is encrypted on your device and the key
-            travels only in the link, so whoever you send it to reads the page in any browser and
-            can save a copy into their own Hikki. Nobody without the link can read it, Apple
-            included. Stop Sharing takes it down.
-          </p>
-          <p class="border-ink mt-6 w-fit max-w-full border-2 px-4 py-3 font-mono text-sm break-all">
-            hikki.yancey.app/p/40e7d926…<span class="reveal key-sweep">#key-only-in-the-link</span>
-          </p>
-          <p class="mt-3 text-sm text-muted">The highlighted part never reaches a server.</p>
-          <a href="/shared" class="mt-6 inline-block font-semibold underline underline-offset-4">
-            Hikki Shared →
-          </a>
+      <article class="cell flex flex-col p-6 md:col-span-6 md:p-8 lg:col-span-5 lg:p-10">
+        <h3 class="expanded text-[clamp(1.5rem,2.4vw,2rem)] leading-[1.1] font-[850]">
+          Share a page
+        </h3>
+        <p class="mt-4 max-w-[34rem] text-lg leading-relaxed text-muted">
+          Share makes a read-only link to a page. Whoever you send it to reads it in any browser and
+          can save a copy into their own Hikki. Nobody without the link can read it, Apple included.
+          Stop Sharing takes it down.
+        </p>
+        <div
+          class="link-anatomy mt-8"
+          role="img"
+          aria-label="A shared link: the address tells the server which page; the key after the # never leaves the browser."
+        >
+          <div class="link-part">
+            <span class="link-text">hikki.yancey.app/p/40e7d926…</span>
+            <span class="link-note">Sent to the server: which page</span>
+          </div>
+          <div class="link-part">
+            <span class="link-text">
+              <span class="reveal key-sweep">#key-only-in-the-link</span>
+            </span>
+            <span class="link-note">Never sent: the key</span>
+          </div>
         </div>
-        <div class="mt-8 lg:col-span-5 lg:mt-0">
-          <Shot
-            name="share"
-            alt="The Share sheet: “Anyone with the link” chosen, optional tags, the author's name, and what stays private."
-            width={854}
-            height={1326}
-            class="border-ink mx-auto w-full max-w-[22rem] rounded-[10px] border-2"
-          />
-        </div>
+        <a
+          href="/community"
+          class="mt-auto inline-block pt-8 font-semibold underline underline-offset-4"
+        >
+          Hikki Community →
+        </a>
       </article>
+      <ol class="cell bg-blue m-0 flex list-none flex-col gap-8 p-6 md:col-span-3 md:p-8 lg:col-span-3 lg:p-10">
+        <For each={SHARE_STEPS}>
+          {(step, index) => (
+            <li class="share-step">
+              <span class="share-step-number" aria-hidden="true">
+                {index() + 1}
+              </span>
+              <h4 class="expanded mt-4 text-lg font-[800]">{step.title}</h4>
+              <p class="mt-2 leading-relaxed">{step.text}</p>
+            </li>
+          )}
+        </For>
+      </ol>
+      <div class="cell flex items-center justify-center p-6 md:col-span-3 md:p-8 lg:col-span-4">
+        <Shot
+          name="share"
+          alt="The Share sheet: “Anyone with the link” chosen, optional tags, the author's name, and what stays private."
+          width={854}
+          height={1326}
+          class="border-ink w-full max-w-[22rem] rounded-[10px] border-2"
+        />
+      </div>
     </section>
   )
 }
+
+/** What happens to a shared page, as `PublishedContent` and the reader do it. */
+const SHARE_STEPS = [
+  {
+    title: 'Sealed on your device',
+    text: 'The page and its pictures are encrypted with a key made for this link alone.'
+  },
+  {
+    title: 'iCloud keeps ciphertext',
+    text: 'The sealed copy waits in iCloud. Without the key it reads as noise, to Apple too.'
+  },
+  {
+    title: 'Opened in their browser',
+    text: 'Their browser takes the key from the link and opens the page, right there.'
+  }
+]
 
 type FeatureShot = { name: string; width: number; height: number; alt: string }
 

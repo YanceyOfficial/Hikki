@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// What a publish ends on (and the page ⋯ → Published → Show Link…): the page is published — its link in a field with
-/// Copy, how it is shared (listed in Hikki Shared, or only with the link), its tags and author, that the link shows the
+/// Copy, how it is shared (listed in Hikki Community, or only with the link), its tags and author, that the link shows the
 /// page as published until it is updated — then Open in Browser and Done.
 public struct PublishedSheet: View {
     let link: String
@@ -103,7 +103,7 @@ public struct PublishedSheet: View {
 
 #Preview("Listed") {
     PublishedSheet(
-        link: "https://hikki.yancey.app/shared/2164cc13-79da-4b22-8cc0-bb706bc33c12", listed: true, tags: ["Study", "Languages"],
+        link: "https://hikki.yancey.app/community/2164cc13-79da-4b22-8cc0-bb706bc33c12", listed: true, tags: ["Study", "Languages"],
         author: "Yancey",
         onCopy: {}, onOpen: {}, onDone: {})
 }

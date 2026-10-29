@@ -6,7 +6,7 @@ import Foundation
 /// each as a `CKAsset` — made by the signed-in iCloud account, which alone may change or delete it (the public
 /// database's default roles: the world reads, signed-in users create, the creator writes). Two ways (`PublishOptions`):
 /// only for people with the link — the payload and files sealed under the link's key (`PublishedContent`), nothing
-/// readable on the record — or listed in Hikki Shared — the payload and files as they are, and the fields the
+/// readable on the record — or listed in Hikki Community — the payload and files as they are, and the fields the
 /// website's list queries: `listed` = 1, `title`, `icon`, `excerpt`, `tags`, `author`, `terms` (`PublishSearch`) and
 /// `publishedAt`. A page made link-only again has those fields emptied. The site reads a record by name (and lists the
 /// listed ones); the app reads one back only to save a copy (`fetchShared`). Limits: `maxBytes` for a page with its

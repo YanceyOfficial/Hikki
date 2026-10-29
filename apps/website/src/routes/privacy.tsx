@@ -148,7 +148,7 @@ function Privacy() {
                   database of Hikki’s iCloud container, where anyone can read records. Shared with{' '}
                   <em>anyone with the link</em>, the copy is encrypted on your device first with a
                   key that exists only in the link, so nobody without the link can read it, Apple
-                  and Hikki’s maker included. <em>Listed in Hikki Shared</em>, it is stored as it
+                  and Hikki’s maker included. <em>Listed in Hikki Community</em>, it is stored as it
                   is, not encrypted, so the site can list it and anyone can find and read it there.
                   Your Apple Account and email are never shown on it. Comments, history and AI chats
                   never go along. Stop Sharing deletes the copy. Saving a shared page into Hikki

@@ -3,9 +3,9 @@ import HikkiUI
 import SwiftUI
 
 /// Publishing a page (page ⋯ → Publish…; ISSUE-224): the page as the editor exports it (HTML, its attachments) put in
-/// the container's public database by `PagePublisher` — sealed for people with the link, or listed in Hikki Shared
+/// the container's public database by `PagePublisher` — sealed for people with the link, or listed in Hikki Community
 /// with its tags (`PublishOptions`) — the link kept in the workspace folder (`PublishedLinks`), the site's readers at
-/// `/p/<record>#<key>` and `/shared/<record>`. Publishing asks first (the `PublishSheet`: how, the tags, a check that
+/// `/p/<record>#<key>` and `/community/<record>`. Publishing asks first (the `PublishSheet`: how, the tags, a check that
 /// the page holds nothing private) and ends on the `PublishedSheet` (the link, Copy, Open in Browser); Update Page goes
 /// up at once and shows it again; Unpublish asks and takes the record down.
 extension AppModel {

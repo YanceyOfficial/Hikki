@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as CommunityIndexRouteImport } from './routes/community.index'
+import { Route as CommunityIdRouteImport } from './routes/community.$id'
 import { Route as PIdRouteImport } from './routes/p.$id'
 import { Route as SharedIndexRouteImport } from './routes/shared.index'
 import { Route as SharedIdRouteImport } from './routes/shared.$id'
@@ -23,6 +25,16 @@ const IndexRoute = IndexRouteImport.update({
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CommunityIndexRoute = CommunityIndexRouteImport.update({
+  id: '/community/',
+  path: '/community/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CommunityIdRoute = CommunityIdRouteImport.update({
+  id: '/community/$id',
+  path: '/community/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PIdRoute = PIdRouteImport.update({
@@ -44,38 +56,68 @@ const SharedIdRoute = SharedIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/privacy': typeof PrivacyRoute
+  '/community/$id': typeof CommunityIdRoute
   '/p/$id': typeof PIdRoute
   '/shared/$id': typeof SharedIdRoute
+  '/community/': typeof CommunityIndexRoute
   '/shared/': typeof SharedIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/privacy': typeof PrivacyRoute
+  '/community/$id': typeof CommunityIdRoute
   '/p/$id': typeof PIdRoute
   '/shared/$id': typeof SharedIdRoute
+  '/community': typeof CommunityIndexRoute
   '/shared': typeof SharedIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/privacy': typeof PrivacyRoute
+  '/community/$id': typeof CommunityIdRoute
   '/p/$id': typeof PIdRoute
   '/shared/$id': typeof SharedIdRoute
+  '/community/': typeof CommunityIndexRoute
   '/shared/': typeof SharedIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/privacy' | '/p/$id' | '/shared/$id' | '/shared/'
+  fullPaths:
+    | '/'
+    | '/privacy'
+    | '/community/$id'
+    | '/p/$id'
+    | '/shared/$id'
+    | '/community/'
+    | '/shared/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/privacy' | '/p/$id' | '/shared/$id' | '/shared'
-  id: '__root__' | '/' | '/privacy' | '/p/$id' | '/shared/$id' | '/shared/'
+  to:
+    | '/'
+    | '/privacy'
+    | '/community/$id'
+    | '/p/$id'
+    | '/shared/$id'
+    | '/community'
+    | '/shared'
+  id:
+    | '__root__'
+    | '/'
+    | '/privacy'
+    | '/community/$id'
+    | '/p/$id'
+    | '/shared/$id'
+    | '/community/'
+    | '/shared/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   PrivacyRoute: typeof PrivacyRoute
+  CommunityIdRoute: typeof CommunityIdRoute
   PIdRoute: typeof PIdRoute
   SharedIdRoute: typeof SharedIdRoute
+  CommunityIndexRoute: typeof CommunityIndexRoute
   SharedIndexRoute: typeof SharedIndexRoute
 }
 
@@ -93,6 +135,20 @@ declare module '@tanstack/solid-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/community/': {
+      id: '/community/'
+      path: '/community'
+      fullPath: '/community/'
+      preLoaderRoute: typeof CommunityIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/community/$id': {
+      id: '/community/$id'
+      path: '/community/$id'
+      fullPath: '/community/$id'
+      preLoaderRoute: typeof CommunityIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/p/$id': {
@@ -122,8 +178,10 @@ declare module '@tanstack/solid-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   PrivacyRoute: PrivacyRoute,
+  CommunityIdRoute: CommunityIdRoute,
   PIdRoute: PIdRoute,
   SharedIdRoute: SharedIdRoute,
+  CommunityIndexRoute: CommunityIndexRoute,
   SharedIndexRoute: SharedIndexRoute,
 }
 export const routeTree = rootRouteImport

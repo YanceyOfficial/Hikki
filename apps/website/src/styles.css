@@ -131,7 +131,7 @@
   }
 
   /*
-   * Hikki Shared (/shared, /shared/<record>, /p/<record>): its own frame, not the canvas — a page someone published
+   * Hikki Community (/community, /community/<record>, /p/<record>): its own frame, not the canvas — a page someone published
    * reads like a page in Hikki, on the app's paper and ink (DESIGN.md: "The Study Desk") with its red seal.
    */
   .shared {
@@ -1132,6 +1132,94 @@
   :root[data-reveal] .key-sweep:not([data-shown]) {
     background-size: 0% 100%;
     color: inherit;
+  }
+
+  /* The header's way into Hikki Community: a red cell, its words set like a heading, reversing on hover. */
+  .community-cell {
+    font-weight: 800;
+    font-stretch: 125%;
+    font-size: 1.05rem;
+    text-decoration: none;
+    transition:
+      background-color 150ms ease-out,
+      color 150ms ease-out;
+  }
+  .community-cell:hover {
+    background: var(--color-ink);
+    color: var(--color-paper);
+  }
+  .community-cell span {
+    transition: transform 150ms ease-out;
+  }
+  .community-cell:hover span {
+    transform: translateX(0.2em);
+  }
+
+  /* A shared link taken apart: the address, which the server sees, and the key after the #, which it never does. */
+  .link-anatomy {
+    display: flex;
+    flex-wrap: wrap;
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+  }
+  .link-part {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .link-text {
+    border-block: 2px solid var(--color-ink);
+    padding: 0.75rem 0;
+    word-break: break-all;
+  }
+  .link-part:first-child .link-text {
+    border-left: 2px solid var(--color-ink);
+    padding-left: 1rem;
+  }
+  .link-part:last-child .link-text {
+    border-right: 2px solid var(--color-ink);
+    padding-right: 1rem;
+  }
+  /* Under each part, a bracket and what it carries. */
+  .link-note {
+    margin-top: 0.5rem;
+    border-top: 2px solid currentColor;
+    padding-top: 0.4rem;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-muted);
+  }
+  .link-part:first-child .link-note {
+    margin-right: 0.75rem;
+  }
+  .link-part:last-child .link-note {
+    color: var(--color-ink);
+    border-color: var(--color-yellow);
+  }
+  /* Too narrow for the link on one line: the two parts stack, each its own box. */
+  @media (width < 32rem) {
+    .link-anatomy {
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .link-part .link-text {
+      border: 2px solid var(--color-ink);
+      padding-inline: 1rem;
+    }
+    .link-part:first-child .link-note {
+      margin-right: 0;
+    }
+  }
+  /* A step of what happens to a shared page: its number in a white square, as the canvas's lines draw it. */
+  .share-step-number {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 3px solid currentColor;
+    font-weight: 850;
+    font-stretch: 125%;
   }
 
   /* A device screenshot sitting in its cell. */

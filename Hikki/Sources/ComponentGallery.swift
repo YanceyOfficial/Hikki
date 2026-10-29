@@ -204,7 +204,7 @@
                         }
                         Section("PublishedSheet") {
                             PublishedSheet(
-                                link: "https://hikki.yancey.app/shared/2164cc13", listed: true, tags: ["Travel"], author: "Yancey",
+                                link: "https://hikki.yancey.app/community/2164cc13", listed: true, tags: ["Travel"], author: "Yancey",
                                 onCopy: {}, onOpen: {}, onDone: {}
                             )
                             .listRowInsets(EdgeInsets())

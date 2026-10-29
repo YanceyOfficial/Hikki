@@ -2,8 +2,8 @@
  * A published page (the app's page ⋯ → Publish…): one `PublishedPage` record in the app's CloudKit public database,
  * holding the page as HTML and its attachments. Published for people with the link, both are sealed with AES-GCM
  * under a key that travels only in the link's fragment (`/p/<record>#<key>`) — a browser never sends the fragment,
- * so neither iCloud nor this site can read the page; the reader opens it in the browser. Listed in Hikki Shared
- * (`/shared`, `/shared/<record>`), they are stored as they are, with the fields the list asks for: `listed` = 1,
+ * so neither iCloud nor this site can read the page; the reader opens it in the browser. Listed in Hikki Community
+ * (`/community`, `/community/<record>`), they are stored as they are, with the fields the list asks for: `listed` = 1,
  * `title`, `icon`, `excerpt`, `tags`, `author`, `terms` and `publishedAt`. Records are read through CloudKit's web service with
  * the site's API token (anonymous, read-only); the HTML is reduced to a safe allowlist before it is shown.
  */
@@ -568,7 +568,7 @@ export function renderMath(html: string, katex: KaTeX): string {
 }
 
 /** A shared page's tab: its title, then the place. */
-export const sharedTitle = (title: string) => `${title.trim() || 'Untitled'} · Hikki Shared`
+export const sharedTitle = (title: string) => `${title.trim() || 'Untitled'} · Hikki Community`
 
 /** Names the browser's tab after the page, once it has been read. */
 export function nameTab(title: string) {

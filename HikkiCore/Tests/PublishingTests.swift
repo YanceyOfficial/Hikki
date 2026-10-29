@@ -125,7 +125,7 @@ struct PublishingTests {
         #expect(PublishedContent.mediaType(forExtension: "xyz") == "application/octet-stream")
     }
 
-    // MARK: Listed pages (Hikki Shared)
+    // MARK: Listed pages (Hikki Community)
 
     private func fixture() throws -> [String: JSONValue] {
         let url = URL(filePath: #filePath).deletingLastPathComponent().appending(path: "../../design/fixtures/publish.json")
@@ -238,7 +238,7 @@ struct PublishingTests {
         let opened = try PagePublisher.open(listed: true, key: nil, payload: listed.payload, files: [Data([9, 8, 7])])
         #expect(opened.payload.title == "Grammar" && opened.files.first?.name == "a.png")
         let site = URL(string: "https://hikki.yancey.app")!
-        #expect(listed.link.url(site: site).absoluteString == "https://hikki.yancey.app/shared/\(listed.link.recordName)")
+        #expect(listed.link.url(site: site).absoluteString == "https://hikki.yancey.app/community/\(listed.link.recordName)")
         // Made link-only again: the same record and key, sealed once more.
         let sealed = try PagePublisher.prepare(
             payload: payload, assets: [], existing: listed.link, scratch: root.appending(path: "s2"), now: Date(timeIntervalSince1970: 20))

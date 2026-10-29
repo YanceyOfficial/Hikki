@@ -52,7 +52,7 @@ const readPayload = (bytes: ArrayBuffer) =>
 /**
  * A published page, read in the browser after the frame is up: the record fetched by its name; a listed page's
  * payload and attachments taken as they are, a page for people with the link opened with the key from the address's
- * fragment (`linked`: the `/p/<record>` reader — on `/shared/<record>` a page that isn't listed is not found); the
+ * fragment (`linked`: the `/p/<record>` reader — on `/community/<record>` a page that isn't listed is not found); the
  * attachments into blobs; the HTML reduced to the allowlist.
  */
 export function SharedReader(props: { id: string; linked: boolean }) {
@@ -194,7 +194,7 @@ function Notice(props: { title: string; children: string }) {
           </Link>
         }
       >
-        <Link to="/shared" class="shared-button mt-6">
+        <Link to="/community" class="shared-button mt-6">
           Browse shared pages
         </Link>
       </Show>
@@ -260,7 +260,7 @@ function Page(props: { id: string; ready: Ready }) {
           <div class="shared-page-tags">
             <For each={props.ready.tags}>
               {(tag) => (
-                <Link to="/shared" search={{ tag }} class="shared-tag">
+                <Link to="/community" search={{ tag }} class="shared-tag">
                   {tagLabel(tag)}
                 </Link>
               )}
@@ -294,7 +294,7 @@ function Page(props: { id: string; ready: Ready }) {
         </button>
         <Show when={SHARED_LIST_OPEN}>
           <span class="shared-dock-divider" aria-hidden="true" />
-          <Link to="/shared" class="shared-dock-item" aria-label="Browse shared pages">
+          <Link to="/community" class="shared-dock-item" aria-label="Browse Hikki Community">
             <GridIcon />
             <span class="max-sm:hidden">Browse</span>
           </Link>
